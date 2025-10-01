@@ -1,0 +1,50 @@
+{
+  "name": "growreporter",
+  "version": "1.0.0",
+  "description": "**GrowReporter**は、Google Analytics 4、Search Consoleを統合し、AI分析による実行可能な改善提案を提供するWebサイト分析プラットフォームです。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hatanakatakahito/growreporter.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hatanakatakahito/growreporter/issues"
+  },
+  "homepage": "https://github.com/hatanakatakahito/growreporter#readme",
+  "dependencies": {
+    "@fortawesome/fontawesome-free": "^7.0.1",
+    "@google/generative-ai": "^0.24.1",
+    "@langchain/google-genai": "^0.2.18",
+    "@types/node": "^24.5.2",
+    "@types/react": "^19.1.14",
+    "@types/react-datepicker": "^6.2.0",
+    "@types/react-dom": "^19.1.9",
+    "@types/uuid": "^10.0.0",
+    "bootstrap": "^5.3.8",
+    "firebase": "^12.3.0",
+    "firebase-admin": "^13.5.0",
+    "google-auth-library": "^10.3.0",
+    "langchain": "^0.3.34",
+    "mdb-react-ui-kit": "^9.0.0",
+    "mdb-ui-kit": "^9.2.0",
+    "next": "^15.5.4",
+    "react": "^19.1.1",
+    "react-datepicker": "^8.7.0",
+    "react-dom": "^19.1.1",
+    "typescript": "^5.9.2",
+    "uuid": "^13.0.0"
+  }
+}

@@ -80,7 +80,6 @@ firebase deploy --only hosting:dev
 🔑 Phase 1: SSO基盤構築（最優先）
 ├── Firebase Authentication
 ├── Google OAuth (GA4 + Search Console)
-├── Microsoft OAuth (Clarity)
 └── セキュリティ対策
 
 📊 Phase 2: API統合確認
@@ -112,7 +111,6 @@ firebase deploy --only hosting:dev
 ```bash
 □ GA4 API スコープ設定・接続テスト
 □ Search Console API スコープ設定・接続テスト
-□ Clarity API スコープ設定・接続テスト
 □ 認証情報暗号化保存
 □ トークンリフレッシュ機構
 □ セキュリティ対策実装

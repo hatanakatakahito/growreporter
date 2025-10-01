@@ -2,7 +2,7 @@
 
 ## 📋 プロジェクト概要
 
-**GrowReporter**は、Google Analytics 4、Search Console、Microsoft Clarityを統合し、AI分析による実行可能な改善提案を提供するWebサイト分析プラットフォームです。
+**GrowReporter**は、Google Analytics 4、Search Consoleを統合し、AI分析による実行可能な改善提案を提供するWebサイト分析プラットフォームです。
 
 ### 基本情報
 - **開発会社**: GrowGroup株式会社
@@ -88,7 +88,6 @@ firebase deploy          # デプロイ
 ### Phase 1: SSO基盤構築（Week 1-2）
 - Firebase Authentication + マルチプロバイダー
 - Google OAuth (GA4 + Search Console)
-- Microsoft OAuth (Clarity)
 
 ### Phase 2: API統合確認（Week 3）
 - 実際のAPI呼び出しテスト
