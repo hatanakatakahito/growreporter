@@ -11,6 +11,7 @@ import {
   signInWithEmailAndPassword
 } from 'firebase/auth';
 import { auth, googleProvider, microsoftProvider } from '../firebase/config';
+import { UserProfileService } from '@/lib/user/userProfileService';
 
 interface AuthContextType {
   user: User | null;
@@ -39,8 +40,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setUser(user);
+      
+      // 👤 新規ユーザーの場合、プロファイルを自動作成
+      if (user) {
+        try {
+          const profileExists = await UserProfileService.profileExists(user.uid);
+          
+          if (!profileExists) {
+            console.log('🆕 新規ユーザー検出 - プロファイル作成開始:', user.uid);
+            await UserProfileService.createUserProfile({
+              uid: user.uid,
+              email: user.email || '',
+              displayName: user.displayName || undefined,
+              photoURL: user.photoURL || undefined,
+            });
+          } else {
+            // 既存ユーザーの場合、ログイン時刻を更新
+            await UserProfileService.updateLastLogin(user.uid);
+          }
+        } catch (error) {
+          console.error('❌ ユーザープロファイル処理エラー:', error);
+          // プロファイル処理のエラーは認証フローをブロックしない
+        }
+      }
+      
       setLoading(false);
     });
 

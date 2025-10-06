@@ -12,9 +12,11 @@ import {
   MDBDropdownItem
 } from 'mdb-react-ui-kit';
 import { useAuth } from '@/lib/auth/authContext';
+import { useRouter } from 'next/navigation';
 
 const UserProfile: React.FC = () => {
   const { user, signOut } = useAuth();
+  const router = useRouter();
 
   if (!user) {
     return null;
@@ -47,19 +49,22 @@ const UserProfile: React.FC = () => {
       </MDBDropdownToggle>
 
       <MDBDropdownMenu>
-        <MDBDropdownItem className="d-flex align-items-center">
+        <MDBDropdownItem 
+          className="d-flex align-items-center"
+          onClick={() => router.push('/profile')}
+          style={{ cursor: 'pointer' }}
+        >
           <MDBIcon fas icon="user" className="me-2" />
           プロフィール
         </MDBDropdownItem>
         
-        <MDBDropdownItem className="d-flex align-items-center">
-          <MDBIcon fas icon="cog" className="me-2" />
-          設定
-        </MDBDropdownItem>
-        
-        <MDBDropdownItem className="d-flex align-items-center">
-          <MDBIcon fas icon="link" className="me-2" />
-          API接続管理
+        <MDBDropdownItem 
+          className="d-flex align-items-center"
+          onClick={() => router.push('/admin')}
+          style={{ cursor: 'pointer' }}
+        >
+          <MDBIcon fas icon="user-shield" className="me-2" />
+          管理者パネル
         </MDBDropdownItem>
         
         <hr className="dropdown-divider" />
@@ -67,6 +72,7 @@ const UserProfile: React.FC = () => {
         <MDBDropdownItem
           className="d-flex align-items-center text-danger"
           onClick={handleSignOut}
+          style={{ cursor: 'pointer' }}
         >
           <MDBIcon fas icon="sign-out-alt" className="me-2" />
           ログアウト

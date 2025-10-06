@@ -27,7 +27,7 @@ const app = initializeApp(firebaseConfig);
 // Firebase Authentication
 export const auth = getAuth(app);
 
-// Firestore Database (ggreporterデータベースを使用 - Standard Edition)
+// Firestore Database (ggreporterデータベースを使用)
 export const firestore = getFirestore(app, 'ggreporter');
 
 // OAuth Providers

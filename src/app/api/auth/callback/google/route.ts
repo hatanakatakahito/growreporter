@@ -113,9 +113,10 @@ export async function GET(request: NextRequest) {
 
       console.log('✅ Admin Firestore保存完了');
       
-      // 🎯 Faro形式: Firestore保存成功後にダッシュボードにリダイレクト
+      // 🎯 returnUrlがあればそこへ、なければダッシュボードへリダイレクト
+      const redirectUrl = stateData.returnUrl || '/dashboard';
       return NextResponse.redirect(
-        new URL(`/dashboard?unified_oauth_success=true&ga4_count=${ga4Properties.length}&gsc_count=${gscSites.length}`, request.url)
+        new URL(`${redirectUrl}?unified_oauth_success=true&ga4_count=${ga4Properties.length}&gsc_count=${gscSites.length}`, request.url)
       );
       
     } catch (firestoreError) {

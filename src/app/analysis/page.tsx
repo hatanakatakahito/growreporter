@@ -1,70 +1,37 @@
 'use client';
 
-import {
-  MDBContainer,
-  MDBRow,
-  MDBCol,
-  MDBCard,
-  MDBCardBody,
-  MDBCardTitle,
-  MDBIcon,
-  MDBNavbar,
-  MDBNavbarBrand,
-  MDBNavbarNav,
-  MDBNavbarItem,
-  MDBSpinner,
-  MDBBtn,
-  MDBBadge,
-  MDBTable,
-  MDBTableHead,
-  MDBTableBody
-} from 'mdb-react-ui-kit';
 import { useAuth } from '@/lib/auth/authContext';
-import UserProfile from '@/components/auth/UserProfile';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { GA4Property } from '@/lib/api/googleAnalytics';
-import { GSCSite } from '@/components/api/GSCConnection';
 import { FirestoreService } from '@/lib/firebase/firestoreService';
+import { KPIService } from '@/lib/kpi/kpiService';
+import { CustomKPI } from '@/types/kpi';
+import { AnalysisService } from '@/lib/analysis/analysisService';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import './datepicker.css';
 
+interface GSCSite {
+  siteUrl: string;
+  permissionLevel: string;
+}
+
 interface GA4Data {
   success: boolean;
   data: any;
-  summary: {
-    propertyId: string;
-    rowCount: number;
-    dateRange: { startDate: string; endDate: string };
-    metrics: string[];
-    dimensions: string[];
-  };
+  summary: any;
 }
 
 interface GSCData {
   success: boolean;
-  data: {
-    rows: any[];
-    totalClicks: number;
-    totalImpressions: number;
-    averageCTR: number;
-    averagePosition: number;
-  };
-  summary: {
-    siteUrl: string;
-    rowCount: number;
-    dateRange: { startDate: string; endDate: string };
-    dimensions: string[];
-    totalClicks: number;
-    totalImpressions: number;
-    averageCTR: number;
-    averagePosition: number;
-  };
+  data: any;
+  summary: any;
 }
 
 export default function AnalysisPage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [selectedGA4Property, setSelectedGA4Property] = useState<GA4Property | null>(null);
   const [selectedGSCSite, setSelectedGSCSite] = useState<GSCSite | null>(null);
@@ -74,369 +41,185 @@ export default function AnalysisPage() {
   const [isLoadingGSC, setIsLoadingGSC] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
-  // 期間選択の状態
   const [dateRangeType, setDateRangeType] = useState<'preset' | 'custom'>('preset');
   const [presetRange, setPresetRange] = useState<string>('30daysAgo');
   const [customStartDate, setCustomStartDate] = useState<Date | null>(null);
   const [customEndDate, setCustomEndDate] = useState<Date | null>(null);
   
-  // AI分析の状態
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
+  
+  const [kpis, setKPIs] = useState<CustomKPI[]>([]);
+  const [currentReportId, setCurrentReportId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push('/');
       return;
     }
 
-    // Firestoreから選択されたプロパティを復元
-    if (user?.uid) {
-      const unsubscribeGA4 = FirestoreService.subscribeToGA4Properties(
-        user.uid,
-        (ga4Data) => {
-          if (ga4Data && ga4Data.selected.propertyId) {
-            // 選択されたプロパティを復元
-            const selectedProp = ga4Data.properties.find(
-              prop => prop.name === ga4Data.selected.propertyId
-            );
-            if (selectedProp) {
-              setSelectedGA4Property(selectedProp);
-              console.log('✅ 選択GA4プロパティ復元:', selectedProp.displayName);
-            }
-          }
-        }
-      );
-
-      const unsubscribeGSC = FirestoreService.subscribeToGSCSites(
-        user.uid,
-        (gscData) => {
-          if (gscData && gscData.selected.siteUrl) {
-            // 選択されたサイトを復元
-            const selectedSite = gscData.sites.find(
-              site => site.siteUrl === gscData.selected.siteUrl
-            );
-            if (selectedSite) {
-              setSelectedGSCSite(selectedSite);
-              console.log('✅ 選択GSCサイト復元:', selectedSite.siteUrl);
-            }
-          }
-        }
-      );
-
-      return () => {
-        unsubscribeGA4();
-        unsubscribeGSC();
-      };
-    }
-  }, [user, loading, router]);
+    if (!user) return;
+    
+    const loadSelections = async () => {
+      const ga4Data = await FirestoreService.getGA4Properties(user.uid);
+      if (ga4Data?.selectedPropertyId) {
+        const selected = ga4Data.properties.find(p => p.name === ga4Data.selectedPropertyId);
+        if (selected) setSelectedGA4Property(selected);
+      }
+      
+      const gscData = await FirestoreService.getGSCSites(user.uid);
+      if (gscData?.selectedSiteUrl) {
+        const selected = gscData.sites.find(s => s.siteUrl === gscData.selectedSiteUrl);
+        if (selected) setSelectedGSCSite(selected);
+      }
+    };
+    
+    loadSelections();
+    
+    const unsubscribeKPI = KPIService.subscribeToKPIs(user.uid, setKPIs);
+    
+    const initReport = async () => {
+      const report = await AnalysisService.createAnalysisReport(user.uid, {
+        title: `分析 ${new Date().toLocaleDateString('ja-JP')}`,
+      });
+      setCurrentReportId(report.id);
+    };
+    
+    initReport();
+    
+    return () => {
+      unsubscribeKPI();
+    };
+  }, [user, authLoading, router]);
 
   const fetchGA4Data = async () => {
-    if (!selectedGA4Property || !user?.uid) return;
+    if (!user?.uid || !selectedGA4Property) {
+      setError('GA4プロパティが選択されていません');
+      return;
+    }
 
     setIsLoadingGA4(true);
     setError(null);
 
     try {
-      // Firestoreからアクセストークンを取得
-      const oauthTokens = await FirestoreService.getOAuthTokens(user.uid);
+      const tokens = await FirestoreService.getOAuthTokens(user.uid);
+      if (!tokens) throw new Error('認証情報が見つかりません');
       
-      console.log('🔧 GA4 Access Token Debug:', {
-        foundToken: !!oauthTokens?.unified.accessToken,
-        tokenLength: oauthTokens?.unified.accessToken?.length || 0,
-        hasGA4Permission: oauthTokens?.permissions.ga4.granted || false,
-        expiresAt: oauthTokens?.unified.expiresAt,
-        isExpired: oauthTokens?.unified.expiresAt 
-          ? new Date(oauthTokens.unified.expiresAt.toMillis()).getTime() < Date.now()
-          : 'unknown'
-      });
-
-      if (!oauthTokens?.unified.accessToken) {
-        throw new Error('GA4アクセストークンが見つかりません。ダッシュボードで再接続してください。');
+      let accessToken = tokens.accessToken;
+      
+      if (tokens.expiresAt * 1000 < Date.now()) {
+        const refreshData = await FirestoreService.refreshAccessToken(user.uid, tokens.refreshToken);
+        accessToken = refreshData.accessToken;
       }
 
-      // トークンの有効期限チェック & 自動更新
-      const isExpired = oauthTokens.unified.expiresAt 
-        ? oauthTokens.unified.expiresAt.toMillis() < Date.now()
-        : false;
-
-      let accessToken = oauthTokens.unified.accessToken;
-
-      if (isExpired) {
-        console.warn('⚠️ アクセストークンが期限切れです。自動更新を試みます...');
-        
-        // リフレッシュトークンが存在する場合は自動更新
-        if (oauthTokens.unified.refreshToken) {
-          try {
-            // サーバーサイドAPIを使ってトークンを更新（セキュリティのため）
-            const refreshResponse = await fetch('/api/auth/refresh-token', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                userId: user.uid,
-                refreshToken: oauthTokens.unified.refreshToken
-              })
-            });
-
-            if (!refreshResponse.ok) {
-              const errorData = await refreshResponse.json();
-              throw new Error(errorData.message || 'Token refresh failed');
-            }
-
-            const refreshData = await refreshResponse.json();
-            accessToken = refreshData.accessToken;
-            console.log('✅ アクセストークン自動更新成功');
-            
-          } catch (refreshError) {
-            console.error('❌ トークン自動更新失敗:', refreshError);
-            setError('アクセストークンの更新に失敗しました。');
-            setIsLoadingGA4(false);
-            throw new Error('アクセストークンの有効期限が切れており、自動更新にも失敗しました。ダッシュボードでもう一度「統合Google接続」を実行してください。');
-          }
-        } else {
-          // リフレッシュトークンがない場合は再接続が必要
-          setError('アクセストークンの有効期限が切れています。');
-          setIsLoadingGA4(false);
-          throw new Error('リフレッシュトークンが見つかりません。ダッシュボードでもう一度「統合Google接続」を実行してください。');
-        }
-      }
-
-      // プロパティIDを抽出（properties/123456789 → 123456789）
-      const propertyId = selectedGA4Property.name.replace('properties/', '');
-
-      // 期間の設定
-      let startDate: string;
-      let endDate: string;
+      const today = new Date();
+      let startDate: string, endDate: string;
 
       if (dateRangeType === 'preset') {
-        startDate = presetRange;
-        endDate = 'today';
+        endDate = today.toISOString().split('T')[0];
+        const startDateObj = new Date();
+        const days = presetRange === '7daysAgo' ? 7 : presetRange === '30daysAgo' ? 30 : 90;
+        startDateObj.setDate(today.getDate() - days);
+        startDate = startDateObj.toISOString().split('T')[0];
       } else {
-        // カスタム期間の場合
-        if (!customStartDate || !customEndDate) {
-          throw new Error('開始日と終了日を選択してください');
-        }
+        if (!customStartDate || !customEndDate) throw new Error('日付を選択してください');
         startDate = customStartDate.toISOString().split('T')[0];
         endDate = customEndDate.toISOString().split('T')[0];
       }
 
-      console.log('🔧 GA4期間設定:', { dateRangeType, startDate, endDate });
-
       const response = await fetch('/api/analytics/ga4', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          propertyId,
+          propertyId: selectedGA4Property.name,
           accessToken,
-          dateRange: [
-            {
-              startDate,
-              endDate
-            }
-          ]
-        })
+          dateRange: { startDate, endDate },
+          dimensions: ['date'],
+          metrics: ['sessions', 'activeUsers', 'screenPageViews'],
+        }),
       });
 
-      console.log('🔧 GA4 API Response:', {
-        ok: response.ok,
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-
-      if (!response.ok) {
-        let errorData: any = {};
-        try {
-          const responseText = await response.text();
-          console.error('❌ GA4 API Error Response Text:', responseText);
-          errorData = responseText ? JSON.parse(responseText) : {};
-        } catch (e) {
-          console.error('❌ GA4 API Error parsing failed:', e);
-          errorData = { error: response.statusText };
-        }
-        
-        console.error('❌ GA4 API Error Details:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-          selectedProperty: selectedGA4Property.displayName,
-          propertyId: selectedGA4Property.name.replace('properties/', '')
-        });
-        
-        throw new Error(errorData.error || errorData.details || `GA4 API request failed: ${response.status} ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error('GA4データ取得に失敗しました');
 
       const data = await response.json();
       setGA4Data(data);
-      console.log('✅ GA4データ取得成功:', data.summary);
-
-    } catch (error) {
+      
+      if (currentReportId) {
+        await AnalysisService.saveGA4DataToReport(user.uid, currentReportId, data);
+      }
+    } catch (error: any) {
       console.error('GA4データ取得エラー:', error);
-      setError(error instanceof Error ? error.message : 'GA4データの取得に失敗しました');
+      setError(error.message);
     } finally {
       setIsLoadingGA4(false);
     }
   };
 
   const fetchGSCData = async () => {
-    if (!selectedGSCSite || !user?.uid) return;
+    if (!user?.uid || !selectedGSCSite) {
+      setError('GSCサイトが選択されていません');
+      return;
+    }
 
     setIsLoadingGSC(true);
     setError(null);
 
     try {
-      // Firestoreからアクセストークンを取得（統合OAuth）
-      const oauthTokens = await FirestoreService.getOAuthTokens(user.uid);
-
-      if (!oauthTokens?.unified.accessToken) {
-        throw new Error('Search Consoleアクセストークンが見つかりません。ダッシュボードで再接続してください。');
+      const tokens = await FirestoreService.getOAuthTokens(user.uid);
+      if (!tokens) throw new Error('認証情報が見つかりません');
+      
+      let accessToken = tokens.accessToken;
+      
+      if (tokens.expiresAt * 1000 < Date.now()) {
+        const refreshData = await FirestoreService.refreshAccessToken(user.uid, tokens.refreshToken);
+        accessToken = refreshData.accessToken;
       }
 
-      // トークンの有効期限チェック & 自動更新
-      const isExpired = oauthTokens.unified.expiresAt 
-        ? oauthTokens.unified.expiresAt.toMillis() < Date.now()
-        : false;
-
-      let accessToken = oauthTokens.unified.accessToken;
-
-      if (isExpired) {
-        console.warn('⚠️ GSCアクセストークンが期限切れです。自動更新を試みます...');
-        
-        if (oauthTokens.unified.refreshToken) {
-          try {
-            // サーバーサイドAPIを使ってトークンを更新（セキュリティのため）
-            const refreshResponse = await fetch('/api/auth/refresh-token', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({
-                userId: user.uid,
-                refreshToken: oauthTokens.unified.refreshToken
-              })
-            });
-
-            if (!refreshResponse.ok) {
-              const errorData = await refreshResponse.json();
-              throw new Error(errorData.message || 'Token refresh failed');
-            }
-
-            const refreshData = await refreshResponse.json();
-            accessToken = refreshData.accessToken;
-            console.log('✅ GSCアクセストークン自動更新成功');
-            
-          } catch (refreshError) {
-            console.error('❌ GSCトークン自動更新失敗:', refreshError);
-            setError('アクセストークンの更新に失敗しました。');
-            setIsLoadingGSC(false);
-            throw new Error('アクセストークンの有効期限が切れており、自動更新にも失敗しました。ダッシュボードでもう一度「統合Google接続」を実行してください。');
-          }
-        } else {
-          setError('アクセストークンの有効期限が切れています。');
-          setIsLoadingGSC(false);
-          throw new Error('リフレッシュトークンが見つかりません。ダッシュボードでもう一度「統合Google接続」を実行してください。');
-        }
-      }
-
-      // 期間の設定
-      let startDate: string;
-      let endDate: string;
+      const today = new Date();
+      let startDate: string, endDate: string;
 
       if (dateRangeType === 'preset') {
-        // プリセット期間を日付に変換
-        const today = new Date();
         endDate = today.toISOString().split('T')[0];
-        
         const startDateObj = new Date();
-        switch (presetRange) {
-          case '7daysAgo':
-            startDateObj.setDate(today.getDate() - 7);
-            break;
-          case '30daysAgo':
-            startDateObj.setDate(today.getDate() - 30);
-            break;
-          case '90daysAgo':
-            startDateObj.setDate(today.getDate() - 90);
-            break;
-          default:
-            startDateObj.setDate(today.getDate() - 30);
-        }
+        const days = presetRange === '7daysAgo' ? 7 : presetRange === '30daysAgo' ? 30 : 90;
+        startDateObj.setDate(today.getDate() - days);
         startDate = startDateObj.toISOString().split('T')[0];
       } else {
-        // カスタム期間の場合
-        if (!customStartDate || !customEndDate) {
-          throw new Error('開始日と終了日を選択してください');
-        }
+        if (!customStartDate || !customEndDate) throw new Error('日付を選択してください');
         startDate = customStartDate.toISOString().split('T')[0];
         endDate = customEndDate.toISOString().split('T')[0];
       }
 
-      console.log('🔧 GSC期間設定:', { dateRangeType, startDate, endDate });
-
       const response = await fetch('/api/analytics/gsc', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           siteUrl: selectedGSCSite.siteUrl,
           accessToken,
-          dateRange: {
-            startDate,
-            endDate
-          },
-          dimensions: ['date']
-        })
+          dateRange: { startDate, endDate },
+          dimensions: ['date'],
+        }),
       });
 
-      console.log('🔧 GSC API Response:', {
-        ok: response.ok,
-        status: response.status,
-        statusText: response.statusText,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-
-      if (!response.ok) {
-        let errorData: any = {};
-        try {
-          const responseText = await response.text();
-          console.error('❌ GSC API Error Response Text:', responseText);
-          errorData = responseText ? JSON.parse(responseText) : {};
-        } catch (e) {
-          console.error('❌ GSC API Error parsing failed:', e);
-          errorData = { error: response.statusText };
-        }
-        
-        console.error('❌ GSC API Error Details:', {
-          status: response.status,
-          statusText: response.statusText,
-          errorData,
-          selectedSite: selectedGSCSite.siteUrl
-        });
-        
-        throw new Error(errorData.error || errorData.details || `GSC API request failed: ${response.status} ${response.statusText}`);
-      }
+      if (!response.ok) throw new Error('GSCデータ取得に失敗しました');
 
       const data = await response.json();
       setGSCData(data);
-      console.log('✅ GSCデータ取得成功:', data.summary);
-
-    } catch (error) {
+      
+      if (currentReportId) {
+        await AnalysisService.saveGSCDataToReport(user.uid, currentReportId, data);
+      }
+    } catch (error: any) {
       console.error('GSCデータ取得エラー:', error);
-      setError(error instanceof Error ? error.message : 'Search Consoleデータの取得に失敗しました');
+      setError(error.message);
     } finally {
       setIsLoadingGSC(false);
     }
   };
 
-  // Gemini AI分析を実行
   const runAIAnalysis = async () => {
     if (!ga4Data && !gscData) {
-      setError('分析するデータがありません。まずGA4またはGSCデータを取得してください。');
+      setError('分析するデータがありません');
       return;
     }
 
@@ -444,589 +227,377 @@ export default function AnalysisPage() {
     setError(null);
 
     try {
-      console.log('🤖 Gemini AI分析開始');
+      const prompt = `以下のデータを分析して、改善提案を3つ提示してください：\n\nGA4データ: ${JSON.stringify(ga4Data?.summary || {})}\nGSCデータ: ${JSON.stringify(gscData?.summary || {})}`;
 
-      // GA4とGSCデータを整形
-      const ga4Summary = ga4Data ? {
-        totalSessions: ga4Data.data?.rows?.reduce((sum: number, row: any) => {
-          const sessionIndex = ga4Data.summary.metrics.indexOf('sessions');
-          return sum + (row.metricValues?.[sessionIndex] ? parseInt(row.metricValues[sessionIndex].value) : 0);
-        }, 0) || 0,
-        totalUsers: ga4Data.data?.rows?.reduce((sum: number, row: any) => {
-          const userIndex = ga4Data.summary.metrics.indexOf('activeUsers');
-          return sum + (row.metricValues?.[userIndex] ? parseInt(row.metricValues[userIndex].value) : 0);
-        }, 0) || 0,
-        totalPageViews: ga4Data.data?.rows?.reduce((sum: number, row: any) => {
-          const pvIndex = ga4Data.summary.metrics.indexOf('screenPageViews');
-          return sum + (row.metricValues?.[pvIndex] ? parseInt(row.metricValues[pvIndex].value) : 0);
-        }, 0) || 0,
-        avgBounceRate: (() => {
-          const bounceIndex = ga4Data.summary.metrics.indexOf('bounceRate');
-          if (bounceIndex === -1 || !ga4Data.data?.rows?.length) return 0;
-          const total = ga4Data.data.rows.reduce((sum: number, row: any) => {
-            const value = row.metricValues?.[bounceIndex] ? parseFloat(row.metricValues[bounceIndex].value) : 0;
-            return sum + value;
-          }, 0);
-          return ((total / ga4Data.data.rows.length) * 100).toFixed(2);
-        })(),
-        rowCount: ga4Data.summary.rowCount
-      } : null;
-
-      const gscSummary = gscData ? {
-        totalClicks: gscData.summary.totalClicks,
-        totalImpressions: gscData.summary.totalImpressions,
-        avgCTR: gscData.summary.averageCTR,
-        avgPosition: gscData.summary.averagePosition,
-        rowCount: gscData.summary.rowCount
-      } : null;
-
-      const response = await fetch('/api/ai/analyze', {
+      const response = await fetch('/api/analysis/gemini', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          ga4Data: ga4Summary,
-          gscData: gscSummary,
-          dateRange: ga4Data?.summary.dateRange || gscData?.summary.dateRange,
-          propertyName: selectedGA4Property?.displayName,
-          siteUrl: selectedGSCSite?.siteUrl
-        })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'AI分析に失敗しました');
-      }
+      if (!response.ok) throw new Error('AI分析に失敗しました');
 
       const data = await response.json();
       setAiAnalysis(data.analysis);
-      console.log('✅ Gemini AI分析完了');
-
-    } catch (error) {
-      console.error('❌ AI分析エラー:', error);
-      setError(error instanceof Error ? error.message : 'AI分析に失敗しました');
+      
+      if (currentReportId && user?.uid) {
+        await AnalysisService.saveAIAnalysisToReport(user.uid, currentReportId, {
+          result: data.analysis,
+          model: data.model || 'gemini-pro',
+        });
+      }
+    } catch (error: any) {
+      console.error('AI分析エラー:', error);
+      setError(error.message);
     } finally {
       setIsLoadingAI(false);
     }
   };
-
-  if (loading) {
+  
+  if (authLoading) {
     return (
-      <MDBContainer fluid className="py-5 text-center">
-        <MDBIcon fas icon="spinner" spin size="3x" className="text-primary" />
-        <p className="mt-3">読み込み中...</p>
-      </MDBContainer>
+      <div className="flex min-h-screen items-center justify-center bg-gray-2 dark:bg-dark">
+        <div className="text-center">
+          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <p className="text-body-color dark:text-dark-6">読み込み中...</p>
+        </div>
+      </div>
     );
   }
 
-  if (!user) {
-    return null;
-  }
+  if (!user) return null;
 
   return (
-    <>
-      <MDBNavbar light bgColor="light" className="shadow-sm">
-        <MDBContainer fluid>
-          <MDBNavbarBrand href="/dashboard" className="fw-bold text-primary">
-            <MDBIcon fas icon="chart-line" className="me-2" />
-            GrowReporter 分析結果
-          </MDBNavbarBrand>
+    <DashboardLayout>
+      <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+        {/* Page Header - Mega Template準拠 */}
+        <div className="mb-9">
+          <h2 className="mb-2 text-2xl font-semibold text-dark dark:text-white">
+            データ分析
+          </h2>
+          <p className="text-sm font-medium text-body-color dark:text-dark-6">
+            GA4とSearch Consoleのデータを取得してAI分析を実行
+          </p>
+        </div>
 
-          <MDBNavbarNav className="ms-auto">
-            <MDBNavbarItem>
-              <MDBBtn color="secondary" size="sm" href="/dashboard" className="me-3">
-                <MDBIcon fas icon="arrow-left" className="me-2" />
-                ダッシュボードに戻る
-              </MDBBtn>
-            </MDBNavbarItem>
-            <MDBNavbarItem>
-              <UserProfile />
-            </MDBNavbarItem>
-          </MDBNavbarNav>
-        </MDBContainer>
-      </MDBNavbar>
-
-      <MDBContainer fluid className="py-5">
-        {/* 選択されたプロパティ情報 */}
-        <MDBRow className="mb-4">
-          <MDBCol md="12">
-            <MDBCard className="border-primary">
-              <MDBCardBody>
-                <h5 className="text-primary mb-3">
-                  <MDBIcon fas icon="cog" className="me-2" />
-                  分析対象
+        {/* Error Alert - Mega Template準拠 */}
+        {error && (
+          <div className="mb-6 rounded-md border-l-4 border-red bg-red/10 p-5">
+            <div className="flex items-start gap-3">
+              <svg className="mt-0.5 h-5 w-5 flex-shrink-0 fill-red" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M10 0C4.477 0 0 4.477 0 10s4.477 10 10 10 10-4.477 10-10S15.523 0 10 0zm0 18c-4.411 0-8-3.589-8-8s3.589-8 8-8 8 3.589 8 8-3.589 8-8 8zm-1-5h2v2H9v-2zm0-8h2v6H9V5z"/>
+              </svg>
+              <div>
+                <h5 className="mb-1 text-sm font-semibold text-red">
+                  エラーが発生しました
                 </h5>
-                <MDBRow>
-                  <MDBCol md="6">
-                    <div className="mb-3">
-                      <strong>GA4プロパティ:</strong>
-                      <br />
-                      {selectedGA4Property ? (
-                        <span className="text-success">{selectedGA4Property.displayName}</span>
-                      ) : (
-                        <span className="text-muted">選択されていません</span>
-                      )}
-                    </div>
-                  </MDBCol>
-                  <MDBCol md="6">
-                    <div className="mb-3">
-                      <strong>Search Consoleサイト:</strong>
-                      <br />
-                      {selectedGSCSite ? (
-                        <span className="text-success">{selectedGSCSite.siteUrl}</span>
-                      ) : (
-                        <span className="text-muted">選択されていません</span>
-                      )}
-                    </div>
-                  </MDBCol>
-                </MDBRow>
+                <p className="text-sm text-body-color dark:text-dark-6">
+                  {error}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
-                {/* 期間選択 */}
-                <hr className="my-4" />
-                <h6 className="mb-3">
-                  <MDBIcon fas icon="calendar-alt" className="me-2" />
-                  データ取得期間
-                </h6>
-                
-                <MDBRow className="mb-3">
-                  <MDBCol md="12">
-                    <div className="mb-3">
-                      <div className="form-check form-check-inline">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="dateRangeType"
-                          id="presetRange"
-                          checked={dateRangeType === 'preset'}
-                          onChange={() => setDateRangeType('preset')}
-                        />
-                        <label className="form-check-label" htmlFor="presetRange">
-                          プリセット期間
-                        </label>
-                      </div>
-                      <div className="form-check form-check-inline">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="dateRangeType"
-                          id="customRange"
-                          checked={dateRangeType === 'custom'}
-                          onChange={() => setDateRangeType('custom')}
-                        />
-                        <label className="form-check-label" htmlFor="customRange">
-                          カスタム期間
-                        </label>
-                      </div>
-                    </div>
-                  </MDBCol>
-                </MDBRow>
-
-                {dateRangeType === 'preset' ? (
-                  <MDBRow className="mb-3">
-                    <MDBCol md="6">
-                      <select
-                        className="form-select"
-                        value={presetRange}
-                        onChange={(e) => setPresetRange(e.target.value)}
-                      >
-                        <option value="7daysAgo">過去7日間</option>
-                        <option value="30daysAgo">過去30日間</option>
-                        <option value="90daysAgo">過去90日間</option>
-                      </select>
-                    </MDBCol>
-                  </MDBRow>
-                ) : (
-                  <MDBRow className="mb-3">
-                    <MDBCol md="4">
-                      <label className="form-label">
-                        <MDBIcon fas icon="calendar" className="me-2" />
-                        開始日
-                      </label>
-                      <DatePicker
-                        selected={customStartDate}
-                        onChange={(date: Date | null) => setCustomStartDate(date)}
-                        selectsStart
-                        startDate={customStartDate}
-                        endDate={customEndDate}
-                        maxDate={customEndDate || new Date()}
-                        dateFormat="yyyy-MM-dd"
-                        className="form-control"
-                        placeholderText="開始日を選択"
-                        locale="ja"
-                        showMonthDropdown
-                        showYearDropdown
-                        dropdownMode="select"
-                      />
-                    </MDBCol>
-                    <MDBCol md="4">
-                      <label className="form-label">
-                        <MDBIcon fas icon="calendar" className="me-2" />
-                        終了日
-                      </label>
-                      <DatePicker
-                        selected={customEndDate}
-                        onChange={(date: Date | null) => setCustomEndDate(date)}
-                        selectsEnd
-                        startDate={customStartDate}
-                        endDate={customEndDate}
-                        minDate={customStartDate}
-                        maxDate={new Date()}
-                        dateFormat="yyyy-MM-dd"
-                        className="form-control"
-                        placeholderText="終了日を選択"
-                        locale="ja"
-                        showMonthDropdown
-                        showYearDropdown
-                        dropdownMode="select"
-                      />
-                    </MDBCol>
-                  </MDBRow>
+        {/* Data Sources Card - Mega Template準拠 */}
+        <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2 xl:px-[30px]">
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold text-dark dark:text-white">
+              分析対象
+            </h4>
+            <p className="text-sm text-body-color dark:text-dark-6">
+              GA4とSearch Consoleのデータソース
+            </p>
+          </div>
+          <div className="-mx-4 flex flex-wrap">
+            <div className="w-full px-4 md:w-1/2">
+              <div className="mb-6 rounded-lg border border-stroke bg-gray-2 p-5 dark:border-dark-3 dark:bg-dark">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/[0.06] text-primary dark:bg-primary/10">
+                    <svg className="fill-current" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M10 0C4.48 0 0 4.48 0 10s4.48 10 10 10 10-4.48 10-10S15.52 0 10 0zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm.5-13H9v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium text-body-color dark:text-dark-6">
+                    GA4 Property
+                  </span>
+                </div>
+                <h5 className="text-base font-semibold text-dark dark:text-white">
+                  {selectedGA4Property?.displayName || '選択されていません'}
+                </h5>
+                {selectedGA4Property && (
+                  <p className="mt-1 text-xs text-body-color dark:text-dark-6">
+                    ID: {selectedGA4Property.name}
+                  </p>
                 )}
+              </div>
+            </div>
+            <div className="w-full px-4 md:w-1/2">
+              <div className="mb-6 rounded-lg border border-stroke bg-gray-2 p-5 dark:border-dark-3 dark:bg-dark">
+                <div className="mb-3 flex items-center gap-2">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-secondary/[0.06] text-secondary dark:bg-secondary/10">
+                    <svg className="fill-current" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M19.7 8.3l-9-8c-.4-.3-.9-.3-1.3 0l-9 8c-.3.3-.4.7-.2 1.1.2.4.6.6 1 .6h1v9c0 .6.4 1 1 1h12c.6 0 1-.4 1-1v-9h1c.4 0 .8-.2 1-.6.2-.4.1-.8-.2-1.1z"/>
+                    </svg>
+                  </div>
+                  <span className="text-sm font-medium text-body-color dark:text-dark-6">
+                    Search Console Site
+                  </span>
+                </div>
+                <h5 className="text-base font-semibold text-dark dark:text-white">
+                  {selectedGSCSite?.siteUrl || '選択されていません'}
+                </h5>
+                {selectedGSCSite && (
+                  <p className="mt-1 text-xs text-body-color dark:text-dark-6">
+                    Permission: {selectedGSCSite.permissionLevel}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
 
-          <div className="text-center mt-4">
-            <MDBBtn 
-              color="primary" 
+        {/* Date Range Selection Card - Mega Template準拠 */}
+        <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2 xl:px-[30px]">
+          <div className="mb-6">
+            <h4 className="text-lg font-semibold text-dark dark:text-white">
+              データ取得期間
+            </h4>
+            <div className="mb-5 flex gap-5">
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  checked={dateRangeType === 'preset'}
+                  onChange={() => setDateRangeType('preset')}
+                  className="h-4 w-4 accent-primary"
+                />
+                <span className="text-sm font-medium text-dark dark:text-white">プリセット期間</span>
+              </label>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="radio"
+                  checked={dateRangeType === 'custom'}
+                  onChange={() => setDateRangeType('custom')}
+                  className="h-4 w-4 accent-primary"
+                />
+                <span className="text-sm font-medium text-dark dark:text-white">カスタム期間</span>
+              </label>
+            </div>
+          </div>
+
+          {dateRangeType === 'preset' ? (
+            <div className="mb-6">
+              <select
+                value={presetRange}
+                onChange={(e) => setPresetRange(e.target.value)}
+                className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary sm:w-1/2"
+              >
+                <option value="7daysAgo">過去7日間</option>
+                <option value="30daysAgo">過去30日間</option>
+                <option value="90daysAgo">過去90日間</option>
+              </select>
+            </div>
+          ) : (
+            <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-3 block text-sm font-medium text-dark dark:text-white">
+                  開始日
+                </label>
+                <DatePicker
+                  selected={customStartDate}
+                  onChange={(date: Date | null) => setCustomStartDate(date)}
+                  maxDate={customEndDate || new Date()}
+                  dateFormat="yyyy-MM-dd"
+                  className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+                  placeholderText="開始日を選択"
+                />
+              </div>
+              <div>
+                <label className="mb-3 block text-sm font-medium text-dark dark:text-white">
+                  終了日
+                </label>
+                <DatePicker
+                  selected={customEndDate}
+                  onChange={(date: Date | null) => setCustomEndDate(date)}
+                  minDate={customStartDate}
+                  maxDate={new Date()}
+                  dateFormat="yyyy-MM-dd"
+                  className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary active:border-primary disabled:cursor-default disabled:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:focus:border-primary"
+                  placeholderText="終了日を選択"
+                />
+              </div>
+            </div>
+          )}
+
+          <div className="flex flex-wrap gap-3">
+            <button
               onClick={fetchGA4Data}
               disabled={!selectedGA4Property || isLoadingGA4}
-              className="me-3"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-primary px-5 py-3 text-base font-medium text-white hover:bg-opacity-90 disabled:cursor-not-allowed disabled:bg-opacity-50"
             >
               {isLoadingGA4 ? (
-                <MDBSpinner size="sm" tag="span" className="me-2" />
+                <>
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  <span>取得中...</span>
+                </>
               ) : (
-                <MDBIcon fas icon="chart-bar" className="me-2" />
+                <span>GA4データ取得</span>
               )}
-              GA4データを取得
-            </MDBBtn>
-
-            <MDBBtn 
-              color="warning" 
+            </button>
+            <button
               onClick={fetchGSCData}
               disabled={!selectedGSCSite || isLoadingGSC}
-              className="me-3"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-secondary px-5 py-3 text-base font-medium text-white hover:bg-opacity-90 disabled:cursor-not-allowed disabled:bg-opacity-50"
             >
               {isLoadingGSC ? (
-                <MDBSpinner size="sm" tag="span" className="me-2" />
+                <>
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  <span>取得中...</span>
+                </>
               ) : (
-                <MDBIcon fas icon="search" className="me-2" />
+                <span>GSCデータ取得</span>
               )}
-              Search Consoleデータを取得
-            </MDBBtn>
-
-            <MDBBtn 
-              color="success" 
+            </button>
+            <button
               onClick={runAIAnalysis}
               disabled={(!ga4Data && !gscData) || isLoadingAI}
-              className="me-3"
+              className="inline-flex items-center justify-center gap-2 rounded-md bg-[#13C296] px-5 py-3 text-base font-medium text-white hover:bg-opacity-90 disabled:cursor-not-allowed disabled:bg-opacity-50"
             >
               {isLoadingAI ? (
-                <MDBSpinner size="sm" tag="span" className="me-2" />
+                <>
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent"></div>
+                  <span>分析中...</span>
+                </>
               ) : (
-                <MDBIcon fas icon="robot" className="me-2" />
+                <span>AI分析実行</span>
               )}
-              Gemini AI分析を実行
-            </MDBBtn>
-
-            <MDBBtn 
-              color="info" 
-              size="sm"
-              onClick={() => {
-                const allCookies = document.cookie;
-                const cookieList = allCookies.split('; ').map(c => {
-                  const [key, value] = c.split('=');
-                  return { key, value: value || '', length: (value || '').length };
-                });
-                
-                console.log('🔧 Detailed Debug Info:', {
-                  allCookies,
-                  cookieCount: cookieList.length,
-                  cookieList,
-                  hasGA4Token: allCookies.includes('ga4_access_token'),
-                  hasGA4Properties: allCookies.includes('ga4_properties_temp'),
-                  localStorage: localStorage.getItem('growreporter_connections'),
-                  selectedGA4: selectedGA4Property,
-                  selectedGSC: selectedGSCSite,
-                  currentURL: window.location.href,
-                  userAgent: navigator.userAgent
-                });
-                
-                // ユーザーにも表示
-                const debugSummary = `
-デバッグ情報:
-- Cookie数: ${cookieList.length}
-- GA4トークン: ${allCookies.includes('ga4_access_token') ? 'あり' : 'なし'}
-- GA4プロパティ: ${allCookies.includes('ga4_properties_temp') ? 'あり' : 'なし'}
-- 選択GA4: ${selectedGA4Property ? selectedGA4Property.displayName : 'なし'}
-- 選択GSC: ${selectedGSCSite ? selectedGSCSite.siteUrl : 'なし'}
-
-詳細はコンソールを確認してください。
-                `;
-                alert(debugSummary);
-              }}
-            >
-              <MDBIcon fas icon="bug" className="me-2" />
-              詳細デバッグ
-            </MDBBtn>
+            </button>
           </div>
-              </MDBCardBody>
-            </MDBCard>
-          </MDBCol>
-        </MDBRow>
+        </div>
 
-        {/* エラー表示 */}
-        {error && (
-          <MDBRow className="mb-4">
-            <MDBCol md="12">
-              <div className="alert alert-danger">
-                <MDBIcon fas icon="exclamation-triangle" className="me-2" />
-                {error}
-              </div>
-            </MDBCol>
-          </MDBRow>
-        )}
-
-        {/* GA4データ表示 */}
+        {/* GA4 Data Card - Mega Template準拠 */}
         {ga4Data && (
-          <MDBRow className="mb-4">
-            <MDBCol md="12">
-              <MDBCard className="border-primary">
-                <MDBCardBody>
-                  <MDBCardTitle className="text-primary">
-                    <MDBIcon fas icon="chart-bar" className="me-2" />
-                    GA4分析結果
-                  </MDBCardTitle>
-                  
-                  <div className="mb-3">
-                    <MDBBadge color="success" pill className="me-2">
-                      データ件数: {ga4Data.summary.rowCount}件
-                    </MDBBadge>
-                    <MDBBadge color="info" pill>
-                      期間: {ga4Data.summary.dateRange.startDate} ～ {ga4Data.summary.dateRange.endDate}
-                    </MDBBadge>
-                  </div>
-
-                  {/* 実際のデータを表示 */}
-                  {ga4Data.data && ga4Data.data.rows && ga4Data.data.rows.length > 0 ? (
-                    <div>
-                      <div className="row mb-4">
-                        {/* セッション数 */}
-                        <div className="col-md-3">
-                          <div className="text-center bg-light p-3 rounded">
-                            <h4 className="text-primary">
-                              {(() => {
-                                const total = ga4Data.data.rows.reduce((sum: number, row: any) => {
-                                  const sessionIndex = ga4Data.summary.metrics.indexOf('sessions');
-                                  return sum + (row.metricValues && row.metricValues[sessionIndex] 
-                                    ? parseInt(row.metricValues[sessionIndex].value) 
-                                    : 0);
-                                }, 0);
-                                return total.toLocaleString();
-                              })()}
-                            </h4>
-                            <small>総セッション数</small>
-                          </div>
-                        </div>
-
-                        {/* アクティブユーザー数 */}
-                        <div className="col-md-3">
-                          <div className="text-center bg-light p-3 rounded">
-                            <h4 className="text-success">
-                              {(() => {
-                                const total = ga4Data.data.rows.reduce((sum: number, row: any) => {
-                                  const userIndex = ga4Data.summary.metrics.indexOf('activeUsers');
-                                  return sum + (row.metricValues && row.metricValues[userIndex] 
-                                    ? parseInt(row.metricValues[userIndex].value) 
-                                    : 0);
-                                }, 0);
-                                return total.toLocaleString();
-                              })()}
-                            </h4>
-                            <small>アクティブユーザー</small>
-                          </div>
-                        </div>
-
-                        {/* ページビュー数 */}
-                        <div className="col-md-3">
-                          <div className="text-center bg-light p-3 rounded">
-                            <h4 className="text-info">
-                              {(() => {
-                                const total = ga4Data.data.rows.reduce((sum: number, row: any) => {
-                                  const pvIndex = ga4Data.summary.metrics.indexOf('screenPageViews');
-                                  return sum + (row.metricValues && row.metricValues[pvIndex] 
-                                    ? parseInt(row.metricValues[pvIndex].value) 
-                                    : 0);
-                                }, 0);
-                                return total.toLocaleString();
-                              })()}
-                            </h4>
-                            <small>ページビュー</small>
-                          </div>
-                        </div>
-
-                        {/* 平均直帰率 */}
-                        <div className="col-md-3">
-                          <div className="text-center bg-light p-3 rounded">
-                            <h4 className="text-warning">
-                              {(() => {
-                                const bounceIndex = ga4Data.summary.metrics.indexOf('bounceRate');
-                                if (bounceIndex === -1 || !ga4Data.data.rows[0]?.metricValues) return 'N/A';
-                                
-                                const total = ga4Data.data.rows.reduce((sum: number, row: any, idx: number) => {
-                                  const value = row.metricValues && row.metricValues[bounceIndex] 
-                                    ? parseFloat(row.metricValues[bounceIndex].value) 
-                                    : 0;
-                                  return sum + value;
-                                }, 0);
-                                const avg = (total / ga4Data.data.rows.length) * 100;
-                                return `${avg.toFixed(2)}%`;
-                              })()}
-                            </h4>
-                            <small>平均直帰率</small>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="row">
-                        <div className="col-md-6">
-                          <h6>取得メトリクス:</h6>
-                          <ul>
-                            {ga4Data.summary.metrics.map((metric, index) => (
-                              <li key={index}>{metric}</li>
-                            ))}
-                          </ul>
-                        </div>
-                        <div className="col-md-6">
-                          <h6>ディメンション:</h6>
-                          <ul>
-                            {ga4Data.summary.dimensions.map((dimension, index) => (
-                              <li key={index}>{dimension}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="alert alert-info">
-                      データが取得されましたが、詳細データが含まれていません。
-                    </div>
-                  )}
-
-                  <div className="mt-3">
-                    <small className="text-muted">
-                      プロパティID: {ga4Data.summary.propertyId}
-                    </small>
-                  </div>
-                </MDBCardBody>
-              </MDBCard>
-            </MDBCol>
-          </MDBRow>
+          <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2 xl:px-[30px]">
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold text-dark dark:text-white">
+                GA4データ
+              </h4>
+              <p className="text-sm text-body-color dark:text-dark-6">
+                Google Analytics 4 取得結果
+              </p>
+            </div>
+            <div className="-mx-4 flex flex-wrap">
+              <div className="w-full px-4 sm:w-1/3">
+                <div className="mb-6 rounded-lg border border-stroke bg-gray-2 p-5 dark:border-dark-3 dark:bg-dark">
+                  <span className="mb-2 block text-sm text-body-color dark:text-dark-6">
+                    期間
+                  </span>
+                  <p className="text-base font-semibold text-dark dark:text-white">
+                    {ga4Data.summary.dateRange?.startDate}
+                    <span className="mx-1 text-body-color dark:text-dark-6">~</span>
+                    {ga4Data.summary.dateRange?.endDate}
+                  </p>
+                </div>
+              </div>
+              <div className="w-full px-4 sm:w-1/3">
+                <div className="mb-6 rounded-lg border border-stroke bg-gray-2 p-5 dark:border-dark-3 dark:bg-dark">
+                  <span className="mb-2 block text-sm text-body-color dark:text-dark-6">
+                    取得行数
+                  </span>
+                  <p className="text-base font-semibold text-dark dark:text-white">
+                    {ga4Data.summary.rowCount?.toLocaleString()} 行
+                  </p>
+                </div>
+              </div>
+              <div className="w-full px-4 sm:w-1/3">
+                <div className="mb-6 rounded-lg border border-stroke bg-gray-2 p-5 dark:border-dark-3 dark:bg-dark">
+                  <span className="mb-2 block text-sm text-body-color dark:text-dark-6">
+                    メトリクス
+                  </span>
+                  <p className="text-base font-semibold text-dark dark:text-white">
+                    {ga4Data.summary.metrics?.join(', ')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* GSCデータ表示 */}
+        {/* GSC Data Card - Mega Template準拠 */}
         {gscData && (
-          <MDBRow className="mb-4">
-            <MDBCol md="12">
-              <MDBCard className="border-warning">
-                <MDBCardBody>
-                  <MDBCardTitle className="text-warning">
-                    <MDBIcon fas icon="search" className="me-2" />
-                    Search Console分析結果
-                  </MDBCardTitle>
-                  
-                  <div className="mb-3">
-                    <MDBBadge color="success" pill className="me-2">
-                      データ件数: {gscData.summary.rowCount}件
-                    </MDBBadge>
-                    <MDBBadge color="info" pill>
-                      期間: {gscData.summary.dateRange.startDate} ～ {gscData.summary.dateRange.endDate}
-                    </MDBBadge>
-                  </div>
-
-                  <div className="row">
-                    <div className="col-md-3">
-                      <div className="text-center bg-light p-3 rounded">
-                        <h4 className="text-primary">{gscData.summary.totalClicks.toLocaleString()}</h4>
-                        <small>総クリック数</small>
-                      </div>
-                    </div>
-                    <div className="col-md-3">
-                      <div className="text-center bg-light p-3 rounded">
-                        <h4 className="text-info">{gscData.summary.totalImpressions.toLocaleString()}</h4>
-                        <small>総表示回数</small>
-                      </div>
-                    </div>
-                    <div className="col-md-3">
-                      <div className="text-center bg-light p-3 rounded">
-                        <h4 className="text-success">{gscData.summary.averageCTR}%</h4>
-                        <small>平均CTR</small>
-                      </div>
-                    </div>
-                    <div className="col-md-3">
-                      <div className="text-center bg-light p-3 rounded">
-                        <h4 className="text-warning">{gscData.summary.averagePosition}</h4>
-                        <small>平均掲載順位</small>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3">
-                    <small className="text-muted">
-                      サイトURL: {gscData.summary.siteUrl}
-                    </small>
-                  </div>
-                </MDBCardBody>
-              </MDBCard>
-            </MDBCol>
-          </MDBRow>
+          <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2 xl:px-[30px]">
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold text-dark dark:text-white">
+                Search Consoleデータ
+              </h4>
+              <p className="text-sm text-body-color dark:text-dark-6">
+                検索パフォーマンス指標
+              </p>
+            </div>
+            <div className="-mx-4 flex flex-wrap">
+              <div className="w-full px-4 sm:w-1/2 lg:w-1/4">
+                <div className="mb-6 rounded-lg border border-stroke bg-gray-2 p-5 dark:border-dark-3 dark:bg-dark">
+                  <span className="mb-2 block text-sm text-body-color dark:text-dark-6">
+                    クリック数
+                  </span>
+                  <p className="text-xl font-semibold text-dark dark:text-white">
+                    {gscData.summary.totalClicks?.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <div className="w-full px-4 sm:w-1/2 lg:w-1/4">
+                <div className="mb-6 rounded-lg border border-stroke bg-gray-2 p-5 dark:border-dark-3 dark:bg-dark">
+                  <span className="mb-2 block text-sm text-body-color dark:text-dark-6">
+                    表示回数
+                  </span>
+                  <p className="text-xl font-semibold text-dark dark:text-white">
+                    {gscData.summary.totalImpressions?.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <div className="w-full px-4 sm:w-1/2 lg:w-1/4">
+                <div className="mb-6 rounded-lg border border-stroke bg-gray-2 p-5 dark:border-dark-3 dark:bg-dark">
+                  <span className="mb-2 block text-sm text-body-color dark:text-dark-6">
+                    平均CTR
+                  </span>
+                  <p className="text-xl font-semibold text-dark dark:text-white">
+                    {(gscData.summary.averageCTR * 100).toFixed(2)}%
+                  </p>
+                </div>
+              </div>
+              <div className="w-full px-4 sm:w-1/2 lg:w-1/4">
+                <div className="mb-6 rounded-lg border border-stroke bg-gray-2 p-5 dark:border-dark-3 dark:bg-dark">
+                  <span className="mb-2 block text-sm text-body-color dark:text-dark-6">
+                    平均掲載順位
+                  </span>
+                  <p className="text-xl font-semibold text-dark dark:text-white">
+                    {gscData.summary.averagePosition?.toFixed(1)}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* AI分析結果表示 */}
+        {/* AI Analysis Results Card - Mega Template準拠 */}
         {aiAnalysis && (
-          <MDBRow className="mb-4">
-            <MDBCol md="12">
-              <MDBCard className="border-success">
-                <MDBCardBody>
-                  <MDBCardTitle className="text-success">
-                    <MDBIcon fas icon="robot" className="me-2" />
-                    Gemini AI分析結果
-                  </MDBCardTitle>
-                  
-                  <div className="mb-3">
-                    <MDBBadge color="success" pill className="me-2">
-                      AI分析完了
-                    </MDBBadge>
-                    <MDBBadge color="info" pill>
-                      モデル: Gemini Pro
-                    </MDBBadge>
-                  </div>
-
-                  <div 
-                    className="ai-analysis-content"
-                    style={{
-                      whiteSpace: 'pre-wrap',
-                      lineHeight: '1.8',
-                      fontSize: '0.95rem'
-                    }}
-                  >
-                    {aiAnalysis}
-                  </div>
-
-                  <div className="mt-3 text-end">
-                    <MDBBtn 
-                      color="light" 
-                      size="sm"
-                      onClick={() => setAiAnalysis(null)}
-                    >
-                      <MDBIcon fas icon="times" className="me-2" />
-                      閉じる
-                    </MDBBtn>
-                  </div>
-                </MDBCardBody>
-              </MDBCard>
-            </MDBCol>
-          </MDBRow>
+          <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2 xl:px-[30px]">
+            <div className="mb-6">
+              <h4 className="text-lg font-semibold text-dark dark:text-white">
+                AI分析結果
+              </h4>
+              <p className="text-sm text-body-color dark:text-dark-6">
+                改善提案とインサイト
+              </p>
+            </div>
+            <div className="rounded-lg border border-stroke bg-gray-2 p-5 dark:border-dark-3 dark:bg-dark">
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-dark dark:text-white">
+                {aiAnalysis}
+              </p>
+            </div>
+          </div>
         )}
-      </MDBContainer>
-    </>
+      </div>
+    </DashboardLayout>
   );
 }

@@ -12,6 +12,7 @@ import {
   Unsubscribe
 } from 'firebase/firestore';
 import { firestore } from './config';
+import { decryptTokens, isEncrypted } from '@/lib/security/encryption';
 
 // 型定義
 export interface GA4Property {
@@ -350,7 +351,24 @@ export class FirestoreService {
       const oauthSnapshot = await getDoc(oauthRef);
       
       if (oauthSnapshot.exists()) {
-        return oauthSnapshot.data() as GoogleOAuthTokens;
+        const data = oauthSnapshot.data() as GoogleOAuthTokens;
+        
+        // 🔐 暗号化されている場合は復号化
+        if (data.unified && isEncrypted(data.unified)) {
+          console.log('🔓 トークン復号化開始...');
+          try {
+            const decrypted = decryptTokens(data.unified as any);
+            data.unified.accessToken = decrypted.accessToken;
+            data.unified.refreshToken = decrypted.refreshToken;
+            console.log('✅ トークン復号化完了');
+          } catch (decryptError) {
+            console.error('❌ トークン復号化エラー:', decryptError);
+            // 復号化失敗時は暗号化されていないトークンとして扱う（後方互換性）
+            console.warn('⚠️ 復号化失敗 - 平文トークンとして処理します');
+          }
+        }
+        
+        return data;
       }
       
       return null;

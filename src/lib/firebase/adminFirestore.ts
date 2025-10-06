@@ -12,6 +12,7 @@ import {
   collection,
   Timestamp
 } from 'firebase/firestore';
+import { encryptTokens, type EncryptedTokens } from '@/lib/security/encryption';
 
 // Firebase Client SDK の初期化（サーバーサイド用）
 function initializeServerFirebase() {
@@ -78,13 +79,24 @@ export class AdminFirestoreService {
       
       const oauthTokensRef = doc(serverFirestore, 'users', userId, 'oauthTokens', 'google');
       
+      // 🔐 トークンを暗号化
+      const expiresAt = Date.now() + (tokens.expiresIn * 1000);
+      const encryptedTokens = encryptTokens({
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken || '',
+        expiresAt: expiresAt,
+      });
+      
+      console.log('✅ トークン暗号化完了（保存前）');
+      
       await setDoc(oauthTokensRef, {
         unified: {
-          accessToken: tokens.accessToken, // TODO: 暗号化
-          refreshToken: tokens.refreshToken || '', // TODO: 暗号化
-          expiresAt: new Date(Date.now() + (tokens.expiresIn * 1000)),
+          accessToken: encryptedTokens.accessToken, // 🔐 暗号化済み
+          refreshToken: encryptedTokens.refreshToken, // 🔐 暗号化済み
+          expiresAt: new Date(expiresAt),
           scope: tokens.scope,
           grantedAt: new Date(),
+          encrypted: true, // 暗号化フラグ
         },
         permissions: {
           ga4: { granted: scopeValidation.hasGA4, scope: [], lastVerified: new Date() },
@@ -92,7 +104,8 @@ export class AdminFirestoreService {
           profile: { granted: scopeValidation.hasProfile, scope: [], lastVerified: new Date() },
         },
         security: {
-          // encryptionKey: 'TODO: Implement encryption key management', // 暗号化は別途実装
+          encrypted: true, // 暗号化済み
+          encryptionAlgorithm: 'AES-256-GCM',
           ipAddress: clientInfo.ipAddress,
           userAgent: clientInfo.userAgent,
           lastRefresh: new Date(),
@@ -176,18 +189,50 @@ export class AdminFirestoreService {
    */
   static async updateAccessToken(
     userId: string,
+    provider: string,
     newAccessToken: string,
-    expiresIn: number
+    newExpiresAt: number
   ): Promise<void> {
     try {
-      console.log('🔧 Server Firestore アクセストークン更新開始:', { userId });
+      console.log('🔧 Server Firestore アクセストークン更新開始:', { userId, provider });
       
-      const oauthTokensRef = doc(serverFirestore, 'users', userId, 'oauthTokens', 'google');
+      const oauthTokensRef = doc(serverFirestore, 'users', userId, 'oauthTokens', provider);
+      
+      // 既存のトークン情報を取得
+      const { getDoc } = await import('firebase/firestore');
+      const snapshot = await getDoc(oauthTokensRef);
+      
+      if (!snapshot.exists()) {
+        throw new Error('既存のトークン情報が見つかりません');
+      }
+      
+      const existingData = snapshot.data();
+      let existingRefreshToken = '';
+      
+      // 既存のリフレッシュトークンを取得
+      if (existingData.unified?.encrypted && existingData.unified?.refreshToken) {
+        const decrypted = decryptTokens(existingData.unified as any);
+        existingRefreshToken = decrypted.refreshToken;
+      } else if (existingData.unified?.refreshToken) {
+        existingRefreshToken = existingData.unified.refreshToken;
+      }
+      
+      // 🔐 新しいアクセストークンとリフレッシュトークンを暗号化
+      const encryptedTokens = encryptTokens({
+        accessToken: newAccessToken,
+        refreshToken: existingRefreshToken,
+        expiresAt: newExpiresAt,
+      });
+      
+      console.log('✅ アクセストークン暗号化完了（更新）');
       
       await setDoc(oauthTokensRef, {
         unified: {
-          accessToken: newAccessToken, // TODO: 暗号化
-          expiresAt: new Date(Date.now() + (expiresIn * 1000)),
+          accessToken: encryptedTokens.accessToken, // 🔐 暗号化済み
+          refreshToken: encryptedTokens.refreshToken, // 🔐 暗号化済み（既存を保持）
+          expiresAt: newExpiresAt,
+          encrypted: true, // 暗号化フラグ
+          encryptionAlgorithm: 'AES-256-GCM',
         },
         security: {
           lastRefresh: new Date(),
@@ -198,6 +243,68 @@ export class AdminFirestoreService {
     } catch (error) {
       console.error('❌ Server Firestore アクセストークン更新エラー:', error);
       throw error;
+    }
+  }
+
+  /**
+   * OAuth トークンを取得（暗号化されたまま）
+   */
+  static async getOAuthTokens(userId: string) {
+    try {
+      const { getDoc } = await import('firebase/firestore');
+      const oauthTokensRef = doc(serverFirestore, 'users', userId, 'oauthTokens', 'google');
+      const snapshot = await getDoc(oauthTokensRef);
+      
+      if (!snapshot.exists()) {
+        return null;
+      }
+      
+      return snapshot.data();
+    } catch (error) {
+      console.error('❌ Server Firestore OAuthトークン取得エラー:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * GA4 プロパティを取得
+   */
+  static async getGA4Properties(userId: string): Promise<GA4Property[]> {
+    try {
+      const { getDoc } = await import('firebase/firestore');
+      const ga4PropertiesRef = doc(serverFirestore, 'users', userId, 'connectedProperties', 'ga4Properties');
+      const snapshot = await getDoc(ga4PropertiesRef);
+      
+      if (!snapshot.exists()) {
+        return [];
+      }
+      
+      const data = snapshot.data();
+      return data.properties || [];
+    } catch (error) {
+      console.error('❌ Server Firestore GA4プロパティ取得エラー:', error);
+      return [];
+    }
+  }
+
+  /**
+   * GSC サイトを取得
+   */
+  static async getGSCSites(userId: string): Promise<GSCSite[]> {
+    try {
+      const { getDoc } = await import('firebase/firestore');
+      const gscSitesRef = doc(serverFirestore, 'users', userId, 'connectedProperties', 'gscSites');
+      const snapshot = await getDoc(gscSitesRef);
+      
+      if (!snapshot.exists()) {
+        return [];
+      }
+      
+      const data = snapshot.data();
+      return data.sites || [];
+    } catch (error) {
+      console.error('❌ Server Firestore GSCサイト取得エラー:', error);
+      return [];
     }
   }
 

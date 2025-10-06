@@ -1,3 +1,8 @@
+/* Tailwind CSS */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 /* GrowReporter Global Styles - Light Mode Only */
 
 :root {
@@ -107,5 +112,15 @@ a:hover {
 .loading {
   opacity: 0.6;
   pointer-events: none;
+}
+
+/* スクロールバーを非表示 */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
