@@ -61,10 +61,29 @@ export async function POST(request: NextRequest) {
       expiresAt = tokensDoc.unified.expiresAt;
     }
 
+    console.log('🔍 生のトークン情報:', {
+      expiresAtType: typeof expiresAt,
+      expiresAtValue: expiresAt,
+      hasToMillis: expiresAt && typeof expiresAt === 'object' && 'toMillis' in expiresAt,
+    });
+
+    // Firestore Timestampの場合はミリ秒に変換
+    if (expiresAt && typeof expiresAt === 'object' && 'toMillis' in expiresAt) {
+      expiresAt = (expiresAt as any).toMillis();
+    } else if (expiresAt && typeof expiresAt === 'object' && 'seconds' in expiresAt) {
+      // Timestamp形式の場合
+      expiresAt = (expiresAt as any).seconds * 1000;
+    } else if (typeof expiresAt === 'number') {
+      // すでに数値の場合はそのまま使用
+    } else {
+      console.error('❌ 無効なexpiresAt形式:', expiresAt);
+      expiresAt = 0;
+    }
+
     // トークンの有効期限をチェック
     const now = Date.now();
     console.log('🔍 トークン有効期限チェック:', {
-      expiresAt: new Date(expiresAt).toISOString(),
+      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : 'Invalid',
       now: new Date(now).toISOString(),
       isExpired: expiresAt < now,
       hasRefreshToken: !!refreshToken,

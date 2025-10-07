@@ -1,40 +1,19 @@
-/**
- * GA4時系列データ取得API
- * GA4 Data API を使用して時系列データを取得
- */
-
 import { NextRequest, NextResponse } from 'next/server';
 import { AdminFirestoreService } from '@/lib/firebase/adminFirestore';
 import { decryptTokens, isEncrypted } from '@/lib/security/encryption';
 
 export async function POST(request: NextRequest) {
   try {
-    const userId = request.headers.get('x-user-id');
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'User ID is required' },
-        { status: 401 }
-      );
-    }
+    const { userId, siteUrl, startDate, endDate } = await request.json();
 
-    const body = await request.json();
-    let { propertyId, startDate = '30daysAgo', endDate = 'today' } = body;
-
-    if (!propertyId) {
+    if (!userId || !siteUrl || !startDate || !endDate) {
       return NextResponse.json(
-        { error: 'Property ID is required' },
+        { error: 'Missing required parameters' },
         { status: 400 }
       );
     }
 
-    // propertyIdの形式を確認（数値のみの場合は "properties/" プレフィックスを削除）
-    // GA4 Data APIは数値のみのpropertyIdを期待
-    if (propertyId.startsWith('properties/')) {
-      propertyId = propertyId.replace('properties/', '');
-    }
-    
-    console.log('📊 GA4 時系列データ取得開始:', { propertyId, startDate, endDate });
+    console.log('🔍 GSC メトリクス取得開始:', { siteUrl, startDate, endDate });
 
     // トークンを取得
     const tokensDoc = await AdminFirestoreService.getOAuthTokens(userId);
@@ -48,7 +27,7 @@ export async function POST(request: NextRequest) {
 
     let accessToken = '';
     let refreshToken = '';
-    let expiresAt = 0;
+    let expiresAt: any = 0;
     
     if (isEncrypted(tokensDoc.unified)) {
       const decrypted = decryptTokens(tokensDoc.unified);
@@ -61,33 +40,28 @@ export async function POST(request: NextRequest) {
       expiresAt = tokensDoc.unified.expiresAt;
     }
 
-    console.log('🔍 生のトークン情報 (時系列):', {
+    console.log('🔍 生のトークン情報 (GSC):', {
       expiresAtType: typeof expiresAt,
-      expiresAtValue: expiresAt,
       hasToMillis: expiresAt && typeof expiresAt === 'object' && 'toMillis' in expiresAt,
     });
 
     // Firestore Timestampの場合はミリ秒に変換
     if (expiresAt && typeof expiresAt === 'object' && 'toMillis' in expiresAt) {
-      expiresAt = (expiresAt as any).toMillis();
+      expiresAt = expiresAt.toMillis();
     } else if (expiresAt && typeof expiresAt === 'object' && 'seconds' in expiresAt) {
-      // Timestamp形式の場合
-      expiresAt = (expiresAt as any).seconds * 1000;
-    } else if (typeof expiresAt === 'number') {
-      // すでに数値の場合はそのまま使用
-    } else {
+      expiresAt = expiresAt.seconds * 1000;
+    } else if (typeof expiresAt !== 'number') {
       console.error('❌ 無効なexpiresAt形式:', expiresAt);
       expiresAt = 0;
     }
 
     // トークンの有効期限をチェック
     const now = Date.now();
-    console.log('🔍 トークン有効期限チェック (時系列):', {
+    console.log('🔍 トークン有効期限チェック (GSC):', {
       expiresAt: expiresAt ? new Date(expiresAt).toISOString() : 'Invalid',
       now: new Date(now).toISOString(),
       isExpired: expiresAt < now,
       hasRefreshToken: !!refreshToken,
-      refreshTokenLength: refreshToken?.length || 0
     });
     
     if (expiresAt < now) {
@@ -121,7 +95,6 @@ export async function POST(request: NextRequest) {
           const errorText = await refreshResponse.text();
           console.error('❌ トークンリフレッシュ失敗 (Status:', refreshResponse.status, '):', errorText);
           
-          // エラーの詳細をパース
           let errorDetails = errorText;
           try {
             const errorJson = JSON.parse(errorText);
@@ -157,26 +130,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 日付形式を変換（YYYYMMDDをYYYY-MM-DDまたはNdaysAgo形式に）
-    let formattedStartDate = startDate;
-    let formattedEndDate = endDate;
-    
-    // YYYYMMDDの数値形式の場合はYYYY-MM-DD形式に変換
-    if (startDate && /^\d{8}$/.test(startDate)) {
-      formattedStartDate = `${startDate.substring(0, 4)}-${startDate.substring(4, 6)}-${startDate.substring(6, 8)}`;
-    }
-    if (endDate && /^\d{8}$/.test(endDate)) {
-      formattedEndDate = `${endDate.substring(0, 4)}-${endDate.substring(4, 6)}-${endDate.substring(6, 8)}`;
-    }
-    
-    console.log('📊 GA4 API リクエスト日付:', { 
-      original: { startDate, endDate },
-      formatted: { formattedStartDate, formattedEndDate }
-    });
-
-    // GA4 Data API にリクエスト（日別データ）
-    const ga4Response = await fetch(
-      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
+    // Search Console API にリクエスト
+    const gscResponse = await fetch(
+      `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`,
       {
         method: 'POST',
         headers: {
@@ -184,56 +140,46 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          dateRanges: [{ startDate: formattedStartDate, endDate: formattedEndDate }],
-          dimensions: [{ name: 'date' }],
-          metrics: [
-            { name: 'totalUsers' },
-            { name: 'activeUsers' },
-            { name: 'newUsers' },
-            { name: 'sessions' },
-            { name: 'conversions' }
-          ],
-          orderBys: [{ dimension: { dimensionName: 'date' } }]
+          startDate,
+          endDate,
+          dimensions: [],
+          rowLimit: 1
         })
       }
     );
 
-    if (!ga4Response.ok) {
-      const errorText = await ga4Response.text();
-      console.error('❌ GA4 API エラー:', errorText);
-      console.error('❌ GA4 API ステータス:', ga4Response.status);
-      console.error('❌ Property ID:', propertyId);
+    if (!gscResponse.ok) {
+      const errorText = await gscResponse.text();
+      console.error('❌ GSC API エラー:', errorText);
+      console.error('❌ GSC API ステータス:', gscResponse.status);
+      console.error('❌ Site URL:', siteUrl);
       return NextResponse.json(
-        { error: 'Failed to fetch GA4 data', details: errorText, propertyId },
-        { status: ga4Response.status }
+        { error: 'Failed to fetch GSC data', details: errorText, siteUrl },
+        { status: gscResponse.status }
       );
     }
 
-    const ga4Data = await ga4Response.json();
+    const gscData = await gscResponse.json();
     
     // データを整形
-    const timeSeries = ga4Data.rows?.map((row: any) => {
-      const date = row.dimensionValues[0].value;
-      return {
-        date,
-        totalUsers: parseInt(row.metricValues[0].value || '0'),
-        activeUsers: parseInt(row.metricValues[1].value || '0'),
-        newUsers: parseInt(row.metricValues[2].value || '0'),
-        sessions: parseInt(row.metricValues[3].value || '0'),
-        keyEvents: parseInt(row.metricValues[4].value || '0')
-      };
-    }) || [];
+    const row = gscData.rows?.[0];
+    const metrics = {
+      clicks: row?.clicks || 0,
+      impressions: row?.impressions || 0,
+      ctr: row?.ctr || 0,
+      position: row?.position || 0,
+    };
 
-    return NextResponse.json({ timeSeries });
+    return NextResponse.json({ metrics });
 
   } catch (error: any) {
-    console.error('❌ GA4時系列データ取得エラー (catch):', error);
+    console.error('❌ GSCメトリクス取得エラー (catch):', error);
     console.error('❌ エラースタック:', error?.stack);
     console.error('❌ エラーメッセージ:', error?.message);
     
     return NextResponse.json(
       { 
-        error: 'Failed to fetch GA4 time series data', 
+        error: 'Failed to fetch GSC metrics', 
         details: error?.message || String(error),
         stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
       },
