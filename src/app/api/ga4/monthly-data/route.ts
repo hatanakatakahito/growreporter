@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getValidGA4Token } from '@/lib/api/ga4TokenHelper';
 import { runGA4Report } from '@/lib/api/ga4Client';
+import { ConversionService } from '@/lib/conversion/conversionService';
 
 export async function POST(request: NextRequest) {
   try {
@@ -30,6 +31,10 @@ export async function POST(request: NextRequest) {
     
     console.log('📊 GA4 月別データ取得開始:', { propertyId, endDate });
 
+    // ユーザー定義のコンバージョンを取得
+    const conversions = await ConversionService.getActiveConversions(userId);
+    console.log('🎯 定義済みコンバージョン:', conversions.map(c => c.eventName));
+
     // 有効なアクセストークンを取得（自動リフレッシュ付き）
     const { accessToken } = await getValidGA4Token(userId);
 
@@ -53,7 +58,7 @@ export async function POST(request: NextRequest) {
       referenceMonth: `${referenceDate.getFullYear()}年${referenceDate.getMonth() + 1}月`
     });
 
-    // GA4 Data APIを呼び出し（yearMonthディメンションを使用）
+    // 基本メトリクスを取得
     const data = await runGA4Report(accessToken, {
       propertyId,
       dateRanges: [{ 
@@ -67,18 +72,56 @@ export async function POST(request: NextRequest) {
         { name: 'sessions' },
         { name: 'screenPageViews' },
         { name: 'engagementRate' },
-        { name: 'keyEvents' },
         { name: 'sessionsPerUser' },
         { name: 'sessionConversionRate' }
       ],
       orderBys: [{ dimension: { dimensionName: 'yearMonth' }, desc: true }]
     });
 
+    // コンバージョンが定義されている場合は、それらのイベントカウントを取得
+    let conversionData: any = {};
+    if (conversions.length > 0) {
+      const conversionReport = await runGA4Report(accessToken, {
+        propertyId,
+        dateRanges: [{ 
+          startDate: formatDate(startDate), 
+          endDate: endDate || 'today' 
+        }],
+        dimensions: [{ name: 'yearMonth' }, { name: 'eventName' }],
+        metrics: [{ name: 'eventCount' }],
+        dimensionFilter: {
+          filter: {
+            fieldName: 'eventName',
+            inListFilter: {
+              values: conversions.map(c => c.eventName)
+            }
+          }
+        },
+        orderBys: [{ dimension: { dimensionName: 'yearMonth' }, desc: true }]
+      });
+
+      // 月別・イベント別のカウントを集計
+      conversionReport.rows?.forEach((row: any) => {
+        const yearMonth = row.dimensionValues[0].value;
+        const eventCount = parseInt(row.metricValues[0].value || '0');
+        
+        if (!conversionData[yearMonth]) {
+          conversionData[yearMonth] = 0;
+        }
+        conversionData[yearMonth] += eventCount;
+      });
+      
+      console.log('📊 コンバージョンデータ:', conversionData);
+    }
+
     // レスポンスデータを整形
     const monthlyData = data.rows?.map((row: any) => {
       const yearMonth = row.dimensionValues[0].value; // YYYYMM形式
       const year = yearMonth.substring(0, 4);
       const month = yearMonth.substring(4, 6);
+      
+      // ユーザー定義のコンバージョン合計数を取得（定義がない場合は0）
+      const conversionCount = conversionData[yearMonth] || 0;
       
       return {
         yearMonth: yearMonth,
@@ -90,9 +133,9 @@ export async function POST(request: NextRequest) {
         sessions: parseInt(row.metricValues[2].value || '0'),
         screenPageViews: parseInt(row.metricValues[3].value || '0'),
         engagementRate: parseFloat(row.metricValues[4].value || '0') * 100,
-        keyEvents: parseInt(row.metricValues[5].value || '0'),
-        sessionsPerUser: parseFloat(row.metricValues[6].value || '0'),
-        conversionRate: parseFloat(row.metricValues[7].value || '0') * 100
+        conversions: conversionCount, // ユーザー定義のコンバージョン合計
+        sessionsPerUser: parseFloat(row.metricValues[5].value || '0'),
+        conversionRate: parseFloat(row.metricValues[6].value || '0') * 100
       };
     }) || [];
 

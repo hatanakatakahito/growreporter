@@ -151,12 +151,17 @@ export class ConversionService {
   /**
    * コンバージョンを削除
    */
-  static async deleteConversion(userId: string, eventName: string): Promise<void> {
+  static async deleteConversion(userId: string, conversionId: string): Promise<void> {
     try {
+      console.log('🗑️ ConversionService: 削除処理開始', { userId, conversionId });
+      
       const conversions = await this.getConversions(userId);
+      console.log('📋 現在のコンバージョン:', conversions);
+      
       const updatedConversions = conversions.filter(
-        conv => conv.eventName !== eventName
+        conv => conv.id !== conversionId
       );
+      console.log('📋 削除後のコンバージョン:', updatedConversions);
 
       // undefinedフィールドを削除
       const cleanConversions = JSON.parse(JSON.stringify(
@@ -171,8 +176,10 @@ export class ConversionService {
         conversions: cleanConversions,
         updatedAt: Timestamp.now()
       });
+      
+      console.log('✅ Firestoreへの削除が完了しました');
     } catch (error) {
-      console.error('コンバージョン削除エラー:', error);
+      console.error('❌ コンバージョン削除エラー:', error);
       throw error;
     }
   }

@@ -8,7 +8,7 @@ export interface GA4Metrics {
   sessions: number;
   totalUsers: number;
   activeUsers: number;
-  keyEvents: number;
+  conversions: number;
   engagementRate: number;
   screenPageViews: number;
   averageSessionDuration: number;
@@ -21,7 +21,7 @@ export interface GA4TimeSeriesData {
   activeUsers: number;
   newUsers: number;
   sessions: number;
-  keyEvents: number;
+  conversions: number;
 }
 
 export class GA4DataService {

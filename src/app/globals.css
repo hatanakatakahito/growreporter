@@ -125,8 +125,41 @@ a:hover {
 }
 
 /* カスタムツールチップ */
+.tooltip-container {
+  position: relative;
+}
+
 .tooltip-container:hover .tooltip-wrapper {
   display: block !important;
+}
+
+/* テーブルヘッダー内のツールチップ：下側に表示（シンプルで確実） */
+thead th .tooltip-wrapper {
+  position: absolute !important;
+  top: 100% !important;
+  bottom: auto !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin-top: 8px !important;
+  margin-bottom: 0 !important;
+  z-index: 99999 !important;
+}
+
+/* 矢印を上側に配置 */
+thead th .tooltip-wrapper > div:first-child {
+  bottom: 100% !important;
+  top: auto !important;
+  margin-top: 0 !important;
+  margin-bottom: -4px !important;
+}
+
+/* テーブルヘッダー内のツールチップが見えるように */
+.table-scroll-container thead th {
+  overflow: visible !important;
+}
+
+.table-scroll-container table {
+  overflow: visible !important;
 }
 
 /* テーブルの合計行スタイル */
@@ -144,6 +177,13 @@ table tbody tr.total-row:hover {
   max-height: 600px;
   overflow-y: auto;
   border: none;
+  overflow-x: visible; /* ツールチップが見えるように */
+}
+
+/* テーブルのth, tdを中央揃えに */
+.table-scroll-container table th,
+.table-scroll-container table td {
+  text-align: center !important;
 }
 
 /* テーブルヘッダーと合計行を固定 */
@@ -152,10 +192,17 @@ table tbody tr.total-row:hover {
   top: 0;
   z-index: 10;
   background: white;
+  overflow: visible; /* ツールチップが見えるように */
 }
 
 .dark .table-scroll-container thead {
   background: #1f2937;
+  overflow: visible;
+}
+
+/* ツールチップがヘッダーの上に表示されるように */
+.table-scroll-container thead th .tooltip-wrapper {
+  z-index: 99999 !important;
 }
 
 /* theadの直後の合計行も固定 */
@@ -201,5 +248,16 @@ table tbody tr.total-row:hover {
 
 .dark .table-scroll-container tbody tr:not(.total-row):hover {
   background: rgba(55, 65, 81, 0.5) !important;
+}
+
+/* サイト設定画面のセレクトボックス */
+select[class*="rounded-md"] {
+  -webkit-appearance: none !important;
+  -moz-appearance: none !important;
+  appearance: none !important;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path fill="%23333" d="M6 9L1 4h10z"/></svg>') !important;
+  background-repeat: no-repeat !important;
+  background-position: right 15px center !important;
+  padding-right: 36px !important;
 }
 

@@ -50,6 +50,8 @@ export interface GA4Property {
   timeZone?: string;
   industryCategory?: string;
   propertyType?: string;
+  websiteUrl?: string | null;
+  account?: string;
 }
 
 export interface GSCSite {

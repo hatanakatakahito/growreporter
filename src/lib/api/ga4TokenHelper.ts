@@ -22,8 +22,11 @@ export async function getValidGA4Token(userId: string): Promise<GA4TokenResult> 
   // トークンを取得
   const tokensDoc = await AdminFirestoreService.getOAuthTokens(userId);
   
-  if (!tokensDoc || !tokensDoc.unified) {
-    console.error('❌ OAuth tokens not found for user:', userId);
+  // ga4トークンまたはunifiedトークン（後方互換性）を確認
+  const ga4Token = tokensDoc?.ga4 || tokensDoc?.unified;
+  
+  if (!tokensDoc || !ga4Token) {
+    console.error('❌ GA4 OAuth tokens not found for user:', userId);
     throw new Error('OAuth tokens not found. Please reconnect your Google account.');
   }
 
@@ -32,17 +35,17 @@ export async function getValidGA4Token(userId: string): Promise<GA4TokenResult> 
   let expiresAt = 0;
   
   // 暗号化チェックと復号化
-  if (isEncrypted(tokensDoc.unified)) {
-    console.log('🔓 トークンを復号化中...');
-    const decrypted = decryptTokens(tokensDoc.unified);
+  if (isEncrypted(ga4Token)) {
+    console.log('🔓 GA4トークンを復号化中...');
+    const decrypted = decryptTokens(ga4Token);
     accessToken = decrypted.accessToken;
     refreshToken = decrypted.refreshToken;
     expiresAt = decrypted.expiresAt;
   } else {
-    console.log('⚠️ 暗号化されていないトークンを検出');
-    accessToken = tokensDoc.unified.accessToken;
-    refreshToken = tokensDoc.unified.refreshToken;
-    expiresAt = tokensDoc.unified.expiresAt;
+    console.log('⚠️ 暗号化されていないGA4トークンを検出');
+    accessToken = ga4Token.accessToken;
+    refreshToken = ga4Token.refreshToken;
+    expiresAt = ga4Token.expiresAt;
   }
 
   // Firestore Timestampの場合はミリ秒に変換
@@ -74,7 +77,7 @@ export async function getValidGA4Token(userId: string): Promise<GA4TokenResult> 
 
     // トークンをリフレッシュ
     const clientId = process.env.NEXT_PUBLIC_GOOGLE_UNIFIED_CLIENT_ID;
-    const clientSecret = process.env.GOOGLE_UNIFIED_CLIENT_SECRET;
+    const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
 
     const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',

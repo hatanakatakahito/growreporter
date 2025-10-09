@@ -23,6 +23,11 @@ export interface UserProfile {
     phoneNumber: string | null;
     timezone: string;
     language: string;
+    // サイト情報
+    siteName?: string | null;
+    siteUrl?: string | null;
+    siteType?: string | null;
+    businessType?: string | null;
   };
   
   // 設定

@@ -31,7 +31,7 @@ export default function SummaryPage() {
     sessions: 0,
     totalUsers: 0,
     activeUsers: 0,
-    keyEvents: 0,
+    conversions: 0,
     engagementRate: 0,
     screenPageViews: 0,
     averageSessionDuration: 0,
@@ -283,8 +283,8 @@ export default function SummaryPage() {
       data: timeSeriesData.map(d => d.sessions)
     },
     {
-      name: 'キーイベント',
-      data: timeSeriesData.map(d => d.keyEvents)
+      name: 'コンバージョン',
+      data: timeSeriesData.map(d => d.conversions || 0)
     }
   ];
 
@@ -346,7 +346,7 @@ export default function SummaryPage() {
       {
         opposite: true,
         title: {
-          text: 'キーイベント',
+          text: 'コンバージョン',
           style: {
             color: '#64748B',
             fontSize: '12px'
@@ -455,13 +455,13 @@ export default function SummaryPage() {
             </div>
           </div>
 
-          {/* キーイベント */}
+          {/* コンバージョン */}
           <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-sm font-medium text-body-color dark:text-dark-6">キーイベント</p>
+                <p className="text-sm font-medium text-body-color dark:text-dark-6">コンバージョン</p>
                 <h3 className="mt-2 text-2xl font-bold text-dark dark:text-white">
-                  {stats.keyEvents.toLocaleString()}
+                  {stats.conversions.toLocaleString()}
                 </h3>
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-100 dark:bg-pink-900/20">
@@ -473,12 +473,12 @@ export default function SummaryPage() {
             </div>
           </div>
 
-          {/* キーイベント率 */}
+          {/* コンバージョン率 */}
           <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
             <div className="flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-2">
-                  <p className="text-sm font-medium text-body-color dark:text-dark-6">キーイベント率</p>
+                  <p className="text-sm font-medium text-body-color dark:text-dark-6">コンバージョン率</p>
                   <button className="text-body-color hover:text-primary dark:text-dark-6">
                     <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
@@ -499,7 +499,7 @@ export default function SummaryPage() {
         </div>
 
         {/* Monthly Stats Table */}
-        <div className="mb-6 overflow-hidden rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-6 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
           <div className="border-b border-stroke px-6 py-4 dark:border-dark-3">
             <h3 className="text-lg font-semibold text-dark dark:text-white">
               月別推移（過去13ヶ月）
@@ -518,14 +518,102 @@ export default function SummaryPage() {
                   <thead>
                     <tr className="border-b border-stroke bg-gray-2 text-left dark:border-dark-3 dark:bg-dark">
                       <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">年月</th>
-                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">ユーザー数</th>
-                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">新規ユーザー</th>
-                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">セッション</th>
-                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">セッションあたりのページビュー数</th>
-                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">表示回数</th>
-                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">ENG率</th>
-                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">キーイベント</th>
-                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">セッションCV率</th>
+                      <th className="relative px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2" style={{ overflow: 'visible' }}>
+                        <div className="tooltip-container inline-flex items-center gap-1 justify-center">
+                          <span>ユーザー数</span>
+                          <svg className="h-3.5 w-3.5 text-body-color opacity-60 hover:opacity-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="tooltip-wrapper pointer-events-none absolute bottom-full left-1/2 z-[99999] hidden -translate-x-1/2 whitespace-nowrap rounded bg-dark px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-gray-800" style={{ marginBottom: '8px' }}>
+                            <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 rotate-45 bg-dark dark:bg-gray-800" style={{ marginTop: '-4px' }}></div>
+                            サイトを訪問したユニークユーザーの総数
+                          </div>
+                        </div>
+                      </th>
+                      <th className="relative px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2" style={{ overflow: 'visible' }}>
+                        <div className="tooltip-container inline-flex items-center gap-1 justify-center">
+                          <span>新規ユーザー</span>
+                          <svg className="h-3.5 w-3.5 text-body-color opacity-60 hover:opacity-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="tooltip-wrapper pointer-events-none absolute bottom-full left-1/2 z-[99999] hidden -translate-x-1/2 whitespace-nowrap rounded bg-dark px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-gray-800" style={{ marginBottom: '8px' }}>
+                            <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 rotate-45 bg-dark dark:bg-gray-800" style={{ marginTop: '-4px' }}></div>
+                            初めてサイトを訪問したユーザー数
+                          </div>
+                        </div>
+                      </th>
+                      <th className="relative px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2" style={{ overflow: 'visible' }}>
+                        <div className="tooltip-container inline-flex items-center gap-1 justify-center">
+                          <span>セッション</span>
+                          <svg className="h-3.5 w-3.5 text-body-color opacity-60 hover:opacity-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="tooltip-wrapper pointer-events-none absolute bottom-full left-1/2 z-[99999] hidden -translate-x-1/2 whitespace-nowrap rounded bg-dark px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-gray-800" style={{ marginBottom: '8px' }}>
+                            <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 rotate-45 bg-dark dark:bg-gray-800" style={{ marginTop: '-4px' }}></div>
+                            ユーザーがサイトを訪問した回数（30分以上の間隔で区切られる）
+                          </div>
+                        </div>
+                      </th>
+                      <th className="relative px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2" style={{ overflow: 'visible' }}>
+                        <div className="tooltip-container inline-flex items-center gap-1 justify-center">
+                          <span>平均PV</span>
+                          <svg className="h-3.5 w-3.5 text-body-color opacity-60 hover:opacity-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="tooltip-wrapper pointer-events-none absolute bottom-full left-1/2 z-[99999] hidden -translate-x-1/2 whitespace-nowrap rounded bg-dark px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-gray-800" style={{ marginBottom: '8px' }}>
+                            <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 rotate-45 bg-dark dark:bg-gray-800" style={{ marginTop: '-4px' }}></div>
+                            1セッションあたりの平均ページビュー数
+                          </div>
+                        </div>
+                      </th>
+                      <th className="relative px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2" style={{ overflow: 'visible' }}>
+                        <div className="tooltip-container inline-flex items-center gap-1 justify-center">
+                          <span>表示回数</span>
+                          <svg className="h-3.5 w-3.5 text-body-color opacity-60 hover:opacity-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="tooltip-wrapper pointer-events-none absolute bottom-full left-1/2 z-[99999] hidden -translate-x-1/2 whitespace-nowrap rounded bg-dark px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-gray-800" style={{ marginBottom: '8px' }}>
+                            <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 rotate-45 bg-dark dark:bg-gray-800" style={{ marginTop: '-4px' }}></div>
+                            ページが閲覧された総回数（同じページの再表示も含む）
+                          </div>
+                        </div>
+                      </th>
+                      <th className="relative px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2" style={{ overflow: 'visible' }}>
+                        <div className="tooltip-container inline-flex items-center gap-1 justify-center">
+                          <span>ENG率</span>
+                          <svg className="h-3.5 w-3.5 text-body-color opacity-60 hover:opacity-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="tooltip-wrapper pointer-events-none absolute bottom-full left-1/2 z-[99999] hidden -translate-x-1/2 whitespace-nowrap rounded bg-dark px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-gray-800" style={{ marginBottom: '8px' }}>
+                            <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 rotate-45 bg-dark dark:bg-gray-800" style={{ marginTop: '-4px' }}></div>
+                            エンゲージメント率：10秒以上滞在または2ページ以上閲覧したセッションの割合
+                          </div>
+                        </div>
+                      </th>
+                      <th className="relative px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2" style={{ overflow: 'visible' }}>
+                        <div className="tooltip-container inline-flex items-center gap-1 justify-center">
+                          <span>コンバージョン</span>
+                          <svg className="h-3.5 w-3.5 text-body-color opacity-60 hover:opacity-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="tooltip-wrapper pointer-events-none absolute bottom-full left-1/2 z-[99999] hidden -translate-x-1/2 whitespace-nowrap rounded bg-dark px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-gray-800" style={{ marginBottom: '8px' }}>
+                            <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 rotate-45 bg-dark dark:bg-gray-800" style={{ marginTop: '-4px' }}></div>
+                            サイト設定で定義したコンバージョンの合計数
+                          </div>
+                        </div>
+                      </th>
+                      <th className="relative px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2" style={{ overflow: 'visible' }}>
+                        <div className="tooltip-container inline-flex items-center gap-1 justify-center">
+                          <span>セッションCV率</span>
+                          <svg className="h-3.5 w-3.5 text-body-color opacity-60 hover:opacity-100" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                          </svg>
+                          <div className="tooltip-wrapper pointer-events-none absolute bottom-full left-1/2 z-[99999] hidden -translate-x-1/2 whitespace-nowrap rounded bg-dark px-3 py-1.5 text-xs font-medium text-white shadow-lg dark:bg-gray-800" style={{ marginBottom: '8px' }}>
+                            <div className="absolute left-1/2 top-full h-2 w-2 -translate-x-1/2 rotate-45 bg-dark dark:bg-gray-800" style={{ marginTop: '-4px' }}></div>
+                            コンバージョンが発生したセッションの割合
+                          </div>
+                        </div>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -553,7 +641,7 @@ export default function SummaryPage() {
                           {row.engagementRate.toFixed(2)}%
                         </td>
                         <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
-                          {row.keyEvents.toLocaleString()}
+                          {row.conversions.toLocaleString()}
                         </td>
                         <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
                           {row.conversionRate.toFixed(2)}%
