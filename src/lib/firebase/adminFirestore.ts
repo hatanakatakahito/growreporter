@@ -7,12 +7,13 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { 
   doc, 
+  getDoc,
   setDoc, 
   deleteDoc,
   collection,
   Timestamp
 } from 'firebase/firestore';
-import { encryptTokens, type EncryptedTokens } from '@/lib/security/encryption';
+import { encryptTokens, decryptTokens, isEncrypted, type EncryptedTokens } from '@/lib/security/encryption';
 
 // Firebase Client SDK の初期化（サーバーサイド用）
 function initializeServerFirebase() {
@@ -249,10 +250,9 @@ export class AdminFirestoreService {
   /**
    * OAuth トークンを取得（暗号化されたまま）
    */
-  static async getOAuthTokens(userId: string) {
+  static async getOAuthTokens(userId: string, provider: string = 'google') {
     try {
-      const { getDoc } = await import('firebase/firestore');
-      const oauthTokensRef = doc(serverFirestore, 'users', userId, 'oauthTokens', 'google');
+      const oauthTokensRef = doc(serverFirestore, 'users', userId, 'oauthTokens', provider);
       const snapshot = await getDoc(oauthTokensRef);
       
       if (!snapshot.exists()) {

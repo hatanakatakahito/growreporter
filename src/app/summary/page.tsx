@@ -5,14 +5,14 @@
  * GA4データを表示
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { GA4DataService, GA4Metrics, GA4TimeSeriesData } from '@/lib/api/ga4DataService';
-import { GSCDataService, GSCMetrics, GSCTimeSeriesData } from '@/lib/api/gscDataService';
 import { AdminFirestoreService } from '@/lib/firebase/adminFirestore';
+import AISummarySection from '@/components/ai/AISummarySection';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -22,11 +22,8 @@ export default function SummaryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  const [siteUrl, setSiteUrl] = useState<string>('');
-  const [siteName, setSiteName] = useState<string>('');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
-  const [dateRangeType, setDateRangeType] = useState<string>('last_month'); // 'last_month' | 'custom'
 
   // GA4データ
   const [stats, setStats] = useState<GA4Metrics>({
@@ -35,25 +32,32 @@ export default function SummaryPage() {
     totalUsers: 0,
     activeUsers: 0,
     keyEvents: 0,
-    keyEventRate: 0
+    engagementRate: 0,
+    screenPageViews: 0,
+    averageSessionDuration: 0,
+    conversionRate: 0
   });
   const [timeSeriesData, setTimeSeriesData] = useState<GA4TimeSeriesData[]>([]);
+  const [monthlyData, setMonthlyData] = useState<any[]>([]);
 
-  // GSCデータ
-  const [gscStats, setGscStats] = useState<GSCMetrics>({
-    clicks: 0,
-    impressions: 0,
-    ctr: 0,
-    position: 0
-  });
-  const [gscTimeSeriesData, setGscTimeSeriesData] = useState<GSCTimeSeriesData[]>([]);
-  const [selectedGSCSiteUrl, setSelectedGSCSiteUrl] = useState<string | null>(null);
+  // AI要約用のコンテキストデータ（メモ化）
+  const aiContextData = useMemo(() => {
+    if (!stats || !timeSeriesData || timeSeriesData.length === 0) return null;
+    
+    return {
+      metrics: stats,
+      timeSeriesData: timeSeriesData.slice(0, 7) // 最近7日分
+    };
+  }, [stats, timeSeriesData]);
 
   // 日付範囲を計算する関数
   const calculateDateRange = (type: string) => {
     const today = new Date();
-    console.log('📅 今日の日付:', today.toISOString());
-    console.log('📅 現在の年月:', today.getFullYear(), today.getMonth() + 1);
+    console.log('📅 今日の日付 (ISO):', today.toISOString());
+    console.log('📅 今日の日付 (ローカル):', today.toString());
+    console.log('📅 現在の年:', today.getFullYear());
+    console.log('📅 現在の月 (0-indexed):', today.getMonth());
+    console.log('📅 現在の月 (1-indexed):', today.getMonth() + 1);
     
     let start: Date;
     let end: Date;
@@ -63,13 +67,19 @@ export default function SummaryPage() {
       const year = today.getFullYear();
       const month = today.getMonth(); // 現在の月（0-11）
       
+      console.log('📅 計算に使用する year:', year);
+      console.log('📅 計算に使用する month:', month);
+      console.log('📅 前月は month - 1 =', month - 1);
+      
       // 前月の1日
       start = new Date(year, month - 1, 1);
       // 前月の末日（今月の0日 = 前月の最終日）
       end = new Date(year, month, 0);
       
-      console.log('📅 前月の開始日:', start);
-      console.log('📅 前月の終了日:', end);
+      console.log('📅 前月の開始日 (Date object):', start);
+      console.log('📅 前月の開始日 (ISO):', start.toISOString());
+      console.log('📅 前月の終了日 (Date object):', end);
+      console.log('📅 前月の終了日 (ISO):', end.toISOString());
     } else {
       // デフォルトは前月
       const year = today.getFullYear();
@@ -83,6 +93,7 @@ export default function SummaryPage() {
       const year = date.getFullYear();
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const day = String(date.getDate()).padStart(2, '0');
+      console.log(`📅 formatDate: ${year}-${month}-${day} (from Date: ${date})`);
       return `${year}-${month}-${day}`;
     };
 
@@ -91,67 +102,51 @@ export default function SummaryPage() {
       endDate: formatDate(end)
     };
     
-    console.log('📅 計算結果:', result);
+    console.log('📅 最終計算結果:', result);
     return result;
   };
 
   // 日付範囲が変更されたらデータを再取得
-  const handleDateRangeChange = async (type: string, customStart?: string, customEnd?: string) => {
+  const handleDateRangeChange = useCallback(async (newStartDate: string, newEndDate: string, type: string) => {
     if (!user || !selectedPropertyId) return;
 
-    setDateRangeType(type);
-    setIsLoading(true);
-    setError(null);
-
     try {
-      let newStartDate: string;
-      let newEndDate: string;
-
-      if (type === 'custom' && customStart && customEnd) {
-        newStartDate = customStart;
-        newEndDate = customEnd;
-      } else {
-        const range = calculateDateRange(type);
-        newStartDate = range.startDate;
-        newEndDate = range.endDate;
-      }
-
-      setStartDate(newStartDate);
-      setEndDate(newEndDate);
-
-      // GA4メトリクスを再取得
-      const metrics = await GA4DataService.getMetrics(user.uid, selectedPropertyId, 
-        newStartDate.replace(/-/g, ''), newEndDate.replace(/-/g, ''));
+      // GA4メトリクスを取得
+      const metrics = await GA4DataService.getMetrics(user!.uid, selectedPropertyId, newStartDate, newEndDate);
       setStats(metrics);
 
-      // GA4時系列データを再取得
-      const timeSeries = await GA4DataService.getTimeSeriesData(user.uid, selectedPropertyId,
-        newStartDate.replace(/-/g, ''), newEndDate.replace(/-/g, ''));
+      // GA4時系列データを取得
+      const timeSeries = await GA4DataService.getTimeSeriesData(user!.uid, selectedPropertyId, newStartDate, newEndDate);
       setTimeSeriesData(timeSeries);
 
-      // GSCデータも再取得
-      if (selectedGSCSiteUrl) {
-        try {
-          const gscMetrics = await GSCDataService.getMetrics(user.uid, selectedGSCSiteUrl,
-            newStartDate, newEndDate);
-          setGscStats(gscMetrics);
+      // 選択された期間の終了月から遡って13ヶ月分の月別データを取得
+      console.log('📊 月別データ取得開始（期間変更）:', { propertyId: selectedPropertyId, endDate: newEndDate });
+      const monthlyResponse = await fetch('/api/ga4/monthly-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user!.uid
+        },
+        body: JSON.stringify({ 
+          propertyId: selectedPropertyId,
+          endDate: newEndDate
+        })
+      });
 
-          const gscTimeSeries = await GSCDataService.getTimeSeries(user.uid, selectedGSCSiteUrl,
-            newStartDate, newEndDate);
-          setGscTimeSeriesData(gscTimeSeries);
-        } catch (gscError) {
-          console.error('GSCデータ取得エラー:', gscError);
-          // GSCエラーは無視してGA4データは表示
-        }
+      console.log('📊 月別データレスポンス（期間変更）:', { ok: monthlyResponse.ok, status: monthlyResponse.status });
+      if (monthlyResponse.ok) {
+        const monthlyResult = await monthlyResponse.json();
+        console.log('📊 月別データ取得成功（期間変更）:', monthlyResult.monthlyData?.length, 'ヶ月分');
+        setMonthlyData(monthlyResult.monthlyData || []);
+      } else {
+        const errorText = await monthlyResponse.text();
+        console.error('❌ 月別データ取得エラー（期間変更）:', errorText);
       }
-
     } catch (err: any) {
       console.error('日付範囲変更エラー:', err);
-      setError('データの取得に失敗しました。');
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [user, selectedPropertyId]);
+
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -179,11 +174,9 @@ export default function SummaryPage() {
 
         const data = await response.json();
         let propertyId = data.selectedGA4PropertyId;
-        let gscSiteUrl = data.selectedGSCSiteUrl;
 
         console.log('📊 取得したデータソース情報:', data);
         console.log('📊 選択されたProperty ID (元):', propertyId);
-        console.log('📊 選択されたGSC Site URL:', gscSiteUrl);
 
         // Property IDの検証と抽出
         if (!propertyId) {
@@ -210,19 +203,6 @@ export default function SummaryPage() {
         }
 
         setSelectedPropertyId(propertyId);
-        if (gscSiteUrl) {
-          setSelectedGSCSiteUrl(gscSiteUrl);
-        }
-
-        // サイト情報を取得
-        const { UserProfileService } = await import('@/lib/user/userProfileService');
-        const profile = await UserProfileService.getUserProfile(user.uid);
-        if (profile.profile?.siteUrl) {
-          setSiteUrl(profile.profile.siteUrl);
-        }
-        if (profile.profile?.siteName) {
-          setSiteName(profile.profile.siteName);
-        }
 
         // デフォルトの日付範囲を設定（前月）
         const range = calculateDateRange('last_month');
@@ -230,44 +210,38 @@ export default function SummaryPage() {
         setEndDate(range.endDate);
 
         console.log('📊 GA4メトリクス取得開始 - Property ID:', propertyId);
+        console.log('📅 日付範囲:', { startDate: range.startDate, endDate: range.endDate });
 
-        // GA4メトリクスを取得
-        try {
-          const metrics = await GA4DataService.getMetrics(user.uid, propertyId);
-          console.log('✅ GA4メトリクス取得成功:', metrics);
-          setStats(metrics);
-        } catch (metricsError) {
-          console.error('❌ メトリクス取得エラー:', metricsError);
-          throw metricsError;
+        // データを取得
+        const metrics = await GA4DataService.getMetrics(user.uid, propertyId, range.startDate, range.endDate);
+        setStats(metrics);
+
+        const timeSeries = await GA4DataService.getTimeSeriesData(user.uid, propertyId, range.startDate, range.endDate);
+        setTimeSeriesData(timeSeries);
+
+        // 月別データを取得（選択期間の終了月から遡って13ヶ月分）
+        console.log('📊 月別データ取得開始:', { propertyId, endDate: range.endDate });
+        const monthlyResponse = await fetch('/api/ga4/monthly-data', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-user-id': user.uid
+          },
+          body: JSON.stringify({ 
+            propertyId,
+            endDate: range.endDate
+          })
+        });
+
+        console.log('📊 月別データレスポンス:', { ok: monthlyResponse.ok, status: monthlyResponse.status });
+        if (monthlyResponse.ok) {
+          const monthlyResult = await monthlyResponse.json();
+          console.log('📊 月別データ取得成功:', monthlyResult.monthlyData?.length, 'ヶ月分');
+          setMonthlyData(monthlyResult.monthlyData || []);
+        } else {
+          const errorText = await monthlyResponse.text();
+          console.error('❌ 月別データ取得エラー:', errorText);
         }
-
-        // GA4時系列データを取得
-        try {
-          const timeSeries = await GA4DataService.getTimeSeriesData(user.uid, propertyId);
-          console.log('✅ GA4時系列データ取得成功:', timeSeries.length, '件');
-          setTimeSeriesData(timeSeries);
-        } catch (timeSeriesError) {
-          console.error('❌ 時系列データ取得エラー:', timeSeriesError);
-          throw timeSeriesError;
-        }
-
-        // GSCデータを取得
-        if (gscSiteUrl) {
-          try {
-            console.log('📊 GSCメトリクス取得開始 - Site URL:', gscSiteUrl);
-            const gscMetrics = await GSCDataService.getMetrics(user.uid, gscSiteUrl, range.startDate, range.endDate);
-            console.log('✅ GSCメトリクス取得成功:', gscMetrics);
-            setGscStats(gscMetrics);
-
-            const gscTimeSeries = await GSCDataService.getTimeSeries(user.uid, gscSiteUrl, range.startDate, range.endDate);
-            console.log('✅ GSC時系列データ取得成功:', gscTimeSeries.length, '件');
-            setGscTimeSeriesData(gscTimeSeries);
-          } catch (gscError) {
-            console.error('❌ GSCデータ取得エラー:', gscError);
-            // GSCエラーは無視してGA4データは表示
-          }
-        }
-
       } catch (err: any) {
         console.error('データ取得エラー:', err);
         
@@ -421,18 +395,7 @@ export default function SummaryPage() {
   if (!user) return null;
 
   return (
-    <DashboardLayout
-      siteInfo={{
-        startDate,
-        endDate,
-        scope: '全体',
-        propertyId: selectedPropertyId || undefined,
-        siteName: siteName || undefined,
-        siteUrl: siteUrl || undefined,
-        dateRangeType,
-        onDateRangeChange: handleDateRangeChange
-      }}
-    >
+    <DashboardLayout onDateRangeChange={handleDateRangeChange}>
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
         {/* Page Header */}
         <div className="mb-6">
@@ -456,12 +419,7 @@ export default function SummaryPage() {
           </div>
         )}
 
-        {/* GA4 Stats Section Title */}
-        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
-          Google Analytics 4
-        </h3>
-
-        {/* GA4 Stats Cards */}
+        {/* GA4 Stats Cards - Top Row (4 cards) */}
         <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
           {/* 新規ユーザー数 */}
           <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
@@ -528,7 +486,7 @@ export default function SummaryPage() {
                   </button>
                 </div>
                 <h3 className="mt-2 text-2xl font-bold text-dark dark:text-white">
-                  {stats.keyEventRate.toFixed(2)}%
+                  {stats.engagementRate.toFixed(2)}%
                 </h3>
               </div>
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20">
@@ -537,6 +495,75 @@ export default function SummaryPage() {
                 </svg>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Monthly Stats Table */}
+        <div className="mb-6 overflow-hidden rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+          <div className="border-b border-stroke px-6 py-4 dark:border-dark-3">
+            <h3 className="text-lg font-semibold text-dark dark:text-white">
+              月別推移（過去13ヶ月）
+            </h3>
+          </div>
+          <div className="overflow-x-auto">
+            {monthlyData.length === 0 ? (
+              <div className="py-10 text-center">
+                <p className="text-body-color dark:text-dark-6">
+                  月別データを読み込み中...
+                </p>
+              </div>
+            ) : (
+              <div className="table-scroll-container">
+                <table className="w-full table-auto">
+                  <thead>
+                    <tr className="border-b border-stroke bg-gray-2 text-left dark:border-dark-3 dark:bg-dark">
+                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">年月</th>
+                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">ユーザー数</th>
+                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">新規ユーザー</th>
+                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">セッション</th>
+                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">セッションあたりのページビュー数</th>
+                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">表示回数</th>
+                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">ENG率</th>
+                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">キーイベント</th>
+                      <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2">セッションCV率</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthlyData.map((row, index) => (
+                      <tr key={index} className="border-b border-stroke dark:border-dark-3 transition-colors">
+                        <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
+                          {row.displayName}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
+                          {row.totalUsers.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
+                          {row.newUsers.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
+                          {row.sessions.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
+                          {row.sessionsPerUser.toFixed(2)}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
+                          {row.screenPageViews.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
+                          {row.engagementRate.toFixed(2)}%
+                        </td>
+                        <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
+                          {row.keyEvents.toLocaleString()}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">
+                          {row.conversionRate.toFixed(2)}%
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 
@@ -553,86 +580,16 @@ export default function SummaryPage() {
           />
         </div>
 
-        {/* Search Console Section */}
-        {selectedGSCSiteUrl && (
-          <>
-            <h3 className="mb-4 mt-8 text-lg font-semibold text-dark dark:text-white">
-              Search Console
-            </h3>
-
-            {/* GSC Stats Cards */}
-            <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {/* クリック数 */}
-              <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-body-color dark:text-dark-6">クリック数</p>
-                    <h3 className="mt-2 text-2xl font-bold text-dark dark:text-white">
-                      {gscStats.clicks.toLocaleString()}
-                    </h3>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/20">
-                    <svg className="h-6 w-6 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                      <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* 表示回数 */}
-              <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-body-color dark:text-dark-6">表示回数</p>
-                    <h3 className="mt-2 text-2xl font-bold text-dark dark:text-white">
-                      {gscStats.impressions.toLocaleString()}
-                    </h3>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20">
-                    <svg className="h-6 w-6 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                      <path fillRule="evenodd" d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm3 4a1 1 0 000 2h.01a1 1 0 100-2H7zm3 0a1 1 0 000 2h3a1 1 0 100-2h-3zm-3 4a1 1 0 100 2h.01a1 1 0 100-2H7zm3 0a1 1 0 100 2h3a1 1 0 100-2h-3z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* CTR */}
-              <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-body-color dark:text-dark-6">CTR</p>
-                    <h3 className="mt-2 text-2xl font-bold text-dark dark:text-white">
-                      {(gscStats.ctr * 100).toFixed(2)}%
-                    </h3>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-pink-100 dark:bg-pink-900/20">
-                    <svg className="h-6 w-6 text-pink-600 dark:text-pink-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-
-              {/* 平均掲載順位 */}
-              <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-body-color dark:text-dark-6">平均掲載順位</p>
-                    <h3 className="mt-2 text-2xl font-bold text-dark dark:text-white">
-                      {gscStats.position.toFixed(1)}
-                    </h3>
-                  </div>
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20">
-                    <svg className="h-6 w-6 text-purple-600 dark:text-purple-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </>
+        {/* AI Summary Section - 共通コンポーネント使用 */}
+        {user && startDate && endDate && aiContextData && (
+          <AISummarySection
+            userId={user.uid}
+            pageType="summary"
+            startDate={startDate}
+            endDate={endDate}
+            contextData={aiContextData}
+            propertyId={selectedPropertyId || undefined}
+          />
         )}
       </div>
     </DashboardLayout>

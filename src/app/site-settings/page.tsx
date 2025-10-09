@@ -5,7 +5,8 @@
  * 新規ユーザー登録後の初回設定画面
  * ステップ1: データソース接続 (GA4・Search Console)
  * ステップ2: サイト情報の入力
- * ステップ3: KPI作成
+ * ステップ3: コンバージョン定義（任意）
+ * ステップ4: KPI設定（任意）
  */
 
 import { useState, useEffect } from 'react';
@@ -14,11 +15,9 @@ import { useAuth } from '@/lib/auth/authContext';
 import { UnifiedOAuthManager } from '@/lib/auth/unifiedOAuthManager';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { UserProfileService } from '@/lib/user/userProfileService';
-import { KPIService } from '@/lib/kpi/kpiService';
-import {
-  CreateKPIRequest,
-  KPI_METRIC_DEFINITIONS,
-} from '@/types/kpi';
+import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionService';
+import { GA4DataService } from '@/lib/api/ga4DataService';
+import Select from 'react-select';
 
 export default function SiteSettingsPage() {
   const { user } = useAuth();
@@ -31,6 +30,13 @@ export default function SiteSettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  
+  // トークン状態
+  const [tokenStatus, setTokenStatus] = useState<{
+    hasRefreshToken: boolean;
+    isExpired: boolean;
+    expiresAt: string | null;
+  } | null>(null);
 
   // ステップ2: サイト情報フィールド
   const [selectedAccount, setSelectedAccount] = useState('');
@@ -42,16 +48,10 @@ export default function SiteSettingsPage() {
   const [ga4Properties, setGa4Properties] = useState<any[]>([]);
   const [gscSites, setGscSites] = useState<any[]>([]);
 
-  // ステップ3: KPI作成
-  const [newKPI, setNewKPI] = useState<Partial<CreateKPIRequest>>({
-    name: '',
-    description: '',
-    category: 'トラフィック',
-    metricType: 'ga4_sessions',
-    targetValue: undefined,
-    operator: 'greater_than',
-    periodType: 'monthly',
-  });
+  // ステップ3: コンバージョン定義
+  const [ga4Events, setGa4Events] = useState<Array<{ eventName: string; eventCount: number }>>([]);
+  const [selectedConversions, setSelectedConversions] = useState<ConversionEvent[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = useState(false);
 
   // ユーザープロフィールからサイト情報を読み込み
   useEffect(() => {
@@ -98,6 +98,26 @@ export default function SiteSettingsPage() {
         setIsConnected(data.isConnected);
         setGa4Count(data.ga4Count);
         setGscCount(data.gscCount);
+        
+        // トークン状態を確認
+        if (data.isConnected) {
+          const tokenResponse = await fetch('/api/debug/check-tokens', {
+            headers: {
+              'x-user-id': user.uid
+            }
+          });
+          
+          if (tokenResponse.ok) {
+            const tokenData = await tokenResponse.json();
+            if (tokenData.status === 'ok') {
+              setTokenStatus({
+                hasRefreshToken: tokenData.tokenInfo.hasRefreshToken,
+                isExpired: tokenData.tokenInfo.isExpired,
+                expiresAt: tokenData.tokenInfo.expiresAtDate
+              });
+            }
+          }
+        }
 
         // 接続済みの場合、データソースリストと選択情報を取得
         if (data.isConnected && (data.ga4Count > 0 || data.gscCount > 0)) {
@@ -175,6 +195,66 @@ export default function SiteSettingsPage() {
       fetchDataSources();
     }
   }, [searchParams, user]);
+
+  // STEP3に進んだ時にGA4イベントを取得
+  useEffect(() => {
+    if (currentStep === 3 && user && selectedAccount) {
+      fetchGA4Events();
+    }
+  }, [currentStep, user, selectedAccount]);
+
+  // GA4イベント一覧を取得
+  const fetchGA4Events = async () => {
+    if (!user || !selectedAccount) return;
+
+    try {
+      setIsLoadingEvents(true);
+      setError(null);
+
+      // 過去30日間のイベントを取得
+      const now = new Date();
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setDate(now.getDate() - 30);
+
+      const startDate = thirtyDaysAgo.toISOString().split('T')[0].replace(/-/g, '');
+      const endDate = now.toISOString().split('T')[0].replace(/-/g, '');
+
+      const propertyId = selectedAccount.replace('properties/', '');
+      const events = await GA4DataService.getEvents(user.uid, propertyId, startDate, endDate);
+      
+      setGa4Events(events);
+
+      // 既存のコンバージョン設定を読み込み
+      const existingConversions = await ConversionService.getConversions(user.uid);
+      setSelectedConversions(existingConversions);
+
+    } catch (err: any) {
+      console.error('GA4イベント取得エラー:', err);
+      setError('GA4イベントの取得に失敗しました: ' + err.message);
+    } finally {
+      setIsLoadingEvents(false);
+    }
+  };
+
+  // コンバージョンの追加/削除
+  const toggleConversion = (eventName: string, eventCount: number) => {
+    const exists = selectedConversions.find(c => c.eventName === eventName);
+    
+    if (exists) {
+      setSelectedConversions(prev => prev.filter(c => c.eventName !== eventName));
+    } else {
+      setSelectedConversions(prev => [
+        ...prev,
+        {
+          eventName,
+          displayName: eventName,
+          eventCount,
+          isActive: true,
+          createdAt: new Date()
+        }
+      ]);
+    }
+  };
 
   // OAuth接続を開始
   const handleConnect = () => {
@@ -304,35 +384,39 @@ export default function SiteSettingsPage() {
     }
   };
 
-  // ステップ3: KPI作成
-  const handleCreateKPI = async () => {
-    if (!user || !newKPI.name || !newKPI.targetValue) {
-      setError('KPI名と目標値は必須です');
+  // ステップ3→4へ進む（コンバージョン保存）
+  const handleStep3Next = async () => {
+    if (!user) {
+      setError('ログインが必要です');
       return;
     }
-    
+
     try {
       setIsLoading(true);
       setError(null);
 
-      await KPIService.createKPI(user.uid, newKPI as CreateKPIRequest);
-      
-      setSuccess('KPIを作成しました！');
-      
-      // KPI作成成功後、新しいKPIフォームをリセット
-      setNewKPI({
-        name: '',
-        description: '',
-        category: 'トラフィック',
-        metricType: 'ga4_sessions',
-        targetValue: undefined,
-        operator: 'greater_than',
-        periodType: 'monthly',
-      });
+      // コンバージョン設定を保存
+      for (const conversion of selectedConversions) {
+        const existingConversions = await ConversionService.getConversions(user.uid);
+        const exists = existingConversions.find(c => c.eventName === conversion.eventName);
+        
+        if (!exists) {
+          await ConversionService.addConversion(user.uid, {
+            eventName: conversion.eventName,
+            displayName: conversion.displayName,
+            description: conversion.description,
+            eventCount: conversion.eventCount,
+            isActive: conversion.isActive
+          });
+        }
+      }
 
-    } catch (error) {
-      console.error('KPI作成エラー:', error);
-      setError('KPI作成に失敗しました');
+      setSuccess('コンバージョン設定を保存しました！');
+      setCurrentStep(4);
+
+    } catch (err) {
+      console.error('コンバージョン設定保存エラー:', err);
+      setError('コンバージョン設定の保存に失敗しました');
     } finally {
       setIsLoading(false);
     }
@@ -378,7 +462,7 @@ export default function SiteSettingsPage() {
             サイト設定
           </h2>
           <p className="text-sm font-medium text-body-color dark:text-dark-6">
-            データソース接続、サイト情報の入力、KPI作成を行います
+            データソース接続、サイト情報の入力、コンバージョン定義を行います
           </p>
         </div>
 
@@ -396,13 +480,19 @@ export default function SiteSettingsPage() {
                 done={currentStep > 2} 
                 number="2" 
                 name="サイト情報入力" 
-                onClick={() => setCurrentStep(2)}
+                onClick={() => currentStep >= 2 && setCurrentStep(2)}
               />
               <SingleStep 
                 done={currentStep > 3} 
                 number="3" 
-                name="KPI作成" 
-                onClick={() => setCurrentStep(3)}
+                name="コンバージョン定義（任意）" 
+                onClick={() => currentStep >= 3 && setCurrentStep(3)}
+              />
+              <SingleStep 
+                done={currentStep > 4} 
+                number="4" 
+                name="KPI設定（任意）" 
+                onClick={() => currentStep >= 4 && setCurrentStep(4)}
               />
             </div>
           </div>
@@ -481,6 +571,23 @@ export default function SiteSettingsPage() {
                         <p className="text-xs text-green-700 dark:text-green-400">
                           GA4: {ga4Count}件 / Search Console: {gscCount}件
                         </p>
+                        {tokenStatus && (
+                          <div className="mt-2 text-xs">
+                            {!tokenStatus.hasRefreshToken ? (
+                              <p className="text-red-600 dark:text-red-400">
+                                ⚠️ リフレッシュトークンがありません。再接続が必要です。
+                              </p>
+                            ) : tokenStatus.isExpired ? (
+                              <p className="text-orange-600 dark:text-orange-400">
+                                ⚠️ トークンが期限切れです。再接続してください。
+                              </p>
+                            ) : (
+                              <p className="text-green-700 dark:text-green-400">
+                                ✓ 接続正常
+                              </p>
+                            )}
+                          </div>
+                        )}
                       </div>
                     </div>
                     {currentStep === 1 && (
@@ -546,23 +653,42 @@ export default function SiteSettingsPage() {
                     Googleアナリティクス
                     <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
                   </label>
-                  <select
-                    value={selectedAccount}
-                    onChange={(e) => setSelectedAccount(e.target.value)}
-                    className="w-full rounded-md border border-stroke bg-transparent px-6 py-3.5 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
-                    disabled={!isConnected || isLoading || currentStep !== 2}
-                  >
-                    <option value="">選択してください</option>
-                    {ga4Properties.map((prop, index) => {
-                      // nameから Property ID を抽出 ("properties/123456789" -> "123456789")
+                  <Select
+                    value={ga4Properties.find(prop => prop.name === selectedAccount) ? {
+                      value: ga4Properties.find(prop => prop.name === selectedAccount)!.name,
+                      label: `${ga4Properties.find(prop => prop.name === selectedAccount)!.displayName} (${ga4Properties.find(prop => prop.name === selectedAccount)!.name?.replace('properties/', '') || ''})`
+                    } : null}
+                    onChange={(option) => setSelectedAccount(option?.value || '')}
+                    options={ga4Properties.map((prop) => {
                       const propertyId = prop.name?.replace('properties/', '') || '';
-                      return (
-                        <option key={`${prop.name}-${index}`} value={prop.name}>
-                          {prop.displayName} ({propertyId})
-                        </option>
-                      );
+                      return {
+                        value: prop.name,
+                        label: `${prop.displayName} (${propertyId})`
+                      };
                     })}
-                  </select>
+                    placeholder="選択してください"
+                    isDisabled={!isConnected || isLoading || currentStep !== 2}
+                    isClearable
+                    isSearchable
+                    className="text-sm"
+                    classNamePrefix="select"
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused ? '#3C50E0' : '#E2E8F0',
+                        boxShadow: state.isFocused ? '0 0 0 1px #3C50E0' : 'none',
+                        '&:hover': {
+                          borderColor: '#3C50E0'
+                        },
+                        padding: '0.5rem 0.75rem',
+                        minHeight: '48px'
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        zIndex: 9999
+                      })
+                    }}
+                  />
                 </div>
 
                 {/* サイト（GSCサイト）選択 */}
@@ -571,19 +697,39 @@ export default function SiteSettingsPage() {
                     サーチコンソール
                     <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
                   </label>
-                  <select
-                    value={selectedSite}
-                    onChange={(e) => setSelectedSite(e.target.value)}
-                    className="w-full rounded-md border border-stroke bg-transparent px-6 py-3.5 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
-                    disabled={!isConnected || isLoading || currentStep !== 2}
-                  >
-                    <option value="">選択してください</option>
-                    {gscSites.map((site, index) => (
-                      <option key={`${site.siteUrl}-${index}`} value={site.siteUrl}>
-                        {site.siteUrl}
-                      </option>
-                    ))}
-                  </select>
+                  <Select
+                    value={gscSites.find(site => site.siteUrl === selectedSite) ? {
+                      value: gscSites.find(site => site.siteUrl === selectedSite)!.siteUrl,
+                      label: gscSites.find(site => site.siteUrl === selectedSite)!.siteUrl
+                    } : null}
+                    onChange={(option) => setSelectedSite(option?.value || '')}
+                    options={gscSites.map((site) => ({
+                      value: site.siteUrl,
+                      label: site.siteUrl
+                    }))}
+                    placeholder="選択してください"
+                    isDisabled={!isConnected || isLoading || currentStep !== 2}
+                    isClearable
+                    isSearchable
+                    className="text-sm"
+                    classNamePrefix="select"
+                    styles={{
+                      control: (base, state) => ({
+                        ...base,
+                        borderColor: state.isFocused ? '#3C50E0' : '#E2E8F0',
+                        boxShadow: state.isFocused ? '0 0 0 1px #3C50E0' : 'none',
+                        '&:hover': {
+                          borderColor: '#3C50E0'
+                        },
+                        padding: '0.5rem 0.75rem',
+                        minHeight: '48px'
+                      }),
+                      menu: (base) => ({
+                        ...base,
+                        zIndex: 9999
+                      })
+                    }}
+                  />
                 </div>
 
                 {/* サイトURL */}
@@ -639,113 +785,134 @@ export default function SiteSettingsPage() {
             </div>
           )}
 
-          {/* ステップ3: KPI作成 */}
+          {/* ステップ3: コンバージョン定義（任意） */}
           {currentStep >= 3 && (
-            <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+            <div className={`rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2 ${currentStep !== 3 ? 'opacity-50' : ''}`}>
               <div className="mb-5">
                 <div className="mb-2 flex items-center gap-3">
                   <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white ${currentStep >= 3 ? 'bg-primary' : 'bg-gray-400'}`}>
-                    3
+                    {currentStep > 3 ? '✓' : '3'}
                   </div>
                   <h4 className="text-lg font-semibold text-dark dark:text-white">
-                    KPI作成 <span className="text-sm text-body-color dark:text-dark-6">(任意)</span>
+                    コンバージョン定義（任意） {currentStep > 3 && <span className="text-sm text-green-500">✓ 完了</span>}
                   </h4>
                 </div>
                 <p className="ml-11 text-sm text-body-color dark:text-dark-6">
-                  測定したいKPIを作成してください（後から追加・編集も可能です）
+                  GA4のイベントからコンバージョンとして追跡するイベントを選択してください
                 </p>
               </div>
 
               <div className="ml-11 space-y-5">
-                <div>
-                  <label className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-                    KPI名
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={newKPI.name || ''}
-                    onChange={(e) => setNewKPI({ ...newKPI, name: e.target.value })}
-                    placeholder="例: 月間セッション数"
-                    className="w-full rounded-md border border-stroke bg-transparent px-6 py-3.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">
-                    説明
-                  </label>
-                  <textarea
-                    value={newKPI.description || ''}
-                    onChange={(e) => setNewKPI({ ...newKPI, description: e.target.value })}
-                    placeholder="KPIの説明"
-                    rows={3}
-                    className="w-full rounded-md border border-stroke bg-transparent px-6 py-3.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white"
-                  />
-                </div>
-
-                <div className="grid gap-5 sm:grid-cols-2">
-                  <div>
-                    <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">
-                      カテゴリ
-                    </label>
-                    <select
-                      value={newKPI.category || 'トラフィック'}
-                      onChange={(e) => setNewKPI({ ...newKPI, category: e.target.value as any })}
-                      className="w-full rounded-md border border-stroke bg-transparent px-6 py-3.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white"
-                    >
-                      <option value="トラフィック">トラフィック</option>
-                      <option value="エンゲージメント">エンゲージメント</option>
-                      <option value="コンバージョン">コンバージョン</option>
-                      <option value="SEO">SEO</option>
-                    </select>
+                {isLoadingEvents ? (
+                  <div className="flex items-center justify-center py-8">
+                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-gray-300 border-t-primary"></div>
+                    <p className="ml-3 text-sm text-body-color">GA4イベントを読み込み中...</p>
                   </div>
-
-                  <div>
-                    <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">
-                      メトリクス
-                    </label>
-                    <select
-                      value={newKPI.metricType || 'ga4_sessions'}
-                      onChange={(e) => setNewKPI({ ...newKPI, metricType: e.target.value as any })}
-                      className="w-full rounded-md border border-stroke bg-transparent px-6 py-3.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white"
-                    >
-                      {Object.entries(KPI_METRIC_DEFINITIONS).map(([key, def]) => (
-                        <option key={key} value={key}>{def.label}</option>
-                      ))}
-                    </select>
+                ) : ga4Events.length === 0 ? (
+                  <div className="rounded-md bg-gray-50 p-4 dark:bg-gray-800">
+                    <p className="text-sm text-body-color dark:text-dark-6">
+                      GA4イベントが見つかりませんでした。
+                    </p>
                   </div>
-                </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium text-dark dark:text-white">
+                      過去30日間のイベント一覧（上位{ga4Events.length}件）
+                    </p>
+                    <div className="max-h-96 space-y-2 overflow-y-auto rounded-md border border-stroke p-4 dark:border-dark-3">
+                      {ga4Events.map((event) => {
+                        const isSelected = selectedConversions.some(c => c.eventName === event.eventName);
+                        return (
+                          <label
+                            key={event.eventName}
+                            className="flex cursor-pointer items-center justify-between rounded-md border border-stroke bg-white p-3 hover:bg-gray-50 dark:border-dark-3 dark:bg-dark-2 dark:hover:bg-dark-3"
+                          >
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleConversion(event.eventName, event.eventCount)}
+                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                disabled={currentStep !== 3}
+                              />
+                              <div>
+                                <p className="text-sm font-medium text-dark dark:text-white">
+                                  {event.eventName}
+                                </p>
+                                <p className="text-xs text-body-color dark:text-dark-6">
+                                  発生回数: {event.eventCount.toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="text-xs text-body-color dark:text-dark-6">
+                      選択済み: {selectedConversions.length}件
+                    </p>
+                  </div>
+                )}
 
-                <div>
-                  <label className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-                    目標値
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-                  </label>
-                  <input
-                    type="number"
-                    value={newKPI.targetValue || ''}
-                    onChange={(e) => setNewKPI({ ...newKPI, targetValue: parseFloat(e.target.value) })}
-                    placeholder="例: 10000"
-                    className="w-full rounded-md border border-stroke bg-transparent px-6 py-3.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white"
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={handleCreateKPI}
-                    disabled={!newKPI.name || !newKPI.targetValue || isLoading}
-                    className="flex-1 rounded-md bg-secondary px-6 py-3 text-base font-medium text-white hover:bg-opacity-90 disabled:opacity-50"
-                  >
-                    {isLoading ? '作成中...' : 'KPIを作成'}
-                  </button>
-                </div>
-
-                <div className="border-t border-stroke pt-5 dark:border-dark-3">
+                {currentStep === 3 && (
                   <div className="flex gap-3">
                     <button
                       onClick={() => setCurrentStep(2)}
-                      className="rounded-md border border-stroke px-6 py-3 text-base font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                      className="flex-1 rounded-md border border-stroke px-6 py-3 text-base font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                    >
+                      戻る
+                    </button>
+                    <button
+                      onClick={() => {
+                        setCurrentStep(4);
+                        setSuccess('STEP3をスキップしました');
+                      }}
+                      className="flex-1 rounded-md border border-stroke px-6 py-3 text-base font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                    >
+                      スキップ
+                    </button>
+                    <button
+                      onClick={handleStep3Next}
+                      disabled={isLoading}
+                      className="flex-1 rounded-md bg-primary px-6 py-3 text-base font-medium text-white hover:bg-opacity-90 disabled:opacity-50"
+                    >
+                      {isLoading ? '保存中...' : '次へ'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ステップ4: KPI設定（任意） */}
+          {currentStep >= 4 && (
+            <div className={`rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2`}>
+              <div className="mb-5">
+                <div className="mb-2 flex items-center gap-3">
+                  <div className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold text-white ${currentStep >= 4 ? 'bg-primary' : 'bg-gray-400'}`}>
+                    {currentStep > 4 ? '✓' : '4'}
+                  </div>
+                  <h4 className="text-lg font-semibold text-dark dark:text-white">
+                    KPI設定（任意）
+                  </h4>
+                </div>
+                <p className="ml-11 text-sm text-body-color dark:text-dark-6">
+                  目標とするKPIを設定してください（後からでも設定可能です）
+                </p>
+              </div>
+
+              <div className="ml-11 space-y-5">
+                <div className="rounded-md bg-blue-50 p-4 dark:bg-blue-900/20">
+                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                    🚧 KPI設定機能は近日実装予定です
+                  </p>
+                </div>
+
+                {currentStep === 4 && (
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setCurrentStep(3)}
+                      className="flex-1 rounded-md border border-stroke px-6 py-3 text-base font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
                     >
                       戻る
                     </button>
@@ -754,10 +921,10 @@ export default function SiteSettingsPage() {
                       disabled={isLoading}
                       className="flex-1 rounded-md bg-primary px-6 py-3 text-base font-medium text-white hover:bg-opacity-90 disabled:opacity-50"
                     >
-                      {isLoading ? '完了中...' : '後で設定する'}
+                      {isLoading ? '完了処理中...' : '設定完了'}
                     </button>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           )}

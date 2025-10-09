@@ -29,6 +29,7 @@ export const auth = getAuth(app);
 
 // Firestore Database (ggreporterデータベースを使用)
 export const firestore = getFirestore(app, 'ggreporter');
+export const db = firestore; // エイリアス
 
 // OAuth Providers
 export const googleProvider = new GoogleAuthProvider();

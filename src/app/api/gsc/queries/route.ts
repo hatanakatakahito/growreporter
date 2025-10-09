@@ -1,0 +1,150 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { AdminFirestoreService } from '@/lib/firebase/adminFirestore';
+import { decryptTokens, isEncrypted } from '@/lib/security/encryption';
+
+export async function GET(request: NextRequest) {
+  try {
+    const userId = request.headers.get('x-user-id');
+    const siteUrl = request.nextUrl.searchParams.get('siteUrl');
+    const startDate = request.nextUrl.searchParams.get('startDate') || '30daysAgo';
+    const endDate = request.nextUrl.searchParams.get('endDate') || 'today';
+
+    console.log('📊 GSC クエリデータ取得開始:', { userId, siteUrl, startDate, endDate });
+
+    if (!userId || !siteUrl) {
+      return NextResponse.json(
+        { error: 'Missing required parameters' },
+        { status: 400 }
+      );
+    }
+
+    // OAuth トークンを取得
+    const tokensDoc = await AdminFirestoreService.getOAuthTokens(userId, 'google');
+
+    if (!tokensDoc || !tokensDoc.unified) {
+      console.error('❌ OAuth tokens not found for user:', userId);
+      return NextResponse.json(
+        { error: 'OAuth tokens not found. Please reconnect your Google account.' },
+        { status: 401 }
+      );
+    }
+
+    let accessToken = '';
+    let refreshToken = '';
+    let expiresAt = 0;
+
+    if (isEncrypted(tokensDoc.unified)) {
+      console.log('🔓 トークンを復号化中...');
+      const decrypted = decryptTokens(tokensDoc.unified);
+      accessToken = decrypted.accessToken;
+      refreshToken = decrypted.refreshToken;
+      expiresAt = decrypted.expiresAt;
+    } else {
+      accessToken = tokensDoc.unified.accessToken;
+      refreshToken = tokensDoc.unified.refreshToken;
+      expiresAt = tokensDoc.unified.expiresAt;
+    }
+
+    // expiresAtの型変換
+    if (typeof expiresAt === 'object' && expiresAt !== null) {
+      if ('toMillis' in expiresAt && typeof expiresAt.toMillis === 'function') {
+        expiresAt = expiresAt.toMillis();
+      } else if ('seconds' in expiresAt) {
+        expiresAt = (expiresAt as any).seconds * 1000;
+      }
+    }
+
+    const now = Date.now();
+
+    // トークンの有効期限をチェック
+    if (expiresAt < now) {
+      console.log('⚠️ トークン期限切れ - リフレッシュ開始');
+
+      const clientId = process.env.NEXT_PUBLIC_GOOGLE_UNIFIED_CLIENT_ID;
+      const clientSecret = process.env.GOOGLE_UNIFIED_CLIENT_SECRET;
+
+      const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({
+          client_id: clientId!,
+          client_secret: clientSecret!,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        }),
+      });
+
+      if (!refreshResponse.ok) {
+        throw new Error('Failed to refresh OAuth token. Please reconnect your Google account.');
+      }
+
+      const refreshData = await refreshResponse.json();
+      accessToken = refreshData.access_token;
+      const newExpiresAt = Date.now() + refreshData.expires_in * 1000;
+
+      await AdminFirestoreService.updateAccessToken(userId, 'google', accessToken, newExpiresAt);
+      console.log('✅ アクセストークンをリフレッシュしました');
+    }
+
+    // Search Console API を呼び出し
+    const apiUrl = `https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(siteUrl)}/searchAnalytics/query`;
+
+    const requestBody = {
+      startDate,
+      endDate,
+      dimensions: ['query'],
+      rowLimit: 100,
+    };
+
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ GSC API エラー:', errorText);
+      throw new Error(`GSC API request failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // データを整形
+    // GSC APIから取得したCTRは0-1の範囲なので、パーセンテージ表示のために100倍する
+    const queries = data.rows?.map((row: any) => ({
+      query: row.keys[0],
+      clicks: row.clicks || 0,
+      impressions: row.impressions || 0,
+      ctr: row.ctr || 0, // GSC APIからのCTR値をそのまま保存（0-1の範囲）
+      position: row.position || 0,
+    })) || [];
+
+    console.log('✅ GSC クエリデータ取得成功:', queries.length, '件');
+    if (queries.length > 0) {
+      console.log('📊 サンプルデータ:', {
+        query: queries[0].query,
+        clicks: queries[0].clicks,
+        impressions: queries[0].impressions,
+        ctr: queries[0].ctr,
+        ctrPercent: (queries[0].ctr * 100).toFixed(2) + '%',
+        position: queries[0].position
+      });
+    }
+
+    return NextResponse.json({ queries });
+
+  } catch (error: any) {
+    console.error('❌ GSC クエリデータ取得エラー:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch GSC query data', message: error.message },
+      { status: 500 }
+    );
+  }
+}
+

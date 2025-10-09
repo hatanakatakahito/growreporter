@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { AdminFirestoreService } from '@/lib/firebase/adminFirestore';
-import { decryptTokens, isEncrypted } from '@/lib/security/encryption';
+import { getValidGA4Token } from '@/lib/api/ga4TokenHelper';
+import { runGA4Report } from '@/lib/api/ga4Client';
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    let { propertyId, startDate = '30daysAgo', endDate = 'today' } = body;
+    const { propertyId, startDate = '30daysAgo', endDate = 'today' } = body;
 
     if (!propertyId) {
       return NextResponse.json(
@@ -27,218 +27,39 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    // propertyIdの形式を確認（数値のみの場合は "properties/" プレフィックスを削除）
-    // GA4 Data APIは数値のみのpropertyIdを期待
-    if (propertyId.startsWith('properties/')) {
-      propertyId = propertyId.replace('properties/', '');
-    }
     
     console.log('📊 GA4 時系列データ取得開始:', { propertyId, startDate, endDate });
 
-    // トークンを取得
-    const tokensDoc = await AdminFirestoreService.getOAuthTokens(userId);
-    
-    if (!tokensDoc || !tokensDoc.unified) {
-      return NextResponse.json(
-        { error: 'OAuth tokens not found. Please reconnect your Google account.' },
-        { status: 404 }
-      );
-    }
+    // 有効なアクセストークンを取得（自動リフレッシュ付き）
+    const { accessToken } = await getValidGA4Token(userId);
 
-    let accessToken = '';
-    let refreshToken = '';
-    let expiresAt = 0;
-    
-    if (isEncrypted(tokensDoc.unified)) {
-      const decrypted = decryptTokens(tokensDoc.unified);
-      accessToken = decrypted.accessToken;
-      refreshToken = decrypted.refreshToken;
-      expiresAt = decrypted.expiresAt;
-    } else {
-      accessToken = tokensDoc.unified.accessToken;
-      refreshToken = tokensDoc.unified.refreshToken;
-      expiresAt = tokensDoc.unified.expiresAt;
-    }
-
-    console.log('🔍 生のトークン情報 (時系列):', {
-      expiresAtType: typeof expiresAt,
-      expiresAtValue: expiresAt,
-      hasToMillis: expiresAt && typeof expiresAt === 'object' && 'toMillis' in expiresAt,
+    // GA4 Data APIを呼び出し
+    const data = await runGA4Report(accessToken, {
+      propertyId,
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'date' }],
+      metrics: [
+        { name: 'totalUsers' },
+        { name: 'newUsers' },
+        { name: 'sessions' }
+      ],
+      orderBys: [{ dimension: { dimensionName: 'date' } }]
     });
 
-    // Firestore Timestampの場合はミリ秒に変換
-    if (expiresAt && typeof expiresAt === 'object' && 'toMillis' in expiresAt) {
-      expiresAt = (expiresAt as any).toMillis();
-    } else if (expiresAt && typeof expiresAt === 'object' && 'seconds' in expiresAt) {
-      // Timestamp形式の場合
-      expiresAt = (expiresAt as any).seconds * 1000;
-    } else if (typeof expiresAt === 'number') {
-      // すでに数値の場合はそのまま使用
-    } else {
-      console.error('❌ 無効なexpiresAt形式:', expiresAt);
-      expiresAt = 0;
-    }
-
-    // トークンの有効期限をチェック
-    const now = Date.now();
-    console.log('🔍 トークン有効期限チェック (時系列):', {
-      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : 'Invalid',
-      now: new Date(now).toISOString(),
-      isExpired: expiresAt < now,
-      hasRefreshToken: !!refreshToken,
-      refreshTokenLength: refreshToken?.length || 0
-    });
-    
-    if (expiresAt < now) {
-      console.log('⚠️ トークン期限切れ - リフレッシュ開始');
-      
-      if (!refreshToken) {
-        console.error('❌ リフレッシュトークンが存在しません');
-        return NextResponse.json(
-          { error: 'Refresh token not found. Please reconnect your Google account.' },
-          { status: 401 }
-        );
-      }
-      
-      // トークンをリフレッシュ
-      try {
-        console.log('📤 Google OAuth2 トークンリフレッシュリクエスト送信中...');
-        const refreshResponse = await fetch('https://oauth2.googleapis.com/token', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: new URLSearchParams({
-            client_id: process.env.NEXT_PUBLIC_GOOGLE_UNIFIED_CLIENT_ID!,
-            client_secret: process.env.GOOGLE_UNIFIED_CLIENT_SECRET!,
-            refresh_token: refreshToken,
-            grant_type: 'refresh_token',
-          }),
-        });
-
-        if (!refreshResponse.ok) {
-          const errorText = await refreshResponse.text();
-          console.error('❌ トークンリフレッシュ失敗 (Status:', refreshResponse.status, '):', errorText);
-          
-          // エラーの詳細をパース
-          let errorDetails = errorText;
-          try {
-            const errorJson = JSON.parse(errorText);
-            errorDetails = errorJson.error_description || errorJson.error || errorText;
-          } catch (e) {
-            // JSON パースエラーは無視
-          }
-          
-          return NextResponse.json(
-            { 
-              error: 'Failed to refresh OAuth token. Please reconnect your Google account.', 
-              details: errorDetails,
-              status: refreshResponse.status 
-            },
-            { status: 401 }
-          );
-        }
-
-        const refreshData = await refreshResponse.json();
-        accessToken = refreshData.access_token;
-        const newExpiresAt = now + (refreshData.expires_in * 1000);
-
-        console.log('✅ トークンリフレッシュ成功');
-
-        // 新しいトークンを保存
-        await AdminFirestoreService.updateAccessToken(userId, 'google', accessToken, newExpiresAt);
-      } catch (refreshError) {
-        console.error('❌ トークンリフレッシュエラー:', refreshError);
-        return NextResponse.json(
-          { error: 'Failed to refresh OAuth token. Please reconnect your Google account.' },
-          { status: 401 }
-        );
-      }
-    }
-
-    // 日付形式を変換（YYYYMMDDをYYYY-MM-DDまたはNdaysAgo形式に）
-    let formattedStartDate = startDate;
-    let formattedEndDate = endDate;
-    
-    // YYYYMMDDの数値形式の場合はYYYY-MM-DD形式に変換
-    if (startDate && /^\d{8}$/.test(startDate)) {
-      formattedStartDate = `${startDate.substring(0, 4)}-${startDate.substring(4, 6)}-${startDate.substring(6, 8)}`;
-    }
-    if (endDate && /^\d{8}$/.test(endDate)) {
-      formattedEndDate = `${endDate.substring(0, 4)}-${endDate.substring(4, 6)}-${endDate.substring(6, 8)}`;
-    }
-    
-    console.log('📊 GA4 API リクエスト日付:', { 
-      original: { startDate, endDate },
-      formatted: { formattedStartDate, formattedEndDate }
-    });
-
-    // GA4 Data API にリクエスト（日別データ）
-    const ga4Response = await fetch(
-      `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`,
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          dateRanges: [{ startDate: formattedStartDate, endDate: formattedEndDate }],
-          dimensions: [{ name: 'date' }],
-          metrics: [
-            { name: 'totalUsers' },
-            { name: 'activeUsers' },
-            { name: 'newUsers' },
-            { name: 'sessions' },
-            { name: 'conversions' }
-          ],
-          orderBys: [{ dimension: { dimensionName: 'date' } }]
-        })
-      }
-    );
-
-    if (!ga4Response.ok) {
-      const errorText = await ga4Response.text();
-      console.error('❌ GA4 API エラー:', errorText);
-      console.error('❌ GA4 API ステータス:', ga4Response.status);
-      console.error('❌ Property ID:', propertyId);
-      return NextResponse.json(
-        { error: 'Failed to fetch GA4 data', details: errorText, propertyId },
-        { status: ga4Response.status }
-      );
-    }
-
-    const ga4Data = await ga4Response.json();
-    
-    // データを整形
-    const timeSeries = ga4Data.rows?.map((row: any) => {
-      const date = row.dimensionValues[0].value;
-      return {
-        date,
-        totalUsers: parseInt(row.metricValues[0].value || '0'),
-        activeUsers: parseInt(row.metricValues[1].value || '0'),
-        newUsers: parseInt(row.metricValues[2].value || '0'),
-        sessions: parseInt(row.metricValues[3].value || '0'),
-        keyEvents: parseInt(row.metricValues[4].value || '0')
-      };
-    }) || [];
+    // レスポンスデータを整形
+    const timeSeries = data.rows?.map((row: any) => ({
+      date: row.dimensionValues[0].value,
+      totalUsers: parseInt(row.metricValues[0].value || '0'),
+      newUsers: parseInt(row.metricValues[1].value || '0'),
+      sessions: parseInt(row.metricValues[2].value || '0')
+    })) || [];
 
     return NextResponse.json({ timeSeries });
-
   } catch (error: any) {
-    console.error('❌ GA4時系列データ取得エラー (catch):', error);
-    console.error('❌ エラースタック:', error?.stack);
-    console.error('❌ エラーメッセージ:', error?.message);
-    
+    console.error('❌ GA4時系列データ取得エラー:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to fetch GA4 time series data', 
-        details: error?.message || String(error),
-        stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
-      },
+      { error: 'Failed to fetch GA4 time series data', message: error.message },
       { status: 500 }
     );
   }
 }
-

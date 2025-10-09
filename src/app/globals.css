@@ -124,3 +124,82 @@ a:hover {
   scrollbar-width: none;
 }
 
+/* カスタムツールチップ */
+.tooltip-container:hover .tooltip-wrapper {
+  display: block !important;
+}
+
+/* テーブルの合計行スタイル */
+table tbody tr.total-row {
+  background: rgba(237, 243, 255, 0.5) !important;
+}
+
+table tbody tr.total-row:hover {
+  background: rgba(237, 243, 255, 0.5) !important;
+}
+
+/* スクロール可能なテーブルコンテナ */
+.table-scroll-container {
+  position: relative;
+  max-height: 600px;
+  overflow-y: auto;
+  border: none;
+}
+
+/* テーブルヘッダーと合計行を固定 */
+.table-scroll-container thead {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: white;
+}
+
+.dark .table-scroll-container thead {
+  background: #1f2937;
+}
+
+/* theadの直後の合計行も固定 */
+.table-scroll-container thead tr.total-header-row {
+  position: sticky;
+  top: 49px; /* theadの高さ（48px）+ border（1px） */
+  z-index: 9;
+  background: rgba(237, 243, 255, 0.95) !important;
+  border-top: 1px solid #e5e7eb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dark .table-scroll-container thead tr.total-header-row {
+  background: rgba(55, 65, 81, 0.95) !important;
+  border-top-color: #374151;
+  border-bottom-color: #374151;
+}
+
+/* テーブル内の罫線調整 */
+.table-scroll-container table {
+  border-collapse: collapse;
+}
+
+/* 最初のヘッダー行の下のボーダーを削除（合計行のボーダーと重複するため） */
+.table-scroll-container thead tr:first-child {
+  border-bottom: none;
+}
+
+/* tbody最初の行の上のボーダーを削除（合計行のボーダーと重複するため） */
+.table-scroll-container tbody tr:first-child {
+  border-top: none;
+}
+
+/* tbody最後の行の下のボーダーを削除 */
+.table-scroll-container tbody tr:last-child {
+  border-bottom: none;
+}
+
+/* tbodyのデータ行（合計行以外）にホバー効果を追加 */
+.table-scroll-container tbody tr:not(.total-row):hover {
+  background: rgba(237, 243, 255, 0.5) !important;
+}
+
+.dark .table-scroll-container tbody tr:not(.total-row):hover {
+  background: rgba(55, 65, 81, 0.5) !important;
+}
+

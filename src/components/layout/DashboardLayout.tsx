@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth/authContext';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -9,29 +9,94 @@ import { UserProfile } from '@/types/user';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
-  siteInfo?: {
-    startDate?: string;
-    endDate?: string;
-    scope?: string;
-    propertyId?: string;
-    siteName?: string;
-    siteUrl?: string;
-    dateRangeType?: string;
-    onDateRangeChange?: (type: string, customStart?: string, customEnd?: string) => void;
-  };
+  onDateRangeChange?: (startDate: string, endDate: string, type: string) => void;
 }
 
-export default function DashboardLayout({ children, siteInfo }: DashboardLayoutProps) {
+export default function DashboardLayout({ children, onDateRangeChange }: DashboardLayoutProps) {
   const { user, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [acquisitionMenuOpen, setAcquisitionMenuOpen] = useState(false);
+  const [engagementMenuOpen, setEngagementMenuOpen] = useState(false);
+  
+  // 日付範囲の状態管理
   const [dateRangeDropdownOpen, setDateRangeDropdownOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [customStartDate, setCustomStartDate] = useState('');
   const [customEndDate, setCustomEndDate] = useState('');
-  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [startDate, setStartDate] = useState<string>('');
+  const [endDate, setEndDate] = useState<string>('');
+  const [dateRangeType, setDateRangeType] = useState<string>('last_month');
+  const isInitializedRef = useRef(false);
+
+  // 日付範囲を計算する関数
+  const calculateDateRange = (type: string, customStart?: string, customEnd?: string) => {
+    if (type === 'custom' && customStart && customEnd) {
+      return {
+        startDate: customStart,
+        endDate: customEnd
+      };
+    }
+    
+    const today = new Date();
+    let start: Date;
+    let end: Date;
+    
+    if (type === 'last_month') {
+      const year = today.getFullYear();
+      const month = today.getMonth();
+      start = new Date(year, month - 1, 1);
+      end = new Date(year, month, 0);
+    } else {
+      start = today;
+      end = today;
+    }
+    
+    const formatDate = (date: Date) => {
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    };
+    
+    return {
+      startDate: formatDate(start),
+      endDate: formatDate(end)
+    };
+  };
+
+  // 初期化時に日付範囲を設定（マウント時のみ）
+  useEffect(() => {
+    if (isInitializedRef.current) return;
+    
+    const { startDate: start, endDate: end } = calculateDateRange('last_month');
+    setStartDate(start);
+    setEndDate(end);
+    
+    // 親に通知（初回のみ）
+    if (onDateRangeChange) {
+      isInitializedRef.current = true;
+      setTimeout(() => {
+        onDateRangeChange(start, end, 'last_month');
+      }, 0);
+    }
+  }, [onDateRangeChange]);
+
+  // 日付範囲変更ハンドラー
+  const handleInternalDateRangeChange = (type: string, customStart?: string, customEnd?: string) => {
+    const { startDate: newStart, endDate: newEnd } = calculateDateRange(type, customStart, customEnd);
+    setStartDate(newStart);
+    setEndDate(newEnd);
+    setDateRangeType(type);
+    
+    // 親コンポーネントに通知
+    if (onDateRangeChange) {
+      onDateRangeChange(newStart, newEnd, type);
+    }
+  };
 
   // プロファイル情報を取得
   useEffect(() => {
@@ -86,7 +151,7 @@ export default function DashboardLayout({ children, siteInfo }: DashboardLayoutP
               <img 
                 src="/logo.svg" 
                 alt="GrowReporter" 
-                className="h-8 w-auto"
+                className="h-12 w-auto"
               />
             </Link>
           </div>
@@ -97,7 +162,7 @@ export default function DashboardLayout({ children, siteInfo }: DashboardLayoutP
               <li>
                 <Link
                   href="/dashboard"
-                  className={`relative flex items-center gap-2.5 border-r-4 py-[10px] pr-10 pl-9 text-base font-medium duration-200 ${
+                  className={`relative flex items-center gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
                     pathname === '/dashboard'
                       ? 'border-primary bg-primary/5 text-primary'
                       : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
@@ -115,85 +180,23 @@ export default function DashboardLayout({ children, siteInfo }: DashboardLayoutP
               <li>
                 <Link
                   href="/summary"
-                  className={`relative flex items-center gap-2.5 border-r-4 py-[10px] pr-10 pl-9 text-base font-medium duration-200 ${
+                  className={`relative flex items-center gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
                     pathname === '/summary'
                       ? 'border-primary bg-primary/5 text-primary'
                       : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
                   }`}
                 >
-                  <svg className="fill-current" width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M1.43425 7.5093H2.278C2.44675 7.5093 2.55925 7.3968 2.58737 7.31243L2.98112 6.32805H5.90612L6.27175 7.31243C6.328 7.48118 6.46862 7.5093 6.58112 7.5093H7.453C7.76237 7.48118 7.87487 7.25618 7.76237 7.03118L5.428 1.4343C5.37175 1.26555 5.3155 1.23743 5.14675 1.23743H3.88112C3.76862 1.23743 3.59987 1.29368 3.57175 1.4343L1.153 7.08743C1.0405 7.2843 1.20925 7.5093 1.43425 7.5093ZM4.47175 2.98118L5.3155 5.17493H3.59987L4.47175 2.98118Z" fill=""/>
-                    <path d="M10.1249 2.5031H16.8749C17.2124 2.5031 17.5218 2.22185 17.5218 1.85623C17.5218 1.4906 17.2405 1.20935 16.8749 1.20935H10.1249C9.7874 1.20935 9.47803 1.4906 9.47803 1.85623C9.47803 2.22185 9.75928 2.5031 10.1249 2.5031Z" fill=""/>
-                    <path d="M16.8749 6.2156H10.1249C9.7874 6.2156 9.47803 6.49685 9.47803 6.86248C9.47803 7.22810 9.75928 7.50935 10.1249 7.50935H16.8749C17.2124 7.50935 17.5218 7.22810 17.5218 6.86248C17.5218 6.49685 17.2124 6.2156 16.8749 6.2156Z" fill=""/>
-                    <path d="M16.8749 10.9219H1.12489C0.787391 10.9219 0.478027 11.2031 0.478027 11.5687C0.478027 11.9344 0.759277 12.2156 1.12489 12.2156H16.8749C17.2124 12.2156 17.5218 11.9344 17.5218 11.5687C17.5218 11.2031 17.2124 10.9219 16.8749 10.9219Z" fill=""/>
-                    <path d="M16.8749 15.6281H1.12489C0.787391 15.6281 0.478027 15.9094 0.478027 16.275C0.478027 16.6406 0.759277 16.9219 1.12489 16.9219H16.8749C17.2124 16.9219 17.5218 16.6406 17.5218 16.275C17.5218 15.9094 17.2124 15.6281 16.8749 15.6281Z" fill=""/>
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
                   </svg>
                   全体サマリー
                 </Link>
               </li>
               <li>
                 <Link
-                  href="/site-settings"
-                  className={`relative flex items-center gap-2.5 border-r-4 py-[10px] pr-10 pl-9 text-base font-medium duration-200 ${
-                    pathname === '/site-settings'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
-                  }`}
-                >
-                  <svg className="fill-current" width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M9.0002 0.562622C6.9377 0.562622 5.2502 2.25012 5.2502 4.31262C5.2502 6.37512 6.9377 8.06262 9.0002 8.06262C11.0627 8.06262 12.7502 6.37512 12.7502 4.31262C12.7502 2.25012 11.0627 0.562622 9.0002 0.562622ZM9.0002 6.82512C7.62519 6.82512 6.4877 5.68762 6.4877 4.31262C6.4877 2.93762 7.62519 1.80012 9.0002 1.80012C10.3752 1.80012 11.5127 2.93762 11.5127 4.31262C11.5127 5.68762 10.3752 6.82512 9.0002 6.82512Z" fill=""/>
-                    <path d="M15.7502 9.29987H2.2502C1.2939 9.29987 0.506394 10.0874 0.506394 11.0436V15.8311C0.506394 16.7874 1.2939 17.5749 2.2502 17.5749H15.7502C16.7064 17.5749 17.4939 16.7874 17.4939 15.8311V11.0436C17.4939 10.0874 16.7064 9.29987 15.7502 9.29987ZM16.2564 15.8311C16.2564 16.1124 16.0314 16.3374 15.7502 16.3374H2.2502C1.96895 16.3374 1.74395 16.1124 1.74395 15.8311V11.0436C1.74395 10.7624 1.96895 10.5374 2.2502 10.5374H15.7502C16.0314 10.5374 16.2564 10.7624 16.2564 11.0436V15.8311Z" fill=""/>
-                  </svg>
-                  サイト設定
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/analysis"
-                  className={`relative flex items-center gap-2.5 border-r-4 py-[10px] pr-10 pl-9 text-base font-medium duration-200 ${
-                    pathname === '/analysis'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
-                  }`}
-                >
-                  <svg className="fill-current" width="18" height="19" viewBox="0 0 18 19" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <g clipPath="url(#clip0_130_9756)">
-                      <path d="M15.7501 0.55835H2.2501C1.29385 0.55835 0.506348 1.34585 0.506348 2.3021V7.53335C0.506348 8.4896 1.29385 9.2771 2.2501 9.2771H15.7501C16.7063 9.2771 17.4938 8.4896 17.4938 7.53335V2.3021C17.4938 1.34585 16.7063 0.55835 15.7501 0.55835ZM16.2563 7.53335C16.2563 7.8146 16.0313 8.0396 15.7501 8.0396H2.2501C1.96885 8.0396 1.74385 7.8146 1.74385 7.53335V2.3021C1.74385 2.02085 1.96885 1.79585 2.2501 1.79585H15.7501C16.0313 1.79585 16.2563 2.02085 16.2563 2.3021V7.53335Z" fill=""/>
-                      <path d="M6.13135 10.9646H2.2501C1.29385 10.9646 0.506348 11.7521 0.506348 12.7083V15.8021C0.506348 16.7583 1.29385 17.5458 2.2501 17.5458H6.13135C7.0876 17.5458 7.8751 16.7583 7.8751 15.8021V12.7083C7.8751 11.7521 7.0876 10.9646 6.13135 10.9646ZM6.6376 15.8021C6.6376 16.0833 6.4126 16.3083 6.13135 16.3083H2.2501C1.96885 16.3083 1.74385 16.0833 1.74385 15.8021V12.7083C1.74385 12.4271 1.96885 12.2021 2.2501 12.2021H6.13135C6.4126 12.2021 6.6376 12.4271 6.6376 12.7083V15.8021Z" fill=""/>
-                      <path d="M15.75 10.9646H11.8688C10.9125 10.9646 10.125 11.7521 10.125 12.7083V15.8021C10.125 16.7583 10.9125 17.5458 11.8688 17.5458H15.75C16.7063 17.5458 17.4938 16.7583 17.4938 15.8021V12.7083C17.4938 11.7521 16.7063 10.9646 15.75 10.9646ZM16.2562 15.8021C16.2562 16.0833 16.0312 16.3083 15.75 16.3083H11.8688C11.5875 16.3083 11.3625 16.0833 11.3625 15.8021V12.7083C11.3625 12.4271 11.5875 12.2021 11.8688 12.2021H15.75C16.0312 12.2021 16.2562 12.4271 16.2562 12.7083V15.8021Z" fill=""/>
-                    </g>
-                    <defs>
-                      <clipPath id="clip0_130_9756">
-                        <rect width="18" height="18" fill="white" transform="translate(0 0.052124)"/>
-                      </clipPath>
-                    </defs>
-                  </svg>
-                  データ分析
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/kpi"
-                  className={`relative flex items-center gap-2.5 border-r-4 py-[10px] pr-10 pl-9 text-base font-medium duration-200 ${
-                    pathname === '/kpi'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
-                  }`}
-                >
-                  <svg className="fill-current" width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M15.7499 2.9812H14.2874V2.36245C14.2874 2.02495 14.0062 1.71558 13.6405 1.71558C13.2749 1.71558 12.9937 1.99683 12.9937 2.36245V2.9812H4.97803V2.36245C4.97803 2.02495 4.69678 1.71558 4.33115 1.71558C3.96553 1.71558 3.68428 1.99683 3.68428 2.36245V2.9812H2.2499C1.29365 2.9812 0.478027 3.79683 0.478027 4.75308V5.42183C0.478027 5.98433 0.871527 6.46245 1.40615 6.59058V15.2562C1.40615 16.2124 2.19365 16.9999 3.1499 16.9999H14.8218C15.778 16.9999 16.5655 16.2124 16.5655 15.2562V6.59058C17.0718 6.46245 17.4937 5.98433 17.4937 5.42183V4.75308C17.5218 3.79683 16.7062 2.9812 15.7499 2.9812ZM1.77178 5.42183V4.75308C1.77178 4.47183 2.0249 4.21871 2.27803 4.21871H3.74053V4.8937C3.74053 5.23121 4.02178 5.54058 4.3874 5.54058C4.75303 5.54058 5.03428 5.25933 5.03428 4.8937V4.21871H13.0499V4.8937C13.0499 5.23121 13.3312 5.54058 13.6968 5.54058C14.0624 5.54058 14.3437 5.25933 14.3437 4.8937V4.21871H15.778C16.0593 4.21871 16.3124 4.47183 16.3124 4.75308V5.42183C16.3124 5.70308 16.0593 5.9562 15.778 5.9562H2.2499C1.99678 5.9562 1.77178 5.70308 1.77178 5.42183ZM15.2718 15.7062H2.72803C2.47491 15.7062 2.22178 15.453 2.22178 15.1718V7.24995H15.778V15.1718C15.778 15.453 15.5249 15.7062 15.2718 15.7062Z" fill=""/>
-                    <path d="M6.02491 9.70308C5.65929 9.70308 5.37804 9.98433 5.37804 10.3499V13.8374C5.37804 14.2031 5.65929 14.4843 6.02491 14.4843C6.39054 14.4843 6.67179 14.2031 6.67179 13.8374V10.3499C6.67179 9.98433 6.39054 9.70308 6.02491 9.70308Z" fill=""/>
-                    <path d="M9.02491 9.28748C8.65929 9.28748 8.37804 9.56873 8.37804 9.93435V13.8593C8.37804 14.2249 8.65929 14.5062 9.02491 14.5062C9.39054 14.5062 9.67179 14.2249 9.67179 13.8593V9.93435C9.67179 9.56873 9.39054 9.28748 9.02491 9.28748Z" fill=""/>
-                    <path d="M12.0249 10.9812C11.6593 10.9812 11.378 11.2624 11.378 11.6281V13.8374C11.378 14.2031 11.6593 14.4843 12.0249 14.4843C12.3905 14.4843 12.6718 14.2031 12.6718 13.8374V11.6281C12.6718 11.2624 12.3905 10.9812 12.0249 10.9812Z" fill=""/>
-                  </svg>
-                  KPI管理
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/history"
-                  className={`relative flex items-center gap-2.5 border-r-4 py-[10px] pr-10 pl-9 text-base font-medium duration-200 ${
-                    pathname === '/history'
+                  href="/users"
+                  className={`relative flex items-center gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
+                    pathname === '/users'
                       ? 'border-primary bg-primary/5 text-primary'
                       : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
                   }`}
@@ -202,7 +205,194 @@ export default function DashboardLayout({ children, siteInfo }: DashboardLayoutP
                     <path d="M9.0002 7.79065C11.0814 7.79065 12.7689 6.1594 12.7689 4.1344C12.7689 2.1094 11.0814 0.478149 9.0002 0.478149C6.91895 0.478149 5.23145 2.1094 5.23145 4.1344C5.23145 6.1594 6.91895 7.79065 9.0002 7.79065ZM9.0002 1.7719C10.3783 1.7719 11.5033 2.84065 11.5033 4.16252C11.5033 5.48440 10.3783 6.55315 9.0002 6.55315C7.62207 6.55315 6.49707 5.48440 6.49707 4.16252C6.49707 2.84065 7.62207 1.7719 9.0002 1.7719Z" fill=""/>
                     <path d="M10.8283 9.05627H7.17207C4.16269 9.05627 1.71582 11.5313 1.71582 14.5406V16.875C1.71582 17.2125 1.99707 17.5219 2.3627 17.5219C2.72832 17.5219 3.00957 17.2407 3.00957 16.875V14.5406C3.00957 12.2344 4.89394 10.3219 7.22832 10.3219H10.8564C13.1627 10.3219 15.0752 12.2063 15.0752 14.5406V16.875C15.0752 17.2125 15.3564 17.5219 15.7221 17.5219C16.0877 17.5219 16.3689 17.2407 16.3689 16.875V14.5406C16.2846 11.5313 13.8377 9.05627 10.8283 9.05627Z" fill=""/>
                   </svg>
-                  分析履歴
+                  ユーザー
+                </Link>
+              </li>
+              <li>
+                <button
+                  onClick={() => setAcquisitionMenuOpen(!acquisitionMenuOpen)}
+                  className={`relative flex w-full items-center justify-between gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
+                    pathname.startsWith('/acquisition')
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                    </svg>
+                    集客
+                  </div>
+                  <svg
+                    className={`fill-current duration-200 ${acquisitionMenuOpen ? 'rotate-180' : ''}`}
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                      d="M4.41107 6.9107C4.73651 6.58527 5.26414 6.58527 5.58958 6.9107L10.0003 11.3214L14.4111 6.91071C14.7365 6.58527 15.2641 6.58527 15.5896 6.91071C15.915 7.23614 15.915 7.76378 15.5896 8.08922L10.5896 13.0892C10.2641 13.4147 9.73651 13.4147 9.41107 13.0892L4.41107 8.08922C4.08563 7.76378 4.08563 7.23614 4.41107 6.9107Z"
+                      fill=""
+                    />
+                  </svg>
+                </button>
+                {acquisitionMenuOpen && (
+                  <ul className="mt-2 flex flex-col gap-1 pl-[60px] pr-4">
+                    <li>
+                      <Link
+                        href="/acquisition"
+                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname === '/acquisition'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                        }`}
+                      >
+                        集客チャネル
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/acquisition/organic-keywords"
+                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname === '/acquisition/organic-keywords'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                        }`}
+                      >
+                        流入キーワード元
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/acquisition/referrals"
+                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname === '/acquisition/referrals'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                        }`}
+                      >
+                        被リンク元
+                      </Link>
+                    </li>
+                  </ul>
+                )}
+              </li>
+              <li>
+                <button
+                  onClick={() => setEngagementMenuOpen(!engagementMenuOpen)}
+                  className={`relative w-full flex items-center justify-between gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
+                    pathname.startsWith('/engagement')
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25Z" />
+                    </svg>
+                    エンゲージメント
+                  </div>
+                  <svg
+                    className={`fill-current transition-transform duration-200 ${engagementMenuOpen ? 'rotate-180' : ''}`}
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                      d="M4.41107 6.9107C4.73651 6.58527 5.26414 6.58527 5.58958 6.9107L10.0003 11.3214L14.4111 6.91071C14.7365 6.58527 15.2641 6.58527 15.5896 6.91071C15.915 7.23614 15.915 7.76378 15.5896 8.08922L10.5896 13.0892C10.2641 13.4147 9.73651 13.4147 9.41107 13.0892L4.41107 8.08922C4.08563 7.76378 4.08563 7.23614 4.41107 6.9107Z"
+                      fill=""
+                    />
+                  </svg>
+                </button>
+                {engagementMenuOpen && (
+                  <ul className="mt-2 flex flex-col gap-1 pl-[60px] pr-4">
+                    <li>
+                      <Link
+                        href="/engagement"
+                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname === '/engagement'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                        }`}
+                      >
+                        ページ別エンゲージメント
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/engagement/landing-pages"
+                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname === '/engagement/landing-pages'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                        }`}
+                      >
+                        ランディングページ
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/engagement/file-downloads"
+                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname === '/engagement/file-downloads'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                        }`}
+                      >
+                        ファイルダウンロード
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/engagement/external-links"
+                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname === '/engagement/external-links'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                        }`}
+                      >
+                        外部リンククリック
+                      </Link>
+                    </li>
+                  </ul>
+                )}
+              </li>
+              <li>
+                <Link
+                  href="/engagement/conversion-events"
+                  className={`relative flex items-center gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
+                    pathname === '/engagement/conversion-events'
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+                  </svg>
+                  コンバージョン一覧
+                </Link>
+              </li>
+              <li>
+                <Link
+                  href="/site-settings"
+                  className={`relative flex items-center gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
+                    pathname === '/site-settings'
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                  </svg>
+                  サイト設定
                 </Link>
               </li>
               
@@ -302,100 +492,87 @@ export default function DashboardLayout({ children, siteInfo }: DashboardLayoutP
                 </svg>
               </button>
 
-              {/* Site Info */}
-              {siteInfo && (
-                <div className="hidden items-center gap-3 lg:flex">
-                  {/* Date Range Selector */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setDateRangeDropdownOpen(!dateRangeDropdownOpen)}
-                      className="flex items-center gap-2 text-sm text-body-color hover:text-primary dark:text-dark-6"
-                    >
-                      {siteInfo.startDate && siteInfo.endDate 
-                        ? `${siteInfo.startDate} - ${siteInfo.endDate}`
-                        : '日付範囲を選択'}
-                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </button>
+              {/* Date Range Selector */}
+              <div className="relative ml-4">
+                <button
+                  onClick={() => setDateRangeDropdownOpen(!dateRangeDropdownOpen)}
+                  className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-body-color shadow-[inset_3px_3px_5px_rgba(0,0,0,0.1)] transition-all hover:text-primary hover:shadow-[inset_3px_3px_7px_rgba(0,0,0,0.15)] dark:text-dark-6"
+                  style={{ background: 'rgba(237, 243, 255, 0.5)' }}
+                >
+                  {startDate && endDate 
+                    ? `${startDate} - ${endDate}`
+                    : '日付範囲を選択'}
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
 
-                    {/* Dropdown Menu */}
-                    {dateRangeDropdownOpen && (
-                      <div className="absolute left-0 top-full z-50 mt-2 w-64 rounded-md border border-stroke bg-white p-3 shadow-lg dark:border-dark-3 dark:bg-dark-2">
-                        <div className="space-y-2">
+                {/* Dropdown Menu */}
+                {dateRangeDropdownOpen && (
+                  <div className="absolute left-0 top-full z-50 mt-2 w-64 rounded-md border border-stroke bg-white p-3 shadow-lg dark:border-dark-3 dark:bg-dark-2">
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          handleInternalDateRangeChange('last_month');
+                          setDateRangeDropdownOpen(false);
+                          setShowDatePicker(false);
+                        }}
+                        className={`w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-2 dark:hover:bg-dark-3 ${
+                          dateRangeType === 'last_month' ? 'bg-primary/10 text-primary' : 'text-dark dark:text-white'
+                        }`}
+                      >
+                        前月
+                      </button>
+                      <button
+                        onClick={() => {
+                          setShowDatePicker(true);
+                        }}
+                        className={`w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-2 dark:hover:bg-dark-3 ${
+                          dateRangeType === 'custom' ? 'bg-primary/10 text-primary' : 'text-dark dark:text-white'
+                        }`}
+                      >
+                        カスタム
+                      </button>
+
+                      {/* Custom Date Picker */}
+                      {showDatePicker && (
+                        <div className="mt-3 space-y-3 border-t border-stroke pt-3 dark:border-dark-3">
+                          <div>
+                            <label className="mb-1 block text-xs text-body-color dark:text-dark-6">開始日</label>
+                            <input
+                              type="date"
+                              value={customStartDate}
+                              onChange={(e) => setCustomStartDate(e.target.value)}
+                              className="w-full rounded border border-stroke bg-transparent px-2 py-1.5 text-sm text-dark outline-none dark:border-dark-3 dark:text-white"
+                            />
+                          </div>
+                          <div>
+                            <label className="mb-1 block text-xs text-body-color dark:text-dark-6">終了日</label>
+                            <input
+                              type="date"
+                              value={customEndDate}
+                              onChange={(e) => setCustomEndDate(e.target.value)}
+                              className="w-full rounded border border-stroke bg-transparent px-2 py-1.5 text-sm text-dark outline-none dark:border-dark-3 dark:text-white"
+                            />
+                          </div>
                           <button
                             onClick={() => {
-                              siteInfo.onDateRangeChange?.('last_month');
-                              setDateRangeDropdownOpen(false);
-                              setShowDatePicker(false);
+                              if (customStartDate && customEndDate) {
+                                handleInternalDateRangeChange('custom', customStartDate, customEndDate);
+                                setDateRangeDropdownOpen(false);
+                              }
                             }}
-                            className={`w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-2 dark:hover:bg-dark-3 ${
-                              siteInfo.dateRangeType === 'last_month' ? 'bg-primary/10 text-primary' : 'text-dark dark:text-white'
-                            }`}
+                            disabled={!customStartDate || !customEndDate}
+                            className="w-full rounded bg-primary px-3 py-2 text-sm text-white hover:bg-opacity-90 disabled:opacity-50"
                           >
-                            前月
+                            適用
                           </button>
-                          <button
-                            onClick={() => {
-                              setShowDatePicker(true);
-                            }}
-                            className={`w-full rounded px-3 py-2 text-left text-sm hover:bg-gray-2 dark:hover:bg-dark-3 ${
-                              siteInfo.dateRangeType === 'custom' ? 'bg-primary/10 text-primary' : 'text-dark dark:text-white'
-                            }`}
-                          >
-                            カスタム
-                          </button>
-
-                          {/* Custom Date Picker */}
-                          {showDatePicker && (
-                            <div className="mt-3 space-y-3 border-t border-stroke pt-3 dark:border-dark-3">
-                              <div>
-                                <label className="mb-1 block text-xs text-body-color dark:text-dark-6">開始日</label>
-                                <input
-                                  type="date"
-                                  value={customStartDate}
-                                  onChange={(e) => setCustomStartDate(e.target.value)}
-                                  className="w-full rounded border border-stroke bg-transparent px-2 py-1.5 text-sm text-dark outline-none dark:border-dark-3 dark:text-white"
-                                />
-                              </div>
-                              <div>
-                                <label className="mb-1 block text-xs text-body-color dark:text-dark-6">終了日</label>
-                                <input
-                                  type="date"
-                                  value={customEndDate}
-                                  onChange={(e) => setCustomEndDate(e.target.value)}
-                                  className="w-full rounded border border-stroke bg-transparent px-2 py-1.5 text-sm text-dark outline-none dark:border-dark-3 dark:text-white"
-                                />
-                              </div>
-                              <button
-                                onClick={() => {
-                                  if (customStartDate && customEndDate) {
-                                    siteInfo.onDateRangeChange?.('custom', customStartDate, customEndDate);
-                                    setDateRangeDropdownOpen(false);
-                                  }
-                                }}
-                                disabled={!customStartDate || !customEndDate}
-                                className="w-full rounded bg-primary px-3 py-2 text-sm text-white hover:bg-opacity-90 disabled:opacity-50"
-                              >
-                                適用
-                              </button>
-                            </div>
-                          )}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-
-                  <div className="h-4 w-px bg-stroke dark:bg-dark-3"></div>
-                  <span className="text-sm text-body-color dark:text-dark-6">
-                    {siteInfo.scope || '全体'}
-                  </span>
-                  <div className="h-4 w-px bg-stroke dark:bg-dark-3"></div>
-                  <span className="text-sm text-dark dark:text-white">
-                    {siteInfo.siteName || '-'} - GA4 {siteInfo.propertyId ? `(${siteInfo.propertyId})` : '()'}
-                  </span>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             <div className="flex items-center gap-3 2xsm:gap-7">

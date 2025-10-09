@@ -9,7 +9,10 @@ export interface GA4Metrics {
   totalUsers: number;
   activeUsers: number;
   keyEvents: number;
-  keyEventRate: number;
+  engagementRate: number;
+  screenPageViews: number;
+  averageSessionDuration: number;
+  conversionRate: number;
 }
 
 export interface GA4TimeSeriesData {
@@ -66,7 +69,7 @@ export class GA4DataService {
 
       const data = await response.json();
       console.log('✅ GA4メトリクス取得成功:', data);
-      return data.metrics;
+      return data;
     } catch (error) {
       console.error('❌ GA4メトリクス取得エラー (catch):', error);
       throw error;
@@ -104,6 +107,42 @@ export class GA4DataService {
       return data.timeSeries;
     } catch (error) {
       console.error('❌ GA4時系列データ取得エラー:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * GA4イベント一覧を取得
+   */
+  static async getEvents(
+    userId: string,
+    propertyId: string,
+    startDate: string,
+    endDate: string
+  ): Promise<Array<{ eventName: string; eventCount: number }>> {
+    try {
+      console.log('📊 GA4イベント一覧取得リクエスト:', { userId, propertyId, startDate, endDate });
+
+      const response = await fetch(
+        `/api/ga4/events?propertyId=${propertyId}&startDate=${startDate}&endDate=${endDate}`,
+        {
+          headers: {
+            'x-user-id': userId
+          }
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('❌ GA4イベント一覧取得エラー:', errorData);
+        throw new Error(`Failed to fetch GA4 events: ${errorData.error}`);
+      }
+
+      const data = await response.json();
+      console.log('✅ GA4イベント一覧取得成功:', data);
+      return data.events;
+    } catch (error) {
+      console.error('❌ GA4イベント一覧取得エラー (catch):', error);
       throw error;
     }
   }
