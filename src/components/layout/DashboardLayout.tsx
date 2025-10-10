@@ -21,6 +21,12 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [acquisitionMenuOpen, setAcquisitionMenuOpen] = useState(false);
   const [engagementMenuOpen, setEngagementMenuOpen] = useState(false);
+  const [conversionMenuOpen, setConversionMenuOpen] = useState(false);
+  
+  // PDF出力機能の状態管理
+  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  const [selectedPages, setSelectedPages] = useState<string[]>([]);
+  const [siteInfo, setSiteInfo] = useState<{ siteName: string; siteUrl: string } | null>(null);
   
   // 日付範囲の状態管理
   const [dateRangeDropdownOpen, setDateRangeDropdownOpen] = useState(false);
@@ -106,6 +112,14 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
       try {
         const profileData = await UserProfileService.getUserProfile(user.uid);
         setProfile(profileData);
+        
+        // サイト情報を取得
+        if (profileData?.profile?.siteName && profileData?.profile?.siteUrl) {
+          setSiteInfo({
+            siteName: profileData.profile.siteName,
+            siteUrl: profileData.profile.siteUrl
+          });
+        }
       } catch (error) {
         console.error('プロファイル取得エラー:', error);
       }
@@ -113,6 +127,42 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
 
     loadProfile();
   }, [user]);
+  
+  // ページ選択のトグル
+  const togglePageSelection = (pagePath: string) => {
+    setSelectedPages(prev =>
+      prev.includes(pagePath)
+        ? prev.filter(p => p !== pagePath)
+        : [...prev, pagePath]
+    );
+  };
+  
+  // 選択されたページをPDF出力（複数ページを1つのPDFに統合）
+  const handleExportSelectedPages = async () => {
+    if (selectedPages.length === 0) {
+      alert('出力する画面を選択してください');
+      return;
+    }
+
+    try {
+      const { exportMultiplePagesToPDF } = await import('@/lib/pdf/pdfExporter');
+      
+      // モーダルを閉じる
+      setPdfModalOpen(false);
+      
+      // ローディング表示（オプション）
+      alert('PDF出力を開始します。しばらくお待ちください...');
+      
+      // 複数ページを1つのPDFに統合して出力
+      await exportMultiplePagesToPDF(selectedPages, router);
+      
+      alert('PDF出力が完了しました');
+      setSelectedPages([]);
+    } catch (error) {
+      console.error('PDF出力エラー:', error);
+      alert('PDF出力に失敗しました');
+    }
+  };
 
   const handleLogout = async () => {
     await signOut();
@@ -364,21 +414,70 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                   </ul>
                 )}
               </li>
+              
+              {/* コンバージョン（親メニュー） */}
               <li>
-                <Link
-                  href="/engagement/conversion-events"
-                  className={`relative flex items-center gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
-                    pathname === '/engagement/conversion-events'
+                <button
+                  onClick={() => setConversionMenuOpen(!conversionMenuOpen)}
+                  className={`relative w-full flex items-center justify-between gap-2.5 border-r-4 py-[15px] pr-10 pl-6 text-base font-medium duration-200 ${
+                    pathname.startsWith('/conversion-events')
                       ? 'border-primary bg-primary/5 text-primary'
                       : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
                   }`}
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+                  <div className="flex items-center gap-2.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
+                    </svg>
+                    コンバージョン
+                  </div>
+                  <svg
+                    className={`fill-current transition-transform duration-200 ${conversionMenuOpen ? 'rotate-180' : ''}`}
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      clipRule="evenodd"
+                      d="M4.41107 6.9107C4.73651 6.58527 5.26414 6.58527 5.58958 6.9107L10.0003 11.3214L14.4111 6.91071C14.7365 6.58527 15.2641 6.58527 15.5896 6.91071C15.915 7.23614 15.915 7.76378 15.5896 8.08922L10.5896 13.0892C10.2641 13.4147 9.73651 13.4147 9.41107 13.0892L4.41107 8.08922C4.08563 7.76378 4.08563 7.23614 4.41107 6.9107Z"
+                      fill=""
+                    />
                   </svg>
-                  コンバージョン一覧
-                </Link>
+                </button>
+                {conversionMenuOpen && (
+                  <ul className="mt-2 flex flex-col gap-1 pl-[60px] pr-4">
+                    <li>
+                      <Link
+                        href="/conversion-events"
+                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname === '/conversion-events'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                        }`}
+                      >
+                        コンバージョン一覧
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/conversion-events/funnel"
+                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname === '/conversion-events/funnel'
+                            ? 'bg-primary/10 text-primary'
+                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                        }`}
+                      >
+                        逆算フロー
+                      </Link>
+                    </li>
+                  </ul>
+                )}
               </li>
+              
+              {/* サイト設定 */}
               <li>
                 <Link
                   href="/site-settings"
@@ -573,9 +672,35 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                   </div>
                 )}
               </div>
+              
+              {/* サイト情報表示 */}
+              {siteInfo && (
+                <div className="hidden text-left lg:block ml-6">
+                  <span className="block text-sm font-medium text-dark dark:text-white">
+                    {siteInfo.siteName}
+                  </span>
+                  <span className="block text-xs text-body-color dark:text-dark-6">
+                    {siteInfo.siteUrl}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-3 2xsm:gap-7">
+              
+              {/* PDF出力ボタン */}
+              <div>
+                <button 
+                  onClick={() => setPdfModalOpen(true)}
+                  className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition-colors hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                  </svg>
+                  PDF出力
+                </button>
+              </div>
+              
               {/* User Dropdown */}
               <div className="relative">
                 <button 
@@ -701,7 +826,178 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
           {children}
         </main>
       </div>
-
+      
+      {/* PDF出力モーダル */}
+      {pdfModalOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-2xl rounded-lg bg-white p-6 dark:bg-dark-2">
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-xl font-semibold text-dark dark:text-white">PDF出力</h3>
+              <button
+                onClick={() => {
+                  setPdfModalOpen(false);
+                  setSelectedPages([]);
+                }}
+                className="text-body-color hover:text-primary"
+              >
+                <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <p className="mb-4 text-sm text-body-color dark:text-dark-6">
+              出力する画面を選択してください
+            </p>
+            
+            <div className="space-y-3 mb-6 max-h-96 overflow-y-auto">
+              {/* 全体サマリー */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedPages.includes('/summary')}
+                  onChange={() => togglePageSelection('/summary')}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <span className="text-sm text-dark dark:text-white">全体サマリー</span>
+              </label>
+              
+              {/* ユーザー */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={selectedPages.includes('/users')}
+                  onChange={() => togglePageSelection('/users')}
+                  className="h-4 w-4 rounded border-gray-300"
+                />
+                <span className="text-sm text-dark dark:text-white">ユーザー</span>
+              </label>
+              
+              {/* 集客 */}
+              <div>
+                <div className="font-medium text-sm text-dark dark:text-white mb-2">集客</div>
+                <div className="pl-6 space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPages.includes('/acquisition')}
+                      onChange={() => togglePageSelection('/acquisition')}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-dark dark:text-white">集客チャネル</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPages.includes('/acquisition/organic-keywords')}
+                      onChange={() => togglePageSelection('/acquisition/organic-keywords')}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-dark dark:text-white">流入キーワード元</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPages.includes('/acquisition/referrals')}
+                      onChange={() => togglePageSelection('/acquisition/referrals')}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-dark dark:text-white">被リンク元</span>
+                  </label>
+                </div>
+              </div>
+              
+              {/* エンゲージメント */}
+              <div>
+                <div className="font-medium text-sm text-dark dark:text-white mb-2">エンゲージメント</div>
+                <div className="pl-6 space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPages.includes('/engagement')}
+                      onChange={() => togglePageSelection('/engagement')}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-dark dark:text-white">ページ別エンゲージメント</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPages.includes('/engagement/landing-pages')}
+                      onChange={() => togglePageSelection('/engagement/landing-pages')}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-dark dark:text-white">ランディングページ</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPages.includes('/engagement/file-downloads')}
+                      onChange={() => togglePageSelection('/engagement/file-downloads')}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-dark dark:text-white">ファイルダウンロード</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPages.includes('/engagement/external-links')}
+                      onChange={() => togglePageSelection('/engagement/external-links')}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-dark dark:text-white">外部リンククリック</span>
+                  </label>
+                </div>
+              </div>
+              
+              {/* コンバージョン */}
+              <div>
+                <div className="font-medium text-sm text-dark dark:text-white mb-2">コンバージョン</div>
+                <div className="pl-6 space-y-2">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPages.includes('/conversion-events')}
+                      onChange={() => togglePageSelection('/conversion-events')}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-dark dark:text-white">コンバージョン一覧</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPages.includes('/conversion-events/funnel')}
+                      onChange={() => togglePageSelection('/conversion-events/funnel')}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-dark dark:text-white">逆算フロー</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setPdfModalOpen(false);
+                  setSelectedPages([]);
+                }}
+                className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-body-color hover:bg-gray-2 dark:border-dark-3"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleExportSelectedPages}
+                disabled={selectedPages.length === 0}
+                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-opacity-90 disabled:opacity-50"
+              >
+                PDF出力
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Overlay for mobile */}
       {sidebarOpen && (
         <div

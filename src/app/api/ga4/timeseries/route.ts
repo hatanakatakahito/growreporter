@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
       metrics: [
         { name: 'totalUsers' },
         { name: 'newUsers' },
-        { name: 'sessions' }
+        { name: 'sessions' },
+        { name: 'activeUsers' }
       ],
       orderBys: [{ dimension: { dimensionName: 'date' } }]
     });
@@ -51,7 +52,9 @@ export async function POST(request: NextRequest) {
       date: row.dimensionValues[0].value,
       totalUsers: parseInt(row.metricValues[0].value || '0'),
       newUsers: parseInt(row.metricValues[1].value || '0'),
-      sessions: parseInt(row.metricValues[2].value || '0')
+      sessions: parseInt(row.metricValues[2].value || '0'),
+      activeUsers: parseInt(row.metricValues[3].value || '0'),
+      conversions: 0 // 時系列データではコンバージョンは含めない（必要に応じて別途取得）
     })) || [];
 
     return NextResponse.json({ timeSeries });

@@ -27,7 +27,7 @@ export default function TableContainer({
           {title}
         </h3>
       </div>
-      <div className="overflow-x-auto" style={{ overflowY: 'visible' }}>
+      <div style={{ overflow: 'visible' }}>
         {isLoading ? (
           <div className="flex items-center justify-center py-10">
             <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
@@ -39,7 +39,7 @@ export default function TableContainer({
             </p>
           </div>
         ) : (
-          <div className="table-scroll-container">
+          <div style={{ overflow: 'visible' }}>
             {children}
           </div>
         )}

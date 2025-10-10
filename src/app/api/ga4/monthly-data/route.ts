@@ -80,6 +80,7 @@ export async function POST(request: NextRequest) {
 
     // コンバージョンが定義されている場合は、それらのイベントカウントを取得
     let conversionData: any = {};
+    let conversionBreakdown: any = {};
     if (conversions.length > 0) {
       const conversionReport = await runGA4Report(accessToken, {
         propertyId,
@@ -103,15 +104,24 @@ export async function POST(request: NextRequest) {
       // 月別・イベント別のカウントを集計
       conversionReport.rows?.forEach((row: any) => {
         const yearMonth = row.dimensionValues[0].value;
+        const eventName = row.dimensionValues[1].value;
         const eventCount = parseInt(row.metricValues[0].value || '0');
         
+        // 合計用
         if (!conversionData[yearMonth]) {
           conversionData[yearMonth] = 0;
         }
         conversionData[yearMonth] += eventCount;
+        
+        // 内訳用
+        if (!conversionBreakdown[yearMonth]) {
+          conversionBreakdown[yearMonth] = {};
+        }
+        conversionBreakdown[yearMonth][eventName] = eventCount;
       });
       
       console.log('📊 コンバージョンデータ:', conversionData);
+      console.log('📊 コンバージョン内訳（最新月）:', conversionBreakdown[Object.keys(conversionBreakdown)[0]]);
     }
 
     // レスポンスデータを整形
@@ -122,6 +132,11 @@ export async function POST(request: NextRequest) {
       
       // ユーザー定義のコンバージョン合計数を取得（定義がない場合は0）
       const conversionCount = conversionData[yearMonth] || 0;
+      const breakdown = conversionBreakdown[yearMonth] || {};
+      const sessions = parseInt(row.metricValues[2].value || '0');
+      
+      // CVRをユーザー定義のコンバージョンから計算
+      const conversionRate = sessions > 0 ? (conversionCount / sessions) * 100 : 0;
       
       return {
         yearMonth: yearMonth,
@@ -130,16 +145,22 @@ export async function POST(request: NextRequest) {
         displayName: `${year}年${parseInt(month)}月`,
         totalUsers: parseInt(row.metricValues[0].value || '0'),
         newUsers: parseInt(row.metricValues[1].value || '0'),
-        sessions: parseInt(row.metricValues[2].value || '0'),
+        sessions: sessions,
         screenPageViews: parseInt(row.metricValues[3].value || '0'),
         engagementRate: parseFloat(row.metricValues[4].value || '0') * 100,
         conversions: conversionCount, // ユーザー定義のコンバージョン合計
+        conversionBreakdown: breakdown, // イベント別の内訳
         sessionsPerUser: parseFloat(row.metricValues[5].value || '0'),
-        conversionRate: parseFloat(row.metricValues[6].value || '0') * 100
+        conversionRate: conversionRate // ユーザー定義のコンバージョンから計算
       };
     }) || [];
 
     console.log('✅ GA4 月別データ取得成功:', monthlyData.length, 'ヶ月分');
+    console.log('📊 月別データサンプル（最新3ヶ月）:', monthlyData.slice(0, 3).map(d => ({
+      displayName: d.displayName,
+      conversions: d.conversions,
+      sessions: d.sessions
+    })));
 
     return NextResponse.json({ monthlyData });
   } catch (error: any) {

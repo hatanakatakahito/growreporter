@@ -375,11 +375,12 @@ export default function AdminPage() {
                         </tr>
                       )}
                     />
+                  </CardBody>
+                </Card>
               </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </DashboardLayout>
-  );
-}
+            </>
+          )}
+        </div>
+      </DashboardLayout>
+    );
+  }

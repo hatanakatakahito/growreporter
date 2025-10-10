@@ -8,6 +8,7 @@ export interface GA4ReportRequest {
   dateRanges: Array<{ startDate: string; endDate: string }>;
   metrics: Array<{ name: string }>;
   dimensions?: Array<{ name: string }>;
+  dimensionFilter?: any; // GA4 APIのdimensionFilter構造
   orderBys?: Array<{
     metric?: { metricName: string };
     dimension?: { dimensionName: string };

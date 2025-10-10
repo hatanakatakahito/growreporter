@@ -149,11 +149,13 @@ export default function UsersPage() {
 
       if (response.ok) {
         const data = await response.json();
-        setTotalUsers(data.totalUsers || 0);
-        setDemographicsData(data.demographics || []);
-
-        // AI要約を取得
-        await loadAISummary(start, end, data.totalUsers, data.demographics);
+        
+        // 各種データを設定
+        setNewVsReturningData(data.newVsReturning || []);
+        setGenderData(data.gender || []);
+        setAgeData(data.age || []);
+        setDeviceData(data.device || []);
+        setRegionData(data.regions || []);
       }
     } catch (err: any) {
       console.error('日付範囲変更エラー:', err);

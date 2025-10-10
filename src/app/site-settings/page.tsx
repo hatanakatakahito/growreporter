@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { UserProfileService } from '@/lib/user/userProfileService';
 import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionService';
 import { GA4DataService } from '@/lib/api/ga4DataService';
+import { KPIService } from '@/lib/kpi/kpiService';
 
 // サイト種類の選択肢
 const SITE_TYPES = [
@@ -413,6 +414,25 @@ export default function SiteSettingsPage() {
     loadConversions();
   }, [user]);
 
+  // KPI設定を読み込む
+  useEffect(() => {
+    if (!user) return;
+
+    const loadKPISettings = async () => {
+      try {
+        const savedKpiSettings = await KPIService.getKPISettings(user.uid);
+        if (savedKpiSettings.length > 0) {
+          setKpiSettings(savedKpiSettings);
+          console.log('📊 KPI設定を読み込みました:', savedKpiSettings);
+        }
+      } catch (err) {
+        console.error('KPI設定読み込みエラー:', err);
+      }
+    };
+
+    loadKPISettings();
+  }, [user]);
+
   // OAuth認証結果を処理
   useEffect(() => {
     const status = searchParams?.get('status');
@@ -705,9 +725,9 @@ export default function SiteSettingsPage() {
       setIsLoading(true);
       setError(null);
 
-      // Firestoreに保存（実装は後ほど）
-      // TODO: KPI設定を保存するサービスを実装
-      console.log('💾 保存するKPI設定:', kpiSettings);
+      // Firestoreに保存
+      await KPIService.saveKPISettings(user.uid, kpiSettings);
+      console.log('💾 保存したKPI設定:', kpiSettings);
 
       setSuccess('KPI設定を保存しました！');
       setTimeout(() => {

@@ -4,12 +4,14 @@
  */
 
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, query, orderBy as firestoreOrderBy } from 'firebase/firestore';
 import { 
   doc, 
   getDoc,
   setDoc, 
+  updateDoc,
   deleteDoc,
+  getDocs,
   collection,
   Timestamp
 } from 'firebase/firestore';
@@ -38,6 +40,69 @@ function initializeServerFirebase() {
 // Server Firestore インスタンス
 const serverApp = initializeServerFirebase();
 export const serverFirestore = getFirestore(serverApp, 'ggreporter');
+
+// Admin SDK互換のインターフェース
+export const db = {
+  collection: (path: string) => {
+    const collectionRef = collection(serverFirestore, path);
+    return {
+      doc: (docId: string) => {
+        const docRef = doc(serverFirestore, path, docId);
+        return {
+          set: async (data: any) => {
+            return setDoc(docRef, data);
+          },
+          get: async () => {
+            const snapshot = await getDoc(docRef);
+            return {
+              exists: snapshot.exists(),
+              data: () => snapshot.data(),
+              id: snapshot.id,
+              ref: snapshot.ref
+            };
+          },
+          update: async (data: any) => {
+            return updateDoc(docRef, data);
+          },
+          collection: (subPath: string) => {
+            return db.collection(`${path}/${docId}/${subPath}`);
+          }
+        };
+      },
+      get: async () => {
+        const snapshot = await getDocs(collectionRef);
+        return {
+          docs: snapshot.docs.map(doc => ({
+            id: doc.id,
+            data: () => doc.data(),
+            exists: doc.exists(),
+            ref: doc.ref
+          })),
+          empty: snapshot.empty,
+          size: snapshot.size
+        };
+      },
+      orderBy: (field: string, direction: 'asc' | 'desc' = 'asc') => {
+        const q = query(collectionRef, firestoreOrderBy(field, direction));
+        return {
+          get: async () => {
+            const snapshot = await getDocs(q);
+            return {
+              docs: snapshot.docs.map(doc => ({
+                id: doc.id,
+                data: () => doc.data(),
+                exists: doc.exists(),
+                ref: doc.ref
+              })),
+              empty: snapshot.empty,
+              size: snapshot.size
+            };
+          }
+        };
+      }
+    };
+  }
+};
 
 // 型定義
 export interface GA4Property {

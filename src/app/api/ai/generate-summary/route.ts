@@ -26,7 +26,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log('🤖 AI要約生成リクエスト:', { pageType, startDate, endDate });
+    console.log('🤖 AI要約生成リクエスト:', { 
+      pageType, 
+      startDate, 
+      endDate,
+      metricsPreview: {
+        totalUsers: metrics?.totalUsers,
+        sessions: metrics?.sessions,
+        conversions: metrics?.conversions
+      }
+    });
 
     // Gemini APIキーの確認
     const geminiApiKey = process.env.GEMINI_API_KEY;
@@ -109,7 +118,7 @@ function generatePrompt(
 - エンゲージメント率: ${metrics.engagementRate?.toFixed(1) || 0}%
 - 平均エンゲージメント時間: ${metrics.averageSessionDuration?.toFixed(0) || 0}秒
 - コンバージョン率: ${metrics.conversionRate?.toFixed(2) || 0}%
-- キーイベント数: ${metrics.keyEvents?.toLocaleString() || 0}件
+- コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件
 
 【要求事項】
 - **400文字以内で簡潔にまとめる**（これは厳守してください）
