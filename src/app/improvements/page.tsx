@@ -205,7 +205,6 @@ export default function ImprovementsPage() {
             onClick={loadData}
             className="rounded-md bg-primary px-4 py-2 text-white hover:bg-opacity-90"
           >
-            <span className="mr-2">🔄</span>
             更新
           </button>
         </div>
@@ -294,7 +293,7 @@ export default function ImprovementsPage() {
                 {detectedIssues.length > 0 && (
                   <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
                     <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
-                      🔍 検出された問題
+                      検出された問題
                     </h3>
                     <div className="space-y-3">
                       {detectedIssues.map((issue, index) => (
@@ -339,7 +338,7 @@ export default function ImprovementsPage() {
                 
                 <div className="space-y-4">
                   <h3 className="text-lg font-semibold text-dark dark:text-white">
-                    💡 AI提案
+                    AI提案
                   </h3>
                   
                   {filteredSuggestions.length === 0 ? (

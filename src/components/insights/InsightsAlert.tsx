@@ -27,7 +27,7 @@ export default function InsightsAlert({ issues }: InsightsAlertProps) {
         
         <div className="flex-1">
           <h4 className="mb-2 font-semibold text-dark dark:text-white">
-            💡 改善の気づき
+            改善の気づき
           </h4>
           
           <div className="space-y-2">
