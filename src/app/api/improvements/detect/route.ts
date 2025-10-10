@@ -23,8 +23,15 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // KPI設定を取得
-    const kpiSettings = await KPIService.getKPISettings(userId);
+    // KPI設定を取得（エラーが発生しても続行）
+    let kpiSettings: any[] = [];
+    try {
+      kpiSettings = await KPIService.getKPISettings(userId);
+      console.log('✅ KPI設定取得成功:', kpiSettings.length);
+    } catch (kpiError) {
+      console.warn('⚠️ KPI設定取得エラー（続行）:', kpiError);
+      // エラーが発生してもKPI以外の問題検出は続行
+    }
     
     // KPI達成率を計算
     const kpiAchievement: any = {};
@@ -59,10 +66,18 @@ export async function POST(request: NextRequest) {
       detectedAt: new Date().toISOString()
     });
     
-  } catch (error) {
-    console.error('問題検出エラー:', error);
+  } catch (error: any) {
+    console.error('❌ 問題検出エラー:', error);
+    console.error('❌ エラー詳細:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return NextResponse.json(
-      { error: '問題の検出に失敗しました' },
+      { 
+        error: '問題の検出に失敗しました',
+        details: error.message 
+      },
       { status: 500 }
     );
   }

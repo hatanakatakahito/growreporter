@@ -50,11 +50,17 @@ export default function ImprovementsPage() {
       await detectIssues();
       
       // 改善施策を取得
-      const allImprovements = await ImprovementService.getUserImprovements(user.uid);
-      setImprovements(allImprovements);
+      try {
+        const allImprovements = await ImprovementService.getUserImprovements(user.uid);
+        setImprovements(allImprovements);
+      } catch (improvementError) {
+        console.warn('⚠️ 改善施策取得エラー:', improvementError);
+        // エラーが発生しても空配列で続行
+        setImprovements([]);
+      }
       
     } catch (error) {
-      console.error('データ読み込みエラー:', error);
+      console.error('❌ データ読み込みエラー:', error);
     } finally {
       setLoading(false);
     }
