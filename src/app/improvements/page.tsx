@@ -129,9 +129,16 @@ export default function ImprovementsPage() {
   };
   
   const generateAISuggestions = async (issue: DetectedIssue) => {
-    if (!user || !siteInfo) return;
+    if (!user) return;
     
     try {
+      // サイト情報が取得されるまで待つ
+      let retries = 0;
+      while (!siteInfo && retries < 5) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        retries++;
+      }
+      
       const response = await fetch('/api/improvements/generate', {
         method: 'POST',
         headers: {
@@ -141,10 +148,10 @@ export default function ImprovementsPage() {
         body: JSON.stringify({
           issue,
           siteInfo: {
-            siteName: siteInfo.siteName || '',
-            siteUrl: siteInfo.siteUrl || '',
-            businessType: siteInfo.businessType || 'btob',
-            siteType: siteInfo.siteType || 'corporate'
+            siteName: siteInfo?.siteName || 'サンプルサイト',
+            siteUrl: siteInfo?.siteUrl || 'https://example.com',
+            businessType: siteInfo?.businessType || 'btob',
+            siteType: siteInfo?.siteType || 'corporate'
           },
           analyticsData: {}
         })

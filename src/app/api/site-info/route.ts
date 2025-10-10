@@ -18,10 +18,16 @@ export async function GET(request: NextRequest) {
     const profileSnap = await getDoc(profileRef);
     
     if (!profileSnap.exists()) {
-      return NextResponse.json(
-        { error: 'サイト情報が見つかりません' },
-        { status: 404 }
-      );
+      // プロファイルが存在しない場合はデフォルト値を返す
+      return NextResponse.json({
+        success: true,
+        siteInfo: {
+          siteName: '',
+          siteUrl: '',
+          businessType: 'btob',
+          siteType: 'corporate'
+        }
+      });
     }
     
     const profileData = profileSnap.data();
@@ -29,10 +35,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       siteInfo: {
-        siteName: profileData.siteName || '',
-        siteUrl: profileData.siteUrl || '',
-        businessType: profileData.businessType || 'btob',
-        siteType: profileData.siteType || 'corporate'
+        siteName: profileData.profile?.siteName || profileData.siteName || '',
+        siteUrl: profileData.profile?.siteUrl || profileData.siteUrl || '',
+        businessType: profileData.profile?.businessType || profileData.businessType || 'btob',
+        siteType: profileData.profile?.siteType || profileData.siteType || 'corporate'
       }
     });
     
