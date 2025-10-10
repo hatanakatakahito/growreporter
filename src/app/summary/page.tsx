@@ -15,6 +15,8 @@ import { AdminFirestoreService } from '@/lib/firebase/adminFirestore';
 import AISummarySection from '@/components/ai/AISummarySection';
 import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionService';
 import { KPIService, KPISetting } from '@/lib/kpi/kpiService';
+import InsightsAlert from '@/components/insights/InsightsAlert';
+import { DetectedIssue } from '@/lib/improvements/types';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -43,6 +45,7 @@ export default function SummaryPage() {
   const [monthlyData, setMonthlyData] = useState<any[]>([]);
   const [conversions, setConversions] = useState<ConversionEvent[]>([]);
   const [kpiSettings, setKpiSettings] = useState<KPISetting[]>([]);
+  const [detectedIssues, setDetectedIssues] = useState<DetectedIssue[]>([]);
 
   // AI要約用のコンテキストデータ（メモ化）
   const aiContextData = useMemo(() => {
@@ -147,6 +150,9 @@ export default function SummaryPage() {
         const monthlyResult = await monthlyResponse.json();
         console.log('📊 月別データ取得成功（期間変更）:', monthlyResult.monthlyData?.length, 'ヶ月分');
         setMonthlyData(monthlyResult.monthlyData || []);
+        
+        // 問題検出
+        await detectIssues(metrics, monthlyResult.monthlyData);
       } else {
         const errorText = await monthlyResponse.text();
         console.error('❌ 月別データ取得エラー（期間変更）:', errorText);
@@ -155,6 +161,51 @@ export default function SummaryPage() {
       console.error('日付範囲変更エラー:', err);
     }
   }, [user, selectedPropertyId]);
+  
+  // 問題検出関数
+  const detectIssues = async (currentMetrics: GA4Metrics, monthlyDataArr: any[]) => {
+    if (!user || monthlyDataArr.length < 2) return;
+    
+    try {
+      const currentMonth = monthlyDataArr[0];
+      const lastMonth = monthlyDataArr[1];
+      
+      const response = await fetch('/api/improvements/detect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.uid
+        },
+        body: JSON.stringify({
+          analyticsData: {
+            currentMonth: {
+              cvr: currentMonth.cvr || 0,
+              conversions: currentMonth.conversions || 0,
+              sessions: currentMonth.sessions || 0,
+              screenPageViews: currentMonth.screenPageViews || 0,
+              bounceRate: currentMonth.bounceRate || 0
+            },
+            lastMonth: {
+              cvr: lastMonth?.cvr || 0,
+              conversions: lastMonth?.conversions || 0,
+              sessions: lastMonth?.sessions || 0
+            },
+            mobileCVR: 0, // TODO: 実際のデータを取得
+            desktopCVR: 0, // TODO: 実際のデータを取得
+            funnelData: null
+          }
+        })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setDetectedIssues(data.issues || []);
+        console.log('✅ 問題検出完了:', data.issues?.length || 0, '件');
+      }
+    } catch (error) {
+      console.error('❌ 問題検出エラー:', error);
+    }
+  };
 
 
   useEffect(() => {
@@ -259,6 +310,9 @@ export default function SummaryPage() {
           console.log('📊 月別データ取得成功:', monthlyResult.monthlyData?.length, 'ヶ月分');
           console.log('📊 月別データ詳細（最新3ヶ月）:', monthlyResult.monthlyData?.slice(0, 3));
           setMonthlyData(monthlyResult.monthlyData || []);
+          
+          // 問題検出
+          await detectIssues(metrics, monthlyResult.monthlyData);
         } else {
           const errorText = await monthlyResponse.text();
           console.error('❌ 月別データ取得エラー:', errorText);
@@ -427,6 +481,11 @@ export default function SummaryPage() {
             GA4データの全体像を確認できます
           </p>
         </div>
+        
+        {/* 気づきセクション */}
+        {detectedIssues.length > 0 && (
+          <InsightsAlert issues={detectedIssues} />
+        )}
 
         {/* 主要指標サマリー */}
         {monthlyData.length > 0 && (() => {
