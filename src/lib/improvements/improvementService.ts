@@ -28,20 +28,25 @@ export class ImprovementService {
     status?: UserImprovement['status']
   ): Promise<UserImprovement[]> {
     try {
-      let q = query(
-        collection(db, `users/${userId}/improvements`),
-        orderBy('addedAt', 'desc')
-      );
+      const collectionRef = collection(db, `users/${userId}/improvements`);
       
-      if (status) {
-        q = query(q, where('status', '==', status));
+      // まずコレクションが空かチェック
+      const snapshot = await getDocs(collectionRef);
+      
+      if (snapshot.empty) {
+        console.log('📭 改善施策コレクションは空です');
+        return [];
       }
-      
-      const snapshot = await getDocs(q);
       
       const improvements: UserImprovement[] = [];
       snapshot.forEach(doc => {
         const data = doc.data();
+        
+        // ステータスフィルタリング
+        if (status && data.status !== status) {
+          return;
+        }
+        
         improvements.push({
           id: doc.id,
           ...data,
@@ -60,10 +65,18 @@ export class ImprovementService {
         } as UserImprovement);
       });
       
+      // 日付でソート（新しい順）
+      improvements.sort((a, b) => {
+        const dateA = a.addedAt ? new Date(a.addedAt).getTime() : 0;
+        const dateB = b.addedAt ? new Date(b.addedAt).getTime() : 0;
+        return dateB - dateA;
+      });
+      
       return improvements;
     } catch (error) {
-      console.error('改善施策取得エラー:', error);
-      throw error;
+      console.error('❌ 改善施策取得エラー:', error);
+      // エラーの場合は空配列を返す
+      return [];
     }
   }
   
