@@ -19,6 +19,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [analyzeMenuOpen, setAnalyzeMenuOpen] = useState(false);
   const [acquisitionMenuOpen, setAcquisitionMenuOpen] = useState(false);
   const [engagementMenuOpen, setEngagementMenuOpen] = useState(false);
   const [conversionMenuOpen, setConversionMenuOpen] = useState(false);
@@ -228,53 +229,22 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                 </Link>
               </li>
               <li>
-                <Link
-                  href="/summary"
-                  className={`relative flex items-center gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
-                    pathname === '/summary'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
-                  }`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25M9 16.5v.75m3-3v3M15 12v5.25m-4.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-                  </svg>
-                  全体サマリー
-                </Link>
-              </li>
-              <li>
-                <Link
-                  href="/users"
-                  className={`relative flex items-center gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
-                    pathname === '/users'
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
-                  }`}
-                >
-                  <svg className="fill-current" width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M9.0002 7.79065C11.0814 7.79065 12.7689 6.1594 12.7689 4.1344C12.7689 2.1094 11.0814 0.478149 9.0002 0.478149C6.91895 0.478149 5.23145 2.1094 5.23145 4.1344C5.23145 6.1594 6.91895 7.79065 9.0002 7.79065ZM9.0002 1.7719C10.3783 1.7719 11.5033 2.84065 11.5033 4.16252C11.5033 5.48440 10.3783 6.55315 9.0002 6.55315C7.62207 6.55315 6.49707 5.48440 6.49707 4.16252C6.49707 2.84065 7.62207 1.7719 9.0002 1.7719Z" fill=""/>
-                    <path d="M10.8283 9.05627H7.17207C4.16269 9.05627 1.71582 11.5313 1.71582 14.5406V16.875C1.71582 17.2125 1.99707 17.5219 2.3627 17.5219C2.72832 17.5219 3.00957 17.2407 3.00957 16.875V14.5406C3.00957 12.2344 4.89394 10.3219 7.22832 10.3219H10.8564C13.1627 10.3219 15.0752 12.2063 15.0752 14.5406V16.875C15.0752 17.2125 15.3564 17.5219 15.7221 17.5219C16.0877 17.5219 16.3689 17.2407 16.3689 16.875V14.5406C16.2846 11.5313 13.8377 9.05627 10.8283 9.05627Z" fill=""/>
-                  </svg>
-                  ユーザー
-                </Link>
-              </li>
-              <li>
                 <button
-                  onClick={() => setAcquisitionMenuOpen(!acquisitionMenuOpen)}
+                  onClick={() => setAnalyzeMenuOpen(!analyzeMenuOpen)}
                   className={`relative flex w-full items-center justify-between gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
-                    pathname.startsWith('/acquisition')
+                    pathname.startsWith('/summary') || pathname.startsWith('/users') || pathname.startsWith('/acquisition') || pathname.startsWith('/engagement') || pathname.startsWith('/conversion-events')
                       ? 'border-primary bg-primary/5 text-primary'
                       : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
                   }`}
                 >
                   <div className="flex items-center gap-2.5">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 0 0 3.741-.479 3 3 0 0 0-4.682-2.72m.94 3.198.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0 1 12 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 0 1 6 18.719m12 0a5.971 5.971 0 0 0-.941-3.197m0 0A5.995 5.995 0 0 0 12 12.75a5.995 5.995 0 0 0-5.058 2.772m0 0a3 3 0 0 0-4.681 2.72 8.986 8.986 0 0 0 3.74.477m.94-3.197a5.971 5.971 0 0 0-.94 3.197M15 6.75a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm6 3a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Zm-13.5 0a2.25 2.25 0 1 1-4.5 0 2.25 2.25 0 0 1 4.5 0Z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 0 1 3 19.875v-6.75ZM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V8.625ZM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 0 1-1.125-1.125V4.125Z" />
                     </svg>
-                    集客
+                    分析する
                   </div>
                   <svg
-                    className={`fill-current duration-200 ${acquisitionMenuOpen ? 'rotate-180' : ''}`}
+                    className={`fill-current duration-200 ${analyzeMenuOpen ? 'rotate-180' : ''}`}
                     width="20"
                     height="20"
                     viewBox="0 0 20 20"
@@ -289,127 +259,232 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                     />
                   </svg>
                 </button>
-                {acquisitionMenuOpen && (
+                {analyzeMenuOpen && (
                   <ul className="mt-2 flex flex-col gap-1 pl-[60px] pr-4">
                     <li>
                       <Link
-                        href="/acquisition"
+                        href="/summary"
                         className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
-                          pathname === '/acquisition'
+                          pathname === '/summary'
                             ? 'bg-primary/10 text-primary'
-                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                            : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
                         }`}
                       >
-                        集客チャネル
+                        全体サマリー
                       </Link>
                     </li>
                     <li>
                       <Link
-                        href="/acquisition/organic-keywords"
+                        href="/users"
                         className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
-                          pathname === '/acquisition/organic-keywords'
+                          pathname === '/users'
                             ? 'bg-primary/10 text-primary'
-                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                            : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
                         }`}
                       >
-                        流入キーワード元
+                        ユーザー
                       </Link>
                     </li>
                     <li>
-                      <Link
-                        href="/acquisition/referrals"
-                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
-                          pathname === '/acquisition/referrals'
+                      <button
+                        onClick={() => setAcquisitionMenuOpen(!acquisitionMenuOpen)}
+                        className={`flex w-full items-center justify-between rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname.startsWith('/acquisition')
                             ? 'bg-primary/10 text-primary'
-                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                            : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
                         }`}
                       >
-                        被リンク元
-                      </Link>
-                    </li>
-                  </ul>
-                )}
-              </li>
-              <li>
-                <button
-                  onClick={() => setEngagementMenuOpen(!engagementMenuOpen)}
-                  className={`relative w-full flex items-center justify-between gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
-                    pathname.startsWith('/engagement')
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 14.25v2.25m3-4.5v4.5m3-6.75v6.75m3-9v9M6 20.25h12A2.25 2.25 0 0 0 20.25 18V6A2.25 2.25 0 0 0 18 3.75H6A2.25 2.25 0 0 0 3.75 6v12A2.25 2.25 0 0 0 6 20.25Z" />
-                    </svg>
-                    エンゲージメント
-                  </div>
-                  <svg
-                    className={`fill-current transition-transform duration-200 ${engagementMenuOpen ? 'rotate-180' : ''}`}
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      clipRule="evenodd"
-                      d="M4.41107 6.9107C4.73651 6.58527 5.26414 6.58527 5.58958 6.9107L10.0003 11.3214L14.4111 6.91071C14.7365 6.58527 15.2641 6.58527 15.5896 6.91071C15.915 7.23614 15.915 7.76378 15.5896 8.08922L10.5896 13.0892C10.2641 13.4147 9.73651 13.4147 9.41107 13.0892L4.41107 8.08922C4.08563 7.76378 4.08563 7.23614 4.41107 6.9107Z"
-                      fill=""
-                    />
-                  </svg>
-                </button>
-                {engagementMenuOpen && (
-                  <ul className="mt-2 flex flex-col gap-1 pl-[60px] pr-4">
-                    <li>
-                      <Link
-                        href="/engagement"
-                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
-                          pathname === '/engagement'
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
-                        }`}
-                      >
-                        ページ別エンゲージメント
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/engagement/landing-pages"
-                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
-                          pathname === '/engagement/landing-pages'
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
-                        }`}
-                      >
-                        ランディングページ
-                      </Link>
+                        集客
+                        <svg
+                          className={`fill-current duration-200 ${acquisitionMenuOpen ? 'rotate-180' : ''}`}
+                          width="16"
+                          height="16"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            clipRule="evenodd"
+                            d="M4.41107 6.9107C4.73651 6.58527 5.26414 6.58527 5.58958 6.9107L10.0003 11.3214L14.4111 6.91071C14.7365 6.58527 15.2641 6.58527 15.5896 6.91071C15.915 7.23614 15.915 7.76378 15.5896 8.08922L10.5896 13.0892C10.2641 13.4147 9.73651 13.4147 9.41107 13.0892L4.41107 8.08922C4.08563 7.76378 4.08563 7.23614 4.41107 6.9107Z"
+                            fill=""
+                          />
+                        </svg>
+                      </button>
+                      {acquisitionMenuOpen && (
+                        <ul className="mt-1 flex flex-col gap-1 pl-4">
+                          <li>
+                            <Link
+                              href="/acquisition"
+                              className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                                pathname === '/acquisition'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              集客チャネル
+                            </Link>
+                          </li>
+                          <li>
+                            <Link
+                              href="/acquisition/organic-keywords"
+                              className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                                pathname === '/acquisition/organic-keywords'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              流入キーワード元
+                            </Link>
+                          </li>
+                          <li>
+                            <Link
+                              href="/acquisition/referrals"
+                              className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                                pathname === '/acquisition/referrals'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              被リンク元
+                            </Link>
+                          </li>
+                        </ul>
+                      )}
                     </li>
                     <li>
-                      <Link
-                        href="/engagement/file-downloads"
-                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
-                          pathname === '/engagement/file-downloads'
+                      <button
+                        onClick={() => setEngagementMenuOpen(!engagementMenuOpen)}
+                        className={`flex w-full items-center justify-between rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname.startsWith('/engagement')
                             ? 'bg-primary/10 text-primary'
-                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                            : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
                         }`}
                       >
-                        ファイルダウンロード
-                      </Link>
+                        エンゲージメント
+                        <svg
+                          className={`fill-current duration-200 ${engagementMenuOpen ? 'rotate-180' : ''}`}
+                          width="16"
+                          height="16"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            clipRule="evenodd"
+                            d="M4.41107 6.9107C4.73651 6.58527 5.26414 6.58527 5.58958 6.9107L10.0003 11.3214L14.4111 6.91071C14.7365 6.58527 15.2641 6.58527 15.5896 6.91071C15.915 7.23614 15.915 7.76378 15.5896 8.08922L10.5896 13.0892C10.2641 13.4147 9.73651 13.4147 9.41107 13.0892L4.41107 8.08922C4.08563 7.76378 4.08563 7.23614 4.41107 6.9107Z"
+                            fill=""
+                          />
+                        </svg>
+                      </button>
+                      {engagementMenuOpen && (
+                        <ul className="mt-1 flex flex-col gap-1 pl-4">
+                          <li>
+                            <Link
+                              href="/engagement"
+                              className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                                pathname === '/engagement'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              ページ別エンゲージメント
+                            </Link>
+                          </li>
+                          <li>
+                            <Link
+                              href="/engagement/landing-pages"
+                              className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                                pathname === '/engagement/landing-pages'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              ランディングページ
+                            </Link>
+                          </li>
+                          <li>
+                            <Link
+                              href="/engagement/file-downloads"
+                              className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                                pathname === '/engagement/file-downloads'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              ファイルダウンロード
+                            </Link>
+                          </li>
+                          <li>
+                            <Link
+                              href="/engagement/external-links"
+                              className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                                pathname === '/engagement/external-links'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              外部リンククリック
+                            </Link>
+                          </li>
+                        </ul>
+                      )}
                     </li>
                     <li>
-                      <Link
-                        href="/engagement/external-links"
-                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
-                          pathname === '/engagement/external-links'
+                      <button
+                        onClick={() => setConversionMenuOpen(!conversionMenuOpen)}
+                        className={`flex w-full items-center justify-between rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                          pathname.startsWith('/conversion-events')
                             ? 'bg-primary/10 text-primary'
-                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
+                            : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
                         }`}
                       >
-                        外部リンククリック
-                      </Link>
+                        コンバージョン
+                        <svg
+                          className={`fill-current duration-200 ${conversionMenuOpen ? 'rotate-180' : ''}`}
+                          width="16"
+                          height="16"
+                          viewBox="0 0 20 20"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            clipRule="evenodd"
+                            d="M4.41107 6.9107C4.73651 6.58527 5.26414 6.58527 5.58958 6.9107L10.0003 11.3214L14.4111 6.91071C14.7365 6.58527 15.2641 6.58527 15.5896 6.91071C15.915 7.23614 15.915 7.76378 15.5896 8.08922L10.5896 13.0892C10.2641 13.4147 9.73651 13.4147 9.41107 13.0892L4.41107 8.08922C4.08563 7.76378 4.08563 7.23614 4.41107 6.9107Z"
+                            fill=""
+                          />
+                        </svg>
+                      </button>
+                      {conversionMenuOpen && (
+                        <ul className="mt-1 flex flex-col gap-1 pl-4">
+                          <li>
+                            <Link
+                              href="/conversion-events"
+                              className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                                pathname === '/conversion-events'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              コンバージョン一覧
+                            </Link>
+                          </li>
+                          <li>
+                            <Link
+                              href="/conversion-events/funnel"
+                              className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                                pathname === '/conversion-events/funnel'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              逆算フロー
+                            </Link>
+                          </li>
+                        </ul>
+                      )}
                     </li>
                   </ul>
                 )}
@@ -447,68 +522,6 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                   </svg>
                   評価する
                 </Link>
-              </li>
-              
-              {/* コンバージョン（親メニュー） */}
-              <li>
-                <button
-                  onClick={() => setConversionMenuOpen(!conversionMenuOpen)}
-                  className={`relative w-full flex items-center justify-between gap-2.5 border-r-4 py-[15px] pr-10 pl-6 text-base font-medium duration-200 ${
-                    pathname.startsWith('/conversion-events')
-                      ? 'border-primary bg-primary/5 text-primary'
-                      : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-[18px] h-[18px]">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v1.5M3 21v-6m0 0 2.77-.693a9 9 0 0 1 6.208.682l.108.054a9 9 0 0 0 6.086.71l3.114-.732a48.524 48.524 0 0 1-.005-10.499l-3.11.732a9 9 0 0 1-6.085-.711l-.108-.054a9 9 0 0 0-6.208-.682L3 4.5M3 15V4.5" />
-                    </svg>
-                    コンバージョン
-                  </div>
-                  <svg
-                    className={`fill-current transition-transform duration-200 ${conversionMenuOpen ? 'rotate-180' : ''}`}
-                    width="20"
-                    height="20"
-                    viewBox="0 0 20 20"
-                    fill="none"
-                    xmlns="http://www.w3.org/2000/svg"
-                  >
-                    <path
-                      fillRule="evenodd"
-                      clipRule="evenodd"
-                      d="M4.41107 6.9107C4.73651 6.58527 5.26414 6.58527 5.58958 6.9107L10.0003 11.3214L14.4111 6.91071C14.7365 6.58527 15.2641 6.58527 15.5896 6.91071C15.915 7.23614 15.915 7.76378 15.5896 8.08922L10.5896 13.0892C10.2641 13.4147 9.73651 13.4147 9.41107 13.0892L4.41107 8.08922C4.08563 7.76378 4.08563 7.23614 4.41107 6.9107Z"
-                      fill=""
-                    />
-                  </svg>
-                </button>
-                {conversionMenuOpen && (
-                  <ul className="mt-2 flex flex-col gap-1 pl-[60px] pr-4">
-                    <li>
-                      <Link
-                        href="/conversion-events"
-                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
-                          pathname === '/conversion-events'
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
-                        }`}
-                      >
-                        コンバージョン一覧
-                      </Link>
-                    </li>
-                    <li>
-                      <Link
-                        href="/conversion-events/funnel"
-                        className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
-                          pathname === '/conversion-events/funnel'
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-body-color hover:bg-gray-2 hover:text-primary dark:text-dark-6 dark:hover:bg-dark-3'
-                        }`}
-                      >
-                        逆算フロー
-                      </Link>
-                    </li>
-                  </ul>
-                )}
               </li>
               
               {/* サイト設定 */}
