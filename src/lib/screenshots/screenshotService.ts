@@ -48,13 +48,12 @@ export class ScreenshotService {
    */
   static async getLatestScreenshot(userId: string, siteUrl: string, device: 'desktop' | 'mobile'): Promise<Screenshot | null> {
     try {
+      // インデックスなしで動作するように、whereのみで取得してクライアント側でソート
       const screenshotsRef = collection(db, 'users', userId, 'screenshots');
       const q = query(
         screenshotsRef,
         where('siteUrl', '==', siteUrl),
-        where('device', '==', device),
-        orderBy('capturedAt', 'desc'),
-        limit(1)
+        where('device', '==', device)
       );
       
       const querySnapshot = await getDocs(q);
@@ -63,34 +62,15 @@ export class ScreenshotService {
         return null;
       }
       
-      return querySnapshot.docs[0].data() as Screenshot;
+      // クライアント側でソート
+      const screenshots = querySnapshot.docs
+        .map(doc => doc.data() as Screenshot)
+        .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
+      
+      return screenshots[0] || null;
     } catch (error) {
       console.error('❌ スクリーンショット取得エラー:', error);
-      // orderByでインデックスエラーが発生した場合は、全件取得してクライアント側でソート
-      try {
-        const screenshotsRef = collection(db, 'users', userId, 'screenshots');
-        const q = query(
-          screenshotsRef,
-          where('siteUrl', '==', siteUrl),
-          where('device', '==', device)
-        );
-        
-        const querySnapshot = await getDocs(q);
-        
-        if (querySnapshot.empty) {
-          return null;
-        }
-        
-        // クライアント側でソート
-        const screenshots = querySnapshot.docs
-          .map(doc => doc.data() as Screenshot)
-          .sort((a, b) => new Date(b.capturedAt).getTime() - new Date(a.capturedAt).getTime());
-        
-        return screenshots[0] || null;
-      } catch (fallbackError) {
-        console.error('❌ スクリーンショット取得エラー（フォールバック）:', fallbackError);
-        return null;
-      }
+      return null;
     }
   }
   
