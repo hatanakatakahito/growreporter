@@ -486,22 +486,22 @@ export default function SummaryPage() {
           </div>
           <button
             onClick={() => setIsAISheetOpen(true)}
-            className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 w-20 h-20 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 shadow-lg transition-all"
+            className="flex flex-col items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-20 h-20 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-lg transition-all"
           >
             <svg
-              className="h-6 w-6"
+              className="h-7 w-7"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
+              strokeWidth={2.5}
             >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
-                strokeWidth={2}
                 d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
               />
             </svg>
-            <span>AI分析</span>
+            <span className="text-[11px] leading-tight">AI分析</span>
           </button>
         </div>
         
