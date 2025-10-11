@@ -81,7 +81,7 @@ a:hover {
 
 /* 分析画面のカードスタイル（ボックスシャドウ版） */
 .analysis-card {
-  border-radius: 6px;
+  border-radius: 8px;
   background-color: #ffffff;
   box-shadow: 0 3px 6px 0 rgba(14, 30, 62, 0.08);
   border: none !important;
