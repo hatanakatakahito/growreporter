@@ -85,34 +85,81 @@ export default function SitePreviewCard({ siteUrl, siteName, userId }: SitePrevi
     ]);
   };
 
-  const renderScreenshot = (screenshot: Screenshot | null, loading: boolean, device: 'desktop' | 'mobile', height: string = '400px') => {
-    if (loading) {
-      return (
-        <div className="flex items-center justify-center bg-gray-2 dark:bg-dark-3" style={{ height }}>
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-        </div>
-      );
-    }
-
-    if (screenshot) {
-      return (
-        <div className="bg-gray-2 dark:bg-dark-3">
-          <img
-            src={screenshot.url}
-            alt={`${siteName} - ${device} preview`}
-            className="w-full h-auto object-contain"
-            style={{ maxHeight: height }}
-          />
-        </div>
-      );
-    }
-
+  const renderDesktopMockup = (screenshot: Screenshot | null, loading: boolean) => {
     return (
-      <div className="flex flex-col items-center justify-center bg-gray-2 p-6 text-center dark:bg-dark-3" style={{ height }}>
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mb-3 h-12 w-12 text-body-color">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-        </svg>
-        <p className="text-sm text-body-color">撮影中...</p>
+      <div className="relative">
+        {/* デスクトップモックアップ外枠 */}
+        <div className="rounded-lg bg-gray-800 p-2 shadow-xl">
+          {/* 上部バー（カメラ・ボタン） */}
+          <div className="mb-2 flex items-center gap-2 px-2">
+            <div className="h-2 w-2 rounded-full bg-red-500"></div>
+            <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+            <div className="h-2 w-2 rounded-full bg-green-500"></div>
+          </div>
+          {/* スクリーン部分 */}
+          <div className="relative aspect-[16/10] overflow-hidden rounded bg-white">
+            {loading ? (
+              <div className="flex h-full items-center justify-center bg-gray-100">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              </div>
+            ) : screenshot ? (
+              <img
+                src={screenshot.url}
+                alt={`${siteName} - desktop preview`}
+                className="h-full w-full object-cover object-top"
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center bg-gray-100 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mb-2 h-10 w-10 text-gray-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+                <p className="text-xs text-gray-500">撮影中...</p>
+              </div>
+            )}
+          </div>
+        </div>
+        {/* 下部スタンド */}
+        <div className="mx-auto mt-2 h-4 w-32 rounded-b-lg bg-gray-700"></div>
+        <div className="mx-auto h-2 w-48 rounded-b-lg bg-gray-600"></div>
+      </div>
+    );
+  };
+
+  const renderMobileMockup = (screenshot: Screenshot | null, loading: boolean) => {
+    return (
+      <div className="relative mx-auto" style={{ width: '280px' }}>
+        {/* モバイルモックアップ外枠 */}
+        <div className="rounded-[2.5rem] bg-gray-800 p-3 shadow-xl">
+          {/* 上部ノッチ */}
+          <div className="mb-2 flex justify-center">
+            <div className="h-4 w-24 rounded-full bg-gray-900"></div>
+          </div>
+          {/* スクリーン部分 */}
+          <div className="relative overflow-hidden rounded-[1.8rem] bg-white" style={{ aspectRatio: '9/19.5' }}>
+            {loading ? (
+              <div className="flex h-full items-center justify-center bg-gray-100">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              </div>
+            ) : screenshot ? (
+              <img
+                src={screenshot.url}
+                alt={`${siteName} - mobile preview`}
+                className="h-full w-full object-cover object-top"
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center bg-gray-100 text-center">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mb-2 h-10 w-10 text-gray-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+                </svg>
+                <p className="text-xs text-gray-500">撮影中...</p>
+              </div>
+            )}
+          </div>
+          {/* 下部ホームバー */}
+          <div className="mt-2 flex justify-center">
+            <div className="h-1 w-20 rounded-full bg-gray-700"></div>
+          </div>
+        </div>
       </div>
     );
   };
@@ -161,7 +208,7 @@ export default function SitePreviewCard({ siteUrl, siteName, userId }: SitePrevi
       
       {/* スクリーンショット表示エリア */}
       <div className="p-6">
-        <div className="flex gap-6">
+        <div className="flex gap-8">
           {/* PC版（左側・大）*/}
           <div className="flex-1 space-y-3">
             <div className="flex items-center justify-between">
@@ -177,9 +224,7 @@ export default function SitePreviewCard({ siteUrl, siteName, userId }: SitePrevi
                 </span>
               )}
             </div>
-            <div className="overflow-hidden rounded-lg border border-stroke dark:border-dark-3">
-              {renderScreenshot(desktopScreenshot, loadingDesktop, 'desktop', '500px')}
-            </div>
+            {renderDesktopMockup(desktopScreenshot, loadingDesktop)}
           </div>
 
           {/* スマホ版（右側・小）*/}
@@ -191,15 +236,13 @@ export default function SitePreviewCard({ siteUrl, siteName, userId }: SitePrevi
                 </svg>
                 <span className="text-sm font-medium text-body-color">スマホ</span>
               </div>
+              {mobileScreenshot && (
+                <span className="text-xs text-body-color">
+                  撮影: {new Date(mobileScreenshot.capturedAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
             </div>
-            <div className="overflow-hidden rounded-lg border border-stroke dark:border-dark-3">
-              {renderScreenshot(mobileScreenshot, loadingMobile, 'mobile', '500px')}
-            </div>
-            {mobileScreenshot && (
-              <p className="text-xs text-body-color text-center">
-                撮影: {new Date(mobileScreenshot.capturedAt).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </p>
-            )}
+            {renderMobileMockup(mobileScreenshot, loadingMobile)}
           </div>
         </div>
       </div>
