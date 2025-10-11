@@ -91,10 +91,17 @@ export async function POST(request: NextRequest) {
       rawResponse: text
     });
     
-  } catch (error) {
-    console.error('AI提案生成エラー:', error);
+  } catch (error: any) {
+    console.error('❌ AI提案生成エラー（詳細）:', {
+      message: error?.message,
+      stack: error?.stack,
+      name: error?.name
+    });
     return NextResponse.json(
-      { error: 'AI提案の生成に失敗しました' },
+      { 
+        error: 'AI提案の生成に失敗しました',
+        details: error?.message || String(error)
+      },
       { status: 500 }
     );
   }

@@ -138,7 +138,7 @@ export default function ImprovementsPage() {
     if (!user) return;
     
     try {
-      // サイト情報が取得されるまで待つ
+      // サイト情報が取得されるまで待つ（最大2.5秒）
       let retries = 0;
       while (!siteInfo && retries < 5) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -166,9 +166,13 @@ export default function ImprovementsPage() {
       if (response.ok) {
         const data = await response.json();
         setAISuggestions(data.suggestions || []);
+      } else {
+        const errorData = await response.json();
+        console.error('❌ AI提案生成エラー:', errorData);
       }
     } catch (error) {
-      console.error('AI提案生成エラー:', error);
+      console.error('❌ AI提案生成エラー（例外）:', error);
+      // エラーが発生してもUIは継続
     }
   };
   
