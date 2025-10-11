@@ -20,10 +20,26 @@ export default function SitePreviewCard({ siteUrl, siteName, userId }: SitePrevi
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // スクリーンショットを読み込み
+  // スクリーンショットを読み込み（初回は自動撮影）
   useEffect(() => {
     loadScreenshot();
   }, [device, userId, siteUrl]);
+
+  // 初回ロード時に自動撮影
+  useEffect(() => {
+    const autoCapture = async () => {
+      const latest = await ScreenshotService.getLatestScreenshot(userId, siteUrl, device);
+      if (!latest) {
+        // スクリーンショットがない場合は自動撮影
+        console.log('📸 スクリーンショットがないため自動撮影を開始');
+        await handleCapture();
+      }
+    };
+
+    if (userId && siteUrl) {
+      autoCapture();
+    }
+  }, [userId, siteUrl]); // deviceは含めない（初回のみ実行）
 
   const loadScreenshot = async () => {
     try {

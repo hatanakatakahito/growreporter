@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import puppeteer from 'puppeteer';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { storage } from '@/lib/firebase/config';
 
 export const maxDuration = 60; // Vercel timeout設定
 
@@ -77,23 +75,17 @@ export async function POST(request: NextRequest) {
     
     console.log('✅ スクリーンショット撮影完了');
     
-    // Firebase Storageにアップロード
-    const timestamp = Date.now();
-    const fileName = `screenshots/${userId}/${device}_${timestamp}.png`;
-    const storageRef = ref(storage, fileName);
+    // 一時的に、base64エンコードしてデータURLとして返す
+    // Firebase Storageのセットアップ完了後は、Storageにアップロードする方式に変更
+    const base64Screenshot = screenshot.toString('base64');
+    const dataUrl = `data:image/png;base64,${base64Screenshot}`;
     
-    await uploadBytes(storageRef, screenshot, {
-      contentType: 'image/png'
-    });
-    
-    const downloadURL = await getDownloadURL(storageRef);
-    
-    console.log('✅ Firebase Storageにアップロード完了:', downloadURL);
+    console.log('✅ スクリーンショットをbase64エンコード完了');
     
     return NextResponse.json({
       success: true,
-      url: downloadURL,
-      fileName,
+      url: dataUrl,
+      fileName: `${device}_${Date.now()}.png`,
       device,
       capturedAt: new Date().toISOString()
     });
