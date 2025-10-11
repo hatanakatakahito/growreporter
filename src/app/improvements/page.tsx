@@ -498,20 +498,19 @@ export default function ImprovementsPage() {
             )}
           </>
         )}
+        
+        {/* 依頼書モーダル */}
+        {showVendorModal && selectedSuggestion && siteInfo && (
+          <VendorRequestModal
+            suggestion={selectedSuggestion}
+            siteInfo={siteInfo}
+            onClose={() => {
+              setShowVendorModal(false);
+              setSelectedSuggestion(null);
+            }}
+          />
+        )}
       </div>
-      
-      {/* 依頼書モーダル */}
-      {showVendorModal && selectedSuggestion && siteInfo && (
-        <VendorRequestModal
-          suggestion={selectedSuggestion}
-          siteInfo={siteInfo}
-          onClose={() => {
-            setShowVendorModal(false);
-            setSelectedSuggestion(null);
-          }}
-        />
-      )}
-        </div>
       </div>
     </DashboardLayout>
   );
