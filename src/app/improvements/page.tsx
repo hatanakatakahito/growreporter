@@ -250,9 +250,10 @@ export default function ImprovementsPage() {
   
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* ヘッダー */}
-        <div className="flex items-center justify-between">
+      <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+        <div className="space-y-6">
+          {/* ヘッダー */}
+          <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold text-dark dark:text-white">
               改善する
@@ -510,6 +511,8 @@ export default function ImprovementsPage() {
           }}
         />
       )}
+        </div>
+      </div>
     </DashboardLayout>
   );
 }
