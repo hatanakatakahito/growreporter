@@ -281,14 +281,14 @@ export default function ImprovementsPage() {
         )}
         
         {/* タブ */}
-        <div className="border-b border-stroke dark:border-dark-3">
-          <div className="flex space-x-8">
+        <div className="w-full">
+          <div className="flex flex-col flex-wrap bg-gray-1 dark:bg-dark-2 sm:flex-row">
             <button
               onClick={() => setActiveTab('suggestions')}
-              className={`pb-4 text-sm font-medium transition-colors relative ${
+              className={`border-b-2 px-6 py-4 text-sm font-medium md:text-base lg:px-12 lg:py-5 ${
                 activeTab === 'suggestions'
-                  ? 'text-primary'
-                  : 'text-body-color hover:text-dark dark:hover:text-white'
+                  ? 'border-primary bg-primary/10 text-primary dark:bg-primary/5'
+                  : 'border-gray-1 text-body-color hover:border-primary hover:bg-primary/10 hover:text-primary dark:border-dark-2 dark:text-dark-6 dark:hover:bg-primary/5 dark:hover:text-primary'
               }`}
             >
               提案
@@ -297,46 +297,37 @@ export default function ImprovementsPage() {
                   {aiSuggestions.length}
                 </span>
               )}
-              {activeTab === 'suggestions' && (
-                <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary" />
-              )}
             </button>
             
             <button
               onClick={() => setActiveTab('in_progress')}
-              className={`pb-4 text-sm font-medium transition-colors relative ${
+              className={`border-b-2 px-6 py-4 text-sm font-medium md:text-base lg:px-12 lg:py-5 ${
                 activeTab === 'in_progress'
-                  ? 'text-primary'
-                  : 'text-body-color hover:text-dark dark:hover:text-white'
+                  ? 'border-primary bg-primary/10 text-primary dark:bg-primary/5'
+                  : 'border-gray-1 text-body-color hover:border-primary hover:bg-primary/10 hover:text-primary dark:border-dark-2 dark:text-dark-6 dark:hover:bg-primary/5 dark:hover:text-primary'
               }`}
             >
               実行中
               {inProgressImprovements.length > 0 && (
-                <span className="ml-2 rounded-full bg-blue-500 px-2 py-0.5 text-xs text-white">
+                <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-white">
                   {inProgressImprovements.length}
                 </span>
-              )}
-              {activeTab === 'in_progress' && (
-                <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary" />
               )}
             </button>
             
             <button
               onClick={() => setActiveTab('completed')}
-              className={`pb-4 text-sm font-medium transition-colors relative ${
+              className={`border-b-2 px-6 py-4 text-sm font-medium md:text-base lg:px-12 lg:py-5 ${
                 activeTab === 'completed'
-                  ? 'text-primary'
-                  : 'text-body-color hover:text-dark dark:hover:text-white'
+                  ? 'border-primary bg-primary/10 text-primary dark:bg-primary/5'
+                  : 'border-gray-1 text-body-color hover:border-primary hover:bg-primary/10 hover:text-primary dark:border-dark-2 dark:text-dark-6 dark:hover:bg-primary/5 dark:hover:text-primary'
               }`}
             >
               完了
               {completedImprovements.length > 0 && (
-                <span className="ml-2 rounded-full bg-green-500 px-2 py-0.5 text-xs text-white">
+                <span className="ml-2 rounded-full bg-primary px-2 py-0.5 text-xs text-white">
                   {completedImprovements.length}
                 </span>
-              )}
-              {activeTab === 'completed' && (
-                <div className="absolute bottom-0 left-0 h-0.5 w-full bg-primary" />
               )}
             </button>
           </div>
