@@ -156,9 +156,9 @@ export default function EvaluationPage() {
                       className="rounded-md border border-stroke p-4 dark:border-dark-3"
                     >
                       <div className="mb-3 flex items-center justify-between">
-                        <h4 className="font-medium text-dark dark:text-white">
+                        <h5 className="font-medium text-dark dark:text-white">
                           {month}
-                        </h4>
+                        </h5>
                         <span className="text-sm text-body-color">
                           {data.count}件完了
                         </span>
@@ -210,9 +210,9 @@ export default function EvaluationPage() {
                   >
                     <div className="mb-3 flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-medium text-dark dark:text-white">
+                        <h5 className="font-medium text-dark dark:text-white">
                           {improvement.title}
-                        </h4>
+                        </h5>
                         {improvement.completedAt && (
                           <p className="mt-1 text-xs text-body-color">
                             完了日: {new Date(improvement.completedAt).toLocaleDateString('ja-JP')}
