@@ -378,13 +378,14 @@ export default function ImprovementsPage() {
                               </p>
                             </div>
                             <span
-                              className={`rounded-full px-3 py-1 text-xs font-medium ${
-                                issue.priority === 'high'
-                                  ? 'bg-red-600 text-white'
+                              className="rounded-full px-3 py-1 text-xs font-medium text-white"
+                              style={{
+                                backgroundColor: issue.priority === 'high'
+                                  ? '#dc4c64'
                                   : issue.priority === 'medium'
-                                  ? 'bg-yellow-600 text-white'
-                                  : 'bg-blue-600 text-white'
-                              }`}
+                                  ? '#e4a11b'
+                                  : '#3b71ca'
+                              }}
                             >
                               {issue.priority === 'high' && '高'}
                               {issue.priority === 'medium' && '中'}
