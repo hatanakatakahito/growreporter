@@ -18,6 +18,7 @@ import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionS
 import { KPIService, KPISetting } from '@/lib/kpi/kpiService';
 import InsightsAlert from '@/components/insights/InsightsAlert';
 import { DetectedIssue } from '@/lib/improvements/types';
+import SitePreviewCard from '@/components/improvements/SitePreviewCard';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -48,6 +49,7 @@ export default function SummaryPage() {
   const [kpiSettings, setKpiSettings] = useState<KPISetting[]>([]);
   const [detectedIssues, setDetectedIssues] = useState<DetectedIssue[]>([]);
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
+  const [siteInfo, setSiteInfo] = useState<{ siteName: string; siteUrl: string } | null>(null);
 
   // AI要約用のコンテキストデータ（メモ化）
   const aiContextData = useMemo(() => {
@@ -232,6 +234,21 @@ export default function SummaryPage() {
         const kpiData = await KPIService.getKPISettings(user.uid);
         console.log('📊 取得したKPI設定:', kpiData);
         setKpiSettings(kpiData);
+
+        // サイト情報を取得
+        try {
+          const siteInfoResponse = await fetch('/api/site-info', {
+            headers: {
+              'x-user-id': user.uid
+            }
+          });
+          if (siteInfoResponse.ok) {
+            const siteData = await siteInfoResponse.json();
+            setSiteInfo(siteData);
+          }
+        } catch (err) {
+          console.error('サイト情報の取得に失敗:', err);
+        }
 
         // 選択されたGA4プロパティを取得
         const response = await fetch('/api/datasources/list', {
@@ -474,35 +491,50 @@ export default function SummaryPage() {
   return (
     <DashboardLayout onDateRangeChange={handleDateRangeChange}>
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-        {/* Page Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2 className="mb-2 text-2xl font-semibold text-dark dark:text-white">
-              全体サマリー
-            </h2>
-            <p className="text-sm font-medium text-body-color dark:text-dark-6">
-              GA4データの全体像を確認できます
-            </p>
+        {/* Page Header with Site Preview */}
+        <div className="mb-6 flex items-start justify-between gap-6">
+          <div className="flex-1">
+            <div className="mb-4 flex items-center justify-between">
+              <div>
+                <h2 className="mb-2 text-2xl font-semibold text-dark dark:text-white">
+                  全体サマリー
+                </h2>
+                <p className="text-sm font-medium text-body-color dark:text-dark-6">
+                  GA4データの全体像を確認できます
+                </p>
+              </div>
+              <button
+                onClick={() => setIsAISheetOpen(true)}
+                className="flex flex-col items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-20 h-20 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-lg transition-all"
+              >
+                <svg
+                  className="h-7 w-7"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+                  />
+                </svg>
+                <span className="text-[11px] leading-tight">AI分析</span>
+              </button>
+            </div>
           </div>
-          <button
-            onClick={() => setIsAISheetOpen(true)}
-            className="flex flex-col items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-20 h-20 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-lg transition-all"
-          >
-            <svg
-              className="h-7 w-7"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          
+          {/* Site Preview - Compact Version */}
+          {siteInfo && user && (
+            <div className="w-[400px] flex-shrink-0">
+              <SitePreviewCard
+                siteUrl={siteInfo.siteUrl}
+                siteName={siteInfo.siteName}
+                userId={user.uid}
               />
-            </svg>
-            <span className="text-[11px] leading-tight">AI分析</span>
-          </button>
+            </div>
+          )}
         </div>
         
         {/* 気づきセクション */}
