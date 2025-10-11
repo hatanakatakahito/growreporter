@@ -370,9 +370,9 @@ export default function ImprovementsPage() {
                         >
                           <div className="flex items-start justify-between">
                             <div>
-                              <h4 className="font-medium text-dark dark:text-white">
+                              <h5 className="font-medium text-dark dark:text-white">
                                 {issue.title}
-                              </h4>
+                              </h5>
                               <p className="mt-1 text-sm text-body-color">
                                 {issue.description}
                               </p>
