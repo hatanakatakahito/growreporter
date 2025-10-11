@@ -36,8 +36,22 @@ export async function POST(request: NextRequest) {
     // KPI達成率を計算
     const kpiAchievement: any = {};
     if (kpiSettings && kpiSettings.length > 0 && analyticsData.currentMonth) {
+      console.log('📊 conversionBreakdown:', analyticsData.currentMonth.conversionBreakdown);
+      
       kpiSettings.forEach(kpi => {
-        const currentValue = analyticsData.currentMonth[kpi.metric] || 0;
+        let currentValue = 0;
+        
+        // conversion_ プレフィックスの場合は conversionBreakdown から取得
+        if (kpi.metric.startsWith('conversion_')) {
+          const conversionName = kpi.metric.replace('conversion_', '');
+          currentValue = analyticsData.currentMonth.conversionBreakdown?.[conversionName] || 0;
+          console.log(`📈 KPI: ${kpi.metric}, コンバージョン名: ${conversionName}, 現在値: ${currentValue}`);
+        } else {
+          // 通常のメトリック
+          currentValue = analyticsData.currentMonth[kpi.metric] || 0;
+          console.log(`📈 KPI: ${kpi.metric}, 現在値: ${currentValue}`);
+        }
+        
         const targetValue = parseFloat(kpi.targetValue);
         
         if (targetValue > 0) {
@@ -46,6 +60,7 @@ export async function POST(request: NextRequest) {
             target: targetValue,
             achievementRate: currentValue / targetValue
           };
+          console.log(`🎯 ${kpi.metric}: ${currentValue}/${targetValue} = ${(currentValue / targetValue * 100).toFixed(1)}%`);
         }
       });
     }

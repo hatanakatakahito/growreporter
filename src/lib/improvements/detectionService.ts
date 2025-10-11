@@ -244,6 +244,11 @@ export class ImprovementDetectionService {
    * メトリクス名を表示用に変換
    */
   private static getMetricDisplayName(metric: string): string {
+    // conversion_ プレフィックスの場合は、イベント名をそのまま返す
+    if (metric.startsWith('conversion_')) {
+      return metric.replace('conversion_', '');
+    }
+    
     const displayNames: Record<string, string> = {
       'sessions': 'セッション数',
       'pageviews': 'ページビュー数',
