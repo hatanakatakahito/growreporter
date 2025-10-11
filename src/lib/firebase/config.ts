@@ -1,6 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 const firebaseConfig = {
   apiKey: "AIzaSyDChk21vZHICLFMV1mu-15QYyAUKq4tQLI",
@@ -30,6 +31,9 @@ export const auth = getAuth(app);
 // Firestore Database (ggreporterデータベースを使用)
 export const firestore = getFirestore(app, 'ggreporter');
 export const db = firestore; // エイリアス
+
+// Firebase Storage
+export const storage = getStorage(app);
 
 // OAuth Providers
 export const googleProvider = new GoogleAuthProvider();

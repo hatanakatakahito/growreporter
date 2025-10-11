@@ -57,6 +57,7 @@
     "mdb-ui-kit": "^9.2.0",
     "next": "^15.5.4",
     "nouislider": "^15.8.1",
+    "puppeteer": "^24.24.0",
     "react": "^19.1.1",
     "react-apexcharts": "^1.7.0",
     "react-datepicker": "^8.7.0",
