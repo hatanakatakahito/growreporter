@@ -360,25 +360,11 @@ export default function ImprovementsPage() {
                       {detectedIssues.map((issue, index) => (
                         <div
                           key={index}
-                          className={`rounded-md border p-4 ${
-                            issue.priority === 'high'
-                              ? 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950'
-                              : issue.priority === 'medium'
-                              ? 'border-yellow-200 bg-yellow-50 dark:border-yellow-900 dark:bg-yellow-950'
-                              : 'border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950'
-                          }`}
+                          className="rounded-md border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark-2"
                         >
-                          <div className="flex items-start justify-between">
-                            <div>
-                              <h5 className="font-medium text-dark dark:text-white">
-                                {issue.title}
-                              </h5>
-                              <p className="mt-1 text-sm text-body-color">
-                                {issue.description}
-                              </p>
-                            </div>
+                          <div className="flex items-start gap-3">
                             <span
-                              className="rounded-full px-3 py-1 text-xs font-medium text-white"
+                              className="rounded-full px-3 py-1 text-xs font-medium text-white flex-shrink-0"
                               style={{
                                 backgroundColor: issue.priority === 'high'
                                   ? '#dc4c64'
@@ -391,6 +377,14 @@ export default function ImprovementsPage() {
                               {issue.priority === 'medium' && '中'}
                               {issue.priority === 'low' && '低'}
                             </span>
+                            <div className="flex-1">
+                              <h5 className="font-medium text-dark dark:text-white">
+                                {issue.title}
+                              </h5>
+                              <p className="mt-1 text-sm text-body-color">
+                                {issue.description}
+                              </p>
+                            </div>
                           </div>
                         </div>
                       ))}
