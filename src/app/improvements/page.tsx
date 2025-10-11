@@ -89,27 +89,84 @@ export default function ImprovementsPage() {
     if (!user) return;
     
     try {
-      // 最新の分析データを取得（簡易版 - 実際はAPIから取得）
+      // GA4プロパティIDを取得
+      const datasourcesResponse = await fetch('/api/datasources/list', {
+        headers: { 'x-user-id': user.uid }
+      });
+      
+      if (!datasourcesResponse.ok) {
+        console.error('データソース取得エラー');
+        return;
+      }
+      
+      const datasourcesData = await datasourcesResponse.json();
+      const propertyId = datasourcesData.selectedGA4PropertyId;
+      
+      if (!propertyId) {
+        console.warn('⚠️ GA4プロパティIDが設定されていません');
+        return;
+      }
+      
+      // 前月の終了日を基準に月別データを取得
+      const lastMonth = new Date();
+      lastMonth.setMonth(lastMonth.getMonth() - 1);
+      const endDate = `${lastMonth.getFullYear()}-${String(lastMonth.getMonth() + 1).padStart(2, '0')}-${String(new Date(lastMonth.getFullYear(), lastMonth.getMonth() + 1, 0).getDate()).padStart(2, '0')}`;
+      
+      console.log('📊 月別データ取得開始:', { propertyId, endDate });
+      
+      const monthlyResponse = await fetch('/api/ga4/monthly-data', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.uid
+        },
+        body: JSON.stringify({ 
+          propertyId,
+          endDate
+        })
+      });
+      
+      if (!monthlyResponse.ok) {
+        console.error('月別データ取得エラー');
+        return;
+      }
+      
+      const monthlyResult = await monthlyResponse.json();
+      console.log('📊 月別データ取得結果:', monthlyResult);
+      
+      if (!monthlyResult.monthlyData || monthlyResult.monthlyData.length < 2) {
+        console.warn('⚠️ 十分な月別データがありません');
+        return;
+      }
+      
+      // 最新月と前月のデータを取得
+      const currentMonth = monthlyResult.monthlyData[0]; // 最新月
+      const lastMonthData = monthlyResult.monthlyData[1]; // 前月
+      
+      // 分析データを準備
       const analyticsData = {
         currentMonth: {
-          cvr: 0.02,
-          conversions: 50,
-          sessions: 2500,
-          screenPageViews: 7500,
-          bounceRate: 0.65
+          cvr: currentMonth.conversionRate || 0,
+          conversions: currentMonth.conversions || 0,
+          sessions: currentMonth.sessions || 0,
+          screenPageViews: currentMonth.screenPageViews || 0,
+          bounceRate: currentMonth.bounceRate || 0,
+          conversionBreakdown: currentMonth.conversionBreakdown || {}
         },
         lastMonth: {
-          cvr: 0.025,
-          conversions: 60,
-          sessions: 2400
+          cvr: lastMonthData.conversionRate || 0,
+          conversions: lastMonthData.conversions || 0,
+          sessions: lastMonthData.sessions || 0
         },
-        mobileCVR: 0.015,
-        desktopCVR: 0.03,
+        mobileCVR: 0.015, // TODO: デバイス別CVRの取得
+        desktopCVR: 0.03, // TODO: デバイス別CVRの取得
         funnelData: {
-          formToConversionRate: 0.25,
+          formToConversionRate: 0.25, // TODO: ファネルデータの取得
           totalToFormRate: 0.08
         }
       };
+      
+      console.log('📊 分析データ準備完了:', analyticsData);
       
       const response = await fetch('/api/improvements/detect', {
         method: 'POST',
