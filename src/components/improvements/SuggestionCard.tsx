@@ -37,9 +37,9 @@ export default function SuggestionCard({ suggestion, onAddToTodo, onRequestVendo
     <div className="flex flex-col rounded-lg border border-stroke bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:border-dark-3 dark:bg-dark-2">
       {/* ヘッダー */}
       <div className="mb-4">
-        <h4 className="text-lg font-semibold text-dark dark:text-white">
+        <h5 className="text-lg font-semibold text-dark dark:text-white">
           {suggestion.title}
-        </h4>
+        </h5>
         <p className="mt-2 text-sm text-body-color">
           {suggestion.description}
         </p>

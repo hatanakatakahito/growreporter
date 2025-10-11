@@ -69,9 +69,9 @@ export default function InProgressCard({ improvement, onUpdate }: InProgressCard
       {/* ヘッダー */}
       <div className="mb-4 flex items-start justify-between">
         <div className="flex-1">
-          <h4 className="text-lg font-semibold text-dark dark:text-white">
+          <h5 className="text-lg font-semibold text-dark dark:text-white">
             {improvement.title}
-          </h4>
+          </h5>
           {improvement.startedAt && (
             <p className="mt-1 text-xs text-body-color">
               開始日: {new Date(improvement.startedAt).toLocaleDateString('ja-JP')}
