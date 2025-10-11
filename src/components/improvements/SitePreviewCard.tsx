@@ -87,33 +87,52 @@ export default function SitePreviewCard({ siteUrl, siteName, userId }: SitePrevi
 
   const renderDesktopMockup = (screenshot: Screenshot | null, loading: boolean) => {
     return (
-      <div>
-        {/* ラップトップ画面部分 */}
-        <div className="relative mx-auto border-gray-800 dark:border-gray-800 bg-gray-800 border-[8px] rounded-t-xl h-[294px] max-w-[512px]">
-          <div className="rounded-lg overflow-hidden h-[278px] bg-white dark:bg-gray-800">
-            {loading ? (
-              <div className="flex h-full items-center justify-center bg-gray-100 dark:bg-gray-900">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              </div>
-            ) : screenshot ? (
-              <img
-                src={screenshot.url}
-                alt={`${siteName} - desktop preview`}
-                className="h-[278px] w-full rounded-lg object-cover object-top"
-              />
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mb-2 h-10 w-10 text-gray-400">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+      <div className="browser-mockup with-url shadow-xl">
+        {/* ブラウザのトップバー */}
+        <div className="flex items-center gap-2 px-3 py-2.5 bg-[#e8eaed] dark:bg-gray-700 rounded-t-lg border-b border-gray-300 dark:border-gray-600">
+          {/* ウィンドウ制御ボタン */}
+          <div className="flex items-center gap-1.5">
+            <div className="w-3 h-3 rounded-full bg-[#ff5f57] hover:bg-[#ff5f57]/80"></div>
+            <div className="w-3 h-3 rounded-full bg-[#ffbd2e] hover:bg-[#ffbd2e]/80"></div>
+            <div className="w-3 h-3 rounded-full bg-[#28ca42] hover:bg-[#28ca42]/80"></div>
+          </div>
+          {/* アドレスバー */}
+          <div className="flex-1 flex items-center gap-2 ml-2">
+            <div className="flex-1 px-3 py-1.5 bg-white dark:bg-gray-800 rounded-md text-xs text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600">
+              <div className="flex items-center gap-2">
+                <svg className="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                <p className="text-xs text-gray-500 dark:text-gray-400">撮影中...</p>
+                <span className="truncate">{siteUrl}</span>
               </div>
-            )}
+            </div>
+            <button className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-600 rounded">
+              <svg className="w-4 h-4 text-gray-600 dark:text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h.01M12 12h.01M19 12h.01M6 12a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0zm7 0a1 1 0 11-2 0 1 1 0 012 0z" />
+              </svg>
+            </button>
           </div>
         </div>
-        {/* ラップトップ下部（キーボード部分） */}
-        <div className="relative mx-auto bg-gray-900 dark:bg-gray-700 rounded-b-xl rounded-t-sm h-[21px] max-w-[597px]">
-          <div className="absolute left-1/2 top-0 -translate-x-1/2 rounded-b-xl w-[96px] h-[8px] bg-gray-800"></div>
+        {/* ブラウザコンテンツエリア */}
+        <div className="relative bg-white dark:bg-gray-900" style={{ height: '400px' }}>
+          {loading ? (
+            <div className="flex h-full items-center justify-center bg-gray-50 dark:bg-gray-900">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+          ) : screenshot ? (
+            <img
+              src={screenshot.url}
+              alt={`${siteName} - desktop preview`}
+              className="w-full h-full object-cover object-top"
+            />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center bg-gray-50 dark:bg-gray-900 text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mb-2 h-10 w-10 text-gray-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              <p className="text-xs text-gray-500 dark:text-gray-400">撮影中...</p>
+            </div>
+          )}
         </div>
       </div>
     );
