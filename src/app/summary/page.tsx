@@ -645,7 +645,7 @@ export default function SummaryPage() {
                       };
 
                       return (
-                        <div key={kpi.id} className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+                        <div key={kpi.id} className="analysis-card p-6">
                           <div className="mb-3">
                             <p className="text-sm font-medium text-body-color dark:text-dark-6">
                               {getMetricDisplayName(kpi.metric)}
@@ -705,7 +705,7 @@ export default function SummaryPage() {
 
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {/* 訪問（セッション） */}
-                <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+                <div className="analysis-card p-6">
                   <div className="mb-3">
                     <p className="text-sm font-medium text-body-color dark:text-dark-6">訪問</p>
                   </div>
@@ -741,7 +741,7 @@ export default function SummaryPage() {
                 </div>
 
                 {/* PV数 */}
-                <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+                <div className="analysis-card p-6">
                   <div className="mb-3">
                     <p className="text-sm font-medium text-body-color dark:text-dark-6">PV数</p>
                   </div>
@@ -777,7 +777,7 @@ export default function SummaryPage() {
                 </div>
 
                 {/* CVR（セッションCV率） */}
-                <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+                <div className="analysis-card p-6">
                   <div className="mb-3">
                     <p className="text-sm font-medium text-body-color dark:text-dark-6">CVR</p>
                   </div>
@@ -813,7 +813,7 @@ export default function SummaryPage() {
                 </div>
 
                 {/* コンバージョン */}
-                <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+                <div className="analysis-card p-6">
                   <div className="mb-3">
                     <p className="text-sm font-medium text-body-color dark:text-dark-6">コンバージョン</p>
                   </div>
@@ -875,7 +875,7 @@ export default function SummaryPage() {
                       return (
                         <div
                           key={conversion.eventName}
-                          className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2"
+                          className="analysis-card p-6"
                         >
                           <div className="mb-4">
                             <p className="text-sm font-medium text-body-color dark:text-dark-6">
@@ -934,7 +934,7 @@ export default function SummaryPage() {
         )}
 
         {/* Monthly Stats Table */}
-        <div className="mb-6 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-6 analysis-card">
           <div className="border-b border-stroke px-6 py-4 dark:border-dark-3">
             <h3 className="text-lg font-semibold text-dark dark:text-white">
               月別推移（過去13ヶ月）
