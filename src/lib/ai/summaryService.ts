@@ -160,6 +160,19 @@ export class AISummaryService {
   }
 
   /**
+   * AI要約を取得（getSummaryエイリアス）
+   */
+  static async getSummary(
+    userId: string,
+    pageType: 'summary' | 'users' | 'acquisition',
+    startDate: string,
+    endDate: string
+  ): Promise<string | null> {
+    const cachedSummary = await this.getCachedSummary(userId, pageType, startDate, endDate);
+    return cachedSummary?.summary || null;
+  }
+
+  /**
    * キャッシュされたAI要約を削除
    */
   static async deleteSummary(summaryId: string): Promise<void> {

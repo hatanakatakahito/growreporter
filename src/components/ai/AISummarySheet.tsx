@@ -49,7 +49,8 @@ export default function AISummarySheet({
       setSummary(savedSummary || '');
     } catch (err) {
       console.error('AI要約の読み込みエラー:', err);
-      setError('AI要約の読み込みに失敗しました');
+      // エラーは表示せず、空の状態にする（初回生成前の状態）
+      setSummary('');
     }
   };
 
@@ -57,14 +58,14 @@ export default function AISummarySheet({
     try {
       setIsGenerating(true);
       setError(null);
-      const newSummary = await AISummaryService.generateAndSaveSummary(
+      const result = await AISummaryService.generateAndSaveSummary(
         userId,
         pageType,
         startDate,
         endDate,
         contextData
       );
-      setSummary(newSummary);
+      setSummary(result.summary);
     } catch (err) {
       console.error('AI要約の生成エラー:', err);
       setError('AI要約の生成に失敗しました');
@@ -73,18 +74,20 @@ export default function AISummarySheet({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
     <>
       {/* オーバーレイ */}
       <div
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+          isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
         onClick={onClose}
       />
 
       {/* シートコンテンツ */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-2xl bg-white dark:bg-dark-2 shadow-xl z-50 overflow-y-auto transform transition-transform">
+      <div className={`fixed right-0 top-0 h-full w-full max-w-2xl bg-white dark:bg-dark-2 shadow-xl z-50 overflow-y-auto transform transition-transform duration-300 ease-out ${
+        isOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}>
         {/* ヘッダー */}
         <div className="sticky top-0 bg-white dark:bg-dark-2 border-b border-stroke dark:border-dark-3 p-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
