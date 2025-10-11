@@ -29,7 +29,7 @@ export interface AISummary {
   createdAt: Date;
 }
 
-export class AISummaryService {
+class AISummaryService {
   /**
    * キャッシュされたAI要約を取得
    */
@@ -215,4 +215,6 @@ export class AISummaryService {
     }
   }
 }
+
+export default AISummaryService;
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { AISummaryService } from '@/lib/ai/summaryService';
+import AISummaryService from '@/lib/ai/summaryService';
 
 interface AISummarySectionProps {
   userId: string;
