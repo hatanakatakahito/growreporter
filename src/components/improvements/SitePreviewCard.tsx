@@ -121,38 +121,33 @@ export default function SitePreviewCard({ siteUrl, siteName, userId }: SitePrevi
 
   const renderMobileMockup = (screenshot: Screenshot | null, loading: boolean) => {
     return (
-      <div className="relative mx-auto" style={{ width: '280px' }}>
-        {/* モバイルモックアップ外枠 */}
-        <div className="rounded-[2.5rem] bg-gray-800 p-3 shadow-xl">
-          {/* 上部ノッチ */}
-          <div className="mb-2 flex justify-center">
-            <div className="h-4 w-24 rounded-full bg-gray-900"></div>
-          </div>
-          {/* スクリーン部分 */}
-          <div className="relative overflow-hidden rounded-[1.8rem] bg-white" style={{ aspectRatio: '9/19.5' }}>
-            {loading ? (
-              <div className="flex h-full items-center justify-center bg-gray-100">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-              </div>
-            ) : screenshot ? (
-              <img
-                src={screenshot.url}
-                alt={`${siteName} - mobile preview`}
-                className="h-full w-full object-cover object-top"
-              />
-            ) : (
-              <div className="flex h-full flex-col items-center justify-center bg-gray-100 text-center">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mb-2 h-10 w-10 text-gray-400">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
-                </svg>
-                <p className="text-xs text-gray-500">撮影中...</p>
-              </div>
-            )}
-          </div>
-          {/* 下部ホームバー */}
-          <div className="mt-2 flex justify-center">
-            <div className="h-1 w-20 rounded-full bg-gray-700"></div>
-          </div>
+      <div className="relative mx-auto border-gray-800 dark:border-gray-800 bg-gray-800 border-[14px] rounded-[2.5rem] h-[600px] w-[300px]">
+        {/* サイドボタン（左側） */}
+        <div className="h-[32px] w-[3px] bg-gray-800 dark:bg-gray-800 absolute -start-[17px] top-[72px] rounded-s-lg"></div>
+        <div className="h-[46px] w-[3px] bg-gray-800 dark:bg-gray-800 absolute -start-[17px] top-[124px] rounded-s-lg"></div>
+        <div className="h-[46px] w-[3px] bg-gray-800 dark:bg-gray-800 absolute -start-[17px] top-[178px] rounded-s-lg"></div>
+        {/* サイドボタン（右側・電源ボタン） */}
+        <div className="h-[64px] w-[3px] bg-gray-800 dark:bg-gray-800 absolute -end-[17px] top-[142px] rounded-e-lg"></div>
+        {/* スクリーン部分 */}
+        <div className="rounded-[2rem] overflow-hidden w-[272px] h-[572px] bg-white dark:bg-gray-800">
+          {loading ? (
+            <div className="flex h-full items-center justify-center bg-gray-100 dark:bg-gray-900">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            </div>
+          ) : screenshot ? (
+            <img
+              src={screenshot.url}
+              alt={`${siteName} - mobile preview`}
+              className="w-[272px] h-[572px] object-cover object-top"
+            />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 text-center">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="mb-2 h-10 w-10 text-gray-400">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" />
+              </svg>
+              <p className="text-xs text-gray-500 dark:text-gray-400">撮影中...</p>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -222,7 +217,7 @@ export default function SitePreviewCard({ siteUrl, siteName, userId }: SitePrevi
           </div>
 
           {/* スマホ版（右側・小）*/}
-          <div className="w-[320px] space-y-3">
+          <div className="w-[300px] space-y-3">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-5 w-5 text-body-color">
