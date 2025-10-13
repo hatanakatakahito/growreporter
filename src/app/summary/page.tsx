@@ -244,7 +244,9 @@ export default function SummaryPage() {
           });
           if (siteInfoResponse.ok) {
             const siteData = await siteInfoResponse.json();
-            setSiteInfo(siteData);
+            if (siteData.success && siteData.siteInfo) {
+              setSiteInfo(siteData.siteInfo);
+            }
           }
         } catch (err) {
           console.error('サイト情報の取得に失敗:', err);
@@ -526,7 +528,7 @@ export default function SummaryPage() {
           </div>
           
           {/* Site Preview - Compact Version */}
-          {siteInfo && user && (
+          {siteInfo && user && siteInfo.siteUrl ? (
             <div className="w-[400px] flex-shrink-0">
               <SitePreviewCard
                 siteUrl={siteInfo.siteUrl}
@@ -534,7 +536,34 @@ export default function SummaryPage() {
                 userId={user.uid}
               />
             </div>
-          )}
+          ) : siteInfo && !siteInfo.siteUrl ? (
+            <div className="w-[400px] flex-shrink-0 rounded-lg border border-stroke bg-white p-4 shadow-default dark:border-dark-3 dark:bg-dark-2">
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <svg
+                  className="h-12 w-12 text-body-color dark:text-dark-6 mb-3"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+                <p className="text-sm text-body-color dark:text-dark-6 mb-3">
+                  サイトURLが登録されていません
+                </p>
+                <a
+                  href="/site-settings"
+                  className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
+                >
+                  サイト設定へ
+                </a>
+              </div>
+            </div>
+          ) : null}
         </div>
         
         {/* 気づきセクション */}
