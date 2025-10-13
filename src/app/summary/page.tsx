@@ -18,7 +18,7 @@ import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionS
 import { KPIService, KPISetting } from '@/lib/kpi/kpiService';
 import InsightsAlert from '@/components/insights/InsightsAlert';
 import { DetectedIssue } from '@/lib/improvements/types';
-import SitePreviewCard from '@/components/improvements/SitePreviewCard';
+import SitePreviewCompact from '@/components/improvements/SitePreviewCompact';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -527,15 +527,15 @@ export default function SummaryPage() {
           
           {/* Site Preview - Compact Version */}
           {siteInfo && user && siteInfo.siteUrl ? (
-            <div className="w-[400px] flex-shrink-0">
-              <SitePreviewCard
+            <div className="w-[320px] flex-shrink-0">
+              <SitePreviewCompact
                 siteUrl={siteInfo.siteUrl}
                 siteName={siteInfo.siteName}
                 userId={user.uid}
               />
             </div>
           ) : siteInfo && !siteInfo.siteUrl ? (
-            <div className="w-[400px] flex-shrink-0 rounded-lg border border-stroke bg-white p-4 shadow-default dark:border-dark-3 dark:bg-dark-2">
+            <div className="w-[320px] flex-shrink-0 rounded-lg border border-stroke bg-white p-4 shadow-default dark:border-dark-3 dark:bg-dark-2">
               <div className="flex flex-col items-center justify-center py-8 text-center">
                 <svg
                   className="h-12 w-12 text-body-color dark:text-dark-6 mb-3"
