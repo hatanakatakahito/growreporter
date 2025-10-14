@@ -6,6 +6,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { UserProfileService } from '@/lib/user/userProfileService';
 import { UserProfile } from '@/types/user';
+import SitePreviewCompact from '@/components/improvements/SitePreviewCompact';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -867,6 +868,19 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
             </div>
           </div>
         </header>
+
+        {/* Site Preview Section - Above Main Content */}
+        {siteInfo && siteInfo.siteUrl && user && (
+          <div className="bg-white dark:bg-dark-2 border-b border-stroke dark:border-dark-3">
+            <div className="mx-auto max-w-screen-2xl">
+              <SitePreviewCompact
+                siteUrl={siteInfo.siteUrl}
+                siteName={siteInfo.siteName}
+                userId={user.uid}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Main Content Area */}
         <main className="mx-auto w-full max-w-screen-2xl p-4 md:p-6 2xl:p-10">

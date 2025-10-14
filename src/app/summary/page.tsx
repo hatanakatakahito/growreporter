@@ -18,7 +18,6 @@ import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionS
 import { KPIService, KPISetting } from '@/lib/kpi/kpiService';
 import InsightsAlert from '@/components/insights/InsightsAlert';
 import { DetectedIssue } from '@/lib/improvements/types';
-import SitePreviewCompact from '@/components/improvements/SitePreviewCompact';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -526,15 +525,6 @@ export default function SummaryPage() {
           </div>
         </div>
 
-        {/* Site Preview Section - Dynamic */}
-        {siteInfo && user && siteInfo.siteUrl && (
-          <SitePreviewCompact
-            siteUrl={siteInfo.siteUrl}
-            siteName={siteInfo.siteName}
-            userId={user.uid}
-          />
-        )}
-        
         {/* 気づきセクション */}
         {detectedIssues.length > 0 && (
           <InsightsAlert issues={detectedIssues} />
