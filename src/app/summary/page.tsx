@@ -505,14 +505,14 @@ export default function SummaryPage() {
         {/* Fixed AI Analysis Button */}
         <button
           onClick={() => setIsAISheetOpen(true)}
-          className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-20 h-20 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
+          className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-16 h-16 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
         >
           <svg
-            className="h-7 w-7"
+            className="h-6 w-6"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
-            strokeWidth={2.5}
+            strokeWidth={2}
           >
             <path
               strokeLinecap="round"
@@ -520,7 +520,7 @@ export default function SummaryPage() {
               d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
             />
           </svg>
-          <span className="text-[11px] leading-tight">AI分析</span>
+          <span className="text-[10px] leading-tight">AI分析</span>
         </button>
 
         {/* 気づきセクション */}
