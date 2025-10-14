@@ -526,16 +526,106 @@ export default function SummaryPage() {
           </div>
         </div>
 
-        {/* Site Preview Section */}
-        {siteInfo && user && siteInfo.siteUrl && (
-          <div className="mb-6">
-            <SitePreviewCompact
-              siteUrl={siteInfo.siteUrl}
-              siteName={siteInfo.siteName}
-              userId={user.uid}
-            />
+        {/* Site Preview Section - Static Mock */}
+        <div className="mb-6 rounded-lg border border-stroke bg-white shadow-default dark:border-dark-3 dark:bg-dark-2">
+          <div className="border-b border-stroke p-4 dark:border-dark-3">
+            <div className="flex items-center gap-3">
+              <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
+              </svg>
+              <div className="flex-1">
+                <a 
+                  href="https://grow-group.jp" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm font-semibold text-dark hover:text-primary dark:text-white"
+                >
+                  grow-group.jp
+                </a>
+                <p className="mt-1 text-xs text-body-color dark:text-dark-6">
+                  コーポレートサイトやサービスサイト、ECなどWebサイト制作全般。Webコンサルティング、広告運用、<br />
+                  DTP、写真/動画撮影など。サイト制作実績、保守・運用、包括的なマーケティング支援でワンストップ<br />
+                  で課題解決へ導きます。
+                </p>
+              </div>
+              <button className="rounded-md border border-primary bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">
+                ウェブサイトを接続する
+              </button>
+            </div>
           </div>
-        )}
+          
+          <div className="flex gap-6 p-6">
+            {/* PC Preview */}
+            <div className="flex-1">
+              <div className="relative">
+                {/* PC Frame */}
+                <div className="device-desktop" style={{ fontSize: '0.7rem' }}>
+                  <div 
+                    className="relative mb-[11%] rounded-[8px] p-[1.5%] bg-white"
+                    style={{
+                      boxShadow: 'inset 0 4px 7px 1px #fff, inset 0 -5px 20px rgba(173, 186, 204, .25), 0 2px 6px rgba(0, 21, 64, .14), 0 10px 20px rgba(0, 21, 64, .05)'
+                    }}
+                  >
+                    <img
+                      src="https://grow-group.jp/wp-content/themes/grow-group/assets/images/top/mv.jpg"
+                      alt="grow-group.jp - PC"
+                      className="w-full rounded border border-black/25"
+                      style={{ aspectRatio: '16/9', objectFit: 'cover' }}
+                    />
+                  </div>
+                  <div 
+                    className="absolute left-0 right-0 bottom-[-18%] mx-auto w-[20%] h-[20%] bg-[#fafafa] -z-10"
+                    style={{
+                      boxShadow: 'inset 0 4px 7px 1px #fff, inset 0 -5px 20px rgba(173, 186, 204, .25), 0 2px 6px rgba(0, 21, 64, .14), 0 10px 20px rgba(0, 21, 64, .05)'
+                    }}
+                  />
+                  <div 
+                    className="absolute left-0 right-0 bottom-[-19.5%] mx-auto rounded-b-[24px] rounded-t w-[34%] h-[2%] bg-white"
+                    style={{
+                      boxShadow: 'inset 0 4px 7px 1px #fff, inset 0 -5px 20px rgba(173, 186, 204, .25), 0 2px 6px rgba(0, 21, 64, .14), 0 10px 20px rgba(0, 21, 64, .05)'
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile Preview */}
+            <div className="w-[200px]">
+              <div className="relative">
+                {/* Mobile Frame */}
+                <div className="device-phone mx-auto" style={{ maxWidth: '180px' }}>
+                  <div 
+                    className="relative rounded-[20px] p-[12%_3%] bg-white"
+                    style={{
+                      boxShadow: 'inset 0 4px 7px 1px #fff, inset 0 -5px 20px rgba(173, 186, 204, .25), 0 2px 6px rgba(0, 21, 64, .14), 0 10px 20px rgba(0, 21, 64, .05)'
+                    }}
+                  >
+                    <div 
+                      className="absolute left-0 right-0 top-0 mx-auto mt-[5.5%] w-[20%] h-[1%] rounded-[50px] bg-white"
+                      style={{
+                        boxShadow: 'inset 0 0 3px 1px rgba(0, 0, 0, .12)'
+                      }}
+                    />
+                    
+                    <img
+                      src="https://grow-group.jp/wp-content/themes/grow-group/assets/images/top/mv.jpg"
+                      alt="grow-group.jp - Mobile"
+                      className="w-full rounded border border-black/25"
+                      style={{ aspectRatio: '9/16', objectFit: 'cover' }}
+                    />
+                    
+                    <div 
+                      className="absolute left-0 right-0 bottom-0 mx-auto mb-[2%] w-[10%] h-0 pt-[10%] rounded-full bg-white"
+                      style={{
+                        boxShadow: 'inset 0 0 5px 1px rgba(0, 0, 0, .12)'
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
         
         {/* 気づきセクション */}
         {detectedIssues.length > 0 && (
