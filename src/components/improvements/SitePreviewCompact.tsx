@@ -187,11 +187,19 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
   };
 
   return (
-    <div className="mb-6 rounded-lg border border-stroke shadow-default dark:border-dark-3" style={{ background: 'linear-gradient(to right, #e3f2fd, #fff8e1)' }}>
+    <div 
+      className="mb-6" 
+      style={{ 
+        background: 'linear-gradient(to right, #e3f2fd, #fff8e1)',
+        borderRadius: '8px',
+        boxShadow: '0 3px 6px 0 rgba(14, 30, 62, 0.08)',
+        border: 'none'
+      }}
+    >
       {/* ヘッダー */}
       <div className="border-b border-stroke p-4 dark:border-dark-3 bg-transparent">
-        <div className="flex items-center gap-3">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-5 w-5 text-primary">
+        <div className="flex items-start gap-3">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="h-5 w-5 text-primary flex-shrink-0 mt-0.5">
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
           </svg>
           <div className="flex-1">
@@ -206,16 +214,16 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
             >
               {siteUrl}
             </a>
-            <p className="text-xs text-body-color dark:text-dark-6 max-w-[600px]">
+            <p className="text-xs text-body-color dark:text-dark-6 max-w-[600px] mb-3">
               {metaInfo.description || 'サイト情報を読み込んでいます...'}
             </p>
+            <Link
+              href="/site-settings"
+              className="inline-block rounded-md border border-primary bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
+            >
+              サイト設定
+            </Link>
           </div>
-          <Link
-            href="/site-settings"
-            className="rounded-md border border-primary bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition-colors"
-          >
-            サイト設定
-          </Link>
         </div>
       </div>
       
