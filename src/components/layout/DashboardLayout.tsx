@@ -871,14 +871,12 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
 
         {/* Site Preview Section - Above Main Content */}
         {siteInfo && siteInfo.siteUrl && user && (
-          <div className="bg-white dark:bg-dark-2 border-b border-stroke dark:border-dark-3">
-            <div className="mx-auto max-w-screen-2xl">
-              <SitePreviewCompact
-                siteUrl={siteInfo.siteUrl}
-                siteName={siteInfo.siteName}
-                userId={user.uid}
-              />
-            </div>
+          <div className="cover bg-white dark:bg-dark-2 border-b border-stroke dark:border-dark-3 w-full">
+            <SitePreviewCompact
+              siteUrl={siteInfo.siteUrl}
+              siteName={siteInfo.siteName}
+              userId={user.uid}
+            />
           </div>
         )}
 
