@@ -106,7 +106,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
     return (
       <div className="device-desktop" style={{ fontSize: '0.7rem' }}>
         <div 
-          className="relative mb-[11%] rounded-[8px] p-[1.5%] bg-white"
+          className="relative rounded-[8px] p-[1.5%] bg-white"
           style={{
             boxShadow: 'inset 0 4px 7px 1px #fff, inset 0 -5px 20px rgba(173, 186, 204, .25), 0 2px 6px rgba(0, 21, 64, .14), 0 10px 20px rgba(0, 21, 64, .05)'
           }}
@@ -127,18 +127,6 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
             </div>
           )}
         </div>
-        <div 
-          className="absolute left-0 right-0 bottom-[-18%] mx-auto w-[20%] h-[20%] bg-[#fafafa] -z-10"
-          style={{
-            boxShadow: 'inset 0 4px 7px 1px #fff, inset 0 -5px 20px rgba(173, 186, 204, .25), 0 2px 6px rgba(0, 21, 64, .14), 0 10px 20px rgba(0, 21, 64, .05)'
-          }}
-        />
-        <div 
-          className="absolute left-0 right-0 bottom-[-19.5%] mx-auto rounded-b-[24px] rounded-t w-[34%] h-[2%] bg-white"
-          style={{
-            boxShadow: 'inset 0 4px 7px 1px #fff, inset 0 -5px 20px rgba(173, 186, 204, .25), 0 2px 6px rgba(0, 21, 64, .14), 0 10px 20px rgba(0, 21, 64, .05)'
-          }}
-        />
       </div>
     );
   };
