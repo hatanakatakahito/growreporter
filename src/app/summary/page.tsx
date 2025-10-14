@@ -493,9 +493,8 @@ export default function SummaryPage() {
   return (
     <DashboardLayout onDateRangeChange={handleDateRangeChange}>
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
-        {/* Page Header with Site Preview */}
-        <div className="mb-6 flex items-start justify-between gap-6">
-          {/* Left: Header & AI Button */}
+        {/* Page Header */}
+        <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div>
               <h2 className="mb-2 text-2xl font-semibold text-dark dark:text-white">
@@ -525,18 +524,16 @@ export default function SummaryPage() {
               <span className="text-[11px] leading-tight">AI分析</span>
             </button>
           </div>
-
-          {/* Right: Site Preview Section - Dynamic */}
-          {siteInfo && user && siteInfo.siteUrl && (
-            <div className="flex-shrink-0" style={{ width: '600px' }}>
-              <SitePreviewCompact
-                siteUrl={siteInfo.siteUrl}
-                siteName={siteInfo.siteName}
-                userId={user.uid}
-              />
-            </div>
-          )}
         </div>
+
+        {/* Site Preview Section - Dynamic */}
+        {siteInfo && user && siteInfo.siteUrl && (
+          <SitePreviewCompact
+            siteUrl={siteInfo.siteUrl}
+            siteName={siteInfo.siteName}
+            userId={user.uid}
+          />
+        )}
         
         {/* 気づきセクション */}
         {detectedIssues.length > 0 && (
