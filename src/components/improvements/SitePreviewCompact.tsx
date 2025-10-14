@@ -229,14 +229,14 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
         </div>
 
         {/* 右側：スクリーンショット */}
-        <div className="flex items-center relative">
+        <div className="flex items-center relative justify-end">
           {/* スマホ版 */}
           <div className="w-[100px] relative z-10">
             {renderMobileMockup(mobileScreenshot, loadingMobile)}
           </div>
 
           {/* PC版 */}
-          <div className="w-[400px] -ml-8">
+          <div className="w-[400px] -ml-12">
             {renderDesktopMockup(desktopScreenshot, loadingDesktop)}
           </div>
         </div>
