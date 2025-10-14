@@ -586,127 +586,132 @@ export default function DashboardPage() {
                   <h3 className="text-xl font-semibold text-dark dark:text-white">主要指標サマリ</h3>
                 </div>
 
-                <div className="analysis-card p-6">
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-                    {/* 訪問 */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-dark-3">
-                        <svg className="h-6 w-6 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-baseline justify-between">
-                          <p className="text-sm font-medium text-body-color dark:text-dark-6">訪問</p>
-                          <svg className="h-4 w-4 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {/* 訪問 */}
+                  <div className="analysis-card p-6">
+                    <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6">訪問</p>
+                    <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
+                      {currentMonth.sessions.toLocaleString()}
+                    </h3>
+                    <div className="space-y-2">
+                      {lastMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6">前月</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-dark dark:text-white">{lastMonth.sessions.toLocaleString()}</span>
+                            <span className={`font-medium ${sessionsDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {sessionsDiff.isPositive && sessionsDiff.value > 0 ? '+' : ''}{sessionsDiff.value.toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                        <h3 className="text-2xl font-bold text-dark dark:text-white mt-1">
-                          {currentMonth.sessions.toLocaleString()}
-                        </h3>
-                      </div>
+                      )}
+                      {lastYearMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6">前年同月</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-dark dark:text-white">{lastYearMonth.sessions.toLocaleString()}</span>
+                            <span className={`font-medium ${sessionsYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {sessionsYearDiff.isPositive && sessionsYearDiff.value > 0 ? '+' : ''}{sessionsYearDiff.value.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  </div>
 
-                    {/* PV数 */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-dark-3">
-                        <svg className="h-6 w-6 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-baseline justify-between">
-                          <p className="text-sm font-medium text-body-color dark:text-dark-6">PV数</p>
-                          <svg className="h-4 w-4 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                  {/* PV数 */}
+                  <div className="analysis-card p-6">
+                    <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6">PV数</p>
+                    <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
+                      {currentMonth.screenPageViews.toLocaleString()}
+                    </h3>
+                    <div className="space-y-2">
+                      {lastMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6">前月</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-dark dark:text-white">{lastMonth.screenPageViews.toLocaleString()}</span>
+                            <span className={`font-medium ${pvDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {pvDiff.isPositive && pvDiff.value > 0 ? '+' : ''}{pvDiff.value.toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                        <h3 className="text-2xl font-bold text-dark dark:text-white mt-1">
-                          {currentMonth.screenPageViews.toLocaleString()}
-                        </h3>
-                      </div>
+                      )}
+                      {lastYearMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6">前年同月</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-dark dark:text-white">{lastYearMonth.screenPageViews.toLocaleString()}</span>
+                            <span className={`font-medium ${pvYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {pvYearDiff.isPositive && pvYearDiff.value > 0 ? '+' : ''}{pvYearDiff.value.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  </div>
 
-                    {/* 平均PV */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-dark-3">
-                        <svg className="h-6 w-6 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-baseline justify-between">
-                          <p className="text-sm font-medium text-body-color dark:text-dark-6">平均PV</p>
-                          <svg className="h-4 w-4 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                  {/* CVR */}
+                  <div className="analysis-card p-6">
+                    <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6">CVR</p>
+                    <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
+                      {currentMonth.conversionRate.toFixed(2)}%
+                    </h3>
+                    <div className="space-y-2">
+                      {lastMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6">前月</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-dark dark:text-white">{lastMonth.conversionRate.toFixed(2)}%</span>
+                            <span className={`font-medium ${cvrDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {cvrDiff.isPositive && cvrDiff.value > 0 ? '+' : ''}{cvrDiff.value.toFixed(2)}%
+                            </span>
+                          </div>
                         </div>
-                        <h3 className="text-2xl font-bold text-dark dark:text-white mt-1">
-                          {(currentMonth.screenPageViews / currentMonth.sessions).toFixed(2)}
-                        </h3>
-                      </div>
+                      )}
+                      {lastYearMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6">前年同月</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-dark dark:text-white">{lastYearMonth.conversionRate.toFixed(2)}%</span>
+                            <span className={`font-medium ${cvrYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {cvrYearDiff.isPositive && cvrYearDiff.value > 0 ? '+' : ''}{cvrYearDiff.value.toFixed(2)}%
+                            </span>
+                          </div>
+                        </div>
+                      )}
                     </div>
+                  </div>
 
-                    {/* ENG率 */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-dark-3">
-                        <svg className="h-6 w-6 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-baseline justify-between">
-                          <p className="text-sm font-medium text-body-color dark:text-dark-6">ENG率</p>
-                          <svg className="h-4 w-4 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                  {/* コンバージョン */}
+                  <div className="analysis-card p-6">
+                    <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6">コンバージョン</p>
+                    <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
+                      {(currentMonth.conversions || 0).toLocaleString()}
+                    </h3>
+                    <div className="space-y-2">
+                      {lastMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6">前月</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-dark dark:text-white">{(lastMonth.conversions || 0).toLocaleString()}</span>
+                            <span className={`font-medium ${cvDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {cvDiff.isPositive && cvDiff.value > 0 ? '+' : ''}{cvDiff.value.toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                        <h3 className="text-2xl font-bold text-dark dark:text-white mt-1">
-                          {(currentMonth.engagementRate || 0).toFixed(2)}%
-                        </h3>
-                      </div>
-                    </div>
-
-                    {/* CV数 */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-dark-3">
-                        <svg className="h-6 w-6 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-baseline justify-between">
-                          <p className="text-sm font-medium text-body-color dark:text-dark-6">CV数</p>
-                          <svg className="h-4 w-4 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
+                      )}
+                      {lastYearMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6">前年同月</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-dark dark:text-white">{(lastYearMonth.conversions || 0).toLocaleString()}</span>
+                            <span className={`font-medium ${cvYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {cvYearDiff.isPositive && cvYearDiff.value > 0 ? '+' : ''}{cvYearDiff.value.toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                        <h3 className="text-2xl font-bold text-dark dark:text-white mt-1">
-                          {(currentMonth.conversions || 0).toLocaleString()}
-                        </h3>
-                      </div>
-                    </div>
-
-                    {/* CVR */}
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-gray-100 dark:bg-dark-3">
-                        <svg className="h-6 w-6 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                        </svg>
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-baseline justify-between">
-                          <p className="text-sm font-medium text-body-color dark:text-dark-6">CVR</p>
-                          <svg className="h-4 w-4 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                        <h3 className="text-2xl font-bold text-dark dark:text-white mt-1">
-                          {currentMonth.conversionRate.toFixed(2)}%
-                        </h3>
-                      </div>
+                      )}
                     </div>
                   </div>
                 </div>
