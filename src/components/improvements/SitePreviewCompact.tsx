@@ -217,13 +217,13 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
               </a>
               <div className="mb-2">
                 <span className="text-xs text-body-color dark:text-dark-6">サイトタイトル</span>
-                <p className="text-xs text-dark dark:text-white max-w-[600px]">
+                <p className="text-sm font-medium text-dark dark:text-white max-w-[600px]">
                   {metaInfo.title || 'タイトル情報を取得中...'}
                 </p>
               </div>
               <div className="mb-3">
                 <span className="text-xs text-body-color dark:text-dark-6">サイト説明文</span>
-                <p className="text-xs text-body-color dark:text-dark-6 max-w-[600px]">
+                <p className="text-sm text-body-color dark:text-dark-6 max-w-[600px]">
                   {metaInfo.description || '説明文を取得中...'}
                 </p>
               </div>
