@@ -164,7 +164,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
     <div 
       style={{ 
         background: 'linear-gradient(to right, #e3f2fd, #fff8e1)',
-        padding: '1.5rem'
+        padding: '40px'
       }}
     >
       <div className="flex gap-6">
