@@ -206,7 +206,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
             >
               {siteUrl}
             </a>
-            <p className="text-xs text-body-color dark:text-dark-6">
+            <p className="text-xs text-body-color dark:text-dark-6 max-w-[600px]">
               {metaInfo.description || 'サイト情報を読み込んでいます...'}
             </p>
           </div>
