@@ -188,12 +188,13 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
 
   return (
     <div 
-      className="mb-6 p-6" 
+      className="mb-6" 
       style={{ 
         background: 'linear-gradient(to right, #e3f2fd, #fff8e1)',
         borderRadius: '8px',
         boxShadow: '0 3px 6px 0 rgba(14, 30, 62, 0.08)',
-        border: 'none'
+        border: 'none',
+        padding: '1.5rem'
       }}
     >
       <div className="flex gap-6">
