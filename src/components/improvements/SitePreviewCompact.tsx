@@ -140,13 +140,6 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
             boxShadow: 'inset 0 4px 7px 1px #fff, inset 0 -5px 20px rgba(173, 186, 204, .25), 0 2px 6px rgba(0, 21, 64, .14), 0 10px 20px rgba(0, 21, 64, .05)'
           }}
         >
-          <div 
-            className="absolute left-0 right-0 top-0 mx-auto mt-[5.5%] w-[20%] h-[1%] rounded-[50px] bg-white"
-            style={{
-              boxShadow: 'inset 0 0 3px 1px rgba(0, 0, 0, .12)'
-            }}
-          />
-          
           {loading ? (
             <div className="flex items-center justify-center bg-gray-50 rounded aspect-[9/16]">
               <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -162,13 +155,6 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
               <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
             </div>
           )}
-          
-          <div 
-            className="absolute left-0 right-0 bottom-0 mx-auto mb-[2%] w-[10%] h-0 pt-[10%] rounded-full bg-white"
-            style={{
-              boxShadow: 'inset 0 0 5px 1px rgba(0, 0, 0, .12)'
-            }}
-          />
         </div>
       </div>
     );
