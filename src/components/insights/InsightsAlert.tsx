@@ -19,7 +19,7 @@ export default function InsightsAlert({ issues, onClose }: InsightsAlertProps) {
   
   return (
     <div className="mb-6">
-      <div className="relative flex max-w-full rounded-lg border border-stroke bg-white p-[25px] dark:border-dark-3 dark:bg-dark-2">
+      <div className="relative flex max-w-[560px] rounded-lg border border-stroke bg-white p-[25px] dark:border-dark-3 dark:bg-dark-2">
         <div className="mr-5 flex w-full max-w-[32px] justify-center">
           <span>
             <svg
@@ -37,12 +37,12 @@ export default function InsightsAlert({ issues, onClose }: InsightsAlertProps) {
           </span>
         </div>
         <div className="w-full pr-4 sm:pr-10">
-          <h6 className="mb-2 text-base font-semibold text-dark dark:text-white sm:text-lg">
+          <h6 className="mb-2 text-base font-semibold text-black dark:text-white sm:text-lg">
             改善の気づき
           </h6>
-          <div className="mb-4 space-y-2">
+          <p className="mb-6 text-sm font-medium text-body-color dark:text-dark-6">
             {displayIssues.map((issue, index) => (
-              <p key={index} className="text-sm font-medium text-body-color dark:text-dark-6">
+              <span key={index} className="block mb-1">
                 <span
                   className={`mr-2 inline-block rounded px-1.5 py-0.5 text-xs font-medium ${
                     issue.priority === 'high'
@@ -57,19 +57,19 @@ export default function InsightsAlert({ issues, onClose }: InsightsAlertProps) {
                   {issue.priority === 'low' && '低'}
                 </span>
                 {issue.title}
-              </p>
+              </span>
             ))}
-          </div>
-          {issues.length > 2 && (
-            <p className="mb-4 text-xs text-body-color dark:text-dark-6">
-              他 {issues.length - 2} 件の問題が検出されています
-            </p>
-          )}
+            {issues.length > 2 && (
+              <span className="block mt-2 text-xs">
+                他 {issues.length - 2} 件の問題が検出されています
+              </span>
+            )}
+          </p>
           <button
             onClick={() => router.push('/improvements')}
             className="text-base font-medium text-primary hover:underline"
           >
-            改善案を見る →
+            改善案を見る
           </button>
           <button
             onClick={onClose}
