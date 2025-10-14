@@ -6,9 +6,10 @@ import { DetectedIssue } from '@/lib/improvements/types';
 
 interface InsightsAlertProps {
   issues: DetectedIssue[];
+  onClose?: () => void;
 }
 
-export default function InsightsAlert({ issues }: InsightsAlertProps) {
+export default function InsightsAlert({ issues, onClose }: InsightsAlertProps) {
   const router = useRouter();
   
   if (issues.length === 0) return null;
@@ -17,24 +18,33 @@ export default function InsightsAlert({ issues }: InsightsAlertProps) {
   const displayIssues = highPriorityIssues.length > 0 ? highPriorityIssues : issues.slice(0, 2);
   
   return (
-    <div className="mb-6 rounded-lg border-l-4 border-primary bg-primary/5 p-4 dark:bg-primary/10">
-      <div className="flex items-start gap-4">
-        <div className="mt-1 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-primary text-white">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" className="h-6 w-6">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 0 0 1.5-.189m-1.5.189a6.01 6.01 0 0 1-1.5-.189m3.75 7.478a12.06 12.06 0 0 1-4.5 0m3.75 2.383a14.406 14.406 0 0 1-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 1 0-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" />
-          </svg>
+    <div className="mb-6">
+      <div className="relative flex max-w-full rounded-lg border border-stroke bg-white p-[25px] dark:border-dark-3 dark:bg-dark-2">
+        <div className="mr-5 flex w-full max-w-[32px] justify-center">
+          <span>
+            <svg
+              width="30"
+              height="30"
+              viewBox="0 0 30 30"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M11.0163 29.4375C10.5476 29.4375 10.0788 29.2031 9.75071 28.8281C9.14133 28.125 9.32883 27.2344 9.42258 26.8125L12.0945 15.4219H6.75071C6.42258 15.4219 5.81321 15.4219 5.34446 15.0469C4.50071 14.3906 4.73508 13.1719 4.82883 12.7969L6.89133 2.85938C6.98508 2.39063 7.17258 1.59375 7.78196 1.07813C8.39133 0.609375 9.14133 0.609375 9.65696 0.609375H16.3132C16.8757 0.609375 18.0007 0.609375 18.657 1.45313C19.3132 2.29688 19.0788 3.375 18.9851 3.9375L18.282 7.03125L22.8757 7.07813C24.1413 7.07813 24.8913 7.5 25.1726 8.29688C25.4538 9.14063 24.9851 9.89063 24.7038 10.2656L12.8445 28.1719C12.6101 28.5 12.282 29.0156 11.7663 29.25C11.5788 29.3438 11.3445 29.3906 11.157 29.3906C11.1101 29.3906 11.0632 29.4375 11.0163 29.4375ZM9.65696 2.25C9.37571 2.25 9.00071 2.25 8.81321 2.39063C8.62571 2.53125 8.53196 2.95313 8.48508 3.23438L6.46946 13.125C6.37571 13.6406 6.42258 13.7813 6.42258 13.7813C6.46946 13.7813 6.70383 13.7813 6.79758 13.7813H13.1726C13.407 13.7813 13.6413 13.875 13.8288 14.1094C13.9695 14.2969 14.0632 14.5781 13.9695 14.8125L11.0163 27.1875C10.9226 27.6094 10.9226 27.7031 10.9695 27.75C11.0163 27.7969 11.0163 27.7969 11.0163 27.7969C11.157 27.7031 11.3445 27.4688 11.4851 27.2813L23.3445 9.32813C23.5788 9 23.6257 8.85938 23.6257 8.8125C23.5788 8.8125 23.4382 8.71875 22.8757 8.71875L17.2976 8.67188C17.0632 8.67188 16.8288 8.57813 16.6413 8.34375C16.5007 8.15625 16.407 7.875 16.5007 7.64062L17.3913 3.51562C17.4382 3.23438 17.5788 2.625 17.3913 2.4375C17.2038 2.20312 16.5945 2.20312 16.3132 2.20312L9.65696 2.25Z"
+                fill="#3056D3"
+              />
+            </svg>
+          </span>
         </div>
-        
-        <div className="flex-1">
-          <h4 className="mb-2 font-semibold text-dark dark:text-white">
+        <div className="w-full pr-4 sm:pr-10">
+          <h6 className="mb-2 text-base font-semibold text-dark dark:text-white sm:text-lg">
             改善の気づき
-          </h4>
-          
-          <div className="space-y-2">
+          </h6>
+          <div className="mb-4 space-y-2">
             {displayIssues.map((issue, index) => (
-              <div key={index} className="text-sm">
+              <p key={index} className="text-sm font-medium text-body-color dark:text-dark-6">
                 <span
-                  className={`mr-2 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                  className={`mr-2 inline-block rounded px-1.5 py-0.5 text-xs font-medium ${
                     issue.priority === 'high'
                       ? 'bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300'
                       : issue.priority === 'medium'
@@ -46,35 +56,39 @@ export default function InsightsAlert({ issues }: InsightsAlertProps) {
                   {issue.priority === 'medium' && '中'}
                   {issue.priority === 'low' && '低'}
                 </span>
-                <span className="text-body-color">
-                  {issue.title}
-                </span>
-              </div>
+                {issue.title}
+              </p>
             ))}
           </div>
-          
           {issues.length > 2 && (
-            <p className="mt-2 text-xs text-body-color">
+            <p className="mb-4 text-xs text-body-color dark:text-dark-6">
               他 {issues.length - 2} 件の問題が検出されています
             </p>
           )}
-          
           <button
             onClick={() => router.push('/improvements')}
-            className="mt-3 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-opacity-90"
+            className="text-base font-medium text-primary hover:underline"
           >
             改善案を見る →
           </button>
+          <button
+            onClick={onClose}
+            className="hover:text-danger absolute right-5 top-5 text-body-color dark:text-dark-6"
+          >
+            <svg
+              width="24"
+              height="24"
+              viewBox="0 0 24 24"
+              className="fill-current"
+            >
+              <path
+                fillRule="evenodd"
+                clipRule="evenodd"
+                d="M5.29289 5.29289C5.68342 4.90237 6.31658 4.90237 6.70711 5.29289L12 10.5858L17.2929 5.29289C17.6834 4.90237 18.3166 4.90237 18.7071 5.29289C19.0976 5.68342 19.0976 6.31658 18.7071 6.70711L13.4142 12L18.7071 17.2929C19.0976 17.6834 19.0976 18.3166 18.7071 18.7071C18.3166 19.0976 17.6834 19.0976 17.2929 18.7071L12 13.4142L6.70711 18.7071C6.31658 19.0976 5.68342 19.0976 5.29289 18.7071C4.90237 18.3166 4.90237 17.6834 5.29289 17.2929L10.5858 12L5.29289 6.70711C4.90237 6.31658 4.90237 5.68342 5.29289 5.29289Z"
+              />
+            </svg>
+          </button>
         </div>
-        
-        <button
-          onClick={() => {
-            // 非表示にする（状態管理は親コンポーネントで）
-          }}
-          className="text-body-color hover:text-dark dark:hover:text-white"
-        >
-          ✕
-        </button>
       </div>
     </div>
   );
