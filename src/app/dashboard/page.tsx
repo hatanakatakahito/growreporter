@@ -422,6 +422,126 @@ export default function DashboardPage() {
           <InsightsAlert issues={detectedIssues} onClose={() => setShowInsights(false)} />
         )}
 
+        {/* KPI予実セクション */}
+        {monthlyData.length > 0 && kpiSettings.length > 0 && (() => {
+          const currentMonth = monthlyData[0];
+          
+          // KPIメトリクスマッピング
+          const getMetricValue = (metricName: string) => {
+            const metricMap: Record<string, number> = {
+              'sessions': currentMonth.sessions || 0,
+              'pageviews': currentMonth.screenPageViews || 0,
+              'users': currentMonth.totalUsers || 0,
+              'conversions': currentMonth.conversions || 0,
+              'engagementRate': currentMonth.engagementRate || 0,
+            };
+            
+            if (metricName.startsWith('conversion_')) {
+              const eventName = metricName.replace('conversion_', '');
+              if (currentMonth.conversionBreakdown && currentMonth.conversionBreakdown[eventName]) {
+                return currentMonth.conversionBreakdown[eventName];
+              }
+              return 0;
+            }
+            
+            if (currentMonth.conversionBreakdown && currentMonth.conversionBreakdown[metricName]) {
+              return currentMonth.conversionBreakdown[metricName];
+            }
+            
+            return metricMap[metricName] || 0;
+          };
+
+          const calculateAchievementRate = (current: number, target: number) => {
+            if (target === 0) return 0;
+            return (current / target) * 100;
+          };
+
+          const getMetricDisplayName = (metric: string) => {
+            const displayNames: Record<string, string> = {
+              'sessions': 'セッション',
+              'pageviews': 'ページビュー',
+              'users': 'ユーザー数',
+              'conversions': 'コンバージョン',
+              'engagementRate': 'エンゲージメント率',
+            };
+            
+            if (metric.startsWith('conversion_')) {
+              const eventName = metric.replace('conversion_', '');
+              const conversion = conversions.find(c => c.eventName === eventName);
+              return conversion?.displayName || conversion?.eventName || eventName;
+            }
+            
+            return displayNames[metric] || conversions.find(c => c.eventName === metric)?.displayName || metric;
+          };
+
+          return (
+            <div className="mb-6">
+              <div className="mb-4">
+                <h3 className="text-lg font-semibold text-dark dark:text-white">KPI予実</h3>
+              </div>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                {kpiSettings.map((kpi) => {
+                  const currentValue = getMetricValue(kpi.metric);
+                  const targetValue = parseFloat(kpi.targetValue);
+                  const achievementRate = calculateAchievementRate(currentValue, targetValue);
+                  const remaining = Math.max(0, targetValue - currentValue);
+
+                  return (
+                    <div key={kpi.id} className="analysis-card p-6">
+                      <div className="mb-3">
+                        <p className="text-sm font-medium text-body-color dark:text-dark-6">
+                          {getMetricDisplayName(kpi.metric)}
+                        </p>
+                      </div>
+                      <div className="mb-4">
+                        <div className="flex items-baseline gap-2">
+                          <h3 className="text-3xl font-bold text-dark dark:text-white">
+                            {currentValue.toLocaleString()}
+                          </h3>
+                          <span className="text-sm text-body-color dark:text-dark-6">
+                            / {targetValue.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6">達成率</span>
+                          <span 
+                            className="font-semibold"
+                            style={{ 
+                              color: achievementRate >= 100 
+                                ? 'rgb(22 163 74 / var(--tw-text-opacity, 1))' 
+                                : 'rgb(220 38 38 / var(--tw-text-opacity, 1))' 
+                            }}
+                          >
+                            {achievementRate.toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="h-2 rounded-full bg-gray-200 dark:bg-dark-3">
+                          <div 
+                            className="h-full rounded-full transition-all"
+                            style={{ 
+                              width: `${Math.min(achievementRate, 100)}%`,
+                              backgroundColor: achievementRate >= 100 
+                                ? 'rgb(22 163 74 / var(--tw-bg-opacity, 1))' 
+                                : 'rgb(220 38 38 / var(--tw-bg-opacity, 1))'
+                            }}
+                          />
+                        </div>
+                        {achievementRate < 100 && (
+                          <div className="text-xs text-body-color dark:text-dark-6">
+                            残り: {remaining.toLocaleString()}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* 主要指標サマリー */}
         {monthlyData.length > 0 && (() => {
           // 当月（最新月） - monthlyDataは降順（新しい月が先頭）なので[0]が最新
@@ -822,124 +942,6 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
-
-        {/* KPI予実セクション */}
-        {monthlyData.length > 0 && kpiSettings.length > 0 && currentMonth && (() => {
-          // KPIメトリクスマッピング
-          const getMetricValue = (metricName: string) => {
-            const metricMap: Record<string, number> = {
-              'sessions': currentMonth.sessions || 0,
-              'pageviews': currentMonth.screenPageViews || 0,
-              'users': currentMonth.totalUsers || 0,
-              'conversions': currentMonth.conversions || 0,
-              'engagementRate': currentMonth.engagementRate || 0,
-            };
-            
-            if (metricName.startsWith('conversion_')) {
-              const eventName = metricName.replace('conversion_', '');
-              if (currentMonth.conversionBreakdown && currentMonth.conversionBreakdown[eventName]) {
-                return currentMonth.conversionBreakdown[eventName];
-              }
-              return 0;
-            }
-            
-            if (currentMonth.conversionBreakdown && currentMonth.conversionBreakdown[metricName]) {
-              return currentMonth.conversionBreakdown[metricName];
-            }
-            
-            return metricMap[metricName] || 0;
-          };
-
-          const calculateAchievementRate = (current: number, target: number) => {
-            if (target === 0) return 0;
-            return (current / target) * 100;
-          };
-
-          const getMetricDisplayName = (metric: string) => {
-            const displayNames: Record<string, string> = {
-              'sessions': 'セッション',
-              'pageviews': 'ページビュー',
-              'users': 'ユーザー数',
-              'conversions': 'コンバージョン',
-              'engagementRate': 'エンゲージメント率',
-            };
-            
-            if (metric.startsWith('conversion_')) {
-              const eventName = metric.replace('conversion_', '');
-              const conversion = conversions.find(c => c.eventName === eventName);
-              return conversion?.displayName || conversion?.eventName || eventName;
-            }
-            
-            return displayNames[metric] || conversions.find(c => c.eventName === metric)?.displayName || metric;
-          };
-
-          return (
-            <div className="mb-6">
-              <div className="mb-4">
-                <h3 className="text-lg font-semibold text-dark dark:text-white">KPI予実</h3>
-              </div>
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {kpiSettings.map((kpi) => {
-                  const currentValue = getMetricValue(kpi.metric);
-                  const targetValue = parseFloat(kpi.targetValue);
-                  const achievementRate = calculateAchievementRate(currentValue, targetValue);
-                  const remaining = Math.max(0, targetValue - currentValue);
-
-                  return (
-                    <div key={kpi.id} className="analysis-card p-6">
-                      <div className="mb-3">
-                        <p className="text-sm font-medium text-body-color dark:text-dark-6">
-                          {getMetricDisplayName(kpi.metric)}
-                        </p>
-                      </div>
-                      <div className="mb-4">
-                        <div className="flex items-baseline gap-2">
-                          <h3 className="text-3xl font-bold text-dark dark:text-white">
-                            {currentValue.toLocaleString()}
-                          </h3>
-                          <span className="text-sm text-body-color dark:text-dark-6">
-                            / {targetValue.toLocaleString()}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-body-color dark:text-dark-6">達成率</span>
-                          <span 
-                            className="font-semibold"
-                            style={{ 
-                              color: achievementRate >= 100 
-                                ? 'rgb(22 163 74 / var(--tw-text-opacity, 1))' 
-                                : 'rgb(220 38 38 / var(--tw-text-opacity, 1))' 
-                            }}
-                          >
-                            {achievementRate.toFixed(1)}%
-                          </span>
-                        </div>
-                        <div className="h-2 rounded-full bg-gray-200 dark:bg-dark-3">
-                          <div 
-                            className="h-full rounded-full transition-all"
-                            style={{ 
-                              width: `${Math.min(achievementRate, 100)}%`,
-                              backgroundColor: achievementRate >= 100 
-                                ? 'rgb(22 163 74 / var(--tw-bg-opacity, 1))' 
-                                : 'rgb(220 38 38 / var(--tw-bg-opacity, 1))' 
-                            }}
-                          />
-                        </div>
-                        {achievementRate < 100 && (
-                          <div className="text-xs text-body-color dark:text-dark-6">
-                            残り: {remaining.toLocaleString()}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })()}
 
         {/* Error Alert */}
         {error && (
