@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { UserProfileService } from '@/lib/user/userProfileService';
 import { UserProfile } from '@/types/user';
 import SitePreviewCompact from '@/components/improvements/SitePreviewCompact';
+import PDFLoadingOverlay from '@/components/pdf/PDFLoadingOverlay';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -50,6 +51,8 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [selectedPages, setSelectedPages] = useState<string[]>([]);
   const [siteInfo, setSiteInfo] = useState<{ siteName: string; siteUrl: string } | null>(null);
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [pdfProgress, setPdfProgress] = useState({ current: 0, total: 0, message: '' });
   
   // 日付範囲の状態管理
   const [dateRangeDropdownOpen, setDateRangeDropdownOpen] = useState(false);
@@ -177,21 +180,33 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
     }
 
     try {
-      const { exportMultiplePagesToPDF } = await import('@/lib/pdf/pdfExporter');
+      const { exportMultiplePagesToPDFHybrid } = await import('@/lib/pdf/hybridPdfExporter');
       
       // モーダルを閉じる
       setPdfModalOpen(false);
       
-      console.log('📄 PDF出力を開始します...');
+      // ローディング表示を開始
+      setPdfLoading(true);
+      setPdfProgress({ current: 0, total: selectedPages.length, message: 'PDF生成を開始しています...' });
+      
+      console.log('📄 ハイブリッドPDF出力を開始します...');
       console.log('📄 選択されたページ:', selectedPages);
       
-      // 複数ページを1つのPDFに統合して出力
-      await exportMultiplePagesToPDF(selectedPages, router);
+      // 複数ページを1つのPDFに統合して出力（ハイブリッド方式）
+      await exportMultiplePagesToPDFHybrid(selectedPages, router, {
+        onProgress: (current, total, message) => {
+          setPdfProgress({ current, total, message });
+        }
+      });
+      
+      // ローディング終了
+      setPdfLoading(false);
       
       alert('✅ PDF出力が完了しました！ファイルがダウンロードされます。');
       setSelectedPages([]);
     } catch (error) {
       console.error('❌ PDF出力エラー:', error);
+      setPdfLoading(false);
       alert(
         'PDF出力に失敗しました。\n' +
         'ブラウザのコンソールでエラー詳細を確認してください。\n\n' +
@@ -1101,6 +1116,14 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
           onClick={() => setSidebarOpen(false)}
         ></div>
       )}
+
+      {/* PDF Loading Overlay */}
+      <PDFLoadingOverlay
+        isVisible={pdfLoading}
+        currentPage={pdfProgress.current}
+        totalPages={pdfProgress.total}
+        message={pdfProgress.message}
+      />
     </section>
   );
 }
