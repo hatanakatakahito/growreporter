@@ -119,7 +119,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
             <img
               src={screenshot.url}
               alt={`${siteName} - desktop`}
-              className="w-full rounded border border-black/25"
+              className="w-full rounded"
             />
           ) : (
             <div className="flex items-center justify-center bg-gray-50 rounded aspect-[16/9]">
@@ -167,7 +167,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
             <img
               src={screenshot.url}
               alt={`${siteName} - mobile`}
-              className="w-full rounded border border-black/25"
+              className="w-full rounded"
             />
           ) : (
             <div className="flex items-center justify-center bg-gray-50 rounded aspect-[9/16]">
@@ -205,7 +205,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
             </svg>
             <div className="flex-1">
               <div className="text-sm font-semibold text-dark dark:text-white mb-0.5">
-                {metaInfo.title || siteName || siteUrl}
+                {siteName || metaInfo.title || siteUrl}
               </div>
               <a 
                 href={siteUrl} 
