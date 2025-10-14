@@ -153,41 +153,20 @@ export async function exportMultiplePagesToPDFHybrid(
         const imgWidth = 170; // PDFの幅（マージン考慮）
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-        // 画像を追加（ページ分割対応）
-        if (yPosition + imgHeight <= 277) {
-          // 1ページに収まる
-          pdf.addImage(imgData, 'PNG', 20, yPosition, imgWidth, imgHeight);
-        } else {
-          // 複数ページに分割
-          let remainingHeight = imgHeight;
-          let currentY = yPosition;
-          let sourceY = 0;
+        console.log(`📐 画像サイズ: 幅=${imgWidth}mm, 高さ=${imgHeight}mm`);
 
-          while (remainingHeight > 0) {
-            const availableHeight = 277 - currentY;
-            const heightToAdd = Math.min(remainingHeight, availableHeight);
-            
-            pdf.addImage(
-              imgData,
-              'PNG',
-              20,
-              currentY,
-              imgWidth,
-              heightToAdd,
-              undefined,
-              'FAST',
-              0,
-              sourceY
-            );
-
-            remainingHeight -= heightToAdd;
-            sourceY += heightToAdd;
-
-            if (remainingHeight > 0) {
-              pdf.addPage();
-              currentY = 20;
-            }
-          }
+        // 画像をPDFに追加
+        pdf.addImage(imgData, 'PNG', 20, yPosition, imgWidth, imgHeight);
+        
+        // 画像が1ページに収まらない場合、複数ページに分割
+        let heightLeft = imgHeight - (297 - yPosition);
+        let position = yPosition;
+        
+        while (heightLeft > 0) {
+          position = heightLeft - imgHeight;
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 20, position, imgWidth, imgHeight);
+          heightLeft -= 297;
         }
       } else {
         // グラフがない場合はテキスト抽出を試みる

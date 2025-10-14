@@ -128,6 +128,10 @@ export async function exportPageToPDF(pageType: string): Promise<void> {
   });
 }
 
+export interface PDFExportProgressOptions {
+  onProgress?: (current: number, total: number, message: string) => void;
+}
+
 /**
  * 複数のページを1つのPDFに統合して出力
  */
@@ -287,6 +291,184 @@ export async function exportMultiplePagesToPDF(
     const filename = `report_${new Date().toISOString().split('T')[0]}.pdf`;
     const totalPages = pdf.getNumberOfPages();
     console.log(`💾 PDFをダウンロード: ${filename} (総ページ数: ${totalPages})`);
+    pdf.save(filename);
+
+    console.log('✅ 統合PDF出力完了:', filename);
+  } catch (error) {
+    console.error('❌ 統合PDF出力エラー:', error);
+    throw error;
+  }
+}
+
+/**
+ * 複数のページを1つのPDFに統合して出力（プログレス付き）
+ */
+export async function exportMultiplePagesToPDFWithProgress(
+  pagePaths: string[],
+  router: any,
+  options: PDFExportProgressOptions = {}
+): Promise<void> {
+  const { onProgress } = options;
+
+  const pageTitles: Record<string, string> = {
+    summary: '全体サマリー',
+    users: 'ユーザー',
+    dashboard: 'ダッシュボード',
+    acquisition: '集客',
+    'organic-keywords': 'オーガニック検索キーワード',
+    referrals: '参照元',
+    engagement: 'エンゲージメント',
+    'landing-pages': 'ランディングページ',
+    'file-downloads': 'ファイルダウンロード',
+    'external-links': '外部リンククリック',
+    'conversion-events': 'コンバージョン一覧',
+    funnel: '逆算フロー'
+  };
+
+  try {
+    console.log('📄 複数ページPDF出力開始...', pagePaths);
+    onProgress?.(0, pagePaths.length, 'PDF生成を開始しています...');
+
+    // PDFドキュメントを作成
+    const pdf = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    let isFirstPage = true;
+
+    // 各ページを順番に処理
+    for (let i = 0; i < pagePaths.length; i++) {
+      const pagePath = pagePaths[i];
+      const pageType = pagePath.split('/').filter(Boolean).pop() || 'summary';
+      const pageTitle = pageTitles[pageType] || pageType;
+
+      console.log(`📄 処理中 (${i + 1}/${pagePaths.length}): ${pageTitle} (${pagePath})`);
+      onProgress?.(i + 1, pagePaths.length, `${pageTitle}を処理中...`);
+
+      // ページに移動
+      console.log(`🔄 ページ遷移開始: ${pagePath}`);
+      await router.push(pagePath);
+      console.log(`✅ router.push完了`);
+
+      // ページの読み込みを待つ（5秒）
+      console.log(`⏳ ページ読み込み待機中... (5秒)`);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      console.log(`✅ 基本待機完了`);
+
+      // 画像やチャートの読み込みを待つ
+      await new Promise(resolve => {
+        if (document.readyState === 'complete') {
+          console.log(`✅ document.readyState === 'complete'`);
+          setTimeout(resolve, 2000);
+        } else {
+          console.log(`⏳ load イベント待機中...`);
+          window.addEventListener('load', () => {
+            console.log(`✅ load イベント発火`);
+            setTimeout(resolve, 2000);
+          });
+        }
+      });
+      console.log(`✅ チャート読み込み待機完了`);
+
+      // メインコンテンツを取得
+      const mainContent = document.querySelector('main');
+      if (!mainContent) {
+        console.warn(`⚠️ メインコンテンツが見つかりません: ${pagePath}`);
+        continue;
+      }
+      console.log(`✅ mainContent取得成功:`, {
+        scrollWidth: mainContent.scrollWidth,
+        scrollHeight: mainContent.scrollHeight,
+        clientWidth: mainContent.clientWidth,
+        clientHeight: mainContent.clientHeight
+      });
+
+      // 固定要素を一時的に非表示にする
+      const fixedElements = document.querySelectorAll('[class*="fixed"]');
+      const originalDisplays: string[] = [];
+      fixedElements.forEach((el, index) => {
+        originalDisplays[index] = (el as HTMLElement).style.display;
+        (el as HTMLElement).style.display = 'none';
+      });
+      console.log(`🔒 固定要素を非表示にしました (${fixedElements.length}個)`);
+
+      // html2canvasで画面をキャプチャ
+      console.log(`📸 html2canvasでキャプチャ開始...`);
+      const canvas = await html2canvas(mainContent as HTMLElement, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: mainContent.scrollWidth,
+        windowHeight: mainContent.scrollHeight,
+      });
+      console.log(`✅ キャプチャ完了:`, {
+        canvasWidth: canvas.width,
+        canvasHeight: canvas.height
+      });
+
+      // 固定要素を元に戻す
+      fixedElements.forEach((el, index) => {
+        (el as HTMLElement).style.display = originalDisplays[index];
+      });
+      console.log(`🔓 固定要素を元に戻しました`);
+
+      // A4サイズの寸法（mm）
+      const pdfWidth = 210;
+      const pdfHeight = 297;
+
+      // キャンバスのサイズ
+      const imgWidth = pdfWidth - 20; // 左右10mmずつマージン
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      // 画像データを取得
+      const imgData = canvas.toDataURL('image/png');
+      console.log(`📊 画像データ作成完了:`, {
+        imgWidth,
+        imgHeight,
+        pages: Math.ceil(imgHeight / (pdfHeight - 20))
+      });
+
+      // 新しいページを追加（最初のページ以外）
+      if (!isFirstPage) {
+        console.log(`➕ 新しいページを追加`);
+        pdf.addPage();
+      } else {
+        console.log(`📄 最初のページ`);
+      }
+      isFirstPage = false;
+
+      // 画像をPDFに追加（マージン付き）
+      let heightLeft = imgHeight;
+      let position = 10; // 上マージン
+
+      console.log(`📝 PDFに画像を追加 (position: ${position}, height: ${imgHeight})`);
+      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+      heightLeft -= (pdfHeight - 20); // 上下マージン分を引く
+
+      // 複数ページに分割が必要な場合
+      let splitPageCount = 0;
+      while (heightLeft > 0) {
+        splitPageCount++;
+        pdf.addPage();
+        position = heightLeft - imgHeight;
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
+        heightLeft -= pdfHeight;
+        console.log(`📄 分割ページ追加 (${splitPageCount}ページ目)`);
+      }
+
+      console.log(`✅ ${pageTitle} を追加しました (PDFページ総数: ${pdf.getNumberOfPages()})`);
+    }
+
+    // PDFをダウンロード
+    const filename = `report_${new Date().toISOString().split('T')[0]}.pdf`;
+    const totalPages = pdf.getNumberOfPages();
+    console.log(`💾 PDFをダウンロード: ${filename} (総ページ数: ${totalPages})`);
+    onProgress?.(pagePaths.length, pagePaths.length, 'PDF生成が完了しました');
+
     pdf.save(filename);
 
     console.log('✅ 統合PDF出力完了:', filename);

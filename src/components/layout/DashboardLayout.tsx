@@ -180,7 +180,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
     }
 
     try {
-      const { exportMultiplePagesToPDFHybrid } = await import('@/lib/pdf/hybridPdfExporter');
+      const { exportMultiplePagesToPDFWithProgress } = await import('@/lib/pdf/pdfExporter');
       
       // モーダルを閉じる
       setPdfModalOpen(false);
@@ -189,11 +189,11 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
       setPdfLoading(true);
       setPdfProgress({ current: 0, total: selectedPages.length, message: 'PDF生成を開始しています...' });
       
-      console.log('📄 ハイブリッドPDF出力を開始します...');
+      console.log('📄 PDF出力を開始します...');
       console.log('📄 選択されたページ:', selectedPages);
       
-      // 複数ページを1つのPDFに統合して出力（ハイブリッド方式）
-      await exportMultiplePagesToPDFHybrid(selectedPages, router, {
+      // 複数ページを1つのPDFに統合して出力（プログレス付き）
+      await exportMultiplePagesToPDFWithProgress(selectedPages, router, {
         onProgress: (current, total, message) => {
           setPdfProgress({ current, total, message });
         }
