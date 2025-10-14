@@ -9,6 +9,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { GA4DataService, GA4Metrics, GA4TimeSeriesData } from '@/lib/api/ga4DataService';
 import { AdminFirestoreService } from '@/lib/firebase/adminFirestore';
@@ -18,6 +19,7 @@ import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionS
 import { KPIService, KPISetting } from '@/lib/kpi/kpiService';
 import InsightsAlert from '@/components/insights/InsightsAlert';
 import { DetectedIssue } from '@/lib/improvements/types';
+import MetricTooltip from '@/components/charts/MetricTooltip';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -574,6 +576,20 @@ export default function SummaryPage() {
           const cvrDiff = calcPercentDiff(currentMonth.conversionRate, lastMonth?.conversionRate || null);
           const cvrYearDiff = calcPercentDiff(currentMonth.conversionRate, lastYearMonth?.conversionRate || null);
 
+          // 平均PVの計算
+          const avgPV = currentMonth.sessions > 0 ? currentMonth.screenPageViews / currentMonth.sessions : 0;
+          const lastMonthAvgPV = lastMonth && lastMonth.sessions > 0 ? lastMonth.screenPageViews / lastMonth.sessions : null;
+          const lastYearAvgPV = lastYearMonth && lastYearMonth.sessions > 0 ? lastYearMonth.screenPageViews / lastYearMonth.sessions : null;
+          const avgPVDiff = calcDiff(avgPV, lastMonthAvgPV);
+          const avgPVYearDiff = calcDiff(avgPV, lastYearAvgPV);
+
+          // ENG率の計算
+          const engagementRate = currentMonth.sessions > 0 && currentMonth.engagedSessions ? (currentMonth.engagedSessions / currentMonth.sessions) * 100 : 0;
+          const lastMonthEngRate = lastMonth && lastMonth.sessions > 0 && lastMonth.engagedSessions ? (lastMonth.engagedSessions / lastMonth.sessions) * 100 : null;
+          const lastYearEngRate = lastYearMonth && lastYearMonth.sessions > 0 && lastYearMonth.engagedSessions ? (lastYearMonth.engagedSessions / lastYearMonth.sessions) * 100 : null;
+          const engRateDiff = calcPercentDiff(engagementRate, lastMonthEngRate);
+          const engRateYearDiff = calcPercentDiff(engagementRate, lastYearEngRate);
+
           // CVカード表示用のデバッグログ
           console.log('📊 CVカード表示データ:', {
             conversionsLength: conversions.length,
@@ -615,172 +631,258 @@ export default function SummaryPage() {
           };
 
           return (
-            <div className="mb-6">
-              <div className="mb-4">
-                <h3 className="text-xl font-semibold text-dark dark:text-white">主要指標サマリ</h3>
-              </div>
+            <>
+              <div className="mb-6">
+                <div className="mb-4">
+                  <h3 className="text-xl font-semibold text-dark dark:text-white mb-2">主要指標サマリ</h3>
+                  <Link href="/summary" className="text-sm text-primary hover:underline">
+                    詳細を見る →
+                  </Link>
+                </div>
 
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                {/* 訪問（セッション） */}
-                <div className="analysis-card p-6">
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-body-color dark:text-dark-6">訪問</p>
-                  </div>
-                  <div className="mb-4">
-                    <h3 className="text-4xl font-bold text-dark dark:text-white">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3" style={{
+                  borderRadius: '8px',
+                  backgroundColor: '#ffffff',
+                  boxShadow: '0 3px 6px 0 rgba(14, 30, 62, 0.08)',
+                  padding: '20px'
+                }}>
+                  {/* 一段目：訪問 */}
+                  <div className="metrics-item p-6">
+                    <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6 flex items-center">
+                      訪問
+                      <MetricTooltip description="サイトへのセッション数（訪問回数）" />
+                    </p>
+                    <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
                       {currentMonth.sessions.toLocaleString()}
                     </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {lastMonth && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-body-color dark:text-dark-6 w-16">前月</span>
-                        <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                          <span className="text-dark dark:text-white w-16 text-right">{lastMonth.sessions.toLocaleString()}</span>
-                          <span className={`w-16 text-right font-medium ${sessionsDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {sessionsDiff.isPositive && sessionsDiff.value > 0 ? '+' : ''}{sessionsDiff.value.toLocaleString()}
-                          </span>
+                    <div className="space-y-2">
+                      {lastMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-16">前月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{lastMonth.sessions.toLocaleString()}</span>
+                            <span className={`w-12 text-right font-medium ${sessionsDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {sessionsDiff.value.toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {lastYearMonth && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
-                        <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                          <span className="text-dark dark:text-white w-16 text-right">{lastYearMonth.sessions.toLocaleString()}</span>
-                          <span className={`w-16 text-right font-medium ${sessionsYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {sessionsYearDiff.isPositive && sessionsYearDiff.value > 0 ? '+' : ''}{sessionsYearDiff.value.toLocaleString()}
-                          </span>
+                      )}
+                      {lastYearMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{lastYearMonth.sessions.toLocaleString()}</span>
+                            <span className={`w-12 text-right font-medium ${sessionsYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {sessionsYearDiff.value.toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* PV数 */}
-                <div className="analysis-card p-6">
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-body-color dark:text-dark-6">PV数</p>
-                  </div>
-                  <div className="mb-4">
-                    <h3 className="text-4xl font-bold text-dark dark:text-white">
+                  {/* 一段目：PV数 */}
+                  <div className="metrics-item p-6">
+                    <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6 flex items-center">
+                      PV数
+                      <MetricTooltip description="ページビュー数（閲覧されたページ数）" />
+                    </p>
+                    <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
                       {currentMonth.screenPageViews.toLocaleString()}
                     </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {lastMonth && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-body-color dark:text-dark-6 w-16">前月</span>
-                        <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                          <span className="text-dark dark:text-white w-16 text-right">{lastMonth.screenPageViews.toLocaleString()}</span>
-                          <span className={`w-16 text-right font-medium ${pvDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {pvDiff.isPositive && pvDiff.value > 0 ? '+' : ''}{pvDiff.value.toLocaleString()}
-                          </span>
+                    <div className="space-y-2">
+                      {lastMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-16">前月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{lastMonth.screenPageViews.toLocaleString()}</span>
+                            <span className={`w-12 text-right font-medium ${pvDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {pvDiff.value.toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {lastYearMonth && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
-                        <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                          <span className="text-dark dark:text-white w-16 text-right">{lastYearMonth.screenPageViews.toLocaleString()}</span>
-                          <span className={`w-16 text-right font-medium ${pvYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {pvYearDiff.isPositive && pvYearDiff.value > 0 ? '+' : ''}{pvYearDiff.value.toLocaleString()}
-                          </span>
+                      )}
+                      {lastYearMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{lastYearMonth.screenPageViews.toLocaleString()}</span>
+                            <span className={`w-12 text-right font-medium ${pvYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {pvYearDiff.value.toLocaleString()}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* CVR（セッションCV率） */}
-                <div className="analysis-card p-6">
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-body-color dark:text-dark-6">CVR</p>
-                  </div>
-                  <div className="mb-4">
-                    <h3 className="text-4xl font-bold text-dark dark:text-white">
-                      {currentMonth.conversionRate.toFixed(2)}%
+                  {/* 一段目：平均PV */}
+                  <div className="metrics-item p-6">
+                    <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6 flex items-center">
+                      平均PV
+                      <MetricTooltip description="1訪問あたりの平均ページビュー数" />
+                    </p>
+                    <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
+                      {avgPV.toFixed(2)}
                     </h3>
-                  </div>
-                  <div className="space-y-2">
-                    {lastMonth && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-body-color dark:text-dark-6 w-16">前月</span>
-                        <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                          <span className="text-dark dark:text-white w-16 text-right">{lastMonth.conversionRate.toFixed(2)}%</span>
-                          <span className={`w-16 text-right font-medium ${cvrDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {cvrDiff.isPositive && cvrDiff.value > 0 ? '+' : ''}{cvrDiff.value.toFixed(2)}%
-                          </span>
+                    <div className="space-y-2">
+                      {lastMonthAvgPV !== null && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-16">前月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{lastMonthAvgPV.toFixed(2)}</span>
+                            <span className={`w-12 text-right font-medium ${avgPVDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {avgPVDiff.value.toFixed(2)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {lastYearMonth && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
-                        <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                          <span className="text-dark dark:text-white w-16 text-right">{lastYearMonth.conversionRate.toFixed(2)}%</span>
-                          <span className={`w-16 text-right font-medium ${cvrYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {cvrYearDiff.isPositive && cvrYearDiff.value > 0 ? '+' : ''}{cvrYearDiff.value.toFixed(2)}%
-                          </span>
+                      )}
+                      {lastYearAvgPV !== null && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{lastYearAvgPV.toFixed(2)}</span>
+                            <span className={`w-12 text-right font-medium ${avgPVYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {avgPVYearDiff.value.toFixed(2)}
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
 
-                {/* コンバージョン */}
-                <div className="analysis-card p-6">
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-body-color dark:text-dark-6">コンバージョン</p>
+                  {/* 二段目：ENG率 */}
+                  <div className="metrics-item p-6">
+                    <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6 flex items-center">
+                      ENG率
+                      <MetricTooltip description="エンゲージメント率（10秒以上の滞在があった訪問の割合）" />
+                    </p>
+                    <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
+                      {engagementRate.toFixed(2)}%
+                    </h3>
+                    <div className="space-y-2">
+                      {lastMonthEngRate !== null && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-16">前月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{lastMonthEngRate.toFixed(2)}%</span>
+                            <span className={`w-12 text-right font-medium ${engRateDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {engRateDiff.value.toFixed(2)}%
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {lastYearEngRate !== null && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{lastYearEngRate.toFixed(2)}%</span>
+                            <span className={`w-12 text-right font-medium ${engRateYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {engRateYearDiff.value.toFixed(2)}%
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="mb-4">
-                    <h3 className="text-4xl font-bold text-dark dark:text-white">
+
+                  {/* 二段目：CV数 */}
+                  <div className="metrics-item p-6">
+                    <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6 flex items-center">
+                      CV数
+                      <MetricTooltip description="コンバージョン数（目標達成した回数）" />
+                    </p>
+                    <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
                       {(currentMonth.conversions || 0).toLocaleString()}
                     </h3>
+                    <div className="space-y-2">
+                      {lastMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-16">前月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{(lastMonth.conversions || 0).toLocaleString()}</span>
+                            <span className={`w-12 text-right font-medium ${cvDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {cvDiff.value.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      {lastYearMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{(lastYearMonth.conversions || 0).toLocaleString()}</span>
+                            <span className={`w-12 text-right font-medium ${cvYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {cvYearDiff.value.toLocaleString()}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {lastMonth && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-body-color dark:text-dark-6 w-16">前月</span>
-                        <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                          <span className="text-dark dark:text-white w-16 text-right">{(lastMonth.conversions || 0).toLocaleString()}</span>
-                          <span className={`w-16 text-right font-medium ${cvDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {cvDiff.isPositive && cvDiff.value > 0 ? '+' : ''}{cvDiff.value.toLocaleString()}
-                          </span>
+
+                  {/* 二段目：CVR */}
+                  <div className="metrics-item p-6">
+                    <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6 flex items-center">
+                      CVR
+                      <MetricTooltip description="コンバージョン率（訪問数に対するコンバージョンの割合）" />
+                    </p>
+                    <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
+                      {currentMonth.conversionRate.toFixed(2)}%
+                    </h3>
+                    <div className="space-y-2">
+                      {lastMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-16">前月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{lastMonth.conversionRate.toFixed(2)}%</span>
+                            <span className={`w-12 text-right font-medium ${cvrDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {cvrDiff.value.toFixed(2)}%
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                    {lastYearMonth && (
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
-                        <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                          <span className="text-dark dark:text-white w-16 text-right">{(lastYearMonth.conversions || 0).toLocaleString()}</span>
-                          <span className={`w-16 text-right font-medium ${cvYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                            {cvYearDiff.isPositive && cvYearDiff.value > 0 ? '+' : ''}{cvYearDiff.value.toLocaleString()}
-                          </span>
+                      )}
+                      {lastYearMonth && (
+                        <div className="flex items-center justify-between text-sm">
+                          <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
+                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
+                            <span className="text-dark dark:text-white w-12 text-right">{lastYearMonth.conversionRate.toFixed(2)}%</span>
+                            <span className={`w-12 text-right font-medium ${cvrYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
+                              {cvrYearDiff.value.toFixed(2)}%
+                            </span>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* コンバージョン内訳 */}
               {currentMonth.conversionBreakdown && Object.keys(currentMonth.conversionBreakdown).length > 0 && (
-                <div className="mt-6">
-                  <div className="mb-4 flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-dark dark:text-white">
-                      コンバージョン内訳
-                    </h2>
-                    <a
-                      href="/site-settings?step=4"
-                      className="text-xs text-primary hover:underline"
-                    >
-                      CV設定
-                    </a>
+                <div className="mt-6 mb-6">
+                  <div className="mb-4">
+                    <div className="mb-2">
+                      <h2 className="text-xl font-semibold text-dark dark:text-white inline-block">
+                        コンバージョン内訳
+                      </h2>
+                      <a
+                        href="/site-settings?step=4"
+                        className="ml-3 text-xs text-primary hover:underline"
+                      >
+                        CV設定
+                      </a>
+                    </div>
+                    <Link href="/conversion" className="text-sm text-primary hover:underline">
+                      詳細を見る →
+                    </Link>
                   </div>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3" style={{
+                    borderRadius: '8px',
+                    backgroundColor: '#ffffff',
+                    boxShadow: '0 3px 6px 0 rgba(14, 30, 62, 0.08)',
+                    padding: '20px'
+                  }}>
                     {conversions.map((conversion) => {
                       const currentCount = currentMonth.conversionBreakdown[conversion.eventName] || 0;
                       const lastMonthCount = lastMonth?.conversionBreakdown?.[conversion.eventName] || 0;
@@ -792,38 +894,35 @@ export default function SummaryPage() {
                       return (
                         <div
                           key={conversion.eventName}
-                          className="analysis-card p-6"
+                          className="conversion-item p-6"
                         >
-                          <div className="mb-4">
-                            <p className="text-sm font-medium text-body-color dark:text-dark-6">
-                              {conversion.displayName || conversion.eventName}
-                            </p>
-                          </div>
-                          <div className="mb-6">
-                            <h3 className="text-4xl font-bold text-dark dark:text-white">
-                              {currentCount.toLocaleString()}
-                            </h3>
-                          </div>
+                          <p className="mb-3 text-sm font-medium text-body-color dark:text-dark-6 flex items-center">
+                            {conversion.displayName || conversion.eventName}
+                            <MetricTooltip description="月別推移（過去13ヶ月）" />
+                          </p>
+                          <h3 className="mb-4 text-4xl font-bold text-dark dark:text-white">
+                            {currentCount.toLocaleString()}
+                          </h3>
                           <div className="space-y-2">
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-body-color dark:text-dark-6 w-16">前月</span>
                               <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                                <span className="text-dark dark:text-white w-16 text-right">{lastMonthCount.toLocaleString()}</span>
-                                <span className={`w-16 text-right font-medium ${
+                                <span className="text-dark dark:text-white w-12 text-right">{lastMonthCount.toLocaleString()}</span>
+                                <span className={`w-12 text-right font-medium ${
                                   lastMonthDiff.isPositive ? 'text-green-600' : 'text-red-600'
                                 }`}>
-                                  {lastMonthDiff.isPositive && lastMonthDiff.value > 0 ? '+' : ''}{lastMonthDiff.value.toLocaleString()}
+                                  {lastMonthDiff.value.toLocaleString()}
                                 </span>
                               </div>
                             </div>
                             <div className="flex items-center justify-between text-sm">
                               <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
                               <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                                <span className="text-dark dark:text-white w-16 text-right">{lastYearCount.toLocaleString()}</span>
-                                <span className={`w-16 text-right font-medium ${
+                                <span className="text-dark dark:text-white w-12 text-right">{lastYearCount.toLocaleString()}</span>
+                                <span className={`w-12 text-right font-medium ${
                                   lastYearDiff.isPositive ? 'text-green-600' : 'text-red-600'
                                 }`}>
-                                  {lastYearDiff.isPositive && lastYearDiff.value > 0 ? '+' : ''}{lastYearDiff.value.toLocaleString()}
+                                  {lastYearDiff.value.toLocaleString()}
                                 </span>
                               </div>
                             </div>
@@ -834,7 +933,7 @@ export default function SummaryPage() {
                   </div>
                 </div>
               )}
-            </div>
+            </>
           );
         })()}
 

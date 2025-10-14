@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
 import { UserProfileService } from '@/lib/user/userProfileService';
-import AISummarySection from '@/components/ai/AISummarySection';
+import AISummarySheet from '@/components/ai/AISummarySheet';
 import TableContainer from '@/components/table/TableContainer';
 
 interface FileDownload {
@@ -26,6 +26,7 @@ export default function FileDownloadsPage() {
   // 日付範囲（DashboardLayoutから受け取る）
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // データ取得関数
   const fetchDownloadData = async (propertyId: string, start: string, end: string) => {
@@ -257,23 +258,11 @@ export default function FileDownloadsPage() {
                   </colgroup>
                   <thead>
                     <tr className="border-b border-stroke bg-gray-2 text-left dark:border-dark-3 dark:bg-dark">
-                      <th 
-                        className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
-                        onClick={() => handleSort('filePath')}
-                      >
-                        <div className="flex items-center gap-2 flex-wrap">
-                          ファイル名
-                          <SortIcon columnKey="filePath" />
-                        </div>
+                      <th className="px-4 py-4 text-left text-sm font-medium text-dark dark:text-white">
+                        ファイル名
                       </th>
-                      <th 
-                        className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
-                        onClick={() => handleSort('clicks')}
-                      >
-                        <div className="flex items-center justify-end gap-2 flex-wrap">
-                          クリック数
-                          <SortIcon columnKey="clicks" />
-                        </div>
+                      <th className="px-4 py-4 text-center text-sm font-medium text-dark dark:text-white">
+                        クリック数
                       </th>
                     </tr>
                     {/* 合計行 - theadの直後 */}
@@ -283,7 +272,7 @@ export default function FileDownloadsPage() {
                       return (
                         <tr className="total-header-row font-semibold">
                           <td className="px-4 py-3 text-sm text-left text-dark dark:text-white">合計</td>
-                          <td className="px-4 py-3 text-sm text-right text-dark dark:text-white">{totalClicks.toLocaleString()}</td>
+                          <td className="px-4 py-3 text-sm text-center text-dark dark:text-white">{totalClicks.toLocaleString()}</td>
                         </tr>
                       );
                     })()}
@@ -294,7 +283,7 @@ export default function FileDownloadsPage() {
                         <td className="px-4 py-3 text-sm text-left text-dark dark:text-white">
                           {row.filePath}
                         </td>
-                        <td className="px-4 py-3 text-sm text-right text-dark dark:text-white">
+                        <td className="px-4 py-3 text-sm text-center text-dark dark:text-white">
                           {row.clicks.toLocaleString()}
                         </td>
                       </tr>
@@ -303,18 +292,41 @@ export default function FileDownloadsPage() {
                 </table>
         </TableContainer>
 
-        {/* AI Summary Section - 共通コンポーネント使用 */}
-        {user && startDate && endDate && aiContextData && (
-          <AISummarySection
-            userId={user.uid}
-            pageType="engagement"
-            startDate={startDate}
-            endDate={endDate}
-            contextData={aiContextData}
-            propertyId={selectedPropertyId || undefined}
-          />
-        )}
       </div>
+
+      {/* Fixed AI Analysis Button */}
+      <button
+        onClick={() => setIsAISheetOpen(true)}
+        className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-16 h-16 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
+      >
+        <svg
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          />
+        </svg>
+        <span className="text-[10px] leading-tight">AI分析</span>
+      </button>
+
+      {/* AI分析シート */}
+      {user && startDate && endDate && aiContextData && (
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          pageType="file-downloads"
+          contextData={aiContextData}
+          startDate={startDate}
+          endDate={endDate}
+          userId={user.uid}
+        />
+      )}
     </DashboardLayout>
   );
 }

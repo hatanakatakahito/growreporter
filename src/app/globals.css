@@ -92,6 +92,56 @@ a:hover {
   box-shadow: 0 3px 6px 0 rgba(0, 0, 0, 0.2);
 }
 
+/* 主要指標サマリの個別メトリクス項目 */
+.metrics-item {
+  /* border-radius: 8px; */
+  /* background-color: #ffffff; */
+  /* box-shadow: 0 3px 6px 0 rgba(14, 30, 62, 0.08); */
+  border-right: solid 1px #ececec;
+  border-bottom: solid 1px #ececec;
+}
+
+/* 3列グリッドの3の倍数番目（各行の最後）は右ボーダーなし */
+.metrics-item:nth-child(3n) {
+  border-right: none;
+}
+
+/* 最後の行（4-6番目）は下ボーダーなし */
+.metrics-item:nth-child(n+4) {
+  border-bottom: none;
+}
+
+.dark .metrics-item {
+  border-right-color: #374151;
+  border-bottom-color: #374151;
+}
+
+/* コンバージョン内訳の個別項目 */
+.conversion-item {
+  border-right: solid 1px #ececec;
+  border-bottom: solid 1px #ececec;
+}
+
+/* 3列グリッドの3の倍数番目（各行の最後）は右ボーダーなし */
+.conversion-item:nth-child(3n) {
+  border-right: none;
+}
+
+/* 最後の行の項目は下ボーダーなし */
+.conversion-item:nth-last-child(-n+3) {
+  border-bottom: none;
+}
+
+/* 最後の1つまたは2つの項目が1行未満の場合も対応 */
+.conversion-item:last-child {
+  border-bottom: none;
+}
+
+.dark .conversion-item {
+  border-right-color: #374151;
+  border-bottom-color: #374151;
+}
+
 /* 高コントラスト確保 */
 .text-muted {
   color: var(--color-text-secondary) !important;
@@ -187,7 +237,7 @@ table tbody tr.total-row:hover {
 /* スクロール可能なテーブルコンテナ */
 .table-scroll-container {
   position: relative;
-  max-height: 600px;
+  max-height: 1000px;
   overflow-y: auto;
   border: none;
   overflow-x: visible; /* ツールチップが見えるように */
@@ -197,6 +247,12 @@ table tbody tr.total-row:hover {
 .table-scroll-container table th,
 .table-scroll-container table td {
   text-align: center !important;
+}
+
+/* 左寄せが必要な列を上書き */
+.table-scroll-container table th.text-left,
+.table-scroll-container table td.text-left {
+  text-align: left !important;
 }
 
 /* テーブルヘッダーと合計行を固定 */

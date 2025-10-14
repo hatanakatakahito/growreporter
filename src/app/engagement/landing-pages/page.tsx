@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/lib/auth/authContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import TableContainer from '@/components/table/TableContainer';
-import AISummarySection from '@/components/ai/AISummarySection';
+import AISummarySheet from '@/components/ai/AISummarySheet';
 
 interface LandingPageData {
   landingPage: string;
@@ -25,6 +25,9 @@ export default function LandingPagesPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+
+  // AI分析シート
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // AI要約用のコンテキストデータ（メモ化）
   const aiContextData = useMemo(() => {
@@ -235,7 +238,7 @@ export default function LandingPagesPage() {
               <thead>
                 <tr className="border-b border-stroke bg-gray-2 text-left dark:border-dark-3 dark:bg-dark">
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-left text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('landingPage')}
                   >
                     <div className="flex items-center gap-2 flex-wrap">
@@ -254,10 +257,10 @@ export default function LandingPagesPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('users')}
                   >
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
                       ユーザー数
                       <svg className="h-4 w-4 text-body-color flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'users' ? (
@@ -273,10 +276,10 @@ export default function LandingPagesPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('sessions')}
                   >
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
                       セッション
                       <svg className="h-4 w-4 text-body-color flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'sessions' ? (
@@ -292,10 +295,10 @@ export default function LandingPagesPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('cvr')}
                   >
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
                       CVR
                       <svg className="h-4 w-4 text-body-color flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'cvr' ? (
@@ -311,10 +314,10 @@ export default function LandingPagesPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('conversions')}
                   >
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
                       CV
                       <svg className="h-4 w-4 text-body-color flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'conversions' ? (
@@ -339,11 +342,11 @@ export default function LandingPagesPage() {
                   
                   return (
                     <tr className="total-header-row font-semibold">
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white">合計</td>
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{totalUsers.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{totalSessions.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{avgCvr.toFixed(2)}%</td>
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{totalConversions.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-left text-sm text-dark dark:text-white">合計</td>
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{totalUsers.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{totalSessions.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{avgCvr.toFixed(2)}%</td>
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{totalConversions.toLocaleString()}</td>
                     </tr>
                   );
                 })()}
@@ -351,32 +354,56 @@ export default function LandingPagesPage() {
               <tbody>
                 {sortedLandingPageData.map((row, index) => (
                   <tr key={index} className="border-b border-stroke dark:border-dark-3 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-dark dark:text-white">
+                    <td className="px-4 py-3 text-left text-sm font-medium text-dark dark:text-white">
                       <div className="max-w-full" title={row.landingPage}>
                         {row.landingPage}
                       </div>
                     </td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{row.users.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{row.sessions.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{row.cvr.toFixed(2)}%</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{row.conversions.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{row.users.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{row.sessions.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{row.cvr.toFixed(2)}%</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{row.conversions.toLocaleString()}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
         </TableContainer>
 
-        {/* AI Summary */}
-        {user && startDate && endDate && (
-          <AISummarySection
-            userId={user.uid}
-            pageType="landing-pages"
-            startDate={startDate}
-            endDate={endDate}
-            contextData={aiContextData}
-          />
-        )}
       </div>
+
+      {/* Fixed AI Analysis Button */}
+      <button
+        onClick={() => setIsAISheetOpen(true)}
+        className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-16 h-16 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
+      >
+        <svg
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          />
+        </svg>
+        <span className="text-[10px] leading-tight">AI分析</span>
+      </button>
+
+      {/* AI Analysis Sheet */}
+      {user && startDate && endDate && (
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          userId={user.uid}
+          pageType="landing-pages"
+          startDate={startDate}
+          endDate={endDate}
+          contextData={aiContextData}
+        />
+      )}
     </DashboardLayout>
   );
 }

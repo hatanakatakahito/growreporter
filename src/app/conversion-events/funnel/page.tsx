@@ -6,6 +6,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import TableContainer from '@/components/table/TableContainer';
 import { ConversionService } from '@/lib/conversion/conversionService';
 import { Conversion } from '@/lib/conversion/conversionService';
+import AISummarySheet from '@/components/ai/AISummarySheet';
 
 interface FunnelData {
   totalPageViews: number;
@@ -47,6 +48,7 @@ export default function FunnelPage() {
   const [filteredPaths, setFilteredPaths] = useState<string[]>([]);
   const [showPathDropdown, setShowPathDropdown] = useState(false);
   const [showConversionDropdown, setShowConversionDropdown] = useState(false);
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // 日付範囲変更ハンドラー
   const handleDateRangeChange = (startDate: string, endDate: string) => {
@@ -148,11 +150,25 @@ export default function FunnelPage() {
         });
 
         if (!response.ok) {
+          const errorText = await response.text();
+          console.error('ファネルデータ取得エラー:', errorText);
           throw new Error('ファネルデータの取得に失敗しました');
         }
 
-        const data = await response.json();
-        setFunnelData(data);
+        const text = await response.text();
+        if (!text) {
+          console.warn('空のレスポンスを受信しました');
+          setFunnelData(null);
+          return;
+        }
+
+        try {
+          const data = JSON.parse(text);
+          setFunnelData(data);
+        } catch (jsonError) {
+          console.error('JSONパースエラー:', jsonError, 'レスポンス:', text);
+          throw new Error('データの解析に失敗しました');
+        }
       } catch (error: any) {
         console.error('ファネルデータ取得エラー:', error);
         setError(error.message || 'データの取得に失敗しました');
@@ -186,8 +202,15 @@ export default function FunnelPage() {
         });
 
         if (response.ok) {
-          const data = await response.json();
-          setMonthlyFunnelData(data.monthlyData || []);
+          const text = await response.text();
+          if (text) {
+            try {
+              const data = JSON.parse(text);
+              setMonthlyFunnelData(data.monthlyData || []);
+            } catch (jsonError) {
+              console.error('月次データJSONパースエラー:', jsonError, 'レスポンス:', text);
+            }
+          }
         }
       } catch (error: any) {
         console.error('月次ファネルデータ取得エラー:', error);
@@ -244,10 +267,19 @@ export default function FunnelPage() {
 
   return (
     <DashboardLayout onDateRangeChange={handleDateRangeChange}>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800">逆算フロー</h1>
+      <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+        {/* Page Header */}
+        <div className="mb-6">
+          <h2 className="mb-2 text-2xl font-semibold text-dark dark:text-white">
+            逆算フロー
+          </h2>
+          <p className="text-sm font-medium text-body-color dark:text-dark-6">
+            フォームページからのコンバージョンフローを分析
+          </p>
         </div>
+
+        {/* Main Content */}
+        <div className="space-y-6">
 
         {/* 設定セクション */}
         <TableContainer title="フロー設定">
@@ -465,13 +497,13 @@ export default function FunnelPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-stroke bg-gray-2 dark:border-dark-3 dark:bg-dark-3">
-                  <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white">年月</th>
-                  <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white">全PV数</th>
-                  <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white">遷移率①</th>
-                  <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white">フォーム到達</th>
-                  <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white">遷移率②</th>
-                  <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white">送信完了</th>
-                  <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white">全体CVR</th>
+                  <th className="px-4 py-4 text-left text-sm font-medium text-dark dark:text-white">年月</th>
+                  <th className="px-4 py-4 text-center text-sm font-medium text-dark dark:text-white">全PV数</th>
+                  <th className="px-4 py-4 text-center text-sm font-medium text-dark dark:text-white">遷移率①</th>
+                  <th className="px-4 py-4 text-center text-sm font-medium text-dark dark:text-white">フォーム到達</th>
+                  <th className="px-4 py-4 text-center text-sm font-medium text-dark dark:text-white">遷移率②</th>
+                  <th className="px-4 py-4 text-center text-sm font-medium text-dark dark:text-white">送信完了</th>
+                  <th className="px-4 py-4 text-center text-sm font-medium text-dark dark:text-white">全体CVR</th>
                 </tr>
               </thead>
               <tbody>
@@ -480,25 +512,25 @@ export default function FunnelPage() {
                     key={month.yearMonth} 
                     className="border-b border-stroke dark:border-dark-3 hover:bg-gray-2 dark:hover:bg-dark-3"
                   >
-                    <td className="px-4 py-4 text-sm text-dark dark:text-white font-medium">
+                    <td className="px-4 py-4 text-left text-sm text-dark dark:text-white font-medium">
                       {month.displayName}
                     </td>
-                    <td className="px-4 py-4 text-sm text-body-color dark:text-dark-6">
+                    <td className="px-4 py-4 text-center text-sm text-body-color dark:text-dark-6">
                       {month.totalPageViews.toLocaleString()}
                     </td>
-                    <td className="px-4 py-4 text-sm text-primary font-semibold">
+                    <td className="px-4 py-4 text-center text-sm text-primary font-semibold">
                       {month.formToTotalRate.toFixed(2)}%
                     </td>
-                    <td className="px-4 py-4 text-sm text-body-color dark:text-dark-6">
+                    <td className="px-4 py-4 text-center text-sm text-body-color dark:text-dark-6">
                       {month.formPageViews.toLocaleString()}
                     </td>
-                    <td className="px-4 py-4 text-sm text-primary font-semibold">
+                    <td className="px-4 py-4 text-center text-sm text-primary font-semibold">
                       {month.conversionToFormRate.toFixed(2)}%
                     </td>
-                    <td className="px-4 py-4 text-sm text-body-color dark:text-dark-6 font-medium">
+                    <td className="px-4 py-4 text-center text-sm text-body-color dark:text-dark-6 font-medium">
                       {month.conversions.toLocaleString()}
                     </td>
-                    <td className="px-4 py-4 text-sm text-primary font-bold">
+                    <td className="px-4 py-4 text-center text-sm text-primary font-bold">
                       {month.conversionToTotalRate.toFixed(2)}%
                     </td>
                   </tr>
@@ -517,7 +549,43 @@ export default function FunnelPage() {
             </p>
           </div>
         )}
+        </div>
+        {/* End Main Content */}
       </div>
+
+      {/* Fixed AI Analysis Button */}
+      <button
+        onClick={() => setIsAISheetOpen(true)}
+        className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-16 h-16 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
+      >
+        <svg
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          />
+        </svg>
+        <span className="text-[10px] leading-tight">AI分析</span>
+      </button>
+
+      {/* AI分析シート */}
+      {user && dateRange.startDate && dateRange.endDate && (
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          pageType="funnel"
+          contextData={{ funnelData, monthlyFunnelData, selectedConversion, formPagePath }}
+          startDate={dateRange.startDate}
+          endDate={dateRange.endDate}
+          userId={user.uid}
+        />
+      )}
     </DashboardLayout>
   );
 }

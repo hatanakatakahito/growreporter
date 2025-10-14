@@ -8,6 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
+    "dev:turbo": "next dev --turbo",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -63,6 +64,7 @@
     "react-apexcharts": "^1.7.0",
     "react-datepicker": "^8.7.0",
     "react-dom": "^19.1.1",
+    "react-loading-indicators": "^1.0.1",
     "react-select": "^5.10.2",
     "swiper": "^12.0.2",
     "typescript": "^5.9.2",

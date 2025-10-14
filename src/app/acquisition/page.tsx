@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/auth/authContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
-import AISummarySection from '@/components/ai/AISummarySection';
+import AISummarySheet from '@/components/ai/AISummarySheet';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -23,6 +23,7 @@ export default function AcquisitionPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [trafficData, setTrafficData] = useState<any[]>([]);
   const [totalData, setTotalData] = useState<any>({
     users: 0,
@@ -430,7 +431,7 @@ export default function AcquisitionPage() {
               <thead>
                 <tr className="border-b border-stroke bg-gray-2 text-left dark:border-dark-3 dark:bg-dark">
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-left text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('channel')}
                   >
                     <div className="flex items-center gap-2">
@@ -449,10 +450,10 @@ export default function AcquisitionPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('users')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       ユーザー数
                       <svg className="h-4 w-4 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'users' ? (
@@ -468,10 +469,10 @@ export default function AcquisitionPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('newUsers')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       新規ユーザー数
                       <svg className="h-4 w-4 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'newUsers' ? (
@@ -487,10 +488,10 @@ export default function AcquisitionPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('sessions')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       セッション
                       <svg className="h-4 w-4 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'sessions' ? (
@@ -506,10 +507,10 @@ export default function AcquisitionPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('pageviews')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       表示回数
                       <svg className="h-4 w-4 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'pageviews' ? (
@@ -525,10 +526,10 @@ export default function AcquisitionPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('engagementRate')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       ENG率
                       <svg className="h-4 w-4 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'engagementRate' ? (
@@ -544,10 +545,10 @@ export default function AcquisitionPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('keyEvents')}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-center gap-2">
                       キーイベント
                       <svg className="h-4 w-4 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'keyEvents' ? (
@@ -565,19 +566,19 @@ export default function AcquisitionPage() {
                 </tr>
                 {/* 合計行 - theadの直後 */}
                 <tr className="total-header-row font-semibold">
-                  <td className="px-4 py-3 text-sm text-dark dark:text-white">合計</td>
-                  <td className="px-4 py-3 text-sm text-dark dark:text-white">{totalData.users.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-dark dark:text-white">{totalData.newUsers.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-dark dark:text-white">{totalData.sessions.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-dark dark:text-white">{totalData.pageviews.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-sm text-dark dark:text-white">{totalData.engagementRate.toFixed(2)}%</td>
-                  <td className="px-4 py-3 text-sm text-dark dark:text-white">{totalData.keyEvents}</td>
+                  <td className="px-4 py-3 text-left text-sm text-dark dark:text-white">合計</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.users.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.newUsers.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.sessions.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.pageviews.toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.engagementRate.toFixed(2)}%</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.keyEvents}</td>
                 </tr>
               </thead>
               <tbody>
                 {sortedTrafficData.map((row, index) => (
                   <tr key={index} className="border-b border-stroke dark:border-dark-3 transition-colors" style={{ position: 'relative' }}>
-                    <td className="relative px-4 py-3 text-sm font-medium text-dark dark:text-white" style={{ overflow: 'visible' }}>
+                    <td className="relative px-4 py-3 text-left text-sm font-medium text-dark dark:text-white" style={{ overflow: 'visible' }}>
                       {channelDescriptions[row.channel] ? (
                         <div className="tooltip-container inline-flex items-center gap-1">
                           {row.channel === 'Organic Search' ? (
@@ -605,12 +606,12 @@ export default function AcquisitionPage() {
                         <span>{row.channel}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white">{row.users.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white">{row.newUsers.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white">{row.sessions.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white">{row.pageviews.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white">{row.engagementRate.toFixed(2)}%</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white">{row.keyEvents}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{row.users.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{row.newUsers.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{row.sessions.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{row.pageviews.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{row.engagementRate.toFixed(2)}%</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{row.keyEvents}</td>
                   </tr>
                 ))}
               </tbody>
@@ -647,19 +648,40 @@ export default function AcquisitionPage() {
           </div>
         </div>
 
-        {/* AI Summary Section - 共通コンポーネント使用 */}
-        {user && startDate && endDate && aiContextData && (
-          <AISummarySection
-            userId={user.uid}
-            pageType="acquisition"
-            startDate={startDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
-            endDate={endDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
-            contextData={aiContextData}
-            propertyId={selectedPropertyId || undefined}
-            className="mt-6"
-          />
-        )}
+        {/* Fixed AI Analysis Button */}
+        <button
+          onClick={() => setIsAISheetOpen(true)}
+          className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-16 h-16 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
+        >
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+            />
+          </svg>
+          <span className="text-[10px] leading-tight">AI分析</span>
+        </button>
       </div>
+
+      {/* AI分析シート */}
+      {user && startDate && endDate && aiContextData && (
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          pageType="acquisition"
+          contextData={aiContextData}
+          startDate={startDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
+          endDate={endDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
+          userId={user.uid}
+        />
+      )}
     </DashboardLayout>
   );
 }

@@ -18,6 +18,13 @@ const nextConfig = {
   // 実験的な機能で環境変数の読み込みを強化
   experimental: {
     forceSwcTransforms: true,
+  },
+  // Webpackの設定でチャンクロードのタイムアウトを増やす
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.output.chunkLoadTimeout = 120000; // 2分（デフォルトは120秒）
+    }
+    return config;
   }
 };
 

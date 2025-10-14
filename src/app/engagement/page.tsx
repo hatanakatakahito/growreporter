@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
 import { useRouter } from 'next/navigation';
-import AISummarySection from '@/components/ai/AISummarySection';
+import AISummarySheet from '@/components/ai/AISummarySheet';
 
 export default function EngagementPage() {
   const { user, loading: authLoading } = useAuth();
@@ -21,6 +21,7 @@ export default function EngagementPage() {
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
   const [dateRangeType, setDateRangeType] = useState<string>('last_month');
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [pageData, setPageData] = useState<any[]>([]);
 
   // ソート機能
@@ -271,30 +272,14 @@ export default function EngagementPage() {
               </colgroup>
               <thead>
                 <tr className="border-b border-stroke bg-gray-2 text-left dark:border-dark-3 dark:bg-dark">
-                  <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
-                    onClick={() => handleSort('pagePath')}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      URL・ページ
-                      <svg className="h-4 w-4 flex-shrink-0 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        {sortKey === 'pagePath' ? (
-                          sortOrder === 'asc' ? (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                          ) : (
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          )
-                        ) : (
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                        )}
-                      </svg>
-                    </div>
+                  <th className="px-4 py-4 text-left text-sm font-medium text-dark dark:text-white">
+                    URL・ページ
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('users')}
                   >
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
                       ユーザー数
                       <svg className="h-4 w-4 flex-shrink-0 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'users' ? (
@@ -310,10 +295,10 @@ export default function EngagementPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('sessions')}
                   >
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
                       セッション
                       <svg className="h-4 w-4 flex-shrink-0 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'sessions' ? (
@@ -329,10 +314,10 @@ export default function EngagementPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('pageviews')}
                   >
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
                       表示回数
                       <svg className="h-4 w-4 flex-shrink-0 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'pageviews' ? (
@@ -348,10 +333,10 @@ export default function EngagementPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('viewsPerUser')}
                   >
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
                       平均PV
                       <svg className="h-4 w-4 flex-shrink-0 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'viewsPerUser' ? (
@@ -367,10 +352,10 @@ export default function EngagementPage() {
                     </div>
                   </th>
                   <th 
-                    className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                    className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                     onClick={() => handleSort('engagementRate')}
                   >
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center justify-center gap-2">
                       ENG率
                       <svg className="h-4 w-4 flex-shrink-0 text-body-color" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         {sortKey === 'engagementRate' ? (
@@ -398,12 +383,12 @@ export default function EngagementPage() {
                   
                   return (
                     <tr className="total-header-row font-semibold">
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white">合計</td>
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{totalUsers.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{totalSessions.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{totalPageviews.toLocaleString()}</td>
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{avgViewsPerUser.toFixed(2)}</td>
-                      <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{avgEngagementRate.toFixed(2)}%</td>
+                      <td className="px-4 py-3 text-left text-sm text-dark dark:text-white">合計</td>
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{totalUsers.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{totalSessions.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{totalPageviews.toLocaleString()}</td>
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{avgViewsPerUser.toFixed(2)}</td>
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{avgEngagementRate.toFixed(2)}%</td>
                     </tr>
                   );
                 })()}
@@ -411,7 +396,7 @@ export default function EngagementPage() {
               <tbody>
                 {sortedPageData.map((row, index) => (
                   <tr key={index} className="border-b border-stroke dark:border-dark-3 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-dark dark:text-white">
+                    <td className="px-4 py-3 text-left text-sm font-medium text-dark dark:text-white">
                       <div className="max-w-full" title={row.pagePath}>
                         {row.pagePath}
                       </div>
@@ -421,11 +406,11 @@ export default function EngagementPage() {
                         </div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{row.users.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{row.sessions.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{row.pageviews.toLocaleString()}</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{row.viewsPerUser.toFixed(2)}</td>
-                    <td className="px-4 py-3 text-sm text-dark dark:text-white whitespace-nowrap">{row.engagementRate.toFixed(2)}%</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{row.users.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{row.sessions.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{row.pageviews.toLocaleString()}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{row.viewsPerUser.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white whitespace-nowrap">{row.engagementRate.toFixed(2)}%</td>
                   </tr>
                 ))}
               </tbody>
@@ -434,17 +419,40 @@ export default function EngagementPage() {
           </div>
         </div>
 
-        {/* AI Summary */}
-        {user && startDate && endDate && (
-          <AISummarySection
-            userId={user.uid}
-            pageType="engagement"
-            startDate={startDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
-            endDate={endDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
-            contextData={aiContextData}
-          />
-        )}
+        {/* Fixed AI Analysis Button */}
+        <button
+          onClick={() => setIsAISheetOpen(true)}
+          className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-16 h-16 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
+        >
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+            />
+          </svg>
+          <span className="text-[10px] leading-tight">AI分析</span>
+        </button>
       </div>
+
+      {/* AI分析シート */}
+      {user && startDate && endDate && aiContextData && (
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          pageType="engagement"
+          contextData={aiContextData}
+          startDate={startDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
+          endDate={endDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
+          userId={user.uid}
+        />
+      )}
     </DashboardLayout>
   );
 }

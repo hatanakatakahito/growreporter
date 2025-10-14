@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import AISummaryService from '@/lib/ai/summaryService';
 
 interface AISummarySheetProps {
@@ -150,10 +151,20 @@ export default function AISummarySheet({
             </div>
           ) : summary ? (
             <div className="space-y-4">
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <div className="whitespace-pre-wrap text-body-color dark:text-dark-6">
+              <div className="prose prose-base max-w-none dark:prose-invert prose-headings:text-dark dark:prose-headings:text-white prose-p:text-dark dark:prose-p:text-white prose-li:text-dark dark:prose-li:text-white prose-strong:text-dark dark:prose-strong:text-white">
+                <ReactMarkdown
+                  components={{
+                    h2: ({ node, ...props }) => <h2 className="text-xl font-bold mt-6 mb-3 text-dark dark:text-white" {...props} />,
+                    h3: ({ node, ...props }) => <h3 className="text-lg font-semibold mt-4 mb-2 text-dark dark:text-white" {...props} />,
+                    p: ({ node, ...props }) => <p className="mb-3 text-dark dark:text-white leading-relaxed" {...props} />,
+                    ul: ({ node, ...props }) => <ul className="mb-3 ml-4 list-disc text-dark dark:text-white" {...props} />,
+                    ol: ({ node, ...props }) => <ol className="mb-3 ml-4 list-decimal text-dark dark:text-white" {...props} />,
+                    li: ({ node, ...props }) => <li className="mb-1 text-dark dark:text-white" {...props} />,
+                    strong: ({ node, ...props }) => <strong className="font-semibold text-dark dark:text-white" {...props} />,
+                  }}
+                >
                   {summary}
-                </div>
+                </ReactMarkdown>
               </div>
               <button
                 onClick={handleRegenerate}

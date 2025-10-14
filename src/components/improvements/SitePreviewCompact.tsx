@@ -175,25 +175,25 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
             </svg>
             <div className="flex-1">
-              <div className="text-sm font-semibold text-dark dark:text-white mb-0.5">
+              <div className="text-xl font-semibold text-dark dark:text-white mb-1">
                 {siteName || metaInfo.title || siteUrl}
               </div>
               <a 
                 href={siteUrl} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-xs text-primary hover:underline block mb-2"
+                className="text-base text-body-color dark:text-dark-6 hover:text-primary hover:underline block mb-3"
               >
                 {siteUrl}
               </a>
               <div className="mb-2">
-                <span className="text-xs text-body-color dark:text-dark-6">サイトタイトル</span>
+                <span className="text-xs text-body-color dark:text-dark-6">▼サイトタイトル</span>
                 <p className="text-sm font-medium text-dark dark:text-white max-w-[600px]">
                   {metaInfo.title || 'タイトル情報を取得中...'}
                 </p>
               </div>
               <div className="mb-3">
-                <span className="text-xs text-body-color dark:text-dark-6">サイト説明文</span>
+                <span className="text-xs text-body-color dark:text-dark-6">▼サイト説明文</span>
                 <p className="text-sm text-body-color dark:text-dark-6 max-w-[600px]">
                   {metaInfo.description || '説明文を取得中...'}
                 </p>

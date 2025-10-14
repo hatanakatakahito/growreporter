@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
 import { UserProfileService } from '@/lib/user/userProfileService';
-import AISummarySection from '@/components/ai/AISummarySection';
+import AISummarySheet from '@/components/ai/AISummarySheet';
 import TableContainer from '@/components/table/TableContainer';
 import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionService';
 
@@ -27,6 +27,7 @@ export default function ConversionEventsPage() {
   const [conversions, setConversions] = useState<ConversionEvent[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlyConversionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   
   // サイト情報
   const [siteName, setSiteName] = useState<string>('');
@@ -304,11 +305,11 @@ export default function ConversionEventsPage() {
             <table className="w-full table-auto">
               <thead>
                 <tr className="border-b border-stroke bg-gray-2 dark:border-dark-3 dark:bg-dark">
-                  <th className="px-4 py-4 text-sm font-medium text-dark dark:text-white">
+                  <th className="px-4 py-4 text-left text-sm font-medium text-dark dark:text-white">
                     年月
                   </th>
                   {conversions.map((conversion) => (
-                    <th key={conversion.id} className="px-4 py-4 text-sm font-medium text-dark dark:text-white">
+                    <th key={conversion.id} className="px-4 py-4 text-center text-sm font-medium text-dark dark:text-white">
                       {conversion.displayName || conversion.eventName}
                     </th>
                   ))}
@@ -317,13 +318,13 @@ export default function ConversionEventsPage() {
               <tbody>
                 {monthlyData.map((month: any, index) => (
                   <tr key={index} className="border-b border-stroke dark:border-dark-3 transition-colors">
-                    <td className="px-4 py-3 text-sm font-medium text-dark dark:text-white">
+                    <td className="px-4 py-3 text-left text-sm font-medium text-dark dark:text-white">
                       {month.displayName}
                     </td>
                     {conversions.map((conversion) => {
                       const count = month.conversionBreakdown?.[conversion.eventName] || 0;
                       return (
-                        <td key={conversion.id} className="px-4 py-3 text-sm text-dark dark:text-white">
+                        <td key={conversion.id} className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                           {count.toLocaleString()}
                         </td>
                       );
@@ -335,18 +336,40 @@ export default function ConversionEventsPage() {
           </TableContainer>
         )}
 
-        {/* AI Summary Section - 共通コンポーネント使用 */}
-        {user && aiContextData && monthlyData.length > 0 && (
-          <AISummarySection
-            userId={user.uid}
-            pageType="conversion"
-            startDate={monthlyData[monthlyData.length - 1]?.yearMonth || ''}
-            endDate={monthlyData[0]?.yearMonth || ''}
-            contextData={aiContextData}
-            propertyId={selectedPropertyId || undefined}
-          />
-        )}
+        {/* Fixed AI Analysis Button */}
+        <button
+          onClick={() => setIsAISheetOpen(true)}
+          className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-16 h-16 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
+        >
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+            />
+          </svg>
+          <span className="text-[10px] leading-tight">AI分析</span>
+        </button>
       </div>
+
+      {/* AI分析シート */}
+      {user && aiContextData && monthlyData.length > 0 && (
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          pageType="conversion"
+          contextData={aiContextData}
+          startDate={monthlyData[monthlyData.length - 1]?.yearMonth || ''}
+          endDate={monthlyData[0]?.yearMonth || ''}
+          userId={user.uid}
+        />
+      )}
     </DashboardLayout>
   );
 }

@@ -25,6 +25,27 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
   const [engagementMenuOpen, setEngagementMenuOpen] = useState(false);
   const [conversionMenuOpen, setConversionMenuOpen] = useState(false);
   
+  // 現在のパスに基づいてメニューを自動展開
+  useEffect(() => {
+    if (pathname?.startsWith('/summary') || pathname?.startsWith('/users') || 
+        pathname?.startsWith('/acquisition') || pathname?.startsWith('/engagement') || 
+        pathname?.startsWith('/conversion-events')) {
+      setAnalyzeMenuOpen(true);
+    }
+    
+    if (pathname?.startsWith('/acquisition')) {
+      setAcquisitionMenuOpen(true);
+    }
+    
+    if (pathname?.startsWith('/engagement')) {
+      setEngagementMenuOpen(true);
+    }
+    
+    if (pathname?.startsWith('/conversion-events')) {
+      setConversionMenuOpen(true);
+    }
+  }, [pathname]);
+  
   // PDF出力機能の状態管理
   const [pdfModalOpen, setPdfModalOpen] = useState(false);
   const [selectedPages, setSelectedPages] = useState<string[]>([]);
@@ -146,23 +167,36 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
       return;
     }
 
+    const confirmed = window.confirm(
+      `選択された ${selectedPages.length} ページをPDF出力します。\n` +
+      `処理には数分かかる場合があります。よろしいですか？`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     try {
       const { exportMultiplePagesToPDF } = await import('@/lib/pdf/pdfExporter');
       
       // モーダルを閉じる
       setPdfModalOpen(false);
       
-      // ローディング表示（オプション）
-      alert('PDF出力を開始します。しばらくお待ちください...');
+      console.log('📄 PDF出力を開始します...');
+      console.log('📄 選択されたページ:', selectedPages);
       
       // 複数ページを1つのPDFに統合して出力
       await exportMultiplePagesToPDF(selectedPages, router);
       
-      alert('PDF出力が完了しました');
+      alert('✅ PDF出力が完了しました！ファイルがダウンロードされます。');
       setSelectedPages([]);
     } catch (error) {
-      console.error('PDF出力エラー:', error);
-      alert('PDF出力に失敗しました');
+      console.error('❌ PDF出力エラー:', error);
+      alert(
+        'PDF出力に失敗しました。\n' +
+        'ブラウザのコンソールでエラー詳細を確認してください。\n\n' +
+        `エラー: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   };
 
@@ -233,7 +267,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                 <button
                   onClick={() => setAnalyzeMenuOpen(!analyzeMenuOpen)}
                   className={`relative flex w-full items-center justify-between gap-2.5 border-r-4 py-[15px] pr-10 pl-9 text-base font-medium duration-200 ${
-                    pathname.startsWith('/summary') || pathname.startsWith('/users') || pathname.startsWith('/acquisition') || pathname.startsWith('/engagement') || pathname.startsWith('/conversion-events')
+                    pathname === '/summary' || pathname === '/users' || pathname?.startsWith('/acquisition') || pathname?.startsWith('/engagement') || pathname?.startsWith('/conversion-events')
                       ? 'border-primary bg-primary/5 text-primary'
                       : 'border-transparent text-body-color hover:border-primary hover:bg-primary/5 dark:text-dark-6'
                   }`}
@@ -870,7 +904,10 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
         </header>
 
         {/* Site Preview Section - Above Main Content */}
-        {siteInfo && siteInfo.siteUrl && user && (
+        {siteInfo && siteInfo.siteUrl && user && 
+         !pathname?.startsWith('/profile') && 
+         !pathname?.startsWith('/site-settings') && 
+         !pathname?.startsWith('/admin') && (
           <div className="cover bg-white dark:bg-dark-2 w-full">
             <SitePreviewCompact
               siteUrl={siteInfo.siteUrl}

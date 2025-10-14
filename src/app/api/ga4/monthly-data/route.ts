@@ -39,8 +39,15 @@ export async function POST(request: NextRequest) {
     const { accessToken } = await getValidGA4Token(userId);
 
     // 指定された終了日から遡って13ヶ月分のデータを取得
-    // endDateが指定されていない場合は今日を使用
-    const referenceDate = endDate ? new Date(endDate) : new Date();
+    // endDateが指定されていない場合は前月末を使用
+    let referenceDate: Date;
+    if (endDate) {
+      referenceDate = new Date(endDate);
+    } else {
+      // 前月末日を取得
+      const today = new Date();
+      referenceDate = new Date(today.getFullYear(), today.getMonth(), 0); // 今月の0日 = 前月の最終日
+    }
     
     // 終了日の月から遡って12ヶ月前の月初を開始日とする（合計13ヶ月）
     const startDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 12, 1);
@@ -54,7 +61,7 @@ export async function POST(request: NextRequest) {
     
     console.log('📅 月別データ期間:', { 
       startDate: formatDate(startDate), 
-      endDate: endDate || 'today',
+      endDate: formatDate(referenceDate),
       referenceMonth: `${referenceDate.getFullYear()}年${referenceDate.getMonth() + 1}月`
     });
 
@@ -63,7 +70,7 @@ export async function POST(request: NextRequest) {
       propertyId,
       dateRanges: [{ 
         startDate: formatDate(startDate), 
-        endDate: endDate || 'today' 
+        endDate: formatDate(referenceDate)
       }],
       dimensions: [{ name: 'yearMonth' }],
       metrics: [
@@ -72,6 +79,7 @@ export async function POST(request: NextRequest) {
         { name: 'sessions' },
         { name: 'screenPageViews' },
         { name: 'engagementRate' },
+        { name: 'engagedSessions' },
         { name: 'sessionsPerUser' },
         { name: 'sessionConversionRate' }
       ],
@@ -86,7 +94,7 @@ export async function POST(request: NextRequest) {
         propertyId,
         dateRanges: [{ 
           startDate: formatDate(startDate), 
-          endDate: endDate || 'today' 
+          endDate: formatDate(referenceDate)
         }],
         dimensions: [{ name: 'yearMonth' }, { name: 'eventName' }],
         metrics: [{ name: 'eventCount' }],
@@ -148,9 +156,10 @@ export async function POST(request: NextRequest) {
         sessions: sessions,
         screenPageViews: parseInt(row.metricValues[3].value || '0'),
         engagementRate: parseFloat(row.metricValues[4].value || '0') * 100,
+        engagedSessions: parseInt(row.metricValues[5].value || '0'),
         conversions: conversionCount, // ユーザー定義のコンバージョン合計
         conversionBreakdown: breakdown, // イベント別の内訳
-        sessionsPerUser: parseFloat(row.metricValues[5].value || '0'),
+        sessionsPerUser: parseFloat(row.metricValues[6].value || '0'),
         conversionRate: conversionRate // ユーザー定義のコンバージョンから計算
       };
     }) || [];

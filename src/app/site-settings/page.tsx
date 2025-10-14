@@ -924,12 +924,12 @@ export default function SiteSettingsPage() {
     <DashboardLayout>
       <div className="mx-auto max-w-4xl p-4 md:p-6 2xl:p-10">
         {/* ページヘッダー */}
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold text-dark dark:text-white">
+        <div className="mb-6">
+          <h2 className="mb-2 text-2xl font-semibold text-dark dark:text-white">
             サイト設定
-          </h1>
-          <p className="text-body-color dark:text-dark-6">
-            サイト設定では、サイト情報の登録とGoogleアナリティクス、Googleサーチコンソールのアクセス権限を持つGoogleアカウントが必要になります。
+          </h2>
+          <p className="text-sm font-medium text-body-color dark:text-dark-6">
+            サイト情報の登録とGoogleアナリティクス、Googleサーチコンソールのアクセス権限を持つGoogleアカウントが必要になります。
           </p>
         </div>
 

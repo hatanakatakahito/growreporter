@@ -10,7 +10,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
-import AISummarySection from '@/components/ai/AISummarySection';
+import AISummarySheet from '@/components/ai/AISummarySheet';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -22,6 +22,7 @@ export default function UsersPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [startDate, setStartDate] = useState<string>('');
   const [endDate, setEndDate] = useState<string>('');
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // ユーザー属性データ
   const [newVsReturningData, setNewVsReturningData] = useState<any[]>([]);
@@ -155,7 +156,7 @@ export default function UsersPage() {
         setGenderData(data.gender || []);
         setAgeData(data.age || []);
         setDeviceData(data.device || []);
-        setRegionData(data.regions || []);
+        setRegionData(data.region || []);
       }
     } catch (err: any) {
       console.error('日付範囲変更エラー:', err);
@@ -557,6 +558,15 @@ export default function UsersPage() {
     grid: {
       borderColor: '#E2E8F0',
     },
+    tooltip: {
+      y: {
+        formatter: function (val: number, opts: any) {
+          const index = opts.dataPointIndex;
+          const users = regionData[index]?.users || 0;
+          return users.toLocaleString() + ' ユーザー';
+        },
+      },
+    },
   };
   
   // 地域データを計算
@@ -691,19 +701,40 @@ export default function UsersPage() {
           />
         </div>
 
-        {/* AI Summary Section - 共通コンポーネント使用 */}
-        {user && startDate && endDate && aiContextData && (
-          <AISummarySection
-            userId={user.uid}
-            pageType="users"
-            startDate={startDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
-            endDate={endDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
-            contextData={aiContextData}
-            propertyId={selectedPropertyId || undefined}
-            className="mt-6"
-          />
-        )}
+        {/* Fixed AI Analysis Button */}
+        <button
+          onClick={() => setIsAISheetOpen(true)}
+          className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-16 h-16 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
+        >
+          <svg
+            className="h-6 w-6"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+            />
+          </svg>
+          <span className="text-[10px] leading-tight">AI分析</span>
+        </button>
       </div>
+
+      {/* AI分析シート */}
+      {user && startDate && endDate && aiContextData && (
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          pageType="users"
+          contextData={aiContextData}
+          startDate={startDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
+          endDate={endDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
+          userId={user.uid}
+        />
+      )}
     </DashboardLayout>
   );
 }

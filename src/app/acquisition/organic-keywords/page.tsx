@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
 import { UserProfileService } from '@/lib/user/userProfileService';
-import AISummarySection from '@/components/ai/AISummarySection';
+import AISummarySheet from '@/components/ai/AISummarySheet';
 
 export default function OrganicKeywordsPage() {
   const { user } = useAuth();
@@ -25,6 +25,9 @@ export default function OrganicKeywordsPage() {
   // ソート機能
   const [sortKey, setSortKey] = useState<string>('clicks');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // AI分析シート
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // データ取得関数
   const fetchData = async (siteUrl: string, start: string, end: string) => {
@@ -231,7 +234,7 @@ export default function OrganicKeywordsPage() {
                       <thead>
                         <tr className="border-b border-stroke bg-gray-2 text-left dark:border-dark-3 dark:bg-dark">
                         <th 
-                          className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                          className="cursor-pointer px-4 py-4 text-left text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                           onClick={() => handleSort('query')}
                         >
                           <div className="flex items-center gap-2">
@@ -240,37 +243,37 @@ export default function OrganicKeywordsPage() {
                           </div>
                         </th>
                         <th 
-                          className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                          className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                           onClick={() => handleSort('clicks')}
                         >
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-center gap-2">
                             クリック数
                             <SortIcon columnKey="clicks" />
                           </div>
                         </th>
                         <th 
-                          className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                          className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                           onClick={() => handleSort('impressions')}
                         >
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-center gap-2">
                             表示回数
                             <SortIcon columnKey="impressions" />
                           </div>
                         </th>
                         <th 
-                          className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                          className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                           onClick={() => handleSort('ctr')}
                         >
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-center gap-2">
                             CTR
                             <SortIcon columnKey="ctr" />
                           </div>
                         </th>
                         <th 
-                          className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                          className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                           onClick={() => handleSort('position')}
                         >
-                          <div className="flex items-center justify-end gap-2">
+                          <div className="flex items-center justify-center gap-2">
                             平均掲載順位
                             <SortIcon columnKey="position" />
                           </div>
@@ -326,19 +329,43 @@ export default function OrganicKeywordsPage() {
               </div>
             </div>
 
-            {/* AI Summary Section - 共通コンポーネント使用 */}
-            {user && startDate && endDate && aiContextData && (
-              <AISummarySection
-                userId={user.uid}
-                pageType="organic-keywords"
-                startDate={startDate}
-                endDate={endDate}
-                contextData={aiContextData}
-              />
-            )}
           </>
         )}
       </div>
+
+      {/* Fixed AI Analysis Button */}
+      <button
+        onClick={() => setIsAISheetOpen(true)}
+        className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-16 h-16 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
+      >
+        <svg
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          />
+        </svg>
+        <span className="text-[10px] leading-tight">AI分析</span>
+      </button>
+
+      {/* AI Analysis Sheet */}
+      {user && startDate && endDate && aiContextData && (
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          userId={user.uid}
+          pageType="organic-keywords"
+          startDate={startDate}
+          endDate={endDate}
+          contextData={aiContextData}
+        />
+      )}
     </DashboardLayout>
   );
 }

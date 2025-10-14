@@ -9,7 +9,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
 import { UserProfileService } from '@/lib/user/userProfileService';
-import AISummarySection from '@/components/ai/AISummarySection';
+import AISummarySheet from '@/components/ai/AISummarySheet';
 
 export default function ReferralsPage() {
   const { user } = useAuth();
@@ -33,6 +33,9 @@ export default function ReferralsPage() {
   // ソート機能
   const [sortKey, setSortKey] = useState<string>('users');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+
+  // AI分析シート
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // データ取得関数
   const fetchData = async (propertyId: string, start: string, end: string) => {
@@ -236,74 +239,62 @@ export default function ReferralsPage() {
                 <table className="w-full table-auto">
                   <thead>
                     <tr className="border-b border-stroke bg-gray-2 text-left dark:border-dark-3 dark:bg-dark">
-                    <th 
-                      className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
-                      onClick={() => handleSort('source')}
-                    >
-                      <div className="flex items-center gap-2">
-                        ソース
-                        <SortIcon columnKey="source" />
-                      </div>
+                    <th className="px-4 py-4 text-left text-sm font-medium text-dark dark:text-white">
+                      ソース
+                    </th>
+                    <th className="px-4 py-4 text-left text-sm font-medium text-dark dark:text-white">
+                      メディア
                     </th>
                     <th 
-                      className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
-                      onClick={() => handleSort('medium')}
-                    >
-                      <div className="flex items-center gap-2">
-                        メディア
-                        <SortIcon columnKey="medium" />
-                      </div>
-                    </th>
-                    <th 
-                      className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                      className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                       onClick={() => handleSort('users')}
                     >
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         ユーザー数
                         <SortIcon columnKey="users" />
                       </div>
                     </th>
                     <th 
-                      className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                      className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                       onClick={() => handleSort('newUsers')}
                     >
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         新規ユーザー
                         <SortIcon columnKey="newUsers" />
                       </div>
                     </th>
                     <th 
-                      className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                      className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                       onClick={() => handleSort('sessions')}
                     >
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         セッション
                         <SortIcon columnKey="sessions" />
                       </div>
                     </th>
                     <th 
-                      className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                      className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                       onClick={() => handleSort('pageviews')}
                     >
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         ページビュー
                         <SortIcon columnKey="pageviews" />
                       </div>
                     </th>
                     <th 
-                      className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                      className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                       onClick={() => handleSort('engagementRate')}
                     >
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         ENG率
                         <SortIcon columnKey="engagementRate" />
                       </div>
                     </th>
                     <th 
-                      className="cursor-pointer px-4 py-4 text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
+                      className="cursor-pointer px-4 py-4 text-center text-sm font-medium text-dark dark:text-white hover:bg-gray-3 dark:hover:bg-dark-2"
                       onClick={() => handleSort('keyEvents')}
                     >
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         キーイベント
                         <SortIcon columnKey="keyEvents" />
                       </div>
@@ -314,22 +305,22 @@ export default function ReferralsPage() {
                     <td className="px-4 py-3 text-left text-sm text-dark dark:text-white" colSpan={2}>
                       合計
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                       {totalData.users.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                       {totalData.newUsers.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                       {totalData.sessions.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                       {totalData.pageviews.toLocaleString()}
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                       {totalData.engagementRate.toFixed(2)}%
                     </td>
-                    <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                    <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                       {totalData.keyEvents.toLocaleString()}
                     </td>
                   </tr>
@@ -343,22 +334,22 @@ export default function ReferralsPage() {
                       <td className="px-4 py-3 text-left text-sm text-dark dark:text-white">
                         {row.medium || '(not set)'}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                         {(row.users || 0).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                         {(row.newUsers || 0).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                         {(row.sessions || 0).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                         {(row.pageviews || 0).toLocaleString()}
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                         {(row.engagementRate || 0).toFixed(2)}%
                       </td>
-                      <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
+                      <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                         {(row.keyEvents || 0).toLocaleString()}
                       </td>
                     </tr>
@@ -370,17 +361,41 @@ export default function ReferralsPage() {
           </div>
         </div>
 
-        {/* AI Summary Section - 共通コンポーネント使用 */}
-        {user && startDate && endDate && aiContextData && (
-          <AISummarySection
-            userId={user.uid}
-            pageType="referrals"
-            startDate={startDate}
-            endDate={endDate}
-            contextData={aiContextData}
-          />
-        )}
       </div>
+
+      {/* Fixed AI Analysis Button */}
+      <button
+        onClick={() => setIsAISheetOpen(true)}
+        className="fixed bottom-6 right-6 z-50 flex flex-col items-center justify-center gap-1 rounded-full bg-gradient-to-br from-purple-600 to-pink-600 w-16 h-16 text-xs font-medium text-white hover:from-purple-700 hover:to-pink-700 hover:scale-105 shadow-xl transition-all"
+      >
+        <svg
+          className="h-6 w-6"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"
+          />
+        </svg>
+        <span className="text-[10px] leading-tight">AI分析</span>
+      </button>
+
+      {/* AI Analysis Sheet */}
+      {user && startDate && endDate && aiContextData && (
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          userId={user.uid}
+          pageType="referrals"
+          startDate={startDate}
+          endDate={endDate}
+          contextData={aiContextData}
+        />
+      )}
     </DashboardLayout>
   );
 }

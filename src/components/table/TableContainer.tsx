@@ -39,7 +39,7 @@ export default function TableContainer({
             </p>
           </div>
         ) : (
-          <div style={{ overflow: 'visible' }}>
+          <div className="table-scroll-container">
             {children}
           </div>
         )}
