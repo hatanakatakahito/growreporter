@@ -231,7 +231,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
         {/* 右側：スクリーンショット */}
         <div className="flex items-center relative justify-end">
           {/* スマホ版 */}
-          <div className="w-[100px] relative z-10">
+          <div className="w-[100px] relative z-10 mt-8">
             {renderMobileMockup(mobileScreenshot, loadingMobile)}
           </div>
 
