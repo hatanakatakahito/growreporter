@@ -188,7 +188,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
   };
 
   return (
-    <section className="relative flex min-h-screen w-full items-start bg-gray-2 dark:bg-dark">
+    <section className="relative flex min-h-screen w-full items-start dark:bg-dark" style={{ backgroundColor: '#f5f9fd' }}>
       {/* Sidebar */}
       <div
         className={`shadow-card fixed top-0 left-0 z-40 flex h-screen w-full max-w-[300px] flex-col justify-between overflow-y-auto bg-white duration-200 dark:bg-dark-2 xl:translate-x-0 scrollbar-hide ${
