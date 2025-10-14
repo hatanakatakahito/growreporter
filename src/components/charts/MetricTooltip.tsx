@@ -12,7 +12,7 @@ export default function MetricTooltip({
   const [isVisible, setIsVisible] = useState(false);
 
   return (
-    <div className="relative inline-block">
+    <span className="relative inline-block">
       {/* トリガーアイコン */}
       <button
         onMouseEnter={() => setIsVisible(true)}
@@ -38,19 +38,19 @@ export default function MetricTooltip({
 
       {/* ツールチップ */}
       {isVisible && (
-        <div
-          className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 transform whitespace-nowrap"
+        <span
+          className="absolute bottom-full left-1/2 z-50 mb-2 -translate-x-1/2 transform whitespace-nowrap block"
           onMouseEnter={() => setIsVisible(true)}
           onMouseLeave={() => setIsVisible(false)}
         >
-          <div className="rounded-lg bg-dark px-3 py-2 text-xs text-white shadow-lg dark:bg-white dark:text-dark">
+          <span className="block rounded-lg bg-dark px-3 py-2 text-xs text-white shadow-lg dark:bg-white dark:text-dark">
             {description}
-          </div>
+          </span>
           {/* 矢印 */}
-          <div className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 transform border-4 border-transparent border-t-dark dark:border-t-white"></div>
-        </div>
+          <span className="absolute left-1/2 top-full h-0 w-0 -translate-x-1/2 transform border-4 border-transparent border-t-dark dark:border-t-white block"></span>
+        </span>
       )}
-    </div>
+    </span>
   );
 }
 
