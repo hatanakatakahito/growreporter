@@ -162,7 +162,6 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
 
   return (
     <div 
-      className="mb-6" 
       style={{ 
         background: 'linear-gradient(to right, #e3f2fd, #fff8e1)',
         padding: '1.5rem'

@@ -491,7 +491,7 @@ export default function SummaryPage() {
 
   return (
     <DashboardLayout onDateRangeChange={handleDateRangeChange}>
-      <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+      <div>
         {/* Page Header */}
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-4">
