@@ -586,148 +586,86 @@ export default function DashboardPage() {
                   <h3 className="text-xl font-semibold text-dark dark:text-white">主要指標サマリ</h3>
                 </div>
 
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {/* 訪問（セッション） */}
-                  <div className="analysis-card p-6">
-                    <div className="mb-3">
-                      <p className="text-sm font-medium text-body-color dark:text-dark-6">訪問</p>
-                    </div>
-                    <div className="mb-4">
-                      <h3 className="text-4xl font-bold text-dark dark:text-white">
-                        {currentMonth.sessions.toLocaleString()}
-                      </h3>
-                    </div>
-                    <div className="space-y-2">
-                      {lastMonth && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-body-color dark:text-dark-6 w-16">前月</span>
-                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                            <span className="text-dark dark:text-white w-16 text-right">{lastMonth.sessions.toLocaleString()}</span>
-                            <span className={`w-16 text-right font-medium ${sessionsDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                              {sessionsDiff.isPositive && sessionsDiff.value > 0 ? '+' : ''}{sessionsDiff.value.toLocaleString()}
-                            </span>
-                          </div>
+                <div className="analysis-card p-6">
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    {/* 月間セッション数 */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
+                        <svg className="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-baseline justify-between">
+                          <p className="text-sm font-medium text-body-color dark:text-dark-6">月間セッション数</p>
+                          <svg className="h-4 w-4 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
                         </div>
-                      )}
-                      {lastYearMonth && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
-                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                            <span className="text-dark dark:text-white w-16 text-right">{lastYearMonth.sessions.toLocaleString()}</span>
-                            <span className={`w-16 text-right font-medium ${sessionsYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                              {sessionsYearDiff.isPositive && sessionsYearDiff.value > 0 ? '+' : ''}{sessionsYearDiff.value.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                        <h3 className="text-2xl font-bold text-dark dark:text-white mt-1">
+                          {currentMonth.sessions.toLocaleString()}
+                        </h3>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* PV数 */}
-                  <div className="analysis-card p-6">
-                    <div className="mb-3">
-                      <p className="text-sm font-medium text-body-color dark:text-dark-6">PV数</p>
-                    </div>
-                    <div className="mb-4">
-                      <h3 className="text-4xl font-bold text-dark dark:text-white">
-                        {currentMonth.screenPageViews.toLocaleString()}
-                      </h3>
-                    </div>
-                    <div className="space-y-2">
-                      {lastMonth && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-body-color dark:text-dark-6 w-16">前月</span>
-                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                            <span className="text-dark dark:text-white w-16 text-right">{lastMonth.screenPageViews.toLocaleString()}</span>
-                            <span className={`w-16 text-right font-medium ${pvDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                              {pvDiff.isPositive && pvDiff.value > 0 ? '+' : ''}{pvDiff.value.toLocaleString()}
-                            </span>
-                          </div>
+                    {/* 月間ユニーク訪問者数 */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/10">
+                        <svg className="h-6 w-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-baseline justify-between">
+                          <p className="text-sm font-medium text-body-color dark:text-dark-6">1訪問あたりのPV</p>
+                          <svg className="h-4 w-4 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
                         </div>
-                      )}
-                      {lastYearMonth && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
-                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                            <span className="text-dark dark:text-white w-16 text-right">{lastYearMonth.screenPageViews.toLocaleString()}</span>
-                            <span className={`w-16 text-right font-medium ${pvYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                              {pvYearDiff.isPositive && pvYearDiff.value > 0 ? '+' : ''}{pvYearDiff.value.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                        <h3 className="text-2xl font-bold text-dark dark:text-white mt-1">
+                          {(currentMonth.screenPageViews / currentMonth.sessions).toFixed(2)}
+                        </h3>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* CVR（セッションCV率） */}
-                  <div className="analysis-card p-6">
-                    <div className="mb-3">
-                      <p className="text-sm font-medium text-body-color dark:text-dark-6">CVR</p>
-                    </div>
-                    <div className="mb-4">
-                      <h3 className="text-4xl font-bold text-dark dark:text-white">
-                        {currentMonth.conversionRate.toFixed(2)}%
-                      </h3>
-                    </div>
-                    <div className="space-y-2">
-                      {lastMonth && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-body-color dark:text-dark-6 w-16">前月</span>
-                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                            <span className="text-dark dark:text-white w-16 text-right">{lastMonth.conversionRate.toFixed(2)}%</span>
-                            <span className={`w-16 text-right font-medium ${cvrDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                              {cvrDiff.isPositive && cvrDiff.value > 0 ? '+' : ''}{cvrDiff.value.toFixed(2)}%
-                            </span>
-                          </div>
+                    {/* 滞在時間 */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-500/10">
+                        <svg className="h-6 w-6 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-baseline justify-between">
+                          <p className="text-sm font-medium text-body-color dark:text-dark-6">滞在時間</p>
+                          <svg className="h-4 w-4 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
                         </div>
-                      )}
-                      {lastYearMonth && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
-                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                            <span className="text-dark dark:text-white w-16 text-right">{lastYearMonth.conversionRate.toFixed(2)}%</span>
-                            <span className={`w-16 text-right font-medium ${cvrYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                              {cvrYearDiff.isPositive && cvrYearDiff.value > 0 ? '+' : ''}{cvrYearDiff.value.toFixed(2)}%
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                        <h3 className="text-2xl font-bold text-dark dark:text-white mt-1">
+                          {Math.floor(currentMonth.averageSessionDuration / 60)}:{String(Math.floor(currentMonth.averageSessionDuration % 60)).padStart(2, '0')}
+                        </h3>
+                      </div>
                     </div>
-                  </div>
 
-                  {/* コンバージョン */}
-                  <div className="analysis-card p-6">
-                    <div className="mb-3">
-                      <p className="text-sm font-medium text-body-color dark:text-dark-6">コンバージョン</p>
-                    </div>
-                    <div className="mb-4">
-                      <h3 className="text-4xl font-bold text-dark dark:text-white">
-                        {(currentMonth.conversions || 0).toLocaleString()}
-                      </h3>
-                    </div>
-                    <div className="space-y-2">
-                      {lastMonth && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-body-color dark:text-dark-6 w-16">前月</span>
-                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                            <span className="text-dark dark:text-white w-16 text-right">{(lastMonth.conversions || 0).toLocaleString()}</span>
-                            <span className={`w-16 text-right font-medium ${cvDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                              {cvDiff.isPositive && cvDiff.value > 0 ? '+' : ''}{cvDiff.value.toLocaleString()}
-                            </span>
-                          </div>
+                    {/* 直帰率 */}
+                    <div className="flex items-center gap-4">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-500/10">
+                        <svg className="h-6 w-6 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-baseline justify-between">
+                          <p className="text-sm font-medium text-body-color dark:text-dark-6">直帰率</p>
+                          <svg className="h-4 w-4 text-body-color dark:text-dark-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
                         </div>
-                      )}
-                      {lastYearMonth && (
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-body-color dark:text-dark-6 w-20">前年同月</span>
-                          <div className="flex items-center gap-2 min-w-[140px] justify-end">
-                            <span className="text-dark dark:text-white w-16 text-right">{(lastYearMonth.conversions || 0).toLocaleString()}</span>
-                            <span className={`w-16 text-right font-medium ${cvYearDiff.isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                              {cvYearDiff.isPositive && cvYearDiff.value > 0 ? '+' : ''}{cvYearDiff.value.toLocaleString()}
-                            </span>
-                          </div>
-                        </div>
-                      )}
+                        <h3 className="text-2xl font-bold text-dark dark:text-white mt-1">
+                          {(100 - (currentMonth.engagementRate || 0)).toFixed(2)}%
+                        </h3>
+                      </div>
                     </div>
                   </div>
                 </div>
