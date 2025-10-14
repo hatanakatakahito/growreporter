@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { DetectedIssue } from '@/lib/improvements/types';
 
@@ -10,8 +10,9 @@ interface InsightsAlertProps {
 
 export default function InsightsAlert({ issues }: InsightsAlertProps) {
   const router = useRouter();
+  const [isVisible, setIsVisible] = useState(true);
   
-  if (issues.length === 0) return null;
+  if (issues.length === 0 || !isVisible) return null;
   
   const highPriorityIssues = issues.filter(i => i.priority === 'high');
   const displayIssues = highPriorityIssues.length > 0 ? highPriorityIssues : issues.slice(0, 2);
@@ -68,10 +69,9 @@ export default function InsightsAlert({ issues }: InsightsAlertProps) {
         </div>
         
         <button
-          onClick={() => {
-            // 非表示にする（状態管理は親コンポーネントで）
-          }}
-          className="text-body-color hover:text-dark dark:hover:text-white"
+          onClick={() => setIsVisible(false)}
+          className="text-body-color hover:text-dark dark:hover:text-white transition-colors"
+          aria-label="閉じる"
         >
           ✕
         </button>

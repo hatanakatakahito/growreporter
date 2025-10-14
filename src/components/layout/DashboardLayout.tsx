@@ -871,7 +871,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
 
         {/* Site Preview Section - Above Main Content */}
         {siteInfo && siteInfo.siteUrl && user && (
-          <div className="cover bg-white dark:bg-dark-2 border-b border-stroke dark:border-dark-3 w-full">
+          <div className="cover bg-white dark:bg-dark-2 w-full">
             <SitePreviewCompact
               siteUrl={siteInfo.siteUrl}
               siteName={siteInfo.siteName}
@@ -881,7 +881,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
         )}
 
         {/* Main Content Area */}
-        <main className="w-full">
+        <main className="mx-auto w-full max-w-screen-2xl p-4 md:p-6 2xl:p-10">
           {children}
         </main>
       </div>
