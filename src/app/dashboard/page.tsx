@@ -477,7 +477,7 @@ export default function DashboardPage() {
           return (
             <div className="mb-6">
               <div className="mb-4">
-                <h3 className="text-lg font-semibold text-dark dark:text-white">KPI予実</h3>
+                <h3 className="text-xl font-semibold text-dark dark:text-white">KPI予実</h3>
               </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
                 {kpiSettings.map((kpi) => {
