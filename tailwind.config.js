@@ -23,15 +23,15 @@ module.exports = {
         '1': '0px 1px 3px rgba(0, 0, 0, 0.08)',
         'box-dark': '0px 1px 3px rgba(0, 0, 0, 0.3)',
       },
-      keyframes: {
-        spin: {
-          from: { transform: 'rotate(0deg)' },
-          to: { transform: 'rotate(360deg)' },
-        },
+    },
+    keyframes: {
+      spin: {
+        from: { transform: 'rotate(0deg)' },
+        to: { transform: 'rotate(360deg)' },
       },
-      animation: {
-        spin: 'spin 1s linear infinite',
-      },
+    },
+    animation: {
+      spin: 'spin 1s linear infinite',
     },
   },
   plugins: [],
