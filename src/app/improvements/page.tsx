@@ -9,6 +9,7 @@ import SuggestionCard from '@/components/improvements/SuggestionCard';
 import InProgressCard from '@/components/improvements/InProgressCard';
 import CompletedCard from '@/components/improvements/CompletedCard';
 import SitePreviewCard from '@/components/improvements/SitePreviewCard';
+import Loading from '@/components/common/Loading';
 import VendorRequestModal from '@/components/improvements/VendorRequestModal';
 
 type Tab = 'suggestions' | 'in_progress' | 'completed';
@@ -336,7 +337,7 @@ export default function ImprovementsPage() {
         {/* コンテンツ */}
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <Loading size={32} />
           </div>
         ) : (
           <>

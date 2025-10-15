@@ -5,6 +5,8 @@
  * 全てのデータテーブルで統一された見た目を提供
  */
 
+import Loading from '@/components/common/Loading';
+
 interface TableContainerProps {
   title: string;
   children: React.ReactNode;
@@ -30,7 +32,7 @@ export default function TableContainer({
       <div style={{ overflow: 'visible' }}>
         {isLoading ? (
           <div className="flex items-center justify-center py-10">
-            <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <Loading size={40} />
           </div>
         ) : isEmpty ? (
           <div className="py-10 text-center">

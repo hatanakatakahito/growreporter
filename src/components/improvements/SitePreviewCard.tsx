@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ScreenshotService, Screenshot } from '@/lib/screenshots/screenshotService';
+import Loading from '@/components/common/Loading';
 
 interface SitePreviewCardProps {
   siteUrl: string;
@@ -97,7 +98,7 @@ export default function SitePreviewCard({ siteUrl, siteName, userId }: SitePrevi
         >
           {loading ? (
             <div className="flex items-center justify-center bg-gray-50 rounded aspect-[16/9]">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <Loading size={32} />
             </div>
           ) : screenshot ? (
             <img
@@ -153,7 +154,7 @@ export default function SitePreviewCard({ siteUrl, siteName, userId }: SitePrevi
           {/* コンテンツ */}
           {loading ? (
             <div className="flex items-center justify-center bg-gray-50 rounded aspect-[9/16]">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <Loading size={32} />
             </div>
           ) : screenshot ? (
             <img

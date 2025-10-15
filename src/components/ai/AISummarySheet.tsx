@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import AISummaryService from '@/lib/ai/summaryService';
+import Loading from '@/components/common/Loading';
 
 interface AISummarySheetProps {
   isOpen: boolean;
@@ -146,8 +147,8 @@ export default function AISummarySheet({
 
           {isGenerating ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent mb-4" />
-              <p className="text-body-color">AI分析を生成中...</p>
+              <Loading size={48} />
+              <p className="mt-4 text-body-color">AI分析を生成中...</p>
             </div>
           ) : summary ? (
             <div className="space-y-4">

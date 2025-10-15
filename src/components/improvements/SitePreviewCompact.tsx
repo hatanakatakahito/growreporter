@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { ScreenshotService, Screenshot } from '@/lib/screenshots/screenshotService';
 import Link from 'next/link';
+import Loading from '@/components/common/Loading';
 
 interface SitePreviewCompactProps {
   siteUrl: string;
@@ -113,7 +114,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
         >
           {loading ? (
             <div className="flex items-center justify-center bg-gray-50 rounded aspect-[16/9]">
-              <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <Loading size={24} />
             </div>
           ) : screenshot ? (
             <img
@@ -123,7 +124,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
             />
           ) : (
             <div className="flex items-center justify-center bg-gray-50 rounded aspect-[16/9]">
-              <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <Loading size={24} />
             </div>
           )}
         </div>
@@ -142,7 +143,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
         >
           {loading ? (
             <div className="flex items-center justify-center bg-gray-50 rounded aspect-[9/16]">
-              <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <Loading size={24} />
             </div>
           ) : screenshot ? (
             <img
@@ -152,7 +153,7 @@ export default function SitePreviewCompact({ siteUrl, siteName, userId }: SitePr
             />
           ) : (
             <div className="flex items-center justify-center bg-gray-50 rounded aspect-[9/16]">
-              <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <Loading size={24} />
             </div>
           )}
         </div>

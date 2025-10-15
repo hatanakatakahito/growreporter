@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth/authContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { ImprovementService } from '@/lib/improvements/improvementService';
 import { UserImprovement } from '@/lib/improvements/types';
+import Loading from '@/components/common/Loading';
 
 export default function EvaluationPage() {
   const { user } = useAuth();
@@ -97,7 +98,7 @@ export default function EvaluationPage() {
         
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+            <Loading size={32} />
           </div>
         ) : completedImprovements.length === 0 ? (
           <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">

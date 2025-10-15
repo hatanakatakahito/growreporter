@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import AISummaryService from '@/lib/ai/summaryService';
+import Loading from '@/components/common/Loading';
 
 interface AISummarySectionProps {
   userId: string;
@@ -182,7 +183,7 @@ export default function AISummarySection({
       <div className="rounded-lg bg-gray-2 p-6 dark:bg-dark">
         {aiSummaryLoading ? (
           <div className="flex items-center justify-center py-4">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+            <Loading size={32} />
             <span className="ml-3 text-base text-dark dark:text-white">AI要約を生成中...</span>
           </div>
         ) : aiSummary ? (

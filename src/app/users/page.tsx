@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth/authContext';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import AISummarySheet from '@/components/ai/AISummarySheet';
+import Loading from '@/components/common/Loading';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -586,8 +587,8 @@ export default function UsersPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-2 dark:bg-dark">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-body-color dark:text-dark-6">読み込み中...</p>
+          <Loading size={64} />
+          <p className="mt-4 text-body-color dark:text-dark-6">読み込み中...</p>
         </div>
       </div>
     );

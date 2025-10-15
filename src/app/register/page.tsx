@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '@/lib/firebase/config';
+import Loading from '@/components/common/Loading';
 
 export default function RegisterPage() {
   const { user, loading } = useAuth();
@@ -119,8 +120,8 @@ export default function RegisterPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F3F4FE]">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-dark">読み込み中...</p>
+          <Loading size={64} />
+          <p className="mt-4 text-dark">読み込み中...</p>
         </div>
       </div>
     );

@@ -13,6 +13,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth/authContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { UserProfileService } from '@/lib/user/userProfileService';
+import Loading from '@/components/common/Loading';
 
 export default function OnboardingPage() {
   const { user, loading: authLoading } = useAuth();
@@ -167,8 +168,8 @@ export default function OnboardingPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-2 dark:bg-dark">
         <div className="text-center">
-          <div className="mx-auto mb-4 h-16 w-16 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
-          <p className="text-body-color dark:text-dark-6">読み込み中...</p>
+          <Loading size={64} />
+          <p className="mt-4 text-body-color dark:text-dark-6">読み込み中...</p>
         </div>
       </div>
     );
