@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
+import Loading from '@/components/common/Loading';
 
 interface ShareLinkData {
   userId: string;
@@ -60,7 +61,7 @@ export default function ShareViewPage() {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+          <Loading size={48} className="mb-4" />
           <p className="text-lg text-body-color dark:text-dark-6">リンクを検証中...</p>
         </div>
       </div>

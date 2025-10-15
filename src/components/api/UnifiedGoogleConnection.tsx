@@ -7,9 +7,9 @@ import {
   MDBCardTitle,
   MDBBtn,
   MDBIcon,
-  MDBBadge,
-  MDBSpinner
+  MDBBadge
 } from 'mdb-react-ui-kit';
+import Loading from '@/components/common/Loading';
 import { UnifiedOAuthManager } from '@/lib/auth/unifiedOAuthManager';
 import { useAuth } from '@/lib/auth/authContext';
 
@@ -121,7 +121,7 @@ export default function UnifiedGoogleConnection({
             >
               {isConnecting ? (
                 <>
-                  <MDBSpinner size="sm" tag="span" className="me-2" />
+                  <Loading size={16} className="me-2" />
                   認証中...
                 </>
               ) : (

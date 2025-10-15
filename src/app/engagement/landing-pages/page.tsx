@@ -5,6 +5,7 @@ import { useAuth } from '@/lib/auth/authContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import TableContainer from '@/components/table/TableContainer';
 import AISummarySheet from '@/components/ai/AISummarySheet';
+import Loading from '@/components/common/Loading';
 
 interface LandingPageData {
   landingPage: string;
@@ -189,7 +190,7 @@ export default function LandingPagesPage() {
       <DashboardLayout>
         <div className="flex min-h-[400px] items-center justify-center">
           <div className="text-center">
-            <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+            <Loading size={48} className="mb-4" />
             <p className="text-base text-body-color dark:text-dark-6">読み込み中...</p>
           </div>
         </div>

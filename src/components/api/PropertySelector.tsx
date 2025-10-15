@@ -16,9 +16,9 @@ import {
   MDBBadge,
   MDBCheckbox,
   MDBInputGroup,
-  MDBInput,
-  MDBSpinner
+  MDBInput
 } from 'mdb-react-ui-kit';
+import Loading from '@/components/common/Loading';
 import { GA4Property } from '@/lib/api/googleAnalytics';
 // GSCSite型を直接定義
 export interface GSCSite {
@@ -252,9 +252,7 @@ const PropertySelector: React.FC<PropertySelectorProps> = ({
                 <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
                   {loading && ga4Properties.length === 0 ? (
                     <div className="text-center py-4">
-                      <MDBSpinner role="status">
-                        <span className="visually-hidden">読み込み中...</span>
-                      </MDBSpinner>
+                      <Loading size={32} />
                       <p className="mt-3 text-muted">プロパティを読み込んでいます...</p>
                     </div>
                   ) : (
@@ -290,7 +288,7 @@ const PropertySelector: React.FC<PropertySelectorProps> = ({
                           >
                             {loading ? (
                               <>
-                                <MDBSpinner size="sm" className="me-2" />
+                                <Loading size={16} className="me-2" />
                                 読み込み中...
                               </>
                             ) : (

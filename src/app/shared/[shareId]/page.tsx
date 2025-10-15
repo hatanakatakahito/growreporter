@@ -11,7 +11,6 @@ import {
   MDBContainer,
   MDBCard,
   MDBCardBody,
-  MDBSpinner,
   MDBIcon,
   MDBRow,
   MDBCol,
@@ -19,6 +18,7 @@ import {
   MDBBtn,
 } from 'mdb-react-ui-kit';
 import { AnalysisReport } from '@/types/analysis';
+import Loading from '@/components/common/Loading';
 
 export default function SharedReportPage() {
   const params = useParams();
@@ -84,7 +84,7 @@ export default function SharedReportPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <MDBSpinner color="primary" className="mb-3" />
+          <Loading size={48} className="mb-3" />
           <p className="text-gray-600">レポートを読み込んでいます...</p>
         </div>
       </div>
@@ -120,7 +120,7 @@ export default function SharedReportPage() {
                 className="w-full"
                 disabled={verifying}
               >
-                {verifying ? <MDBSpinner size="sm" className="me-2" /> : null}
+                {verifying ? <Loading size={16} className="me-2" /> : null}
                 確認
               </MDBBtn>
             </form>

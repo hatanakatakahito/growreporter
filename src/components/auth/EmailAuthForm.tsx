@@ -7,7 +7,6 @@ import {
   MDBCardTitle,
   MDBBtn,
   MDBIcon,
-  MDBSpinner,
   MDBInput,
   MDBTabs,
   MDBTabsItem,
@@ -15,6 +14,7 @@ import {
   MDBTabsContent,
   MDBTabsPane
 } from 'mdb-react-ui-kit';
+import Loading from '@/components/common/Loading';
 import { useAuth } from '@/lib/auth/authContext';
 
 const EmailAuthForm: React.FC = () => {
@@ -157,7 +157,7 @@ const EmailAuthForm: React.FC = () => {
                 disabled={loading}
               >
                 {loading ? (
-                  <MDBSpinner size="sm" tag="span" className="me-2" />
+                  <Loading size={16} className="me-2" />
                 ) : (
                   <MDBIcon fas icon="sign-in-alt" className="me-2" />
                 )}
@@ -201,7 +201,7 @@ const EmailAuthForm: React.FC = () => {
                 disabled={loading}
               >
                 {loading ? (
-                  <MDBSpinner size="sm" tag="span" className="me-2" />
+                  <Loading size={16} className="me-2" />
                 ) : (
                   <MDBIcon fas icon="user-plus" className="me-2" />
                 )}

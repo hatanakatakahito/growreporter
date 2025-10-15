@@ -7,13 +7,13 @@ import {
   MDBCardTitle,
   MDBBtn,
   MDBIcon,
-  MDBSpinner,
   MDBTabs,
   MDBTabsItem,
   MDBTabsLink,
   MDBTabsContent,
   MDBTabsPane
 } from 'mdb-react-ui-kit';
+import Loading from '@/components/common/Loading';
 import { useAuth } from '@/lib/auth/authContext';
 import EmailAuthForm from './EmailAuthForm';
 
@@ -51,9 +51,7 @@ const LoginForm: React.FC = () => {
     return (
       <MDBCard className="text-center">
         <MDBCardBody className="py-5">
-          <MDBSpinner role="status">
-            <span className="visually-hidden">読み込み中...</span>
-          </MDBSpinner>
+          <Loading size={48} />
           <p className="mt-3 text-muted">認証処理中...</p>
         </MDBCardBody>
       </MDBCard>
