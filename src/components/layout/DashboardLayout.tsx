@@ -206,14 +206,17 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
       }
 
       try {
-        const { exportMultiplePagesToPDFWithProgress } = await import('@/lib/pdf/pdfExporter');
+        // ローディング表示を開始（画面遷移が見えないようにする）
+        setPdfLoading(true);
+        setPdfProgress({ current: 0, total: selectedPages.length, message: 'PDF生成を開始しています...' });
+        
+        // ローディングが表示されるまで少し待つ
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // モーダルを閉じる
         setExportModalOpen(false);
         
-        // ローディング表示を開始
-        setPdfLoading(true);
-        setPdfProgress({ current: 0, total: selectedPages.length, message: 'PDF生成を開始しています...' });
+        const { exportMultiplePagesToPDFWithProgress } = await import('@/lib/pdf/pdfExporter');
         
         console.log('📄 PDF出力を開始します...');
         console.log('📄 選択されたページ:', selectedPages);
@@ -251,19 +254,25 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
       }
 
       try {
-        const { exportToExcel } = await import('@/lib/excel/excelExporter');
+        // ローディング表示を開始（画面遷移が見えないようにする）
+        setPdfLoading(true);
+        setPdfProgress({ current: 0, total: selectedPages.length, message: 'エクセルデータ取得中...' });
+        
+        // ローディングが表示されるまで少し待つ
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // モーダルを閉じる
         setExportModalOpen(false);
         
-        // ローディング表示を開始
-        setPdfLoading(true);
-        setPdfProgress({ current: 0, total: selectedPages.length, message: 'エクセルデータ取得中...' });
+        const { exportToExcel } = await import('@/lib/excel/excelExporter');
         
         console.log('📊 エクセル出力を開始します...');
         console.log('📊 選択されたページ:', selectedPages);
         
-        await exportToExcel(selectedPages, router);
+        // プログレスコールバックを渡す
+        await exportToExcel(selectedPages, router, (current, total, message) => {
+          setPdfProgress({ current, total, message });
+        });
         
         // ローディング終了
         setPdfLoading(false);

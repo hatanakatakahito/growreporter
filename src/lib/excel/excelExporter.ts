@@ -4,7 +4,11 @@
  * 選択されたページのデータをエクセル形式で出力します
  */
 
-export async function exportToExcel(pagePaths: string[], router?: any): Promise<void> {
+export async function exportToExcel(
+  pagePaths: string[], 
+  router?: any,
+  onProgress?: (current: number, total: number, message: string) => void
+): Promise<void> {
   try {
     console.log('📊 エクセル出力を開始:', pagePaths);
 
@@ -22,6 +26,11 @@ export async function exportToExcel(pagePaths: string[], router?: any): Promise<
       const pagePath = pagePaths[i];
       const sheetName = getSheetName(pagePath);
       console.log(`📄 [${i + 1}/${pagePaths.length}] シート作成中: ${sheetName}`);
+
+      // プログレス更新
+      if (onProgress) {
+        onProgress(i + 1, pagePaths.length, `${sheetName} のデータを取得中...`);
+      }
 
       // ページに遷移（現在のページでない場合）
       if (pagePath !== currentPath && router) {
@@ -56,10 +65,16 @@ export async function exportToExcel(pagePaths: string[], router?: any): Promise<
       }
     }
 
+    // ファイル生成中のメッセージ
+    if (onProgress) {
+      onProgress(pagePaths.length, pagePaths.length, 'Excelファイルを生成中...');
+    }
+
     // 元のページに戻る
     if (router && currentPath !== pagePaths[pagePaths.length - 1]) {
       console.log(`🔄 元のページ ${currentPath} に戻ります...`);
       router.push(currentPath);
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
 
     // ファイル名を生成（日時付き）
