@@ -1,5 +1,9 @@
 'use client';
 
+import * as React from 'react';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
+
 /**
  * PDF生成中のローディングオーバーレイ
  */
@@ -23,12 +27,11 @@ export default function PDFLoadingOverlay({
     <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm">
       <div className="bg-white dark:bg-dark-2 rounded-lg shadow-2xl p-8 max-w-md w-full mx-4">
         <div className="text-center">
-          {/* ローディングアニメーション */}
+          {/* ローディングアニメーション - Material-UI CircularProgress */}
           <div className="mb-6 flex justify-center">
-            <div className="relative">
-              <div className="h-20 w-20 rounded-full border-4 border-gray-200 dark:border-dark-3"></div>
-              <div className="absolute top-0 left-0 h-20 w-20 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
-            </div>
+            <Box sx={{ display: 'flex' }}>
+              <CircularProgress size={80} thickness={4} />
+            </Box>
           </div>
 
           {/* メッセージ */}

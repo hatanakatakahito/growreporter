@@ -16,7 +16,7 @@ import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionS
 import { KPIService, KPISetting } from '@/lib/kpi/kpiService';
 import InsightsAlert from '@/components/insights/InsightsAlert';
 import { DetectedIssue } from '@/lib/improvements/types';
-import { OrbitProgress } from 'react-loading-indicators';
+import Loading from '@/components/common/Loading';
 import MetricTooltip from '@/components/charts/MetricTooltip';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
@@ -312,8 +312,8 @@ export default function DashboardPage() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-2 dark:bg-dark">
         <div className="text-center">
-          <div className="mx-auto mb-4">
-            <OrbitProgress color={["#22447d", "#2d5aa5", "#3b71ca", "#638ed5"]} />
+          <div className="mx-auto mb-4 flex justify-center">
+            <Loading size={60} />
           </div>
           <p className="text-body-color dark:text-dark-6">読み込み中...</p>
         </div>

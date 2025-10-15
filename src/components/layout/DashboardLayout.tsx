@@ -241,21 +241,38 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
       }
     } else {
       // エクセル出力
+      const confirmed = window.confirm(
+        `選択された ${selectedPages.length} ページをエクセル出力します。\n` +
+        `処理には数分かかる場合があります。よろしいですか？`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
       try {
         const { exportToExcel } = await import('@/lib/excel/excelExporter');
         
         // モーダルを閉じる
         setExportModalOpen(false);
         
+        // ローディング表示を開始
+        setPdfLoading(true);
+        setPdfProgress({ current: 0, total: selectedPages.length, message: 'エクセルデータ取得中...' });
+        
         console.log('📊 エクセル出力を開始します...');
         console.log('📊 選択されたページ:', selectedPages);
         
-        await exportToExcel(selectedPages);
+        await exportToExcel(selectedPages, router);
+        
+        // ローディング終了
+        setPdfLoading(false);
         
         alert('✅ エクセル出力が完了しました！ファイルがダウンロードされます。');
         setSelectedPages([]);
       } catch (error) {
         console.error('❌ エクセル出力エラー:', error);
+        setPdfLoading(false);
         alert(
           'エクセル出力に失敗しました。\n' +
           'ブラウザのコンソールでエラー詳細を確認してください。\n\n' +
