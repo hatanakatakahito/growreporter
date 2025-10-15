@@ -378,29 +378,17 @@ export default function PageClassificationPage() {
     <DashboardLayout onDateRangeChange={handleDateRangeChange}>
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
         {/* Page Header */}
-        <div className="mb-6">
-          <h2 className="mb-2 text-2xl font-semibold text-dark dark:text-white">
-            ページ分類別
-          </h2>
-          <p className="text-sm font-medium text-body-color dark:text-dark-6">
-            ディレクトリ別のエンゲージメントデータ集計
-          </p>
-        </div>
-
-        {/* Error Alert */}
-        {error && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20">
-            <div className="flex items-center gap-3">
-              <svg className="h-5 w-5 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-              </svg>
-              <p className="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
-            </div>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h2 className="mb-2 text-2xl font-semibold text-dark dark:text-white">
+              ページ分類別
+            </h2>
+            <p className="text-sm font-medium text-body-color dark:text-dark-6">
+              ディレクトリ別のエンゲージメントデータ集計
+            </p>
           </div>
-        )}
-
-        {/* View Mode Toggle */}
-        <div className="mb-6 flex justify-end">
+          
+          {/* View Mode Toggle */}
           <div className="flex rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
             <button
               onClick={() => setViewMode('table')}
@@ -425,13 +413,51 @@ export default function PageClassificationPage() {
           </div>
         </div>
 
+        {/* Error Alert */}
+        {error && (
+          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-900/20">
+            <div className="flex items-center gap-3">
+              <svg className="h-5 w-5 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              <p className="text-sm font-medium text-red-800 dark:text-red-200">{error}</p>
+            </div>
+          </div>
+        )}
+
+
         {/* Directory Table */}
         {viewMode === 'table' && (
           <div className="mb-6 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
             <div className="border-b border-stroke px-6 py-4 dark:border-dark-3">
-              <h3 className="text-lg font-semibold text-dark dark:text-white">
-                ディレクトリ別エンゲージメント
-              </h3>
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-dark dark:text-white">
+                  ディレクトリ別エンゲージメント
+                </h3>
+                {/* View Mode Toggle */}
+                <div className="flex rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
+                  <button
+                    onClick={() => setViewMode('table')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'table'
+                        ? 'bg-primary text-white'
+                        : 'text-body-color hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3'
+                    }`}
+                  >
+                    テーブル表示
+                  </button>
+                  <button
+                    onClick={() => setViewMode('chart')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'chart'
+                        ? 'bg-primary text-white'
+                        : 'text-body-color hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3'
+                    }`}
+                  >
+                    円グラフ表示
+                  </button>
+                </div>
+              </div>
             </div>
           <div className="overflow-x-auto">
             <div className="table-scroll-container">
@@ -590,13 +616,45 @@ export default function PageClassificationPage() {
 
         {/* Pie Chart */}
         {viewMode === 'chart' && (
-          <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-            {/* Highcharts円グラフ */}
-            <div className="h-[500px]">
-              <HighchartsReact
-                highcharts={Highcharts}
-                options={chartOptions}
-              />
+          <div className="mb-6 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+            <div className="border-b border-stroke px-6 py-4 dark:border-dark-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-dark dark:text-white">
+                  ディレクトリ別エンゲージメント
+                </h3>
+                {/* View Mode Toggle */}
+                <div className="flex rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
+                  <button
+                    onClick={() => setViewMode('table')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'table'
+                        ? 'bg-primary text-white'
+                        : 'text-body-color hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3'
+                    }`}
+                  >
+                    テーブル表示
+                  </button>
+                  <button
+                    onClick={() => setViewMode('chart')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'chart'
+                        ? 'bg-primary text-white'
+                        : 'text-body-color hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3'
+                    }`}
+                  >
+                    円グラフ表示
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="p-6">
+              {/* Highcharts円グラフ */}
+              <div className="h-[500px]">
+                <HighchartsReact
+                  highcharts={Highcharts}
+                  options={chartOptions}
+                />
+              </div>
             </div>
           </div>
         )}
