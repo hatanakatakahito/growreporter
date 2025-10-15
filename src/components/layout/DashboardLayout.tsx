@@ -26,6 +26,8 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
   const [engagementMenuOpen, setEngagementMenuOpen] = useState(false);
   const [conversionMenuOpen, setConversionMenuOpen] = useState(false);
   
+  const dataExportDropdownRef = useRef<HTMLDivElement>(null);
+  
   // 現在のパスに基づいてメニューを自動展開
   useEffect(() => {
     if (pathname?.startsWith('/summary') || pathname?.startsWith('/users') || 
@@ -47,8 +49,24 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
     }
   }, [pathname]);
   
-  // PDF出力機能の状態管理
-  const [pdfModalOpen, setPdfModalOpen] = useState(false);
+  // ドロップダウンの外側をクリックしたら閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dataExportDropdownRef.current && !dataExportDropdownRef.current.contains(event.target as Node)) {
+        setDataExportDropdownOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+  
+  // データ出力機能の状態管理
+  const [dataExportDropdownOpen, setDataExportDropdownOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportType, setExportType] = useState<'pdf' | 'excel'>('pdf');
   const [selectedPages, setSelectedPages] = useState<string[]>([]);
   const [siteInfo, setSiteInfo] = useState<{ siteName: string; siteUrl: string } | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -163,6 +181,13 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
     );
   };
   
+  // データ出力ボタンのクリックハンドラー
+  const handleDataExportClick = (type: 'pdf' | 'excel') => {
+    setExportType(type);
+    setDataExportDropdownOpen(false);
+    setExportModalOpen(true);
+  };
+
   // 選択されたページをPDF出力（複数ページを1つのPDFに統合）
   const handleExportSelectedPages = async () => {
     if (selectedPages.length === 0) {
@@ -170,48 +195,73 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
       return;
     }
 
-    const confirmed = window.confirm(
-      `選択された ${selectedPages.length} ページをPDF出力します。\n` +
-      `処理には数分かかる場合があります。よろしいですか？`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    try {
-      const { exportMultiplePagesToPDFWithProgress } = await import('@/lib/pdf/pdfExporter');
-      
-      // モーダルを閉じる
-      setPdfModalOpen(false);
-      
-      // ローディング表示を開始
-      setPdfLoading(true);
-      setPdfProgress({ current: 0, total: selectedPages.length, message: 'PDF生成を開始しています...' });
-      
-      console.log('📄 PDF出力を開始します...');
-      console.log('📄 選択されたページ:', selectedPages);
-      
-      // 複数ページを1つのPDFに統合して出力（プログレス付き）
-      await exportMultiplePagesToPDFWithProgress(selectedPages, router, {
-        onProgress: (current, total, message) => {
-          setPdfProgress({ current, total, message });
-        }
-      });
-      
-      // ローディング終了
-      setPdfLoading(false);
-      
-      alert('✅ PDF出力が完了しました！ファイルがダウンロードされます。');
-      setSelectedPages([]);
-    } catch (error) {
-      console.error('❌ PDF出力エラー:', error);
-      setPdfLoading(false);
-      alert(
-        'PDF出力に失敗しました。\n' +
-        'ブラウザのコンソールでエラー詳細を確認してください。\n\n' +
-        `エラー: ${error instanceof Error ? error.message : String(error)}`
+    if (exportType === 'pdf') {
+      const confirmed = window.confirm(
+        `選択された ${selectedPages.length} ページをPDF出力します。\n` +
+        `処理には数分かかる場合があります。よろしいですか？`
       );
+
+      if (!confirmed) {
+        return;
+      }
+
+      try {
+        const { exportMultiplePagesToPDFWithProgress } = await import('@/lib/pdf/pdfExporter');
+        
+        // モーダルを閉じる
+        setExportModalOpen(false);
+        
+        // ローディング表示を開始
+        setPdfLoading(true);
+        setPdfProgress({ current: 0, total: selectedPages.length, message: 'PDF生成を開始しています...' });
+        
+        console.log('📄 PDF出力を開始します...');
+        console.log('📄 選択されたページ:', selectedPages);
+        
+        // 複数ページを1つのPDFに統合して出力（プログレス付き）
+        await exportMultiplePagesToPDFWithProgress(selectedPages, router, {
+          onProgress: (current, total, message) => {
+            setPdfProgress({ current, total, message });
+          }
+        });
+        
+        // ローディング終了
+        setPdfLoading(false);
+        
+        alert('✅ PDF出力が完了しました！ファイルがダウンロードされます。');
+        setSelectedPages([]);
+      } catch (error) {
+        console.error('❌ PDF出力エラー:', error);
+        setPdfLoading(false);
+        alert(
+          'PDF出力に失敗しました。\n' +
+          'ブラウザのコンソールでエラー詳細を確認してください。\n\n' +
+          `エラー: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
+    } else {
+      // エクセル出力
+      try {
+        const { exportToExcel } = await import('@/lib/excel/excelExporter');
+        
+        // モーダルを閉じる
+        setExportModalOpen(false);
+        
+        console.log('📊 エクセル出力を開始します...');
+        console.log('📊 選択されたページ:', selectedPages);
+        
+        await exportToExcel(selectedPages);
+        
+        alert('✅ エクセル出力が完了しました！ファイルがダウンロードされます。');
+        setSelectedPages([]);
+      } catch (error) {
+        console.error('❌ エクセル出力エラー:', error);
+        alert(
+          'エクセル出力に失敗しました。\n' +
+          'ブラウザのコンソールでエラー詳細を確認してください。\n\n' +
+          `エラー: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
     }
   };
 
@@ -785,17 +835,44 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
 
             <div className="flex items-center gap-3 2xsm:gap-7">
               
-              {/* PDF出力ボタン */}
-              <div>
+              {/* データ出力ドロップダウン */}
+              <div className="relative" ref={dataExportDropdownRef}>
                 <button 
-                  onClick={() => setPdfModalOpen(true)}
+                  onClick={() => setDataExportDropdownOpen(!dataExportDropdownOpen)}
                   className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition-colors hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
                   </svg>
-                  PDF出力
+                  データ出力
+                  <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
                 </button>
+                
+                {/* ドロップダウンメニュー */}
+                {dataExportDropdownOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-md border border-stroke bg-white shadow-lg dark:border-dark-3 dark:bg-dark-2">
+                    <button
+                      onClick={() => handleDataExportClick('pdf')}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-sm text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+                      </svg>
+                      PDF出力
+                    </button>
+                    <button
+                      onClick={() => handleDataExportClick('excel')}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-sm text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 0 1-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0 1 12 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 1.5v-1.5m0 0c0-.621.504-1.125 1.125-1.125m0 0h7.5" />
+                      </svg>
+                      エクセル出力
+                    </button>
+                  </div>
+                )}
               </div>
               
               {/* User Dropdown */}
@@ -938,15 +1015,17 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
         </main>
       </div>
       
-      {/* PDF出力モーダル */}
-      {pdfModalOpen && (
+      {/* データ出力モーダル */}
+      {exportModalOpen && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50">
           <div className="w-full max-w-2xl rounded-lg bg-white p-6 dark:bg-dark-2">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-xl font-semibold text-dark dark:text-white">PDF出力</h3>
+              <h3 className="text-xl font-semibold text-dark dark:text-white">
+                {exportType === 'pdf' ? 'PDF出力' : 'エクセル出力'}
+              </h3>
               <button
                 onClick={() => {
-                  setPdfModalOpen(false);
+                  setExportModalOpen(false);
                   setSelectedPages([]);
                 }}
                 className="text-body-color hover:text-primary"
@@ -1090,7 +1169,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => {
-                  setPdfModalOpen(false);
+                  setExportModalOpen(false);
                   setSelectedPages([]);
                 }}
                 className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-body-color hover:bg-gray-2 dark:border-dark-3"
@@ -1102,7 +1181,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                 disabled={selectedPages.length === 0}
                 className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-opacity-90 disabled:opacity-50"
               >
-                PDF出力
+                {exportType === 'pdf' ? 'PDF出力' : 'エクセル出力'}
               </button>
             </div>
           </div>
