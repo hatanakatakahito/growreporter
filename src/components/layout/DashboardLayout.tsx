@@ -515,7 +515,19 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                                   : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
                               }`}
                             >
-                              ページ別エンゲージメント
+                              ページ別
+                            </Link>
+                          </li>
+                          <li>
+                            <Link
+                              href="/engagement/page-classification"
+                              className={`block rounded-md py-2 px-4 text-sm font-medium duration-200 ${
+                                pathname === '/engagement/page-classification'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              ページ分類別
                             </Link>
                           </li>
                           <li>
@@ -1134,7 +1146,16 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                       onChange={() => togglePageSelection('/engagement')}
                       className="h-4 w-4 rounded border-gray-300"
                     />
-                    <span className="text-sm text-dark dark:text-white">ページ別エンゲージメント</span>
+                    <span className="text-sm text-dark dark:text-white">ページ別</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={selectedPages.includes('/engagement/page-classification')}
+                      onChange={() => togglePageSelection('/engagement/page-classification')}
+                      className="h-4 w-4 rounded border-gray-300"
+                    />
+                    <span className="text-sm text-dark dark:text-white">ページ分類別</span>
                   </label>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input

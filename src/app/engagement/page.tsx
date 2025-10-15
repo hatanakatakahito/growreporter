@@ -257,7 +257,7 @@ export default function EngagementPage() {
         <div className="mb-6 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
           <div className="border-b border-stroke px-6 py-4 dark:border-dark-3">
             <h3 className="text-lg font-semibold text-dark dark:text-white">
-              ページ別エンゲージメント
+              ページ別
             </h3>
           </div>
           <div className="overflow-x-auto">
