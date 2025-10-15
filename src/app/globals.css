@@ -3,6 +3,22 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Override animate-spin to ensure it works */
+@layer utilities {
+  .animate-spin {
+    animation: spin 1s linear infinite;
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* GrowReporter Global Styles - Light Mode Only */
 
 :root {
