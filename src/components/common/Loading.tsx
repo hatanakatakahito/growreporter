@@ -1,32 +1,31 @@
 'use client';
 
 import * as React from 'react';
-import CircularProgress from '@mui/material/CircularProgress';
-import Box from '@mui/material/Box';
 
 /**
  * 統一されたローディングアニメーションコンポーネント
- * Material-UIのCircularProgressを使用
+ * CSSアニメーションで実装
  */
 
 interface LoadingProps {
   size?: number;
-  thickness?: number;
   className?: string;
 }
 
 export default function Loading({ 
-  size = 40, 
-  thickness = 4,
+  size = 40,
   className = ''
 }: LoadingProps) {
   return (
-    <Box 
-      sx={{ display: 'flex' }} 
-      className={className}
-    >
-      <CircularProgress size={size} thickness={thickness} />
-    </Box>
+    <div className={`flex justify-center items-center ${className}`}>
+      <div
+        className="animate-spin rounded-full border-4 border-primary border-t-transparent"
+        style={{
+          width: `${size}px`,
+          height: `${size}px`,
+        }}
+      ></div>
+    </div>
   );
 }
 
