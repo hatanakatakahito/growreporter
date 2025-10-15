@@ -1,11 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import './Loading.css';
 
 /**
  * 統一されたローディングアニメーションコンポーネント
- * CSSアニメーションで実装
+ * Tailwind CSSのanimate-spinを使用
  */
 
 interface LoadingProps {
@@ -20,7 +19,7 @@ export default function Loading({
   return (
     <div className={`flex justify-center items-center ${className}`}>
       <div
-        className="loading-spinner rounded-full border-4 border-primary border-t-transparent"
+        className="animate-spin rounded-full border-4 border-primary border-t-transparent"
         style={{
           width: `${size}px`,
           height: `${size}px`,
