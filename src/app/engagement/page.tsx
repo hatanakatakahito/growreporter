@@ -191,6 +191,8 @@ export default function EngagementPage() {
     if (!user || !selectedPropertyId) return;
 
     try {
+      setIsLoading(true);
+      setError(null);
       // YYYY-MM-DD形式をYYYYMMDD形式に変換
       const start = newStartDate.replace(/-/g, '');
       const end = newEndDate.replace(/-/g, '');
@@ -212,6 +214,9 @@ export default function EngagementPage() {
       }
     } catch (error) {
       console.error('データ再取得エラー:', error);
+      setError('データの取得に失敗しました');
+    } finally {
+      setIsLoading(false);
     }
   }, [selectedPropertyId, user]);
 

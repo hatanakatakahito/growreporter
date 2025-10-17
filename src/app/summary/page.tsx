@@ -8,6 +8,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
+import { useDateRange } from '@/lib/context/DateRangeContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
@@ -26,6 +27,7 @@ const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false })
 
 export default function SummaryPage() {
   const { user, loading: authLoading } = useAuth();
+  const { startDate, endDate, dateRangeType } = useDateRange();
   const router = useRouter();
   
   // 印刷モードかどうかをチェック
@@ -36,8 +38,7 @@ export default function SummaryPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  // 日付範囲はContextから取得
 
   // GA4データ
   const [stats, setStats] = useState<GA4Metrics>({
@@ -74,67 +75,14 @@ export default function SummaryPage() {
     return stats;
   }, [stats, timeSeriesData]);
 
-  // 日付範囲を計算する関数
-  const calculateDateRange = (type: string) => {
-    const today = new Date();
-    console.log('📅 今日の日付 (ISO):', today.toISOString());
-    console.log('📅 今日の日付 (ローカル):', today.toString());
-    console.log('📅 現在の年:', today.getFullYear());
-    console.log('📅 現在の月 (0-indexed):', today.getMonth());
-    console.log('📅 現在の月 (1-indexed):', today.getMonth() + 1);
-    
-    let start: Date;
-    let end: Date;
-
-    if (type === 'last_month') {
-      // 前月の1日から末日（ローカルタイムゾーンで計算）
-      const year = today.getFullYear();
-      const month = today.getMonth(); // 現在の月（0-11）
-      
-      console.log('📅 計算に使用する year:', year);
-      console.log('📅 計算に使用する month:', month);
-      console.log('📅 前月は month - 1 =', month - 1);
-      
-      // 前月の1日
-      start = new Date(year, month - 1, 1);
-      // 前月の末日（今月の0日 = 前月の最終日）
-      end = new Date(year, month, 0);
-      
-      console.log('📅 前月の開始日 (Date object):', start);
-      console.log('📅 前月の開始日 (ISO):', start.toISOString());
-      console.log('📅 前月の終了日 (Date object):', end);
-      console.log('📅 前月の終了日 (ISO):', end.toISOString());
-    } else {
-      // デフォルトは前月
-      const year = today.getFullYear();
-      const month = today.getMonth();
-      start = new Date(year, month - 1, 1);
-      end = new Date(year, month, 0);
-    }
-
-    // ローカル日付を YYYY-MM-DD 形式に変換
-    const formatDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      console.log(`📅 formatDate: ${year}-${month}-${day} (from Date: ${date})`);
-      return `${year}-${month}-${day}`;
-    };
-
-    const result = {
-      startDate: formatDate(start),
-      endDate: formatDate(end)
-    };
-    
-    console.log('📅 最終計算結果:', result);
-    return result;
-  };
 
   // 日付範囲が変更されたらデータを再取得
-  const handleDateRangeChange = useCallback(async (newStartDate: string, newEndDate: string, type: string) => {
+  const handleDateRangeChange = useCallback(async (newStartDate: string, newEndDate: string) => {
     if (!user || !selectedPropertyId) return;
 
     try {
+      setIsLoading(true);
+      setError(null);
       // GA4メトリクスを取得
       const metrics = await GA4DataService.getMetrics(user!.uid, selectedPropertyId, newStartDate, newEndDate);
       setStats(metrics);
@@ -143,8 +91,8 @@ export default function SummaryPage() {
       const timeSeries = await GA4DataService.getTimeSeriesData(user!.uid, selectedPropertyId, newStartDate, newEndDate);
       setTimeSeriesData(timeSeries);
 
-      // 選択された期間の終了月から遡って13ヶ月分の月別データを取得
-      console.log('📊 月別データ取得開始（期間変更）:', { propertyId: selectedPropertyId, endDate: newEndDate });
+      // 選択された期間の月別データを取得
+      console.log('📊 月別データ取得開始（期間変更）:', { propertyId: selectedPropertyId, startDate: newStartDate, endDate: newEndDate });
       const monthlyResponse = await fetch('/api/ga4/monthly-data', {
         method: 'POST',
         headers: {
@@ -153,6 +101,7 @@ export default function SummaryPage() {
         },
         body: JSON.stringify({ 
           propertyId: selectedPropertyId,
+          startDate: newStartDate,
           endDate: newEndDate
         })
       });
@@ -171,6 +120,9 @@ export default function SummaryPage() {
       }
     } catch (err: any) {
       console.error('日付範囲変更エラー:', err);
+      setError(err.message || 'データの取得に失敗しました');
+    } finally {
+      setIsLoading(false);
     }
   }, [user, selectedPropertyId]);
   
@@ -303,24 +255,19 @@ export default function SummaryPage() {
 
         setSelectedPropertyId(propertyId);
 
-        // デフォルトの日付範囲を設定（前月）
-        const range = calculateDateRange('last_month');
-        setStartDate(range.startDate);
-        setEndDate(range.endDate);
-
         console.log('📊 GA4メトリクス取得開始 - Property ID:', propertyId);
-        console.log('📅 日付範囲:', { startDate: range.startDate, endDate: range.endDate });
+        console.log('📅 日付範囲:', { startDate, endDate });
 
         // データを取得
-        const metrics = await GA4DataService.getMetrics(user.uid, propertyId, range.startDate, range.endDate);
+        const metrics = await GA4DataService.getMetrics(user.uid, propertyId, startDate, endDate);
         setStats(metrics);
 
-        const timeSeries = await GA4DataService.getTimeSeriesData(user.uid, propertyId, range.startDate, range.endDate);
+        const timeSeries = await GA4DataService.getTimeSeriesData(user.uid, propertyId, startDate, endDate);
         console.log('📊 時系列データ取得結果:', { length: timeSeries?.length, data: timeSeries });
         setTimeSeriesData(timeSeries);
 
-        // 月別データを取得（選択期間の終了月から遡って13ヶ月分）
-        console.log('📊 月別データ取得開始:', { propertyId, endDate: range.endDate });
+        // 月別データを取得（選択期間の月別データ）
+        console.log('📊 月別データ取得開始:', { propertyId, startDate, endDate });
         const monthlyResponse = await fetch('/api/ga4/monthly-data', {
           method: 'POST',
           headers: {
@@ -329,7 +276,8 @@ export default function SummaryPage() {
           },
           body: JSON.stringify({ 
             propertyId,
-            endDate: range.endDate
+            startDate,
+            endDate
           })
         });
 
@@ -366,7 +314,7 @@ export default function SummaryPage() {
     };
 
     loadData();
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, startDate, endDate, dateRangeType]);
 
   // グラフデータを生成
   const chartSeries = [

@@ -159,6 +159,8 @@ export default function AcquisitionPage() {
     if (!user || !selectedPropertyId) return;
 
     try {
+      setIsLoading(true);
+      setError(null);
       // 日付をYYYYMMDD形式に変換
       const formattedStartDate = newStartDate.replace(/-/g, '');
       const formattedEndDate = newEndDate.replace(/-/g, '');
@@ -186,6 +188,9 @@ export default function AcquisitionPage() {
       }
     } catch (error) {
       console.error('データ再取得エラー:', error);
+      setError('データの取得に失敗しました');
+    } finally {
+      setIsLoading(false);
     }
   }, [user, selectedPropertyId]);
 

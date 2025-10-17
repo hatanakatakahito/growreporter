@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/lib/auth/authContext';
+import { useDateRange } from '@/lib/context/DateRangeContext';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { UserProfileService } from '@/lib/user/userProfileService';
@@ -15,6 +16,15 @@ interface DashboardLayoutProps {
 }
 
 export default function DashboardLayout({ children, onDateRangeChange }: DashboardLayoutProps) {
+  const { 
+    startDate, 
+    endDate, 
+    dateRangeType, 
+    setDateRange, 
+    customStartDate, 
+    customEndDate, 
+    setCustomDates 
+  } = useDateRange();
   const { user, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -83,15 +93,9 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number; message: string }>({ current: 0, total: 0, message: '' });
   
-  // 日付範囲の状態管理
+  // 日付範囲のUI状態管理
   const [dateRangeDropdownOpen, setDateRangeDropdownOpen] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [customStartDate, setCustomStartDate] = useState('');
-  const [customEndDate, setCustomEndDate] = useState('');
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
-  const [dateRangeType, setDateRangeType] = useState<string>('last_month');
-  const isInitializedRef = useRef(false);
 
   // 日付範囲を計算する関数
   const calculateDateRange = (type: string, customStart?: string, customEnd?: string) => {
@@ -129,29 +133,17 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
     };
   };
 
-  // 初期化時に日付範囲を設定（マウント時のみ）
-  useEffect(() => {
-    if (isInitializedRef.current) return;
-    
-    const { startDate: start, endDate: end } = calculateDateRange('last_month');
-    setStartDate(start);
-    setEndDate(end);
-    
-    // 親に通知（初回のみ）
-    if (onDateRangeChange) {
-      isInitializedRef.current = true;
-      setTimeout(() => {
-        onDateRangeChange(start, end, 'last_month');
-      }, 0);
-    }
-  }, [onDateRangeChange]);
-
   // 日付範囲変更ハンドラー
   const handleInternalDateRangeChange = (type: string, customStart?: string, customEnd?: string) => {
     const { startDate: newStart, endDate: newEnd } = calculateDateRange(type, customStart, customEnd);
-    setStartDate(newStart);
-    setEndDate(newEnd);
-    setDateRangeType(type);
+    
+    // Contextの状態を更新
+    setDateRange(newStart, newEnd, type);
+    
+    // カスタム日付の場合は保存
+    if (type === 'custom' && customStart && customEnd) {
+      setCustomDates(customStart, customEnd);
+    }
     
     // 親コンポーネントに通知
     if (onDateRangeChange) {
@@ -919,7 +911,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                             <input
                               type="date"
                               value={customStartDate}
-                              onChange={(e) => setCustomStartDate(e.target.value)}
+                              onChange={(e) => setCustomDates(e.target.value, customEndDate)}
                               className="w-full rounded border border-stroke bg-transparent px-2 py-1.5 text-sm text-dark outline-none dark:border-dark-3 dark:text-white"
                             />
                           </div>
@@ -928,7 +920,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                             <input
                               type="date"
                               value={customEndDate}
-                              onChange={(e) => setCustomEndDate(e.target.value)}
+                              onChange={(e) => setCustomDates(customStartDate, e.target.value)}
                               className="w-full rounded border border-stroke bg-transparent px-2 py-1.5 text-sm text-dark outline-none dark:border-dark-3 dark:text-white"
                             />
                           </div>

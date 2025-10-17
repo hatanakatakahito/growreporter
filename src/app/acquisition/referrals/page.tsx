@@ -197,6 +197,17 @@ export default function ReferralsPage() {
     );
   };
 
+  if (isLoading) {
+    return (
+      <div className="loading-screen flex min-h-screen items-center justify-center bg-gray-2 dark:bg-dark">
+        <div className="text-center">
+          <Loading size={64} />
+          <p className="mt-4 text-body-color dark:text-dark-6">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
@@ -218,11 +229,7 @@ export default function ReferralsPage() {
             </h3>
           </div>
           <div className="overflow-x-auto" style={{ overflowY: 'visible' }}>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-10">
-                <Loading size={40} />
-              </div>
-            ) : sortedData.length === 0 ? (
+            {sortedData.length === 0 ? (
               <div className="py-10 text-center">
                 <p className="text-body-color dark:text-dark-6">
                   Referral データがありません。

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { propertyId, endDate } = body;
+    const { propertyId, startDate, endDate } = body;
 
     if (!propertyId) {
       return NextResponse.json(
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    console.log('📊 GA4 月別データ取得開始:', { propertyId, endDate });
+    console.log('📊 GA4 月別データ取得開始:', { propertyId, startDate, endDate });
 
     // ユーザー定義のコンバージョンを取得
     const conversions = await ConversionService.getActiveConversions(userId);
@@ -38,19 +38,24 @@ export async function POST(request: NextRequest) {
     // 有効なアクセストークンを取得（自動リフレッシュ付き）
     const { accessToken } = await getValidGA4Token(userId);
 
-    // 指定された終了日から遡って13ヶ月分のデータを取得
-    // endDateが指定されていない場合は前月末を使用
-    let referenceDate: Date;
-    if (endDate) {
-      referenceDate = new Date(endDate);
-    } else {
-      // 前月末日を取得
-      const today = new Date();
-      referenceDate = new Date(today.getFullYear(), today.getMonth(), 0); // 今月の0日 = 前月の最終日
-    }
+    // 期間設定が指定されている場合は終了日から遡って13ヶ月分、そうでなければ前月から13ヶ月分
+    let dataStartDate: Date;
+    let dataEndDate: Date;
     
-    // 終了日の月から遡って12ヶ月前の月初を開始日とする（合計13ヶ月）
-    const startDate = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - 12, 1);
+    if (startDate && endDate) {
+      // 期間設定が指定されている場合、終了日から遡って13ヶ月分のデータを取得
+      dataEndDate = new Date(endDate);
+      dataStartDate = new Date(dataEndDate.getFullYear(), dataEndDate.getMonth() - 12, 1);
+    } else if (endDate) {
+      // endDateのみ指定されている場合（後方互換性）
+      dataEndDate = new Date(endDate);
+      dataStartDate = new Date(dataEndDate.getFullYear(), dataEndDate.getMonth() - 12, 1);
+    } else {
+      // 何も指定されていない場合は前月末から13ヶ月分
+      const today = new Date();
+      dataEndDate = new Date(today.getFullYear(), today.getMonth(), 0); // 前月末日
+      dataStartDate = new Date(dataEndDate.getFullYear(), dataEndDate.getMonth() - 12, 1);
+    }
     
     const formatDate = (date: Date) => {
       const y = date.getFullYear();
@@ -60,17 +65,17 @@ export async function POST(request: NextRequest) {
     };
     
     console.log('📅 月別データ期間:', { 
-      startDate: formatDate(startDate), 
-      endDate: formatDate(referenceDate),
-      referenceMonth: `${referenceDate.getFullYear()}年${referenceDate.getMonth() + 1}月`
+      startDate: formatDate(dataStartDate), 
+      endDate: formatDate(dataEndDate),
+      referenceMonth: `${dataEndDate.getFullYear()}年${dataEndDate.getMonth() + 1}月`
     });
 
     // 基本メトリクスを取得
     const data = await runGA4Report(accessToken, {
       propertyId,
       dateRanges: [{ 
-        startDate: formatDate(startDate), 
-        endDate: formatDate(referenceDate)
+        startDate: formatDate(dataStartDate), 
+        endDate: formatDate(dataEndDate)
       }],
       dimensions: [{ name: 'yearMonth' }],
       metrics: [
@@ -93,8 +98,8 @@ export async function POST(request: NextRequest) {
       const conversionReport = await runGA4Report(accessToken, {
         propertyId,
         dateRanges: [{ 
-          startDate: formatDate(startDate), 
-          endDate: formatDate(referenceDate)
+          startDate: formatDate(dataStartDate), 
+          endDate: formatDate(dataEndDate)
         }],
         dimensions: [{ name: 'yearMonth' }, { name: 'eventName' }],
         metrics: [{ name: 'eventCount' }],

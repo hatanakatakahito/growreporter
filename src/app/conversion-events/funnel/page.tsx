@@ -2,10 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth/authContext';
+import { useDateRange } from '@/lib/context/DateRangeContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import TableContainer from '@/components/table/TableContainer';
 import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionService';
 import AISummarySheet from '@/components/ai/AISummarySheet';
+import Loading from '@/components/common/Loading';
 
 interface FunnelData {
   totalPageViews: number;
@@ -29,6 +31,7 @@ interface MonthlyFunnelData {
 
 export default function FunnelPage() {
   const { user } = useAuth();
+  const { startDate, endDate, dateRangeType, setDateRange } = useDateRange();
   const [loading, setLoading] = useState(true);
   const [funnelData, setFunnelData] = useState<FunnelData | null>(null);
   const [monthlyFunnelData, setMonthlyFunnelData] = useState<MonthlyFunnelData[]>([]);
@@ -39,10 +42,7 @@ export default function FunnelPage() {
   const [tempPath, setTempPath] = useState('');
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string }>({
-    startDate: '30daysAgo',
-    endDate: 'today'
-  });
+  // 日付範囲はContextから取得
   const [pagePaths, setPagePaths] = useState<string[]>([]);
   const [filteredPaths, setFilteredPaths] = useState<string[]>([]);
   const [showPathDropdown, setShowPathDropdown] = useState(false);
@@ -50,8 +50,10 @@ export default function FunnelPage() {
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // 日付範囲変更ハンドラー
-  const handleDateRangeChange = (startDate: string, endDate: string) => {
-    setDateRange({ startDate, endDate });
+  const handleDateRangeChange = (newStartDate: string, newEndDate: string) => {
+    setLoading(true);
+    setError(null);
+    setDateRange(newStartDate, newEndDate, dateRangeType);
   };
 
   // コンバージョン定義を取得
@@ -102,7 +104,7 @@ export default function FunnelPage() {
 
       try {
         const response = await fetch(
-          `/api/ga4/pages?propertyId=${selectedPropertyId}&startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`,
+          `/api/ga4/pages?propertyId=${selectedPropertyId}&startDate=${startDate}&endDate=${endDate}`,
           {
             headers: { 'x-user-id': user.uid },
           }
@@ -119,7 +121,7 @@ export default function FunnelPage() {
     };
 
     fetchPagePaths();
-  }, [user, selectedPropertyId, dateRange]);
+  }, [user, selectedPropertyId, startDate, endDate, dateRangeType]);
 
   // ファネルデータを取得
   useEffect(() => {
@@ -141,8 +143,8 @@ export default function FunnelPage() {
           },
           body: JSON.stringify({
             propertyId: selectedPropertyId,
-            startDate: dateRange.startDate,
-            endDate: dateRange.endDate,
+            startDate: startDate,
+            endDate: endDate,
             formPagePath,
             conversionEventName: selectedConversion,
           }),
@@ -177,7 +179,7 @@ export default function FunnelPage() {
     };
 
     fetchFunnelData();
-  }, [user, selectedPropertyId, selectedConversion, formPagePath, dateRange]);
+  }, [user, selectedPropertyId, selectedConversion, formPagePath, startDate, endDate, dateRangeType]);
 
   // 月次ファネルデータを取得
   useEffect(() => {
@@ -197,6 +199,8 @@ export default function FunnelPage() {
             propertyId: selectedPropertyId,
             formPagePath,
             conversionEventName: selectedConversion,
+            startDate: startDate,
+            endDate: endDate,
           }),
         });
 
@@ -217,7 +221,7 @@ export default function FunnelPage() {
     };
 
     fetchMonthlyFunnelData();
-  }, [user, selectedPropertyId, selectedConversion, formPagePath]);
+  }, [user, selectedPropertyId, selectedConversion, formPagePath, startDate, endDate, dateRangeType]);
 
   const handlePathEdit = () => {
     setTempPath(formPagePath);
@@ -256,11 +260,12 @@ export default function FunnelPage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-screen">
-          <div className="text-gray-600">読み込み中...</div>
+      <div className="loading-screen flex min-h-screen items-center justify-center bg-gray-2 dark:bg-dark">
+        <div className="text-center">
+          <Loading size={64} />
+          <p className="mt-4 text-body-color dark:text-dark-6">読み込み中...</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
@@ -574,14 +579,14 @@ export default function FunnelPage() {
       </button>
 
       {/* AI分析シート */}
-      {user && dateRange.startDate && dateRange.endDate && (
+      {user && startDate && endDate && (
         <AISummarySheet
           isOpen={isAISheetOpen}
           onClose={() => setIsAISheetOpen(false)}
           pageType="funnel"
           contextData={{ funnelData, monthlyFunnelData, selectedConversion, formPagePath }}
-          startDate={dateRange.startDate}
-          endDate={dateRange.endDate}
+          startDate={startDate}
+          endDate={endDate}
           userId={user.uid}
         />
       )}

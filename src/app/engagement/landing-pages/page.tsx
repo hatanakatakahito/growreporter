@@ -187,14 +187,12 @@ export default function LandingPagesPage() {
 
   if (isLoading) {
     return (
-      <DashboardLayout>
-        <div className="flex min-h-[400px] items-center justify-center">
-          <div className="text-center">
-            <Loading size={48} className="mb-4" />
-            <p className="text-base text-body-color dark:text-dark-6">読み込み中...</p>
-          </div>
+      <div className="loading-screen flex min-h-screen items-center justify-center bg-gray-2 dark:bg-dark">
+        <div className="text-center">
+          <Loading size={64} />
+          <p className="mt-4 text-body-color dark:text-dark-6">読み込み中...</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
@@ -224,7 +222,6 @@ export default function LandingPagesPage() {
         {/* Landing Pages Table */}
         <TableContainer
           title="ランディングページ別パフォーマンス"
-          isLoading={isLoading}
           isEmpty={landingPageData.length === 0}
           emptyMessage="ランディングページデータがありません。"
         >

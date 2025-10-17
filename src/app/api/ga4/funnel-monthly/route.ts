@@ -17,7 +17,9 @@ export async function POST(request: NextRequest) {
     const { 
       propertyId, 
       formPagePath,
-      conversionEventName
+      conversionEventName,
+      startDate: requestStartDate,
+      endDate: requestEndDate
     } = body;
 
     if (!propertyId || !formPagePath || !conversionEventName) {
@@ -36,20 +38,28 @@ export async function POST(request: NextRequest) {
     // 有効なアクセストークンを取得（自動リフレッシュ付き）
     const { accessToken } = await getValidGA4Token(userId);
 
-    // 過去13ヶ月の期間を計算（前月末まで）
-    const today = new Date();
-    // 前月末を計算
-    const lastMonthEnd = new Date(today.getFullYear(), today.getMonth(), 0);
-    const endDate = `${lastMonthEnd.getFullYear()}-${String(lastMonthEnd.getMonth() + 1).padStart(2, '0')}-${String(lastMonthEnd.getDate()).padStart(2, '0')}`;
+    // 期間設定が指定されている場合は終了日から遡って13ヶ月分、そうでなければ前月から13ヶ月分
+    let startDate: Date;
+    let endDate: Date;
     
-    // 前月から遡って12ヶ月前の月初を開始日とする（合計13ヶ月）
-    const startDate = new Date(lastMonthEnd.getFullYear(), lastMonthEnd.getMonth() - 12, 1);
+    if (requestStartDate && requestEndDate) {
+      // 期間設定が指定されている場合、終了日から遡って13ヶ月分のデータを取得
+      endDate = new Date(requestEndDate);
+      startDate = new Date(endDate.getFullYear(), endDate.getMonth() - 12, 1);
+    } else {
+      // 何も指定されていない場合は前月末から13ヶ月分
+      const today = new Date();
+      endDate = new Date(today.getFullYear(), today.getMonth(), 0); // 前月末日
+      startDate = new Date(endDate.getFullYear(), endDate.getMonth() - 12, 1);
+    }
+    
     const startDateStr = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}-01`;
+    const endDateStr = `${endDate.getFullYear()}-${String(endDate.getMonth() + 1).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
 
     // 1. 月別全PV数を取得
     const totalPVData = await runGA4Report(accessToken, {
       propertyId,
-      dateRanges: [{ startDate: startDateStr, endDate }],
+      dateRanges: [{ startDate: startDateStr, endDate: endDateStr }],
       dimensions: [
         { name: 'yearMonth' }
       ],
@@ -61,7 +71,7 @@ export async function POST(request: NextRequest) {
     // 2. 月別フォームページのPV数を取得
     const formPVData = await runGA4Report(accessToken, {
       propertyId,
-      dateRanges: [{ startDate: startDateStr, endDate }],
+      dateRanges: [{ startDate: startDateStr, endDate: endDateStr }],
       dimensions: [
         { name: 'yearMonth' },
         { name: 'pagePathPlusQueryString' }
@@ -83,7 +93,7 @@ export async function POST(request: NextRequest) {
     // 3. 月別コンバージョンイベントの数を取得
     const conversionData = await runGA4Report(accessToken, {
       propertyId,
-      dateRanges: [{ startDate: startDateStr, endDate }],
+      dateRanges: [{ startDate: startDateStr, endDate: endDateStr }],
       dimensions: [
         { name: 'yearMonth' },
         { name: 'eventName' }

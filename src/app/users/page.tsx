@@ -5,9 +5,10 @@
  * ユーザー属性データを表示
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
+import { useDateRange } from '@/lib/context/DateRangeContext';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import AISummarySheet from '@/components/ai/AISummarySheet';
@@ -17,6 +18,7 @@ const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false })
 
 export default function UsersPage() {
   const { user, loading: authLoading } = useAuth();
+  const { startDate, endDate, dateRangeType } = useDateRange();
   const router = useRouter();
   
   // 印刷モードかどうかをチェック
@@ -27,8 +29,7 @@ export default function UsersPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState<string>('');
-  const [endDate, setEndDate] = useState<string>('');
+  // 日付範囲はContextから取得
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // ユーザー属性データ
@@ -38,6 +39,9 @@ export default function UsersPage() {
   const [deviceData, setDeviceData] = useState<any[]>([]);
   const [regionData, setRegionData] = useState<any[]>([]);
   const [regionType, setRegionType] = useState<string>('city'); // 'country' | 'region' | 'city'
+  
+  // デバウンス用のタイマー
+  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
 
   // AI要約用のコンテキストデータ（メモ化）
   const aiContextData = useMemo(() => {
@@ -56,119 +60,125 @@ export default function UsersPage() {
   }, [newVsReturningData, genderData, ageData, deviceData, regionData]);
 
 
-  // 日付範囲を計算する関数
-  const calculateDateRange = (type: string) => {
-    const today = new Date();
-    let start: Date;
-    let end: Date;
+  // 日付範囲はContextで管理されるため、この関数は不要
 
-    if (type === 'last_month') {
-      const year = today.getFullYear();
-      const month = today.getMonth();
-      start = new Date(year, month - 1, 1);
-      end = new Date(year, month, 0);
-    } else {
-      const year = today.getFullYear();
-      const month = today.getMonth();
-      start = new Date(year, month - 1, 1);
-      end = new Date(year, month, 0);
+  // ユーザー属性データを取得（レート制限対策付き）
+  const fetchDemographicsData = async (propertyId: string, start: string, end: string, regType: string = 'city') => {
+    if (!user) {
+      console.warn('⚠️ ユーザーが認証されていません');
+      setError('ユーザーが認証されていません。ログインしてください。');
+      return;
     }
 
-    const formatDate = (date: Date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-
-    return {
-      startDate: formatDate(start),
-      endDate: formatDate(end)
-    };
-  };
-
-  // ユーザー属性データを取得
-  const fetchDemographicsData = async (propertyId: string, start: string, end: string, regType: string = 'city') => {
     console.log('📊 ユーザー属性データ取得開始:', { propertyId, start, end, regionType: regType });
 
-    const response = await fetch(
-      `/api/ga4/demographics?propertyId=${propertyId}&startDate=${start}&endDate=${end}&regionType=${regType}`,
-      {
-        headers: {
-          'x-user-id': user!.uid
+    try {
+      const response = await fetch(
+        `/api/ga4/demographics?propertyId=${propertyId}&startDate=${start}&endDate=${end}&regionType=${regType}`,
+        {
+          headers: {
+            'x-user-id': user.uid
+          }
         }
+      );
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          console.warn('⚠️ GA4 API レート制限に達しました。1時間後に再試行してください。');
+          setError('GA4 APIのレート制限に達しました。1時間後に再試行してください。');
+          return;
+        }
+
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ ユーザー属性データ取得エラー:', errorData);
+        setError(`データの取得に失敗しました: ${response.status} ${response.statusText}`);
+        return;
       }
-    );
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error('❌ ユーザー属性データ取得エラー:', errorData);
-      throw new Error(errorData.error || 'Failed to fetch demographics data');
+      const data = await response.json();
+      console.log('✅ ユーザー属性データ取得成功:', data);
+
+      // データを状態にセット
+      setNewVsReturningData(data.newVsReturning || []);
+      setGenderData(data.gender || []);
+      setAgeData(data.age || []);
+      setDeviceData(data.device || []);
+      setRegionData(data.region || []);
+      setError(null); // エラーをクリア
+    } catch (error) {
+      console.error('❌ ユーザー属性データ取得でエラーが発生しました:', error);
+      setError('データの取得中にエラーが発生しました。しばらく時間をおいてから再試行してください。');
     }
-
-    const data = await response.json();
-    console.log('✅ ユーザー属性データ取得成功:', data);
-
-    // データを状態にセット
-    setNewVsReturningData(data.newVsReturning || []);
-    setGenderData(data.gender || []);
-    setAgeData(data.age || []);
-    setDeviceData(data.device || []);
-    setRegionData(data.region || []);
   };
+
+  // デバウンス付きのデータ取得関数
+  const debouncedFetchData = useCallback(async (propertyId: string, start: string, end: string, regType: string) => {
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+    
+    debounceTimer.current = setTimeout(async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        console.log('📅 デバウンス付きデータ取得:', { propertyId, start, end, regType });
+        await fetchDemographicsData(propertyId, start, end, regType);
+      } catch (err: any) {
+        console.error('❌ デバウンス付きデータ取得エラー:', err);
+        setError(err.message || 'データの取得に失敗しました');
+      } finally {
+        setIsLoading(false);
+      }
+    }, 10000); // 10秒のデバウンス（GA4 APIレート制限対策）
+  }, []);
 
   // 地域タイプが変更されたらデータを再取得
-  const handleRegionTypeChange = async (newRegionType: string) => {
-    if (!user || !selectedPropertyId) return;
+  const handleRegionTypeChange = useCallback(async (newRegionType: string) => {
+    if (!user || !selectedPropertyId) {
+      console.warn('⚠️ ユーザーまたはプロパティIDが設定されていません');
+      return;
+    }
 
     setRegionType(newRegionType);
-    setIsLoading(true);
-    setError(null);
+    
+    // YYYY-MM-DD形式をYYYYMMDD形式に変換
+    const start = startDate.replace(/-/g, '');
+    const end = endDate.replace(/-/g, '');
 
-    try {
-      await fetchDemographicsData(selectedPropertyId, startDate, endDate, newRegionType);
-    } catch (err: any) {
-      console.error('地域タイプ変更エラー:', err);
-      setError('データの取得に失敗しました。');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    console.log('🌍 地域タイプ変更:', { newRegionType, start, end });
+
+    // デバウンス付きでデータを再取得
+    await debouncedFetchData(selectedPropertyId, start, end, newRegionType);
+  }, [user, selectedPropertyId, startDate, endDate, dateRangeType, debouncedFetchData]);
 
   // 日付範囲が変更されたらデータを再取得
-  const handleDateRangeChange = async (newStartDate: string, newEndDate: string, type: string) => {
-    if (!user || !selectedPropertyId) return;
+  const handleDateRangeChange = useCallback(async (newStartDate: string, newEndDate: string, type: string) => {
+    if (!user || !selectedPropertyId) {
+      console.warn('⚠️ ユーザーまたはプロパティIDが設定されていません');
+      return;
+    }
 
     try {
-      setStartDate(newStartDate);
-      setEndDate(newEndDate);
+      setIsLoading(true);
+      setError(null);
+
+      // 状態はContextで管理されるため、ここでは更新しない
 
       // YYYY-MM-DD形式をYYYYMMDD形式に変換
       const start = newStartDate.replace(/-/g, '');
       const end = newEndDate.replace(/-/g, '');
 
-      // ユーザー属性データを再取得
-      const url = `/api/ga4/demographics?propertyId=${selectedPropertyId}&startDate=${start}&endDate=${end}&regionType=${regionType}`;
-      const response = await fetch(url, {
-        headers: {
-          'x-user-id': user!.uid
-        }
-      });
+      console.log('📅 日付範囲変更:', { newStartDate, newEndDate, start, end, regionType });
 
-      if (response.ok) {
-        const data = await response.json();
-        
-        // 各種データを設定
-        setNewVsReturningData(data.newVsReturning || []);
-        setGenderData(data.gender || []);
-        setAgeData(data.age || []);
-        setDeviceData(data.device || []);
-        setRegionData(data.region || []);
-      }
-    } catch (err: any) {
-      console.error('日付範囲変更エラー:', err);
+      // デバウンス付きでデータを再取得
+      await debouncedFetchData(selectedPropertyId, start, end, regionType);
+    } catch (error) {
+      console.error('日付範囲変更時のデータ取得エラー:', error);
+      setError('データの取得に失敗しました');
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [user, selectedPropertyId, regionType, debouncedFetchData]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -181,7 +191,7 @@ export default function UsersPage() {
         // データソース情報を取得
         const response = await fetch('/api/datasources/list', {
           headers: {
-            'x-user-id': user.uid
+            'x-user-id': user!.uid
           }
         });
 
@@ -214,13 +224,12 @@ export default function UsersPage() {
         setSelectedPropertyId(propertyId);
 
 
-        // デフォルトの日付範囲を設定（前月）
-        const range = calculateDateRange('last_month');
-        setStartDate(range.startDate);
-        setEndDate(range.endDate);
+        // 日付範囲はContextから取得するため、ここでは設定しない
 
-        // ユーザー属性データを取得
-        await fetchDemographicsData(propertyId, range.startDate, range.endDate, regionType);
+        // ユーザー属性データを取得（Contextから日付範囲を取得）
+        const start = startDate.replace(/-/g, '');
+        const end = endDate.replace(/-/g, '');
+        await fetchDemographicsData(propertyId, start, end, regionType);
 
       } catch (err: any) {
         console.error('データ取得エラー:', err);
@@ -233,7 +242,16 @@ export default function UsersPage() {
     if (!authLoading && user) {
       loadData();
     }
-  }, [user, authLoading]);
+  }, [user, authLoading, startDate, endDate, dateRangeType]);
+
+  // クリーンアップ
+  useEffect(() => {
+    return () => {
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    };
+  }, []);
 
   // 新規ユーザー/リピーター比率（ドーナツチャート）
   const newVsReturningOptions: any = {
@@ -246,6 +264,13 @@ export default function UsersPage() {
     legend: {
       position: 'right',
       fontSize: '14px',
+    },
+    tooltip: {
+      y: {
+        formatter: function (val: number) {
+          return val.toFixed(1) + '%';
+        }
+      }
     },
     dataLabels: {
       enabled: true,
@@ -316,6 +341,13 @@ export default function UsersPage() {
     legend: {
       position: 'right',
       fontSize: '14px',
+    },
+    tooltip: {
+      y: {
+        formatter: function (val: number) {
+          return val.toFixed(1) + '%';
+        }
+      }
     },
     dataLabels: {
       enabled: true,
@@ -453,6 +485,13 @@ export default function UsersPage() {
     legend: {
       position: 'right',
       fontSize: '14px',
+    },
+    tooltip: {
+      y: {
+        formatter: function (val: number) {
+          return val.toFixed(1) + '%';
+        }
+      }
     },
     dataLabels: {
       enabled: true,
@@ -739,7 +778,7 @@ export default function UsersPage() {
           contextData={aiContextData}
           startDate={startDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
           endDate={endDate.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3')}
-          userId={user.uid}
+          userId={user?.uid || ''}
         />
       )}
     </DashboardLayout>

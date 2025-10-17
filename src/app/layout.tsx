@@ -2,6 +2,7 @@ import 'mdb-react-ui-kit/dist/css/mdb.min.css';
 import '@fortawesome/fontawesome-free/css/all.min.css';
 import './globals.css';
 import { AuthProvider } from '@/lib/auth/authContext';
+import { DateRangeProvider } from '@/lib/context/DateRangeContext';
 
 export const metadata = {
   title: 'GrowReporter - 統合Web分析プラットフォーム',
@@ -20,7 +21,9 @@ export default function RootLayout({
     <html lang="ja">
       <body suppressHydrationWarning={true}>
         <AuthProvider>
-          {children}
+          <DateRangeProvider>
+            {children}
+          </DateRangeProvider>
         </AuthProvider>
       </body>
     </html>

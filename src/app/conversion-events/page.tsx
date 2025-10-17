@@ -4,10 +4,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/lib/auth/authContext';
+import { useDateRange } from '@/lib/context/DateRangeContext';
 import { UserProfileService } from '@/lib/user/userProfileService';
 import AISummarySheet from '@/components/ai/AISummarySheet';
 import TableContainer from '@/components/table/TableContainer';
 import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionService';
+import Loading from '@/components/common/Loading';
 
 const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
@@ -24,6 +26,7 @@ interface MonthlyConversionData {
 
 export default function ConversionEventsPage() {
   const { user } = useAuth();
+  const { startDate, endDate, dateRangeType, setDateRange } = useDateRange();
   const [conversions, setConversions] = useState<ConversionEvent[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlyConversionData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -34,7 +37,7 @@ export default function ConversionEventsPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 
   // データ取得関数
-  const fetchMonthlyData = async (propertyId: string) => {
+  const fetchMonthlyData = useCallback(async (propertyId: string) => {
     if (!user || !propertyId) return;
 
     try {
@@ -42,7 +45,7 @@ export default function ConversionEventsPage() {
 
       console.log('📊 月次コンバージョンデータ取得開始:', { propertyId });
 
-      // 月次データを取得（過去13ヶ月）
+      // 月次データを取得（期間設定に基づく）
       const response = await fetch('/api/ga4/monthly-data', {
         method: 'POST',
         headers: {
@@ -51,7 +54,8 @@ export default function ConversionEventsPage() {
         },
         body: JSON.stringify({
           propertyId: propertyId,
-          months: 13
+          startDate: startDate,
+          endDate: endDate
         })
       });
 
@@ -73,7 +77,7 @@ export default function ConversionEventsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user, startDate, endDate]);
 
   // 初回データ取得
   useEffect(() => {
@@ -119,7 +123,21 @@ export default function ConversionEventsPage() {
     };
 
     loadInitialData();
-  }, [user]);
+  }, [user, startDate, endDate, dateRangeType]);
+
+  // 日付範囲が変更されたらデータを再取得
+  const handleDateRangeChange = useCallback(async (newStartDate: string, newEndDate: string) => {
+    if (!user || !selectedPropertyId) return;
+
+    try {
+      // 日付範囲を更新
+      setDateRange(newStartDate, newEndDate, dateRangeType);
+      // 月次データを再取得（fetchMonthlyData内でローディング状態を制御）
+      await fetchMonthlyData(selectedPropertyId);
+    } catch (error) {
+      console.error('期間変更時のデータ再取得エラー:', error);
+    }
+  }, [user, selectedPropertyId, setDateRange, dateRangeType, fetchMonthlyData]);
 
   // グラフのseries（メモ化）
   const chartSeries = useMemo(() => {
@@ -227,8 +245,19 @@ export default function ConversionEventsPage() {
     return contextData;
   }, [conversions, monthlyData]);
 
+  if (isLoading) {
+    return (
+      <div className="loading-screen flex min-h-screen items-center justify-center bg-gray-2 dark:bg-dark">
+        <div className="text-center">
+          <Loading size={64} />
+          <p className="mt-4 text-body-color dark:text-dark-6">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <DashboardLayout>
+    <DashboardLayout onDateRangeChange={handleDateRangeChange}>
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
         {/* Page Header */}
         <div className="mb-6">
@@ -359,8 +388,8 @@ export default function ConversionEventsPage() {
           onClose={() => setIsAISheetOpen(false)}
           pageType="conversion"
           contextData={aiContextData}
-          startDate={monthlyData[monthlyData.length - 1]?.displayName || ''}
-          endDate={monthlyData[0]?.displayName || ''}
+          startDate={startDate}
+          endDate={endDate}
           userId={user.uid}
         />
       )}
