@@ -27,6 +27,12 @@ const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false })
 export default function SummaryPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  
+  // 印刷モードかどうかをチェック
+  const isPrintMode = typeof window !== 'undefined' && 
+    (new URLSearchParams(window.location.search).get('print') === 'true' ||
+     new URLSearchParams(window.location.search).get('skipLoading') === 'true');
+  
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
@@ -481,7 +487,7 @@ export default function SummaryPage() {
 
   if (authLoading || isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-2 dark:bg-dark">
+      <div className="loading-screen flex min-h-screen items-center justify-center bg-gray-2 dark:bg-dark">
         <div className="text-center">
           <Loading size={64} />
           <p className="mt-4 text-body-color dark:text-dark-6">読み込み中...</p>
@@ -494,7 +500,7 @@ export default function SummaryPage() {
 
   return (
     <DashboardLayout onDateRangeChange={handleDateRangeChange}>
-      <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
+      <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10" data-loaded="true">
         {/* Page Header */}
         <div className="mb-6">
           <h2 className="mb-2 text-2xl font-semibold text-dark dark:text-white">

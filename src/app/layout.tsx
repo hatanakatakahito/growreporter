@@ -6,6 +6,9 @@ import { AuthProvider } from '@/lib/auth/authContext';
 export const metadata = {
   title: 'GrowReporter - 統合Web分析プラットフォーム',
   description: 'Google Analytics 4、Search Consoleを統合したAI分析プラットフォーム',
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({

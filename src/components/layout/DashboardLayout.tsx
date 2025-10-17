@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { UserProfileService } from '@/lib/user/userProfileService';
 import { UserProfile } from '@/types/user';
 import SitePreviewCompact from '@/components/improvements/SitePreviewCompact';
-import PDFLoadingOverlay from '@/components/pdf/PDFLoadingOverlay';
+import PDFLoadingOverlay from '@/components/common/PDFLoadingOverlay';
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -18,6 +18,11 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
   const { user, signOut } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  
+  // 印刷モードかどうかをチェック
+  const isPrintMode = typeof window !== 'undefined' && 
+    (new URLSearchParams(window.location.search).get('print') === 'true' ||
+     new URLSearchParams(window.location.search).get('skipLoading') === 'true');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -69,8 +74,14 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
   const [exportType, setExportType] = useState<'pdf' | 'excel'>('pdf');
   const [selectedPages, setSelectedPages] = useState<string[]>([]);
   const [siteInfo, setSiteInfo] = useState<{ siteName: string; siteUrl: string } | null>(null);
+  const [isPdfGenerating, setIsPdfGenerating] = useState(false);
+  const [currentPdfPage, setCurrentPdfPage] = useState<string>('');
+  const [currentPdfIndex, setCurrentPdfIndex] = useState<number>(0);
+  const [pdfGenerationStatus, setPdfGenerationStatus] = useState<'generating' | 'completed' | 'error'>('generating');
+  
+  // Excel出力用の状態管理
   const [pdfLoading, setPdfLoading] = useState(false);
-  const [pdfProgress, setPdfProgress] = useState({ current: 0, total: 0, message: '' });
+  const [pdfProgress, setPdfProgress] = useState<{ current: number; total: number; message: string }>({ current: 0, total: 0, message: '' });
   
   // 日付範囲の状態管理
   const [dateRangeDropdownOpen, setDateRangeDropdownOpen] = useState(false);
@@ -180,6 +191,25 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
         : [...prev, pagePath]
     );
   };
+
+  // ページパスからタイトルを取得する関数
+  const getPageTitle = (path: string): string => {
+    const pageTitles: Record<string, string> = {
+      '/summary': '全体サマリー',
+      '/users': 'ユーザー',
+      '/acquisition': '集客チャネル',
+      '/acquisition/organic-keywords': 'オーガニックキーワード',
+      '/acquisition/referrals': 'リファラー',
+      '/engagement': 'ページ別',
+      '/engagement/page-classification': 'ページ分類別',
+      '/engagement/landing-pages': 'ランディングページ',
+      '/engagement/file-downloads': 'ファイルダウンロード',
+      '/engagement/external-links': '外部リンク',
+      '/conversion-events': 'コンバージョンイベント',
+      '/improvements': '改善提案'
+    };
+    return pageTitles[path] || path;
+  };
   
   // データ出力ボタンのクリックハンドラー
   const handleDataExportClick = (type: 'pdf' | 'excel') => {
@@ -188,7 +218,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
     setExportModalOpen(true);
   };
 
-  // 選択されたページをPDF出力（複数ページを1つのPDFに統合）
+  // 選択されたページをPDF出力（PDF専用ページを使用）
   const handleExportSelectedPages = async () => {
     if (selectedPages.length === 0) {
       alert('出力する画面を選択してください');
@@ -196,97 +226,159 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
     }
 
     if (exportType === 'pdf') {
-      const confirmed = window.confirm(
-        `選択された ${selectedPages.length} ページをPDF出力します。\n` +
-        `処理には数分かかる場合があります。よろしいですか？`
-      );
-
-      if (!confirmed) {
-        return;
-      }
-
+      // 確認アラートを削除 - 直接PDF生成を開始
       try {
-        // ローディング表示を開始（画面遷移が見えないようにする）
-        setPdfLoading(true);
-        setPdfProgress({ current: 0, total: selectedPages.length, message: 'PDF生成を開始しています...' });
-        
-        // ローディングが表示されるまで少し待つ
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        // PDF専用ページを使用してPDF生成
+        console.log('📄 PDF専用ページでPDF出力を開始します...');
+        console.log('📄 選択されたページ:', selectedPages);
+
         // モーダルを閉じる
         setExportModalOpen(false);
+
+        setIsPdfGenerating(true);
+        setPdfGenerationStatus('generating');
         
-        const { exportMultiplePagesToPDFWithProgress } = await import('@/lib/pdf/pdfExporter');
-        
-        console.log('📄 PDF出力を開始します...');
-        console.log('📄 選択されたページ:', selectedPages);
-        
-        // 複数ページを1つのPDFに統合して出力（プログレス付き）
-        await exportMultiplePagesToPDFWithProgress(selectedPages, router, {
-          onProgress: (current, total, message) => {
-            setPdfProgress({ current, total, message });
+        // PDF専用ページを使用してPDF生成
+        for (let i = 0; i < selectedPages.length; i++) {
+          const pagePath = selectedPages[i];
+          const pageTitle = getPageTitle(pagePath);
+          
+          // 進捗を更新
+          setCurrentPdfPage(pageTitle);
+          setCurrentPdfIndex(i);
+
+          try {
+            // PDF専用ページのパスに変換
+            const pdfPagePath = pagePath === '/summary' ? '/summary' : pagePath;
+            
+            // APIエンドポイントを呼び出してPDF生成
+            const response = await fetch('/api/pdf/generate', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ pagePath: pdfPagePath }),
+            });
+
+            if (!response.ok) {
+              throw new Error(`PDF生成に失敗しました: ${response.statusText}`);
+            }
+
+            // PDFをダウンロード
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${pageTitle}-${Date.now()}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+
+            console.log(`✅ ${pageTitle} のPDF生成完了`);
+          } catch (error) {
+            console.error(`❌ ${pageTitle} のPDF生成エラー:`, error);
+            throw error;
           }
-        });
+        }
         
-        // ローディング終了
-        setPdfLoading(false);
+        // 完了状態を設定
+        setPdfGenerationStatus('completed');
+        console.log('✅ PDF出力が完了しました！すべてのページのPDFがダウンロードされました。');
         
-        alert('✅ PDF出力が完了しました！ファイルがダウンロードされます。');
-        setSelectedPages([]);
+        // 2秒後にローディング画面を閉じる
+        setTimeout(() => {
+          setSelectedPages([]);
+          setCurrentPdfPage('');
+          setCurrentPdfIndex(0);
+          setIsPdfGenerating(false);
+          setPdfGenerationStatus('generating');
+        }, 2000);
       } catch (error) {
         console.error('❌ PDF出力エラー:', error);
-        setPdfLoading(false);
-        alert(
+        
+        // エラー状態を設定
+        setPdfGenerationStatus('error');
+        console.error(
           'PDF出力に失敗しました。\n' +
           'ブラウザのコンソールでエラー詳細を確認してください。\n\n' +
           `エラー: ${error instanceof Error ? error.message : String(error)}`
         );
+        
+        // 3秒後にローディング画面を閉じる
+        setTimeout(() => {
+          setIsPdfGenerating(false);
+          setCurrentPdfPage('');
+          setCurrentPdfIndex(0);
+          setPdfGenerationStatus('generating');
+        }, 3000);
       }
     } else {
-      // エクセル出力
-      const confirmed = window.confirm(
-        `選択された ${selectedPages.length} ページをエクセル出力します。\n` +
-        `処理には数分かかる場合があります。よろしいですか？`
-      );
-
-      if (!confirmed) {
-        return;
-      }
-
+      // エクセル出力 - PDF出力と同じ挙動
       try {
-        // ローディング表示を開始（画面遷移が見えないようにする）
-        setPdfLoading(true);
-        setPdfProgress({ current: 0, total: selectedPages.length, message: 'エクセルデータ取得中...' });
-        
-        // ローディングが表示されるまで少し待つ
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
         // モーダルを閉じる
         setExportModalOpen(false);
+        
+        // PDF用ローディング画面を表示
+        setIsPdfGenerating(true);
+        setPdfGenerationStatus('generating');
         
         const { exportToExcel } = await import('@/lib/excel/excelExporter');
         
         console.log('📊 エクセル出力を開始します...');
         console.log('📊 選択されたページ:', selectedPages);
         
-        // プログレスコールバックを渡す
-        await exportToExcel(selectedPages, router, (current, total, message) => {
-          setPdfProgress({ current, total, message });
-        });
+        // 各ページの処理進捗を表示（PDF出力と同じ挙動）
+        for (let i = 0; i < selectedPages.length; i++) {
+          const pagePath = selectedPages[i];
+          const pageTitle = getPageTitle(pagePath);
+          
+          setCurrentPdfPage(pageTitle);
+          setCurrentPdfIndex(i);
+          
+          try {
+            // プログレスコールバックを渡す
+            await exportToExcel([pagePath], router, (current, total, message) => {
+              console.log(`📊 ${pageTitle}: ${message}`);
+            });
+            
+            console.log(`✅ ${pageTitle} のエクセル出力完了`);
+          } catch (error) {
+            console.error(`❌ ${pageTitle} のエクセル出力エラー:`, error);
+            throw error;
+          }
+        }
         
-        // ローディング終了
-        setPdfLoading(false);
+        // 完了状態を設定
+        setPdfGenerationStatus('completed');
+        console.log('✅ エクセル出力が完了しました！すべてのページのエクセルがダウンロードされました。');
         
-        alert('✅ エクセル出力が完了しました！ファイルがダウンロードされます。');
-        setSelectedPages([]);
+        // 2秒後にローディング画面を閉じる
+        setTimeout(() => {
+          setSelectedPages([]);
+          setCurrentPdfPage('');
+          setCurrentPdfIndex(0);
+          setIsPdfGenerating(false);
+          setPdfGenerationStatus('generating');
+        }, 2000);
       } catch (error) {
         console.error('❌ エクセル出力エラー:', error);
-        setPdfLoading(false);
-        alert(
+        
+        // エラー状態を設定
+        setPdfGenerationStatus('error');
+        console.error(
           'エクセル出力に失敗しました。\n' +
           'ブラウザのコンソールでエラー詳細を確認してください。\n\n' +
           `エラー: ${error instanceof Error ? error.message : String(error)}`
         );
+        
+        // 3秒後にローディング画面を閉じる
+        setTimeout(() => {
+          setIsPdfGenerating(false);
+          setCurrentPdfPage('');
+          setCurrentPdfIndex(0);
+          setPdfGenerationStatus('generating');
+        }, 3000);
       }
     }
   };
@@ -756,6 +848,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
       {/* Main Content */}
       <div className="relative flex flex-1 flex-col xl:ml-[300px]">
         {/* Header */}
+        {!isPrintMode && (
         <header className="sticky top-0 z-30 flex w-full bg-white dark:bg-dark-2">
           <div className="flex flex-grow items-center justify-between px-4 py-4 md:px-6 2xl:px-11">
             <div className="flex items-center gap-2 sm:gap-4">
@@ -936,7 +1029,7 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
                         className="h-full w-full rounded-full object-cover"
                       />
                     ) : (
-                      <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-white">
+                      <div className="flex h-full w-full items-center justify-center rounded-full bg-gray-2 text-sm font-medium text-dark dark:bg-dark-3 dark:text-white">
                         {getInitial()}
                       </div>
                     )}
@@ -960,63 +1053,38 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
 
                 {/* Dropdown Menu */}
                 {dropdownOpen && (
-                  <div className="absolute right-0 mt-4 flex w-62.5 flex-col rounded-sm border border-stroke bg-white shadow-default dark:border-dark-3 dark:bg-dark-2">
-                    <ul className="flex flex-col overflow-y-auto border-b border-stroke dark:border-dark-3">
-                      <li>
-                        <button
-                          onClick={() => {
-                            setDropdownOpen(false);
-                            router.push('/profile');
-                          }}
-                          className="flex w-full gap-3.5 px-6 py-4 text-sm font-medium hover:bg-gray-2 dark:hover:bg-dark-3 lg:text-base"
-                        >
-                          <svg
-                            className="fill-current"
-                            width="22"
-                            height="22"
-                            viewBox="0 0 22 22"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path d="M11 9.62499C8.42188 9.62499 6.35938 7.59687 6.35938 5.12187C6.35938 2.64687 8.42188 0.618744 11 0.618744C13.5781 0.618744 15.6406 2.64687 15.6406 5.12187C15.6406 7.59687 13.5781 9.62499 11 9.62499ZM11 2.16562C9.28125 2.16562 7.90625 3.50624 7.90625 5.12187C7.90625 6.73749 9.28125 8.07812 11 8.07812C12.7188 8.07812 14.0938 6.73749 14.0938 5.12187C14.0938 3.50624 12.7188 2.16562 11 2.16562Z" />
-                            <path d="M17.7719 21.4156H4.2281C3.5406 21.4156 2.9906 20.8656 2.9906 20.1781V17.0844C2.9906 13.7156 5.7406 10.9656 9.10935 10.9656H12.925C16.2937 10.9656 19.0437 13.7156 19.0437 17.0844V20.1781C19.0094 20.8312 18.4594 21.4156 17.7719 21.4156ZM4.53748 19.8687H17.4969V17.0844C17.4969 14.575 15.4344 12.5125 12.925 12.5125H9.07498C6.5656 12.5125 4.5031 14.575 4.5031 17.0844V19.8687H4.53748Z" />
-                          </svg>
-                          アカウント
-                        </button>
-                      </li>
-                      <li>
-                        <button
-                          onClick={() => {
-                            setDropdownOpen(false);
-                            router.push('/admin');
-                          }}
-                          className="flex w-full gap-3.5 px-6 py-4 text-sm font-medium hover:bg-gray-2 dark:hover:bg-dark-3 lg:text-base"
-                        >
-                          <svg
-                            className="fill-current"
-                            width="22"
-                            height="22"
-                            viewBox="0 0 22 22"
-                            fill="none"
-                            xmlns="http://www.w3.org/2000/svg"
-                          >
-                            <path d="M17.6687 1.44374C17.1187 0.893744 16.4312 0.618744 15.675 0.618744H7.42498C6.25623 0.618744 5.25935 1.58124 5.25935 2.78437V4.12499H4.29685C3.88435 4.12499 3.50623 4.46874 3.50623 4.91562C3.50623 5.36249 3.84998 5.70624 4.29685 5.70624H5.25935V10.2781H4.29685C3.88435 10.2781 3.50623 10.6219 3.50623 11.0687C3.50623 11.4812 3.84998 11.8594 4.29685 11.8594H5.25935V16.4312H4.29685C3.88435 16.4312 3.50623 16.775 3.50623 17.2219C3.50623 17.6687 3.84998 18.0125 4.29685 18.0125H5.25935V19.25C5.25935 20.4187 6.22185 21.4156 7.42498 21.4156H15.675C17.2218 21.4156 18.4937 20.1437 18.5281 18.5969V3.40937C18.4937 2.68437 18.2187 1.95937 17.6687 1.44374ZM16.9469 18.5625C16.9469 19.2844 16.3625 19.8344 15.6406 19.8344H7.3906C7.04685 19.8344 6.77185 19.5594 6.77185 19.2156V17.875H8.6281C9.0406 17.875 9.41873 17.5312 9.41873 17.0844C9.41873 16.6375 9.07498 16.2937 8.6281 16.2937H6.77185V11.7906H8.6281C9.0406 11.7906 9.41873 11.4469 9.41873 11C9.41873 10.5875 9.07498 10.2094 8.6281 10.2094H6.77185V5.63749H8.6281C9.0406 5.63749 9.41873 5.29374 9.41873 4.84687C9.41873 4.39999 9.07498 4.05624 8.6281 4.05624H6.77185V2.74999C6.77185 2.40624 7.04685 2.13124 7.3906 2.13124H15.6406C15.9844 2.13124 16.2937 2.26874 16.5687 2.50937C16.8094 2.74999 16.9469 3.09374 16.9469 3.43749V18.5625Z" />
-                          </svg>
-                          管理者パネル
-                        </button>
-                      </li>
-                    </ul>
+                  <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-md border border-stroke bg-white shadow-lg dark:border-dark-3 dark:bg-dark-2">
+                    <button
+                      onClick={() => {
+                        setDropdownOpen(false);
+                        router.push('/profile');
+                      }}
+                      className="flex w-full items-center gap-3 px-4 py-3 text-sm text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
+                    >
+                      <svg
+                        className="fill-current"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 22 22"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path d="M11 9.62499C8.42188 9.62499 6.35938 7.59687 6.35938 5.12187C6.35938 2.64687 8.42188 0.618744 11 0.618744C13.5781 0.618744 15.6406 2.64687 15.6406 5.12187C15.6406 7.59687 13.5781 9.62499 11 9.62499ZM11 2.16562C9.28125 2.16562 7.90625 3.50624 7.90625 5.12187C7.90625 6.73749 9.28125 8.07812 11 8.07812C12.7188 8.07812 14.0938 6.73749 14.0938 5.12187C14.0938 3.50624 12.7188 2.16562 11 2.16562Z" />
+                        <path d="M17.7719 21.4156H4.2281C3.5406 21.4156 2.9906 20.8656 2.9906 20.1781V17.0844C2.9906 13.7156 5.7406 10.9656 9.10935 10.9656H12.925C16.2937 10.9656 19.0437 13.7156 19.0437 17.0844V20.1781C19.0094 20.8312 18.4594 21.4156 17.7719 21.4156ZM4.53748 19.8687H17.4969V17.0844C17.4969 14.575 15.4344 12.5125 12.925 12.5125H9.07498C6.5656 12.5125 4.5031 14.575 4.5031 17.0844V19.8687H4.53748Z" />
+                      </svg>
+                      アカウント
+                    </button>
                     <button
                       onClick={() => {
                         setDropdownOpen(false);
                         handleLogout();
                       }}
-                      className="flex gap-3.5 px-6 py-4 text-sm font-medium hover:bg-gray-2 dark:hover:bg-dark-3 lg:text-base"
+                      className="flex w-full items-center gap-3 px-4 py-3 text-sm text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
                     >
                       <svg
                         className="fill-current"
-                        width="22"
-                        height="22"
+                        width="20"
+                        height="20"
                         viewBox="0 0 22 22"
                         fill="none"
                         xmlns="http://www.w3.org/2000/svg"
@@ -1032,9 +1100,10 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
             </div>
           </div>
         </header>
+        )}
 
         {/* Site Preview Section - Above Main Content */}
-        {siteInfo && siteInfo.siteUrl && user && 
+        {!isPrintMode && siteInfo && siteInfo.siteUrl && user && 
          !pathname?.startsWith('/profile') && 
          !pathname?.startsWith('/site-settings') && 
          !pathname?.startsWith('/admin') && (
@@ -1243,13 +1312,15 @@ export default function DashboardLayout({ children, onDateRangeChange }: Dashboa
         ></div>
       )}
 
-      {/* PDF Loading Overlay */}
-      <PDFLoadingOverlay
-        isVisible={pdfLoading}
-        currentPage={pdfProgress.current}
-        totalPages={pdfProgress.total}
-        message={pdfProgress.message}
-      />
+        {/* PDF生成ローディング画面 */}
+        <PDFLoadingOverlay
+          isVisible={isPdfGenerating}
+          currentPage={currentPdfPage}
+          totalPages={selectedPages.length}
+          currentIndex={currentPdfIndex}
+          status={pdfGenerationStatus}
+        />
+
     </section>
   );
 }

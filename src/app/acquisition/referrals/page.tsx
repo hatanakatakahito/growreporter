@@ -82,7 +82,7 @@ export default function ReferralsPage() {
       try {
         // ユーザープロファイルからサイト名を取得
         const profile = await UserProfileService.getUserProfile(user.uid);
-        if (profile.profile?.siteName) {
+        if (profile && profile.profile?.siteName) {
           setSiteName(profile.profile.siteName);
         }
 
@@ -198,14 +198,7 @@ export default function ReferralsPage() {
   };
 
   return (
-    <DashboardLayout 
-      siteInfo={{
-        scope: '全体',
-        propertyId: selectedPropertyId || undefined,
-        siteName: siteName || undefined
-      }}
-      onDateRangeChange={handleDateRangeChange}
-    >
+    <DashboardLayout>
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
         {/* Page Header */}
         <div className="mb-6">
@@ -307,22 +300,22 @@ export default function ReferralsPage() {
                       合計
                     </td>
                     <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
-                      {totalData.users.toLocaleString()}
+                      {(totalData.users || 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
-                      {totalData.newUsers.toLocaleString()}
+                      {(totalData.newUsers || 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
-                      {totalData.sessions.toLocaleString()}
+                      {(totalData.sessions || 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
-                      {totalData.pageviews.toLocaleString()}
+                      {(totalData.pageviews || 0).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
-                      {totalData.engagementRate.toFixed(2)}%
+                      {(totalData.engagementRate || 0).toFixed(2)}%
                     </td>
                     <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">
-                      {totalData.keyEvents.toLocaleString()}
+                      {(totalData.keyEvents || 0).toLocaleString()}
                     </td>
                   </tr>
                 </thead>

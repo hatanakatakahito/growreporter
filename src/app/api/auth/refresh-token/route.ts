@@ -25,10 +25,12 @@ export async function POST(request: NextRequest) {
     const refreshedTokens = await UnifiedOAuthManager.refreshAccessToken(refreshToken);
 
     // 新しいアクセストークンをFirestoreに保存
+    const expiresAt = Date.now() + (refreshedTokens.expires_in * 1000);
     await AdminFirestoreService.updateAccessToken(
       userId,
+      'google',
       refreshedTokens.access_token,
-      refreshedTokens.expires_in
+      expiresAt
     );
 
     console.log('✅ サーバーサイドトークンリフレッシュ成功');

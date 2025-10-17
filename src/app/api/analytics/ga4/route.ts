@@ -88,8 +88,8 @@ export async function POST(request: NextRequest) {
         propertyId,
         rowCount: data.rowCount || 0,
         dateRange: requestBody.dateRanges[0],
-        metrics: requestBody.metrics.map(m => m.name),
-        dimensions: requestBody.dimensions.map(d => d.name)
+        metrics: requestBody.metrics.map((m: any) => m.name),
+        dimensions: requestBody.dimensions.map((d: any) => d.name)
       }
     });
 

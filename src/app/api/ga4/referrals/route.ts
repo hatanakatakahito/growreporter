@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     }), { users: 0, newUsers: 0, sessions: 0, pageviews: 0, keyEvents: 0 });
 
     // 平均エンゲージメント率を計算
-    totalData.engagementRate = referralData.length > 0
+    const averageEngagementRate = referralData.length > 0
       ? referralData.reduce((sum: number, curr: any) => sum + curr.engagementRate, 0) / referralData.length
       : 0;
 

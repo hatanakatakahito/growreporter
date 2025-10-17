@@ -119,7 +119,7 @@ export default function LandingPagesPage() {
         // サイト名を取得
         const { UserProfileService } = await import('@/lib/user/userProfileService');
         const profile = await UserProfileService.getUserProfile(user.uid);
-        if (profile.profile?.siteName) {
+        if (profile && profile.profile?.siteName) {
           setSiteName(profile.profile.siteName);
         }
 

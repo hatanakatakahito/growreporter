@@ -20,12 +20,9 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    const shareUrl = await SharingService.createShareLink(userId, {
-      reportId,
-      expiresInDays,
-      password,
-      allowedViewers,
-    });
+    const sharingService = SharingService.getInstance();
+    const shareConfig = await sharingService.createShareLink(userId, reportId, expiresInDays, password, allowedViewers);
+    const shareUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/share/${shareConfig.shareToken}`;
     
     return NextResponse.json({ shareUrl });
     
@@ -50,7 +47,17 @@ export async function PUT(request: NextRequest) {
       );
     }
     
-    await SharingService.updateShareLink(userId, reportId, updates);
+    const sharingService = SharingService.getInstance();
+    // Find share config by userId and reportId first
+    const userConfigs = await sharingService.getUserShareConfigs(userId);
+    const shareConfig = userConfigs.find(config => config.reportId === reportId);
+    if (!shareConfig) {
+      return NextResponse.json(
+        { error: 'Share link not found' },
+        { status: 404 }
+      );
+    }
+    await sharingService.updateShareConfig(shareConfig.id, updates);
     
     return NextResponse.json({ success: true });
     
@@ -76,7 +83,17 @@ export async function DELETE(request: NextRequest) {
       );
     }
     
-    await SharingService.revokeShareLink(userId, reportId);
+    const sharingService = SharingService.getInstance();
+    // Find share config by userId and reportId first
+    const userConfigs = await sharingService.getUserShareConfigs(userId);
+    const shareConfig = userConfigs.find(config => config.reportId === reportId);
+    if (!shareConfig) {
+      return NextResponse.json(
+        { error: 'Share link not found' },
+        { status: 404 }
+      );
+    }
+    await sharingService.revokeShare(shareConfig.id);
     
     return NextResponse.json({ success: true });
     

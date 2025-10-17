@@ -1,0 +1,254 @@
+/* PDF専用スタイル */
+.pdfPage {
+  width: 100%;
+  max-width: 210mm; /* A4幅 */
+  min-height: 297mm; /* A4高さ */
+  padding: 5mm;
+  font-family: 'Inter', 'Hiragino Sans', 'ヒラギノ角ゴシック', 'Yu Gothic', 'メイリオ', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #1f2937;
+  background: white;
+  box-sizing: border-box;
+  overflow-x: auto;
+}
+
+.pdfLoading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 16px;
+  color: #666;
+}
+
+.pdfError {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  font-size: 16px;
+  color: #e74c3c;
+}
+
+/* ヘッダー */
+.pdfHeader {
+  text-align: center;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #3B82F6;
+}
+
+.pdfHeader h1 {
+  font-size: 24px;
+  font-weight: bold;
+  color: #3B82F6;
+  margin: 0 0 10px 0;
+}
+
+.pdfDate {
+  font-size: 14px;
+  color: #666;
+  margin: 0 0 10px 0;
+}
+
+.pdfSiteInfo {
+  font-size: 12px;
+  color: #555;
+  margin: 0;
+}
+
+/* セクション */
+.pdfSection {
+  margin-bottom: 30px;
+}
+
+.pdfSection h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 24px 0;
+  padding-bottom: 12px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+/* グリッドレイアウト */
+.pdfGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+/* カード */
+.pdfCard {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  transition: box-shadow 0.2s ease;
+}
+
+.pdfCard h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin: 0 0 16px 0;
+}
+
+.pdfValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: #3B82F6;
+  margin: 0 0 12px 0;
+}
+
+.pdfComparison {
+  font-size: 12px;
+  color: #666;
+  line-height: 1.4;
+  margin-top: 10px;
+}
+
+.pdfComparison div {
+  margin-bottom: 5px;
+}
+
+.pdfComparison div:last-child {
+  margin-bottom: 0;
+}
+
+/* テーブル */
+.pdfTableContainer {
+  overflow-x: auto;
+  margin-top: 20px;
+  width: 100%;
+}
+
+.pdfTable {
+  width: 100%;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  background: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  table-layout: fixed;
+}
+
+.pdfTable th {
+  background: #3B82F6;
+  color: white;
+  font-weight: bold;
+  padding: 6px 8px;
+  text-align: center;
+  border: 1px solid #2563eb;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.pdfTable td {
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  text-align: center;
+  font-size: 10px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.pdfTable tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+.pdfTable tbody tr:hover {
+  background: #f3f4f6;
+}
+
+/* 列幅の指定（5列） */
+.pdfTable th:nth-child(1),
+.pdfTable td:nth-child(1) {
+  width: 8%; /* 順位 */
+}
+
+.pdfTable th:nth-child(2),
+.pdfTable td:nth-child(2) {
+  width: 40%; /* リファラー */
+}
+
+.pdfTable th:nth-child(3),
+.pdfTable td:nth-child(3) {
+  width: 18%; /* セッション数 */
+}
+
+.pdfTable th:nth-child(4),
+.pdfTable td:nth-child(4) {
+  width: 18%; /* ユーザー数 */
+}
+
+.pdfTable th:nth-child(5),
+.pdfTable td:nth-child(5) {
+  width: 16%; /* 割合 */
+}
+
+/* 3列テーブル用 */
+.pdfTable th:nth-child(1):not(:nth-child(2)),
+.pdfTable td:nth-child(1):not(:nth-child(2)) {
+  width: 50%; /* カテゴリ */
+}
+
+.pdfTable th:nth-child(2):not(:nth-child(3)),
+.pdfTable td:nth-child(2):not(:nth-child(3)) {
+  width: 25%; /* セッション数 */
+}
+
+.pdfTable th:nth-child(3):not(:nth-child(4)),
+.pdfTable td:nth-child(3):not(:nth-child(4)) {
+  width: 25%; /* 割合 */
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+  .pdfGrid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px;
+  }
+  
+  .pdfCard {
+    padding: 15px;
+  }
+  
+  .pdfCard h3 {
+    font-size: 14px;
+  }
+  
+  .pdfValue {
+    font-size: 20px;
+  }
+}
+
+/* 印刷用スタイル */
+@media print {
+  .pdfPage {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+  }
+  
+  .pdfCard {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+  
+  .pdfTable {
+    break-inside: avoid;
+  }
+  
+  .pdfSection {
+    break-inside: avoid;
+    margin-bottom: 20px;
+  }
+}

@@ -277,11 +277,11 @@ table tbody tr.total-row:hover {
 /* theadの直後の合計行も固定 */
 .table-scroll-container thead tr.total-header-row {
   position: sticky;
-  top: 49px; /* theadの高さ（48px）+ border（1px） */
+  top: 49px;
   z-index: 9;
   background: rgba(237, 243, 255, 0.95) !important;
-  border-top: 1px solid #e5e7eb;
-  border-bottom: 1px solid #e5e7eb;
+  /* border-top: 1px solid #e5e7eb; */
+  /* border-bottom: 1px solid #e5e7eb; */
 }
 
 .dark .table-scroll-container thead tr.total-header-row {
@@ -329,4 +329,6 @@ select[class*="rounded-md"] {
   background-position: right 15px center !important;
   padding-right: 36px !important;
 }
+
+/* 古いPDF印刷スタイルは削除 - PDF専用ページのみ使用 */
 

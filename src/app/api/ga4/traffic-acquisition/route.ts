@@ -68,7 +68,7 @@ export async function GET(request: NextRequest) {
     }), { users: 0, newUsers: 0, sessions: 0, pageviews: 0, keyEvents: 0 });
 
     // 平均エンゲージメント率を計算
-    totalData.engagementRate = trafficData.length > 0
+    const averageEngagementRate = trafficData.length > 0
       ? trafficData.reduce((sum: number, curr: any) => sum + curr.engagementRate, 0) / trafficData.length
       : 0;
 

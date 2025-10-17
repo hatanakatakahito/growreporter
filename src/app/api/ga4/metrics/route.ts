@@ -63,13 +63,13 @@ export async function POST(request: NextRequest) {
         metricValues: row.metricValues?.map((v: any) => v.value)
       });
       
-      metrics.totalUsers = parseInt(row.metricValues[0]?.value || '0');
-      metrics.newUsers = parseInt(row.metricValues[1]?.value || '0');
-      metrics.sessions = parseInt(row.metricValues[2]?.value || '0');
-      metrics.activeUsers = parseInt(row.metricValues[3]?.value || '0');
-      metrics.engagementRate = parseFloat(row.metricValues[4]?.value || '0') * 100;
-      metrics.screenPageViews = parseInt(row.metricValues[5]?.value || '0');
-      metrics.averageSessionDuration = parseFloat(row.metricValues[6]?.value || '0');
+      metrics.totalUsers = parseInt(row.metricValues?.[0]?.value || '0');
+      metrics.newUsers = parseInt(row.metricValues?.[1]?.value || '0');
+      metrics.sessions = parseInt(row.metricValues?.[2]?.value || '0');
+      metrics.activeUsers = parseInt(row.metricValues?.[3]?.value || '0');
+      metrics.engagementRate = parseFloat(row.metricValues?.[4]?.value || '0') * 100;
+      metrics.screenPageViews = parseInt(row.metricValues?.[5]?.value || '0');
+      metrics.averageSessionDuration = parseFloat(row.metricValues?.[6]?.value || '0');
       
       console.log('📊 整形後のメトリクス（コンバージョン前）:', metrics);
     }

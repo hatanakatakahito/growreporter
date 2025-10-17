@@ -11,8 +11,9 @@ import { useAuth } from '@/lib/auth/authContext';
 import { useRouter } from 'next/navigation';
 import AISummarySheet from '@/components/ai/AISummarySheet';
 import Loading from '@/components/common/Loading';
-import Highcharts from 'highcharts';
-import HighchartsReact from 'highcharts-react-official';
+import dynamic from 'next/dynamic';
+
+const ReactApexChart = dynamic(() => import('react-apexcharts'), { ssr: false });
 
 interface HierarchyData {
   path: string;
@@ -42,7 +43,9 @@ export default function PageClassificationPage() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   
   // 表示モード切り替え
-  const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
+  type ViewMode = 'table' | 'chart';
+  const [viewModeState, setViewModeState] = useState<ViewMode>('table');
+  
 
   // AI要約用のコンテキストデータ（メモ化）
   const aiContextData = useMemo(() => {
@@ -137,80 +140,84 @@ export default function PageClassificationPage() {
     }
   });
 
-  // Highcharts用のデータ
-  const chartData = useMemo(() => {
-    return directoryData.map((item, index) => ({
-      name: item.path === '/' ? 'TOP' : item.path,
-      y: item.pageviewRate
-    }));
-  }, [directoryData]);
 
 
-  // Highchartsの設定
-  const chartOptions = useMemo(() => ({
+  // ディレクトリ別エンゲージメント横棒グラフオプション
+  const directoryBarOptions: any = {
     chart: {
-      type: 'pie',
-      height: 500
-    },
-    title: {
-      text: null
-    },
-    accessibility: {
-      announceNewData: {
-        enabled: true
+      type: 'bar',
+      fontFamily: 'Inter, sans-serif',
+      toolbar: {
+        show: false,
       },
-      point: {
-        valueSuffix: '%'
-      }
     },
     plotOptions: {
-      pie: {
-        borderRadius: 5,
-        allowPointSelect: false,
-        cursor: 'default',
-        dataLabels: [{
-          enabled: true,
-          distance: 15,
-          format: '{point.name}'
-        }, {
-          enabled: true,
-          distance: '-30%',
-          filter: {
-            property: 'percentage',
-            operator: '>',
-            value: 5
-          },
-          format: '{point.y:.1f}%',
-          style: {
-            fontSize: '0.9em',
-            textOutline: 'none'
-          }
-        }]
-      }
+      bar: {
+        horizontal: true,
+        borderRadius: 4,
+        dataLabels: {
+          position: 'top',
+        },
+      },
+    },
+    dataLabels: {
+      enabled: true,
+      offsetX: 10,
+      style: {
+        fontSize: '11px',
+        fontWeight: 'bold',
+        colors: ['#3B82F6'],
+      },
+      formatter: function (val: number) {
+        return val.toFixed(1) + '%';
+      },
+    },
+    colors: ['#3B82F6'],
+    xaxis: {
+      categories: (() => {
+        const sortedData = [...directoryData].sort((a: any, b: any) => b.pageviewRate - a.pageviewRate);
+        return sortedData.slice(0, 15).map((d: any) => d.path === '/' ? '/' : d.path);
+      })(),
+      labels: {
+        formatter: function (val: number) {
+          return val.toFixed(1) + '%';
+        },
+      },
+    },
+    yaxis: {
+      labels: {
+        style: {
+          fontSize: '12px',
+        },
+      },
+    },
+    grid: {
+      borderColor: '#E2E8F0',
     },
     tooltip: {
-      headerFormat: '<span style="font-size:11px">{series.name}</span><br>',
-      pointFormat: '<span style="color:{point.color}">{point.name}</span>: ' +
-          '<b>{point.y:.2f}%</b> of total<br/>'
+      y: {
+        formatter: function (val: number, opts: any) {
+          const index = opts.dataPointIndex;
+          const pageviews = directoryData[index]?.pageviews || 0;
+          return pageviews.toLocaleString() + ' PV';
+        },
+      },
     },
-    series: [{
-      name: 'ディレクトリ',
-      colorByPoint: true,
-      data: chartData
-    }],
-    navigation: {
-      breadcrumbs: {
-        buttonTheme: {
-          style: {
-            color: 'var(--highcharts-highlight-color-100)'
-          }
-        }
-      }
-    },
-    credits: {
-      enabled: false
-    }
-  }), [chartData]);
+  };
+  
+  // ディレクトリ別データを計算（降順で並び替え）
+  const directoryBarSeries = (() => {
+    if (directoryData.length === 0) return [{ name: 'ページビュー率', data: [] }];
+    
+    // 降順で並び替え
+    const sortedData = [...directoryData].sort((a: any, b: any) => b.pageviewRate - a.pageviewRate);
+    
+    const data = sortedData.slice(0, 15).map((d: any) => {
+      return d.pageviewRate;
+    });
+    
+    return [{ name: 'ページビュー率', data }];
+  })();
 
   // 日付範囲を計算
   const calculateDateRange = (type: string) => {
@@ -332,6 +339,7 @@ export default function PageClassificationPage() {
     init();
   }, [user]);
 
+
   // 日付範囲変更
   const handleDateRangeChange = useCallback(async (newStartDate: string, newEndDate: string, type: string) => {
     if (!user || !selectedPropertyId) return;
@@ -388,29 +396,6 @@ export default function PageClassificationPage() {
             </p>
           </div>
           
-          {/* View Mode Toggle */}
-          <div className="flex rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
-            <button
-              onClick={() => setViewMode('table')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'table'
-                  ? 'bg-primary text-white'
-                  : 'text-body-color hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3'
-              }`}
-            >
-              テーブル表示
-            </button>
-            <button
-              onClick={() => setViewMode('chart')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                viewMode === 'chart'
-                  ? 'bg-primary text-white'
-                  : 'text-body-color hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3'
-              }`}
-            >
-              円グラフ表示
-            </button>
-          </div>
         </div>
 
         {/* Error Alert */}
@@ -427,7 +412,7 @@ export default function PageClassificationPage() {
 
 
         {/* Directory Table */}
-        {viewMode === 'table' && (
+        {(viewModeState as string) === 'table' && (
           <div className="mb-6 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
             <div className="border-b border-stroke px-6 py-4 dark:border-dark-3">
               <div className="flex items-center justify-between">
@@ -437,9 +422,9 @@ export default function PageClassificationPage() {
                 {/* View Mode Toggle */}
                 <div className="flex rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
                   <button
-                    onClick={() => setViewMode('table')}
+                    onClick={() => setViewModeState('table')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      viewMode === 'table'
+                      (viewModeState as string) === 'table'
                         ? 'bg-primary text-white'
                         : 'text-body-color hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3'
                     }`}
@@ -447,14 +432,14 @@ export default function PageClassificationPage() {
                     テーブル表示
                   </button>
                   <button
-                    onClick={() => setViewMode('chart')}
+                    onClick={() => setViewModeState('chart')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      viewMode === 'chart'
+                      (viewModeState as string) === 'chart'
                         ? 'bg-primary text-white'
                         : 'text-body-color hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3'
                     }`}
                   >
-                    円グラフ表示
+                    グラフ表示
                   </button>
                 </div>
               </div>
@@ -615,7 +600,7 @@ export default function PageClassificationPage() {
         )}
 
         {/* Pie Chart */}
-        {viewMode === 'chart' && (
+        {(viewModeState as string) === 'chart' && (
           <div className="mb-6 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
             <div className="border-b border-stroke px-6 py-4 dark:border-dark-3">
               <div className="flex items-center justify-between">
@@ -625,9 +610,9 @@ export default function PageClassificationPage() {
                 {/* View Mode Toggle */}
                 <div className="flex rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
                   <button
-                    onClick={() => setViewMode('table')}
+                    onClick={() => setViewModeState('table')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      viewMode === 'table'
+                      (viewModeState as string) === 'table'
                         ? 'bg-primary text-white'
                         : 'text-body-color hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3'
                     }`}
@@ -635,26 +620,25 @@ export default function PageClassificationPage() {
                     テーブル表示
                   </button>
                   <button
-                    onClick={() => setViewMode('chart')}
+                    onClick={() => setViewModeState('chart')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                      viewMode === 'chart'
+                      (viewModeState as string) === 'chart'
                         ? 'bg-primary text-white'
                         : 'text-body-color hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3'
                     }`}
                   >
-                    円グラフ表示
+                    グラフ表示
                   </button>
                 </div>
               </div>
             </div>
             <div className="p-6">
-              {/* Highcharts円グラフ */}
-              <div className="h-[500px]">
-                <HighchartsReact
-                  highcharts={Highcharts}
-                  options={chartOptions}
-                />
-              </div>
+              <ReactApexChart
+                options={directoryBarOptions}
+                series={directoryBarSeries}
+                type="bar"
+                height={400}
+              />
             </div>
           </div>
         )}

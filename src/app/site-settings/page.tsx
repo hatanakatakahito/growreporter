@@ -123,7 +123,7 @@ export default function SiteSettingsPage() {
         });
         
         // 保存されているサイト情報を復元
-        if (profile.profile?.siteName) setSiteName(profile.profile.siteName);
+        if (profile && profile.profile?.siteName) setSiteName(profile.profile.siteName);
         if (profile.profile?.siteUrl) setSiteUrl(profile.profile.siteUrl);
         if (profile.profile?.siteType) setSiteType(profile.profile.siteType);
         if (profile.profile?.businessType) setBusinessType(profile.profile.businessType);

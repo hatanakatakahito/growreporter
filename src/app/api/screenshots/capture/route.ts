@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     
     // 一時的に、base64エンコードしてデータURLとして返す
     // Firebase Storageのセットアップ完了後は、Storageにアップロードする方式に変更
-    const base64Screenshot = screenshot.toString('base64');
+    const base64Screenshot = Buffer.from(screenshot).toString('base64');
     const dataUrl = `data:image/png;base64,${base64Screenshot}`;
     
     console.log('✅ スクリーンショットをbase64エンコード完了');

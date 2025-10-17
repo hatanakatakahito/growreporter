@@ -568,12 +568,12 @@ export default function AcquisitionPage() {
                 {/* 合計行 - theadの直後 */}
                 <tr className="total-header-row font-semibold">
                   <td className="px-4 py-3 text-left text-sm text-dark dark:text-white">合計</td>
-                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.users.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.newUsers.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.sessions.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.pageviews.toLocaleString()}</td>
-                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.engagementRate.toFixed(2)}%</td>
-                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.keyEvents}</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{(totalData.users || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{(totalData.newUsers || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{(totalData.sessions || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{(totalData.pageviews || 0).toLocaleString()}</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{(totalData.engagementRate || 0).toFixed(2)}%</td>
+                  <td className="px-4 py-3 text-center text-sm text-dark dark:text-white">{totalData.keyEvents || 0}</td>
                 </tr>
               </thead>
               <tbody>

@@ -4,8 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth/authContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import TableContainer from '@/components/table/TableContainer';
-import { ConversionService } from '@/lib/conversion/conversionService';
-import { Conversion } from '@/lib/conversion/conversionService';
+import { ConversionService, ConversionEvent } from '@/lib/conversion/conversionService';
 import AISummarySheet from '@/components/ai/AISummarySheet';
 
 interface FunnelData {
@@ -33,7 +32,7 @@ export default function FunnelPage() {
   const [loading, setLoading] = useState(true);
   const [funnelData, setFunnelData] = useState<FunnelData | null>(null);
   const [monthlyFunnelData, setMonthlyFunnelData] = useState<MonthlyFunnelData[]>([]);
-  const [conversions, setConversions] = useState<Conversion[]>([]);
+  const [conversions, setConversions] = useState<ConversionEvent[]>([]);
   const [selectedConversion, setSelectedConversion] = useState<string>('');
   const [formPagePath, setFormPagePath] = useState<string>('/contact'); // デフォルトのフォームページパス
   const [isEditingPath, setIsEditingPath] = useState(false);
@@ -385,9 +384,9 @@ export default function FunnelPage() {
                   </button>
                   {showConversionDropdown && conversions.length > 0 && (
                     <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                      {conversions.map((conv) => (
+                      {conversions.map((conv, index) => (
                         <div
-                          key={conv.id}
+                          key={conv.eventName || index}
                           onClick={() => {
                             setSelectedConversion(conv.eventName);
                             setShowConversionDropdown(false);

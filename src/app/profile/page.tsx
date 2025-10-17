@@ -50,8 +50,8 @@ export default function ProfilePage() {
           setLastName(profileData.profile?.lastName || '');
           setCompany(profileData.profile?.company || '');
           setPhoneNumber(profileData.profile?.phoneNumber || '');
-          setIndustry(profileData.profile?.industry || '');
-          setEmailNotifications(profileData.settings?.emailNotifications ?? true);
+          setIndustry(profileData.profile?.businessType || '');
+          setEmailNotifications(true); // デフォルト値を設定
         }
       } catch (err) {
         console.error('アカウント情報取得エラー:', err);
@@ -81,21 +81,17 @@ export default function ProfilePage() {
           lastName,
           company,
           phoneNumber,
-          industry,
-        },
-        settings: {
-          emailNotifications,
         },
       });
       
-      await UserProfileService.logActivity(user.uid, {
-        type: 'profile_updated',
-        description: 'アカウント情報を更新しました',
-        details: {
-          displayName,
-          company,
-        },
-      });
+      // await UserProfileService.logActivity(user.uid, {
+      //   type: 'profile_updated',
+      //   description: 'アカウント情報を更新しました',
+      //   details: {
+      //     displayName,
+      //     company,
+      //   },
+      // });
       
       alert('アカウント情報を保存しました');
     } catch (err) {

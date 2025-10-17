@@ -83,7 +83,7 @@ export default function ConversionEventsPage() {
       try {
         // ユーザープロファイルからサイト名を取得
         const profile = await UserProfileService.getUserProfile(user.uid);
-        if (profile.profile?.siteName) {
+        if (profile && profile.profile?.siteName) {
           setSiteName(profile.profile.siteName);
         }
 
@@ -151,7 +151,7 @@ export default function ConversionEventsPage() {
       colors: ["#3758F9", "#13C296", "#F59E0B", "#EF4444", "#8B5CF6"],
       chart: {
         fontFamily: "Inter, sans-serif",
-        type: "line",
+        type: "line" as const,
         height: 350,
         toolbar: {
           show: false,
@@ -171,7 +171,7 @@ export default function ConversionEventsPage() {
       },
       stroke: {
         width: 2,
-        curve: "smooth",
+        curve: "smooth" as const,
       },
       xaxis: {
         categories: sortedMonthlyData.map(m => m.displayName),
@@ -184,11 +184,11 @@ export default function ConversionEventsPage() {
       },
       legend: {
         show: true,
-        position: "top",
-        horizontalAlign: "left",
+        position: "top" as const,
+        horizontalAlign: "left" as const,
         fontFamily: "inter",
         markers: {
-          radius: 99,
+          size: 4,
         },
       },
       yaxis: {
@@ -228,13 +228,7 @@ export default function ConversionEventsPage() {
   }, [conversions, monthlyData]);
 
   return (
-    <DashboardLayout 
-      siteInfo={{
-        scope: '全体',
-        propertyId: selectedPropertyId || undefined,
-        siteName: siteName || undefined
-      }}
-    >
+    <DashboardLayout>
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
         {/* Page Header */}
         <div className="mb-6">
@@ -308,8 +302,8 @@ export default function ConversionEventsPage() {
                   <th className="px-4 py-4 text-left text-sm font-medium text-dark dark:text-white">
                     年月
                   </th>
-                  {conversions.map((conversion) => (
-                    <th key={conversion.id} className="px-4 py-4 text-center text-sm font-medium text-dark dark:text-white">
+                  {conversions.map((conversion, index) => (
+                    <th key={conversion.eventName || index} className="px-4 py-4 text-center text-sm font-medium text-dark dark:text-white">
                       {conversion.displayName || conversion.eventName}
                     </th>
                   ))}
@@ -321,10 +315,10 @@ export default function ConversionEventsPage() {
                     <td className="px-4 py-3 text-left text-sm font-medium text-dark dark:text-white">
                       {month.displayName}
                     </td>
-                    {conversions.map((conversion) => {
+                    {conversions.map((conversion, convIndex) => {
                       const count = month.conversionBreakdown?.[conversion.eventName] || 0;
                       return (
-                        <td key={conversion.id} className="px-4 py-3 text-center text-sm text-dark dark:text-white">
+                        <td key={conversion.eventName || convIndex} className="px-4 py-3 text-center text-sm text-dark dark:text-white">
                           {count.toLocaleString()}
                         </td>
                       );
@@ -365,8 +359,8 @@ export default function ConversionEventsPage() {
           onClose={() => setIsAISheetOpen(false)}
           pageType="conversion"
           contextData={aiContextData}
-          startDate={monthlyData[monthlyData.length - 1]?.yearMonth || ''}
-          endDate={monthlyData[0]?.yearMonth || ''}
+          startDate={monthlyData[monthlyData.length - 1]?.displayName || ''}
+          endDate={monthlyData[0]?.displayName || ''}
           userId={user.uid}
         />
       )}

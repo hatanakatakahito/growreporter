@@ -26,7 +26,7 @@ export default function HomePage() {
           const profile = await UserProfileService.getUserProfile(user.uid);
           
           // 初回設定が完了していない場合はサイト設定画面へ
-          if (!profile?.metadata?.hasCompletedOnboarding) {
+          if (!profile?.metadata?.onboardingCompleted) {
             router.push('/site-settings');
           } else {
             router.push('/dashboard');
@@ -52,9 +52,9 @@ export default function HomePage() {
       
       // 初回設定完了チェック
       const { UserProfileService } = await import('@/lib/user/userProfileService');
-      const profile = await UserProfileService.getProfile(result.user.uid);
+      const profile = await UserProfileService.getUserProfile(result.user.uid);
       
-      if (!profile?.metadata?.hasCompletedOnboarding) {
+      if (!profile?.metadata?.onboardingCompleted) {
         router.push('/site-settings');
       } else {
         router.push('/dashboard');
@@ -118,9 +118,9 @@ export default function HomePage() {
       } else {
         // 既存ユーザーは初回設定完了チェック
         const { UserProfileService } = await import('@/lib/user/userProfileService');
-        const profile = await UserProfileService.getProfile(result.user.uid);
+        const profile = await UserProfileService.getUserProfile(result.user.uid);
         
-        if (!profile?.metadata?.hasCompletedOnboarding) {
+        if (!profile?.metadata?.onboardingCompleted) {
           router.push('/site-settings');
         } else {
           router.push('/dashboard');

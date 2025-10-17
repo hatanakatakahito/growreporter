@@ -29,8 +29,10 @@ export async function GET(request: NextRequest) {
 
     if (globalShareLinkDoc.exists) {
       const globalData = globalShareLinkDoc.data();
-      shareLink = globalData;
-      userId = globalData.userId;
+      if (globalData) {
+        shareLink = globalData;
+        userId = globalData.userId;
+      }
       console.log('✅ グローバルコレクションから検出:', { userId, token });
     } else {
       // フォールバック: 全ユーザーを検索（後方互換性のため）

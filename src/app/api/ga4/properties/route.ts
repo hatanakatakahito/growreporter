@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     const accounts = accountsData.accounts || [];
 
     // 各アカウントのプロパティを取得
-    const propertyPromises = accounts.map(async (account) => {
+    const propertyPromises = accounts.map(async (account: any) => {
       try {
         const propertiesResponse = await fetch(
           `https://analyticsadmin.googleapis.com/v1alpha/properties?filter=parent:${account.name}`,

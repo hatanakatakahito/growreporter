@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
         
         // 完全一致する場合のみカウント
         if (normalizedPagePath === normalizedFormPath) {
-          return sum + parseInt(row.metricValues[0].value || '0');
+          return sum + parseInt(row.metricValues?.[0]?.value || '0');
         }
         return sum;
       }, 0);

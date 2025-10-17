@@ -64,13 +64,13 @@ export async function POST(request: NextRequest) {
     // データを整理
     const processedData = {
       rows: data.rows || [],
-      totalClicks: data.rows?.reduce((sum, row) => sum + (row.clicks || 0), 0) || 0,
-      totalImpressions: data.rows?.reduce((sum, row) => sum + (row.impressions || 0), 0) || 0,
+      totalClicks: data.rows?.reduce((sum: number, row: any) => sum + (row.clicks || 0), 0) || 0,
+      totalImpressions: data.rows?.reduce((sum: number, row: any) => sum + (row.impressions || 0), 0) || 0,
       averageCTR: data.rows?.length > 0 
-        ? data.rows.reduce((sum, row) => sum + (row.ctr || 0), 0) / data.rows.length 
+        ? data.rows.reduce((sum: number, row: any) => sum + (row.ctr || 0), 0) / data.rows.length 
         : 0,
       averagePosition: data.rows?.length > 0 
-        ? data.rows.reduce((sum, row) => sum + (row.position || 0), 0) / data.rows.length 
+        ? data.rows.reduce((sum: number, row: any) => sum + (row.position || 0), 0) / data.rows.length 
         : 0
     };
 

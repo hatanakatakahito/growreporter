@@ -21,6 +21,7 @@ interface AuthContextType {
   signInWithEmail: (email: string, password: string) => Promise<UserCredential>;
   signUpWithEmail: (email: string, password: string) => Promise<UserCredential>;
   signOut: () => Promise<void>;
+  getIdToken: () => Promise<string | null>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -126,6 +127,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
+  const getIdToken = async (): Promise<string | null> => {
+    if (!user) return null;
+    try {
+      return await user.getIdToken();
+    } catch (error) {
+      console.error('❌ IDトークン取得エラー:', error);
+      return null;
+    }
+  };
+
   const value: AuthContextType = {
     user,
     loading,
@@ -134,6 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     signInWithEmail,
     signUpWithEmail,
     signOut,
+    getIdToken,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

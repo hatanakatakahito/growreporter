@@ -14,6 +14,8 @@ import type { AdminUserListItem } from '@/lib/admin/adminService';
 import { UserActivityLog } from '@/types/user';
 import { format } from 'date-fns';
 import Loading from '@/components/common/Loading';
+import TableWrapper, { TableCell } from '@/components/tailgrids/TableWrapper';
+import { Button } from '@/components/ui/Button';
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
@@ -201,102 +203,99 @@ export default function AdminPage() {
                 <h3 className="text-lg font-semibold text-dark dark:text-white">
                   ユーザー一覧 ({users.length})
                 </h3>
-                <button
-                  onClick={loadUsers}
-                  disabled={loadingUsers}
-                  className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {loadingUsers ? '読み込み中...' : '再読み込み'}
-                </button>
+                <Button variant="primary" size="sm" onClick={loadUsers} loading={loadingUsers}>
+                  🔄 再読み込み
+                </Button>
               </div>
             </div>
-            <div className="overflow-x-auto">
-                <TableWrapper
-                  headers={[
-                    { name: 'ユーザー', styles: 'min-w-[200px]' },
-                    { name: 'メール', styles: 'min-w-[200px]' },
-                    { name: 'プラン', styles: 'min-w-[100px]' },
-                    { name: 'ステータス', styles: 'min-w-[100px]' },
-                    { name: '管理者', styles: 'min-w-[80px]' },
-                    { name: '登録日', styles: 'min-w-[120px]' },
-                    { name: '操作', styles: 'min-w-[100px]' },
-                  ]}
-                  data={users}
-                  renderRow={(user, index) => (
-                    <tr key={user.uid}>
-                      <TableCell>
-                        <div className="flex items-center">
-                          {user.photoURL ? (
-                            <img src={user.photoURL} alt={user.displayName || ''} className="mr-3 h-10 w-10 rounded-full" />
-                          ) : (
-                            <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white">
-                              {user.email[0].toUpperCase()}
-                            </div>
-                          )}
-                          <span className="font-medium text-dark dark:text-white">{user.displayName || user.email}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-body-color dark:text-dark-6">{user.email}</span>
-                      </TableCell>
-                      <TableCell>
-                        <span className="inline-block rounded-full bg-primary px-3 py-1 text-xs font-medium text-white">
-                          {user.subscriptionPlan.toUpperCase()}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
-                          user.subscriptionStatus === 'active' 
-                            ? 'bg-secondary text-white' 
-                            : 'bg-[#F2994A] text-white'
-                        }`}>
-                          {user.subscriptionStatus}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <button
-                          onClick={() => handleToggleAdminRole(user.uid, user.isAdmin)}
-                          className={`text-2xl transition-transform hover:scale-110 ${
-                            user.isAdmin ? 'opacity-100' : 'opacity-30'
-                          }`}
-                        >
-                          👑
-                        </button>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-body-color dark:text-dark-6">
-                          {user.createdAt?.toDate().toLocaleDateString('ja-JP') || 'N/A'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          outline
-                          onClick={() => loadUserLogs(user.uid)}
-                        >
-                          履歴
-                        </Button>
-                      </TableCell>
-                    </tr>
-                  )}
-                />
-              </CardBody>
-            </Card>
-          )}
+            <div className="p-0">
+              <TableWrapper
+                headers={[
+                  { name: 'ユーザー', styles: 'min-w-[200px]' },
+                  { name: 'メール', styles: 'min-w-[200px]' },
+                  { name: 'プラン', styles: 'min-w-[100px]' },
+                  { name: 'ステータス', styles: 'min-w-[100px]' },
+                  { name: '管理者', styles: 'min-w-[80px]' },
+                  { name: '登録日', styles: 'min-w-[120px]' },
+                  { name: '操作', styles: 'min-w-[100px]' },
+                ]}
+                data={users}
+                renderRow={(user, index) => (
+                  <tr key={user.uid}>
+                    <td className="py-4 px-4 first:pl-6 last:pr-6">
+                      <div className="flex items-center">
+                        {user.photoURL ? (
+                          <img src={user.photoURL} alt={user.displayName || ''} className="mr-3 h-10 w-10 rounded-full" />
+                        ) : (
+                          <div className="mr-3 flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white">
+                            {user.email[0].toUpperCase()}
+                          </div>
+                        )}
+                        <span className="font-medium text-dark dark:text-white">{user.displayName || user.email}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-4 first:pl-6 last:pr-6">
+                      <span className="text-body-color dark:text-dark-6">{user.email}</span>
+                    </td>
+                    <td className="py-4 px-4 first:pl-6 last:pr-6">
+                      <span className="inline-block rounded-full bg-primary px-3 py-1 text-xs font-medium text-white">
+                        {user.subscriptionPlan.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 first:pl-6 last:pr-6">
+                      <span className={`inline-block rounded-full px-3 py-1 text-xs font-medium ${
+                        user.subscriptionStatus === 'active' 
+                          ? 'bg-secondary text-white' 
+                          : 'bg-[#F2994A] text-white'
+                      }`}>
+                        {user.subscriptionStatus}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 first:pl-6 last:pr-6 text-center">
+                      <button
+                        onClick={() => handleToggleAdminRole(user.uid, user.isAdmin)}
+                        className={`text-2xl transition-transform hover:scale-110 ${
+                          user.isAdmin ? 'opacity-100' : 'opacity-30'
+                        }`}
+                      >
+                        👑
+                      </button>
+                    </td>
+                    <td className="py-4 px-4 first:pl-6 last:pr-6">
+                      <span className="text-sm text-body-color dark:text-dark-6">
+                        {user.createdAt?.toDate().toLocaleDateString('ja-JP') || 'N/A'}
+                      </span>
+                    </td>
+                    <td className="py-4 px-4 first:pl-6 last:pr-6">
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => loadUserLogs(user.uid)}
+                      >
+                        履歴
+                      </Button>
+                    </td>
+                  </tr>
+                )}
+              />
+            </div>
+          </div>
+        )}
           
           {/* アクティビティログタブ */}
           {activeTab === 'logs' && (
-            <Card>
-              <CardHeader
-                title={`最近のアクティビティ (${activityLogs.length})`}
-                action={
+            <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+              <div className="border-b border-stroke px-6 py-4 dark:border-dark-3">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-dark dark:text-white">
+                    最近のアクティビティ ({activityLogs.length})
+                  </h3>
                   <Button variant="primary" size="sm" onClick={loadActivityLogs} loading={loadingLogs}>
                     🔄 再読み込み
                   </Button>
-                }
-              />
-              <CardBody className="p-0">
+                </div>
+              </div>
+              <div className="p-0">
                 <TableWrapper
                   headers={[
                     { name: 'ユーザー', styles: 'min-w-[150px]' },
@@ -307,27 +306,27 @@ export default function AdminPage() {
                   data={activityLogs}
                   renderRow={(log, index) => (
                     <tr key={index}>
-                      <TableCell>
+                      <td className="py-4 px-4 first:pl-6 last:pr-6">
                         <span className="text-sm font-medium text-dark dark:text-white">{log.userEmail}</span>
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="py-4 px-4 first:pl-6 last:pr-6">
                         <span className="inline-block rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-dark dark:bg-dark-3 dark:text-white">
                           {log.type}
                         </span>
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="py-4 px-4 first:pl-6 last:pr-6">
                         <span className="text-sm text-body-color dark:text-dark-6">{log.description}</span>
-                      </TableCell>
-                      <TableCell>
+                      </td>
+                      <td className="py-4 px-4 first:pl-6 last:pr-6">
                         <span className="text-sm text-body-color dark:text-dark-6">
                           {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy-MM-dd HH:mm:ss') : 'N/A'}
                         </span>
-                      </TableCell>
+                      </td>
                     </tr>
                   )}
                 />
-              </CardBody>
-            </Card>
+              </div>
+            </div>
           )}
           
           {/* ユーザー詳細ログモーダル */}
@@ -338,10 +337,12 @@ export default function AdminPage() {
                 onClick={() => setSelectedUserId(null)}
               ></div>
               <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                <Card className="w-full max-w-4xl max-h-[80vh] overflow-auto">
-                  <CardHeader
-                    title="ユーザーアクティビティ履歴"
-                    action={
+                <div className="w-full max-w-4xl max-h-[80vh] overflow-auto rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+                  <div className="border-b border-stroke px-6 py-4 dark:border-dark-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-dark dark:text-white">
+                        ユーザーアクティビティ履歴
+                      </h3>
                       <button
                         onClick={() => setSelectedUserId(null)}
                         className="text-body-color hover:text-dark dark:text-dark-6 dark:hover:text-white"
@@ -350,9 +351,9 @@ export default function AdminPage() {
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                         </svg>
                       </button>
-                    }
-                  />
-                  <CardBody className="p-0">
+                    </div>
+                  </div>
+                  <div className="p-0">
                     <TableWrapper
                       headers={[
                         { name: 'タイプ', styles: 'min-w-[150px]' },
@@ -362,22 +363,22 @@ export default function AdminPage() {
                       data={userLogs}
                       renderRow={(log, index) => (
                         <tr key={index}>
-                          <TableCell>
+                          <td className="py-4 px-4 first:pl-6 last:pr-6">
                             <span className="text-sm font-medium text-dark dark:text-white">{log.type}</span>
-                          </TableCell>
-                          <TableCell>
+                          </td>
+                          <td className="py-4 px-4 first:pl-6 last:pr-6">
                             <span className="text-sm text-body-color dark:text-dark-6">{log.description}</span>
-                          </TableCell>
-                          <TableCell>
+                          </td>
+                          <td className="py-4 px-4 first:pl-6 last:pr-6">
                             <span className="text-sm text-body-color dark:text-dark-6">
                               {log.timestamp?.toDate ? format(log.timestamp.toDate(), 'yyyy-MM-dd HH:mm:ss') : 'N/A'}
                             </span>
-                          </TableCell>
+                          </td>
                         </tr>
                       )}
                     />
-                  </CardBody>
-                </Card>
+                  </div>
+                </div>
               </div>
             </>
           )}

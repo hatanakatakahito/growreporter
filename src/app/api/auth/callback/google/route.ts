@@ -90,6 +90,9 @@ export async function GET(request: NextRequest) {
       // Admin Firestore サービスを使用（サーバーサイド）
       
       // OAuthトークンを保存
+      if (!stateData.userId) {
+        throw new Error('User ID is missing from state data');
+      }
       await AdminFirestoreService.saveOAuthTokens(
         stateData.userId,
         {
@@ -106,8 +109,12 @@ export async function GET(request: NextRequest) {
       );
 
       // GA4プロパティとGSCサイトを保存
+      const ga4PropertiesWithParent = ga4Properties.map((prop: any) => ({
+        ...prop,
+        parent: prop.parent || ''
+      }));
       await Promise.all([
-        AdminFirestoreService.saveGA4Properties(stateData.userId, ga4Properties),
+        AdminFirestoreService.saveGA4Properties(stateData.userId, ga4PropertiesWithParent),
         AdminFirestoreService.saveGSCSites(stateData.userId, gscSites)
       ]);
 

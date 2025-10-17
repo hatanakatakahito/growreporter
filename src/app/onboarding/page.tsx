@@ -62,7 +62,7 @@ export default function OnboardingPage() {
     setError(null);
 
     try {
-      await UserProfileService.updateProfile(user.uid, {
+      await UserProfileService.updateUserProfile(user.uid, {
         profile: {
           firstName,
           lastName,

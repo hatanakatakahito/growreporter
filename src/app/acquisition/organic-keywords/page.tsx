@@ -66,7 +66,7 @@ export default function OrganicKeywordsPage() {
       try {
         // ユーザープロファイルからサイト名を取得
         const profile = await UserProfileService.getUserProfile(user.uid);
-        if (profile.profile?.siteName) {
+        if (profile && profile.profile?.siteName) {
           setSiteName(profile.profile.siteName);
         }
 
@@ -179,14 +179,7 @@ export default function OrganicKeywordsPage() {
   };
 
   return (
-    <DashboardLayout 
-      siteInfo={{
-        scope: '全体',
-        siteName: siteName || undefined,
-        siteUrl: selectedSiteUrl || undefined
-      }}
-      onDateRangeChange={handleDateRangeChange}
-    >
+    <DashboardLayout>
       <div className="mx-auto max-w-screen-2xl p-4 md:p-6 2xl:p-10">
         {/* Page Header */}
         <div className="mb-6">

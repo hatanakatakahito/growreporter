@@ -131,22 +131,19 @@ export default function GoalSettingsPage() {
       setError(null);
 
       const newConversion: Omit<ConversionEvent, 'id' | 'createdAt' | 'updatedAt'> = {
-        userId: user.uid,
         eventName,
         displayName: eventName,
         isActive: true
       };
 
-      const conversionId = await ConversionService.addConversion(newConversion);
+      const conversionId = await ConversionService.addConversion(user.uid, newConversion);
       
       // ローカルステートを更新
       setSelectedConversions([
         ...selectedConversions,
         {
           ...newConversion,
-          id: conversionId,
-          createdAt: new Date(),
-          updatedAt: new Date()
+          createdAt: new Date()
         }
       ]);
 
@@ -343,7 +340,7 @@ export default function GoalSettingsPage() {
                 <div className="space-y-2">
                   {selectedConversions.map((conversion, index) => (
                     <div
-                      key={conversion.id || `conversion-${index}`}
+                      key={conversion.eventName || `conversion-${index}`}
                       className="flex items-center justify-between rounded-md border border-stroke p-4 dark:border-dark-3"
                     >
                       <div>
@@ -353,7 +350,7 @@ export default function GoalSettingsPage() {
                         </p>
                       </div>
                       <button
-                        onClick={() => handleRemoveConversion(conversion.id)}
+                        onClick={() => handleRemoveConversion(conversion.eventName)}
                         disabled={isLoading}
                         className="rounded-md bg-red-500 px-4 py-2 text-sm font-medium text-white hover:bg-opacity-90 disabled:opacity-50"
                       >
