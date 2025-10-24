@@ -1,0 +1,55 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ユーザーコレクション
+    match /users/{userId} {
+      // 自分のユーザー情報のみ読み書き可能
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // サイトコレクション
+    match /sites/{siteId} {
+      // 自分が登録したサイトのみ読み書き可能
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || !('userId' in resource.data));
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || !('userId' in resource.data));
+      allow delete: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || !('userId' in resource.data));
+      
+      // GA4データサブコレクション
+      match /ga4_data/{dataId} {
+        allow read: if request.auth != null && 
+          get(/databases/$(database)/documents/sites/$(siteId)).data.userId == request.auth.uid;
+        allow write: if false; // Functionsのみ書き込み可能
+      }
+      
+      // GSCデータサブコレクション
+      match /gsc_data/{dataId} {
+        allow read: if request.auth != null && 
+          get(/databases/$(database)/documents/sites/$(siteId)).data.userId == request.auth.uid;
+        allow write: if false; // Functionsのみ書き込み可能
+      }
+    }
+    
+    // レポートコレクション
+    match /reports/{reportId} {
+      // 自分のサイトのレポートのみ読み書き可能
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+    }
+    
+    // OAuthトークンコレクション
+    match /oauth_tokens/{tokenId} {
+      // 自分が作成したトークンのみ読み書き可能
+      allow read: if request.auth != null && resource.data.user_uid == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.user_uid == request.auth.uid;
+      allow update: if request.auth != null && resource.data.user_uid == request.auth.uid;
+      allow delete: if request.auth != null && resource.data.user_uid == request.auth.uid;
+    }
+  }
+}
+
