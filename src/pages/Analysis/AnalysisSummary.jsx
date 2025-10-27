@@ -1,0 +1,515 @@
+import React, { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { useSite } from '../../contexts/SiteContext';
+import { useSiteMetrics } from '../../hooks/useSiteMetrics';
+import { useGA4MonthlyData } from '../../hooks/useGA4MonthlyData';
+import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
+import Sidebar from '../../components/Layout/Sidebar';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import DataTable from '../../components/Analysis/DataTable';
+import ChartContainer from '../../components/Analysis/ChartContainer';
+import AISummarySheet from '../../components/Analysis/AISummarySheet';
+import { format, sub, startOfMonth } from 'date-fns';
+import { Info, Sparkles } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip as RechartsTooltip,
+  Legend,
+} from 'recharts';
+
+/**
+ * 分析画面 - 全体サマリー
+ * GA4データの主要指標と13ヶ月推移を表示
+ */
+export default function AnalysisSummary() {
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const [timelineTab, setTimelineTab] = useState('table');
+  const [hiddenLines, setHiddenLines] = useState({});
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
+
+  // 現在の期間のデータ取得
+  const { data, isLoading, isError } = useSiteMetrics(
+    selectedSiteId,
+    dateRange.from,
+    dateRange.to
+  );
+
+  // 前月比較用の期間を計算
+  const getPreviousMonthRange = (from, to) => {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    const daysDiff = Math.floor((toDate - fromDate) / (1000 * 60 * 60 * 24));
+    
+    const prevTo = new Date(fromDate);
+    prevTo.setDate(prevTo.getDate() - 1);
+    
+    const prevFrom = new Date(prevTo);
+    prevFrom.setDate(prevFrom.getDate() - daysDiff);
+    
+    return {
+      from: format(prevFrom, 'yyyy-MM-dd'),
+      to: format(prevTo, 'yyyy-MM-dd'),
+    };
+  };
+
+  // 前年同月比較用の期間を計算
+  const getYearAgoRange = (from, to) => {
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+    
+    const yearAgoFrom = new Date(fromDate);
+    yearAgoFrom.setFullYear(yearAgoFrom.getFullYear() - 1);
+    
+    const yearAgoTo = new Date(toDate);
+    yearAgoTo.setFullYear(yearAgoTo.getFullYear() - 1);
+    
+    return {
+      from: format(yearAgoFrom, 'yyyy-MM-dd'),
+      to: format(yearAgoTo, 'yyyy-MM-dd'),
+    };
+  };
+
+  // 前月のデータを取得
+  const previousMonthRange = getPreviousMonthRange(dateRange.from, dateRange.to);
+  const { data: previousMonthData } = useSiteMetrics(
+    selectedSiteId,
+    previousMonthRange.from,
+    previousMonthRange.to
+  );
+
+  // 前年同月のデータを取得
+  const yearAgoRange = getYearAgoRange(dateRange.from, dateRange.to);
+  const { data: yearAgoData } = useSiteMetrics(
+    selectedSiteId,
+    yearAgoRange.from,
+    yearAgoRange.to
+  );
+
+  // 13ヶ月分の月次データを取得（選択された期間の終了月を基準に12ヶ月前まで）
+  const monthlyStartDate = useMemo(() => {
+    if (!dateRange.to) return format(startOfMonth(sub(new Date(), { months: 12 })), 'yyyy-MM-dd');
+    const endDate = new Date(dateRange.to);
+    const endMonth = startOfMonth(endDate);
+    return format(startOfMonth(sub(endMonth, { months: 12 })), 'yyyy-MM-dd');
+  }, [dateRange.to]);
+  
+  const monthlyEndDate = useMemo(() => {
+    if (!dateRange.to) return format(new Date(), 'yyyy-MM-dd');
+    const endDate = new Date(dateRange.to);
+    return format(endDate, 'yyyy-MM-dd');
+  }, [dateRange.to]);
+  
+  const {
+    data: monthlyDataResponse,
+    isLoading: isMonthlyLoading,
+  } = useGA4MonthlyData(selectedSiteId, monthlyStartDate, monthlyEndDate);
+
+  const monthlyData = monthlyDataResponse?.monthlyData || [];
+
+  // 変化率計算
+  const calculateChangePercent = (current, previous) => {
+    if (!previous || previous === 0) return null;
+    return ((current - previous) / previous) * 100;
+  };
+
+  // メトリックカード
+  const MetricCard = ({ title, currentValue, previousValue, yearAgoValue, format: formatType = 'number' }) => {
+    const formatValue = (value) => {
+      if (value === null || value === undefined) return '-';
+      if (formatType === 'percent') return `${(value * 100).toFixed(2)}%`;
+      if (formatType === 'decimal') return value.toFixed(2);
+      return Math.round(value).toLocaleString();
+    };
+
+    const prevChange = calculateChangePercent(currentValue, previousValue);
+    const yearChange = calculateChangePercent(currentValue, yearAgoValue);
+
+    return (
+      <div className="rounded-lg border border-stroke bg-white p-6 transition-shadow hover:shadow-md dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-3 flex items-center justify-between">
+          <h4 className="text-sm font-medium text-body-color">{title}</h4>
+        </div>
+        <div className="mb-4 text-4xl font-bold text-dark dark:text-white">
+          {formatValue(currentValue)}
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-body-color">前月</span>
+            <div className="flex items-center gap-2">
+              <span className="text-dark dark:text-white">{formatValue(previousValue)}</span>
+              {prevChange !== null && (
+                <span className={`font-medium ${prevChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {prevChange >= 0 ? '+' : ''}{prevChange.toFixed(1)}%
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-body-color">前年同月</span>
+            <div className="flex items-center gap-2">
+              <span className="text-dark dark:text-white">{formatValue(yearAgoValue)}</span>
+              {yearChange !== null && (
+                <span className={`font-medium ${yearChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {yearChange >= 0 ? '+' : ''}{yearChange.toFixed(1)}%
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // グラフ用のツールチップ
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="rounded-lg border border-stroke bg-white p-3 shadow-lg dark:border-dark-3 dark:bg-dark-2">
+          <p className="mb-2 font-semibold text-dark dark:text-white">{label}</p>
+          {payload
+            .filter((entry) => !hiddenLines[entry.dataKey])
+            .map((entry, index) => (
+              <p key={index} className="text-sm" style={{ color: entry.color }}>
+                {entry.name}: {entry.value?.toLocaleString()}
+              </p>
+            ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // グラフ用の凡例
+  const CustomLegend = ({ payload }) => {
+    return (
+      <div className="mt-4 flex flex-wrap justify-center gap-6">
+        {payload.map((entry, index) => (
+          <div
+            key={`legend-${index}`}
+            className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-70"
+            onClick={() => setHiddenLines((prev) => ({ ...prev, [entry.dataKey]: !prev[entry.dataKey] }))}
+          >
+            <div
+              className="h-0.5 w-8"
+              style={{
+                backgroundColor: hiddenLines[entry.dataKey] ? '#ccc' : entry.color,
+                opacity: hiddenLines[entry.dataKey] ? 0.3 : 1,
+              }}
+            />
+            <span
+              className="text-sm"
+              style={{
+                color: hiddenLines[entry.dataKey] ? '#ccc' : entry.color,
+                textDecoration: hiddenLines[entry.dataKey] ? 'line-through' : 'none',
+              }}
+            >
+              {entry.value}
+            </span>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  // ローディング中
+  if (isLoading && !data) {
+    return (
+      <div className="flex h-screen overflow-hidden bg-[#F3F4FE] dark:bg-dark">
+        <Sidebar />
+        <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
+          <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
+          <main className="flex-1">
+            <div className="flex min-h-[60vh] items-center justify-center">
+              <LoadingSpinner message="データを読み込んでいます..." />
+            </div>
+          </main>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#F3F4FE] dark:bg-dark">
+      <Sidebar />
+      <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
+        <AnalysisHeader 
+          dateRange={dateRange} 
+          setDateRange={updateDateRange} 
+          showDateRange={true} 
+          showSiteInfo={true} 
+        />
+        
+        <main className="flex-1">
+          <div className="mx-auto max-w-7xl px-6 py-8">
+            {/* ページタイトル */}
+            <div className="mb-8">
+              <h2 className="mb-2 text-2xl font-bold text-dark dark:text-white">分析する - 全体サマリー</h2>
+              <p className="text-sm text-body-color">
+                GA4データの全般指標を詳細に分析します
+              </p>
+            </div>
+
+            {isError ? (
+              <div className="rounded-lg border border-red-200 bg-red-50 p-6 dark:border-red-900/30 dark:bg-red-900/20">
+                <div className="flex items-start gap-3">
+                  <Info className="h-5 w-5 flex-shrink-0 text-red-600 dark:text-red-400" />
+                  <div>
+                    <p className="text-red-800 dark:text-red-300">
+                      データの取得に失敗しました。
+                      <Link to={`/sites/${selectedSiteId}/edit?step=2`} className="ml-2 font-semibold underline">
+                        GA4/GSC設定を確認 →
+                      </Link>
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* 主要指標サマリ */}
+                <div className="mb-8">
+                  <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
+                    主要指標サマリ
+                  </h3>
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                    <MetricCard
+                      title="セッション"
+                      currentValue={data?.metrics?.sessions || 0}
+                      previousValue={previousMonthData?.metrics?.sessions || 0}
+                      yearAgoValue={yearAgoData?.metrics?.sessions || 0}
+                    />
+                    <MetricCard
+                      title="表示回数"
+                      currentValue={data?.metrics?.pageViews || 0}
+                      previousValue={previousMonthData?.metrics?.pageViews || 0}
+                      yearAgoValue={yearAgoData?.metrics?.pageViews || 0}
+                    />
+                    <MetricCard
+                      title="平均PV"
+                      currentValue={(data?.metrics?.pageViews || 0) / (data?.metrics?.sessions || 1)}
+                      previousValue={(previousMonthData?.metrics?.pageViews || 0) / (previousMonthData?.metrics?.sessions || 1)}
+                      yearAgoValue={(yearAgoData?.metrics?.pageViews || 0) / (yearAgoData?.metrics?.sessions || 1)}
+                      format="decimal"
+                    />
+                    <MetricCard
+                      title="ENG率"
+                      currentValue={data?.metrics?.engagementRate || 0}
+                      previousValue={previousMonthData?.metrics?.engagementRate || 0}
+                      yearAgoValue={yearAgoData?.metrics?.engagementRate || 0}
+                      format="percent"
+                    />
+                    <MetricCard
+                      title="CV数"
+                      currentValue={data?.metrics?.conversions || 0}
+                      previousValue={previousMonthData?.metrics?.conversions || 0}
+                      yearAgoValue={yearAgoData?.metrics?.conversions || 0}
+                    />
+                    <MetricCard
+                      title="CVR"
+                      currentValue={(data?.metrics?.conversions || 0) / (data?.metrics?.sessions || 1)}
+                      previousValue={(previousMonthData?.metrics?.conversions || 0) / (previousMonthData?.metrics?.sessions || 1)}
+                      yearAgoValue={(yearAgoData?.metrics?.conversions || 0) / (yearAgoData?.metrics?.sessions || 1)}
+                      format="percent"
+                    />
+                  </div>
+                </div>
+
+                {/* 13ヶ月推移 */}
+                <div>
+                  <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
+                    13ヶ月の推移
+                  </h3>
+
+                  {isMonthlyLoading ? (
+                    <div className="flex min-h-[400px] items-center justify-center">
+                      <LoadingSpinner message="月次データを読み込んでいます..." />
+                    </div>
+                  ) : monthlyData.length === 0 ? (
+                    <div className="flex min-h-[400px] items-center justify-center rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+                      <p className="text-body-color">データがありません。GA4連携を確認してください。</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* タブ（表形式/グラフ形式） */}
+                      <div className="mb-6 flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
+                        <button
+                          onClick={() => setTimelineTab('table')}
+                          className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition ${
+                            timelineTab === 'table'
+                              ? 'bg-primary text-white'
+                              : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                          }`}
+                        >
+                          表形式
+                        </button>
+                        <button
+                          onClick={() => setTimelineTab('chart')}
+                          className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition ${
+                            timelineTab === 'chart'
+                              ? 'bg-primary text-white'
+                              : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                          }`}
+                        >
+                          グラフ形式
+                        </button>
+                      </div>
+
+                      {/* 表形式 */}
+                      {timelineTab === 'table' ? (
+                        <DataTable
+                          columns={[
+                            { key: 'label', label: '年月', sortable: true },
+                            {
+                              key: 'users',
+                              label: 'ユーザー数',
+                              format: 'number',
+                              align: 'right',
+                              tooltip: 'users',
+                            },
+                            {
+                              key: 'sessions',
+                              label: 'セッション',
+                              format: 'number',
+                              align: 'right',
+                              tooltip: 'sessions',
+                            },
+                            {
+                              key: 'avgPageviews',
+                              label: '平均PV',
+                              format: 'decimal',
+                              align: 'right',
+                              tooltip: 'avgPageviews',
+                            },
+                            {
+                              key: 'pageViews',
+                              label: '表示回数',
+                              format: 'number',
+                              align: 'right',
+                              tooltip: 'pageViews',
+                            },
+                            {
+                              key: 'engagementRate',
+                              label: 'ENG率',
+                              format: 'percent',
+                              align: 'right',
+                              tooltip: 'engagementRate',
+                            },
+                            {
+                              key: 'conversions',
+                              label: 'CV数',
+                              format: 'number',
+                              align: 'right',
+                              tooltip: 'conversions',
+                            },
+                            {
+                              key: 'conversionRate',
+                              label: 'CVR',
+                              format: 'percent',
+                              align: 'right',
+                              tooltip: 'conversionRate',
+                            },
+                          ]}
+                          data={monthlyData}
+                          pageSize={13}
+                          showPagination={false}
+                          emptyMessage="データがありません。GA4連携を確認してください。"
+                        />
+                      ) : (
+                        /* グラフ形式 */
+                        <ChartContainer title="月別推移グラフ" height={400}>
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={monthlyData}>
+                              <CartesianGrid strokeDasharray="3 3" />
+                              <XAxis dataKey="label" angle={-45} textAnchor="end" height={80} />
+                              <YAxis />
+                              <RechartsTooltip content={<CustomTooltip />} />
+                              <Legend content={<CustomLegend />} />
+                              <Line
+                                type="monotone"
+                                dataKey="users"
+                                name="ユーザー数"
+                                stroke="#3b82f6"
+                                strokeWidth={2}
+                                dot={{ r: 3 }}
+                                hide={hiddenLines.users}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="sessions"
+                                name="セッション"
+                                stroke="#f59e0b"
+                                strokeWidth={2}
+                                dot={{ r: 3 }}
+                                hide={hiddenLines.sessions}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="pageViews"
+                                name="PV数"
+                                stroke="#8b5cf6"
+                                strokeWidth={2}
+                                dot={{ r: 3 }}
+                                hide={hiddenLines.pageViews}
+                              />
+                              <Line
+                                type="monotone"
+                                dataKey="conversions"
+                                name="CV数"
+                                stroke="#ef4444"
+                                strokeWidth={2}
+                                dot={{ r: 3 }}
+                                hide={hiddenLines.conversions}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </ChartContainer>
+                      )}
+                </>
+              )}
+            </div>
+          </>
+        )}
+          </div>
+        </main>
+      </div>
+
+      {/* AI分析フローティングボタン */}
+      {!isError && (
+        <button
+          onClick={() => setIsAISheetOpen(true)}
+          disabled={isLoading}
+          className="fixed bottom-6 right-6 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:shadow-xl hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
+          aria-label="AI分析を見る"
+        >
+          <div className="flex flex-col items-center">
+            <Sparkles className="h-6 w-6" />
+            <span className="mt-0.5 text-[10px] font-medium">AI分析</span>
+          </div>
+        </button>
+      )}
+
+      {/* AI分析サイドシート */}
+      <AISummarySheet
+        isOpen={isAISheetOpen}
+        onClose={() => setIsAISheetOpen(false)}
+        pageType="summary"
+        startDate={dateRange.from}
+        endDate={dateRange.to}
+        metrics={{
+          // 現在期間のデータ
+          users: data?.metrics?.totalUsers,
+          sessions: data?.metrics?.sessions,
+          pageViews: data?.metrics?.pageViews,
+          engagementRate: data?.metrics?.engagementRate,
+          conversions: data?.totalConversions,
+          // 13ヶ月推移データ
+          monthlyData: monthlyData,
+        }}
+      />
+    </div>
+  );
+}

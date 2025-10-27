@@ -2,14 +2,45 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { db } from '../config/firebase';
 import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { subDays, format } from 'date-fns';
 
 const SiteContext = createContext();
+
+// デフォルトの日付範囲（過去30日）
+const getDefaultDateRange = () => {
+  const today = new Date();
+  const thirtyDaysAgo = subDays(today, 30);
+  return {
+    from: format(thirtyDaysAgo, 'yyyy-MM-dd'),
+    to: format(today, 'yyyy-MM-dd'),
+  };
+};
 
 export function SiteProvider({ children }) {
   const { currentUser } = useAuth();
   const [sites, setSites] = useState([]);
   const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [dateRange, setDateRange] = useState(() => {
+    try {
+      // LocalStorageから復元
+      const saved = localStorage.getItem('dateRange');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // 形式チェック
+        if (parsed && typeof parsed === 'object' && parsed.from && parsed.to) {
+          return parsed;
+        }
+      }
+    } catch (error) {
+      console.error('[SiteContext] dateRange復元エラー:', error);
+      // エラー時は古いデータを削除
+      localStorage.removeItem('dateRange');
+      localStorage.removeItem('dateRange_v1');
+    }
+    // デフォルト値を返す
+    return getDefaultDateRange();
+  });
 
   // ユーザーのサイト一覧を取得
   useEffect(() => {
@@ -65,6 +96,15 @@ export function SiteProvider({ children }) {
     fetchSites();
   }, [currentUser]);
 
+  // 日付範囲をLocalStorageに保存
+  useEffect(() => {
+    try {
+      localStorage.setItem('dateRange', JSON.stringify(dateRange));
+    } catch (error) {
+      console.error('[SiteContext] dateRange保存エラー:', error);
+    }
+  }, [dateRange]);
+
   // 選択中のサイト情報
   const selectedSite = sites.find(site => site.id === selectedSiteId);
 
@@ -73,6 +113,11 @@ export function SiteProvider({ children }) {
     setSelectedSiteId(siteId);
     // LocalStorageに保存
     localStorage.setItem('lastSelectedSiteId', siteId);
+  };
+
+  // 日付範囲を更新
+  const updateDateRange = (newDateRange) => {
+    setDateRange(newDateRange);
   };
 
   // サイト一覧を再読み込み
@@ -120,6 +165,8 @@ export function SiteProvider({ children }) {
     selectSite,
     reloadSites,
     isLoading,
+    dateRange,
+    updateDateRange,
   };
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;

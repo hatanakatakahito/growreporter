@@ -188,7 +188,8 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
       // リフレッシュトークンを取得するための設定
       provider.setCustomParameters({
         access_type: 'offline',
-        prompt: 'consent'
+        prompt: 'consent select_account', // アカウント選択画面を表示してリフレッシュトークンを確実に取得
+        include_granted_scopes: 'true'
       });
 
       console.log('[GA4Connect] ポップアップで認証開始');
@@ -202,15 +203,21 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
       const credential = GoogleAuthProvider.credentialFromResult(result);
       const accessToken = credential?.accessToken;
 
-      // リフレッシュトークンを取得（_tokenResponseから）
+      // リフレッシュトークンとexpiresInを取得（_tokenResponseから）
       const refreshToken = result._tokenResponse?.refreshToken || null;
+      const expiresIn = result._tokenResponse?.expiresIn || 3600; // デフォルト1時間
 
       if (!accessToken) {
         throw new Error('アクセストークンの取得に失敗しました');
       }
 
+      if (!refreshToken) {
+        throw new Error('リフレッシュトークンの取得に失敗しました。もう一度認証を行ってください。');
+      }
+
       console.log('[GA4Connect] アクセストークン取得成功');
-      console.log('[GA4Connect] リフレッシュトークン:', refreshToken ? '取得成功' : '取得失敗');
+      console.log('[GA4Connect] リフレッシュトークン: 取得成功');
+      console.log('[GA4Connect] トークン有効期限:', expiresIn, '秒');
 
       // 認証したGoogleアカウントのメールアドレスを取得
       const googleEmail = result.user.email;
@@ -229,7 +236,7 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
         created_by: originalUser.email,
         created_at: serverTimestamp(),
         updated_at: serverTimestamp(),
-        expires_at: new Date(Date.now() + 3600 * 1000), // 1時間後
+        expires_at: new Date(Date.now() + expiresIn * 1000), // 実際のexpiresInを使用
         user_uid: originalUser.uid,
       };
 

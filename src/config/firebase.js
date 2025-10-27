@@ -2,6 +2,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
+import { getFunctions } from 'firebase/functions';
 
 // Firebase設定
 const firebaseConfig = {
@@ -20,6 +21,7 @@ let app = null;
 let auth = null;
 let db = null;
 let storage = null;
+let functions = null;
 let googleProvider = null;
 
 if (isFirebaseConfigured) {
@@ -30,6 +32,7 @@ if (isFirebaseConfigured) {
   auth = getAuth(app);
   db = getFirestore(app);
   storage = getStorage(app);
+  functions = getFunctions(app, 'asia-northeast1'); // 東京リージョンを指定
 
   // Google認証プロバイダー
   googleProvider = new GoogleAuthProvider();
@@ -41,6 +44,6 @@ if (isFirebaseConfigured) {
   console.warn('📝 See FIREBASE_SETUP.md for setup instructions.');
 }
 
-export { auth, db, storage, googleProvider };
+export { auth, db, storage, functions, googleProvider };
 export default app;
 

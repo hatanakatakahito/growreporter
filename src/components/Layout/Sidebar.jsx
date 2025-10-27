@@ -6,6 +6,7 @@ export default function Sidebar() {
   const location = useLocation();
   const { currentUser, logout } = useAuth();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+  const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -31,7 +32,15 @@ export default function Sidebar() {
       hasSubmenu: true,
       submenu: [
         { label: '全体サマリー', path: '/analysis/summary' },
-        { label: '時系列', path: '/analysis/timeseries' },
+        { 
+          label: '時系列', 
+          hasSubmenu: true,
+          submenu: [
+            { label: '日別', path: '/analysis/day' },
+            { label: '曜日別', path: '/analysis/week' },
+            { label: '時間帯別', path: '/analysis/hour' },
+          ]
+        },
         { label: 'ユーザー', path: '/analysis/users' },
         { label: '集客', path: '/analysis/acquisition' },
         { label: 'エンゲージメント', path: '/analysis/engagement' },
@@ -91,7 +100,7 @@ export default function Sidebar() {
                 <>
                   <button
                     onClick={() => setIsAnalysisOpen(!isAnalysisOpen)}
-                    className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-sm font-medium text-body-color transition hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
+                    className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-sm font-medium text-dark transition hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
                   >
                     <div className="flex items-center gap-3">
                       {item.icon}
@@ -110,16 +119,53 @@ export default function Sidebar() {
                     <ul className="ml-4 mt-2 space-y-1 border-l-2 border-stroke pl-4 dark:border-dark-3">
                       {item.submenu.map((subItem, subIndex) => (
                         <li key={subIndex}>
-                          <Link
-                            to={subItem.path}
-                            className={`block rounded-lg px-4 py-2 text-sm transition ${
-                              isActive(subItem.path)
-                                ? 'bg-primary text-white'
-                                : 'text-body-color hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white'
-                            }`}
-                          >
-                            {subItem.label}
-                          </Link>
+                          {subItem.hasSubmenu ? (
+                            <>
+                              <button
+                                onClick={() => setIsTimeSeriesOpen(!isTimeSeriesOpen)}
+                                className="flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm text-dark transition hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
+                              >
+                                <span>{subItem.label}</span>
+                                <svg
+                                  className={`h-3 w-3 transition-transform ${isTimeSeriesOpen ? 'rotate-180' : ''}`}
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                                </svg>
+                              </button>
+                              {isTimeSeriesOpen && (
+                                <ul className="ml-4 mt-1 space-y-1 border-l-2 border-stroke pl-4 dark:border-dark-3">
+                                  {subItem.submenu.map((subSubItem, subSubIndex) => (
+                                    <li key={subSubIndex}>
+                                      <Link
+                                        to={subSubItem.path}
+                                        className={`block rounded-lg px-4 py-2 text-sm transition ${
+                                          isActive(subSubItem.path)
+                                            ? 'bg-primary text-white'
+                                            : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
+                                        }`}
+                                      >
+                                        {subSubItem.label}
+                                      </Link>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </>
+                          ) : (
+                            <Link
+                              to={subItem.path}
+                              className={`block rounded-lg px-4 py-2 text-sm transition ${
+                                isActive(subItem.path)
+                                  ? 'bg-primary text-white'
+                                  : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
+                              }`}
+                            >
+                              {subItem.label}
+                            </Link>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -131,7 +177,7 @@ export default function Sidebar() {
                   className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition ${
                     isActive(item.path)
                       ? 'bg-primary text-white'
-                      : 'text-body-color hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white'
+                      : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
                   }`}
                 >
                   {item.icon}
