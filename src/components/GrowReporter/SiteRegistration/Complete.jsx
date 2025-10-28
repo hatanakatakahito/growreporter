@@ -191,18 +191,9 @@ export default function Complete() {
               </button>
             </div>
 
-            {/* 登録内容サマリー（カード） */}
+            {/* 登録内容サマリー */}
             <div className="transform transition-all duration-700 delay-500">
-              <div className="overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-dark-2">
-                <div className="bg-gradient-to-r from-primary to-purple-600 px-6 py-4">
-                  <h2 className="text-lg font-semibold text-white">
-                    登録内容
-                  </h2>
-                </div>
-                <div className="p-6">
-                  <CompleteSummary siteData={siteData} />
-                </div>
-              </div>
+              <CompleteSummary siteData={siteData} />
             </div>
           </div>
         </div>
