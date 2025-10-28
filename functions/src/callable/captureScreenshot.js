@@ -81,10 +81,10 @@ export async function captureScreenshotCallable(request) {
     // 🔥 最適化: キャッシュ無効化
     await page.setCacheEnabled(false);
     
-    // 🔥 最適化1: viewport高さを半分に（スクショは半分で十分）
+    // デバイス設定（元の縦サイズに戻す）
     const viewport = deviceType === 'mobile' 
-      ? { width: 375, height: 400, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }  // 667 → 400
-      : { width: 1920, height: 600, deviceScaleFactor: 1 };  // 1080 → 600
+      ? { width: 375, height: 667, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }  // 元に戻す
+      : { width: 1920, height: 1080, deviceScaleFactor: 1 };  // 元に戻す
     
     await page.setViewport(viewport);
     
