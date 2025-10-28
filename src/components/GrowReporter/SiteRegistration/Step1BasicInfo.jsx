@@ -3,7 +3,7 @@ import { SITE_TYPES, BUSINESS_TYPES } from '../../../constants/siteOptions';
 import { storage, functions } from '../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
-import { Upload, X } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
 
 export default function Step1BasicInfo({ siteData, setSiteData }) {
   const [formData, setFormData] = useState({
@@ -20,6 +20,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
   const [mobileScreenshot, setMobileScreenshot] = useState(siteData.mobileScreenshotUrl || null);
   const [isUploading, setIsUploading] = useState(false);
   const [isAutoFetching, setIsAutoFetching] = useState(false);
+  const [screenshotProgress, setScreenshotProgress] = useState(''); // スクリーンショット進行状況
 
   // フォームデータが変更されたら親コンポーネントに通知
   useEffect(() => {
@@ -87,28 +88,27 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
     }));
     
     try {
-      // CORSプロキシ経由でHTML取得
-      const response = await fetch(
-        `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`
-      );
-      const data = await response.json();
-      const html = data.contents;
+      // Firebase Functionsを使用してメタデータを取得
+      const fetchMetadata = httpsCallable(functions, 'fetchMetadata');
+      const result = await fetchMetadata({ siteUrl: url });
       
-      // シンプルな正規表現でパース
-      const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-      const descMatch = html.match(/<meta[^>]*name=["']description["'][^>]*content=["']([^"']+)["']/i);
+      const { metadata } = result.data;
       
       setFormData(prev => ({
         ...prev,
-        metaTitle: titleMatch?.[1]?.trim() || '',
-        metaDescription: descMatch?.[1]?.trim() || '',
+        metaTitle: metadata.title || metadata.ogTitle || '',
+        metaDescription: metadata.description || metadata.ogDescription || '',
       }));
       
-      alert('メタ情報を取得しました');
+      if (!metadata.title && !metadata.description) {
+        alert('メタ情報が見つかりませんでした。手動で入力してください。');
+      } else {
+        alert('メタ情報を取得しました');
+      }
       
     } catch (error) {
       console.error('Auto fetch metadata error:', error);
-      alert('メタ情報の取得に失敗しました。手動で入力してください。');
+      alert(`メタ情報の取得に失敗しました: ${error.message}\n手動で入力してください。`);
       // 失敗したら空欄に戻す（手動入力可能）
       setFormData(prev => ({
         ...prev,
@@ -183,30 +183,39 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
     }
     
     setIsUploading(true);
+    setScreenshotProgress('スクリーンショット取得を開始しています...');
     
     try {
       const captureScreenshot = httpsCallable(functions, 'captureScreenshot');
       
       console.log('[handleAutoFetchScreenshots] Starting screenshot capture...');
       
-      // PC版とスマホ版を順次取得（メモリ節約のため並列→順次に変更）
+      // モバイル版を取得
+      setScreenshotProgress('スマホ版のスクリーンショットを取得中... (1/2)');
       console.log('[handleAutoFetchScreenshots] Capturing mobile screenshot...');
       const mobileResult = await captureScreenshot({ siteUrl: url, deviceType: 'mobile' });
       setMobileScreenshot(mobileResult.data.imageUrl);
+      console.log('[handleAutoFetchScreenshots] Mobile screenshot captured');
       
+      // PC版を取得
+      setScreenshotProgress('PC版のスクリーンショットを取得中... (2/2)');
       console.log('[handleAutoFetchScreenshots] Capturing PC screenshot...');
       const pcResult = await captureScreenshot({ siteUrl: url, deviceType: 'pc' });
       setPcScreenshot(pcResult.data.imageUrl);
+      console.log('[handleAutoFetchScreenshots] PC screenshot captured');
       
+      setScreenshotProgress('');
       console.log('[handleAutoFetchScreenshots] Screenshots captured successfully');
       
       alert('スクリーンショットを取得しました');
       
     } catch (error) {
       console.error('Screenshot error:', error);
+      setScreenshotProgress('');
       alert(`スクリーンショットの取得に失敗しました: ${error.message}\n手動でアップロードしてください。`);
     } finally {
       setIsUploading(false);
+      setScreenshotProgress('');
     }
   };
 
@@ -320,21 +329,35 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
             disabled={isAutoFetching || !formData.siteUrl}
             className="flex items-center gap-1 rounded bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            {isAutoFetching ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            )}
             {isAutoFetching ? '取得中...' : '自動取得'}
           </button>
         </div>
-        <input
-          type="text"
-          id="metaTitle"
-          value={formData.metaTitle}
-          onChange={handleChange}
-          disabled={isAutoFetching}
-          placeholder="サイトのタイトルを入力してください"
-          className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white dark:focus:border-primary"
-        />
+        <div className="relative">
+          <input
+            type="text"
+            id="metaTitle"
+            value={formData.metaTitle}
+            onChange={handleChange}
+            disabled={isAutoFetching}
+            placeholder="サイトのタイトルを入力してください"
+            className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white dark:focus:border-primary"
+          />
+          {isAutoFetching && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-md bg-primary/10 backdrop-blur-sm dark:bg-primary/20">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>メタ情報を取得中...</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* サイト説明文 */}
@@ -343,15 +366,25 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
           サイト説明文
           <span className="rounded bg-gray-400 px-1.5 py-0.5 text-xs text-white">任意</span>
         </label>
-        <textarea
-          id="metaDescription"
-          value={formData.metaDescription}
-          onChange={handleChange}
-          disabled={isAutoFetching}
-          placeholder="サイトの説明文を入力してください"
-          rows={3}
-          className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white dark:focus:border-primary"
-        />
+        <div className="relative">
+          <textarea
+            id="metaDescription"
+            value={formData.metaDescription}
+            onChange={handleChange}
+            disabled={isAutoFetching}
+            placeholder="サイトの説明文を入力してください"
+            rows={3}
+            className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white dark:focus:border-primary"
+          />
+          {isAutoFetching && (
+            <div className="absolute inset-0 flex items-center justify-center rounded-md bg-primary/10 backdrop-blur-sm dark:bg-primary/20">
+              <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>メタ情報を取得中...</span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* スクリーンショット */}
@@ -367,12 +400,27 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
             disabled={!formData.siteUrl || isUploading}
             className="flex items-center gap-1 rounded bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            {isUploading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            )}
             {isUploading ? '取得中...' : '自動取得'}
           </button>
         </div>
+        
+        {/* 進行状況インジケーター */}
+        {screenshotProgress && (
+          <div className="mb-4 flex items-center gap-3 rounded-md border-2 border-primary/30 bg-primary/10 px-4 py-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-primary">{screenshotProgress}</p>
+              <p className="mt-0.5 text-xs font-medium text-primary/70">処理には10-20秒程度かかります</p>
+            </div>
+          </div>
+        )}
         
         <div className="grid grid-cols-2 gap-4">
           {/* PCスクリーンショット */}
@@ -395,12 +443,19 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
                 </button>
               </div>
             ) : (
-              <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:hover:bg-dark-3" style={{ height: '250px' }}>
-                <Upload className="mb-2 h-8 w-8 text-body-color" />
-                <span className="text-sm text-body-color">
-                  {isUploading ? 'アップロード中...' : 'クリックして画像を選択'}
-                </span>
-                <span className="mt-1 text-xs text-body-color">PNG, JPG (最大5MB)</span>
+              <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: '250px' }}>
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mb-2 h-8 w-8 animate-spin text-primary" />
+                    <span className="text-sm text-primary">取得中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mb-2 h-8 w-8 text-body-color" />
+                    <span className="text-sm text-body-color">クリックして画像を選択</span>
+                    <span className="mt-1 text-xs text-body-color">PNG, JPG (最大5MB)</span>
+                  </>
+                )}
                 <input
                   type="file"
                   accept="image/*"
@@ -432,12 +487,19 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
                 </button>
               </div>
             ) : (
-              <label className="flex w-full cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:hover:bg-dark-3" style={{ height: '250px' }}>
-                <Upload className="mb-2 h-8 w-8 text-body-color" />
-                <span className="text-sm text-body-color">
-                  {isUploading ? 'アップロード中...' : 'クリックして画像を選択'}
-                </span>
-                <span className="mt-1 text-xs text-body-color">PNG, JPG (最大5MB)</span>
+              <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: '250px' }}>
+                {isUploading ? (
+                  <>
+                    <Loader2 className="mb-2 h-8 w-8 animate-spin text-primary" />
+                    <span className="text-sm text-primary">取得中...</span>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mb-2 h-8 w-8 text-body-color" />
+                    <span className="text-sm text-body-color">クリックして画像を選択</span>
+                    <span className="mt-1 text-xs text-body-color">PNG, JPG (最大5MB)</span>
+                  </>
+                )}
                 <input
                   type="file"
                   accept="image/*"

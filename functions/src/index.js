@@ -6,6 +6,9 @@ import { fetchGA4MonthlyDataCallable } from './callable/fetchGA4MonthlyData.js';
 import { fetchGSCDataCallable } from './callable/fetchGSCData.js';
 import { captureScreenshotCallable } from './callable/captureScreenshot.js';
 import { generateAISummaryCallable } from './callable/generateAISummary.js';
+import { fetchMetadataCallable } from './callable/fetchMetadata.js';
+import { fetchGA4UserDemographicsCallable } from './callable/fetchGA4UserDemographics.js';
+import { exchangeOAuthCodeCallable } from './callable/exchangeOAuthCode.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 
 // Firebase Admin初期化
@@ -52,7 +55,7 @@ export const fetchGSCData = onCall({
  */
 export const captureScreenshot = onCall({
   memory: '2GiB',
-  timeoutSeconds: 60,
+  timeoutSeconds: 300, // 60秒 → 300秒（5分）に延長
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, captureScreenshotCallable);
@@ -67,6 +70,39 @@ export const generateAISummary = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, generateAISummaryCallable);
+
+/**
+ * メタデータ取得 Callable Function
+ * サイトのメタデータ（タイトル、説明文など）を自動取得
+ */
+export const fetchMetadata = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, fetchMetadataCallable);
+
+/**
+ * GA4ユーザー属性データ取得 Callable Function
+ * ユーザーの性別、年齢、デバイス、地域などのデモグラフィックデータを取得
+ */
+export const fetchGA4UserDemographics = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, fetchGA4UserDemographicsCallable);
+
+/**
+ * OAuth 2.0 認可コード交換 Callable Function
+ * OAuth 2.0の認可コードをアクセストークンとリフレッシュトークンに交換
+ */
+export const exchangeOAuthCode = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, exchangeOAuthCodeCallable);
 
 /**
  * キャッシュクリーンアップ Scheduled Function

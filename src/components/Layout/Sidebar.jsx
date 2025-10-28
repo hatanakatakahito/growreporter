@@ -41,11 +41,7 @@ export default function Sidebar() {
             { label: '時間帯別', path: '/analysis/hour' },
           ]
         },
-        { label: 'ユーザー', path: '/analysis/users' },
-        { label: '集客', path: '/analysis/acquisition' },
-        { label: 'エンゲージメント', path: '/analysis/engagement' },
-        { label: 'コンバージョン', path: '/analysis/conversion' },
-        { label: 'SEO分析', path: '/analysis/seo' },
+        { label: 'ユーザー属性', path: '/users' },
       ],
     },
     {

@@ -17,6 +17,8 @@ import AnalysisSummary from './pages/Analysis/AnalysisSummary';
 import Day from './pages/Analysis/Day';
 import Week from './pages/Analysis/Week';
 import Hour from './pages/Analysis/Hour';
+import Users from './pages/Users';
+import OAuthCallback from './components/OAuthCallback';
 
 function App() {
   return (
@@ -26,6 +28,9 @@ function App() {
           <Router>
           <div className="App">
           <Routes>
+            {/* OAuth コールバック（認証不要） */}
+            <Route path="/oauth/callback" element={<OAuthCallback />} />
+            
             {/* 認証関連 */}
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
@@ -113,6 +118,16 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Hour />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* ユーザー管理 */}
+            <Route 
+              path="/users" 
+              element={
+                <ProtectedRoute>
+                  <Users />
                 </ProtectedRoute>
               } 
             />

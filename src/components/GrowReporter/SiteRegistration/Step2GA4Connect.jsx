@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { useAuth } from '../../../contexts/AuthContext';
-import { db } from '../../../config/firebase';
-import app from '../../../config/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
-import { getAuth, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { db, functions } from '../../../config/firebase';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 
 export default function Step2GA4Connect({ siteData, setSiteData }) {
   const { currentUser } = useAuth();
@@ -156,118 +155,192 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
     }
   };
 
-  // Google OAuth認証（Firebase Authentication + 完全に独立したアプリインスタンス）
+  // Google OAuth 2.0 直接認証（永続的なリフレッシュトークンを取得）
   const handleConnect = async () => {
     setIsConnecting(true);
     setError(null);
 
-    // 現在のログインユーザーを保存
-    const originalUser = currentUser;
-    console.log('[GA4Connect] 元のユーザー保存:', originalUser.uid, originalUser.email);
+    console.log('[GA4Connect] OAuth 2.0認証開始');
 
     try {
-      console.log('[GA4Connect] OAuth認証開始');
+      // OAuth 2.0の設定
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      const redirectUri = `${window.location.origin}/oauth/callback`;
+      
+      if (!clientId) {
+        throw new Error('Google Client IDが設定されていません');
+      }
 
-      // 完全に独立したFirebaseアプリインスタンスを作成
-      const { initializeApp } = await import('firebase/app');
-      const tempApp = initializeApp({
-        apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-        authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-        projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-      }, 'temp-ga4-auth'); // 別名で初期化
+      // OAuth 2.0認可URLを構築
+      const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
+      authUrl.searchParams.append('client_id', clientId);
+      authUrl.searchParams.append('redirect_uri', redirectUri);
+      authUrl.searchParams.append('response_type', 'code');
+      authUrl.searchParams.append('scope', [
+        'https://www.googleapis.com/auth/analytics.readonly',
+        'https://www.googleapis.com/auth/analytics.manage.users.readonly',
+      ].join(' '));
+      authUrl.searchParams.append('access_type', 'offline');
+      authUrl.searchParams.append('prompt', 'consent'); // 常に同意画面を表示してリフレッシュトークンを確実に取得
+      authUrl.searchParams.append('include_granted_scopes', 'true');
+      authUrl.searchParams.append('state', 'ga4'); // プロバイダー識別用
+
+      console.log('[GA4Connect] 認可URLを生成:', authUrl.toString());
+
+      // ポップアップウィンドウを開く
+      const width = 500;
+      const height = 600;
+      const left = window.screen.width / 2 - width / 2;
+      const top = window.screen.height / 2 - height / 2;
       
-      const tempAuth = getAuth(tempApp);
-      
-      // GoogleAuthProviderを作成
-      const provider = new GoogleAuthProvider();
-      
-      // GA4用のスコープを追加
-      provider.addScope('https://www.googleapis.com/auth/analytics.readonly');
-      provider.addScope('https://www.googleapis.com/auth/analytics.manage.users.readonly');
-      
-      // リフレッシュトークンを取得するための設定
-      provider.setCustomParameters({
-        access_type: 'offline',
-        prompt: 'consent select_account', // アカウント選択画面を表示してリフレッシュトークンを確実に取得
-        include_granted_scopes: 'true'
+      const popup = window.open(
+        authUrl.toString(),
+        'Google OAuth',
+        `width=${width},height=${height},left=${left},top=${top}`
+      );
+
+      if (!popup) {
+        throw new Error('ポップアップがブロックされました。ブラウザの設定を確認してください。');
+      }
+
+      console.log('[GA4Connect] ポップアップウィンドウを開きました');
+
+      // localStorageをクリア（前回の結果を削除）
+      localStorage.removeItem('oauth_callback_result');
+
+      // ポップアップからのメッセージを待機（localStorageとpostMessageの両方をサポート）
+      const authCode = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          cleanup();
+          reject(new Error('認証がタイムアウトしました。もう一度お試しください。'));
+        }, 5 * 60 * 1000); // 5分でタイムアウト
+
+        let isResolved = false;
+
+        const cleanup = () => {
+          clearTimeout(timeout);
+          clearInterval(storageCheckInterval);
+          window.removeEventListener('message', handleMessage);
+        };
+
+        // postMessageハンドラー
+        const handleMessage = (event) => {
+          // セキュリティチェック
+          if (event.origin !== window.location.origin) {
+            return;
+          }
+
+          if (event.data.type === 'OAUTH_SUCCESS') {
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              localStorage.removeItem('oauth_callback_result'); // クリーンアップ
+              console.log('[GA4Connect] Received via postMessage');
+              resolve(event.data.code);
+            }
+          } else if (event.data.type === 'OAUTH_ERROR') {
+            if (!isResolved) {
+              isResolved = true;
+              cleanup();
+              localStorage.removeItem('oauth_callback_result'); // クリーンアップ
+              reject(new Error(event.data.error || '認証に失敗しました'));
+            }
+          }
+        };
+
+        // localStorageポーリング（メインの通信方法）
+        const checkLocalStorage = () => {
+          const resultStr = localStorage.getItem('oauth_callback_result');
+          if (resultStr) {
+            try {
+              const result = JSON.parse(resultStr);
+              
+              // タイムスタンプチェック（5分以内の結果のみ有効）
+              if (Date.now() - result.timestamp > 5 * 60 * 1000) {
+                console.warn('[GA4Connect] Expired result in localStorage');
+                localStorage.removeItem('oauth_callback_result');
+                return;
+              }
+
+              if (result.type === 'OAUTH_SUCCESS') {
+                if (!isResolved) {
+                  isResolved = true;
+                  cleanup();
+                  localStorage.removeItem('oauth_callback_result'); // クリーンアップ
+                  console.log('[GA4Connect] Received via localStorage');
+                  resolve(result.code);
+                }
+              } else if (result.type === 'OAUTH_ERROR') {
+                if (!isResolved) {
+                  isResolved = true;
+                  cleanup();
+                  localStorage.removeItem('oauth_callback_result'); // クリーンアップ
+                  reject(new Error(result.error || '認証に失敗しました'));
+                }
+              }
+            } catch (e) {
+              console.error('[GA4Connect] Error parsing localStorage result:', e);
+              localStorage.removeItem('oauth_callback_result');
+            }
+          }
+        };
+
+        window.addEventListener('message', handleMessage);
+
+        // localStorageを500msごとにチェック
+        const storageCheckInterval = setInterval(checkLocalStorage, 500);
+
+        // 初回チェック
+        checkLocalStorage();
       });
 
-      console.log('[GA4Connect] ポップアップで認証開始');
+      console.log('[GA4Connect] 認可コード取得成功');
 
-      // ポップアップで認証（独立したAuthインスタンスを使用）
-      const result = await signInWithPopup(tempAuth, provider);
-      
-      console.log('[GA4Connect] 認証成功:', result);
+      // Cloud Functionで認可コードをトークンに交換
+      const exchangeOAuthCode = httpsCallable(functions, 'exchangeOAuthCode');
 
-      // アクセストークンを取得
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const accessToken = credential?.accessToken;
+      console.log('[GA4Connect] トークン交換を開始...');
 
-      // リフレッシュトークンとexpiresInを取得（_tokenResponseから）
-      const refreshToken = result._tokenResponse?.refreshToken || null;
-      const expiresIn = result._tokenResponse?.expiresIn || 3600; // デフォルト1時間
+      const result = await exchangeOAuthCode({
+        code: authCode,
+        provider: 'ga4',
+        redirectUri: redirectUri,
+      });
 
-      if (!accessToken) {
-        throw new Error('アクセストークンの取得に失敗しました');
+      console.log('[GA4Connect] トークン交換成功:', result.data);
+
+      const { tokenId, googleAccount } = result.data;
+
+      // トークンデータを作成（プロパティ取得用）
+      const tokenDoc = await getDocs(
+        query(
+          collection(db, 'oauth_tokens'),
+          where('__name__', '==', tokenId)
+        )
+      );
+
+      if (tokenDoc.empty) {
+        throw new Error('トークンの取得に失敗しました');
       }
 
-      if (!refreshToken) {
-        throw new Error('リフレッシュトークンの取得に失敗しました。もう一度認証を行ってください。');
-      }
-
-      console.log('[GA4Connect] アクセストークン取得成功');
-      console.log('[GA4Connect] リフレッシュトークン: 取得成功');
-      console.log('[GA4Connect] トークン有効期限:', expiresIn, '秒');
-
-      // 認証したGoogleアカウントのメールアドレスを取得
-      const googleEmail = result.user.email;
-
-      // 一時アプリを削除
-      const { deleteApp } = await import('firebase/app');
-      await deleteApp(tempApp);
-      console.log('[GA4Connect] 一時アプリを削除');
-
-      // トークンをFirestoreに保存（元のユーザーの情報を使用）
-      const tokenData = {
-        access_token: accessToken,
-        refresh_token: refreshToken,
-        provider: 'google_analytics',
-        google_account: googleEmail,
-        created_by: originalUser.email,
-        created_at: serverTimestamp(),
-        updated_at: serverTimestamp(),
-        expires_at: new Date(Date.now() + expiresIn * 1000), // 実際のexpiresInを使用
-        user_uid: originalUser.uid,
-      };
-
-      console.log('[GA4Connect] トークン保存:', { user_uid: originalUser.uid, google_account: googleEmail });
-
-      const docRef = await addDoc(collection(db, 'oauth_tokens'), tokenData);
-      console.log('[GA4Connect] トークン保存完了:', docRef.id);
-
-      const savedToken = { id: docRef.id, ...tokenData };
+      const savedToken = { id: tokenId, ...tokenDoc.docs[0].data() };
       setToken(savedToken);
 
       // サイトデータを更新
       setSiteData(prev => ({
         ...prev,
-        ga4OauthTokenId: docRef.id,
-        ga4GoogleAccount: googleEmail,
+        ga4OauthTokenId: tokenId,
+        ga4GoogleAccount: googleAccount,
       }));
+
+      console.log('[GA4Connect] 接続成功 - プロパティを取得します');
 
       // プロパティを取得
       await fetchGA4Properties(savedToken);
 
     } catch (err) {
       console.error('[GA4Connect] 認証エラー:', err);
-      
-      if (err.code === 'auth/popup-closed-by-user') {
-        setError('認証がキャンセルされました。');
-      } else if (err.code === 'auth/popup-blocked') {
-        setError('ポップアップがブロックされました。ブラウザの設定を確認してください。');
-      } else {
-        setError('認証に失敗しました: ' + err.message);
-      }
+      setError('認証に失敗しました: ' + err.message);
     } finally {
       setIsConnecting(false);
     }
