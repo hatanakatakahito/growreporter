@@ -77,13 +77,13 @@ export default function Complete() {
       // 3. コンテンツ表示
       setTimeout(() => setShowContent(true), 800);
       
-      // 4. 紙吹雪を徐々に減らす
-      setTimeout(() => setNumberOfPieces(200), 3000);
-      setTimeout(() => setNumberOfPieces(100), 4000);
-      setTimeout(() => setNumberOfPieces(50), 5000);
+      // 4. 紙吹雪を徐々に減らす（よりゆっくりとしたタイミング）
+      setTimeout(() => setNumberOfPieces(200), 5000);   // 3秒 → 5秒
+      setTimeout(() => setNumberOfPieces(100), 7000);   // 4秒 → 7秒
+      setTimeout(() => setNumberOfPieces(50), 9000);    // 5秒 → 9秒
       
-      // 5. 紙吹雪停止
-      setTimeout(() => setShowConfetti(false), 6000);
+      // 5. 紙吹雪停止（10秒後）
+      setTimeout(() => setShowConfetti(false), 10000);  // 6秒 → 10秒
     }
   }, [isLoading, siteData]);
 
@@ -115,7 +115,8 @@ export default function Complete() {
           numberOfPieces={numberOfPieces}
           recycle={numberOfPieces > 0}
           colors={['#3b82f6', '#8b5cf6', '#ec4899', '#f59e0b', '#10b981', '#06b6d4']}
-          gravity={0.3}
+          gravity={0.15}  // 0.3 → 0.15（よりゆっくり落下）
+          wind={0.01}     // 微風効果を追加（横方向のゆらぎ）
         />
       )}
 
@@ -157,27 +158,10 @@ export default function Complete() {
               <p className="text-xl font-medium text-dark dark:text-white">
                 サイト「{siteData.siteName}」の登録が完了しました
               </p>
-              <p className="mt-2 text-body-color">
-                データ分析の準備を開始しています 🚀
-              </p>
             </div>
 
-            {/* 登録内容サマリー（カード） */}
-            <div className="transform transition-all duration-700 delay-500">
-              <div className="overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-dark-2">
-                <div className="bg-gradient-to-r from-primary to-purple-600 px-6 py-4">
-                  <h2 className="text-lg font-semibold text-white">
-                    登録内容
-                  </h2>
-                </div>
-                <div className="p-6">
-                  <CompleteSummary siteData={siteData} />
-                </div>
-              </div>
-            </div>
-
-            {/* ボタン（フェードイン） */}
-            <div className="mt-8 flex flex-col gap-4 sm:flex-row">
+            {/* ボタン（サイト名の下に配置） */}
+            <div className="my-8 flex flex-col gap-4 sm:flex-row">
               <button
                 onClick={() => navigate(`/dashboard?siteId=${siteData.id}`)}
                 className="group relative flex-1 overflow-hidden rounded-xl bg-gradient-to-r from-primary to-purple-600 px-8 py-4 text-center text-base font-semibold text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
@@ -207,38 +191,18 @@ export default function Complete() {
               </button>
             </div>
 
-            {/* 次のステップへの案内 */}
-            <div className="mt-8 rounded-xl border border-primary/20 bg-primary/5 p-6 dark:bg-primary/10">
-              <h3 className="mb-3 flex items-center gap-2 font-semibold text-primary">
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-                次のステップ
-              </h3>
-              <ul className="space-y-2 text-sm text-body-color">
-                <li className="flex items-start gap-2">
-                  <span className="mt-1 text-primary">✓</span>
-                  <span>ダッシュボードでサイトのパフォーマンスを確認</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1 text-primary">✓</span>
-                  <span>AI分析レポートで改善提案を確認</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="mt-1 text-primary">✓</span>
-                  <span>定期的なデータ更新で成長をトラッキング</span>
-                </li>
-              </ul>
+            {/* 登録内容サマリー（カード） */}
+            <div className="transform transition-all duration-700 delay-500">
+              <div className="overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-dark-2">
+                <div className="bg-gradient-to-r from-primary to-purple-600 px-6 py-4">
+                  <h2 className="text-lg font-semibold text-white">
+                    登録内容
+                  </h2>
+                </div>
+                <div className="p-6">
+                  <CompleteSummary siteData={siteData} />
+                </div>
+              </div>
             </div>
           </div>
         </div>
