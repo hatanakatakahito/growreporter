@@ -81,12 +81,19 @@ export async function captureScreenshotCallable(request) {
     // 🔥 最適化: キャッシュ無効化
     await page.setCacheEnabled(false);
     
-    // デバイス設定
+    // 🔥 最適化1: viewport高さを半分に（スクショは半分で十分）
     const viewport = deviceType === 'mobile' 
-      ? { width: 375, height: 667, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }
-      : { width: 1920, height: 1080, deviceScaleFactor: 1 };
+      ? { width: 375, height: 400, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }  // 667 → 400
+      : { width: 1920, height: 600, deviceScaleFactor: 1 };  // 1080 → 600
     
     await page.setViewport(viewport);
+    
+    // 🔥 最適化2: CSSアニメーション無効化（レンダリング高速化）
+    await page.evaluateOnNewDocument(() => {
+      const style = document.createElement('style');
+      style.innerHTML = '* { animation: none !important; transition: none !important; }';
+      document.head.appendChild(style);
+    });
     
     // 🔥 最適化: 不要なリソースをブロック（50-70%高速化）
     await page.setRequestInterception(true);
@@ -148,13 +155,13 @@ export async function captureScreenshotCallable(request) {
     console.log(`[captureScreenshot] Page rendered, taking screenshot...`);
     const screenshotStartTime = Date.now();
     
-    // リサイズ後のサイズを計算
-    const targetWidth = deviceType === 'mobile' ? 400 : 600;
+    // 🔥 最適化4: リサイズを小さく（ファイルサイズ削減）
+    const targetWidth = deviceType === 'mobile' ? 300 : 500;  // 400/600 → 300/500
     
-    // スクリーンショット取得
+    // 🔥 最適化3: JPEG品質を60に（ファイルサイズ30-40%削減）
     const screenshot = await page.screenshot({
       type: 'jpeg',
-      quality: 70,
+      quality: 60,  // 70 → 60
       fullPage: false,
     });
     
@@ -170,7 +177,7 @@ export async function captureScreenshotCallable(request) {
         fastShrinkOnLoad: true,
       })
       .jpeg({ 
-        quality: 70,
+        quality: 60,  // 70 → 60
         progressive: true,
         mozjpeg: true,
       })
