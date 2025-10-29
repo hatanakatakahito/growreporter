@@ -77,7 +77,7 @@ export async function fetchGSCDataCallable(request) {
       },
     });
 
-    // トップクエリの取得
+    // トップクエリの取得（最大25,000件）
     console.log(`[fetchGSCData] Fetching top queries...`);
     const topQueriesResponse = await searchConsole.searchanalytics.query({
       auth: oauth2Client,
@@ -86,11 +86,11 @@ export async function fetchGSCDataCallable(request) {
         startDate,
         endDate,
         dimensions: ['query'],
-        rowLimit: 10,
+        rowLimit: 25000,
       },
     });
 
-    // トップページの取得
+    // トップページの取得（最大25,000件）
     console.log(`[fetchGSCData] Fetching top pages...`);
     const topPagesResponse = await searchConsole.searchanalytics.query({
       auth: oauth2Client,
@@ -99,7 +99,7 @@ export async function fetchGSCDataCallable(request) {
         startDate,
         endDate,
         dimensions: ['page'],
-        rowLimit: 10,
+        rowLimit: 25000,
       },
     });
 

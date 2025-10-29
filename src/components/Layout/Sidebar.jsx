@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -7,6 +7,39 @@ export default function Sidebar() {
   const { currentUser, logout } = useAuth();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
+  const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
+  const [isEngagementOpen, setIsEngagementOpen] = useState(false);
+  const [isConversionOpen, setIsConversionOpen] = useState(false);
+
+  // 現在のパスに基づいてメニューを開く
+  useEffect(() => {
+    const path = location.pathname;
+    
+    // 分析ページかどうか
+    if (path.startsWith('/analysis/') || path === '/users' || path.startsWith('/acquisition/') || path.startsWith('/engagement/') || path.startsWith('/conversion/')) {
+      setIsAnalysisOpen(true);
+    }
+    
+    // 時系列サブメニュー
+    if (path.startsWith('/analysis/day') || path.startsWith('/analysis/week') || path.startsWith('/analysis/hour')) {
+      setIsTimeSeriesOpen(true);
+    }
+    
+    // 集客サブメニュー
+    if (path.startsWith('/acquisition/')) {
+      setIsAcquisitionOpen(true);
+    }
+    
+    // エンゲージメントサブメニュー
+    if (path.startsWith('/engagement/')) {
+      setIsEngagementOpen(true);
+    }
+    
+    // コンバージョンサブメニュー
+    if (path.startsWith('/conversion/')) {
+      setIsConversionOpen(true);
+    }
+  }, [location.pathname]);
 
   const isActive = (path) => {
     return location.pathname === path;
@@ -32,6 +65,7 @@ export default function Sidebar() {
       hasSubmenu: true,
       submenu: [
         { label: '全体サマリー', path: '/analysis/summary' },
+        { label: 'ユーザー属性', path: '/users' },
         { 
           label: '時系列', 
           hasSubmenu: true,
@@ -41,7 +75,34 @@ export default function Sidebar() {
             { label: '時間帯別', path: '/analysis/hour' },
           ]
         },
-        { label: 'ユーザー属性', path: '/users' },
+        { 
+          label: '集客', 
+          hasSubmenu: true,
+          submenu: [
+            { label: '集客チャネル', path: '/acquisition/channels' },
+            { label: '流入キーワード元', path: '/acquisition/keywords' },
+            { label: '被リンク元', path: '/acquisition/referrals' },
+          ]
+        },
+        { 
+          label: 'エンゲージメント', 
+          hasSubmenu: true,
+          submenu: [
+            { label: 'ページ別', path: '/engagement/pages' },
+            { label: 'ページ分類別', path: '/engagement/page-categories' },
+            { label: 'ランディングページ', path: '/engagement/landing-pages' },
+            { label: 'ファイルダウンロード', path: '/engagement/file-downloads' },
+            { label: '外部リンククリック', path: '/engagement/external-links' },
+          ]
+        },
+        { 
+          label: 'コンバージョン', 
+          hasSubmenu: true,
+          submenu: [
+            { label: 'コンバージョン一覧', path: '/conversion/list' },
+            { label: '逆算フロー', path: '/conversion/reverse-flow' },
+          ]
+        },
       ],
     },
     {
@@ -118,12 +179,29 @@ export default function Sidebar() {
                           {subItem.hasSubmenu ? (
                             <>
                               <button
-                                onClick={() => setIsTimeSeriesOpen(!isTimeSeriesOpen)}
+                                onClick={() => {
+                                  if (subItem.label === '時系列') {
+                                    setIsTimeSeriesOpen(!isTimeSeriesOpen);
+                                  } else if (subItem.label === '集客') {
+                                    setIsAcquisitionOpen(!isAcquisitionOpen);
+                                  } else if (subItem.label === 'エンゲージメント') {
+                                    setIsEngagementOpen(!isEngagementOpen);
+                                  } else if (subItem.label === 'コンバージョン') {
+                                    setIsConversionOpen(!isConversionOpen);
+                                  }
+                                }}
                                 className="flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm text-dark transition hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
                               >
                                 <span>{subItem.label}</span>
                                 <svg
-                                  className={`h-3 w-3 transition-transform ${isTimeSeriesOpen ? 'rotate-180' : ''}`}
+                                  className={`h-3 w-3 transition-transform ${
+                                    (subItem.label === '時系列' && isTimeSeriesOpen) ||
+                                    (subItem.label === '集客' && isAcquisitionOpen) ||
+                                    (subItem.label === 'エンゲージメント' && isEngagementOpen) ||
+                                    (subItem.label === 'コンバージョン' && isConversionOpen)
+                                      ? 'rotate-180'
+                                      : ''
+                                  }`}
                                   fill="none"
                                   viewBox="0 0 24 24"
                                   stroke="currentColor"
@@ -131,7 +209,10 @@ export default function Sidebar() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                               </button>
-                              {isTimeSeriesOpen && (
+                              {((subItem.label === '時系列' && isTimeSeriesOpen) ||
+                                (subItem.label === '集客' && isAcquisitionOpen) ||
+                                (subItem.label === 'エンゲージメント' && isEngagementOpen) ||
+                                (subItem.label === 'コンバージョン' && isConversionOpen)) && (
                                 <ul className="ml-4 mt-1 space-y-1 border-l-2 border-stroke pl-4 dark:border-dark-3">
                                   {subItem.submenu.map((subSubItem, subSubIndex) => (
                                     <li key={subSubIndex}>

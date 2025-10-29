@@ -18,6 +18,16 @@ import Day from './pages/Analysis/Day';
 import Week from './pages/Analysis/Week';
 import Hour from './pages/Analysis/Hour';
 import Users from './pages/Users';
+import AcquisitionChannels from './pages/AcquisitionChannels';
+import Keywords from './pages/Keywords';
+import Referrals from './pages/Referrals';
+import Pages from './pages/Pages';
+import PageCategories from './pages/PageCategories';
+import LandingPages from './pages/LandingPages';
+import FileDownloads from './pages/FileDownloads';
+import ExternalLinks from './pages/ExternalLinks';
+import ConversionList from './pages/ConversionList';
+import ReverseFlow from './pages/ReverseFlow';
 import OAuthCallback from './components/OAuthCallback';
 
 function App() {
@@ -118,6 +128,92 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Hour />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* 集客 */}
+            <Route 
+              path="/acquisition/channels" 
+              element={
+                <ProtectedRoute>
+                  <AcquisitionChannels />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/acquisition/keywords" 
+              element={
+                <ProtectedRoute>
+                  <Keywords />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/acquisition/referrals" 
+              element={
+                <ProtectedRoute>
+                  <Referrals />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* エンゲージメント */}
+            <Route 
+              path="/engagement/pages" 
+              element={
+                <ProtectedRoute>
+                  <Pages />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/engagement/page-categories" 
+              element={
+                <ProtectedRoute>
+                  <PageCategories />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/engagement/landing-pages" 
+              element={
+                <ProtectedRoute>
+                  <LandingPages />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/engagement/file-downloads" 
+              element={
+                <ProtectedRoute>
+                  <FileDownloads />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/engagement/external-links" 
+              element={
+                <ProtectedRoute>
+                  <ExternalLinks />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* コンバージョン */}
+            <Route 
+              path="/conversion/list" 
+              element={
+                <ProtectedRoute>
+                  <ConversionList />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/conversion/reverse-flow" 
+              element={
+                <ProtectedRoute>
+                  <ReverseFlow />
                 </ProtectedRoute>
               } 
             />

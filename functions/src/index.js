@@ -3,6 +3,9 @@ import { onCall } from 'firebase-functions/v2/https';
 import { initializeApp } from 'firebase-admin/app';
 import { fetchGA4DataCallable } from './callable/fetchGA4Data.js';
 import { fetchGA4MonthlyDataCallable } from './callable/fetchGA4MonthlyData.js';
+import { fetchGA4MonthlyConversionDataCallable } from './callable/fetchGA4MonthlyConversionData.js';
+import { fetchGA4ReverseFlowDataCallable } from './callable/fetchGA4ReverseFlowData.js';
+import { fetchGA4PagePathsCallable } from './callable/fetchGA4PagePaths.js';
 import { fetchGSCDataCallable } from './callable/fetchGSCData.js';
 import { captureScreenshotCallable } from './callable/captureScreenshot.js';
 import { generateAISummaryCallable } from './callable/generateAISummary.js';
@@ -37,6 +40,39 @@ export const fetchGA4MonthlyData = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, fetchGA4MonthlyDataCallable);
+
+/**
+ * GA4月次コンバージョンデータ取得 Callable Function
+ * コンバージョンイベントの月次推移データを取得
+ */
+export const fetchGA4MonthlyConversionData = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, fetchGA4MonthlyConversionDataCallable);
+
+/**
+ * GA4逆算フローデータ取得 Callable Function
+ * フォームページからのコンバージョンフローデータを取得
+ */
+export const fetchGA4ReverseFlowData = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, fetchGA4ReverseFlowDataCallable);
+
+/**
+ * GA4ページパス一覧取得 Callable Function
+ * 逆算フローのフォームページパス候補を取得
+ */
+export const fetchGA4PagePaths = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, fetchGA4PagePathsCallable);
 
 /**
  * GSCデータ取得 Callable Function
