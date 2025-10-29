@@ -28,6 +28,9 @@ import FileDownloads from './pages/FileDownloads';
 import ExternalLinks from './pages/ExternalLinks';
 import ConversionList from './pages/ConversionList';
 import ReverseFlow from './pages/ReverseFlow';
+import Improve from './pages/Improve';
+import Reports from './pages/Reports';
+import AccountSettings from './pages/AccountSettings';
 import OAuthCallback from './components/OAuthCallback';
 
 function App() {
@@ -218,12 +221,42 @@ function App() {
               } 
             />
             
+            {/* 改善する */}
+            <Route 
+              path="/improve" 
+              element={
+                <ProtectedRoute>
+                  <Improve />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* 評価する */}
+            <Route 
+              path="/reports" 
+              element={
+                <ProtectedRoute>
+                  <Reports />
+                </ProtectedRoute>
+              } 
+            />
+            
             {/* ユーザー管理 */}
             <Route 
               path="/users" 
               element={
                 <ProtectedRoute>
                   <Users />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* アカウント設定 */}
+            <Route 
+              path="/account/settings" 
+              element={
+                <ProtectedRoute>
+                  <AccountSettings />
                 </ProtectedRoute>
               } 
             />

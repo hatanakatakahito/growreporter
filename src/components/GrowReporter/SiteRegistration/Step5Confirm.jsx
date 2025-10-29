@@ -28,7 +28,7 @@ export default function Step5Confirm({ onBack, siteData }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F3F4FE] py-12" style={{
+    <div className="min-h-screen bg-gray-50 py-12" style={{
       backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='%23cbd5e1'%3e%3ccircle fill='%23cbd5e1' cx='16' cy='16' r='0.5'/%3e%3c/svg%3e")`,
       backgroundSize: '32px 32px'
     }}>

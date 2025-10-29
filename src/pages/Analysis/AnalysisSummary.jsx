@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { setPageTitle } from '../../utils/pageTitle';
 import { Link } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import { useSiteMetrics } from '../../hooks/useSiteMetrics';
@@ -9,8 +10,10 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import DataTable from '../../components/Analysis/DataTable';
 import ChartContainer from '../../components/Analysis/ChartContainer';
 import AISummarySheet from '../../components/Analysis/AISummarySheet';
+import Tooltip from '../../components/common/Tooltip';
 import { format, sub, startOfMonth } from 'date-fns';
 import { Info, Sparkles } from 'lucide-react';
+import { getTooltip } from '../../constants/tooltips';
 import {
   ResponsiveContainer,
   LineChart,
@@ -31,6 +34,11 @@ export default function AnalysisSummary() {
   const [timelineTab, setTimelineTab] = useState('table');
   const [hiddenLines, setHiddenLines] = useState({});
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
+
+  // ページタイトルを設定
+  useEffect(() => {
+    setPageTitle('日次データ');
+  }, []);
 
   // 現在の期間のデータ取得
   const { data, isLoading, isError } = useSiteMetrics(
@@ -118,7 +126,7 @@ export default function AnalysisSummary() {
   };
 
   // メトリックカード
-  const MetricCard = ({ title, currentValue, previousValue, yearAgoValue, format: formatType = 'number' }) => {
+  const MetricCard = ({ title, currentValue, previousValue, yearAgoValue, format: formatType = 'number', tooltip }) => {
     const formatValue = (value) => {
       if (value === null || value === undefined) return '-';
       if (formatType === 'percent') return `${(value * 100).toFixed(2)}%`;
@@ -132,7 +140,10 @@ export default function AnalysisSummary() {
     return (
       <div className="rounded-lg border border-stroke bg-white p-6 transition-shadow hover:shadow-md dark:border-dark-3 dark:bg-dark-2">
         <div className="mb-3 flex items-center justify-between">
-          <h4 className="text-sm font-medium text-body-color">{title}</h4>
+          <div className="flex items-center gap-1.5">
+            <h4 className="text-sm font-medium text-body-color">{title}</h4>
+            {tooltip && <Tooltip content={tooltip} />}
+          </div>
         </div>
         <div className="mb-4 text-4xl font-bold text-dark dark:text-white">
           {formatValue(currentValue)}
@@ -219,7 +230,7 @@ export default function AnalysisSummary() {
   // ローディング中
   if (isLoading && !data) {
     return (
-      <div className="flex h-screen overflow-hidden bg-[#F3F4FE] dark:bg-dark">
+      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-dark">
         <Sidebar />
         <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
           <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
@@ -234,7 +245,7 @@ export default function AnalysisSummary() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F3F4FE] dark:bg-dark">
+    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-dark">
       <Sidebar />
       <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
         <AnalysisHeader 
@@ -245,7 +256,7 @@ export default function AnalysisSummary() {
         />
         
         <main className="flex-1">
-          <div className="mx-auto max-w-7xl px-6 py-8">
+          <div className="mx-auto max-w-7xl px-6 py-10">
             {/* ページタイトル */}
             <div className="mb-8">
               <h2 className="mb-2 text-2xl font-bold text-dark dark:text-white">分析する - 全体サマリー</h2>
@@ -281,12 +292,14 @@ export default function AnalysisSummary() {
                       currentValue={data?.metrics?.sessions || 0}
                       previousValue={previousMonthData?.metrics?.sessions || 0}
                       yearAgoValue={yearAgoData?.metrics?.sessions || 0}
+                      tooltip={getTooltip('sessions')}
                     />
                     <MetricCard
                       title="表示回数"
                       currentValue={data?.metrics?.pageViews || 0}
                       previousValue={previousMonthData?.metrics?.pageViews || 0}
                       yearAgoValue={yearAgoData?.metrics?.pageViews || 0}
+                      tooltip={getTooltip('pageViews')}
                     />
                     <MetricCard
                       title="平均PV"
@@ -294,6 +307,7 @@ export default function AnalysisSummary() {
                       previousValue={(previousMonthData?.metrics?.pageViews || 0) / (previousMonthData?.metrics?.sessions || 1)}
                       yearAgoValue={(yearAgoData?.metrics?.pageViews || 0) / (yearAgoData?.metrics?.sessions || 1)}
                       format="decimal"
+                      tooltip={getTooltip('avgPageviews')}
                     />
                     <MetricCard
                       title="ENG率"
@@ -301,12 +315,14 @@ export default function AnalysisSummary() {
                       previousValue={previousMonthData?.metrics?.engagementRate || 0}
                       yearAgoValue={yearAgoData?.metrics?.engagementRate || 0}
                       format="percent"
+                      tooltip={getTooltip('engagementRate')}
                     />
                     <MetricCard
                       title="CV数"
                       currentValue={data?.metrics?.conversions || 0}
                       previousValue={previousMonthData?.metrics?.conversions || 0}
                       yearAgoValue={yearAgoData?.metrics?.conversions || 0}
+                      tooltip={getTooltip('conversions')}
                     />
                     <MetricCard
                       title="CVR"
@@ -314,6 +330,7 @@ export default function AnalysisSummary() {
                       previousValue={(previousMonthData?.metrics?.conversions || 0) / (previousMonthData?.metrics?.sessions || 1)}
                       yearAgoValue={(yearAgoData?.metrics?.conversions || 0) / (yearAgoData?.metrics?.sessions || 1)}
                       format="percent"
+                      tooltip={getTooltip('conversionRate')}
                     />
                   </div>
                 </div>

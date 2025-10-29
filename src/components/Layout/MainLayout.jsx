@@ -11,7 +11,7 @@ export default function MainLayout({
   action 
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F3F4FE] dark:bg-dark">
+    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-dark">
       {/* サイドバー */}
       <Sidebar />
 

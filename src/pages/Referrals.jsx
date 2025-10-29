@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSite } from '../contexts/SiteContext';
 import { useGA4Data } from '../hooks/useGA4Data';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
@@ -9,6 +9,7 @@ import DataTable from '../components/Analysis/DataTable';
 import ChartContainer from '../components/Analysis/ChartContainer';
 import AISummarySheet from '../components/Analysis/AISummarySheet';
 import { Sparkles, ExternalLink } from 'lucide-react';
+import { setPageTitle } from '../utils/pageTitle';
 import {
   ResponsiveContainer,
   BarChart,
@@ -32,6 +33,11 @@ export default function Referrals() {
   const [activeTab, setActiveTab] = useState('table');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [hiddenSeries, setHiddenSeries] = useState({});
+
+  // ページタイトルを設定
+  useEffect(() => {
+    setPageTitle('被リンク元');
+  }, []);
 
   // GA4データ取得（参照元別）
   const {
@@ -199,7 +205,7 @@ export default function Referrals() {
   return (
     <>
       <Sidebar />
-      <main className="ml-64 flex-1 bg-[#F3F4FE] dark:bg-dark">
+      <main className="ml-64 flex-1 bg-gray-50 dark:bg-dark">
         {/* ヘッダー */}
         <AnalysisHeader
           dateRange={dateRange}
@@ -209,7 +215,7 @@ export default function Referrals() {
         />
 
         {/* コンテンツ */}
-        <div className="mx-auto max-w-7xl px-6 py-8">
+        <div className="mx-auto max-w-7xl px-6 py-10">
           <div className="mb-6">
             <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">
               集客 - 被リンク元

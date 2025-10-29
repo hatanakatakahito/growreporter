@@ -88,7 +88,7 @@ export default function CompleteProfile() {
   };
 
   return (
-    <section className="relative z-10 flex min-h-screen items-center justify-center bg-[#F3F4FE] py-12 lg:py-20">
+    <section className="relative z-10 flex min-h-screen items-center justify-center bg-gray-50 py-12 lg:py-20">
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-[600px] overflow-hidden rounded-2xl bg-white shadow-lg dark:bg-dark-2">
           

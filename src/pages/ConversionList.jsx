@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { setPageTitle } from '../utils/pageTitle';
 import { useSite } from '../contexts/SiteContext';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import Sidebar from '../components/Layout/Sidebar';
@@ -31,6 +32,11 @@ export default function ConversionList() {
   const [activeTab, setActiveTab] = useState('table');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [hiddenLines, setHiddenLines] = useState({});
+
+  // ページタイトルを設定
+  useEffect(() => {
+    setPageTitle('コンバージョン一覧');
+  }, []);
 
   // コンバージョンイベントの取得
   const conversionEvents = useMemo(() => {
@@ -150,7 +156,7 @@ export default function ConversionList() {
   return (
     <>
       <Sidebar />
-      <main className="ml-64 flex-1 bg-[#F3F4FE] dark:bg-dark">
+      <main className="ml-64 flex-1 bg-gray-50 dark:bg-dark">
         {/* ヘッダー */}
         <AnalysisHeader
           dateRange={dateRange}
@@ -160,7 +166,7 @@ export default function ConversionList() {
         />
 
         {/* コンテンツ */}
-        <div className="mx-auto max-w-7xl px-6 py-8">
+        <div className="mx-auto max-w-7xl px-6 py-10">
           <div className="mb-6">
             <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">
               コンバージョン

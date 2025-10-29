@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useSite } from '../contexts/SiteContext';
 import { useGA4UserDemographics } from '../hooks/useGA4UserDemographics';
 import Sidebar from '../components/Layout/Sidebar';
@@ -6,6 +6,7 @@ import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
 import { Info, Sparkles } from 'lucide-react';
+import { setPageTitle } from '../utils/pageTitle';
 import {
   ResponsiveContainer,
   PieChart,
@@ -45,6 +46,11 @@ const GENDER_COLORS = {
 export default function Users() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [locationType, setLocationType] = useState('city');
+
+  // ページタイトルを設定
+  useEffect(() => {
+    setPageTitle('ユーザー属性');
+  }, []);
 
   const { data: demographicsData, isLoading, isError } = useGA4UserDemographics(
     selectedSiteId,
@@ -179,7 +185,7 @@ export default function Users() {
   return (
     <>
       <Sidebar />
-      <main className="ml-64 flex-1 bg-[#F3F4FE] dark:bg-dark">
+      <main className="ml-64 flex-1 bg-gray-50 dark:bg-dark">
         {/* ヘッダー */}
         <AnalysisHeader
           dateRange={dateRange}
@@ -189,7 +195,7 @@ export default function Users() {
         />
 
         {/* コンテンツ */}
-        <div className="mx-auto max-w-7xl px-6 py-8">
+        <div className="mx-auto max-w-7xl px-6 py-10">
           <div className="mb-6">
             <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">
               ユーザー属性

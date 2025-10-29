@@ -1,6 +1,7 @@
 import React from 'react';
+import Tooltip from '../common/Tooltip';
 
-export default function MetricCard({ title, value, change, icon, isLoading, format = 'number' }) {
+export default function MetricCard({ title, value, change, icon, isLoading, format = 'number', tooltip }) {
   if (isLoading) {
     return (
       <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
@@ -27,7 +28,10 @@ export default function MetricCard({ title, value, change, icon, isLoading, form
     <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <p className="text-sm font-medium text-body-color">{title}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-sm font-medium text-body-color">{title}</p>
+            {tooltip && <Tooltip content={tooltip} />}
+          </div>
           <h3 className="mt-2 text-3xl font-bold text-dark dark:text-white">
             {formattedValue}
           </h3>

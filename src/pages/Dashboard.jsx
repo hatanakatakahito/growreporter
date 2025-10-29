@@ -7,6 +7,8 @@ import Sidebar from '../components/Layout/Sidebar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { format, sub } from 'date-fns';
 import { BarChart3, Info } from 'lucide-react';
+import { setPageTitle } from '../utils/pageTitle';
+import { getTooltip } from '../constants/tooltips';
 
 /**
  * ダッシュボード画面
@@ -17,6 +19,11 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('summary');
+
+  // ページタイトルを設定
+  useEffect(() => {
+    setPageTitle('ダッシュボード');
+  }, []);
 
   // URLパラメータのsiteIdがあれば選択
   useEffect(() => {
@@ -87,7 +94,7 @@ export default function Dashboard() {
   // ローディング中
   if (isLoading && !data) {
     return (
-      <div className="flex h-screen overflow-hidden bg-[#F3F4FE] dark:bg-dark">
+      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-dark">
         <Sidebar />
         <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
           <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
@@ -155,7 +162,7 @@ export default function Dashboard() {
   // サイトが選択されていない場合
   if (!selectedSiteId && sites.length > 0) {
     return (
-      <div className="flex h-screen overflow-hidden bg-[#F3F4FE] dark:bg-dark">
+      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-dark">
         <Sidebar />
         <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
           <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
@@ -183,7 +190,7 @@ export default function Dashboard() {
   // サイトが登録されていない場合（読み込み完了後）
   if (!isSitesLoading && sites.length === 0) {
     return (
-      <div className="flex h-screen overflow-hidden bg-[#F3F4FE] dark:bg-dark">
+      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-dark">
         <Sidebar />
         <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
           <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
@@ -215,7 +222,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F3F4FE] dark:bg-dark">
+    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-dark">
       <Sidebar />
       <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
         <AnalysisHeader 
@@ -229,7 +236,7 @@ export default function Dashboard() {
 
         {/* メインコンテンツ */}
         <main className="flex-1">
-        <div className="mx-auto max-w-7xl px-6 py-8">
+        <div className="mx-auto max-w-7xl px-6 py-10">
 
         {/* タブナビゲーション */}
         <div className="space-y-6">

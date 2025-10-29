@@ -1,0 +1,23 @@
+{
+  "/": "ダッシュボード",
+  "/dashboard": "ダッシュボード",
+  "/sites": "サイト一覧",
+  "/users": "ユーザー属性",
+  "/improve": "改善する",
+  "/reports": "評価する",
+  "/acquisition/channels": "集客チャネル",
+  "/acquisition/keywords": "流入キーワード元",
+  "/acquisition/referrals": "被リンク元",
+  "/engagement/pages": "ページ別",
+  "/engagement/page-categories": "ページ分類別",
+  "/engagement/landing-pages": "ランディングページ",
+  "/engagement/file-downloads": "ファイルダウンロード",
+  "/engagement/external-links": "外部リンククリック",
+  "/conversion/list": "コンバージョン一覧",
+  "/conversion/reverse-flow": "逆算フロー",
+  "/analysis/summary": "日次データ",
+  "/analysis/hour": "時間別分析",
+  "/analysis/day": "曜日別分析",
+  "/analysis/week": "週別分析"
+}
+

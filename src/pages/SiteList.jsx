@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { setPageTitle } from '../utils/pageTitle';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../config/firebase';
@@ -12,6 +13,11 @@ export default function SiteList() {
   const [isDeleting, setIsDeleting] = useState(false);
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+
+  // ページタイトルを設定
+  useEffect(() => {
+    setPageTitle('サイト一覧');
+  }, []);
 
   // サイト一覧を取得
   useEffect(() => {

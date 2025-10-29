@@ -201,7 +201,7 @@ export default function AnalysisHeader({
             background: 'linear-gradient(to right, rgb(227, 242, 253), rgb(255, 248, 225))',
           }}
         >
-          <div className="mx-auto max-w-7xl px-6 py-8">
+          <div className="mx-auto max-w-7xl px-6 py-10">
             <div className="flex items-start justify-between gap-8">
               <div className="flex-1">
                 <div className="mb-2 flex items-center gap-2">

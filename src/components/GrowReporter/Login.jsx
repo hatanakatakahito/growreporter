@@ -79,7 +79,7 @@ export default function Login() {
   };
 
   return (
-    <section className="relative z-10 flex min-h-screen items-center justify-center bg-[#F3F4FE] py-12 lg:py-20" style={{
+    <section className="relative z-10 flex min-h-screen items-center justify-center bg-gray-50 py-12 lg:py-20" style={{
       backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='%23cbd5e1'%3e%3ccircle fill='%23cbd5e1' cx='16' cy='16' r='0.5'/%3e%3c/svg%3e")`,
       backgroundSize: '32px 32px'
     }}>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { setPageTitle } from '../../utils/pageTitle';
 import { useSearchParams } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import { useGA4Data } from '../../hooks/useGA4Data';
@@ -21,6 +22,11 @@ export default function Week() {
   const [heatmapMetric, setHeatmapMetric] = useState('sessions');
   const [activeTab, setActiveTab] = useState('chart');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
+
+  // ページタイトルを設定
+  useEffect(() => {
+    setPageTitle('週別分析');
+  }, []);
 
   // URLパラメータのsiteIdがあれば選択
   useEffect(() => {
@@ -102,7 +108,7 @@ export default function Week() {
   return (
     <>
       <Sidebar />
-      <main className="ml-64 flex-1 bg-[#F3F4FE] dark:bg-dark">
+      <main className="ml-64 flex-1 bg-gray-50 dark:bg-dark">
         {/* ヘッダー */}
         <AnalysisHeader
           dateRange={dateRange}
@@ -112,7 +118,7 @@ export default function Week() {
         />
 
         {/* コンテンツ */}
-        <div className="mx-auto max-w-7xl px-6 py-8">
+        <div className="mx-auto max-w-7xl px-6 py-10">
           <div className="mb-6">
             <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">分析する - 曜日別分析</h2>
             <p className="text-body-color">
