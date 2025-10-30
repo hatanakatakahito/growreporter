@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { setPageTitle } from '../utils/pageTitle';
+import { INDUSTRIES } from '../constants/industries';
 import { Info, Loader2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -16,8 +17,9 @@ export default function AccountSettings() {
   const { currentUser, userProfile, updateUserProfile } = useAuth();
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
-    displayName: '',
     company: '',
+    lastName: '',
+    firstName: '',
     phoneNumber: '',
     industry: '',
     email: '',
@@ -38,8 +40,9 @@ export default function AccountSettings() {
   useEffect(() => {
     if (currentUser && userProfile) {
       setFormData({
-        displayName: userProfile.displayName || '',
         company: userProfile.company || '',
+        lastName: userProfile.lastName || '',
+        firstName: userProfile.firstName || '',
         phoneNumber: userProfile.phoneNumber || '',
         industry: userProfile.industry || '',
         email: currentUser.email || '',
@@ -59,8 +62,9 @@ export default function AccountSettings() {
 
     try {
       await updateUserProfile(currentUser.uid, {
-        displayName: formData.displayName,
         company: formData.company,
+        lastName: formData.lastName,
+        firstName: formData.firstName,
         phoneNumber: formData.phoneNumber,
         industry: formData.industry,
         notificationSettings: formData.notificationSettings,
@@ -124,29 +128,6 @@ export default function AccountSettings() {
           <div className="lg:col-span-2">
             <div className="rounded-lg border border-stroke bg-white p-8 dark:border-dark-3 dark:bg-dark-2">
               <div className="space-y-6">
-                {/* 表示名 */}
-                <div className="space-y-2">
-                  <label
-                    htmlFor="displayName"
-                    className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
-                  >
-                    表示名
-                    <span className="rounded bg-red px-2 py-0.5 text-xs text-white">
-                      必須
-                    </span>
-                  </label>
-                  <input
-                    id="displayName"
-                    type="text"
-                    value={formData.displayName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, displayName: e.target.value })
-                    }
-                    placeholder="山田 太郎"
-                    className="h-12 w-full rounded-lg border border-stroke bg-transparent px-4 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white"
-                  />
-                </div>
-
                 {/* 組織名 */}
                 <div className="space-y-2">
                   <label
@@ -170,6 +151,52 @@ export default function AccountSettings() {
                   />
                 </div>
 
+                {/* 姓・名 */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="lastName"
+                      className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
+                    >
+                      姓
+                      <span className="rounded bg-red px-2 py-0.5 text-xs text-white">
+                        必須
+                      </span>
+                    </label>
+                    <input
+                      id="lastName"
+                      type="text"
+                      value={formData.lastName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lastName: e.target.value })
+                      }
+                      placeholder="山田"
+                      className="h-12 w-full rounded-lg border border-stroke bg-transparent px-4 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label
+                      htmlFor="firstName"
+                      className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
+                    >
+                      名
+                      <span className="rounded bg-red px-2 py-0.5 text-xs text-white">
+                        必須
+                      </span>
+                    </label>
+                    <input
+                      id="firstName"
+                      type="text"
+                      value={formData.firstName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, firstName: e.target.value })
+                      }
+                      placeholder="太郎"
+                      className="h-12 w-full rounded-lg border border-stroke bg-transparent px-4 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white"
+                    />
+                  </div>
+                </div>
+
                 {/* 電話番号 */}
                 <div className="space-y-2">
                   <label
@@ -177,6 +204,9 @@ export default function AccountSettings() {
                     className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
                   >
                     電話番号
+                    <span className="rounded bg-red px-2 py-0.5 text-xs text-white">
+                      必須
+                    </span>
                   </label>
                   <input
                     id="phoneNumber"
@@ -194,9 +224,12 @@ export default function AccountSettings() {
                 <div className="space-y-2">
                   <label
                     htmlFor="industry"
-                    className="text-base font-medium text-dark dark:text-white"
+                    className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
                   >
                     業界・業種
+                    <span className="rounded bg-red px-2 py-0.5 text-xs text-white">
+                      必須
+                    </span>
                   </label>
                   <select
                     id="industry"
@@ -207,15 +240,11 @@ export default function AccountSettings() {
                     className="h-12 w-full rounded-lg border border-stroke bg-transparent px-4 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white"
                   >
                     <option value="">選択してください</option>
-                    <option value="it">IT・情報通信</option>
-                    <option value="manufacturing">製造業</option>
-                    <option value="retail">小売業</option>
-                    <option value="finance">金融業</option>
-                    <option value="real_estate">不動産</option>
-                    <option value="medical">医療・福祉</option>
-                    <option value="education">教育</option>
-                    <option value="consulting">コンサルティング</option>
-                    <option value="other">その他</option>
+                    {INDUSTRIES.map((industry) => (
+                      <option key={industry} value={industry}>
+                        {industry}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -240,6 +269,18 @@ export default function AccountSettings() {
                   <p className="text-xs text-body-color dark:text-dark-6">
                     メールアドレスは変更できません
                   </p>
+                  
+                  {/* Google認証を使用中 */}
+                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950">
+                    <div className="flex items-start gap-2">
+                      <Info className="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                      <div className="text-sm text-blue-800 dark:text-blue-200">
+                        <strong>Google認証を使用中</strong>
+                        <br />
+                        パスワードはGoogleアカウントで管理されています。パスワードを変更する場合は、Googleアカウントの設定から行ってください。
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 通知設定 */}
@@ -295,18 +336,6 @@ export default function AccountSettings() {
                   >
                     キャンセル
                   </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Google認証を使用中 */}
-            <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
-              <div className="flex items-start gap-3">
-                <Info className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                <div className="text-blue-800 dark:text-blue-200">
-                  <strong>Google認証を使用中</strong>
-                  <br />
-                  パスワードはGoogleアカウントで管理されています。パスワードを変更する場合は、Googleアカウントの設定から行ってください。
                 </div>
               </div>
             </div>
