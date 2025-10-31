@@ -105,6 +105,7 @@ export const generateAISummary = onCall({
   timeoutSeconds: 60,
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
+  secrets: ['GEMINI_API_KEY'], // Secretへのアクセス権を付与
 }, generateAISummaryCallable);
 
 /**

@@ -11,6 +11,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
  * @param {object} props
  * @param {boolean} props.isOpen - シートの開閉状態
  * @param {function} props.onClose - シートを閉じる関数
+ * @param {string} props.siteId - サイトID
  * @param {string} props.pageType - ページタイプ（summary, timeSeriesなど）
  * @param {string} props.startDate - 開始日
  * @param {string} props.endDate - 終了日
@@ -18,7 +19,8 @@ import LoadingSpinner from '../common/LoadingSpinner';
  */
 export default function AISummarySheet({ 
   isOpen, 
-  onClose, 
+  onClose,
+  siteId,
   pageType = 'summary',
   startDate,
   endDate,
@@ -34,8 +36,8 @@ export default function AISummarySheet({
 
   // AI要約を生成
   const generateSummary = async () => {
-    if (!startDate || !endDate || !metrics) {
-      setError('データが不足しています。日付範囲とメトリクスを選択してください。');
+    if (!siteId || !startDate || !endDate || !metrics) {
+      setError('データが不足しています。サイト、日付範囲、メトリクスを選択してください。');
       return;
     }
 
@@ -46,6 +48,7 @@ export default function AISummarySheet({
     try {
       const generateAISummary = httpsCallable(functions, 'generateAISummary');
       const result = await generateAISummary({
+        siteId,
         pageType,
         startDate,
         endDate,
@@ -58,11 +61,26 @@ export default function AISummarySheet({
       setGeneratedAt(result.data.generatedAt);
     } catch (err) {
       console.error('AI分析エラー:', err);
-      setError(err.message || 'AI分析の生成に失敗しました。');
+      
+      // レート制限エラーの特別な処理
+      if (err.code === 'functions/resource-exhausted' || err.message?.includes('リクエスト上限')) {
+        setError('AI分析のリクエスト上限に達しました。しばらく時間をおいてから再度お試しください。（通常1〜5分で回復します）');
+      } else {
+        setError(err.message || 'AI分析の生成に失敗しました。');
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  // サイトIDが変更されたら状態をクリア
+  useEffect(() => {
+    setSummary('');
+    setRecommendations([]);
+    setError('');
+    setIsCached(false);
+    setGeneratedAt('');
+  }, [siteId]);
 
   // シートが開かれたときに自動的に生成
   useEffect(() => {
@@ -70,7 +88,7 @@ export default function AISummarySheet({
       generateSummary();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, siteId]);
 
   if (!isOpen) {
     return null;
@@ -218,7 +236,7 @@ export default function AISummarySheet({
                     strong: ({ node, ...props }) => (
                       <strong className="font-semibold text-dark dark:text-white" {...props} />
                     ),
-                    em: ({ node, ...props }) => (
+                    em: ({ node, ...props}) => (
                       <em className="italic text-dark dark:text-white" {...props} />
                     ),
                     code: ({ node, ...props }) => (
@@ -286,36 +304,6 @@ export default function AISummarySheet({
                 </button>
               </div>
             </>
-          )}
-
-          {/* 初期状態（データなし） */}
-          {!summary && !isLoading && !error && (
-            <div className="text-center py-12">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/10 mb-4">
-                <svg
-                  className="w-8 h-8 text-primary"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-                  />
-                </svg>
-              </div>
-              <p className="text-dark dark:text-white">
-                「AI分析を生成」ボタンをクリックして分析を開始してください
-              </p>
-              <button
-                onClick={generateSummary}
-                className="mt-4 inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-base font-medium text-white hover:bg-opacity-90 transition-colors"
-              >
-                AI分析を生成
-              </button>
-            </div>
           )}
         </div>
 

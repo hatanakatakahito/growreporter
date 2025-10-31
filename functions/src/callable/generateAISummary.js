@@ -9,13 +9,13 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
  */
 export async function generateAISummaryCallable(request) {
   const db = getFirestore();
-  const { pageType, startDate, endDate, metrics } = request.data;
+  const { siteId, pageType, startDate, endDate, metrics } = request.data;
 
   // 入力バリデーション
-  if (!pageType || !startDate || !endDate || !metrics) {
+  if (!siteId || !pageType || !startDate || !endDate || !metrics) {
     throw new HttpsError(
       'invalid-argument',
-      'pageType, startDate, endDate, metrics are required'
+      'siteId, pageType, startDate, endDate, metrics are required'
     );
   }
 
@@ -29,11 +29,11 @@ export async function generateAISummaryCallable(request) {
 
   const userId = request.auth.uid;
 
-  console.log('[generateAISummary] Start:', { userId, pageType, startDate, endDate });
+  console.log('[generateAISummary] Start:', { userId, siteId, pageType, startDate, endDate });
 
   try {
     // 1. キャッシュチェック
-    const cachedSummary = await getCachedSummary(db, userId, pageType, startDate, endDate);
+    const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
     if (cachedSummary) {
       console.log('[generateAISummary] Cache hit:', cachedSummary.id);
       return {
@@ -108,6 +108,7 @@ export async function generateAISummaryCallable(request) {
     const now = new Date();
     const summaryDoc = {
       userId,
+      siteId,
       pageType,
       startDate,
       endDate,
@@ -139,6 +140,14 @@ export async function generateAISummaryCallable(request) {
       throw error;
     }
 
+    // 429 レート制限エラー
+    if (error.message?.includes('429') || error.status === 429 || error.message?.includes('quota') || error.message?.includes('rate limit')) {
+      throw new HttpsError(
+        'resource-exhausted',
+        'AI分析のリクエスト上限に達しました。しばらく時間をおいてから再度お試しください。（通常1〜5分で回復します）'
+      );
+    }
+
     throw new HttpsError(
       'internal',
       `AI要約の生成に失敗しました: ${error.message}`
@@ -149,11 +158,12 @@ export async function generateAISummaryCallable(request) {
 /**
  * キャッシュされたAI要約を取得
  */
-async function getCachedSummary(db, userId, pageType, startDate, endDate) {
+async function getCachedSummary(db, userId, siteId, pageType, startDate, endDate) {
   try {
     const snapshot = await db
       .collection('aiSummaries')
       .where('userId', '==', userId)
+      .where('siteId', '==', siteId)
       .where('pageType', '==', pageType)
       .where('startDate', '==', startDate)
       .where('endDate', '==', endDate)

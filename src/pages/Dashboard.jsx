@@ -159,6 +159,7 @@ export default function Dashboard() {
       } : null;
 
       const result = await generateAI({
+        siteId: selectedSiteId,
         pageType: 'dashboard',
         startDate: dateRange.from,
         endDate: dateRange.to,
@@ -189,11 +190,25 @@ export default function Dashboard() {
       setAiGeneratedAt(result.data.generatedAt);
     } catch (err) {
       console.error('AI分析エラー:', err);
-      setAiError(err.message || 'AI分析の生成に失敗しました。');
+      
+      // レート制限エラーの特別な処理
+      if (err.code === 'functions/resource-exhausted' || err.message?.includes('リクエスト上限')) {
+        setAiError('AI分析のリクエスト上限に達しました。しばらく時間をおいてから再度お試しください。（通常1〜5分で回復します）');
+      } else {
+        setAiError(err.message || 'AI分析の生成に失敗しました。');
+      }
     } finally {
       setIsAILoading(false);
     }
   };
+
+  // サイトIDが変更されたらAI分析の状態をクリア
+  useEffect(() => {
+    setAiSummary('');
+    setAiRecommendations([]);
+    setAiError('');
+    setAiGeneratedAt('');
+  }, [selectedSiteId]);
 
   // データが読み込まれたら自動的にAI分析を生成
   useEffect(() => {
@@ -201,7 +216,7 @@ export default function Dashboard() {
       generateAISummary();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data, isLoading]);
+  }, [data, isLoading, selectedSiteId]);
 
   // ローディング中
   if (isLoading && !data) {
@@ -242,34 +257,67 @@ export default function Dashboard() {
   };
 
   // メトリックカードコンポーネント
-  const MetricCard = ({ title, value, monthChange, yearChange, tooltip }) => (
-    <div className="rounded-lg border border-stroke bg-white p-6 transition-shadow hover:shadow-md dark:border-dark-3 dark:bg-dark-2">
-      <div className="mb-3 flex items-center justify-between">
-        <h4 className="text-sm font-medium text-body-color">{title}</h4>
-        <div className="group relative">
-          <Info className="h-4 w-4 text-body-color" />
-          <div className="pointer-events-none absolute bottom-full right-0 z-50 mb-2 hidden w-64 rounded-lg bg-dark p-2 text-xs text-white shadow-lg group-hover:block">
-            {tooltip}
+  const MetricCard = ({ title, currentValue, previousValue, yearAgoValue, format: formatType = 'number', tooltip }) => {
+    const formatValue = (value) => {
+      if (value === null || value === undefined) return '-';
+      if (formatType === 'percent') return `${(value * 100).toFixed(2)}%`;
+      if (formatType === 'decimal') return value.toFixed(2);
+      return Math.round(value).toLocaleString();
+    };
+
+    const calculateChangePercent = (current, previous) => {
+      if (!previous || previous === 0) return null;
+      return ((current - previous) / previous) * 100;
+    };
+
+    const prevChange = calculateChangePercent(currentValue, previousValue);
+    const yearChange = calculateChangePercent(currentValue, yearAgoValue);
+
+    return (
+      <div className="rounded-lg border border-stroke bg-white p-6 transition-shadow hover:shadow-md dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <h4 className="text-sm font-medium text-body-color">{title}</h4>
+            {tooltip && (
+              <div className="group relative">
+                <Info className="h-4 w-4 text-body-color cursor-help" />
+                <div className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 hidden w-64 -translate-x-1/2 rounded-lg bg-dark p-2 text-xs text-white shadow-lg group-hover:block">
+                  {tooltip}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="mb-4 text-4xl font-bold text-dark dark:text-white">
+          {formatValue(currentValue)}
+        </div>
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-body-color">前月</span>
+            <div className="flex items-center gap-2">
+              <span className="text-dark dark:text-white">{formatValue(previousValue)}</span>
+              {prevChange !== null && (
+                <span className={`font-medium ${prevChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {prevChange >= 0 ? '+' : ''}{prevChange.toFixed(1)}%
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-body-color">前年同月</span>
+            <div className="flex items-center gap-2">
+              <span className="text-dark dark:text-white">{formatValue(yearAgoValue)}</span>
+              {yearChange !== null && (
+                <span className={`font-medium ${yearChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  {yearChange >= 0 ? '+' : ''}{yearChange.toFixed(1)}%
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
-      <div className="mb-4 text-4xl font-bold text-dark dark:text-white">{value}</div>
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-body-color">前月</span>
-          <span className={`font-medium ${monthChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {monthChange >= 0 ? '+' : ''}{Math.abs(monthChange).toFixed(2)}%
-          </span>
-        </div>
-        <div className="flex items-center justify-between text-sm">
-          <span className="text-body-color">前年同月</span>
-          <span className={`font-medium ${yearChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-            {yearChange >= 0 ? '+' : ''}{Math.abs(yearChange).toFixed(2)}%
-          </span>
-        </div>
-      </div>
-    </div>
-  );
+    );
+  };
 
   // サイトが選択されていない場合
   if (!selectedSiteId && sites.length > 0) {
@@ -419,70 +467,61 @@ export default function Dashboard() {
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   <MetricCard
                     title="セッション"
-                    value={formatNumber(data.metrics.sessions)}
-                    monthChange={calculateChange(data.metrics.sessions, previousMonthData?.metrics?.sessions || 0)}
-                    yearChange={calculateChange(data.metrics.sessions, yearAgoData?.metrics?.sessions || 0)}
+                    currentValue={data?.metrics?.sessions || 0}
+                    previousValue={previousMonthData?.metrics?.sessions || 0}
+                    yearAgoValue={yearAgoData?.metrics?.sessions || 0}
                     tooltip={getTooltip('sessions')}
                   />
                   <MetricCard
                     title="ユーザー"
-                    value={formatNumber(data.metrics.totalUsers)}
-                    monthChange={calculateChange(data.metrics.totalUsers, previousMonthData?.metrics?.totalUsers || 0)}
-                    yearChange={calculateChange(data.metrics.totalUsers, yearAgoData?.metrics?.totalUsers || 0)}
+                    currentValue={data?.metrics?.totalUsers || 0}
+                    previousValue={previousMonthData?.metrics?.totalUsers || 0}
+                    yearAgoValue={yearAgoData?.metrics?.totalUsers || 0}
                     tooltip={getTooltip('users')}
                   />
                   <MetricCard
                     title="新規ユーザー"
-                    value={formatNumber(data.metrics.newUsers)}
-                    monthChange={calculateChange(data.metrics.newUsers, previousMonthData?.metrics?.newUsers || 0)}
-                    yearChange={calculateChange(data.metrics.newUsers, yearAgoData?.metrics?.newUsers || 0)}
+                    currentValue={data?.metrics?.newUsers || 0}
+                    previousValue={previousMonthData?.metrics?.newUsers || 0}
+                    yearAgoValue={yearAgoData?.metrics?.newUsers || 0}
                     tooltip={getTooltip('newUsers')}
                   />
                   <MetricCard
                     title="表示回数"
-                    value={formatNumber(data.metrics.pageViews)}
-                    monthChange={calculateChange(data.metrics.pageViews, previousMonthData?.metrics?.pageViews || 0)}
-                    yearChange={calculateChange(data.metrics.pageViews, yearAgoData?.metrics?.pageViews || 0)}
+                    currentValue={data?.metrics?.pageViews || 0}
+                    previousValue={previousMonthData?.metrics?.pageViews || 0}
+                    yearAgoValue={yearAgoData?.metrics?.pageViews || 0}
                     tooltip={getTooltip('pageViews')}
                   />
                   <MetricCard
                     title="平均PV"
-                    value={(data.metrics.pageViews / (data.metrics.sessions || 1)).toFixed(2)}
-                    monthChange={calculateChange(
-                      data.metrics.pageViews / (data.metrics.sessions || 1),
-                      (previousMonthData?.metrics?.pageViews || 0) / (previousMonthData?.metrics?.sessions || 1)
-                    )}
-                    yearChange={calculateChange(
-                      data.metrics.pageViews / (data.metrics.sessions || 1),
-                      (yearAgoData?.metrics?.pageViews || 0) / (yearAgoData?.metrics?.sessions || 1)
-                    )}
+                    currentValue={(data?.metrics?.pageViews || 0) / (data?.metrics?.sessions || 1)}
+                    previousValue={(previousMonthData?.metrics?.pageViews || 0) / (previousMonthData?.metrics?.sessions || 1)}
+                    yearAgoValue={(yearAgoData?.metrics?.pageViews || 0) / (yearAgoData?.metrics?.sessions || 1)}
+                    format="decimal"
                     tooltip={getTooltip('avgPageviews')}
                   />
                   <MetricCard
                     title="ENG率"
-                    value={formatPercentage(data.metrics.engagementRate)}
-                    monthChange={calculateChange(data.metrics.engagementRate, previousMonthData?.metrics?.engagementRate || 0)}
-                    yearChange={calculateChange(data.metrics.engagementRate, yearAgoData?.metrics?.engagementRate || 0)}
+                    currentValue={data?.metrics?.engagementRate || 0}
+                    previousValue={previousMonthData?.metrics?.engagementRate || 0}
+                    yearAgoValue={yearAgoData?.metrics?.engagementRate || 0}
+                    format="percent"
                     tooltip={getTooltip('engagementRate')}
                   />
                   <MetricCard
                     title="CV数"
-                    value={formatNumber(data.metrics.conversions)}
-                    monthChange={calculateChange(data.metrics.conversions, previousMonthData?.metrics?.conversions || 0)}
-                    yearChange={calculateChange(data.metrics.conversions, yearAgoData?.metrics?.conversions || 0)}
+                    currentValue={data?.metrics?.conversions || 0}
+                    previousValue={previousMonthData?.metrics?.conversions || 0}
+                    yearAgoValue={yearAgoData?.metrics?.conversions || 0}
                     tooltip={getTooltip('conversions')}
                   />
                   <MetricCard
                     title="CVR"
-                    value={formatPercentage(data.metrics.conversions / (data.metrics.sessions || 1))}
-                    monthChange={calculateChange(
-                      data.metrics.conversions / (data.metrics.sessions || 1),
-                      (previousMonthData?.metrics?.conversions || 0) / (previousMonthData?.metrics?.sessions || 1)
-                    )}
-                    yearChange={calculateChange(
-                      data.metrics.conversions / (data.metrics.sessions || 1),
-                      (yearAgoData?.metrics?.conversions || 0) / (yearAgoData?.metrics?.sessions || 1)
-                    )}
+                    currentValue={(data?.metrics?.conversions || 0) / (data?.metrics?.sessions || 1)}
+                    previousValue={(previousMonthData?.metrics?.conversions || 0) / (previousMonthData?.metrics?.sessions || 1)}
+                    yearAgoValue={(yearAgoData?.metrics?.conversions || 0) / (yearAgoData?.metrics?.sessions || 1)}
+                    format="percent"
                     tooltip={getTooltip('conversionRate')}
                   />
                 </div>
@@ -490,7 +529,7 @@ export default function Dashboard() {
 
               {/* AI分析カード（インライン型） */}
               {!isError && data && (
-                <div className="mt-6">
+                <div className="mt-10">
                   <div className="bg-gradient-to-br from-blue-50 to-pink-50 dark:from-blue-900/20 dark:to-pink-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">

@@ -1,3 +1,47 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* AI分析ボタンのアニメーション */
+@keyframes ai-pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+@keyframes ai-ripple {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+@keyframes ai-sparkle {
+  0%, 100% {
+    transform: rotate(0deg) scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: rotate(180deg) scale(1.2);
+    opacity: 0.8;
+  }
+}
+
+.ai-button-pulse {
+  animation: ai-pulse 1.5s ease-in-out;
+}
+
+.ai-button-ripple {
+  animation: ai-ripple 1.5s ease-out;
+}
+
+.ai-icon-sparkle {
+  animation: ai-sparkle 1.5s ease-in-out;
+}
