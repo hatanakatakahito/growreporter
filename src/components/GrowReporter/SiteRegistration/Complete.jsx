@@ -40,9 +40,6 @@ export default function Complete() {
 
   // サイトデータ読み込み
   useEffect(() => {
-    const reloadKey = `site_complete_reloaded_${siteId}`;
-    const reloadCountKey = `site_complete_reload_count_${siteId}`;
-    
     const loadSiteData = async () => {
       if (!siteId) {
         navigate('/sites/list');
@@ -54,26 +51,27 @@ export default function Complete() {
         if (siteDoc.exists()) {
           const siteDataLoaded = { id: siteDoc.id, ...siteDoc.data() };
           
-          // リロード回数をチェック
-          const reloadCount = parseInt(sessionStorage.getItem(reloadCountKey) || '0');
-          console.log('[Complete] useEffect実行:', { siteId, reloadCount });
+          // リロードフラグをチェック
+          const needsReload = sessionStorage.getItem('site_complete_needs_reload');
+          console.log('[Complete] useEffect実行:', { siteId, needsReload });
           
-          if (reloadCount === 0) {
+          if (needsReload === 'reloaded') {
+            // リロード済み: 演出を開始
+            console.log('[Complete] リロード済み - 演出を開始します');
+            sessionStorage.removeItem('site_complete_needs_reload');
+            setSiteData(siteDataLoaded);
+            
+            // ローディング終了後、演出開始
+            setTimeout(() => setIsLoading(false), 500);
+          } else if (!needsReload) {
             // 初回アクセス: リロードを実行
             console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
-            sessionStorage.setItem(reloadCountKey, '1');
-            window.location.reload();
-            return;
+            sessionStorage.setItem('site_complete_needs_reload', 'reloaded');
+            
+            setTimeout(() => {
+              window.location.reload();
+            }, 100);
           }
-          
-          // リロード済み（1回以上）: フラグをクリアしてデータを設定
-          console.log('[Complete] リロード済み - 演出を開始します');
-          sessionStorage.removeItem(reloadKey);
-          sessionStorage.removeItem(reloadCountKey);
-          setSiteData(siteDataLoaded);
-          
-          // ローディング終了後、演出開始
-          setTimeout(() => setIsLoading(false), 500);
         } else {
           navigate('/sites/list');
         }
