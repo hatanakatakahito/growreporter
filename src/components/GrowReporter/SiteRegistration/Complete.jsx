@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../config/firebase';
@@ -24,6 +24,9 @@ export default function Complete() {
     width: window.innerWidth,
     height: window.innerHeight,
   });
+  
+  // リロード済みフラグ（React Strict Modeでの複数回実行を防ぐ）
+  const hasTriggeredReloadRef = useRef(false);
 
   // ウィンドウサイズ変更を監視
   useEffect(() => {
@@ -51,22 +54,24 @@ export default function Complete() {
         if (siteDoc.exists()) {
           const siteDataLoaded = { id: siteDoc.id, ...siteDoc.data() };
           
-          // リロードフラグをチェック
-          const needsReload = sessionStorage.getItem('site_complete_needs_reload');
-          console.log('[Complete] useEffect実行:', { siteId, needsReload });
+          // リロードフラグをチェック（siteIdごとに分離）
+          const reloadKey = `site_complete_reloaded_${siteId}`;
+          const needsReload = sessionStorage.getItem(reloadKey);
+          console.log('[Complete] useEffect実行:', { siteId, needsReload, hasTriggeredReload: hasTriggeredReloadRef.current });
           
-          if (needsReload === 'reloaded') {
+          if (needsReload === 'true') {
             // リロード済み: 演出を開始
             console.log('[Complete] リロード済み - 演出を開始します');
-            sessionStorage.removeItem('site_complete_needs_reload');
+            sessionStorage.removeItem(reloadKey);
             setSiteData(siteDataLoaded);
             
             // ローディング終了後、演出開始
             setTimeout(() => setIsLoading(false), 500);
-          } else if (!needsReload) {
-            // 初回アクセス: リロードを実行
+          } else if (!needsReload && !hasTriggeredReloadRef.current) {
+            // 初回アクセス: リロードを実行（useRefで1回だけ実行を保証）
             console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
-            sessionStorage.setItem('site_complete_needs_reload', 'reloaded');
+            hasTriggeredReloadRef.current = true;
+            sessionStorage.setItem(reloadKey, 'true');
             
             setTimeout(() => {
               window.location.reload();
