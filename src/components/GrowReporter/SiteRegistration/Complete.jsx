@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../config/firebase';
@@ -24,6 +24,9 @@ export default function Complete() {
     width: window.innerWidth,
     height: window.innerHeight,
   });
+  
+  // リロードが実行されたかを追跡するref
+  const hasTriggeredReload = useRef(false);
 
   // ウィンドウサイズ変更を監視
   useEffect(() => {
@@ -40,6 +43,18 @@ export default function Complete() {
 
   // サイトデータ読み込み
   useEffect(() => {
+    // 既にリロードをトリガーしている場合は何もしない
+    if (hasTriggeredReload.current) {
+      console.log('[Complete] リロード済みのためスキップ');
+      return;
+    }
+    
+    // リロード済みかどうかを即座にチェック
+    const reloadKey = `site_complete_reloaded_${siteId}`;
+    const hasReloaded = sessionStorage.getItem(reloadKey);
+    
+    console.log('[Complete] useEffect実行:', { siteId, hasReloaded, hasTriggeredReload: hasTriggeredReload.current });
+    
     const loadSiteData = async () => {
       if (!siteId) {
         navigate('/sites/list');
@@ -51,20 +66,15 @@ export default function Complete() {
         if (siteDoc.exists()) {
           const siteDataLoaded = { id: siteDoc.id, ...siteDoc.data() };
           
-          // サイトデータ読み込み後、リロードチェック
-          const reloadKey = `site_complete_reloaded_${siteId}`;
-          const hasReloaded = sessionStorage.getItem(reloadKey);
-          
-          if (!hasReloaded) {
+          // リロードチェック
+          if (!hasReloaded && !hasTriggeredReload.current) {
             console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
+            hasTriggeredReload.current = true; // リロードフラグを立てる
             sessionStorage.setItem(reloadKey, 'true');
             
-            // リロード実行（ローディング状態を維持したまま終了）
-            setTimeout(() => {
-              window.location.reload();
-            }, 500);
-            // ここでreturnして、以降の処理を実行しない
-            return;
+            // リロード実行（即座に実行して、その後のコードは実行されない）
+            window.location.reload();
+            return; // リロード後はこのコードは実行されない
           }
           
           // 既にリロード済み - フラグをクリアしてデータを設定
