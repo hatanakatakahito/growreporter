@@ -14,7 +14,7 @@ export function useSiteMetrics(siteId, startDate, endDate) {
     siteId,
     startDate,
     endDate,
-    ['sessions', 'totalUsers', 'screenPageViews', 'engagementRate', 'conversions'],
+    ['sessions', 'totalUsers', 'newUsers', 'screenPageViews', 'engagementRate', 'conversions'],
     []
   );
   const gscQuery = useGSCData(siteId, startDate, endDate);
@@ -23,7 +23,8 @@ export function useSiteMetrics(siteId, startDate, endDate) {
   const data = ga4Query.data || gscQuery.data ? {
     metrics: {
       sessions: ga4Query.data?.metrics?.sessions || 0,
-      users: ga4Query.data?.metrics?.totalUsers || 0,
+      totalUsers: ga4Query.data?.metrics?.totalUsers || 0,
+      newUsers: ga4Query.data?.metrics?.newUsers || 0,
       pageViews: ga4Query.data?.metrics?.screenPageViews || 0,
       engagementRate: ga4Query.data?.metrics?.engagementRate || 0,
       conversions: ga4Query.data?.metrics?.totalConversions || 0, // 総コンバージョン数

@@ -6,9 +6,14 @@ import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import Sidebar from '../components/Layout/Sidebar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { format, sub } from 'date-fns';
-import { BarChart3, Info } from 'lucide-react';
+import { ja } from 'date-fns/locale';
+import { BarChart3, Info, Sparkles, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
 import { getTooltip } from '../constants/tooltips';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../config/firebase';
+import ReactMarkdown from 'react-markdown';
+import ImprovementDialog from '../components/Improve/ImprovementDialog';
 
 /**
  * ダッシュボード画面
@@ -19,6 +24,18 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('summary');
+  
+  // AI分析用のstate
+  const [isAIExpanded, setIsAIExpanded] = useState(true);
+  const [aiSummary, setAiSummary] = useState('');
+  const [aiRecommendations, setAiRecommendations] = useState([]);
+  const [isAILoading, setIsAILoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiGeneratedAt, setAiGeneratedAt] = useState('');
+  
+  // タスク追加ダイアログ用のstate
+  const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
+  const [selectedTask, setSelectedTask] = useState(null);
 
   // ページタイトルを設定
   useEffect(() => {
@@ -90,6 +107,101 @@ export default function Dashboard() {
     yearAgoRange.from,
     yearAgoRange.to
   );
+
+  // AI分析を生成
+  const generateAISummary = async () => {
+    if (!data || isLoading) {
+      setAiError('データが読み込まれていません。');
+      return;
+    }
+
+    setIsAILoading(true);
+    setAiError('');
+    setAiSummary('');
+
+    try {
+      const generateAI = httpsCallable(functions, 'generateAISummary');
+      
+      // コンバージョン定義の確認
+      const hasConversionDefinitions = data.conversions && Object.keys(data.conversions).length > 0;
+      
+      // 総コンバージョン数の計算
+      const currentConversions = data.metrics.conversions || 0;
+      const previousConversions = previousMonthData?.metrics?.conversions || 0;
+      
+      // 前月比データの計算
+      const monthOverMonth = previousMonthData ? {
+        users: {
+          current: data.metrics.totalUsers,
+          previous: previousMonthData.metrics.totalUsers,
+          change: calculateChange(data.metrics.totalUsers, previousMonthData.metrics.totalUsers),
+        },
+        sessions: {
+          current: data.metrics.sessions,
+          previous: previousMonthData.metrics.sessions,
+          change: calculateChange(data.metrics.sessions, previousMonthData.metrics.sessions),
+        },
+        pageViews: {
+          current: data.metrics.pageViews,
+          previous: previousMonthData.metrics.pageViews,
+          change: calculateChange(data.metrics.pageViews, previousMonthData.metrics.pageViews),
+        },
+        conversions: {
+          current: currentConversions,
+          previous: previousConversions,
+          change: calculateChange(currentConversions, previousConversions),
+        },
+        engagementRate: {
+          current: data.metrics.engagementRate,
+          previous: previousMonthData.metrics.engagementRate,
+          change: calculateChange(data.metrics.engagementRate, previousMonthData.metrics.engagementRate),
+        },
+      } : null;
+
+      const result = await generateAI({
+        pageType: 'dashboard',
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+        metrics: {
+          // 現在期間のデータ
+          users: data.metrics.totalUsers,
+          newUsers: data.metrics.newUsers,
+          sessions: data.metrics.sessions,
+          pageViews: data.metrics.pageViews,
+          engagementRate: data.metrics.engagementRate,
+          bounceRate: data.metrics.bounceRate,
+          avgSessionDuration: data.metrics.avgSessionDuration,
+          conversions: currentConversions,
+          conversionRate: currentConversions && data.metrics.sessions 
+            ? (currentConversions / data.metrics.sessions) * 100 
+            : 0,
+          // コンバージョン定義の有無
+          hasConversionDefinitions,
+          // コンバージョン内訳
+          conversionBreakdown: hasConversionDefinitions ? data.conversions : null,
+          // 前月比データ
+          monthOverMonth,
+        },
+      });
+
+      setAiSummary(result.data.summary);
+      setAiRecommendations(result.data.recommendations || []);
+      setAiGeneratedAt(result.data.generatedAt);
+    } catch (err) {
+      console.error('AI分析エラー:', err);
+      setAiError(err.message || 'AI分析の生成に失敗しました。');
+    } finally {
+      setIsAILoading(false);
+    }
+  };
+
+  // データが読み込まれたら自動的にAI分析を生成
+  useEffect(() => {
+    if (data && !isLoading && !aiSummary && !isAILoading) {
+      generateAISummary();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, isLoading]);
 
   // ローディング中
   if (isLoading && !data) {
@@ -222,6 +334,7 @@ export default function Dashboard() {
   }
 
   return (
+    <>
     <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-dark">
       <Sidebar />
       <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
@@ -303,20 +416,34 @@ export default function Dashboard() {
                   </div>
                 </div>
               ) : data ? (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   <MetricCard
                     title="セッション"
                     value={formatNumber(data.metrics.sessions)}
                     monthChange={calculateChange(data.metrics.sessions, previousMonthData?.metrics?.sessions || 0)}
                     yearChange={calculateChange(data.metrics.sessions, yearAgoData?.metrics?.sessions || 0)}
-                    tooltip="ユーザーがサイトを訪問した回数（30分以上の間隔で区切られる）"
+                    tooltip={getTooltip('sessions')}
+                  />
+                  <MetricCard
+                    title="ユーザー"
+                    value={formatNumber(data.metrics.totalUsers)}
+                    monthChange={calculateChange(data.metrics.totalUsers, previousMonthData?.metrics?.totalUsers || 0)}
+                    yearChange={calculateChange(data.metrics.totalUsers, yearAgoData?.metrics?.totalUsers || 0)}
+                    tooltip={getTooltip('users')}
+                  />
+                  <MetricCard
+                    title="新規ユーザー"
+                    value={formatNumber(data.metrics.newUsers)}
+                    monthChange={calculateChange(data.metrics.newUsers, previousMonthData?.metrics?.newUsers || 0)}
+                    yearChange={calculateChange(data.metrics.newUsers, yearAgoData?.metrics?.newUsers || 0)}
+                    tooltip={getTooltip('newUsers')}
                   />
                   <MetricCard
                     title="表示回数"
                     value={formatNumber(data.metrics.pageViews)}
                     monthChange={calculateChange(data.metrics.pageViews, previousMonthData?.metrics?.pageViews || 0)}
                     yearChange={calculateChange(data.metrics.pageViews, yearAgoData?.metrics?.pageViews || 0)}
-                    tooltip="ページが閲覧された総回数（同じページの再表示も含む）"
+                    tooltip={getTooltip('pageViews')}
                   />
                   <MetricCard
                     title="平均PV"
@@ -329,21 +456,21 @@ export default function Dashboard() {
                       data.metrics.pageViews / (data.metrics.sessions || 1),
                       (yearAgoData?.metrics?.pageViews || 0) / (yearAgoData?.metrics?.sessions || 1)
                     )}
-                    tooltip="1セッションあたりの平均ページビュー数"
+                    tooltip={getTooltip('avgPageviews')}
                   />
                   <MetricCard
                     title="ENG率"
                     value={formatPercentage(data.metrics.engagementRate)}
                     monthChange={calculateChange(data.metrics.engagementRate, previousMonthData?.metrics?.engagementRate || 0)}
                     yearChange={calculateChange(data.metrics.engagementRate, yearAgoData?.metrics?.engagementRate || 0)}
-                    tooltip="10秒以上滞在または2ページ以上閲覧したセッションの割合"
+                    tooltip={getTooltip('engagementRate')}
                   />
                   <MetricCard
                     title="CV数"
                     value={formatNumber(data.metrics.conversions)}
                     monthChange={calculateChange(data.metrics.conversions, previousMonthData?.metrics?.conversions || 0)}
                     yearChange={calculateChange(data.metrics.conversions, yearAgoData?.metrics?.conversions || 0)}
-                    tooltip="サイト設定で定義したコンバージョンの合計数"
+                    tooltip={getTooltip('conversions')}
                   />
                   <MetricCard
                     title="CVR"
@@ -356,10 +483,132 @@ export default function Dashboard() {
                       data.metrics.conversions / (data.metrics.sessions || 1),
                       (yearAgoData?.metrics?.conversions || 0) / (yearAgoData?.metrics?.sessions || 1)
                     )}
-                    tooltip="コンバージョンが発生したセッションの割合"
+                    tooltip={getTooltip('conversionRate')}
                   />
                 </div>
               ) : null}
+
+              {/* AI分析カード（インライン型） */}
+              {!isError && data && (
+                <div className="mt-6">
+                  <div className="bg-gradient-to-br from-blue-50 to-pink-50 dark:from-blue-900/20 dark:to-pink-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-pink-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                          <Sparkles className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-gray-900 dark:text-white">AI分析レポート</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {format(new Date(dateRange.from), 'yyyy年M月d日', { locale: ja })} - {format(new Date(dateRange.to), 'yyyy年M月d日', { locale: ja })} のデータを分析
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setIsAIExpanded(!isAIExpanded)}
+                        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                      >
+                        {isAIExpanded ? (
+                          <ChevronUp className="w-5 h-5" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5" />
+                        )}
+                      </button>
+                    </div>
+
+                    {isAIExpanded && (
+                      <>
+                        {isAILoading ? (
+                          <div className="bg-white dark:bg-dark rounded-lg p-8 flex items-center justify-center">
+                            <div className="text-center">
+                              <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                              <p className="text-gray-600 dark:text-gray-400">AI分析を生成中...</p>
+                            </div>
+                          </div>
+                        ) : aiError ? (
+                          <div className="bg-white dark:bg-dark rounded-lg p-4 border-l-4 border-red-500">
+                            <p className="text-sm text-red-600 dark:text-red-400">{aiError}</p>
+                          </div>
+                        ) : aiSummary ? (
+                          <>
+                            <div className="bg-white dark:bg-dark rounded-lg p-4 text-sm text-gray-700 dark:text-gray-300 leading-relaxed prose prose-sm max-w-none">
+                              <ReactMarkdown
+                                components={{
+                                  h1: ({node, ...props}) => <h1 className="text-xl font-bold text-gray-900 dark:text-white mb-3 mt-4" {...props} />,
+                                  h2: ({node, ...props}) => <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 mt-3" {...props} />,
+                                  h3: ({node, ...props}) => <h3 className="text-base font-semibold text-gray-800 dark:text-gray-200 mb-2 mt-2" {...props} />,
+                                  h4: ({node, ...props}) => <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 mb-1 mt-2" {...props} />,
+                                  p: ({node, ...props}) => <p className="mb-3 text-sm leading-relaxed" {...props} />,
+                                  ul: ({node, ...props}) => <ul className="list-disc list-inside mb-3 space-y-1" {...props} />,
+                                  ol: ({node, ...props}) => <ol className="list-decimal list-inside mb-3 space-y-1" {...props} />,
+                                  li: ({node, ...props}) => <li className="text-sm ml-2" {...props} />,
+                                  strong: ({node, ...props}) => <strong className="font-semibold text-gray-900 dark:text-white" {...props} />,
+                                  em: ({node, ...props}) => <em className="italic text-gray-700 dark:text-gray-300" {...props} />,
+                                  code: ({node, ...props}) => <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs font-mono" {...props} />,
+                                }}
+                              >
+                                {aiSummary}
+                              </ReactMarkdown>
+                            </div>
+                            
+                            {/* 推奨アクション */}
+                            {aiRecommendations && aiRecommendations.length > 0 && (
+                              <div className="mt-4 bg-white dark:bg-dark rounded-lg p-4 border-t border-blue-200 dark:border-blue-800">
+                                <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+                                  <span>💡</span>
+                                  <span>おすすめの改善タスク</span>
+                                </h4>
+                                <div className="space-y-3">
+                                  {aiRecommendations.map((rec, index) => (
+                                    <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-dark-2 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors">
+                                      <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-0.5">{index + 1}.</span>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{rec.title}</p>
+                                        {rec.description && (
+                                          <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-3">{rec.description}</p>
+                                        )}
+                                      </div>
+                                      <button
+                                        onClick={() => {
+                                          setSelectedTask({
+                                            title: rec.title,
+                                            description: rec.description,
+                                            category: rec.category,
+                                            priority: rec.priority,
+                                            expectedImpact: '',
+                                          });
+                                          setIsTaskDialogOpen(true);
+                                        }}
+                                        className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-white bg-primary rounded hover:bg-opacity-90 transition-colors"
+                                      >
+                                        タスク追加
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            
+                            <div className="flex items-center justify-between mt-4 pt-4 border-t border-blue-200 dark:border-blue-800">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                                生成日時: {aiGeneratedAt ? format(new Date(aiGeneratedAt), 'yyyy/MM/dd HH:mm', { locale: ja }) : '-'}
+                              </span>
+                              <button
+                                onClick={generateAISummary}
+                                disabled={isAILoading}
+                                className="flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                                再生成
+                              </button>
+                            </div>
+                          </>
+                        ) : null}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -627,6 +876,18 @@ export default function Dashboard() {
         </main>
       </div>
     </div>
+
+    {/* タスク追加ダイアログ */}
+    <ImprovementDialog
+      isOpen={isTaskDialogOpen}
+      onClose={() => {
+        setIsTaskDialogOpen(false);
+        setSelectedTask(null);
+      }}
+      siteId={selectedSiteId}
+      editingItem={selectedTask}
+    />
+    </>
   );
 }
 

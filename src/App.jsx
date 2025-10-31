@@ -13,6 +13,7 @@ import SiteRegistration from './components/GrowReporter/SiteRegistration';
 import Complete from './components/GrowReporter/SiteRegistration/Complete';
 import SiteList from './pages/SiteList';
 import Dashboard from './pages/Dashboard';
+import AnalysisNavigation from './pages/Analysis/AnalysisNavigation';
 import AnalysisSummary from './pages/Analysis/AnalysisSummary';
 import Day from './pages/Analysis/Day';
 import Week from './pages/Analysis/Week';
@@ -102,6 +103,14 @@ function App() {
             />
             
             {/* 分析 */}
+            <Route 
+              path="/analysis" 
+              element={
+                <ProtectedRoute>
+                  <AnalysisNavigation />
+                </ProtectedRoute>
+              } 
+            />
             <Route 
               path="/analysis/summary" 
               element={

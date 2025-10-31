@@ -76,6 +76,7 @@ export async function fetchGA4MonthlyDataCallable(request) {
         metrics: [
           { name: 'sessions' },
           { name: 'totalUsers' },
+          { name: 'newUsers' },
           { name: 'screenPageViews' },
           { name: 'engagementRate' },
         ],
@@ -93,8 +94,9 @@ export async function fetchGA4MonthlyDataCallable(request) {
         const yearMonth = row.dimensionValues[0].value; // YYYYMM
         const sessions = parseInt(row.metricValues[0].value || 0);
         const users = parseInt(row.metricValues[1].value || 0);
-        const pageViews = parseInt(row.metricValues[2].value || 0);
-        const engagementRate = parseFloat(row.metricValues[3].value || 0);
+        const newUsers = parseInt(row.metricValues[2].value || 0);
+        const pageViews = parseInt(row.metricValues[3].value || 0);
+        const engagementRate = parseFloat(row.metricValues[4].value || 0);
 
         // YYYYMM -> yyyy-MM形式に変換
         const year = yearMonth.substring(0, 4);
@@ -106,6 +108,7 @@ export async function fetchGA4MonthlyDataCallable(request) {
           yearMonth: parseInt(yearMonth),
           label: `${year}年${month}月`,
           users,
+          newUsers,
           sessions,
           pageViews,
           avgPageviews: sessions > 0 ? pageViews / sessions : 0,

@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useSite } from '../contexts/SiteContext';
+import { useSearchParams } from 'react-router-dom';
 import Sidebar from '../components/Layout/Sidebar';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -15,6 +16,7 @@ import EvaluationModal from '../components/Improve/EvaluationModal';
 
 export default function Improve() {
   const { selectedSite, selectedSiteId } = useSite();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -27,6 +29,32 @@ export default function Improve() {
   useEffect(() => {
     setPageTitle('改善する');
   }, []);
+
+  // URLパラメータからタスク追加を処理
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'add') {
+      const title = searchParams.get('title');
+      const description = searchParams.get('description');
+      const category = searchParams.get('category');
+      const priority = searchParams.get('priority');
+      
+      if (title) {
+        // 編集アイテムを設定してダイアログを開く
+        setEditingItem({
+          title: decodeURIComponent(title),
+          description: description ? decodeURIComponent(description) : '',
+          category: category || 'other',
+          priority: priority || 'medium',
+          expectedImpact: '',
+        });
+        setIsDialogOpen(true);
+        
+        // URLパラメータをクリア
+        setSearchParams({});
+      }
+    }
+  }, [searchParams, setSearchParams]);
 
   // 改善課題データの取得
   const { data: improvements = [], isLoading: improvementsLoading } = useQuery({

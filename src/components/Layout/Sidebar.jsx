@@ -62,6 +62,7 @@ export default function Sidebar() {
         </svg>
       ),
       label: '分析する',
+      path: '/analysis',
       hasSubmenu: true,
       submenu: [
         { label: '全体サマリー', path: '/analysis/summary' },

@@ -38,6 +38,7 @@ export async function generateAISummaryCallable(request) {
       console.log('[generateAISummary] Cache hit:', cachedSummary.id);
       return {
         summary: cachedSummary.summary,
+        recommendations: cachedSummary.recommendations || [],
         cached: true,
         generatedAt: cachedSummary.generatedAt,
       };
@@ -93,9 +94,15 @@ export async function generateAISummaryCallable(request) {
     }
 
     const data = await response.json();
-    const summary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'AI要約を生成できませんでした。';
+    let rawSummary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'AI要約を生成できませんでした。';
 
     console.log('[generateAISummary] Summary generated successfully');
+
+    // 推奨アクションの抽出
+    const recommendations = extractRecommendations(rawSummary, pageType);
+    
+    // AI生成テキストから「アクションプラン」セクションを削除（重複を防ぐため）
+    const summary = removeActionPlanSection(rawSummary);
 
     // 5. Firestoreに保存
     const now = new Date();
@@ -105,6 +112,7 @@ export async function generateAISummaryCallable(request) {
       startDate,
       endDate,
       summary,
+      recommendations,
       metrics: JSON.parse(JSON.stringify(metrics)), // undefinedを除外
       generatedAt: Timestamp.fromDate(now),
       createdAt: Timestamp.fromDate(now),
@@ -120,6 +128,7 @@ export async function generateAISummaryCallable(request) {
 
     return {
       summary,
+      recommendations,
       cached: false,
       generatedAt: now.toISOString(),
     };
@@ -199,6 +208,186 @@ async function cleanupOldSummaries(db, userId) {
 }
 
 /**
+ * AI分析結果から推奨アクションを抽出
+ * セクション見出しに依存せず、番号付きリスト（1., 2., 3.など）を直接検出
+ */
+function extractRecommendations(summary, pageType) {
+  const recommendations = [];
+  const lines = summary.split('\n');
+  let currentRecommendation = null;
+  let itemIndex = 0;
+  
+  lines.forEach((line) => {
+    const trimmedLine = line.trim();
+    
+    // 見出し行（#で始まる）はスキップ
+    if (trimmedLine.startsWith('#')) {
+      return;
+    }
+    
+    // 番号付きリスト（1. 2. 3. など）を検出
+    const match = trimmedLine.match(/^([0-9]+)\.\s*\*?\*?(.+)\*?\*?$/);
+    
+    if (match) {
+      // 前の推奨アクションを保存
+      if (currentRecommendation) {
+        recommendations.push(currentRecommendation);
+      }
+      
+      // 新しい推奨アクションを開始
+      const fullText = match[2].replace(/\*\*/g, '').trim();
+      
+      // タイトルと説明を分離
+      let title = fullText;
+      let description = '';
+      
+      // コロン（:）で分割
+      const colonIndex = fullText.indexOf(':');
+      if (colonIndex > 0) {
+        title = fullText.substring(0, colonIndex).trim();
+        description = fullText.substring(colonIndex + 1).trim();
+      } else {
+        // コロンがない場合は、最初の句点（。）で分割
+        const periodIndex = fullText.indexOf('。');
+        if (periodIndex > 0 && periodIndex < 50) { // 50文字以内に句点がある場合のみ
+          title = fullText.substring(0, periodIndex).trim();
+          description = fullText.substring(periodIndex + 1).trim();
+        }
+      }
+      
+      currentRecommendation = {
+        title,
+        description,
+        category: estimateCategory(fullText),
+        priority: estimatePriority(fullText, itemIndex),
+      };
+      itemIndex++;
+    } else if (currentRecommendation && trimmedLine && !trimmedLine.startsWith('-')) {
+      // 現在の推奨アクションの説明文を追加
+      // ただし、箇条書き（-で始まる）は除外
+      currentRecommendation.description += (currentRecommendation.description ? ' ' : '') + trimmedLine;
+    }
+  });
+  
+  // 最後の推奨アクションを保存
+  if (currentRecommendation) {
+    recommendations.push(currentRecommendation);
+  }
+  
+  return recommendations;
+}
+
+/**
+ * AI生成テキストから番号付きリストを含むセクションを削除
+ * （推奨アクションと重複するため）
+ * 
+ * 番号付きリスト（1., 2., 3.）が連続して出現する直前の見出しから削除
+ */
+function removeActionPlanSection(text) {
+  const lines = text.split('\n');
+  let numberedListStartIndex = -1;
+  let lastHeadingBeforeListIndex = -1;
+  
+  // 番号付きリスト（1., 2., 3.）が連続している箇所を検出
+  for (let i = 0; i < lines.length; i++) {
+    const trimmedLine = lines[i].trim();
+    
+    // 見出し（#で始まる）を記録
+    if (trimmedLine.startsWith('#')) {
+      lastHeadingBeforeListIndex = i;
+      continue;
+    }
+    
+    // 番号付きリスト（1., 2., 3.など）を検出
+    const match = trimmedLine.match(/^([0-9]+)\.\s+(.+)$/);
+    if (match) {
+      const number = parseInt(match[1], 10);
+      
+      // 1から始まる番号付きリストを検出
+      if (number === 1) {
+        numberedListStartIndex = i;
+        
+        // 次の行も番号付きリストかチェック（2.で始まるか）
+        let hasMultipleItems = false;
+        for (let j = i + 1; j < lines.length && j < i + 10; j++) {
+          const nextLine = lines[j].trim();
+          const nextMatch = nextLine.match(/^([0-9]+)\.\s+(.+)$/);
+          if (nextMatch && parseInt(nextMatch[1], 10) === 2) {
+            hasMultipleItems = true;
+            break;
+          }
+        }
+        
+        // 複数の番号付きリストがある場合のみ削除対象
+        if (hasMultipleItems) {
+          break;
+        }
+      }
+    }
+  }
+  
+  // 番号付きリストが見つかり、その前に見出しがある場合
+  if (numberedListStartIndex > 0 && lastHeadingBeforeListIndex >= 0 && lastHeadingBeforeListIndex < numberedListStartIndex) {
+    // その見出しより前の部分のみを返す
+    return lines.slice(0, lastHeadingBeforeListIndex).join('\n').trim();
+  }
+  
+  // 番号付きリストが見つかったが見出しがない場合（リストの直前まで削除）
+  if (numberedListStartIndex > 0) {
+    return lines.slice(0, numberedListStartIndex).join('\n').trim();
+  }
+  
+  // 見つからない場合はそのまま返す
+  return text;
+}
+
+/**
+ * タイトルからカテゴリーを推定
+ */
+function estimateCategory(text) {
+  const lowerText = text.toLowerCase();
+  
+  if (lowerText.includes('コンテンツ') || lowerText.includes('記事') || lowerText.includes('情報')) {
+    return 'content';
+  }
+  if (lowerText.includes('デザイン') || lowerText.includes('ui') || lowerText.includes('ux') || lowerText.includes('レイアウト')) {
+    return 'design';
+  }
+  if (lowerText.includes('集客') || lowerText.includes('広告') || lowerText.includes('seo') || lowerText.includes('マーケティング')) {
+    return 'acquisition';
+  }
+  if (lowerText.includes('コンバージョン') || lowerText.includes('cv') || lowerText.includes('フォーム') || lowerText.includes('cta')) {
+    return 'feature';
+  }
+  
+  return 'other';
+}
+
+/**
+ * タイトルから優先度を推定
+ */
+function estimatePriority(text, order) {
+  const lowerText = text.toLowerCase();
+  
+  // 緊急性の高いキーワード
+  if (lowerText.includes('緊急') || lowerText.includes('早急') || lowerText.includes('すぐに') || lowerText.includes('至急')) {
+    return 'urgent';
+  }
+  
+  // 重要性の高いキーワード
+  if (lowerText.includes('重要') || lowerText.includes('必須') || lowerText.includes('優先') || order === 0) {
+    return 'high';
+  }
+  
+  // 中程度
+  if (order === 1) {
+    return 'medium';
+  }
+  
+  return 'low';
+}
+
+/**
  * ページタイプに応じたプロンプトを生成
  */
 function generatePrompt(pageType, startDate, endDate, metrics) {
@@ -216,7 +405,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
     }
 
     return `
-以下はWebサイトの全体サマリーデータです。${period}のデータを分析し、ビジネスインサイトを含む日本語の要約を**必ず400文字以内**で生成してください。
+以下はWebサイトの全体サマリーデータです。${period}のデータを分析し、ビジネスインサイトを含む日本語の要約を**必ず800文字以内**で生成してください。
 
 【現在期間のデータ】
 - 総ユーザー数: ${metrics.users?.toLocaleString() || metrics.totalUsers?.toLocaleString() || 0}人
@@ -226,7 +415,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 - コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件${monthlyTrendText}
 
 【要求事項】
-- **400文字以内で簡潔にまとめる**（これは厳守してください）
+- **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
 - 現在期間のデータと13ヶ月推移の両方を考慮してトレンドを分析
 - 改善提案を1-2点含める
@@ -246,14 +435,14 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
     }
 
     return `
-以下はWebサイトの日別分析データです。${period}のデータを分析し、ビジネスインサイトを含む日本語の要約を**必ず400文字以内**で生成してください。
+以下はWebサイトの日別分析データです。${period}のデータを分析し、ビジネスインサイトを含む日本語の要約を**必ず800文字以内**で生成してください。
 
 【期間全体のデータ】
 - 総セッション数: ${metrics.sessions?.toLocaleString() || 0}回
 - 総コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件${dailyTrendText}
 
 【要求事項】
-- **400文字以内で簡潔にまとめる**（これは厳守してください）
+- **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
 - 日別のトレンドや特徴的な日を分析
 - 曜日パターンや特定日の変動要因を考察
@@ -263,7 +452,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 
   if (pageType === 'week') {
     return `
-以下はWebサイトの曜日別分析データです。${period}のデータを分析し、ビジネスインサイトを含む日本語の要約を**必ず400文字以内**で生成してください。
+以下はWebサイトの曜日別分析データです。${period}のデータを分析し、ビジネスインサイトを含む日本語の要約を**必ず800文字以内**で生成してください。
 
 【データ】
 - 最大セッション数: ${metrics.sessions?.toLocaleString() || 0}回
@@ -271,7 +460,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 - 曜日×時間帯のヒートマップデータあり
 
 【要求事項】
-- **400文字以内で簡潔にまとめる**（これは厳守してください）
+- **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
 - 曜日や時間帯別の傾向を分析
 - アクセスが多い曜日・時間帯を特定
@@ -293,14 +482,14 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
     }
 
     return `
-以下はWebサイトの時間帯別分析データです。${period}のデータを分析し、ビジネスインサイトを含む日本語の要約を**必ず400文字以内**で生成してください。
+以下はWebサイトの時間帯別分析データです。${period}のデータを分析し、ビジネスインサイトを含む日本語の要約を**必ず800文字以内**で生成してください。
 
 【期間全体のデータ】
 - 総セッション数: ${metrics.sessions?.toLocaleString() || 0}回
 - 総コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件${peakHours}
 
 【要求事項】
-- **400文字以内で簡潔にまとめる**（これは厳守してください）
+- **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
 - アクセスが集中する時間帯を特定
 - コンバージョンが発生しやすい時間帯を分析
@@ -308,15 +497,83 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 `;
   }
 
+  if (pageType === 'dashboard') {
+    // コンバージョン定義の確認と内訳の整形
+    const hasConversions = metrics.hasConversionDefinitions === true;
+    let conversionText = '';
+    
+    if (hasConversions) {
+      conversionText = `\n- コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件`;
+      if (metrics.conversionBreakdown && typeof metrics.conversionBreakdown === 'object') {
+        conversionText += '\n  内訳:';
+        Object.entries(metrics.conversionBreakdown).forEach(([name, count]) => {
+          conversionText += `\n  - ${name}: ${count?.toLocaleString() || 0}件`;
+        });
+      }
+    } else {
+      conversionText = '\n- コンバージョン定義: 未設定（設定後に計測開始）';
+    }
+    
+    // 前月比データの整形
+    let monthOverMonthText = '';
+    if (metrics.monthOverMonth) {
+      const mom = metrics.monthOverMonth;
+      monthOverMonthText = '\n\n【前月比】';
+      
+      if (mom.users) {
+        const sign = mom.users.change >= 0 ? '+' : '';
+        monthOverMonthText += `\n- ユーザー数: ${mom.users.current?.toLocaleString() || 0}人 (前月${mom.users.previous?.toLocaleString() || 0}人, ${sign}${mom.users.change.toFixed(1)}%)`;
+      }
+      
+      if (mom.sessions) {
+        const sign = mom.sessions.change >= 0 ? '+' : '';
+        monthOverMonthText += `\n- セッション数: ${mom.sessions.current?.toLocaleString() || 0}回 (前月${mom.sessions.previous?.toLocaleString() || 0}回, ${sign}${mom.sessions.change.toFixed(1)}%)`;
+      }
+      
+      if (mom.conversions && hasConversions) {
+        const sign = mom.conversions.change >= 0 ? '+' : '';
+        monthOverMonthText += `\n- コンバージョン数: ${mom.conversions.current?.toLocaleString() || 0}件 (前月${mom.conversions.previous?.toLocaleString() || 0}件, ${sign}${mom.conversions.change.toFixed(1)}%)`;
+      }
+      
+      if (mom.engagementRate) {
+        const sign = mom.engagementRate.change >= 0 ? '+' : '';
+        monthOverMonthText += `\n- エンゲージメント率: ${((mom.engagementRate.current || 0) * 100).toFixed(1)}% (前月${((mom.engagementRate.previous || 0) * 100).toFixed(1)}%, ${sign}${mom.engagementRate.change.toFixed(1)}%)`;
+      }
+    }
+
+    return `
+あなたは経営者や意思決定者に向けたダッシュボードレポートを作成する専門家です。${period}のWebサイト全体のパフォーマンスを分析し、**経営判断に役立つビジネスインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
+
+【現在期間の主要指標】
+- 総ユーザー数: ${metrics.users?.toLocaleString() || 0}人
+- 新規ユーザー数: ${metrics.newUsers?.toLocaleString() || 0}人
+- セッション数: ${metrics.sessions?.toLocaleString() || 0}回
+- ページビュー数: ${metrics.pageViews?.toLocaleString() || 0}回
+- エンゲージメント率: ${((metrics.engagementRate || 0) * 100).toFixed(1)}%
+- 直帰率: ${((metrics.bounceRate || 0) * 100).toFixed(1)}%
+- 平均セッション時間: ${metrics.avgSessionDuration ? `${Math.floor(metrics.avgSessionDuration / 60)}分${Math.floor(metrics.avgSessionDuration % 60)}秒` : '0秒'}${conversionText}${hasConversions ? `\n- コンバージョン率: ${(metrics.conversionRate || 0).toFixed(2)}%` : ''}${monthOverMonthText}
+
+【要求事項】
+- **800文字以内で簡潔にまとめる**（これは厳守してください）
+- Markdownの見出し記法（##, ###）を使用して構造化
+- **前月比の増減を必ず分析し、その原因を考察すること**
+- 良い点（成長トレンド）と改善点（課題）の両方を明確に指摘
+- **経営判断や施策の優先順位付けに役立つ具体的なアクションを1-2点提案**
+- 数値の羅列ではなく、「なぜそうなったか」「次に何をすべきか」の視点で記述
+- ビジネスインパクトの大きい指標を優先的に取り上げる
+- **コンバージョンについて**：${hasConversions ? 'コンバージョン数が0件でも「発生なし」として言及し、その理由を分析してください' : 'コンバージョン定義が未設定のため、コンバージョンについては触れないでください'}
+`;
+  }
+
   // その他のページタイプ用のデフォルト
   return `
-${period}のデータを分析し、**必ず400文字以内**で日本語の要約を生成してください。
+${period}のデータを分析し、**必ず800文字以内**で日本語の要約を生成してください。
 
 【データ】
 ${JSON.stringify(metrics, null, 2)}
 
 【要求事項】
-- **400文字以内で簡潔にまとめる**（これは厳守してください）
+- **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
 - 主要なポイントを3-5点にまとめる
 - 改善提案を含める

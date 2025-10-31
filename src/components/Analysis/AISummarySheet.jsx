@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
@@ -23,7 +24,9 @@ export default function AISummarySheet({
   endDate,
   metrics 
 }) {
+  const navigate = useNavigate();
   const [summary, setSummary] = useState('');
+  const [recommendations, setRecommendations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isCached, setIsCached] = useState(false);
@@ -50,6 +53,7 @@ export default function AISummarySheet({
       });
 
       setSummary(result.data.summary);
+      setRecommendations(result.data.recommendations || []);
       setIsCached(result.data.cached);
       setGeneratedAt(result.data.generatedAt);
     } catch (err) {
@@ -184,35 +188,79 @@ export default function AISummarySheet({
               )}
 
               {/* Markdown表示 */}
-              <div className="prose prose-sm dark:prose-invert max-w-none">
+              <div className="prose prose-sm max-w-none">
                 <ReactMarkdown
                   components={{
+                    h1: ({ node, ...props }) => (
+                      <h1 className="text-2xl font-bold text-dark dark:text-white mt-6 mb-4" {...props} />
+                    ),
                     h2: ({ node, ...props }) => (
-                      <h2 className="text-lg font-semibold text-dark dark:text-white mt-6 mb-3" {...props} />
+                      <h2 className="text-xl font-semibold text-dark dark:text-white mt-5 mb-3" {...props} />
                     ),
                     h3: ({ node, ...props }) => (
-                      <h3 className="text-base font-semibold text-dark dark:text-white mt-4 mb-2" {...props} />
+                      <h3 className="text-lg font-semibold text-dark dark:text-white mt-4 mb-2" {...props} />
+                    ),
+                    h4: ({ node, ...props }) => (
+                      <h4 className="text-base font-semibold text-dark dark:text-white mt-3 mb-2" {...props} />
                     ),
                     p: ({ node, ...props }) => (
-                      <p className="text-dark dark:text-white leading-relaxed mb-3" {...props} />
+                      <p className="text-sm text-dark dark:text-white leading-relaxed mb-3" {...props} />
                     ),
                     ul: ({ node, ...props }) => (
-                      <ul className="list-disc list-inside text-dark dark:text-white space-y-1 mb-3" {...props} />
+                      <ul className="list-disc list-inside text-dark dark:text-white space-y-1 mb-3 text-sm" {...props} />
                     ),
                     ol: ({ node, ...props }) => (
-                      <ol className="list-decimal list-inside text-dark dark:text-white space-y-1 mb-3" {...props} />
+                      <ol className="list-decimal list-inside text-dark dark:text-white space-y-1 mb-3 text-sm" {...props} />
                     ),
                     li: ({ node, ...props }) => (
-                      <li className="text-dark dark:text-white" {...props} />
+                      <li className="text-sm text-dark dark:text-white ml-2" {...props} />
                     ),
                     strong: ({ node, ...props }) => (
                       <strong className="font-semibold text-dark dark:text-white" {...props} />
+                    ),
+                    em: ({ node, ...props }) => (
+                      <em className="italic text-dark dark:text-white" {...props} />
+                    ),
+                    code: ({ node, ...props }) => (
+                      <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs font-mono" {...props} />
                     ),
                   }}
                 >
                   {summary}
                 </ReactMarkdown>
               </div>
+
+              {/* 推奨アクション */}
+              {recommendations && recommendations.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-stroke dark:border-dark-3">
+                  <h4 className="text-base font-semibold text-dark dark:text-white mb-4 flex items-center gap-2">
+                    <span>💡</span>
+                    <span>おすすめの改善タスク</span>
+                  </h4>
+                  <div className="space-y-3">
+                    {recommendations.map((rec, index) => (
+                      <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-dark-2 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors">
+                        <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-0.5">{index + 1}.</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-dark dark:text-white mb-1">{rec.title}</p>
+                          {rec.description && (
+                            <p className="text-xs text-body-color line-clamp-3">{rec.description}</p>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => {
+                            onClose();
+                            navigate(`/improve?action=add&title=${encodeURIComponent(rec.title)}&description=${encodeURIComponent(rec.description)}&category=${rec.category}&priority=${rec.priority}`);
+                          }}
+                          className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-white bg-primary rounded hover:bg-opacity-90 transition-colors"
+                        >
+                          タスク追加
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* 再生成ボタン */}
               <div className="mt-6 pt-6 border-t border-stroke dark:border-dark-3">

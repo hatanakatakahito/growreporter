@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { db } from '../../config/firebase';
-import { collection, addDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, query, where, getDocs } from 'firebase/firestore';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -20,7 +20,7 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    if (editingItem) {
+    if (isOpen && editingItem) {
       setFormData({
         title: editingItem.title || '',
         description: editingItem.description || '',
@@ -28,7 +28,7 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
         priority: editingItem.priority || 'medium',
         expectedImpact: editingItem.expectedImpact || '',
       });
-    } else {
+    } else if (isOpen && !editingItem) {
       setFormData({
         title: '',
         description: '',
@@ -44,6 +44,22 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
     setIsSaving(true);
 
     try {
+      // 新規作成時のみ重複チェック
+      if (!editingItem?.id) {
+        const q = query(
+          collection(db, 'improvements'),
+          where('siteId', '==', siteId),
+          where('title', '==', formData.title.trim())
+        );
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+          alert('同じタイトルの改善課題が既に存在します。別のタイトルを入力してください。');
+          setIsSaving(false);
+          return;
+        }
+      }
+
       const improvementData = {
         ...formData,
         siteId,
@@ -51,7 +67,8 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
         updatedAt: new Date(),
       };
 
-      if (editingItem) {
+      // editingItem に id がある場合のみ更新、それ以外は新規作成
+      if (editingItem?.id) {
         // 更新
         const improvementRef = doc(db, 'improvements', editingItem.id);
         await updateDoc(improvementRef, improvementData);
@@ -62,11 +79,29 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
         await addDoc(collection(db, 'improvements'), improvementData);
       }
 
+      // クエリを無効化して再取得
       queryClient.invalidateQueries({ queryKey: ['improvements', siteId] });
+      
+      // フォームをリセット
+      setFormData({
+        title: '',
+        description: '',
+        category: 'other',
+        priority: 'medium',
+        expectedImpact: '',
+      });
+      
+      // ダイアログを閉じる
       onClose();
     } catch (error) {
       console.error('Error saving improvement:', error);
-      alert('保存に失敗しました');
+      console.error('Error details:', {
+        siteId,
+        currentUser: currentUser?.email,
+        formData,
+        editingItem,
+      });
+      alert(`保存に失敗しました: ${error.message || '不明なエラー'}`);
     } finally {
       setIsSaving(false);
     }

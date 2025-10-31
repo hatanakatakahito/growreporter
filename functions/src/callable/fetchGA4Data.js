@@ -152,6 +152,7 @@ export async function fetchGA4DataCallable(request) {
         metrics: [
           { name: 'sessions' },
           { name: 'totalUsers' },
+          { name: 'newUsers' },
           { name: 'screenPageViews' },
           { name: 'engagementRate' },
         ],
@@ -162,8 +163,9 @@ export async function fetchGA4DataCallable(request) {
     const metricsData = {
       sessions: parseInt(response.data.rows?.[0]?.metricValues?.[0]?.value || 0),
       totalUsers: parseInt(response.data.rows?.[0]?.metricValues?.[1]?.value || 0),
-      screenPageViews: parseInt(response.data.rows?.[0]?.metricValues?.[2]?.value || 0),
-      engagementRate: parseFloat(response.data.rows?.[0]?.metricValues?.[3]?.value || 0),
+      newUsers: parseInt(response.data.rows?.[0]?.metricValues?.[2]?.value || 0),
+      screenPageViews: parseInt(response.data.rows?.[0]?.metricValues?.[3]?.value || 0),
+      engagementRate: parseFloat(response.data.rows?.[0]?.metricValues?.[4]?.value || 0),
     };
 
     // 6. コンバージョンイベントの取得

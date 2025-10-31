@@ -47,57 +47,6 @@ export default function AnalysisSummary() {
     dateRange.to
   );
 
-  // 前月比較用の期間を計算
-  const getPreviousMonthRange = (from, to) => {
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
-    const daysDiff = Math.floor((toDate - fromDate) / (1000 * 60 * 60 * 24));
-    
-    const prevTo = new Date(fromDate);
-    prevTo.setDate(prevTo.getDate() - 1);
-    
-    const prevFrom = new Date(prevTo);
-    prevFrom.setDate(prevFrom.getDate() - daysDiff);
-    
-    return {
-      from: format(prevFrom, 'yyyy-MM-dd'),
-      to: format(prevTo, 'yyyy-MM-dd'),
-    };
-  };
-
-  // 前年同月比較用の期間を計算
-  const getYearAgoRange = (from, to) => {
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
-    
-    const yearAgoFrom = new Date(fromDate);
-    yearAgoFrom.setFullYear(yearAgoFrom.getFullYear() - 1);
-    
-    const yearAgoTo = new Date(toDate);
-    yearAgoTo.setFullYear(yearAgoTo.getFullYear() - 1);
-    
-    return {
-      from: format(yearAgoFrom, 'yyyy-MM-dd'),
-      to: format(yearAgoTo, 'yyyy-MM-dd'),
-    };
-  };
-
-  // 前月のデータを取得
-  const previousMonthRange = getPreviousMonthRange(dateRange.from, dateRange.to);
-  const { data: previousMonthData } = useSiteMetrics(
-    selectedSiteId,
-    previousMonthRange.from,
-    previousMonthRange.to
-  );
-
-  // 前年同月のデータを取得
-  const yearAgoRange = getYearAgoRange(dateRange.from, dateRange.to);
-  const { data: yearAgoData } = useSiteMetrics(
-    selectedSiteId,
-    yearAgoRange.from,
-    yearAgoRange.to
-  );
-
   // 13ヶ月分の月次データを取得（選択された期間の終了月を基準に12ヶ月前まで）
   const monthlyStartDate = useMemo(() => {
     if (!dateRange.to) return format(startOfMonth(sub(new Date(), { months: 12 })), 'yyyy-MM-dd');
@@ -118,6 +67,35 @@ export default function AnalysisSummary() {
   } = useGA4MonthlyData(selectedSiteId, monthlyStartDate, monthlyEndDate);
 
   const monthlyData = monthlyDataResponse?.monthlyData || [];
+
+  // 現在の月、前月、前年同月の年月を計算
+  const currentMonth = useMemo(() => {
+    if (!dateRange.to) return format(new Date(), 'yyyy-MM');
+    return format(new Date(dateRange.to), 'yyyy-MM');
+  }, [dateRange.to]);
+
+  const previousMonth = useMemo(() => {
+    if (!dateRange.to) return format(sub(new Date(), { months: 1 }), 'yyyy-MM');
+    return format(sub(new Date(dateRange.to), { months: 1 }), 'yyyy-MM');
+  }, [dateRange.to]);
+
+  const yearAgoMonth = useMemo(() => {
+    if (!dateRange.to) return format(sub(new Date(), { years: 1 }), 'yyyy-MM');
+    return format(sub(new Date(dateRange.to), { years: 1 }), 'yyyy-MM');
+  }, [dateRange.to]);
+
+  // 月次データから該当月のデータを取得
+  const currentMonthData = useMemo(() => {
+    return monthlyData.find(d => d.month === currentMonth);
+  }, [monthlyData, currentMonth]);
+
+  const previousMonthData = useMemo(() => {
+    return monthlyData.find(d => d.month === previousMonth);
+  }, [monthlyData, previousMonth]);
+
+  const yearAgoData = useMemo(() => {
+    return monthlyData.find(d => d.month === yearAgoMonth);
+  }, [monthlyData, yearAgoMonth]);
 
   // 変化率計算
   const calculateChangePercent = (current, previous) => {
@@ -230,33 +208,32 @@ export default function AnalysisSummary() {
   // ローディング中
   if (isLoading && !data) {
     return (
-      <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-dark">
+      <>
         <Sidebar />
-        <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
+        <main className="ml-64 flex-1 bg-gray-50 dark:bg-dark">
           <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
-          <main className="flex-1">
-            <div className="flex min-h-[60vh] items-center justify-center">
-              <LoadingSpinner message="データを読み込んでいます..." />
-            </div>
-          </main>
-        </div>
-      </div>
+          <div className="flex min-h-[60vh] items-center justify-center">
+            <LoadingSpinner message="データを読み込んでいます..." />
+          </div>
+        </main>
+      </>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50 dark:bg-dark">
+    <>
       <Sidebar />
-      <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
+      <main className="ml-64 flex-1 bg-gray-50 dark:bg-dark">
+        {/* ヘッダー */}
         <AnalysisHeader 
           dateRange={dateRange} 
           setDateRange={updateDateRange} 
           showDateRange={true} 
           showSiteInfo={true} 
         />
-        
-        <main className="flex-1">
-          <div className="mx-auto max-w-7xl px-6 py-10">
+
+        {/* コンテンツ */}
+        <div className="mx-auto max-w-7xl px-6 py-10">
             {/* ページタイトル */}
             <div className="mb-8">
               <h2 className="mb-2 text-2xl font-bold text-dark dark:text-white">分析する - 全体サマリー</h2>
@@ -286,49 +263,63 @@ export default function AnalysisSummary() {
                   <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
                     主要指標サマリ
                   </h3>
-                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+                  <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                     <MetricCard
                       title="セッション"
                       currentValue={data?.metrics?.sessions || 0}
-                      previousValue={previousMonthData?.metrics?.sessions || 0}
-                      yearAgoValue={yearAgoData?.metrics?.sessions || 0}
+                      previousValue={previousMonthData?.sessions || 0}
+                      yearAgoValue={yearAgoData?.sessions || 0}
                       tooltip={getTooltip('sessions')}
+                    />
+                    <MetricCard
+                      title="ユーザー"
+                      currentValue={data?.metrics?.totalUsers || 0}
+                      previousValue={previousMonthData?.users || 0}
+                      yearAgoValue={yearAgoData?.users || 0}
+                      tooltip={getTooltip('users')}
+                    />
+                    <MetricCard
+                      title="新規ユーザー"
+                      currentValue={data?.metrics?.newUsers || 0}
+                      previousValue={previousMonthData?.newUsers || 0}
+                      yearAgoValue={yearAgoData?.newUsers || 0}
+                      tooltip={getTooltip('newUsers')}
                     />
                     <MetricCard
                       title="表示回数"
                       currentValue={data?.metrics?.pageViews || 0}
-                      previousValue={previousMonthData?.metrics?.pageViews || 0}
-                      yearAgoValue={yearAgoData?.metrics?.pageViews || 0}
+                      previousValue={previousMonthData?.pageViews || 0}
+                      yearAgoValue={yearAgoData?.pageViews || 0}
                       tooltip={getTooltip('pageViews')}
                     />
                     <MetricCard
                       title="平均PV"
                       currentValue={(data?.metrics?.pageViews || 0) / (data?.metrics?.sessions || 1)}
-                      previousValue={(previousMonthData?.metrics?.pageViews || 0) / (previousMonthData?.metrics?.sessions || 1)}
-                      yearAgoValue={(yearAgoData?.metrics?.pageViews || 0) / (yearAgoData?.metrics?.sessions || 1)}
+                      previousValue={(previousMonthData?.pageViews || 0) / (previousMonthData?.sessions || 1)}
+                      yearAgoValue={(yearAgoData?.pageViews || 0) / (yearAgoData?.sessions || 1)}
                       format="decimal"
                       tooltip={getTooltip('avgPageviews')}
                     />
                     <MetricCard
                       title="ENG率"
                       currentValue={data?.metrics?.engagementRate || 0}
-                      previousValue={previousMonthData?.metrics?.engagementRate || 0}
-                      yearAgoValue={yearAgoData?.metrics?.engagementRate || 0}
+                      previousValue={previousMonthData?.engagementRate || 0}
+                      yearAgoValue={yearAgoData?.engagementRate || 0}
                       format="percent"
                       tooltip={getTooltip('engagementRate')}
                     />
                     <MetricCard
                       title="CV数"
                       currentValue={data?.metrics?.conversions || 0}
-                      previousValue={previousMonthData?.metrics?.conversions || 0}
-                      yearAgoValue={yearAgoData?.metrics?.conversions || 0}
+                      previousValue={previousMonthData?.conversions || 0}
+                      yearAgoValue={yearAgoData?.conversions || 0}
                       tooltip={getTooltip('conversions')}
                     />
                     <MetricCard
                       title="CVR"
                       currentValue={(data?.metrics?.conversions || 0) / (data?.metrics?.sessions || 1)}
-                      previousValue={(previousMonthData?.metrics?.conversions || 0) / (previousMonthData?.metrics?.sessions || 1)}
-                      yearAgoValue={(yearAgoData?.metrics?.conversions || 0) / (yearAgoData?.metrics?.sessions || 1)}
+                      previousValue={(previousMonthData?.conversions || 0) / (previousMonthData?.sessions || 1)}
+                      yearAgoValue={(yearAgoData?.conversions || 0) / (yearAgoData?.sessions || 1)}
                       format="percent"
                       tooltip={getTooltip('conversionRate')}
                     />
@@ -490,43 +481,42 @@ export default function AnalysisSummary() {
             </div>
           </>
         )}
-          </div>
-        </main>
-      </div>
+        </div>
 
-      {/* AI分析フローティングボタン */}
-      {!isError && (
-        <button
-          onClick={() => setIsAISheetOpen(true)}
-          disabled={isLoading}
-          className="fixed bottom-6 right-6 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:shadow-xl hover:scale-105 disabled:cursor-not-allowed disabled:opacity-50"
-          aria-label="AI分析を見る"
-        >
-          <div className="flex flex-col items-center">
-            <Sparkles className="h-6 w-6" />
-            <span className="mt-0.5 text-[10px] font-medium">AI分析</span>
-          </div>
-        </button>
-      )}
+        {/* AI分析フローティングボタン */}
+        {!isError && (
+          <button
+            onClick={() => setIsAISheetOpen(true)}
+            disabled={isLoading}
+            className="fixed bottom-6 right-6 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
+            aria-label="AI分析を見る"
+          >
+            <div className="flex flex-col items-center">
+              <Sparkles className="h-6 w-6" />
+              <span className="mt-0.5 text-[10px] font-medium">AI分析</span>
+            </div>
+          </button>
+        )}
 
-      {/* AI分析サイドシート */}
-      <AISummarySheet
-        isOpen={isAISheetOpen}
-        onClose={() => setIsAISheetOpen(false)}
-        pageType="summary"
-        startDate={dateRange.from}
-        endDate={dateRange.to}
-        metrics={{
-          // 現在期間のデータ
-          users: data?.metrics?.totalUsers,
-          sessions: data?.metrics?.sessions,
-          pageViews: data?.metrics?.pageViews,
-          engagementRate: data?.metrics?.engagementRate,
-          conversions: data?.totalConversions,
-          // 13ヶ月推移データ
-          monthlyData: monthlyData,
-        }}
-      />
-    </div>
+        {/* AI分析サイドシート */}
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          pageType="summary"
+          startDate={dateRange.from}
+          endDate={dateRange.to}
+          metrics={{
+            // 現在期間のデータ
+            users: data?.metrics?.totalUsers,
+            sessions: data?.metrics?.sessions,
+            pageViews: data?.metrics?.pageViews,
+            engagementRate: data?.metrics?.engagementRate,
+            conversions: data?.totalConversions,
+            // 13ヶ月推移データ
+            monthlyData: monthlyData,
+          }}
+        />
+      </main>
+    </>
   );
 }

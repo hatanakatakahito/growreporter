@@ -189,7 +189,7 @@ export default function Register() {
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="組織名を入力"
                     required
-                    className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-body-color outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                    className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                   />
                 </div>
                 <div className="mb-4 grid grid-cols-2 gap-4">
@@ -204,7 +204,7 @@ export default function Register() {
                       onChange={(e) => setLastName(e.target.value)}
                       placeholder="姓を入力"
                       required
-                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-body-color outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                     />
                   </div>
                   <div>
@@ -218,7 +218,7 @@ export default function Register() {
                       onChange={(e) => setFirstName(e.target.value)}
                       placeholder="名を入力"
                       required
-                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-body-color outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                     />
                   </div>
                 </div>
@@ -233,7 +233,7 @@ export default function Register() {
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="電話番号を入力"
                     required
-                    className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-body-color outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                    className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                   />
                 </div>
                 <div className="mb-4">
@@ -245,7 +245,7 @@ export default function Register() {
                     value={industry}
                     onChange={(e) => setIndustry(e.target.value)}
                     required
-                    className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-body-color outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                    className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                   >
                     <option value="">選択してください</option>
                     {INDUSTRIES.map((ind) => (
@@ -267,7 +267,7 @@ export default function Register() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="メールアドレスを入力"
                       required
-                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 pr-11 text-sm text-body-color outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 pr-11 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2">
                       <svg
@@ -311,7 +311,7 @@ export default function Register() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="6文字以上、1つの大文字"
                       required
-                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 pr-11 text-sm text-body-color outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 pr-11 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                     />
                     <button
                       type="button"
