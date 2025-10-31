@@ -52,18 +52,29 @@ export default function Complete() {
         if (siteDoc.exists()) {
           const siteDataLoaded = { id: siteDoc.id, ...siteDoc.data() };
           
-          console.log('[Complete] useEffect実行:', { siteId, needsReload });
+          // リロード実行中フラグをチェック（React Strict Mode対策）
+          const reloadingKey = `site_complete_reloading_${siteId}`;
+          const isReloading = sessionStorage.getItem(reloadingKey);
           
-          // URLパラメータでリロード判定（シンプルで確実）
-          if (needsReload === 'true') {
+          console.log('[Complete] useEffect実行:', { siteId, needsReload, isReloading });
+          
+          // URLパラメータでリロード判定
+          if (needsReload === 'true' && !isReloading) {
             // 初回アクセス: リロードを実行
             console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
             
+            // リロード中フラグを立てる（React Strict Modeでの2回目実行をブロック）
+            sessionStorage.setItem(reloadingKey, 'true');
+            
             // URLパラメータを削除してリロード（リロード後はneedsReloadがなくなる）
             window.location.href = `/sites/complete?siteId=${siteId}`;
-          } else {
+          } else if (!needsReload) {
             // リロード済み: 演出を開始
             console.log('[Complete] リロード済み - 演出を開始します');
+            
+            // リロード中フラグをクリア
+            sessionStorage.removeItem(reloadingKey);
+            
             setSiteData(siteDataLoaded);
             
             // ローディング終了後、演出開始
