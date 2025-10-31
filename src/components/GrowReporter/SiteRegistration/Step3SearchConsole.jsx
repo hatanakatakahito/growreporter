@@ -32,15 +32,13 @@ export default function Step3SearchConsole({ onNext, onBack, initialData = {} })
     e.preventDefault();
     setError('');
 
-    if (!siteUrl) {
-      setError('Search ConsoleのサイトURLを入力してください');
-      return;
-    }
-
+    // Search ConsoleのURLが入力されている場合のみ検証
+    // 任意項目なので、空でもOK
+    
     // 次のステップへデータを渡す
     onNext({
-      searchConsoleSiteUrl: siteUrl,
-      searchConsoleConnected: isConnected,
+      searchConsoleSiteUrl: siteUrl || '',
+      searchConsoleConnected: isConnected && siteUrl ? true : false,
     });
   };
 
@@ -64,7 +62,7 @@ export default function Step3SearchConsole({ onNext, onBack, initialData = {} })
               サイト登録
             </h1>
             <p className="mt-2 text-body-color">
-              Google Search Console を連携します
+              Google Search Console を連携します（任意）
             </p>
           </div>
 
@@ -76,7 +74,7 @@ export default function Step3SearchConsole({ onNext, onBack, initialData = {} })
           {/* フォーム */}
           <div className="rounded-2xl bg-white p-8 shadow dark:bg-dark-2">
             <h2 className="mb-6 text-xl font-semibold text-dark dark:text-white">
-              STEP 3: Search Console連携
+              STEP 3: Search Console連携（任意）
             </h2>
 
             {/* エラーメッセージ */}
@@ -113,7 +111,7 @@ export default function Step3SearchConsole({ onNext, onBack, initialData = {} })
               {/* Google認証ボタン */}
               <div className="mb-6">
                 <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">
-                  Googleアカウント連携
+                  Googleアカウント連携 <span className="text-sm font-normal text-body-color">（任意）</span>
                 </label>
                 <button
                   type="button"
@@ -137,14 +135,14 @@ export default function Step3SearchConsole({ onNext, onBack, initialData = {} })
                   {isConnecting ? '接続中...' : isConnected ? '連携済み' : 'Googleアカウントで連携'}
                 </button>
                 <p className="mt-1.5 text-xs text-body-color">
-                  Search ConsoleデータにアクセスするためにGoogleアカウントとの連携が必要です
+                  Search Consoleデータにアクセスする場合は、Googleアカウントとの連携が必要です
                 </p>
               </div>
 
               {/* Search Console サイトURL */}
               <div className="mb-8">
                 <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">
-                  Search Console サイトURL <span className="text-red">*</span>
+                  Search Console サイトURL <span className="text-sm font-normal text-body-color">（任意）</span>
                 </label>
                 <input
                   type="url"
@@ -152,10 +150,9 @@ export default function Step3SearchConsole({ onNext, onBack, initialData = {} })
                   onChange={(e) => setSiteUrl(e.target.value)}
                   placeholder="https://example.com/"
                   className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
-                  required
                 />
                 <p className="mt-1.5 text-xs text-body-color">
-                  Search Consoleに登録されているプロパティのURLを入力してください
+                  Search Consoleに登録されているプロパティのURLを入力してください（スキップ可能）
                 </p>
               </div>
 

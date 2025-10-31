@@ -26,12 +26,15 @@ import {
  * 各分析メニューへのリンクと説明を表示
  */
 export default function AnalysisNavigation() {
-  const { dateRange, updateDateRange } = useSite();
+  const { selectedSite, dateRange, updateDateRange } = useSite();
 
   // ページタイトルを設定
   useEffect(() => {
     setPageTitle('分析する');
   }, []);
+
+  // Search Console連携状態を確認
+  const hasSearchConsole = selectedSite?.searchConsoleConnected === true;
 
   const analysisCategories = [
     {
@@ -83,12 +86,12 @@ export default function AnalysisNavigation() {
           description: 'オーガニック検索、SNS、広告など流入経路別の効果を測定します。',
           path: '/acquisition/channels',
         },
-        {
+        ...(hasSearchConsole ? [{
           icon: <Search className="h-6 w-6" />,
           title: '流入キーワード元',
           description: '検索キーワードのパフォーマンスから、SEO改善のヒントを得ます。',
           path: '/acquisition/keywords',
-        },
+        }] : []),
         {
           icon: <ExternalLinkIcon className="h-6 w-6" />,
           title: '被リンク元',

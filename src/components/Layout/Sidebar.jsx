@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSite } from '../../contexts/SiteContext';
 
 export default function Sidebar() {
   const location = useLocation();
   const { currentUser, logout } = useAuth();
+  const { selectedSite } = useSite();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
   const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
@@ -45,7 +47,10 @@ export default function Sidebar() {
     return location.pathname === path;
   };
 
-  const menuItems = [
+  // Search Console連携状態を確認
+  const hasSearchConsole = selectedSite?.searchConsoleConnected === true;
+
+  const menuItems = useMemo(() => [
     {
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -81,7 +86,7 @@ export default function Sidebar() {
           hasSubmenu: true,
           submenu: [
             { label: '集客チャネル', path: '/acquisition/channels' },
-            { label: '流入キーワード元', path: '/acquisition/keywords' },
+            ...(hasSearchConsole ? [{ label: '流入キーワード元', path: '/acquisition/keywords' }] : []),
             { label: '被リンク元', path: '/acquisition/referrals' },
           ]
         },
@@ -134,7 +139,7 @@ export default function Sidebar() {
       label: 'サイト管理',
       path: '/sites/list',
     },
-  ];
+  ], [hasSearchConsole]);
 
   return (
     <aside className="fixed left-0 top-0 z-50 h-screen w-64 border-r border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
