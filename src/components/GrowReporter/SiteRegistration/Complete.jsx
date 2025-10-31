@@ -59,16 +59,21 @@ export default function Complete() {
             console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
             sessionStorage.setItem(reloadKey, 'true');
             
-            // リロード実行（ローディング状態を維持）
+            // リロード実行（ローディング状態を維持したまま終了）
             setTimeout(() => {
               window.location.reload();
             }, 500);
-            return; // リロード前にreturnして、finallyブロックを実行しない
-          } else {
-            // 既にリロード済み - フラグをクリアしてデータを設定
-            sessionStorage.removeItem(reloadKey);
-            setSiteData(siteDataLoaded);
+            // ここでreturnして、以降の処理を実行しない
+            return;
           }
+          
+          // 既にリロード済み - フラグをクリアしてデータを設定
+          console.log('[Complete] リロード済み - 演出を開始します');
+          sessionStorage.removeItem(reloadKey);
+          setSiteData(siteDataLoaded);
+          
+          // ローディング終了後、演出開始
+          setTimeout(() => setIsLoading(false), 500);
         } else {
           navigate('/sites/list');
         }
@@ -76,9 +81,6 @@ export default function Complete() {
         console.error('Error loading site:', err);
         navigate('/sites/list');
       }
-      
-      // ローディング終了後、演出開始（リロード時はここに到達しない）
-      setTimeout(() => setIsLoading(false), 500);
     };
 
     loadSiteData();
