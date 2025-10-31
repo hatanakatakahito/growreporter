@@ -13,7 +13,6 @@ export default function Complete() {
   const [searchParams] = useSearchParams();
   const { currentUser } = useAuth();
   const siteId = searchParams.get('siteId');
-  const needsReload = searchParams.get('needsReload');
 
   const [siteData, setSiteData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -51,35 +50,10 @@ export default function Complete() {
         const siteDoc = await getDoc(doc(db, 'sites', siteId));
         if (siteDoc.exists()) {
           const siteDataLoaded = { id: siteDoc.id, ...siteDoc.data() };
+          setSiteData(siteDataLoaded);
           
-          // リロード実行中フラグをチェック（React Strict Mode対策）
-          const reloadingKey = `site_complete_reloading_${siteId}`;
-          const isReloading = sessionStorage.getItem(reloadingKey);
-          
-          console.log('[Complete] useEffect実行:', { siteId, needsReload, isReloading });
-          
-          // URLパラメータでリロード判定
-          if (needsReload === 'true' && !isReloading) {
-            // 初回アクセス: リロードを実行
-            console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
-            
-            // リロード中フラグを立てる（React Strict Modeでの2回目実行をブロック）
-            sessionStorage.setItem(reloadingKey, 'true');
-            
-            // URLパラメータを削除してリロード（リロード後はneedsReloadがなくなる）
-            window.location.href = `/sites/complete?siteId=${siteId}`;
-          } else if (!needsReload) {
-            // リロード済み: 演出を開始
-            console.log('[Complete] リロード済み - 演出を開始します');
-            
-            // リロード中フラグをクリア
-            sessionStorage.removeItem(reloadingKey);
-            
-            setSiteData(siteDataLoaded);
-            
-            // ローディング終了後、演出開始
-            setTimeout(() => setIsLoading(false), 500);
-          }
+          // ローディング終了後、演出開始
+          setTimeout(() => setIsLoading(false), 500);
         } else {
           navigate('/sites/list');
         }
@@ -90,7 +64,7 @@ export default function Complete() {
     };
 
     loadSiteData();
-  }, [siteId, needsReload, navigate]);
+  }, [siteId, navigate]);
 
   // 演出のタイムライン
   useEffect(() => {
