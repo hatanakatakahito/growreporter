@@ -49,7 +49,7 @@ export default function Complete() {
       try {
         const siteDoc = await getDoc(doc(db, 'sites', siteId));
         if (siteDoc.exists()) {
-          setSiteData({ id: siteDoc.id, ...siteDoc.data() });
+          const siteDataLoaded = { id: siteDoc.id, ...siteDoc.data() };
           
           // サイトデータ読み込み後、リロードチェック
           const reloadKey = `site_complete_reloaded_${siteId}`;
@@ -59,14 +59,15 @@ export default function Complete() {
             console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
             sessionStorage.setItem(reloadKey, 'true');
             
-            // 少し待ってからリロード
+            // リロード実行（ローディング状態を維持）
             setTimeout(() => {
               window.location.reload();
             }, 500);
-            return;
+            return; // リロード前にreturnして、finallyブロックを実行しない
           } else {
-            // 既にリロード済み - フラグをクリア
+            // 既にリロード済み - フラグをクリアしてデータを設定
             sessionStorage.removeItem(reloadKey);
+            setSiteData(siteDataLoaded);
           }
         } else {
           navigate('/sites/list');
@@ -74,10 +75,10 @@ export default function Complete() {
       } catch (err) {
         console.error('Error loading site:', err);
         navigate('/sites/list');
-      } finally {
-        // ローディング終了後、演出開始
-        setTimeout(() => setIsLoading(false), 500);
       }
+      
+      // ローディング終了後、演出開始（リロード時はここに到達しない）
+      setTimeout(() => setIsLoading(false), 500);
     };
 
     loadSiteData();
