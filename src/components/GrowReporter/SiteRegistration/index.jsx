@@ -153,14 +153,14 @@ export default function SiteRegistration({ mode = 'new' }) {
       case 2:
         return !!siteData.ga4PropertyId;
       case 3:
-        return true; // Search Console は任意項目
+        return !!siteData.gscSiteUrl;
       case 4:
       case 5:
         return true; // 任意項目
       default:
         return true;
     }
-  }, [currentStep, siteData.siteName, siteData.siteUrl, siteData.siteType, siteData.businessType, siteData.ga4PropertyId]);
+  }, [currentStep, siteData.siteName, siteData.siteUrl, siteData.siteType, siteData.businessType, siteData.ga4PropertyId, siteData.gscSiteUrl]);
 
   // 保存処理
   const saveSiteData = async (nextStep) => {

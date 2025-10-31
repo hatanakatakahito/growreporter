@@ -360,25 +360,6 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
                 {token.google_account && ` (${token.google_account})`}
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setToken(null);
-                setSites([]);
-                setSiteData(prev => ({
-                  ...prev,
-                  gscOauthTokenId: '',
-                  gscGoogleAccount: '',
-                  gscSiteUrl: '',
-                }));
-              }}
-              className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-body-color transition hover:bg-red-50 hover:text-red dark:hover:bg-red-900/20"
-              title="接続を解除"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
 
           {/* サイト選択 */}
