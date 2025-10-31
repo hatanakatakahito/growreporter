@@ -20,7 +20,7 @@ export const onSiteCreated = onDocumentCreated(
     const siteData = snapshot.data();
     const siteId = event.params.siteId;
 
-    console.log(`[onSiteCreated] 新規サイト登録: ${siteData.site_name} (${siteId})`);
+    console.log(`[onSiteCreated] 新規サイト登録: ${siteData.siteName} (${siteId})`);
 
     try {
       // サイト情報にIDを追加
@@ -32,9 +32,9 @@ export const onSiteCreated = onDocumentCreated(
       // 過去3ヶ月分のデータを収集
       await collectHistoricalData(site, 3);
 
-      console.log(`[onSiteCreated] 完了: ${siteData.site_name}`);
+      console.log(`[onSiteCreated] 完了: ${siteData.siteName}`);
     } catch (error) {
-      console.error(`[onSiteCreated] エラー: ${siteData.site_name}`, error);
+      console.error(`[onSiteCreated] エラー: ${siteData.siteName}`, error);
       // エラーが発生してもサイト登録は継続させる
     }
   }

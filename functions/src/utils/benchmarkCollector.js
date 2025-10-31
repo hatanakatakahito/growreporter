@@ -13,9 +13,9 @@ async function fetchMonthlyData(site, yearMonth) {
   const db = getFirestore();
   
   try {
-    const propertyId = site.ga4_property_id;
+    const propertyId = site.ga4PropertyId;
     if (!propertyId) {
-      console.error(`[benchmarkCollector] GA4プロパティIDが未設定: ${site.site_name}`);
+      console.error(`[benchmarkCollector] GA4プロパティIDが未設定: ${site.siteName}`);
       return null;
     }
 
@@ -29,12 +29,12 @@ async function fetchMonthlyData(site, yearMonth) {
     const startDateStr = startDate.toISOString().split('T')[0];
     const endDateStr = endDate.toISOString().split('T')[0];
 
-    console.log(`[benchmarkCollector] データ取得: ${site.site_name} ${yearMonth} (${startDateStr} ~ ${endDateStr})`);
+    console.log(`[benchmarkCollector] データ取得: ${site.siteName} ${yearMonth} (${startDateStr} ~ ${endDateStr})`);
 
     // トークン取得
     const tokenData = await getAndRefreshToken(db, site.id);
     if (!tokenData) {
-      console.error(`[benchmarkCollector] トークン取得失敗: ${site.site_name}`);
+      console.error(`[benchmarkCollector] トークン取得失敗: ${site.siteName}`);
       return null;
     }
 
@@ -65,7 +65,7 @@ async function fetchMonthlyData(site, yearMonth) {
     });
 
     if (!response.data.rows || response.data.rows.length === 0) {
-      console.log(`[benchmarkCollector] データなし: ${site.site_name} (${yearMonth})`);
+      console.log(`[benchmarkCollector] データなし: ${site.siteName} (${yearMonth})`);
       return null;
     }
 
@@ -93,7 +93,7 @@ async function fetchMonthlyData(site, yearMonth) {
       conversionRate: parseFloat(conversionRate),
     };
   } catch (error) {
-    console.error(`[benchmarkCollector] データ取得エラー (${site.site_name} ${yearMonth}):`, error);
+    console.error(`[benchmarkCollector] データ取得エラー (${site.siteName} ${yearMonth}):`, error);
     return null;
   }
 }
@@ -105,11 +105,11 @@ async function fetchMonthlyData(site, yearMonth) {
  */
 export async function collectHistoricalData(site, monthsBack = 3) {
   try {
-    console.log(`[benchmarkCollector] 過去${monthsBack}ヶ月のデータ収集開始: ${site.site_name}`);
+    console.log(`[benchmarkCollector] 過去${monthsBack}ヶ月のデータ収集開始: ${site.siteName}`);
 
-    const propertyId = site.ga4_property_id;
+    const propertyId = site.ga4PropertyId;
     if (!propertyId) {
-      console.error(`[benchmarkCollector] GA4プロパティIDが未設定: ${site.site_name}`);
+      console.error(`[benchmarkCollector] GA4プロパティIDが未設定: ${site.siteName}`);
       return;
     }
 
@@ -124,7 +124,7 @@ export async function collectHistoricalData(site, monthsBack = 3) {
       // 既に存在するかチェック
       const exists = await checkDataExists(site.id, yearMonth);
       if (exists) {
-        console.log(`[benchmarkCollector] データ既存のためスキップ: ${site.site_name} (${yearMonth})`);
+        console.log(`[benchmarkCollector] データ既存のためスキップ: ${site.siteName} (${yearMonth})`);
         continue;
       }
 
@@ -133,8 +133,8 @@ export async function collectHistoricalData(site, monthsBack = 3) {
       if (monthlyData) {
         dataToCollect.push({
           siteId: site.id,
-          siteName: site.site_name,
-          siteType: site.site_type || '',
+          siteName: site.siteName,
+          siteType: site.siteType || '',
           industry: site.industry || '',
           ...monthlyData,
         });
@@ -147,12 +147,12 @@ export async function collectHistoricalData(site, monthsBack = 3) {
     // データをスプレッドシートに追加
     if (dataToCollect.length > 0) {
       await appendBenchmarkDataBatch(dataToCollect);
-      console.log(`[benchmarkCollector] 収集完了: ${site.site_name} (${dataToCollect.length}件)`);
+      console.log(`[benchmarkCollector] 収集完了: ${site.siteName} (${dataToCollect.length}件)`);
     } else {
-      console.log(`[benchmarkCollector] 新規データなし: ${site.site_name}`);
+      console.log(`[benchmarkCollector] 新規データなし: ${site.siteName}`);
     }
   } catch (error) {
-    console.error(`[benchmarkCollector] 収集エラー: ${site.site_name}`, error);
+    console.error(`[benchmarkCollector] 収集エラー: ${site.siteName}`, error);
     throw error;
   }
 }
@@ -163,11 +163,11 @@ export async function collectHistoricalData(site, monthsBack = 3) {
  */
 export async function collectPreviousMonthData(site) {
   try {
-    console.log(`[benchmarkCollector] 前月データ収集開始: ${site.site_name}`);
+    console.log(`[benchmarkCollector] 前月データ収集開始: ${site.siteName}`);
 
-    const propertyId = site.ga4_property_id;
+    const propertyId = site.ga4PropertyId;
     if (!propertyId) {
-      console.error(`[benchmarkCollector] GA4プロパティIDが未設定: ${site.site_name}`);
+      console.error(`[benchmarkCollector] GA4プロパティIDが未設定: ${site.siteName}`);
       return;
     }
 
@@ -179,29 +179,29 @@ export async function collectPreviousMonthData(site) {
     // 既に存在するかチェック
     const exists = await checkDataExists(site.id, yearMonth);
     if (exists) {
-      console.log(`[benchmarkCollector] データ既存のためスキップ: ${site.site_name} (${yearMonth})`);
+      console.log(`[benchmarkCollector] データ既存のためスキップ: ${site.siteName} (${yearMonth})`);
       return;
     }
 
     // データ取得
     const monthlyData = await fetchMonthlyData(site, yearMonth);
     if (!monthlyData) {
-      console.log(`[benchmarkCollector] データなし: ${site.site_name} (${yearMonth})`);
+      console.log(`[benchmarkCollector] データなし: ${site.siteName} (${yearMonth})`);
       return;
     }
 
     // スプレッドシートに追加
     await appendBenchmarkData({
       siteId: site.id,
-      siteName: site.site_name,
-      siteType: site.site_type || '',
+      siteName: site.siteName,
+      siteType: site.siteType || '',
       industry: site.industry || '',
       ...monthlyData,
     });
 
-    console.log(`[benchmarkCollector] 収集完了: ${site.site_name} (${yearMonth})`);
+    console.log(`[benchmarkCollector] 収集完了: ${site.siteName} (${yearMonth})`);
   } catch (error) {
-    console.error(`[benchmarkCollector] 収集エラー: ${site.site_name}`, error);
+    console.error(`[benchmarkCollector] 収集エラー: ${site.siteName}`, error);
     throw error;
   }
 }
