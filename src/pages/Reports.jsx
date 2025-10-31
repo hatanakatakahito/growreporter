@@ -89,7 +89,9 @@ export default function Reports() {
       await deleteDoc(doc(db, 'improvements', id));
     },
     onSuccess: () => {
+      // 「評価する」画面と「改善する」画面の両方のキャッシュを無効化
       queryClient.invalidateQueries({ queryKey: ['completed-improvements', selectedSiteId] });
+      queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
     },
   });
 
@@ -241,6 +243,7 @@ export default function Reports() {
           setEvaluatingItem(null);
         }}
         item={evaluatingItem}
+        siteId={selectedSiteId}
       />
     </>
   );

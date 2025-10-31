@@ -4,7 +4,7 @@ import { db } from '../../config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useQueryClient } from '@tanstack/react-query';
 
-export default function EvaluationDialog({ isOpen, onClose, item }) {
+export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
   const queryClient = useQueryClient();
   
   const [formData, setFormData] = useState({
@@ -47,7 +47,9 @@ export default function EvaluationDialog({ isOpen, onClose, item }) {
         updatedAt: new Date(),
       });
 
-      queryClient.invalidateQueries({ queryKey: ['completed-improvements'] });
+      // 「評価する」画面と「改善する」画面の両方のキャッシュを無効化
+      queryClient.invalidateQueries({ queryKey: ['completed-improvements', siteId] });
+      queryClient.invalidateQueries({ queryKey: ['improvements', siteId] });
       onClose();
     } catch (error) {
       console.error('Error saving evaluation:', error);

@@ -96,7 +96,7 @@ export default function AccountSettings() {
 
   return (
     <MainLayout>
-      <div className="mx-auto max-w-7xl px-6 py-12">
+      <div className="mx-auto max-w-7xl px-6 py-10">
         <div className="mb-8">
           <h1 className="mb-2 text-3xl font-bold text-dark dark:text-white">
             アカウント設定

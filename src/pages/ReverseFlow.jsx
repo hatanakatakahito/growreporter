@@ -39,6 +39,7 @@ export default function ReverseFlow() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [selectedFlowId, setSelectedFlowId] = useState(null);
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFlow, setEditingFlow] = useState(null);
   const [flowForm, setFlowForm] = useState({
@@ -54,6 +55,16 @@ export default function ReverseFlow() {
     setPageTitle('逆算フロー');
   }, []);
 
+  // AI分析ボタンのアニメーション（5秒ごと）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      // アニメーション終了後にリセット
+      setTimeout(() => setIsAnimating(false), 1500);
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // コンバージョンイベントの取得
   const conversionEvents = useMemo(() => {
@@ -70,6 +81,33 @@ export default function ReverseFlow() {
     console.log('[ReverseFlow] フロー設定取得', { count: settings.length, settings });
     return settings;
   }, [selectedSite]);
+
+  // リロード後に新規フローを自動選択
+  useEffect(() => {
+    if (!selectedSiteId) return;
+    
+    // 新規追加後のリロード処理
+    const newFlowId = sessionStorage.getItem(`reverse_flow_new_id_${selectedSiteId}`);
+    if (newFlowId && flowSettings.length > 0) {
+      console.log('[ReverseFlow] リロード後の新規フロー自動選択', { newFlowId });
+      setSelectedFlowId(newFlowId);
+      
+      // フラグとIDをクリア
+      sessionStorage.removeItem(`reverse_flow_saved_${selectedSiteId}`);
+      sessionStorage.removeItem(`reverse_flow_new_id_${selectedSiteId}`);
+    }
+    
+    // 削除後のリロード処理
+    const selectId = sessionStorage.getItem(`reverse_flow_select_id_${selectedSiteId}`);
+    if (selectId && flowSettings.length > 0) {
+      console.log('[ReverseFlow] 削除後のフロー自動選択', { selectId });
+      setSelectedFlowId(selectId);
+      
+      // フラグとIDをクリア
+      sessionStorage.removeItem(`reverse_flow_deleted_${selectedSiteId}`);
+      sessionStorage.removeItem(`reverse_flow_select_id_${selectedSiteId}`);
+    }
+  }, [selectedSiteId, flowSettings]);
 
   // 選択されたフローの詳細
   const selectedFlow = useMemo(() => {
@@ -131,6 +169,23 @@ export default function ReverseFlow() {
       setSelectedFlowId(flowSettings[0].id);
     }
   }, [flowSettings, selectedFlowId]);
+
+  // リロード後の処理（作成・削除後の自動選択）
+  useEffect(() => {
+    const needsReload = sessionStorage.getItem('reverse_flow_needs_reload');
+    
+    if (needsReload === 'reloaded' && flowSettings.length > 0) {
+      console.log('[ReverseFlow] リロード後の自動選択処理');
+      sessionStorage.removeItem('reverse_flow_needs_reload');
+      
+      const nextId = sessionStorage.getItem('reverse_flow_next_id');
+      if (nextId && flowSettings.some(f => f.id === nextId)) {
+        console.log('[ReverseFlow] 指定されたフローを選択', { nextId });
+        setSelectedFlowId(nextId);
+        sessionStorage.removeItem('reverse_flow_next_id');
+      }
+    }
+  }, [flowSettings]);
 
   // 13ヶ月分の期間を計算
   const monthlyDateRange = useMemo(() => {
@@ -220,15 +275,15 @@ export default function ReverseFlow() {
 
   // サイト更新mutation（スネークケースに修正）
   const updateSiteMutation = useMutation({
-    mutationFn: async ({ reverse_flow_settings, newFlowId }) => {
-      console.log('[ReverseFlow] Firestore更新開始', { reverse_flow_settings, newFlowId });
+    mutationFn: async ({ reverse_flow_settings, newFlowId, isDelete }) => {
+      console.log('[ReverseFlow] Firestore更新開始', { reverse_flow_settings, newFlowId, isDelete });
       const siteRef = doc(db, 'sites', selectedSiteId);
       await updateDoc(siteRef, { reverse_flow_settings });
       console.log('[ReverseFlow] Firestore更新完了');
-      return { newFlowId };
+      return { newFlowId, isDelete };
     },
     onSuccess: async (data) => {
-      console.log('[ReverseFlow] Mutation成功', { newFlowId: data.newFlowId });
+      console.log('[ReverseFlow] Mutation成功', { newFlowId: data.newFlowId, isDelete: data.isDelete });
       
       // サイトデータを再取得して完全に更新されるまで待つ
       await queryClient.invalidateQueries({ queryKey: ['sites'] });
@@ -236,15 +291,43 @@ export default function ReverseFlow() {
       
       console.log('[ReverseFlow] サイトデータ再取得完了');
       
-      // 新規フロー追加の場合、そのフローを選択
-      if (data.newFlowId) {
-        console.log('[ReverseFlow] 新規フロー選択', { newFlowId: data.newFlowId });
-        setSelectedFlowId(data.newFlowId);
-      }
-      
+      // ダイアログを閉じる
       setIsDialogOpen(false);
       setEditingFlow(null);
       setFlowForm({ flow_name: '', form_page_path: '', target_cv_event: '' });
+      
+      // 削除時の処理
+      if (data.isDelete) {
+        console.log('[ReverseFlow] 削除時の処理開始');
+        
+        const needsReload = sessionStorage.getItem('reverse_flow_needs_reload');
+        
+        if (needsReload === 'delete') {
+          console.log('[ReverseFlow] 削除後リロード実行');
+          sessionStorage.setItem('reverse_flow_needs_reload', 'reloaded');
+          
+          setTimeout(() => {
+            window.location.reload();
+          }, 100);
+        }
+        return;
+      }
+      
+      // 新規追加時の処理
+      if (data.newFlowId) {
+        console.log('[ReverseFlow] 新規追加時の処理開始');
+        
+        const needsReload = sessionStorage.getItem('reverse_flow_needs_reload');
+        
+        if (needsReload === 'create') {
+          console.log('[ReverseFlow] 作成後リロード実行');
+          sessionStorage.setItem('reverse_flow_needs_reload', 'reloaded');
+          
+          setTimeout(() => {
+            window.location.reload();
+          }, 100);
+        }
+      }
     },
     onError: (error) => {
       console.error('[ReverseFlow] Mutation失敗', error);
@@ -291,6 +374,10 @@ export default function ReverseFlow() {
       newFlowSettings.push(newFlow);
       newFlowId = newFlow.id;
       console.log('[ReverseFlow] 新規フロー作成', { newFlow, newFlowId });
+      
+      // リロードフラグを設定（作成後にリロード）
+      sessionStorage.setItem('reverse_flow_needs_reload', 'create');
+      sessionStorage.setItem('reverse_flow_next_id', newFlowId);
     }
     
     console.log('[ReverseFlow] 保存するフロー設定', { newFlowSettings, newFlowId });
@@ -298,13 +385,36 @@ export default function ReverseFlow() {
   };
 
   const handleDeleteFlow = (flowId) => {
-    const newFlowSettings = flowSettings.filter(f => f.id !== flowId);
-    if (selectedFlowId === flowId && newFlowSettings.length > 0) {
-      setSelectedFlowId(newFlowSettings[0].id);
-    } else if (newFlowSettings.length === 0) {
-      setSelectedFlowId(null);
+    // 削除確認
+    const flowToDelete = flowSettings.find(f => f.id === flowId);
+    if (!flowToDelete) return;
+    
+    if (!window.confirm(`フロー「${flowToDelete.flow_name}」を削除しますか？`)) {
+      return;
     }
-    updateSiteMutation.mutate({ reverse_flow_settings: newFlowSettings });
+    
+    console.log('[ReverseFlow] 削除開始', { flowId, flowToDelete });
+    
+    const newFlowSettings = flowSettings.filter(f => f.id !== flowId);
+    
+    // 選択中のフローを削除する場合
+    let nextFlowId = null;
+    if (selectedFlowId === flowId && newFlowSettings.length > 0) {
+      nextFlowId = newFlowSettings[0].id;
+    }
+    
+    console.log('[ReverseFlow] 削除後のフロー設定', { 
+      newFlowSettingsCount: newFlowSettings.length, 
+      nextFlowId 
+    });
+    
+    // リロードフラグを設定（削除後にリロード）
+    sessionStorage.setItem('reverse_flow_needs_reload', 'delete');
+    if (nextFlowId) {
+      sessionStorage.setItem('reverse_flow_next_id', nextFlowId);
+    }
+    
+    updateSiteMutation.mutate({ reverse_flow_settings: newFlowSettings, isDelete: true });
   };
 
   const isLoading = summaryLoading || monthlyLoading;
@@ -409,8 +519,7 @@ export default function ReverseFlow() {
                               </button>
                               <button
                                 onClick={() => handleDeleteFlow(selectedFlow.id)}
-                                disabled={flowSettings.length === 1}
-                                className="inline-flex items-center gap-2 rounded-lg border border-stroke px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-3 dark:hover:bg-red-900/20"
+                                className="inline-flex items-center gap-2 rounded-lg border border-stroke px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-dark-3 dark:hover:bg-red-900/20"
                               >
                                 <Trash2 className="h-4 w-4" />
                                 削除
@@ -531,22 +640,40 @@ export default function ReverseFlow() {
 
         {/* AI分析フローティングボタン */}
         {selectedFlow && !isLoading && summaryData && (
-          <button
-            onClick={() => setIsAISheetOpen(true)}
-            className="fixed bottom-6 right-6 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
-            aria-label="AI分析を見る"
-          >
-            <div className="flex flex-col items-center">
-              <Sparkles className="h-6 w-6" />
-              <span className="mt-0.5 text-[10px] font-medium">AI分析</span>
-            </div>
-          </button>
+          <div className="fixed bottom-6 right-6 z-30">
+            {/* 波紋エフェクト */}
+            {isAnimating && (
+              <>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-pink-500 ai-button-ripple" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-pink-500 ai-button-ripple" style={{ animationDelay: '0.3s' }} />
+                </div>
+              </>
+            )}
+            
+            {/* メインボタン */}
+            <button
+              onClick={() => setIsAISheetOpen(true)}
+              className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl ${
+                isAnimating ? 'ai-button-pulse' : ''
+              }`}
+              aria-label="AI分析を見る"
+            >
+              <div className="flex flex-col items-center">
+                <Sparkles className={`h-7 w-7 ${isAnimating ? 'ai-icon-sparkle' : ''}`} />
+                <span className="mt-1 text-[11px] font-medium">AI分析</span>
+              </div>
+            </button>
+          </div>
         )}
 
         {/* AI分析サイドシート */}
         <AISummarySheet
           isOpen={isAISheetOpen}
           onClose={() => setIsAISheetOpen(false)}
+          siteId={selectedSiteId}
           pageType="reverseFlow"
           startDate={dateRange.from}
           endDate={dateRange.to}

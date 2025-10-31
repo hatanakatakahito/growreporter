@@ -87,7 +87,9 @@ export default function Improve() {
       });
     },
     onSuccess: () => {
+      // 「改善する」画面と「評価する」画面の両方のキャッシュを無効化
       queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
+      queryClient.invalidateQueries({ queryKey: ['completed-improvements', selectedSiteId] });
     },
   });
 
@@ -97,7 +99,9 @@ export default function Improve() {
       await deleteDoc(doc(db, 'improvements', id));
     },
     onSuccess: () => {
+      // 「改善する」画面と「評価する」画面の両方のキャッシュを無効化
       queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
+      queryClient.invalidateQueries({ queryKey: ['completed-improvements', selectedSiteId] });
     },
   });
 

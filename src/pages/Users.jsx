@@ -3,6 +3,7 @@ import { useSite } from '../contexts/SiteContext';
 import { useGA4UserDemographics } from '../hooks/useGA4UserDemographics';
 import Sidebar from '../components/Layout/Sidebar';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
+import AISummarySheet from '../components/Analysis/AISummarySheet';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
 import { Info, Sparkles } from 'lucide-react';
@@ -46,10 +47,23 @@ const GENDER_COLORS = {
 export default function Users() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [locationType, setLocationType] = useState('city');
+  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   // ページタイトルを設定
   useEffect(() => {
     setPageTitle('ユーザー属性');
+  }, []);
+
+  // AI分析ボタンのアニメーション（5秒ごと）
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsAnimating(true);
+      // アニメーション終了後にリセット
+      setTimeout(() => setIsAnimating(false), 1500);
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const { data: demographicsData, isLoading, isError } = useGA4UserDemographics(
@@ -278,6 +292,52 @@ export default function Users() {
             </>
           )}
         </div>
+
+        {/* AI分析フローティングボタン */}
+        {!isError && (
+          <div className="fixed bottom-6 right-6 z-30">
+            {/* 波紋エフェクト */}
+            {isAnimating && (
+              <>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-pink-500 ai-button-ripple" />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-pink-500 ai-button-ripple" style={{ animationDelay: '0.3s' }} />
+                </div>
+              </>
+            )}
+            
+            {/* メインボタン */}
+            <button
+              onClick={() => setIsAISheetOpen(true)}
+              disabled={isLoading}
+              className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 ${
+                isAnimating ? 'ai-button-pulse' : ''
+              }`}
+              aria-label="AI分析を見る"
+            >
+              <div className="flex flex-col items-center">
+                <Sparkles className={`h-7 w-7 ${isAnimating ? 'ai-icon-sparkle' : ''}`} />
+                <span className="mt-1 text-[11px] font-medium">AI分析</span>
+              </div>
+            </button>
+          </div>
+        )}
+
+        {/* AI分析サイドシート */}
+        <AISummarySheet
+          isOpen={isAISheetOpen}
+          onClose={() => setIsAISheetOpen(false)}
+          siteId={selectedSiteId}
+          pageType="users"
+          startDate={dateRange.from}
+          endDate={dateRange.to}
+          metrics={{
+            demographicsData: demographicsData,
+            chartData: chartData,
+          }}
+        />
       </main>
     </>
   );

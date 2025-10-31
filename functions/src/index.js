@@ -16,7 +16,7 @@ import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 
 // Firebase Admin初期化
 initializeApp({
-  storageBucket: 'growgroupreporter.firebasestorage.app', // 正しいバケット名
+  storageBucket: 'growgroupreporter.firebasestorage.app',
 });
 
 /**

@@ -38,7 +38,7 @@ export default function AnalysisSummary() {
 
   // ページタイトルを設定
   useEffect(() => {
-    setPageTitle('日次データ');
+    setPageTitle('全体サマリー');
   }, []);
 
   // AI分析ボタンのアニメーション（5秒ごと）
