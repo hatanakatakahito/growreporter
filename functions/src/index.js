@@ -13,6 +13,8 @@ import { fetchMetadataCallable } from './callable/fetchMetadata.js';
 import { fetchGA4UserDemographicsCallable } from './callable/fetchGA4UserDemographics.js';
 import { exchangeOAuthCodeCallable } from './callable/exchangeOAuthCode.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
+import { onSiteCreated } from './triggers/onSiteCreated.js';
+import { collectMonthlyBenchmark } from './scheduled/collectMonthlyBenchmark.js';
 
 // Firebase Admin初期化
 initializeApp({
@@ -152,3 +154,15 @@ export const cleanupCache = onSchedule({
   timeoutSeconds: 300,
   region: 'asia-northeast1', // 東京リージョン
 }, cleanupCacheScheduled);
+
+/**
+ * サイト新規登録時のトリガー
+ * 過去3ヶ月分のベンチマークデータを自動収集
+ */
+export { onSiteCreated };
+
+/**
+ * 月次ベンチマークデータ収集 Scheduled Function
+ * 毎月1日 01:00 (Asia/Tokyo) に実行
+ */
+export { collectMonthlyBenchmark };
