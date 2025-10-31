@@ -161,7 +161,7 @@ export default function ConversionList() {
         <AnalysisHeader
           dateRange={dateRange}
           setDateRange={updateDateRange}
-          showDateRange={false}
+          showDateRange={true}
           showSiteInfo={true}
         />
 
