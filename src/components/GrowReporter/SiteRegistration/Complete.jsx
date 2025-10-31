@@ -50,6 +50,24 @@ export default function Complete() {
         const siteDoc = await getDoc(doc(db, 'sites', siteId));
         if (siteDoc.exists()) {
           setSiteData({ id: siteDoc.id, ...siteDoc.data() });
+          
+          // サイトデータ読み込み後、リロードチェック
+          const reloadKey = `site_complete_reloaded_${siteId}`;
+          const hasReloaded = sessionStorage.getItem(reloadKey);
+          
+          if (!hasReloaded) {
+            console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
+            sessionStorage.setItem(reloadKey, 'true');
+            
+            // 少し待ってからリロード
+            setTimeout(() => {
+              window.location.reload();
+            }, 500);
+            return;
+          } else {
+            // 既にリロード済み - フラグをクリア
+            sessionStorage.removeItem(reloadKey);
+          }
         } else {
           navigate('/sites/list');
         }
