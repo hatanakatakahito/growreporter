@@ -41,9 +41,7 @@ export default function Complete() {
   // サイトデータ読み込み
   useEffect(() => {
     const reloadKey = `site_complete_reloaded_${siteId}`;
-    const hasReloaded = sessionStorage.getItem(reloadKey);
-    
-    console.log('[Complete] useEffect実行:', { siteId, hasReloaded });
+    const reloadCountKey = `site_complete_reload_count_${siteId}`;
     
     const loadSiteData = async () => {
       if (!siteId) {
@@ -56,19 +54,22 @@ export default function Complete() {
         if (siteDoc.exists()) {
           const siteDataLoaded = { id: siteDoc.id, ...siteDoc.data() };
           
-          // リロードチェック（sessionStorageのみを使用）
-          if (!hasReloaded) {
+          // リロード回数をチェック
+          const reloadCount = parseInt(sessionStorage.getItem(reloadCountKey) || '0');
+          console.log('[Complete] useEffect実行:', { siteId, reloadCount });
+          
+          if (reloadCount === 0) {
+            // 初回アクセス: リロードを実行
             console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
-            sessionStorage.setItem(reloadKey, 'true');
-            
-            // リロード実行
+            sessionStorage.setItem(reloadCountKey, '1');
             window.location.reload();
-            return; // この後のコードは実行されない
+            return;
           }
           
-          // 既にリロード済み - フラグをクリアしてデータを設定
+          // リロード済み（1回以上）: フラグをクリアしてデータを設定
           console.log('[Complete] リロード済み - 演出を開始します');
           sessionStorage.removeItem(reloadKey);
+          sessionStorage.removeItem(reloadCountKey);
           setSiteData(siteDataLoaded);
           
           // ローディング終了後、演出開始
