@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../config/firebase';
@@ -13,6 +13,7 @@ export default function Complete() {
   const [searchParams] = useSearchParams();
   const { currentUser } = useAuth();
   const siteId = searchParams.get('siteId');
+  const needsReload = searchParams.get('needsReload');
 
   const [siteData, setSiteData] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -24,9 +25,6 @@ export default function Complete() {
     width: window.innerWidth,
     height: window.innerHeight,
   });
-  
-  // リロード済みフラグ（React Strict Modeでの複数回実行を防ぐ）
-  const hasTriggeredReloadRef = useRef(false);
 
   // ウィンドウサイズ変更を監視
   useEffect(() => {
@@ -54,28 +52,22 @@ export default function Complete() {
         if (siteDoc.exists()) {
           const siteDataLoaded = { id: siteDoc.id, ...siteDoc.data() };
           
-          // リロードフラグをチェック（siteIdごとに分離）
-          const reloadKey = `site_complete_reloaded_${siteId}`;
-          const needsReload = sessionStorage.getItem(reloadKey);
-          console.log('[Complete] useEffect実行:', { siteId, needsReload, hasTriggeredReload: hasTriggeredReloadRef.current });
+          console.log('[Complete] useEffect実行:', { siteId, needsReload });
           
+          // URLパラメータでリロード判定（シンプルで確実）
           if (needsReload === 'true') {
+            // 初回アクセス: リロードを実行
+            console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
+            
+            // URLパラメータを削除してリロード（リロード後はneedsReloadがなくなる）
+            window.location.href = `/sites/complete?siteId=${siteId}`;
+          } else {
             // リロード済み: 演出を開始
             console.log('[Complete] リロード済み - 演出を開始します');
-            sessionStorage.removeItem(reloadKey);
             setSiteData(siteDataLoaded);
             
             // ローディング終了後、演出開始
             setTimeout(() => setIsLoading(false), 500);
-          } else if (!needsReload && !hasTriggeredReloadRef.current) {
-            // 初回アクセス: リロードを実行（useRefで1回だけ実行を保証）
-            console.log('[Complete] サイト登録完了 - ヘッダー更新のためリロードします');
-            hasTriggeredReloadRef.current = true;
-            sessionStorage.setItem(reloadKey, 'true');
-            
-            setTimeout(() => {
-              window.location.reload();
-            }, 100);
           }
         } else {
           navigate('/sites/list');
@@ -87,7 +79,7 @@ export default function Complete() {
     };
 
     loadSiteData();
-  }, [siteId, navigate]);
+  }, [siteId, needsReload, navigate]);
 
   // 演出のタイムライン
   useEffect(() => {
