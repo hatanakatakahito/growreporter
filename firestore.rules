@@ -15,7 +15,12 @@ service cloud.firestore {
         (resource.data.userId == request.auth.uid || !('userId' in resource.data));
       allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
       allow update: if request.auth != null && 
-        (resource.data.userId == request.auth.uid || !('userId' in resource.data));
+        (
+          // 既存ドキュメントにuserIdがない場合、またはuserIdが一致する場合
+          (resource.data.userId == request.auth.uid || !('userId' in resource.data)) &&
+          // 更新後のuserIdが自分のuidと一致する場合、またはuserIdが設定されていない場合
+          (request.resource.data.userId == request.auth.uid || !('userId' in request.resource.data))
+        );
       allow delete: if request.auth != null && 
         (resource.data.userId == request.auth.uid || !('userId' in resource.data));
     }
