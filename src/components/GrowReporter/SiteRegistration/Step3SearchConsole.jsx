@@ -42,6 +42,14 @@ export default function Step3SearchConsole({ onNext, onBack, initialData = {} })
     });
   };
 
+  const handleSkip = () => {
+    // Search Consoleをスキップして次へ
+    onNext({
+      searchConsoleSiteUrl: '',
+      searchConsoleConnected: false,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 py-12" style={{
       backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32' width='32' height='32' fill='none' stroke='%23cbd5e1'%3e%3ccircle fill='%23cbd5e1' cx='16' cy='16' r='0.5'/%3e%3c/svg%3e")`,
@@ -165,12 +173,21 @@ export default function Step3SearchConsole({ onNext, onBack, initialData = {} })
                 >
                   戻る
                 </button>
-                <button
-                  type="submit"
-                  className="rounded-md bg-primary px-6 py-3 text-sm font-medium text-white hover:bg-opacity-90"
-                >
-                  次へ（データ設定）
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={handleSkip}
+                    className="rounded-md border border-stroke px-6 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                  >
+                    スキップ
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-md bg-primary px-6 py-3 text-sm font-medium text-white hover:bg-opacity-90"
+                  >
+                    次へ（データ設定）
+                  </button>
+                </div>
               </div>
             </form>
           </div>
