@@ -56,7 +56,8 @@ export default function AnalysisSummary() {
   const { data, isLoading, isError } = useSiteMetrics(
     selectedSiteId,
     dateRange.from,
-    dateRange.to
+    dateRange.to,
+    selectedSite?.searchConsoleConnected
   );
 
   // 13ヶ月分の月次データを取得（選択された期間の終了月を基準に12ヶ月前まで）

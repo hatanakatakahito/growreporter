@@ -6,9 +6,10 @@ import { useGSCData } from './useGSCData';
  * @param {string} siteId - サイトID
  * @param {string} startDate - 開始日 (YYYY-MM-DD)
  * @param {string} endDate - 終了日 (YYYY-MM-DD)
+ * @param {boolean} hasSearchConsole - Search Console連携状態（デフォルト: true）
  * @returns {object} - GA4とGSCのデータ、ローディング状態、エラー状態
  */
-export function useSiteMetrics(siteId, startDate, endDate) {
+export function useSiteMetrics(siteId, startDate, endDate, hasSearchConsole = true) {
   // ダッシュボード用の基本メトリクスを取得
   const ga4Query = useGA4Data(
     siteId,
@@ -17,7 +18,14 @@ export function useSiteMetrics(siteId, startDate, endDate) {
     ['sessions', 'totalUsers', 'newUsers', 'screenPageViews', 'engagementRate', 'conversions'],
     []
   );
-  const gscQuery = useGSCData(siteId, startDate, endDate);
+  
+  // Search Console連携がある場合のみGSCデータを取得
+  const gscQuery = useGSCData(
+    siteId,
+    startDate,
+    endDate,
+    { enabled: hasSearchConsole && !!siteId && !!startDate && !!endDate }
+  );
 
   // データを統合
   const data = ga4Query.data || gscQuery.data ? {
@@ -46,15 +54,15 @@ export function useSiteMetrics(siteId, startDate, endDate) {
     gsc: gscQuery.data,
     
     // ローディング状態
-    isLoading: ga4Query.isLoading || gscQuery.isLoading,
+    isLoading: ga4Query.isLoading || (hasSearchConsole && gscQuery.isLoading),
     isGA4Loading: ga4Query.isLoading,
     isGSCLoading: gscQuery.isLoading,
     
-    // エラー状態
-    isError: ga4Query.isError || gscQuery.isError,
+    // エラー状態（GSC未連携の場合はGSCエラーを無視）
+    isError: ga4Query.isError || (hasSearchConsole && gscQuery.isError),
     isGA4Error: ga4Query.isError,
     isGSCError: gscQuery.isError,
-    error: ga4Query.error || gscQuery.error,
+    error: ga4Query.error || (hasSearchConsole ? gscQuery.error : null),
     ga4Error: ga4Query.error,
     gscError: gscQuery.error,
     

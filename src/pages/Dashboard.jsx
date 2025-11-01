@@ -54,7 +54,8 @@ export default function Dashboard() {
   const { data, isLoading, isError, error, refetch } = useSiteMetrics(
     selectedSiteId,
     dateRange.from,
-    dateRange.to
+    dateRange.to,
+    selectedSite?.searchConsoleConnected
   );
 
   // 前月比較用の期間を計算
@@ -97,7 +98,8 @@ export default function Dashboard() {
   const { data: previousMonthData } = useSiteMetrics(
     selectedSiteId,
     previousMonthRange.from,
-    previousMonthRange.to
+    previousMonthRange.to,
+    selectedSite?.searchConsoleConnected
   );
 
   // 前年同月のデータを取得
@@ -105,7 +107,8 @@ export default function Dashboard() {
   const { data: yearAgoData } = useSiteMetrics(
     selectedSiteId,
     yearAgoRange.from,
-    yearAgoRange.to
+    yearAgoRange.to,
+    selectedSite?.searchConsoleConnected
   );
 
   // AI分析を生成
