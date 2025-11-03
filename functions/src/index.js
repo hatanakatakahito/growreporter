@@ -1,5 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall } from 'firebase-functions/v2/https';
+import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { initializeApp } from 'firebase-admin/app';
 import { fetchGA4DataCallable } from './callable/fetchGA4Data.js';
 import { fetchGA4MonthlyDataCallable } from './callable/fetchGA4MonthlyData.js';
@@ -12,7 +13,10 @@ import { generateAISummaryCallable } from './callable/generateAISummary.js';
 import { fetchMetadataCallable } from './callable/fetchMetadata.js';
 import { fetchGA4UserDemographicsCallable } from './callable/fetchGA4UserDemographics.js';
 import { exchangeOAuthCodeCallable } from './callable/exchangeOAuthCode.js';
+import { testSheetsConnectionCallable } from './callable/testSheetsConnection.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
+import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
+import { onSiteCreatedTrigger } from './triggers/onSiteCreated.js';
 
 // Firebase Admin初期化
 initializeApp({
@@ -142,6 +146,17 @@ export const exchangeOAuthCode = onCall({
 }, exchangeOAuthCodeCallable);
 
 /**
+ * Google Sheets API接続テスト Callable Function
+ * スプレッドシートへの読み書きが正しく動作するかテスト
+ */
+export const testSheetsConnection = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, testSheetsConnectionCallable);
+
+/**
  * キャッシュクリーンアップ Scheduled Function
  * 毎日午前3時（JST）に実行
  */
@@ -152,3 +167,27 @@ export const cleanupCache = onSchedule({
   timeoutSeconds: 300,
   region: 'asia-northeast1', // 東京リージョン
 }, cleanupCacheScheduled);
+
+/**
+ * Googleスプレッドシートエクスポート Scheduled Function
+ * 毎日午前4時（JST）に実行
+ * 全サイトの前月データをスプレッドシートに自動エクスポート
+ */
+export const exportToSheets = onSchedule({
+  schedule: '0 4 * * *', // 毎日午前4時
+  timeZone: 'Asia/Tokyo',
+  memory: '512MiB',
+  timeoutSeconds: 540, // 9分
+  region: 'asia-northeast1', // 東京リージョン
+}, exportToSheetsScheduled);
+
+/**
+ * サイト作成時トリガー
+ * 新規サイト登録時に過去3ヶ月分のデータをスプレッドシートに自動エクスポート
+ */
+export const siteCreatedSheetsExport = onDocumentCreated({
+  document: 'sites/{siteId}',
+  region: 'asia-northeast1', // 東京リージョン
+  memory: '512MiB',
+  timeoutSeconds: 300, // 5分
+}, onSiteCreatedTrigger);
