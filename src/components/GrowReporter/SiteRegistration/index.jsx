@@ -153,14 +153,14 @@ export default function SiteRegistration({ mode = 'new' }) {
       case 2:
         return !!siteData.ga4PropertyId;
       case 3:
-        return !!siteData.gscSiteUrl;
+        return true; // Search Console連携は任意（スキップ可能）
       case 4:
       case 5:
         return true; // 任意項目
       default:
         return true;
     }
-  }, [currentStep, siteData.siteName, siteData.siteUrl, siteData.siteType, siteData.businessType, siteData.ga4PropertyId, siteData.gscSiteUrl]);
+  }, [currentStep, siteData.siteName, siteData.siteUrl, siteData.siteType, siteData.businessType, siteData.ga4PropertyId]);
 
   // 保存処理
   const saveSiteData = async (nextStep) => {
@@ -301,7 +301,7 @@ export default function SiteRegistration({ mode = 'new' }) {
               STEP {currentStep}: {
                 currentStep === 1 ? 'サイト基本情報' :
                 currentStep === 2 ? 'GA4連携' :
-                currentStep === 3 ? 'Search Console連携' :
+                currentStep === 3 ? 'Search Console連携（任意）' :
                 currentStep === 4 ? 'コンバージョン設定（任意）' :
                 'KPI設定（任意）'
               }
@@ -310,7 +310,7 @@ export default function SiteRegistration({ mode = 'new' }) {
               {
                 currentStep === 1 ? 'サイト名やURL、各種サイト種類やビジネス形態を入力してください' :
                 currentStep === 2 ? 'Google Analytics 4のプロパティを連携します' :
-                currentStep === 3 ? 'Google Search Consoleのサイトを連携します' :
+                currentStep === 3 ? 'Google Search Consoleのサイトを連携します（スキップ可能）' :
                 currentStep === 4 ? 'コンバージョンイベントを設定します（スキップ可能）' :
                 '目標KPIを設定します（スキップ可能）'
               }

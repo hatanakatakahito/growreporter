@@ -324,7 +324,8 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
             Google Search Console に接続
           </h3>
           <p className="mb-6 text-sm text-body-color">
-            Googleアカウントで認証し、Search Consoleサイトにアクセスします
+            Googleアカウントで認証し、Search Consoleサイトにアクセスします<br />
+            <span className="text-gray-500">※ この設定は任意です。スキップして次のステップに進むこともできます</span>
           </p>
           <button
             onClick={handleConnect}
@@ -366,7 +367,7 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
           <div>
             <label htmlFor="gsc-site" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
               Search Consoleサイトを選択
-              <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+              <span className="rounded bg-gray-500 px-1.5 py-0.5 text-xs text-white">任意</span>
             </label>
             
             {isLoadingSites ? (
