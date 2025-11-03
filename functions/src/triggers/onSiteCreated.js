@@ -5,26 +5,36 @@ import { fetchGA4MonthlyDataCallable } from '../callable/fetchGA4MonthlyData.js'
 import { subMonths, format, startOfMonth, endOfMonth } from 'date-fns';
 
 /**
- * サイト作成時のFirestoreトリガー
- * 新規サイト登録完了時に過去3ヶ月分のデータをGoogleスプレッドシートに自動エクスポート
+ * サイト登録完了時のFirestoreトリガー
+ * setupCompletedが false → true に変更された時に過去3ヶ月分のデータをGoogleスプレッドシートに自動エクスポート
  */
 export async function onSiteCreatedTrigger(event) {
   const siteId = event.params.siteId;
-  const siteData = event.data.data();
+  const afterData = event.data.after?.data();
+  const beforeData = event.data.before?.data();
   const db = getFirestore();
 
   logger.info('[onSiteCreated] トリガー開始:', {
     siteId,
-    siteName: siteData?.siteName,
-    setupCompleted: siteData?.setupCompleted,
+    siteName: afterData?.siteName,
+    beforeSetupCompleted: beforeData?.setupCompleted,
+    afterSetupCompleted: afterData?.setupCompleted,
   });
 
   try {
-    // setupCompletedがtrueになった時のみ実行（サイト登録完了時）
-    if (!siteData?.setupCompleted) {
-      logger.info('[onSiteCreated] setupCompletedがfalseのためスキップ');
+    // setupCompletedが false → true に変わった時のみ実行
+    const wasNotCompleted = !beforeData?.setupCompleted;
+    const isNowCompleted = afterData?.setupCompleted === true;
+
+    if (!wasNotCompleted || !isNowCompleted) {
+      logger.info('[onSiteCreated] setupCompletedの変更がないためスキップ', {
+        wasNotCompleted,
+        isNowCompleted,
+      });
       return null;
     }
+
+    const siteData = afterData;
 
     // GA4連携が完了しているか確認
     if (!siteData.ga4PropertyId || !siteData.ga4OauthTokenId) {
@@ -77,8 +87,8 @@ export async function onSiteCreatedTrigger(event) {
             yearMonth,
             sessions: monthData.sessions || 0,
             newUsers: monthData.newUsers || 0,
-            users: monthData.totalUsers || 0,
-            pageViews: monthData.screenPageViews || 0,
+            users: monthData.users || 0,
+            pageViews: monthData.pageViews || 0,
             engagementRate: monthData.engagementRate || 0,
             conversions: monthData.conversions || 0,
           }

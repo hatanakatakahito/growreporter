@@ -75,8 +75,8 @@ export async function exportToSheetsScheduled() {
             yearMonth,
             sessions: monthData.sessions || 0,
             newUsers: monthData.newUsers || 0,
-            users: monthData.totalUsers || 0,
-            pageViews: monthData.screenPageViews || 0,
+            users: monthData.users || 0,
+            pageViews: monthData.pageViews || 0,
             engagementRate: monthData.engagementRate || 0,
             conversions: monthData.conversions || 0,
           }

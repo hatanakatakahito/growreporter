@@ -1,6 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall } from 'firebase-functions/v2/https';
-import { onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import { initializeApp } from 'firebase-admin/app';
 import { fetchGA4DataCallable } from './callable/fetchGA4Data.js';
 import { fetchGA4MonthlyDataCallable } from './callable/fetchGA4MonthlyData.js';
@@ -182,10 +182,10 @@ export const exportToSheets = onSchedule({
 }, exportToSheetsScheduled);
 
 /**
- * サイト作成時トリガー
- * 新規サイト登録時に過去3ヶ月分のデータをスプレッドシートに自動エクスポート
+ * サイト登録完了時トリガー
+ * サイト登録完了時（setupCompleted: false → true）に過去3ヶ月分のデータをスプレッドシートに自動エクスポート
  */
-export const siteCreatedSheetsExport = onDocumentCreated({
+export const siteCreatedSheetsExport = onDocumentWritten({
   document: 'sites/{siteId}',
   region: 'asia-northeast1', // 東京リージョン
   memory: '512MiB',
