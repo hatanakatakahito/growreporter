@@ -1,20 +1,15 @@
 import { useGA4Data } from './useGA4Data';
 import { useGSCData } from './useGSCData';
-import { useSite } from '../contexts/SiteContext';
 
 /**
  * サイトの全指標（GA4 + GSC）を取得するカスタムフック
  * @param {string} siteId - サイトID
  * @param {string} startDate - 開始日 (YYYY-MM-DD)
  * @param {string} endDate - 終了日 (YYYY-MM-DD)
+ * @param {boolean} hasGSCConnection - GSC連携の有無
  * @returns {object} - GA4とGSCのデータ、ローディング状態、エラー状態
  */
-export function useSiteMetrics(siteId, startDate, endDate) {
-  const { selectedSite } = useSite();
-  
-  // Search Console未連携の場合をチェック
-  const hasGSCConnection = selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId;
-  
+export function useSiteMetrics(siteId, startDate, endDate, hasGSCConnection = true) {
   // ダッシュボード用の基本メトリクスを取得
   const ga4Query = useGA4Data(
     siteId,
@@ -23,7 +18,7 @@ export function useSiteMetrics(siteId, startDate, endDate) {
     ['sessions', 'totalUsers', 'newUsers', 'screenPageViews', 'engagementRate', 'conversions'],
     []
   );
-  const gscQuery = useGSCData(siteId, startDate, endDate);
+  const gscQuery = useGSCData(siteId, startDate, endDate, hasGSCConnection);
 
   // データを統合
   const data = ga4Query.data || gscQuery.data ? {

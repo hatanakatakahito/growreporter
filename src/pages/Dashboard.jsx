@@ -50,11 +50,15 @@ export default function Dashboard() {
     }
   }, [searchParams, selectedSiteId, sites, selectSite]);
 
+  // Search Console連携の有無をチェック
+  const hasGSCConnection = selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId;
+
   // 現在の期間のデータ取得
   const { data, isLoading, isError, error, refetch } = useSiteMetrics(
     selectedSiteId,
     dateRange.from,
-    dateRange.to
+    dateRange.to,
+    hasGSCConnection
   );
 
   // 前月比較用の期間を計算
@@ -97,7 +101,8 @@ export default function Dashboard() {
   const { data: previousMonthData } = useSiteMetrics(
     selectedSiteId,
     previousMonthRange.from,
-    previousMonthRange.to
+    previousMonthRange.to,
+    hasGSCConnection
   );
 
   // 前年同月のデータを取得
@@ -105,7 +110,8 @@ export default function Dashboard() {
   const { data: yearAgoData } = useSiteMetrics(
     selectedSiteId,
     yearAgoRange.from,
-    yearAgoRange.to
+    yearAgoRange.to,
+    hasGSCConnection
   );
 
   // AI分析を生成

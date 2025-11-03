@@ -52,11 +52,15 @@ export default function AnalysisSummary() {
     return () => clearInterval(interval);
   }, []);
 
+  // Search Console連携の有無をチェック
+  const hasGSCConnection = selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId;
+
   // 現在の期間のデータ取得
   const { data, isLoading, isError } = useSiteMetrics(
     selectedSiteId,
     dateRange.from,
-    dateRange.to
+    dateRange.to,
+    hasGSCConnection
   );
 
   // 13ヶ月分の月次データを取得（選択された期間の終了月を基準に12ヶ月前まで）

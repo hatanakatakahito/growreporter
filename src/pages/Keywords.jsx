@@ -46,7 +46,8 @@ export default function Keywords() {
   const { data: gscData, isLoading, isError, error } = useGSCData(
     selectedSiteId,
     dateRange.from,
-    dateRange.to
+    dateRange.to,
+    hasGSCConnection
   );
 
   // データ整形
