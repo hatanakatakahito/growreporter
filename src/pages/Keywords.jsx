@@ -29,7 +29,7 @@ import {
  * Search Console の検索クエリデータを表示
  */
 export default function Keywords() {
-  const { selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [activeTab, setActiveTab] = useState('table');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [hiddenSeries, setHiddenSeries] = useState({});
@@ -38,6 +38,9 @@ export default function Keywords() {
   useEffect(() => {
     setPageTitle('流入キーワード元');
   }, []);
+  
+  // Search Console未連携の場合をチェック
+  const hasGSCConnection = selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId;
 
   // Search Console データ取得
   const { data: gscData, isLoading, isError, error } = useGSCData(
@@ -186,7 +189,27 @@ export default function Keywords() {
             </p>
           </div>
 
-          {isLoading ? (
+          {!hasGSCConnection ? (
+            <div className="rounded-lg border border-orange-200 bg-orange-50 p-12 text-center dark:border-orange-900/30 dark:bg-orange-900/20">
+              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/30">
+                <svg className="h-10 w-10 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="mb-3 text-xl font-semibold text-orange-800 dark:text-orange-300">
+                Search Consoleが連携されていません
+              </h3>
+              <p className="mb-6 text-orange-700 dark:text-orange-400">
+                流入キーワードデータを表示するには、Search Consoleとの連携が必要です。
+              </p>
+              <a
+                href={`/sites/${selectedSiteId}/edit?step=3`}
+                className="inline-block rounded-md bg-orange-600 px-8 py-3 text-sm font-medium text-white transition hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600"
+              >
+                Search Consoleを連携する
+              </a>
+            </div>
+          ) : isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
           ) : isError ? (
             <ErrorAlert

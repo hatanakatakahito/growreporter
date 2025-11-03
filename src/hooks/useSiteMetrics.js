@@ -1,5 +1,6 @@
 import { useGA4Data } from './useGA4Data';
 import { useGSCData } from './useGSCData';
+import { useSite } from '../contexts/SiteContext';
 
 /**
  * サイトの全指標（GA4 + GSC）を取得するカスタムフック
@@ -9,6 +10,11 @@ import { useGSCData } from './useGSCData';
  * @returns {object} - GA4とGSCのデータ、ローディング状態、エラー状態
  */
 export function useSiteMetrics(siteId, startDate, endDate) {
+  const { selectedSite } = useSite();
+  
+  // Search Console未連携の場合をチェック
+  const hasGSCConnection = selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId;
+  
   // ダッシュボード用の基本メトリクスを取得
   const ga4Query = useGA4Data(
     siteId,

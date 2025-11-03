@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
+import { useSite } from '../contexts/SiteContext';
 
 /**
  * GSCデータを取得するカスタムフック
@@ -11,6 +12,11 @@ import { functions } from '../config/firebase';
  * @returns {object} - Query結果
  */
 export function useGSCData(siteId, startDate, endDate, options = {}) {
+  const { selectedSite } = useSite();
+  
+  // Search Console未連携の場合はクエリを無効化
+  const hasGSCConnection = selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId;
+  
   return useQuery({
     queryKey: ['gsc-data', siteId, startDate, endDate],
     queryFn: async () => {
@@ -22,7 +28,7 @@ export function useGSCData(siteId, startDate, endDate, options = {}) {
       console.log('[useGSCData] Data fetched successfully');
       return result.data;
     },
-    enabled: !!siteId && !!startDate && !!endDate,
+    enabled: !!siteId && !!startDate && !!endDate && hasGSCConnection,
     ...options,
   });
 }
