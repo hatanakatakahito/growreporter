@@ -258,8 +258,8 @@ export default function SiteRegistration({ mode = 'new' }) {
         completedSiteId = docRef.id;
       }
 
-      // 完了画面へリダイレクト
-      navigate(`/sites/complete?siteId=${completedSiteId}`);
+      // 完了画面へリダイレクト（強制リロードして新規サイトをSiteContextに反映）
+      window.location.href = `/sites/complete?siteId=${completedSiteId}`;
     } catch (err) {
       console.error('Error completing setup:', err);
       setError('保存中にエラーが発生しました: ' + err.message);

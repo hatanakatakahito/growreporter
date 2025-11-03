@@ -23,7 +23,7 @@ export function useGSCData(siteId, startDate, endDate, hasGSCConnection = true, 
       console.log('[useGSCData] Data fetched successfully');
       return result.data;
     },
-    enabled: !!siteId && !!startDate && !!endDate && hasGSCConnection,
+    enabled: !!siteId && !!startDate && !!endDate && !!hasGSCConnection,
     ...options,
   });
 }

@@ -39,8 +39,8 @@ export default function Keywords() {
     setPageTitle('流入キーワード元');
   }, []);
   
-  // Search Console未連携の場合をチェック
-  const hasGSCConnection = selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId;
+  // Search Console未連携の場合をチェック（確実にブール値にする）
+  const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
 
   // Search Console データ取得
   const { data: gscData, isLoading, isError, error } = useGSCData(
@@ -191,23 +191,19 @@ export default function Keywords() {
           </div>
 
           {!hasGSCConnection ? (
-            <div className="rounded-lg border border-orange-200 bg-orange-50 p-12 text-center dark:border-orange-900/30 dark:bg-orange-900/20">
-              <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/30">
-                <svg className="h-10 w-10 text-orange-600 dark:text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                </svg>
-              </div>
-              <h3 className="mb-3 text-xl font-semibold text-orange-800 dark:text-orange-300">
-                Search Consoleが連携されていません
+            <div className="rounded-lg border border-stroke bg-gray-50 p-12 text-center dark:border-dark-3 dark:bg-dark-3">
+              <h3 className="mb-2 text-lg font-semibold text-dark dark:text-white">
+                Google Search Console に接続
               </h3>
-              <p className="mb-6 text-orange-700 dark:text-orange-400">
-                流入キーワードデータを表示するには、Search Consoleとの連携が必要です。
+              <p className="mb-6 text-sm text-body-color">
+                Googleアカウントで認証し、Search Consoleサイトにアクセスします<br />
+                <span className="text-gray-500">※ 流入キーワードデータを表示するには、Search Consoleとの連携が必要です</span>
               </p>
               <a
                 href={`/sites/${selectedSiteId}/edit?step=3`}
-                className="inline-block rounded-md bg-orange-600 px-8 py-3 text-sm font-medium text-white transition hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600"
+                className="inline-flex items-center gap-2 rounded-md bg-primary px-8 py-3 text-sm font-medium text-white transition hover:bg-opacity-90"
               >
-                Search Consoleを連携する
+                Googleアカウントで接続
               </a>
             </div>
           ) : isLoading ? (

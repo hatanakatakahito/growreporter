@@ -41,19 +41,19 @@ export default function AnalysisSummary() {
     setPageTitle('全体サマリー');
   }, []);
 
-  // AI分析ボタンのアニメーション（5秒ごと）
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-      // アニメーション終了後にリセット
-      setTimeout(() => setIsAnimating(false), 1500);
-    }, 5000);
+  // AI分析ボタンのアニメーションは削除（パフォーマンス改善のため）
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setIsAnimating(true);
+  //     // アニメーション終了後にリセット
+  //     setTimeout(() => setIsAnimating(false), 1500);
+  //   }, 5000);
 
-    return () => clearInterval(interval);
-  }, []);
+  //   return () => clearInterval(interval);
+  // }, []);
 
-  // Search Console連携の有無をチェック
-  const hasGSCConnection = selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId;
+  // Search Console連携の有無をチェック（確実にブール値にする）
+  const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
 
   // 現在の期間のデータ取得
   const { data, isLoading, isError } = useSiteMetrics(

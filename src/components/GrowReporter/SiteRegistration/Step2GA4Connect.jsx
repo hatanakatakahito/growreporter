@@ -12,6 +12,7 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
   const [token, setToken] = useState(null);
   const [properties, setProperties] = useState([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   // コンポーネントマウント時のログ
   useEffect(() => {
@@ -367,6 +368,38 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
     }
   };
 
+  // GA4接続を解除
+  const handleDisconnect = () => {
+    if (!confirm('Google Analytics 4の接続を解除しますか？\n※プロパティ選択もクリアされます。')) {
+      return;
+    }
+
+    setIsDisconnecting(true);
+    
+    try {
+      console.log('[GA4Connect] 接続解除');
+      
+      // トークンとプロパティをクリア
+      setToken(null);
+      setProperties([]);
+      
+      // siteDataから接続情報を削除
+      setSiteData(prev => ({
+        ...prev,
+        ga4OauthTokenId: null,
+        ga4GoogleAccount: null,
+        ga4PropertyId: null,
+        ga4PropertyName: null,
+        ga4AccountId: null,
+        ga4AccountName: null,
+      }));
+      
+      setError(null);
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* エラーメッセージ */}
@@ -426,6 +459,17 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
                 {token.google_account && ` (${token.google_account})`}
               </p>
             </div>
+            <button
+              onClick={handleDisconnect}
+              disabled={isDisconnecting}
+              className="flex items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-700 dark:bg-dark-2 dark:text-red-400 dark:hover:bg-red-900/20"
+              title="接続を解除"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              解除
+            </button>
           </div>
 
           {/* プロパティ選択 */}

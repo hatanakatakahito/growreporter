@@ -55,16 +55,16 @@ export default function Users() {
     setPageTitle('ユーザー属性');
   }, []);
 
-  // AI分析ボタンのアニメーション（5秒ごと）
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-      // アニメーション終了後にリセット
-      setTimeout(() => setIsAnimating(false), 1500);
-    }, 5000);
+  // AI分析ボタンのアニメーションは削除（パフォーマンス改善のため）
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setIsAnimating(true);
+  //     // アニメーション終了後にリセット
+  //     setTimeout(() => setIsAnimating(false), 1500);
+  //   }, 5000);
 
-    return () => clearInterval(interval);
-  }, []);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   const { data: demographicsData, isLoading, isError } = useGA4UserDemographics(
     selectedSiteId,

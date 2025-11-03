@@ -294,8 +294,18 @@ export default function PageCategories() {
                     {
                       key: 'pageViews',
                       label: 'ページビュー',
-                      format: 'number',
                       align: 'right',
+                      render: (value) => {
+                        const percentage = totalPageViews > 0 
+                          ? ((value / totalPageViews) * 100).toFixed(1) 
+                          : 0;
+                        return (
+                          <div className="flex items-center justify-end gap-2">
+                            <span className="font-medium">{value.toLocaleString()}</span>
+                            <span className="text-sm text-body-color">({percentage}%)</span>
+                          </div>
+                        );
+                      },
                     },
                   ]}
                   data={categoryData}

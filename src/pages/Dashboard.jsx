@@ -50,8 +50,8 @@ export default function Dashboard() {
     }
   }, [searchParams, selectedSiteId, sites, selectSite]);
 
-  // Search Console連携の有無をチェック
-  const hasGSCConnection = selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId;
+  // Search Console連携の有無をチェック（確実にブール値にする）
+  const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
 
   // 現在の期間のデータ取得
   const { data, isLoading, isError, error, refetch } = useSiteMetrics(

@@ -29,15 +29,15 @@ export default function Week() {
     setPageTitle('週別分析');
   }, []);
 
-  // AI分析ボタンのアニメーション（5秒ごと）
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setIsAnimating(true);
-      setTimeout(() => setIsAnimating(false), 1500);
-    }, 5000);
+  // AI分析ボタンのアニメーションは削除（パフォーマンス改善のため）
+  // useEffect(() => {
+  //   const interval = setInterval(() => {
+  //     setIsAnimating(true);
+  //     setTimeout(() => setIsAnimating(false), 1500);
+  //   }, 5000);
 
-    return () => clearInterval(interval);
-  }, []);
+  //   return () => clearInterval(interval);
+  // }, []);
 
   // URLパラメータのsiteIdがあれば選択
   useEffect(() => {

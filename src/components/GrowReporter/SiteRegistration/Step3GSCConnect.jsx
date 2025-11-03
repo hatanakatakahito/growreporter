@@ -12,6 +12,7 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
   const [token, setToken] = useState(null);
   const [sites, setSites] = useState([]);
   const [isLoadingSites, setIsLoadingSites] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
 
   // 既存のトークンを読み込む
   useEffect(() => {
@@ -301,6 +302,35 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
     }
   };
 
+  // Search Console接続を解除
+  const handleDisconnect = () => {
+    if (!confirm('Google Search Consoleの接続を解除しますか？\n※サイト選択もクリアされます。')) {
+      return;
+    }
+
+    setIsDisconnecting(true);
+    
+    try {
+      console.log('[GSCConnect] 接続解除');
+      
+      // トークンとサイトリストをクリア
+      setToken(null);
+      setSites([]);
+      
+      // siteDataから接続情報を削除
+      setSiteData(prev => ({
+        ...prev,
+        gscOauthTokenId: null,
+        gscGoogleAccount: null,
+        gscSiteUrl: null,
+      }));
+      
+      setError(null);
+    } finally {
+      setIsDisconnecting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* エラーメッセージ */}
@@ -361,6 +391,17 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
                 {token.google_account && ` (${token.google_account})`}
               </p>
             </div>
+            <button
+              onClick={handleDisconnect}
+              disabled={isDisconnecting}
+              className="flex items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-700 dark:bg-dark-2 dark:text-red-400 dark:hover:bg-red-900/20"
+              title="接続を解除"
+            >
+              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+              解除
+            </button>
           </div>
 
           {/* サイト選択 */}
