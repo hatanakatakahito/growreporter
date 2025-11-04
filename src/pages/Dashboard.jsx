@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useSite } from '../contexts/SiteContext';
 import { useSiteMetrics } from '../hooks/useSiteMetrics';
+import { useGA4MonthlyData } from '../hooks/useGA4MonthlyData';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import Sidebar from '../components/Layout/Sidebar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -98,6 +99,25 @@ export default function Dashboard() {
     yearAgoRange.from,
     yearAgoRange.to,
     hasGSCConnection
+  );
+
+  // 13ヶ月推移データを取得（AI分析用）
+  const get13MonthsRange = () => {
+    const toDate = new Date(dateRange.to);
+    const fromDate = new Date(toDate);
+    fromDate.setMonth(fromDate.getMonth() - 12); // 13ヶ月分（現在月含む12ヶ月前まで）
+    
+    return {
+      from: format(fromDate, 'yyyy-MM-dd'),
+      to: format(toDate, 'yyyy-MM-dd'),
+    };
+  };
+  
+  const thirteenMonthsRange = get13MonthsRange();
+  const { data: monthlyTrendData } = useGA4MonthlyData(
+    selectedSiteId,
+    thirteenMonthsRange.from,
+    thirteenMonthsRange.to
   );
 
   // ローディング中
@@ -677,16 +697,47 @@ export default function Dashboard() {
     </div>
 
     {/* AI分析フローティングボタン */}
-    {selectedSiteId && data && (
-      <AIFloatingButton
-        pageType={PAGE_TYPES.SUMMARY}
-        metrics={data}
-        period={{
-          startDate: dateRange.from,
-          endDate: dateRange.to,
-        }}
-      />
-    )}
+    {selectedSiteId && data && (() => {
+      // AI分析用のメトリクスを構築
+      const aiMetrics = {
+        // 現在期間の基本メトリクス
+        users: data.metrics?.totalUsers || 0,
+        sessions: data.metrics?.sessions || 0,
+        pageViews: data.metrics?.pageViews || 0,
+        engagementRate: data.metrics?.engagementRate || 0,
+        conversions: data.conversions || {}, // コンバージョン内訳（オブジェクト）
+        
+        // 13ヶ月推移データ
+        monthlyData: monthlyTrendData?.monthlyData || [],
+        
+        // 前月比較データ
+        previousMonth: previousMonthData ? {
+          users: previousMonthData.metrics?.totalUsers || 0,
+          sessions: previousMonthData.metrics?.sessions || 0,
+          pageViews: previousMonthData.metrics?.pageViews || 0,
+          conversions: previousMonthData.conversions || {},
+        } : null,
+        
+        // 前年同月比較データ
+        yearAgo: yearAgoData ? {
+          users: yearAgoData.metrics?.totalUsers || 0,
+          sessions: yearAgoData.metrics?.sessions || 0,
+          pageViews: yearAgoData.metrics?.pageViews || 0,
+          conversions: yearAgoData.conversions || {},
+        } : null,
+      };
+      
+      return (
+        <AIFloatingButton
+          pageType={PAGE_TYPES.SUMMARY}
+          metrics={aiMetrics}
+          period={{
+            startDate: dateRange.from,
+            endDate: dateRange.to,
+          }}
+        />
+      );
+    })()}
     </>
   );
 }

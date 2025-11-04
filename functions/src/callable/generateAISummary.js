@@ -474,6 +474,29 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
       });
     }
     
+    // 前月・前年同月比較データの整形
+    let comparisonText = '';
+    if (metrics.previousMonth) {
+      const prevTotalCV = typeof metrics.previousMonth.conversions === 'object' && !Array.isArray(metrics.previousMonth.conversions)
+        ? Object.values(metrics.previousMonth.conversions).reduce((sum, count) => sum + (count || 0), 0)
+        : (metrics.previousMonth.conversions || 0);
+      comparisonText += '\n\n【前月比較】\n';
+      comparisonText += `- ユーザー: ${metrics.previousMonth.users?.toLocaleString() || 0}人\n`;
+      comparisonText += `- セッション: ${metrics.previousMonth.sessions?.toLocaleString() || 0}回\n`;
+      comparisonText += `- ページビュー: ${metrics.previousMonth.pageViews?.toLocaleString() || 0}回\n`;
+      comparisonText += `- コンバージョン: ${prevTotalCV.toLocaleString()}件\n`;
+    }
+    if (metrics.yearAgo) {
+      const yearAgoTotalCV = typeof metrics.yearAgo.conversions === 'object' && !Array.isArray(metrics.yearAgo.conversions)
+        ? Object.values(metrics.yearAgo.conversions).reduce((sum, count) => sum + (count || 0), 0)
+        : (metrics.yearAgo.conversions || 0);
+      comparisonText += '\n【前年同月比較】\n';
+      comparisonText += `- ユーザー: ${metrics.yearAgo.users?.toLocaleString() || 0}人\n`;
+      comparisonText += `- セッション: ${metrics.yearAgo.sessions?.toLocaleString() || 0}回\n`;
+      comparisonText += `- ページビュー: ${metrics.yearAgo.pageViews?.toLocaleString() || 0}回\n`;
+      comparisonText += `- コンバージョン: ${yearAgoTotalCV.toLocaleString()}件\n`;
+    }
+    
     const conversionInfo = formatConversionInfo();
     const totalConversions = typeof metrics.conversions === 'object' && !Array.isArray(metrics.conversions)
       ? Object.values(metrics.conversions).reduce((sum, count) => sum + (count || 0), 0)
@@ -487,11 +510,12 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 - セッション数: ${metrics.sessions?.toLocaleString() || 0}回
 - ページビュー数: ${metrics.pageViews?.toLocaleString() || metrics.screenPageViews?.toLocaleString() || 0}回
 - エンゲージメント率: ${((metrics.engagementRate || 0) * 100).toFixed(1)}%
-- コンバージョン合計: ${totalConversions.toLocaleString()}件${conversionInfo}${monthlyTrendText}
+- コンバージョン合計: ${totalConversions.toLocaleString()}件${conversionInfo}${comparisonText}${monthlyTrendText}
 
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
+- **前月比・前年同月比を活用して短期・長期の両面から分析**
 - **13ヶ月推移から成長トレンド、季節性、転換点を分析**
 - 良い点（成長している指標）と改善点（停滞・減少している指標）の両方を明確に指摘
 - **トレンドの原因を考察**：「なぜそうなったか」の視点で記述
