@@ -1,6 +1,5 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
-import { getBenchmarkData } from '../utils/sheetsManager.js';
 
 /**
  * AI要約生成 Callable Function
@@ -33,14 +32,7 @@ export async function generateAISummaryCallable(request) {
   console.log('[generateAISummary] Start:', { userId, siteId, pageType, startDate, endDate });
 
   try {
-    // 1. サイト情報の取得（ベンチマークデータのため）
-    const siteDoc = await db.collection('sites').doc(siteId).get();
-    if (!siteDoc.exists) {
-      throw new HttpsError('not-found', 'サイトが見つかりません');
-    }
-    const siteData = siteDoc.data();
-    
-    // 2. キャッシュチェック
+    // 1. キャッシュチェック
     const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
     if (cachedSummary) {
       console.log('[generateAISummary] Cache hit:', cachedSummary.id);
@@ -52,26 +44,7 @@ export async function generateAISummaryCallable(request) {
       };
     }
 
-    // 3. ベンチマークデータの取得
-    let benchmarkData = null;
-    if (siteData.siteType) {
-      console.log('[generateAISummary] Fetching benchmark data for:', siteData.siteType);
-      try {
-        benchmarkData = await getBenchmarkData(siteData.siteType);
-        if (benchmarkData) {
-          console.log('[generateAISummary] Benchmark data retrieved:', {
-            sampleSize: benchmarkData.sampleSize,
-            avgENG: benchmarkData.engagementRate.avg,
-            avgCVR: benchmarkData.cvr.avg,
-          });
-        }
-      } catch (benchmarkError) {
-        console.warn('[generateAISummary] Failed to fetch benchmark data:', benchmarkError.message);
-        // ベンチマークデータの取得に失敗してもエラーにしない
-      }
-    }
-
-    // 4. Gemini APIキーの確認
+    // 2. Gemini APIキーの確認
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
       console.error('[generateAISummary] GEMINI_API_KEY not configured');
@@ -81,8 +54,8 @@ export async function generateAISummaryCallable(request) {
       );
     }
 
-    // 5. プロンプト生成（ベンチマークデータを含む）
-    const prompt = generatePrompt(pageType, startDate, endDate, metrics, benchmarkData, siteData);
+    // 3. プロンプト生成
+    const prompt = generatePrompt(pageType, startDate, endDate, metrics);
 
     // 4. Gemini API呼び出し
     console.log('[generateAISummary] Calling Gemini API...');
@@ -427,7 +400,7 @@ function estimatePriority(text, order) {
 /**
  * ページタイプに応じたプロンプトを生成
  */
-function generatePrompt(pageType, startDate, endDate, metrics, benchmarkData = null, siteData = null) {
+function generatePrompt(pageType, startDate, endDate, metrics) {
   const period = `${startDate}から${endDate}までの期間`;
 
   if (pageType === 'summary') {
@@ -441,45 +414,25 @@ function generatePrompt(pageType, startDate, endDate, metrics, benchmarkData = n
       });
     }
 
-    // ベンチマークデータの整形
-    let benchmarkText = '';
-    if (benchmarkData && siteData) {
-      const currentENG = ((metrics.engagementRate || 0) * 100).toFixed(1);
-      const currentCVR = metrics.sessions > 0 ? ((metrics.conversions || 0) / metrics.sessions * 100).toFixed(2) : 0;
-      const currentAvgPV = metrics.sessions > 0 ? ((metrics.pageViews || metrics.screenPageViews || 0) / metrics.sessions).toFixed(2) : 0;
-
-      benchmarkText = `\n\n【業界ベンチマーク（${siteData.siteType}：${benchmarkData.sampleSize}サイトの平均値）】
-- 平均セッション数: ${benchmarkData.sessions.avg.toLocaleString()}回（最大: ${benchmarkData.sessions.max.toLocaleString()}回）
-- 平均PV/セッション: ${benchmarkData.avgPageViews.avg}（最大: ${benchmarkData.avgPageViews.max}）
-- 平均ENG率: ${benchmarkData.engagementRate.avg}%（最大: ${benchmarkData.engagementRate.max}%）
-- 平均CVR: ${benchmarkData.cvr.avg}%（最大: ${benchmarkData.cvr.max}%）
-
-【このサイトの業界内ポジション】
-- PV/セッション: ${currentAvgPV} ${parseFloat(currentAvgPV) >= benchmarkData.avgPageViews.avg ? '✅ 平均以上' : '⚠️ 平均以下'}
-- ENG率: ${currentENG}% ${parseFloat(currentENG) >= benchmarkData.engagementRate.avg ? '✅ 平均以上' : '⚠️ 平均以下'}
-- CVR: ${currentCVR}% ${parseFloat(currentCVR) >= benchmarkData.cvr.avg ? '✅ 平均以上' : '⚠️ 平均以下'}`;
-    }
-
     return `
-あなたは中長期的なトレンド分析の専門家です。${period}のWebサイトパフォーマンスを13ヶ月の推移データ${benchmarkData ? 'および業界ベンチマーク' : ''}と合わせて分析し、**成長トレンドの特定と今後の戦略に役立つビジネスインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
+あなたは中長期的なトレンド分析の専門家です。${period}のWebサイトパフォーマンスを13ヶ月の推移データと合わせて分析し、**成長トレンドの特定と今後の戦略に役立つビジネスインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
 
 【現在期間のデータ】
 - 総ユーザー数: ${metrics.users?.toLocaleString() || metrics.totalUsers?.toLocaleString() || 0}人
 - セッション数: ${metrics.sessions?.toLocaleString() || 0}回
 - ページビュー数: ${metrics.pageViews?.toLocaleString() || metrics.screenPageViews?.toLocaleString() || 0}回
 - エンゲージメント率: ${((metrics.engagementRate || 0) * 100).toFixed(1)}%
-- コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件${monthlyTrendText}${benchmarkText}
+- コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件${monthlyTrendText}
 
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
 - **13ヶ月推移から成長トレンド、季節性、転換点を分析**
-${benchmarkData ? '- **業界平均との比較を必ず含める**：平均以上の指標は強みとして、平均以下の指標は改善機会として明示' : ''}
 - 良い点（成長している指標）と改善点（停滞・減少している指標）の両方を明確に指摘
 - **トレンドの原因を考察**：「なぜそうなったか」の視点で記述
 - **今後3ヶ月の戦略として、具体的なアクションを1-3点提案**：
   - 成長トレンドを加速させる施策
-  - 減少トレンドを反転させる施策${benchmarkData ? '\n  - 業界トップ水準に到達するための具体的な目標値と施策' : ''}
+  - 減少トレンドを反転させる施策
   - 各提案の優先順位とビジネスインパクトを明示
 - 数値の羅列ではなく、ビジネス判断に直結するインサイトを提供
 `;
