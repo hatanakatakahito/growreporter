@@ -698,6 +698,11 @@ export default function Dashboard() {
 
     {/* AI分析フローティングボタン */}
     {selectedSiteId && data && (() => {
+      // デバッグ: コンバージョンデータを確認
+      console.log('[Dashboard] data.conversions:', data.conversions);
+      console.log('[Dashboard] data.metrics:', data.metrics);
+      console.log('[Dashboard] selectedSite.conversionEvents:', selectedSite?.conversionEvents);
+      
       // AI分析用のメトリクスを構築
       const aiMetrics = {
         // 現在期間の基本メトリクス
@@ -726,6 +731,8 @@ export default function Dashboard() {
           conversions: yearAgoData.conversions || {},
         } : null,
       };
+      
+      console.log('[Dashboard] aiMetrics.conversions:', aiMetrics.conversions);
       
       return (
         <AIFloatingButton

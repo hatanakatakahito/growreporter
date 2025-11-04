@@ -437,7 +437,17 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 
   // コンバージョン定義の整形
   const formatConversionInfo = () => {
+    // デバッグ: コンバージョンデータを確認
+    console.log('[generateAISummary] formatConversionInfo called');
+    console.log('[generateAISummary] metrics.conversionEvents:', metrics.conversionEvents);
+    console.log('[generateAISummary] metrics.conversions:', metrics.conversions);
+    console.log('[generateAISummary] metrics.conversions type:', typeof metrics.conversions);
+    console.log('[generateAISummary] metrics.conversions is object:', typeof metrics.conversions === 'object');
+    console.log('[generateAISummary] metrics.conversions is array:', Array.isArray(metrics.conversions));
+    console.log('[generateAISummary] metrics.conversions entries:', metrics.conversions ? Object.entries(metrics.conversions) : 'null');
+    
     if (!metrics.conversionEvents || metrics.conversionEvents.length === 0) {
+      console.log('[generateAISummary] No conversion events configured');
       return '\n\n【コンバージョン定義】\n- コンバージョンイベントが設定されていません';
     }
     
@@ -452,14 +462,25 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
     
     // コンバージョン内訳がある場合
     if (metrics.conversions && typeof metrics.conversions === 'object' && !Array.isArray(metrics.conversions)) {
-      text += '\n【コンバージョン内訳】\n';
-      Object.entries(metrics.conversions).forEach(([eventName, count]) => {
-        const event = metrics.conversionEvents.find(e => e.eventName === eventName);
-        const displayName = event ? event.displayName : eventName;
-        text += `- ${displayName}: ${count?.toLocaleString() || 0}件\n`;
-      });
+      const conversionEntries = Object.entries(metrics.conversions);
+      console.log('[generateAISummary] Conversion entries count:', conversionEntries.length);
+      
+      if (conversionEntries.length > 0) {
+        text += '\n【コンバージョン内訳】\n';
+        conversionEntries.forEach(([eventName, count]) => {
+          const event = metrics.conversionEvents.find(e => e.eventName === eventName);
+          const displayName = event ? event.displayName : eventName;
+          text += `- ${displayName}: ${count?.toLocaleString() || 0}件\n`;
+          console.log(`[generateAISummary] Added conversion: ${displayName} = ${count}`);
+        });
+      } else {
+        console.log('[generateAISummary] Conversion object is empty - no conversions in period');
+      }
+    } else {
+      console.log('[generateAISummary] No valid conversions object');
     }
     
+    console.log('[generateAISummary] formatConversionInfo result length:', text.length);
     return text;
   };
 

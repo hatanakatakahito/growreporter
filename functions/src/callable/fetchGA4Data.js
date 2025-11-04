@@ -198,10 +198,16 @@ export async function fetchGA4DataCallable(request) {
           const count = parseInt(row.metricValues[0].value);
           conversions[eventName] = count;
         });
+        
+        console.log(`[fetchGA4Data] Conversion events fetched:`, conversions);
+        console.log(`[fetchGA4Data] Number of conversion types: ${Object.keys(conversions).length}`);
       } catch (cvError) {
         console.error('[fetchGA4Data] Error fetching conversion events:', cvError);
+        console.error('[fetchGA4Data] Error details:', cvError.message);
         // コンバージョンデータの取得エラーは致命的ではないので続行
       }
+    } else {
+      console.log('[fetchGA4Data] No conversion events configured in siteData');
     }
 
     // 7. コンバージョン率の計算

@@ -11,11 +11,12 @@ import { useGSCData } from './useGSCData';
  */
 export function useSiteMetrics(siteId, startDate, endDate, hasGSCConnection = true) {
   // ダッシュボード用の基本メトリクスを取得
+  // Note: conversionsは別途fetchGA4Dataで取得されるため、ここでは指定不要
   const ga4Query = useGA4Data(
     siteId,
     startDate,
     endDate,
-    ['sessions', 'totalUsers', 'newUsers', 'screenPageViews', 'engagementRate', 'conversions'],
+    ['sessions', 'totalUsers', 'newUsers', 'screenPageViews', 'engagementRate'],
     []
   );
   const gscQuery = useGSCData(siteId, startDate, endDate, hasGSCConnection);

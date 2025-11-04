@@ -50,6 +50,11 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         conversionEvents: selectedSite?.conversionEvents || [],
       };
       
+      // デバッグ: コンバージョンデータを確認
+      console.log('[AIAnalysisModal] selectedSite.conversionEvents:', selectedSite?.conversionEvents);
+      console.log('[AIAnalysisModal] metrics.conversions:', metrics.conversions);
+      console.log('[AIAnalysisModal] enrichedMetrics:', enrichedMetrics);
+      
       const result = await generateAISummary({
         siteId: selectedSiteId,
         pageType,
