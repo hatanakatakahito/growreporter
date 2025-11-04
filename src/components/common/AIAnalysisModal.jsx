@@ -1,5 +1,5 @@
 import { X, RefreshCw, Sparkles, Check } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSite } from '../../contexts/SiteContext';
 import { usePlan } from '../../hooks/usePlan';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,7 +27,6 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [addedTaskIds, setAddedTaskIds] = useState(new Set());
-  const isMountedRef = useRef(true);
 
   // 既存のタスクを取得（重複チェック用）
   const { data: existingTasks = [] } = useQuery({
@@ -49,19 +48,20 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     staleTime: 1000 * 60, // 1分間キャッシュ
   });
 
+  useEffect(() => {
+    loadAnalysis(false);
+  }, []);
+
   /**
    * AI分析を読み込み
    */
   const loadAnalysis = async (forceRegenerate = false) => {
-    if (!isMountedRef.current) return;
-    
     setIsLoading(true);
     setError(null);
 
     try {
       // 再生成時のみプラン制限チェック
       if (forceRegenerate && !checkCanGenerate()) {
-        if (!isMountedRef.current) return;
         onLimitExceeded();
         return;
       }
@@ -83,9 +83,6 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         forceRegenerate,
       });
 
-      // アンマウントされていたら状態更新しない
-      if (!isMountedRef.current) return;
-
       const data = result.data;
       setSummary(data.summary);
       setRecommendations(data.recommendations || []);
@@ -94,38 +91,25 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     } catch (err) {
       console.error('[AIAnalysisModal] AI分析エラー:', err);
       
-      // アンマウントされていたら状態更新しない
-      if (!isMountedRef.current) return;
-      
       if (err.code === 'functions/resource-exhausted') {
         onLimitExceeded();
       } else {
         setError('AI分析の生成に失敗しました。しばらくしてから再度お試しください。');
       }
     } finally {
-      if (isMountedRef.current) {
-        setIsLoading(false);
-      }
+      setIsLoading(false);
     }
   };
-
-  // マウント時にAI分析を実行
-  useEffect(() => {
-    isMountedRef.current = true;
-    loadAnalysis(false);
-    
-    // クリーンアップ：アンマウント時にフラグを変更
-    return () => {
-      isMountedRef.current = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /**
    * タスク追加のmutation
    */
   const addTaskMutation = useMutation({
     mutationFn: async (task) => {
+      console.log('[AIAnalysisModal] タスク追加開始:', task);
+      console.log('[AIAnalysisModal] selectedSiteId:', selectedSiteId);
+      console.log('[AIAnalysisModal] 既存タスク数:', existingTasks.length);
+      
       const newTask = {
         siteId: selectedSiteId,
         title: task.title || task.recommendation || 'AI提案タスク',
@@ -140,9 +124,13 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         createdBy: user?.email || '',
       };
       
+      console.log('[AIAnalysisModal] Firestoreに追加するデータ:', newTask);
+      
       return await addDoc(collection(db, 'improvements'), newTask);
     },
     onSuccess: (data, variables, context) => {
+      console.log('[AIAnalysisModal] タスク追加成功:', data.id, variables);
+      
       // キャッシュ無効化
       queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
       
@@ -156,6 +144,8 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     },
     onError: (error) => {
       console.error('[AIAnalysisModal] タスク追加エラー:', error);
+      console.error('[AIAnalysisModal] エラーコード:', error.code);
+      console.error('[AIAnalysisModal] エラーメッセージ:', error.message);
       alert(`タスクの追加に失敗しました。\nエラー: ${error.message}\nもう一度お試しください。`);
     },
   });
