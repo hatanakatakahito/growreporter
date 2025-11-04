@@ -28,12 +28,6 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
   const [error, setError] = useState(null);
   const [addedTaskIds, setAddedTaskIds] = useState(new Set());
 
-  console.log('[AIAnalysisModal] レンダリング');
-  console.log('[AIAnalysisModal] isLoading:', isLoading);
-  console.log('[AIAnalysisModal] error:', error);
-  console.log('[AIAnalysisModal] summary:', summary);
-  console.log('[AIAnalysisModal] recommendations:', recommendations);
-
   // 既存のタスクを取得（重複チェック用）
   const { data: existingTasks = [] } = useQuery({
     queryKey: ['improvements', selectedSiteId],
@@ -54,24 +48,24 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     staleTime: 1000 * 60, // 1分間キャッシュ
   });
 
+  useEffect(() => {
+    loadAnalysis(false);
+  }, []);
+
   /**
    * AI分析を読み込み
    */
   const loadAnalysis = async (forceRegenerate = false) => {
-    console.log('[AIAnalysisModal] loadAnalysis開始');
     setIsLoading(true);
     setError(null);
 
     try {
       // 再生成時のみプラン制限チェック
-      console.log('[AIAnalysisModal] プラン制限チェック:', { forceRegenerate, canGenerate: checkCanGenerate() });
       if (forceRegenerate && !checkCanGenerate()) {
-        console.log('[AIAnalysisModal] プラン制限超過');
         onLimitExceeded();
         return;
       }
 
-      console.log('[AIAnalysisModal] httpsCallable取得中');
       const generateAISummary = httpsCallable(functions, 'generateAISummary');
       
       // コンバージョン定義をmetricsに追加
@@ -80,16 +74,6 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         conversionEvents: selectedSite?.conversionEvents || [],
       };
       
-      console.log('[AIAnalysisModal] API呼び出しパラメータ:', {
-        siteId: selectedSiteId,
-        pageType,
-        startDate: period?.startDate,
-        endDate: period?.endDate,
-        forceRegenerate,
-        metricsKeys: Object.keys(enrichedMetrics),
-      });
-      
-      console.log('[AIAnalysisModal] API呼び出し開始...');
       const result = await generateAISummary({
         siteId: selectedSiteId,
         pageType,
@@ -98,17 +82,12 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         endDate: period?.endDate,
         forceRegenerate,
       });
-      console.log('[AIAnalysisModal] API呼び出し完了');
 
       const data = result.data;
-      console.log('[AIAnalysisModal] AI分析結果:', data);
-      console.log('[AIAnalysisModal] summary:', data.summary);
-      console.log('[AIAnalysisModal] recommendations:', data.recommendations);
       setSummary(data.summary);
       setRecommendations(data.recommendations || []);
       setGeneratedAt(data.generatedAt ? new Date(data.generatedAt) : new Date());
       setFromCache(data.fromCache || false);
-      console.log('[AIAnalysisModal] 状態設定完了');
     } catch (err) {
       console.error('[AIAnalysisModal] AI分析エラー:', err);
       
@@ -121,17 +100,6 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
       setIsLoading(false);
     }
   };
-
-  // マウント時のみ実行（無限ループ防止のため依存配列は空）
-  useEffect(() => {
-    console.log('[AIAnalysisModal] useEffect実行');
-    console.log('[AIAnalysisModal] selectedSiteId:', selectedSiteId);
-    console.log('[AIAnalysisModal] pageType:', pageType);
-    console.log('[AIAnalysisModal] metrics:', metrics);
-    console.log('[AIAnalysisModal] period:', period);
-    loadAnalysis(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /**
    * タスク追加のmutation
