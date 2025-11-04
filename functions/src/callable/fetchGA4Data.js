@@ -44,6 +44,8 @@ export async function fetchGA4DataCallable(request) {
   const dimensionsStr = dimensions ? dimensions.join(',') : '';
   const metricsStr = metrics ? metrics.join(',') : '';
 
+  console.log(`[fetchGA4Data] Start: siteId=${siteId}, period=${startDate} to ${endDate}, userId=${userId}, custom=${isCustomQuery}, dimensions=${dimensionsStr}, metrics=${metricsStr}`);
+
   try {
     // 1. サイトの所有権確認
     const siteDoc = await db.collection('sites').doc(siteId).get();
@@ -77,6 +79,8 @@ export async function fetchGA4DataCallable(request) {
     
     // カスタムディメンション/メトリクスが指定されている場合
     if (isCustomQuery) {
+      console.log(`[fetchGA4Data] Fetching custom query from GA4 API...`);
+      
       // リクエストボディの構築
       const requestBody = {
         dateRanges: [{ startDate, endDate }],
@@ -134,10 +138,12 @@ export async function fetchGA4DataCallable(request) {
         source: 'api',
       };
       
+      console.log(`[fetchGA4Data] Success (custom): rows=${result.rows.length}`);
       return result;
     }
     
     // 基本指標の取得（既存のロジック）
+    console.log(`[fetchGA4Data] Fetching basic metrics from GA4 API...`);
     const response = await analyticsData.properties.runReport({
       auth: oauth2Client,
       property: `properties/${siteData.ga4PropertyId}`,
@@ -166,6 +172,8 @@ export async function fetchGA4DataCallable(request) {
     const conversions = {};
     
     if (siteData.conversionEvents && siteData.conversionEvents.length > 0) {
+      console.log(`[fetchGA4Data] Fetching conversion events (${siteData.conversionEvents.length} events)...`);
+      
       try {
         const cvResponse = await analyticsData.properties.runReport({
           auth: oauth2Client,
@@ -215,6 +223,8 @@ export async function fetchGA4DataCallable(request) {
       fetchedAt: new Date().toISOString(),
       source: 'api',
     };
+
+    console.log(`[fetchGA4Data] Success: siteId=${siteId}, period=${startDate} to ${endDate}`);
     
     return result;
 

@@ -31,11 +31,14 @@ export async function generateAISummaryCallable(request) {
 
   const userId = request.auth.uid;
 
+  console.log('[generateAISummary] Start:', { userId, siteId, pageType, startDate, endDate, forceRegenerate });
+
   try {
     // 1. キャッシュチェック（強制再生成でない場合）
     if (!forceRegenerate) {
       const cachedAnalysis = await getCachedAnalysis(userId, siteId, pageType, startDate, endDate);
       if (cachedAnalysis) {
+        console.log('[generateAISummary] Cache hit (aiAnalysisCache):', cachedAnalysis.cacheId);
         return {
           summary: cachedAnalysis.summary,
           recommendations: cachedAnalysis.recommendations || [],
@@ -47,6 +50,7 @@ export async function generateAISummaryCallable(request) {
       // 旧キャッシュもチェック（互換性のため）
       const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
       if (cachedSummary) {
+        console.log('[generateAISummary] Cache hit (legacy aiSummaries):', cachedSummary.id);
         return {
           summary: cachedSummary.summary,
           recommendations: cachedSummary.recommendations || [],
@@ -59,6 +63,7 @@ export async function generateAISummaryCallable(request) {
     // 2. プラン制限チェック
     const canGenerate = await checkCanGenerate(userId);
     if (!canGenerate) {
+      console.log('[generateAISummary] プラン制限超過:', userId);
       throw new HttpsError(
         'resource-exhausted',
         '今月のAI生成回数の上限に達しました。来月1日に自動的にリセットされます。'
@@ -79,6 +84,7 @@ export async function generateAISummaryCallable(request) {
     const prompt = generatePrompt(pageType, startDate, endDate, metrics);
 
     // 5. Gemini API呼び出し
+    console.log('[generateAISummary] Calling Gemini API...');
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
       {
@@ -116,6 +122,8 @@ export async function generateAISummaryCallable(request) {
     const data = await response.json();
     let rawSummary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'AI要約を生成できませんでした。';
 
+    console.log('[generateAISummary] Summary generated successfully');
+
     // 推奨アクションの抽出
     const recommendations = extractRecommendations(rawSummary, pageType);
     
@@ -140,9 +148,11 @@ export async function generateAISummaryCallable(request) {
       createdAt: Timestamp.fromDate(now),
     };
     const docRef = await db.collection('aiSummaries').add(summaryDoc);
+    console.log('[generateAISummary] Saved to Firestore (legacy):', docRef.id);
 
     // 8. 生成回数をインクリメント
     await incrementGenerationCount(userId);
+    console.log('[generateAISummary] Generation count incremented');
 
     // 9. 古いキャッシュをクリーンアップ（非同期）
     cleanupOldSummaries(db, userId).catch(err => {
@@ -287,22 +297,6 @@ function extractRecommendations(summary, pageType) {
         }
       }
       
-      // タイトルから不要な接頭辞・接尾辞を削除
-      title = title
-        .replace(/^(優先順位高|優先順位中|優先順位低)[：:]\s*/g, '') // 優先順位：
-        .replace(/^(緊急|重要|必須)[：:]\s*/g, '') // 緊急：重要：必須：
-        .replace(/^【[^】]+】\s*/g, '') // 【...】
-        .replace(/^\([^)]+\)\s*/g, '') // (...)
-        .replace(/[（(]優先度[^）)]*[）)]?$/g, '') // 末尾の（優先度...）または（優先度
-        .replace(/[（(]優先度[^）)]*[）)]?\s*/g, '') // 途中の（優先度...）
-        .trim(); // 前後の空白を削除
-      
-      // 説明文からも不要な文字列を削除
-      description = description
-        .replace(/^[（(]優先度[^）)]*[）)]?\s*/g, '') // 先頭の（優先度...）
-        .replace(/\s*[（(]優先度[^）)]*[）)]?\s*/g, ' ') // 途中の（優先度...）
-        .trim();
-      
       currentRecommendation = {
         title,
         description,
@@ -441,38 +435,6 @@ function estimatePriority(text, order) {
 function generatePrompt(pageType, startDate, endDate, metrics) {
   const period = `${startDate}から${endDate}までの期間`;
 
-  // コンバージョン定義の整形
-  const formatConversionInfo = () => {
-    if (!metrics.conversionEvents || metrics.conversionEvents.length === 0) {
-      return '\n\n【コンバージョン定義】\n- コンバージョンイベントが設定されていません';
-    }
-    
-    let text = '\n\n【コンバージョン定義】\n';
-    text += `このサイトでは以下の${metrics.conversionEvents.length}種類のコンバージョンイベントを設定しています：\n`;
-    metrics.conversionEvents.forEach((event, index) => {
-      text += `${index + 1}. 「${event.displayName}」（GA4イベント名: ${event.eventName}）\n`;
-      if (event.category) {
-        text += `   - カテゴリ: ${event.category}\n`;
-      }
-    });
-    
-    // コンバージョン内訳がある場合
-    if (metrics.conversions && typeof metrics.conversions === 'object' && !Array.isArray(metrics.conversions)) {
-      const conversionEntries = Object.entries(metrics.conversions);
-      
-      if (conversionEntries.length > 0) {
-        text += '\n【コンバージョン内訳】\n';
-        conversionEntries.forEach(([eventName, count]) => {
-          const event = metrics.conversionEvents.find(e => e.eventName === eventName);
-          const displayName = event ? event.displayName : eventName;
-          text += `- ${displayName}: ${count?.toLocaleString() || 0}件\n`;
-        });
-      }
-    }
-    
-    return text;
-  };
-
   if (pageType === 'summary') {
     // 13ヶ月推移データの整形
     let monthlyTrendText = '';
@@ -483,34 +445,6 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
         monthlyTrendText += `- ${month.yearMonth}: ユーザー${month.users?.toLocaleString() || 0}人, セッション${month.sessions?.toLocaleString() || 0}回, CV${month.conversions?.toLocaleString() || 0}件\n`;
       });
     }
-    
-    // 前月・前年同月比較データの整形
-    let comparisonText = '';
-    if (metrics.previousMonth) {
-      const prevTotalCV = typeof metrics.previousMonth.conversions === 'object' && !Array.isArray(metrics.previousMonth.conversions)
-        ? Object.values(metrics.previousMonth.conversions).reduce((sum, count) => sum + (count || 0), 0)
-        : (metrics.previousMonth.conversions || 0);
-      comparisonText += '\n\n【前月比較】\n';
-      comparisonText += `- ユーザー: ${metrics.previousMonth.users?.toLocaleString() || 0}人\n`;
-      comparisonText += `- セッション: ${metrics.previousMonth.sessions?.toLocaleString() || 0}回\n`;
-      comparisonText += `- ページビュー: ${metrics.previousMonth.pageViews?.toLocaleString() || 0}回\n`;
-      comparisonText += `- コンバージョン: ${prevTotalCV.toLocaleString()}件\n`;
-    }
-    if (metrics.yearAgo) {
-      const yearAgoTotalCV = typeof metrics.yearAgo.conversions === 'object' && !Array.isArray(metrics.yearAgo.conversions)
-        ? Object.values(metrics.yearAgo.conversions).reduce((sum, count) => sum + (count || 0), 0)
-        : (metrics.yearAgo.conversions || 0);
-      comparisonText += '\n【前年同月比較】\n';
-      comparisonText += `- ユーザー: ${metrics.yearAgo.users?.toLocaleString() || 0}人\n`;
-      comparisonText += `- セッション: ${metrics.yearAgo.sessions?.toLocaleString() || 0}回\n`;
-      comparisonText += `- ページビュー: ${metrics.yearAgo.pageViews?.toLocaleString() || 0}回\n`;
-      comparisonText += `- コンバージョン: ${yearAgoTotalCV.toLocaleString()}件\n`;
-    }
-    
-    const conversionInfo = formatConversionInfo();
-    const totalConversions = typeof metrics.conversions === 'object' && !Array.isArray(metrics.conversions)
-      ? Object.values(metrics.conversions).reduce((sum, count) => sum + (count || 0), 0)
-      : (metrics.conversions || 0);
 
     return `
 あなたは中長期的なトレンド分析の専門家です。${period}のWebサイトパフォーマンスを13ヶ月の推移データと合わせて分析し、**成長トレンドの特定と今後の戦略に役立つビジネスインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
@@ -520,21 +454,18 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 - セッション数: ${metrics.sessions?.toLocaleString() || 0}回
 - ページビュー数: ${metrics.pageViews?.toLocaleString() || metrics.screenPageViews?.toLocaleString() || 0}回
 - エンゲージメント率: ${((metrics.engagementRate || 0) * 100).toFixed(1)}%
-- コンバージョン合計: ${totalConversions.toLocaleString()}件${conversionInfo}${comparisonText}${monthlyTrendText}
+- コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件${monthlyTrendText}
 
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **前月比・前年同月比を活用して短期・長期の両面から分析**
 - **13ヶ月推移から成長トレンド、季節性、転換点を分析**
 - 良い点（成長している指標）と改善点（停滞・減少している指標）の両方を明確に指摘
 - **トレンドの原因を考察**：「なぜそうなったか」の視点で記述
 - **今後3ヶ月の戦略として、具体的なアクションを1-3点提案**：
   - 成長トレンドを加速させる施策
   - 減少トレンドを反転させる施策
-  - **タイトルは改善内容のみを簡潔に記載**（例：「ページ読み込み速度の改善」）
-  - タイトルに「優先度」「優先順位」「緊急」などの接頭辞や括弧書きは含めない
-  - 優先順位、ビジネスインパクト、具体的な方法は説明文で詳しく補足
+  - 各提案の優先順位とビジネスインパクトを明示
 - 数値の羅列ではなく、ビジネス判断に直結するインサイトを提供
 `;
   }
@@ -569,9 +500,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
   - アクセスが多い曜日を活用した施策（コンテンツ公開、キャンペーン実施など）
   - アクセスが少ない曜日の改善策
   - CV率が高い日の特徴を他の日に応用する方法
-  - **タイトルは改善内容のみを簡潔に記載**（例：「火曜日の広告予算最適化」）
-  - タイトルに「優先度」「優先順位」「緊急」などの接頭辞や括弧書きは含めない
-  - 実施タイミング、期待効果、優先度は説明文で詳しく補足
+  - 各提案の実施タイミングと期待効果を明示
 - 数値の羅列ではなく、「次にどう動くべきか」の視点で記述
 `;
   }
@@ -597,9 +526,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
   - 【広告配信】：最も効果的な曜日・時間帯と予算配分（例：「火曜20-22時に予算の30%を投下」）
   - 【コンテンツ投稿】：新規記事やSNS投稿の最適な曜日・時間（例：「月曜9時に新記事を公開」）
   - 【キャンペーン実施】：プロモーションやメルマガ配信の最適なタイミング
-  - **タイトルは改善内容のみを簡潔に記載**（例：「火曜夜の広告配信強化」）
-  - タイトルに「優先度」「優先順位」「緊急」などの接頭辞や括弧書きは含めない
-  - 実施方法、期待効果、優先度は説明文で詳しく補足
+  - 各提案の実施方法と期待効果を具体的に明示
 - 数値の羅列ではなく、「いつ、何をすべきか」を明確に記述
 `;
   }
@@ -639,9 +566,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
   - 【コンテンツ投稿】：SNS投稿やメルマガ配信の最適な時刻（例：「毎日12時にSNS投稿」）
   - 【リアルタイム対応】：問い合わせやチャット対応の優先時間帯
   - 【リターゲティング】：CVが高い時間帯に集中配信
-  - **タイトルは改善内容のみを簡潔に記載**（例：「19時台の広告入札強化」）
-  - タイトルに「優先度」「優先順位」「緊急」などの接頭辞や括弧書きは含めない
-  - 実施方法、期待ROI、優先度は説明文で詳しく補足
+  - 各提案の実施方法と期待ROIを明示
 - 数値の羅列ではなく、「何時に、何をすべきか」を具体的に記述
 `;
   }
@@ -708,9 +633,6 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 - **前月比の増減を必ず分析し、その原因を考察すること**
 - 良い点（成長トレンド）と改善点（課題）の両方を明確に指摘
 - **経営判断や施策の優先順位付けに役立つ具体的なアクションを1-2点提案**
-  - **タイトルは改善内容のみを簡潔に記載**（例：「モバイル表示速度の改善」）
-  - タイトルに「優先度」「優先順位」「緊急」などの接頭辞や括弧書きは含めない
-  - 優先順位、ビジネスインパクト、具体的な方法は説明文で詳しく補足
 - 数値の羅列ではなく、「なぜそうなったか」「次に何をすべきか」の視点で記述
 - ビジネスインパクトの大きい指標を優先的に取り上げる
 - **コンバージョンについて**：${hasConversions ? 'コンバージョン数が0件でも「発生なし」として言及し、その理由を分析してください' : 'コンバージョン定義が未設定のため、コンバージョンについては触れないでください'}
@@ -767,9 +689,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
   - 【コンテンツ最適化】：ターゲット層のニーズに合わせたコンテンツ改善（言葉遣い、デザイン、情報量など）
   - 【デバイス最適化】：主要デバイスでのUX改善（モバイルファーストなど）
   - 【新規開拓】：弱いセグメントの獲得戦略（未開拓の年齢層へのアプローチ）
-  - **タイトルは改善内容のみを簡潔に記載**（例：「モバイルユーザー向けUI改善」）
-  - タイトルに「優先度」「優先順位」「緊急」などの接頭辞や括弧書きは含めない
-  - 優先順位、ビジネスインパクト、具体的な方法は説明文で詳しく補足
+  - 各提案の優先順位とビジネスインパクトを明示
 - 数値の羅列ではなく、「誰に、何を、どう訴求すべきか」を明確に記述
 `;
   }
@@ -784,12 +704,9 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 - CV前に閲覧されたページ総数: ${summary.totalPages?.toLocaleString() || 0}ページ
 - 平均閲覧ページ数: ${summary.avgPagesBeforeConversion?.toFixed(1) || 0}ページ`;
     }
-    
-    const conversionInfo = formatConversionInfo();
 
     return `
 あなたはコンバージョン最適化（CRO）の専門家です。${period}のWebサイトでコンバージョンに至ったユーザーの行動導線を分析し、**CVR向上に直結する改善施策に役立つビジネスインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
-${conversionInfo}
 
 【逆引き分析データ】${reverseFlowText}
 
@@ -809,9 +726,7 @@ ${conversionInfo}
   - 【導線改善】：CV貢献ページへの誘導強化（CTA配置、関連記事リンクなど）
   - 【コンテンツ改善】：CV貢献ページの情報充実（追加すべき情報、削除すべき障壁）
   - 【新規ページ作成】：導線に不足しているページの追加提案
-  - **タイトルは改善内容のみを簡潔に記載**（例：「製品ページへの導線強化」）
-  - タイトルに「優先度」「優先順位」「緊急」などの接頭辞や括弧書きは含めない
-  - 実装難易度、CVRインパクト、優先度は説明文で詳しく補足
+  - 各提案の実装難易度とCVRへのインパクトを明示
 - 数値の羅列ではなく、「どのページを、どう改善すべきか」を具体的に記述
 `;
   }
@@ -829,9 +744,8 @@ ${JSON.stringify(metrics, null, 2)}
 - **データから主要なトレンドや特徴を3-5点抽出**
 - **トレンドの原因を考察**：「なぜそうなったか」の視点で記述
 - **具体的なアクションを1-3点提案**：
-  - **タイトルは改善内容のみを簡潔に記載**（例：「CTAボタンの配置見直し」）
-  - タイトルに「優先度」「優先順位」「緊急」などの接頭辞や括弧書きは含めない
-  - 実施方法、期待効果、優先順位、ビジネスインパクトは説明文で詳しく補足
+  - 各提案の実施方法と期待効果を明示
+  - 優先順位とビジネスインパクトを明確化
 - 数値の羅列ではなく、「次に何をすべきか」を明確に記述
 `;
 }

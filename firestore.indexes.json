@@ -47,6 +47,26 @@
       ]
     },
     {
+      "collectionGroup": "ga4_data",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "gsc_data",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "date",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "aiAnalysisCache",
       "queryScope": "COLLECTION",
       "fields": [
@@ -91,10 +111,6 @@
         {
           "fieldPath": "period.endDate",
           "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "generatedAt",
-          "order": "DESCENDING"
         }
       ]
     }
