@@ -1,4 +1,4 @@
-import { X, RefreshCw, Sparkles, ArrowRight } from 'lucide-react';
+import { X, RefreshCw, Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useSite } from '../../contexts/SiteContext';
 import { usePlan } from '../../hooks/usePlan';
@@ -68,17 +68,6 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     } finally {
       setIsLoading(false);
     }
-  };
-
-  /**
-   * 改善タスクを作成
-   */
-  const handleCreateTasks = () => {
-    if (recommendations.length === 0) return;
-
-    const tasksParam = encodeURIComponent(JSON.stringify(recommendations));
-    navigate(`/improve?action=add-from-ai&tasks=${tasksParam}`);
-    onClose();
   };
 
   /**
@@ -257,34 +246,33 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
 
               {/* 推奨アクション */}
               {recommendations && recommendations.length > 0 && (
-                <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
-                  <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                <div className="mt-6 pt-6 border-t border-stroke dark:border-dark-3">
+                  <h4 className="text-base font-semibold text-dark dark:text-white mb-4 flex items-center gap-2">
                     <span>💡</span>
-                    <span>おすすめの改善タスク ({recommendations.length}件)</span>
-                  </h3>
-                  <div className="space-y-2">
+                    <span>おすすめの改善タスク</span>
+                  </h4>
+                  <div className="space-y-3">
                     {recommendations.map((rec, index) => (
-                      <div
-                        key={index}
-                        className="text-sm text-blue-800 dark:text-blue-200 flex items-start gap-2"
-                      >
-                        <span className="font-medium text-blue-600 dark:text-blue-400">{index + 1}.</span>
-                        <div className="flex-1">
-                          <span className="font-medium">{rec.title || rec.recommendation}</span>
+                      <div key={index} className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 dark:bg-dark-2 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors">
+                        <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-0.5">{index + 1}.</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-dark dark:text-white mb-1">{rec.title || rec.recommendation}</p>
                           {rec.description && (
-                            <p className="mt-1 text-xs opacity-80">{rec.description}</p>
+                            <p className="text-xs text-body-color line-clamp-3">{rec.description}</p>
                           )}
                         </div>
+                        <button
+                          onClick={() => {
+                            onClose();
+                            navigate(`/improve?action=add&title=${encodeURIComponent(rec.title || rec.recommendation)}&description=${encodeURIComponent(rec.description || '')}&category=${rec.category || 'other'}&priority=${rec.priority || 'medium'}`);
+                          }}
+                          className="flex-shrink-0 px-3 py-1.5 text-xs font-medium text-white bg-primary rounded hover:bg-opacity-90 transition-colors"
+                        >
+                          タスク追加
+                        </button>
                       </div>
                     ))}
                   </div>
-                  <button
-                    onClick={handleCreateTasks}
-                    className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-primary text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
-                  >
-                    すべてのタスクを「改善する」に追加
-                    <ArrowRight className="h-4 w-4" />
-                  </button>
                 </div>
               )}
 
