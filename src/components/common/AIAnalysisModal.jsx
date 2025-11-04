@@ -1,13 +1,14 @@
-import { X, RefreshCw, Sparkles } from 'lucide-react';
+import { X, RefreshCw, Sparkles, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useSite } from '../../contexts/SiteContext';
 import { usePlan } from '../../hooks/usePlan';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../config/firebase';
+import { functions, db } from '../../config/firebase';
 import { format } from 'date-fns';
-import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
 import LoadingSpinner from './LoadingSpinner';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 /**
  * AI分析結果を表示するサイドシート（シート型UI）
@@ -15,7 +16,7 @@ import LoadingSpinner from './LoadingSpinner';
 export default function AIAnalysisModal({ pageType, metrics, period, onClose, onLimitExceeded }) {
   const { selectedSiteId, selectedSite } = useSite();
   const { checkCanGenerate } = usePlan();
-  const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const [summary, setSummary] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
@@ -23,6 +24,7 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
   const [fromCache, setFromCache] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [addedTaskIds, setAddedTaskIds] = useState(new Set());
 
   useEffect(() => {
     loadAnalysis(false);
@@ -76,6 +78,42 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
       setIsLoading(false);
     }
   };
+
+  /**
+   * タスク追加のmutation
+   */
+  const addTaskMutation = useMutation({
+    mutationFn: async (task) => {
+      return await addDoc(collection(db, 'improvements'), {
+        siteId: selectedSiteId,
+        title: task.title || task.recommendation || 'AI提案タスク',
+        description: task.description || '',
+        category: task.category || 'other',
+        priority: task.priority || 'medium',
+        status: 'draft',
+        expectedImpact: '',
+        order: Date.now(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        createdBy: selectedSite?.userId || '',
+      });
+    },
+    onSuccess: (data, variables, context) => {
+      // キャッシュ無効化
+      queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
+      
+      // 追加済みタスクとしてマーク（チェックマーク表示用）
+      setAddedTaskIds(prev => {
+        const newSet = new Set(prev);
+        newSet.add(variables.title);
+        return newSet;
+      });
+    },
+    onError: (error) => {
+      console.error('[AIAnalysisModal] タスク追加エラー:', error);
+      alert('タスクの追加に失敗しました。もう一度お試しください。');
+    },
+  });
 
   /**
    * ページタイプのラベルを取得
@@ -272,15 +310,20 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
                           {rec.description && (
                             <p className="text-xs text-body-color leading-relaxed mb-3">{rec.description}</p>
                           )}
-                          <button
-                            onClick={() => {
-                              onClose();
-                              navigate(`/improve?action=add&title=${encodeURIComponent(rec.title || rec.recommendation)}&description=${encodeURIComponent(rec.description || '')}&category=${rec.category || 'other'}&priority=${rec.priority || 'medium'}`);
-                            }}
-                            className="inline-flex px-3 py-1.5 text-xs font-medium text-white bg-primary rounded hover:bg-opacity-90 transition-colors"
-                          >
-                            タスク追加
-                          </button>
+                          {addedTaskIds.has(rec.title || rec.recommendation) ? (
+                            <div className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-green-600 bg-green-50 dark:bg-green-900/20 dark:text-green-400 rounded">
+                              <Check className="h-3.5 w-3.5" />
+                              追加済み
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => addTaskMutation.mutate(rec)}
+                              disabled={addTaskMutation.isPending}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-primary rounded hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {addTaskMutation.isPending ? '追加中...' : 'タスク追加'}
+                            </button>
+                          )}
                         </div>
                       </div>
                     ))}
