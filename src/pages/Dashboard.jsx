@@ -936,10 +936,10 @@ export default function Dashboard() {
     />
 
     {/* AI分析フローティングボタン */}
-    {selectedSiteId && currentData && (
+    {selectedSiteId && data && (
       <AIFloatingButton
         pageType={PAGE_TYPES.SUMMARY}
-        metrics={currentData}
+        metrics={data}
         period={{
           startDate: dateRange.from,
           endDate: dateRange.to,

@@ -15,6 +15,11 @@ export default function AIFloatingButton({ pageType, metrics, period }) {
 
   const remaining = getRemainingGenerations();
 
+  // planがロード中の場合は何も表示しない
+  if (!plan) {
+    return null;
+  }
+
   const handleClick = () => {
     setIsModalOpen(true);
   };
