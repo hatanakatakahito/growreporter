@@ -91,6 +91,10 @@
         {
           "fieldPath": "period.endDate",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "generatedAt",
+          "order": "DESCENDING"
         }
       ]
     }
