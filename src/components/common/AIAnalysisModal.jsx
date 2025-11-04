@@ -64,11 +64,14 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
 
     try {
       // 再生成時のみプラン制限チェック
+      console.log('[AIAnalysisModal] プラン制限チェック:', { forceRegenerate, canGenerate: checkCanGenerate() });
       if (forceRegenerate && !checkCanGenerate()) {
+        console.log('[AIAnalysisModal] プラン制限超過');
         onLimitExceeded();
         return;
       }
 
+      console.log('[AIAnalysisModal] httpsCallable取得中');
       const generateAISummary = httpsCallable(functions, 'generateAISummary');
       
       // コンバージョン定義をmetricsに追加
@@ -77,6 +80,16 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         conversionEvents: selectedSite?.conversionEvents || [],
       };
       
+      console.log('[AIAnalysisModal] API呼び出しパラメータ:', {
+        siteId: selectedSiteId,
+        pageType,
+        startDate: period?.startDate,
+        endDate: period?.endDate,
+        forceRegenerate,
+        metricsKeys: Object.keys(enrichedMetrics),
+      });
+      
+      console.log('[AIAnalysisModal] API呼び出し開始...');
       const result = await generateAISummary({
         siteId: selectedSiteId,
         pageType,
@@ -85,6 +98,7 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         endDate: period?.endDate,
         forceRegenerate,
       });
+      console.log('[AIAnalysisModal] API呼び出し完了');
 
       const data = result.data;
       console.log('[AIAnalysisModal] AI分析結果:', data);
