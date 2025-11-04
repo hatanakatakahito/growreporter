@@ -8,8 +8,8 @@ import { functions, db } from '../../config/firebase';
 import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import LoadingSpinner from './LoadingSpinner';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
 /**
  * AI分析結果を表示するサイドシート（シート型UI）
@@ -27,6 +27,26 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [addedTaskIds, setAddedTaskIds] = useState(new Set());
+
+  // 既存のタスクを取得（重複チェック用）
+  const { data: existingTasks = [] } = useQuery({
+    queryKey: ['improvements', selectedSiteId],
+    queryFn: async () => {
+      if (!selectedSiteId) return [];
+      
+      const q = query(
+        collection(db, 'improvements'),
+        where('siteId', '==', selectedSiteId)
+      );
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+    },
+    enabled: !!selectedSiteId,
+    staleTime: 1000 * 60, // 1分間キャッシュ
+  });
 
   useEffect(() => {
     loadAnalysis(false);
@@ -88,7 +108,7 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     mutationFn: async (task) => {
       console.log('[AIAnalysisModal] タスク追加開始:', task);
       console.log('[AIAnalysisModal] selectedSiteId:', selectedSiteId);
-      console.log('[AIAnalysisModal] user:', user);
+      console.log('[AIAnalysisModal] 既存タスク数:', existingTasks.length);
       
       const newTask = {
         siteId: selectedSiteId,
@@ -314,7 +334,18 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
                   <div className="space-y-3">
                     {recommendations.map((rec, index) => {
                       const taskKey = `${rec.title || rec.recommendation}_${rec.description || ''}`;
-                      const isAdded = addedTaskIds.has(taskKey);
+                      const taskTitle = rec.title || rec.recommendation;
+                      const taskDescription = rec.description || '';
+                      
+                      // 既にFirestoreに存在するかチェック
+                      const existsInFirestore = existingTasks.some(task => 
+                        task.title === taskTitle && task.description === taskDescription
+                      );
+                      
+                      // セッション内で追加したかチェック
+                      const addedInSession = addedTaskIds.has(taskKey);
+                      
+                      const isAdded = existsInFirestore || addedInSession;
                       
                       return (
                         <div key={taskKey} className="rounded-lg bg-gray-50 dark:bg-dark-2 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors overflow-hidden">
