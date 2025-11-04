@@ -1,4 +1,4 @@
-import { X, AlertTriangle } from 'lucide-react';
+import { X, Info } from 'lucide-react';
 import { usePlan } from '../../hooks/usePlan';
 
 /**
@@ -13,18 +13,18 @@ export default function PlanLimitModal({ onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div className="relative w-full max-w-md overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-dark-2">
         {/* ヘッダー */}
-        <div className="flex items-center justify-between border-b border-stroke p-6 dark:border-dark-3">
+        <div className="flex items-center justify-between border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 p-6 dark:border-dark-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900">
-              <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+              <Info className="h-5 w-5 text-white" />
             </div>
-            <h2 className="text-xl font-bold text-dark dark:text-white">
+            <h2 className="text-xl font-bold text-white">
               生成回数の上限に達しました
             </h2>
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-2 hover:bg-gray-2 dark:hover:bg-dark-3"
+            className="rounded-lg p-2 text-white hover:bg-white/20"
           >
             <X className="h-5 w-5" />
           </button>
@@ -32,8 +32,8 @@ export default function PlanLimitModal({ onClose }) {
 
         {/* コンテンツ */}
         <div className="p-6">
-          <div className="rounded-lg bg-yellow-50 p-4 dark:bg-yellow-900/20">
-            <p className="mb-4 text-sm text-yellow-800 dark:text-yellow-200">
+          <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
+            <p className="mb-4 text-sm text-blue-900 dark:text-blue-200">
               今月のAI分析生成回数の上限に達しました。
             </p>
 
@@ -56,7 +56,7 @@ export default function PlanLimitModal({ onClose }) {
             </div>
 
             {/* 情報 */}
-            <ul className="space-y-2 text-sm text-yellow-800 dark:text-yellow-200">
+            <ul className="space-y-2 text-sm text-blue-900 dark:text-blue-200">
               <li className="flex items-start gap-2">
                 <span>•</span>
                 <span>来月1日に自動的にリセットされます</span>
