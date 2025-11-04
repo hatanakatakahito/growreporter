@@ -10,7 +10,7 @@ import ReactMarkdown from 'react-markdown';
 import LoadingSpinner from './LoadingSpinner';
 
 /**
- * AI分析結果を表示するモーダル
+ * AI分析結果を表示するサイドシート（シート型UI）
  */
 export default function AIAnalysisModal({ pageType, metrics, period, onClose, onLimitExceeded }) {
   const { selectedSiteId } = useSite();
@@ -106,119 +106,206 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="relative max-h-[90vh] w-full max-w-4xl overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-dark-2">
+    <>
+      {/* オーバーレイ */}
+      <div
+        className="fixed inset-0 bg-black bg-opacity-50 z-[9998] transition-opacity"
+        onClick={onClose}
+      />
+
+      {/* サイドシート */}
+      <div className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white dark:bg-dark shadow-xl z-[9999] transform transition-transform duration-300 ease-in-out overflow-y-auto">
         {/* ヘッダー */}
-        <div className="flex items-center justify-between border-b border-stroke p-6 dark:border-dark-3">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-r from-purple-500 to-pink-500">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
+        <div className="sticky top-0 bg-white dark:bg-dark border-b border-stroke dark:border-dark-3 px-6 py-4 z-10">
+          <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-dark dark:text-white">AI分析</h2>
-              <p className="text-sm text-body-color">{getPageTypeLabel()}</p>
+              <h2 className="flex items-center gap-2 text-xl font-semibold text-dark dark:text-white">
+                <Sparkles className="h-5 w-5 text-primary" />
+                AI分析
+              </h2>
+              <p className="text-sm text-body-color mt-1">
+                {getPageTypeLabel()}
+              </p>
+              {period && (
+                <p className="text-xs text-body-color mt-1">
+                  {format(new Date(period.startDate), 'yyyy年MM月dd日')} 〜 {format(new Date(period.endDate), 'yyyy年MM月dd日')}
+                </p>
+              )}
             </div>
+            <button
+              onClick={onClose}
+              className="text-dark dark:text-white hover:text-primary transition-colors"
+              aria-label="閉じる"
+            >
+              <X className="w-6 h-6" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 hover:bg-gray-2 dark:hover:bg-dark-3"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
         {/* コンテンツ */}
-        <div className="max-h-[calc(90vh-200px)] overflow-y-auto p-6">
-          {isLoading ? (
+        <div className="px-6 py-6">
+          {/* ローディング */}
+          {isLoading && (
             <div className="flex flex-col items-center justify-center py-12">
-              <LoadingSpinner />
-              <p className="mt-4 text-sm text-body-color">AI分析を生成中...</p>
-              <p className="mt-2 text-xs text-body-color">10秒ほどお待ちください</p>
+              <LoadingSpinner size="lg" />
+              <p className="mt-4 text-dark dark:text-white">
+                AI分析を生成しています...
+              </p>
+              <p className="mt-2 text-sm text-body-color">
+                10秒ほどお待ちください
+              </p>
             </div>
-          ) : error ? (
-            <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-              <p className="font-medium">エラーが発生しました</p>
-              <p className="mt-1 text-sm">{error}</p>
+          )}
+
+          {/* エラー */}
+          {error && !isLoading && (
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+              <div className="flex items-start">
+                <svg
+                  className="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0"
+                  fill="currentColor"
+                  viewBox="0 0 20 20"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-red-800 dark:text-red-300">
+                    エラーが発生しました
+                  </h3>
+                  <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                    {error}
+                  </p>
+                  <button
+                    onClick={() => loadAnalysis(false)}
+                    className="mt-3 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium"
+                  >
+                    再試行
+                  </button>
+                </div>
+              </div>
             </div>
-          ) : (
+          )}
+
+          {/* AI要約 */}
+          {summary && !isLoading && (
             <>
-              {/* 分析結果 */}
-              <div className="prose prose-sm max-w-none dark:prose-invert">
-                <ReactMarkdown>{summary}</ReactMarkdown>
+              {/* キャッシュ表示 */}
+              {fromCache && (
+                <div className="mb-4 flex items-center text-xs text-dark dark:text-white bg-gray-50 dark:bg-dark-2 rounded px-3 py-2">
+                  <svg
+                    className="w-4 h-4 mr-2"
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  キャッシュ済みの分析結果を表示しています
+                  {generatedAt && ` (生成: ${format(generatedAt, 'yyyy/MM/dd HH:mm')})`}
+                </div>
+              )}
+
+              {/* Markdown表示 */}
+              <div className="prose prose-sm max-w-none">
+                <ReactMarkdown
+                  components={{
+                    h1: ({ node, ...props }) => (
+                      <h1 className="text-2xl font-bold text-dark dark:text-white mt-6 mb-4" {...props} />
+                    ),
+                    h2: ({ node, ...props }) => (
+                      <h2 className="text-xl font-semibold text-dark dark:text-white mt-5 mb-3" {...props} />
+                    ),
+                    h3: ({ node, ...props }) => (
+                      <h3 className="text-lg font-semibold text-dark dark:text-white mt-4 mb-2" {...props} />
+                    ),
+                    h4: ({ node, ...props }) => (
+                      <h4 className="text-base font-semibold text-dark dark:text-white mt-3 mb-2" {...props} />
+                    ),
+                    p: ({ node, ...props }) => (
+                      <p className="text-sm text-dark dark:text-white leading-relaxed mb-3" {...props} />
+                    ),
+                    ul: ({ node, ...props }) => (
+                      <ul className="list-disc list-inside text-dark dark:text-white space-y-1 mb-3 text-sm" {...props} />
+                    ),
+                    ol: ({ node, ...props }) => (
+                      <ol className="list-decimal list-inside text-dark dark:text-white space-y-1 mb-3 text-sm" {...props} />
+                    ),
+                    li: ({ node, ...props }) => (
+                      <li className="text-sm text-dark dark:text-white ml-2" {...props} />
+                    ),
+                    strong: ({ node, ...props }) => (
+                      <strong className="font-semibold text-dark dark:text-white" {...props} />
+                    ),
+                    em: ({ node, ...props }) => (
+                      <em className="italic text-dark dark:text-white" {...props} />
+                    ),
+                    code: ({ node, ...props }) => (
+                      <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-xs font-mono" {...props} />
+                    ),
+                  }}
+                >
+                  {summary}
+                </ReactMarkdown>
               </div>
 
-              {/* 改善提案セクション */}
-              {recommendations.length > 0 && (
-                <div className="mt-6 rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950">
-                  <h3 className="mb-2 flex items-center gap-2 font-semibold text-blue-900 dark:text-blue-100">
-                    💡 改善提案（{recommendations.length}件）
+              {/* 推奨アクション */}
+              {recommendations && recommendations.length > 0 && (
+                <div className="mt-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                  <h3 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-3 flex items-center gap-2">
+                    <span>💡</span>
+                    <span>おすすめの改善タスク ({recommendations.length}件)</span>
                   </h3>
-                  <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-200">
+                  <div className="space-y-2">
                     {recommendations.map((rec, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="font-medium text-blue-600 dark:text-blue-400">
-                          {index + 1}.
-                        </span>
-                        <div>
-                          <span className="font-medium">{rec.title}</span>
+                      <div
+                        key={index}
+                        className="text-sm text-blue-800 dark:text-blue-200 flex items-start gap-2"
+                      >
+                        <span className="font-medium text-blue-600 dark:text-blue-400">{index + 1}.</span>
+                        <div className="flex-1">
+                          <span className="font-medium">{rec.title || rec.recommendation}</span>
                           {rec.description && (
                             <p className="mt-1 text-xs opacity-80">{rec.description}</p>
                           )}
                         </div>
-                      </li>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
+                  <button
+                    onClick={handleCreateTasks}
+                    className="mt-4 w-full inline-flex items-center justify-center gap-2 bg-primary text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-primary/90 transition-colors"
+                  >
+                    すべてのタスクを「改善する」に追加
+                    <ArrowRight className="h-4 w-4" />
+                  </button>
                 </div>
               )}
 
-              {/* メタ情報 */}
-              {generatedAt && (
-                <div className="mt-4 flex items-center gap-4 text-xs text-body-color">
-                  <span>最終生成: {format(generatedAt, 'yyyy年MM月dd日 HH:mm')}</span>
-                  {fromCache && (
-                    <span className="rounded bg-green-100 px-2 py-1 text-green-700 dark:bg-green-900 dark:text-green-300">
-                      キャッシュ
-                    </span>
-                  )}
-                </div>
-              )}
+              {/* 再生成ボタン */}
+              <div className="mt-6 flex items-center justify-between pt-4 border-t border-stroke dark:border-dark-3">
+                <span className="text-xs text-body-color">
+                  {generatedAt && `最終生成: ${format(generatedAt, 'yyyy/MM/dd HH:mm')}`}
+                </span>
+                <button
+                  onClick={() => loadAnalysis(true)}
+                  disabled={isLoading}
+                  className="inline-flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  再分析
+                </button>
+              </div>
             </>
           )}
         </div>
-
-        {/* フッター */}
-        {!isLoading && !error && (
-          <div className="flex items-center justify-between border-t border-stroke p-6 dark:border-dark-3">
-            <button
-              onClick={() => loadAnalysis(true)}
-              disabled={isLoading}
-              className="inline-flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-            >
-              <RefreshCw className="h-4 w-4" />
-              再分析
-            </button>
-
-            <div className="flex gap-2">
-              {recommendations.length > 0 && (
-                <button
-                  onClick={handleCreateTasks}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2 text-sm font-medium text-white transition hover:bg-primary/90"
-                >
-                  改善タスクを作成
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              )}
-              <button
-                onClick={onClose}
-                className="rounded-lg border border-stroke px-6 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-              >
-                閉じる
-              </button>
-            </div>
-          </div>
-        )}
       </div>
-    </div>
+    </>
   );
 }
-
