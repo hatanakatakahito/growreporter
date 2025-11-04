@@ -8,6 +8,8 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
 import AISummarySheet from '../components/Analysis/AISummarySheet';
 import { Sparkles, Plus, Edit, Trash2, GitMerge, Settings, Info } from 'lucide-react';
+import AIFloatingButton from '../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../constants/plans';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions, db } from '../config/firebase';
@@ -638,37 +640,6 @@ export default function ReverseFlow() {
           )}
         </div>
 
-        {/* AI分析フローティングボタン */}
-        {selectedFlow && !isLoading && summaryData && (
-          <div className="fixed bottom-6 right-6 z-30">
-            {/* 波紋エフェクト */}
-            {isAnimating && (
-              <>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-pink-500 ai-button-ripple" />
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-pink-500 ai-button-ripple" style={{ animationDelay: '0.3s' }} />
-                </div>
-              </>
-            )}
-            
-            {/* メインボタン */}
-            <button
-              onClick={() => setIsAISheetOpen(true)}
-              className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl ${
-                isAnimating ? 'ai-button-pulse' : ''
-              }`}
-              aria-label="AI分析を見る"
-            >
-              <div className="flex flex-col items-center">
-                <Sparkles className={`h-7 w-7 ${isAnimating ? 'ai-icon-sparkle' : ''}`} />
-                <span className="mt-1 text-[11px] font-medium">AI分析</span>
-              </div>
-            </button>
-          </div>
-        )}
-
         {/* AI分析サイドシート */}
         <AISummarySheet
           isOpen={isAISheetOpen}
@@ -683,6 +654,22 @@ export default function ReverseFlow() {
             settings: selectedFlow,
           }}
         />
+
+        {/* 新しいAI分析フローティングボタン */}
+        {selectedSiteId && summaryData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.REVERSE_FLOW}
+            metrics={{
+              summary: summaryData,
+              monthly: monthlyData,
+              settings: selectedFlow,
+            }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
 
       {/* ダイアログ（フロー設定） */}

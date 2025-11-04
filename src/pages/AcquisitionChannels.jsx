@@ -10,6 +10,8 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import AISummarySheet from '../components/Analysis/AISummarySheet';
 import { Sparkles } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
+import AIFloatingButton from '../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../constants/plans';
 import {
   ResponsiveContainer,
   BarChart,
@@ -401,6 +403,23 @@ export default function AcquisitionChannels() {
             channelData: chartData,
           }}
         />
+
+        {/* 新しいAI分析フローティングボタン */}
+        {selectedSiteId && chartData && chartData.length > 0 && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.CHANNELS}
+            metrics={{
+              totalSessions,
+              totalUsers,
+              totalConversions,
+              channelData: chartData,
+            }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

@@ -10,6 +10,8 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import AISummarySheet from '../components/Analysis/AISummarySheet';
 import { Sparkles, ExternalLink } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
+import AIFloatingButton from '../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../constants/plans';
 import {
   ResponsiveContainer,
   BarChart,
@@ -414,6 +416,24 @@ export default function Referrals() {
             referralData: tableData,
           }}
         />
+
+        {/* 新しいAI分析フローティングボタン */}
+        {selectedSiteId && referralData && referralData.length > 0 && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.REFERRALS}
+            metrics={{
+              totalSessions,
+              totalUsers,
+              totalConversions,
+              avgConversionRate,
+              referralData: tableData,
+            }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

@@ -8,6 +8,8 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
 import { Info, Sparkles } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
+import AIFloatingButton from '../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../constants/plans';
 import {
   ResponsiveContainer,
   PieChart,
@@ -293,38 +295,6 @@ export default function Users() {
           )}
         </div>
 
-        {/* AI分析フローティングボタン */}
-        {!isError && (
-          <div className="fixed bottom-6 right-6 z-30">
-            {/* 波紋エフェクト */}
-            {isAnimating && (
-              <>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-pink-500 ai-button-ripple" />
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-pink-500 ai-button-ripple" style={{ animationDelay: '0.3s' }} />
-                </div>
-              </>
-            )}
-            
-            {/* メインボタン */}
-            <button
-              onClick={() => setIsAISheetOpen(true)}
-              disabled={isLoading}
-              className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 ${
-                isAnimating ? 'ai-button-pulse' : ''
-              }`}
-              aria-label="AI分析を見る"
-            >
-              <div className="flex flex-col items-center">
-                <Sparkles className={`h-7 w-7 ${isAnimating ? 'ai-icon-sparkle' : ''}`} />
-                <span className="mt-1 text-[11px] font-medium">AI分析</span>
-              </div>
-            </button>
-          </div>
-        )}
-
         {/* AI分析サイドシート */}
         <AISummarySheet
           isOpen={isAISheetOpen}
@@ -338,6 +308,21 @@ export default function Users() {
             chartData: chartData,
           }}
         />
+
+        {/* 新しいAI分析フローティングボタン（統一版） */}
+        {selectedSiteId && demographicsData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.USERS}
+            metrics={{
+              demographicsData: demographicsData,
+              chartData: chartData,
+            }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

@@ -8,7 +8,7 @@ import { Sparkles, Plus, Trash2, Edit, GripVertical } from 'lucide-react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { setPageTitle } from '../utils/pageTitle';
 import { db } from '../config/firebase';
-import { collection, query, where, getDocs, updateDoc, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, updateDoc, doc, deleteDoc, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ImprovementDialog from '../components/Improve/ImprovementDialog';
 import AIGenerateDialog from '../components/Improve/AIGenerateDialog';
@@ -33,6 +33,24 @@ export default function Improve() {
   // URLパラメータからタスク追加を処理
   useEffect(() => {
     const action = searchParams.get('action');
+    
+    // AI提案からの一括タスク追加
+    if (action === 'add-from-ai') {
+      const tasksParam = searchParams.get('tasks');
+      if (tasksParam && selectedSiteId) {
+        try {
+          const tasks = JSON.parse(decodeURIComponent(tasksParam));
+          handleAddTasksFromAI(tasks);
+        } catch (error) {
+          console.error('[Improve] AI提案の解析エラー:', error);
+        }
+      }
+      // URLパラメータをクリア
+      setSearchParams({});
+      return;
+    }
+    
+    // 単一タスク追加（既存機能）
     if (action === 'add') {
       const title = searchParams.get('title');
       const description = searchParams.get('description');
@@ -54,7 +72,7 @@ export default function Improve() {
         setSearchParams({});
       }
     }
-  }, [searchParams, setSearchParams]);
+  }, [searchParams, setSearchParams, selectedSiteId]);
 
   // 改善課題データの取得
   const { data: improvements = [], isLoading: improvementsLoading } = useQuery({
@@ -104,6 +122,38 @@ export default function Improve() {
       queryClient.invalidateQueries({ queryKey: ['completed-improvements', selectedSiteId] });
     },
   });
+
+  // AI提案からの一括タスク追加
+  const addTasksFromAIMutation = useMutation({
+    mutationFn: async (tasks) => {
+      const promises = tasks.map(task => {
+        return addDoc(collection(db, 'improvements'), {
+          siteId: selectedSiteId,
+          title: task.title || task.recommendation || 'AI提案タスク',
+          description: task.description || task.detail || '',
+          category: task.category || 'other',
+          priority: task.priority || 'medium',
+          status: 'draft',
+          expectedImpact: task.expectedImpact || '',
+          order: Date.now(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          source: 'ai-analysis', // AI分析由来であることを記録
+        });
+      });
+      await Promise.all(promises);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
+      console.log('[Improve] AI提案からのタスク追加完了');
+    },
+  });
+
+  const handleAddTasksFromAI = (tasks) => {
+    if (!tasks || tasks.length === 0) return;
+    console.log('[Improve] AI提案からタスク追加:', tasks);
+    addTasksFromAIMutation.mutate(tasks);
+  };
 
   const columns = [
     { id: 'draft', title: '起案', status: 'draft' },

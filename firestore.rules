@@ -42,9 +42,17 @@ service cloud.firestore {
       allow delete: if request.auth != null && resource.data.user_uid == request.auth.uid;
     }
     
-    // AI要約コレクション
+    // AI要約コレクション（旧システム、互換性のため保持）
     match /aiSummaries/{summaryId} {
       // 自分が作成した要約のみ読み込み可能
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // 書き込みはCloud Functionsのみ
+      allow write: if false;
+    }
+    
+    // AI分析キャッシュコレクション（新システム）
+    match /aiAnalysisCache/{cacheId} {
+      // 自分が作成したキャッシュのみ読み込み可能
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       // 書き込みはCloud Functionsのみ
       allow write: if false;

@@ -10,6 +10,8 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import AISummarySheet from '../components/Analysis/AISummarySheet';
 import { Sparkles, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
+import AIFloatingButton from '../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../constants/plans';
 import {
   ResponsiveContainer,
   BarChart,
@@ -406,6 +408,24 @@ export default function Keywords() {
             keywordData: tableData,
           }}
         />
+
+        {/* 新しいAI分析フローティングボタン */}
+        {selectedSiteId && hasGSCConnection && keywordData && keywordData.length > 0 && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.KEYWORDS}
+            metrics={{
+              totalClicks,
+              totalImpressions,
+              avgCTR,
+              avgPosition,
+              keywordData: tableData,
+            }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

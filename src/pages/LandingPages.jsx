@@ -10,6 +10,8 @@ import DataTable from '../components/Analysis/DataTable';
 import ChartContainer from '../components/Analysis/ChartContainer';
 import AISummarySheet from '../components/Analysis/AISummarySheet';
 import { Sparkles, ExternalLink } from 'lucide-react';
+import AIFloatingButton from '../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../constants/plans';
 import {
   ResponsiveContainer,
   BarChart,
@@ -332,6 +334,23 @@ export default function LandingPages() {
             landingPageData: tableData,
           }}
         />
+
+        {/* 新しいAI分析フローティングボタン */}
+        {selectedSiteId && tableData && tableData.length > 0 && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.LANDING_PAGES}
+            metrics={{
+              totalSessions,
+              totalUsers,
+              totalConversions,
+              landingPageData: tableData,
+            }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

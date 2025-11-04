@@ -9,6 +9,8 @@ import ErrorAlert from '../components/common/ErrorAlert';
 import DataTable from '../components/Analysis/DataTable';
 import AISummarySheet from '../components/Analysis/AISummarySheet';
 import { Sparkles, ExternalLink as ExternalLinkIcon } from 'lucide-react';
+import AIFloatingButton from '../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../constants/plans';
 
 /**
  * 外部リンククリック分析画面
@@ -162,6 +164,22 @@ export default function ExternalLinks() {
             clickData: tableData,
           }}
         />
+
+        {/* 新しいAI分析フローティングボタン */}
+        {selectedSiteId && tableData && tableData.length > 0 && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.EXTERNAL_LINKS}
+            metrics={{
+              totalClicks,
+              totalUsers,
+              clickData: tableData,
+            }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

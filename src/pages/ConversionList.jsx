@@ -9,6 +9,8 @@ import DataTable from '../components/Analysis/DataTable';
 import ChartContainer from '../components/Analysis/ChartContainer';
 import AISummarySheet from '../components/Analysis/AISummarySheet';
 import { Sparkles } from 'lucide-react';
+import AIFloatingButton from '../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../constants/plans';
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
@@ -335,6 +337,21 @@ export default function ConversionList() {
             conversionEvents,
           }}
         />
+
+        {/* 新しいAI分析フローティングボタン */}
+        {selectedSiteId && conversionData && conversionData.length > 0 && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.CONVERSIONS}
+            metrics={{
+              conversionData: conversionData || [],
+              conversionEvents,
+            }}
+            period={{
+              startDate: monthlyDateRange.start,
+              endDate: monthlyDateRange.end,
+            }}
+          />
+        )}
       </main>
     </>
   );

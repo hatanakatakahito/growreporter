@@ -65,6 +65,54 @@
           "order": "ASCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "aiAnalysisCache",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "siteId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pageType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "generatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "aiAnalysisCache",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "siteId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pageType",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "period.startDate",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "period.endDate",
+          "order": "ASCENDING"
+        }
+      ]
     }
   ],
   "fieldOverrides": []

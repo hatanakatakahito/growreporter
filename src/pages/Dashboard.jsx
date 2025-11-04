@@ -14,6 +14,8 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
 import ReactMarkdown from 'react-markdown';
 import ImprovementDialog from '../components/Improve/ImprovementDialog';
+import AIFloatingButton from '../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../constants/plans';
 
 /**
  * ダッシュボード画面
@@ -932,6 +934,18 @@ export default function Dashboard() {
       siteId={selectedSiteId}
       editingItem={selectedTask}
     />
+
+    {/* AI分析フローティングボタン */}
+    {selectedSiteId && currentData && (
+      <AIFloatingButton
+        pageType={PAGE_TYPES.SUMMARY}
+        metrics={currentData}
+        period={{
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+        }}
+      />
+    )}
     </>
   );
 }

@@ -1,5 +1,7 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { checkCanGenerate, incrementGenerationCount } from '../utils/planManager.js';
+import { getCachedAnalysis, saveCachedAnalysis } from '../utils/aiCacheManager.js';
 
 /**
  * AI要約生成 Callable Function
@@ -9,7 +11,7 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
  */
 export async function generateAISummaryCallable(request) {
   const db = getFirestore();
-  const { siteId, pageType, startDate, endDate, metrics } = request.data;
+  const { siteId, pageType, startDate, endDate, metrics, forceRegenerate = false } = request.data;
 
   // 入力バリデーション
   if (!siteId || !pageType || !startDate || !endDate || !metrics) {
@@ -29,22 +31,46 @@ export async function generateAISummaryCallable(request) {
 
   const userId = request.auth.uid;
 
-  console.log('[generateAISummary] Start:', { userId, siteId, pageType, startDate, endDate });
+  console.log('[generateAISummary] Start:', { userId, siteId, pageType, startDate, endDate, forceRegenerate });
 
   try {
-    // 1. キャッシュチェック
-    const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
-    if (cachedSummary) {
-      console.log('[generateAISummary] Cache hit:', cachedSummary.id);
-      return {
-        summary: cachedSummary.summary,
-        recommendations: cachedSummary.recommendations || [],
-        cached: true,
-        generatedAt: cachedSummary.generatedAt,
-      };
+    // 1. キャッシュチェック（強制再生成でない場合）
+    if (!forceRegenerate) {
+      const cachedAnalysis = await getCachedAnalysis(userId, siteId, pageType, startDate, endDate);
+      if (cachedAnalysis) {
+        console.log('[generateAISummary] Cache hit (aiAnalysisCache):', cachedAnalysis.cacheId);
+        return {
+          summary: cachedAnalysis.summary,
+          recommendations: cachedAnalysis.recommendations || [],
+          fromCache: true,
+          generatedAt: cachedAnalysis.generatedAt.toISOString(),
+        };
+      }
+      
+      // 旧キャッシュもチェック（互換性のため）
+      const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
+      if (cachedSummary) {
+        console.log('[generateAISummary] Cache hit (legacy aiSummaries):', cachedSummary.id);
+        return {
+          summary: cachedSummary.summary,
+          recommendations: cachedSummary.recommendations || [],
+          fromCache: true,
+          generatedAt: cachedSummary.generatedAt,
+        };
+      }
+    }
+    
+    // 2. プラン制限チェック
+    const canGenerate = await checkCanGenerate(userId);
+    if (!canGenerate) {
+      console.log('[generateAISummary] プラン制限超過:', userId);
+      throw new HttpsError(
+        'resource-exhausted',
+        '今月のAI生成回数の上限に達しました。来月1日に自動的にリセットされます。'
+      );
     }
 
-    // 2. Gemini APIキーの確認
+    // 3. Gemini APIキーの確認
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
       console.error('[generateAISummary] GEMINI_API_KEY not configured');
@@ -54,10 +80,10 @@ export async function generateAISummaryCallable(request) {
       );
     }
 
-    // 3. プロンプト生成
+    // 4. プロンプト生成
     const prompt = generatePrompt(pageType, startDate, endDate, metrics);
 
-    // 4. Gemini API呼び出し
+    // 5. Gemini API呼び出し
     console.log('[generateAISummary] Calling Gemini API...');
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
@@ -104,8 +130,11 @@ export async function generateAISummaryCallable(request) {
     // AI生成テキストから「アクションプラン」セクションを削除（重複を防ぐため）
     const summary = removeActionPlanSection(rawSummary);
 
-    // 5. Firestoreに保存
+    // 6. 新しいキャッシュシステムに保存
     const now = new Date();
+    await saveCachedAnalysis(userId, siteId, pageType, summary, recommendations, startDate, endDate);
+    
+    // 7. 旧システムにも保存（互換性のため、将来的に削除予定）
     const summaryDoc = {
       userId,
       siteId,
@@ -118,11 +147,14 @@ export async function generateAISummaryCallable(request) {
       generatedAt: Timestamp.fromDate(now),
       createdAt: Timestamp.fromDate(now),
     };
-
     const docRef = await db.collection('aiSummaries').add(summaryDoc);
-    console.log('[generateAISummary] Saved to Firestore:', docRef.id);
+    console.log('[generateAISummary] Saved to Firestore (legacy):', docRef.id);
 
-    // 6. 古いキャッシュをクリーンアップ（非同期）
+    // 8. 生成回数をインクリメント
+    await incrementGenerationCount(userId);
+    console.log('[generateAISummary] Generation count incremented');
+
+    // 9. 古いキャッシュをクリーンアップ（非同期）
     cleanupOldSummaries(db, userId).catch(err => {
       console.error('[generateAISummary] Cleanup error:', err);
     });
@@ -130,7 +162,7 @@ export async function generateAISummaryCallable(request) {
     return {
       summary,
       recommendations,
-      cached: false,
+      fromCache: false,
       generatedAt: now.toISOString(),
     };
   } catch (error) {

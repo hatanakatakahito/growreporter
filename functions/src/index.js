@@ -16,6 +16,7 @@ import { exchangeOAuthCodeCallable } from './callable/exchangeOAuthCode.js';
 import { testSheetsConnectionCallable } from './callable/testSheetsConnection.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
+import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
 import { onSiteCreatedTrigger } from './triggers/onSiteCreated.js';
 
 // Firebase Admin初期化
@@ -191,3 +192,9 @@ export const siteCreatedSheetsExport = onDocumentWritten({
   memory: '512MiB',
   timeoutSeconds: 300, // 5分
 }, onSiteCreatedTrigger);
+
+/**
+ * 月次制限リセット Scheduled Function
+ * 毎月1日0時に全ユーザーのAI生成回数をリセット
+ */
+export const resetMonthlyLimits = resetMonthlyLimitsScheduled;

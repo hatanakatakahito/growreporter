@@ -10,6 +10,8 @@ import DataTable from '../components/Analysis/DataTable';
 import ChartContainer from '../components/Analysis/ChartContainer';
 import AISummarySheet from '../components/Analysis/AISummarySheet';
 import { Sparkles, Download } from 'lucide-react';
+import AIFloatingButton from '../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../constants/plans';
 import {
   ResponsiveContainer,
   BarChart,
@@ -304,6 +306,22 @@ export default function FileDownloads() {
             downloadData: tableData,
           }}
         />
+
+        {/* 新しいAI分析フローティングボタン */}
+        {selectedSiteId && tableData && tableData.length > 0 && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.FILE_DOWNLOADS}
+            metrics={{
+              totalDownloads,
+              totalUsers,
+              downloadData: tableData,
+            }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );
