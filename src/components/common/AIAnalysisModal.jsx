@@ -108,10 +108,6 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
    */
   const addTaskMutation = useMutation({
     mutationFn: async (task) => {
-      console.log('[AIAnalysisModal] タスク追加開始:', task);
-      console.log('[AIAnalysisModal] selectedSiteId:', selectedSiteId);
-      console.log('[AIAnalysisModal] 既存タスク数:', existingTasks.length);
-      
       const newTask = {
         siteId: selectedSiteId,
         title: task.title || task.recommendation || 'AI提案タスク',
@@ -126,13 +122,9 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         createdBy: user?.email || '',
       };
       
-      console.log('[AIAnalysisModal] Firestoreに追加するデータ:', newTask);
-      
       return await addDoc(collection(db, 'improvements'), newTask);
     },
     onSuccess: (data, variables, context) => {
-      console.log('[AIAnalysisModal] タスク追加成功:', data.id, variables);
-      
       // キャッシュ無効化
       queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
       
@@ -146,8 +138,6 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     },
     onError: (error) => {
       console.error('[AIAnalysisModal] タスク追加エラー:', error);
-      console.error('[AIAnalysisModal] エラーコード:', error.code);
-      console.error('[AIAnalysisModal] エラーメッセージ:', error.message);
       alert(`タスクの追加に失敗しました。\nエラー: ${error.message}\nもう一度お試しください。`);
     },
   });
