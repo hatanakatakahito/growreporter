@@ -6,7 +6,8 @@ import { PLANS } from '../constants/plans';
  */
 export function usePlan() {
   const { userProfile } = useAuth();
-  const plan = PLANS[userProfile?.plan || 'free'];
+  const planId = userProfile?.plan || 'free';
+  const plan = PLANS[planId] || PLANS.free; // フォールバック
 
   /**
    * AI生成が可能かチェック

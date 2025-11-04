@@ -941,8 +941,8 @@ export default function Dashboard() {
         pageType={PAGE_TYPES.SUMMARY}
         metrics={currentData}
         period={{
-          startDate: dateRange.startDate,
-          endDate: dateRange.endDate,
+          startDate: dateRange.from,
+          endDate: dateRange.to,
         }}
       />
     )}
