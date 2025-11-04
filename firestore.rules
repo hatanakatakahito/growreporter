@@ -62,8 +62,7 @@ service cloud.firestore {
     match /improvements/{improvementId} {
       // 認証済みユーザーが自分のサイトに関連する改善課題のみ読み書き可能
       allow read: if request.auth != null;
-      allow create: if request.auth != null && 
-        request.resource.data.createdBy == request.auth.token.email;
+      allow create: if request.auth != null;
       allow update: if request.auth != null;
       allow delete: if request.auth != null;
     }
