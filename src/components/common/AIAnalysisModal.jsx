@@ -253,24 +253,27 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
                   </h4>
                   <div className="space-y-3">
                     {recommendations.map((rec, index) => (
-                      <div key={index} className="p-3 rounded-lg bg-gray-50 dark:bg-dark-2 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors">
-                        <div className="flex items-start gap-3">
-                          <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 mt-0.5">{index + 1}.</span>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-dark dark:text-white mb-2">{rec.title || rec.recommendation}</p>
-                            {rec.description && (
-                              <p className="text-xs text-body-color leading-relaxed mb-3">{rec.description}</p>
-                            )}
-                            <button
-                              onClick={() => {
-                                onClose();
-                                navigate(`/improve?action=add&title=${encodeURIComponent(rec.title || rec.recommendation)}&description=${encodeURIComponent(rec.description || '')}&category=${rec.category || 'other'}&priority=${rec.priority || 'medium'}`);
-                              }}
-                              className="inline-flex px-3 py-1.5 text-xs font-medium text-white bg-primary rounded hover:bg-opacity-90 transition-colors"
-                            >
-                              タスク追加
-                            </button>
-                          </div>
+                      <div key={index} className="rounded-lg bg-gray-50 dark:bg-dark-2 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors overflow-hidden">
+                        {/* 上段: タスク名 */}
+                        <div className="flex items-start gap-3 p-3 pb-2 border-b border-gray-200 dark:border-dark-3">
+                          <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">{index + 1}.</span>
+                          <p className="flex-1 text-sm font-semibold text-dark dark:text-white">{rec.title || rec.recommendation}</p>
+                        </div>
+                        
+                        {/* 下段: 説明文とボタン */}
+                        <div className="p-3 pt-2">
+                          {rec.description && (
+                            <p className="text-xs text-body-color leading-relaxed mb-3">{rec.description}</p>
+                          )}
+                          <button
+                            onClick={() => {
+                              onClose();
+                              navigate(`/improve?action=add&title=${encodeURIComponent(rec.title || rec.recommendation)}&description=${encodeURIComponent(rec.description || '')}&category=${rec.category || 'other'}&priority=${rec.priority || 'medium'}`);
+                            }}
+                            className="inline-flex px-3 py-1.5 text-xs font-medium text-white bg-primary rounded hover:bg-opacity-90 transition-colors"
+                          >
+                            タスク追加
+                          </button>
                         </div>
                       </div>
                     ))}
