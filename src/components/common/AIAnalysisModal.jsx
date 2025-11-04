@@ -1,5 +1,5 @@
 import { X, RefreshCw, Sparkles, Check } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSite } from '../../contexts/SiteContext';
 import { usePlan } from '../../hooks/usePlan';
 import { useAuth } from '../../contexts/AuthContext';
@@ -27,6 +27,7 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [addedTaskIds, setAddedTaskIds] = useState(new Set());
+  const isMountedRef = useRef(true);
 
   // 既存のタスクを取得（重複チェック用）
   const { data: existingTasks = [] } = useQuery({
@@ -52,12 +53,15 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
    * AI分析を読み込み
    */
   const loadAnalysis = async (forceRegenerate = false) => {
+    if (!isMountedRef.current) return;
+    
     setIsLoading(true);
     setError(null);
 
     try {
       // 再生成時のみプラン制限チェック
       if (forceRegenerate && !checkCanGenerate()) {
+        if (!isMountedRef.current) return;
         onLimitExceeded();
         return;
       }
@@ -79,6 +83,9 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         forceRegenerate,
       });
 
+      // アンマウントされていたら状態更新しない
+      if (!isMountedRef.current) return;
+
       const data = result.data;
       setSummary(data.summary);
       setRecommendations(data.recommendations || []);
@@ -87,19 +94,30 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     } catch (err) {
       console.error('[AIAnalysisModal] AI分析エラー:', err);
       
+      // アンマウントされていたら状態更新しない
+      if (!isMountedRef.current) return;
+      
       if (err.code === 'functions/resource-exhausted') {
         onLimitExceeded();
       } else {
         setError('AI分析の生成に失敗しました。しばらくしてから再度お試しください。');
       }
     } finally {
-      setIsLoading(false);
+      if (isMountedRef.current) {
+        setIsLoading(false);
+      }
     }
   };
 
   // マウント時にAI分析を実行
   useEffect(() => {
+    isMountedRef.current = true;
     loadAnalysis(false);
+    
+    // クリーンアップ：アンマウント時にフラグを変更
+    return () => {
+      isMountedRef.current = false;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
