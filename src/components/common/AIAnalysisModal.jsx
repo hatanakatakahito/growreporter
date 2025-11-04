@@ -1,5 +1,5 @@
 import { X, RefreshCw, Sparkles, Check } from 'lucide-react';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { useSite } from '../../contexts/SiteContext';
 import { usePlan } from '../../hooks/usePlan';
 import { useAuth } from '../../contexts/AuthContext';
@@ -51,7 +51,7 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
   /**
    * AI分析を読み込み
    */
-  const loadAnalysis = useCallback(async (forceRegenerate = false) => {
+  const loadAnalysis = async (forceRegenerate = false) => {
     setIsLoading(true);
     setError(null);
 
@@ -95,11 +95,13 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     } finally {
       setIsLoading(false);
     }
-  }, [checkCanGenerate, selectedSiteId, selectedSite, pageType, metrics, period, onLimitExceeded]);
+  };
 
+  // マウント時のみ実行（無限ループ防止のため依存配列は空）
   useEffect(() => {
     loadAnalysis(false);
-  }, [loadAnalysis]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * タスク追加のmutation
