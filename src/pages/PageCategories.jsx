@@ -31,7 +31,7 @@ import {
  * ページをディレクトリ別に分類して表示
  */
 export default function PageCategories() {
-  const { selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [activeTab, setActiveTab] = useState('table');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [hiddenSeries, setHiddenSeries] = useState({});
@@ -355,6 +355,7 @@ export default function PageCategories() {
             metrics={{
               totalPageViews,
               categoryData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

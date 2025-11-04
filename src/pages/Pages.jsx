@@ -28,7 +28,7 @@ import {
  * GA4のページ別データを表示
  */
 export default function Pages() {
-  const { selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [activeTab, setActiveTab] = useState('table');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [hiddenSeries, setHiddenSeries] = useState({});
@@ -340,6 +340,7 @@ export default function Pages() {
               totalSessions,
               totalUsers,
               pageData: tableData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

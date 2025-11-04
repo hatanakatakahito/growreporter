@@ -28,7 +28,7 @@ import {
  * ユーザーが最初に訪問したページを表示
  */
 export default function LandingPages() {
-  const { selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [activeTab, setActiveTab] = useState('table');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [hiddenSeries, setHiddenSeries] = useState({});
@@ -344,6 +344,7 @@ export default function LandingPages() {
               totalUsers,
               totalConversions,
               landingPageData: tableData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

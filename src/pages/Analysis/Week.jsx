@@ -19,7 +19,7 @@ import { PAGE_TYPES } from '../../constants/plans';
  * 曜日×時間帯のヒートマップで傾向を表示
  */
 export default function Week() {
-  const { selectedSiteId, selectSite, sites, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, selectSite, sites, dateRange, updateDateRange } = useSite();
   const [searchParams] = useSearchParams();
   const [heatmapMetric, setHeatmapMetric] = useState('sessions');
   const [activeTab, setActiveTab] = useState('chart');
@@ -375,6 +375,7 @@ export default function Week() {
               sessions: maxSessions,
               conversions: maxConversions,
               heatmapData: matrix,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

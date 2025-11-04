@@ -31,7 +31,7 @@ import {
  * GA4の参照元データ（Referral）を表示
  */
 export default function Referrals() {
-  const { selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [activeTab, setActiveTab] = useState('table');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [hiddenSeries, setHiddenSeries] = useState({});
@@ -427,6 +427,7 @@ export default function Referrals() {
               totalConversions,
               avgConversionRate,
               referralData: tableData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

@@ -17,7 +17,7 @@ import { PAGE_TYPES } from '../constants/plans';
  * clickイベントを追跡
  */
 export default function ExternalLinks() {
-  const { selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // ページタイトルを設定
@@ -173,6 +173,7 @@ export default function ExternalLinks() {
               totalClicks,
               totalUsers,
               clickData: tableData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

@@ -28,7 +28,7 @@ import {
  * file_downloadイベントを追跡
  */
 export default function FileDownloads() {
-  const { selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [activeTab, setActiveTab] = useState('table');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [hiddenSeries, setHiddenSeries] = useState({});
@@ -315,6 +315,7 @@ export default function FileDownloads() {
               totalDownloads,
               totalUsers,
               downloadData: tableData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

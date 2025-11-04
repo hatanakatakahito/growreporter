@@ -316,6 +316,7 @@ export default function Users() {
             metrics={{
               demographicsData: demographicsData,
               chartData: chartData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

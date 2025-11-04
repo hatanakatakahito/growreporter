@@ -30,7 +30,7 @@ import {
  * 日別のセッションとコンバージョンの推移を表示
  */
 export default function Day() {
-  const { selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [hiddenLines, setHiddenLines] = useState({});
   const [activeTab, setActiveTab] = useState('chart');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
@@ -311,6 +311,7 @@ export default function Day() {
               sessions: chartData.reduce((sum, row) => sum + row.sessions, 0),
               conversions: chartData.reduce((sum, row) => sum + row.conversions, 0),
               dailyData: chartData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

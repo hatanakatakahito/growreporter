@@ -31,14 +31,11 @@ export async function generateAISummaryCallable(request) {
 
   const userId = request.auth.uid;
 
-  console.log('[generateAISummary] Start:', { userId, siteId, pageType, startDate, endDate, forceRegenerate });
-
   try {
     // 1. キャッシュチェック（強制再生成でない場合）
     if (!forceRegenerate) {
       const cachedAnalysis = await getCachedAnalysis(userId, siteId, pageType, startDate, endDate);
       if (cachedAnalysis) {
-        console.log('[generateAISummary] Cache hit (aiAnalysisCache):', cachedAnalysis.cacheId);
         return {
           summary: cachedAnalysis.summary,
           recommendations: cachedAnalysis.recommendations || [],
@@ -50,7 +47,6 @@ export async function generateAISummaryCallable(request) {
       // 旧キャッシュもチェック（互換性のため）
       const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
       if (cachedSummary) {
-        console.log('[generateAISummary] Cache hit (legacy aiSummaries):', cachedSummary.id);
         return {
           summary: cachedSummary.summary,
           recommendations: cachedSummary.recommendations || [],
@@ -63,7 +59,6 @@ export async function generateAISummaryCallable(request) {
     // 2. プラン制限チェック
     const canGenerate = await checkCanGenerate(userId);
     if (!canGenerate) {
-      console.log('[generateAISummary] プラン制限超過:', userId);
       throw new HttpsError(
         'resource-exhausted',
         '今月のAI生成回数の上限に達しました。来月1日に自動的にリセットされます。'
@@ -84,7 +79,6 @@ export async function generateAISummaryCallable(request) {
     const prompt = generatePrompt(pageType, startDate, endDate, metrics);
 
     // 5. Gemini API呼び出し
-    console.log('[generateAISummary] Calling Gemini API...');
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
       {
@@ -122,8 +116,6 @@ export async function generateAISummaryCallable(request) {
     const data = await response.json();
     let rawSummary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'AI要約を生成できませんでした。';
 
-    console.log('[generateAISummary] Summary generated successfully');
-
     // 推奨アクションの抽出
     const recommendations = extractRecommendations(rawSummary, pageType);
     
@@ -148,11 +140,9 @@ export async function generateAISummaryCallable(request) {
       createdAt: Timestamp.fromDate(now),
     };
     const docRef = await db.collection('aiSummaries').add(summaryDoc);
-    console.log('[generateAISummary] Saved to Firestore (legacy):', docRef.id);
 
     // 8. 生成回数をインクリメント
     await incrementGenerationCount(userId);
-    console.log('[generateAISummary] Generation count incremented');
 
     // 9. 古いキャッシュをクリーンアップ（非同期）
     cleanupOldSummaries(db, userId).catch(err => {
@@ -437,17 +427,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 
   // コンバージョン定義の整形
   const formatConversionInfo = () => {
-    // デバッグ: コンバージョンデータを確認
-    console.log('[generateAISummary] formatConversionInfo called');
-    console.log('[generateAISummary] metrics.conversionEvents:', metrics.conversionEvents);
-    console.log('[generateAISummary] metrics.conversions:', metrics.conversions);
-    console.log('[generateAISummary] metrics.conversions type:', typeof metrics.conversions);
-    console.log('[generateAISummary] metrics.conversions is object:', typeof metrics.conversions === 'object');
-    console.log('[generateAISummary] metrics.conversions is array:', Array.isArray(metrics.conversions));
-    console.log('[generateAISummary] metrics.conversions entries:', metrics.conversions ? Object.entries(metrics.conversions) : 'null');
-    
     if (!metrics.conversionEvents || metrics.conversionEvents.length === 0) {
-      console.log('[generateAISummary] No conversion events configured');
       return '\n\n【コンバージョン定義】\n- コンバージョンイベントが設定されていません';
     }
     
@@ -463,7 +443,6 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
     // コンバージョン内訳がある場合
     if (metrics.conversions && typeof metrics.conversions === 'object' && !Array.isArray(metrics.conversions)) {
       const conversionEntries = Object.entries(metrics.conversions);
-      console.log('[generateAISummary] Conversion entries count:', conversionEntries.length);
       
       if (conversionEntries.length > 0) {
         text += '\n【コンバージョン内訳】\n';
@@ -471,16 +450,10 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
           const event = metrics.conversionEvents.find(e => e.eventName === eventName);
           const displayName = event ? event.displayName : eventName;
           text += `- ${displayName}: ${count?.toLocaleString() || 0}件\n`;
-          console.log(`[generateAISummary] Added conversion: ${displayName} = ${count}`);
         });
-      } else {
-        console.log('[generateAISummary] Conversion object is empty - no conversions in period');
       }
-    } else {
-      console.log('[generateAISummary] No valid conversions object');
     }
     
-    console.log('[generateAISummary] formatConversionInfo result length:', text.length);
     return text;
   };
 

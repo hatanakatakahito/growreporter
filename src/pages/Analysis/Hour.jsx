@@ -31,7 +31,7 @@ import {
  * 時間帯別のセッションとコンバージョンを棒グラフで表示
  */
 export default function Hour() {
-  const { selectedSiteId, selectSite, sites, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, selectSite, sites, dateRange, updateDateRange } = useSite();
   const [searchParams] = useSearchParams();
   const [hiddenBars, setHiddenBars] = useState({});
   const [activeTab, setActiveTab] = useState('chart');
@@ -301,6 +301,7 @@ export default function Hour() {
               sessions: chartData.reduce((sum, row) => sum + row.sessions, 0),
               conversions: chartData.reduce((sum, row) => sum + row.conversions, 0),
               hourlyData: chartData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

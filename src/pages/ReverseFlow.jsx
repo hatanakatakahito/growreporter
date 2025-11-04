@@ -663,6 +663,7 @@ export default function ReverseFlow() {
               summary: summaryData,
               monthly: monthlyData,
               settings: selectedFlow,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

@@ -31,7 +31,7 @@ import {
  * 流入チャネル別のセッションとコンバージョンを表示
  */
 export default function AcquisitionChannels() {
-  const { selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [activeTab, setActiveTab] = useState('chart');
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [hiddenSeries, setHiddenSeries] = useState({});
@@ -413,6 +413,7 @@ export default function AcquisitionChannels() {
               totalUsers,
               totalConversions,
               channelData: chartData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,

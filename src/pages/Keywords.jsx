@@ -419,6 +419,7 @@ export default function Keywords() {
               avgCTR,
               avgPosition,
               keywordData: tableData,
+              conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
               startDate: dateRange.from,
