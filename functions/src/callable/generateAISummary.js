@@ -435,6 +435,34 @@ function estimatePriority(text, order) {
 function generatePrompt(pageType, startDate, endDate, metrics) {
   const period = `${startDate}から${endDate}までの期間`;
 
+  // コンバージョン定義の整形
+  const formatConversionInfo = () => {
+    if (!metrics.conversionEvents || metrics.conversionEvents.length === 0) {
+      return '\n\n【コンバージョン定義】\n- コンバージョンイベントが設定されていません';
+    }
+    
+    let text = '\n\n【コンバージョン定義】\n';
+    text += `このサイトでは以下の${metrics.conversionEvents.length}種類のコンバージョンイベントを設定しています：\n`;
+    metrics.conversionEvents.forEach((event, index) => {
+      text += `${index + 1}. 「${event.displayName}」（GA4イベント名: ${event.eventName}）\n`;
+      if (event.category) {
+        text += `   - カテゴリ: ${event.category}\n`;
+      }
+    });
+    
+    // コンバージョン内訳がある場合
+    if (metrics.conversions && typeof metrics.conversions === 'object' && !Array.isArray(metrics.conversions)) {
+      text += '\n【コンバージョン内訳】\n';
+      Object.entries(metrics.conversions).forEach(([eventName, count]) => {
+        const event = metrics.conversionEvents.find(e => e.eventName === eventName);
+        const displayName = event ? event.displayName : eventName;
+        text += `- ${displayName}: ${count?.toLocaleString() || 0}件\n`;
+      });
+    }
+    
+    return text;
+  };
+
   if (pageType === 'summary') {
     // 13ヶ月推移データの整形
     let monthlyTrendText = '';
@@ -445,6 +473,11 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
         monthlyTrendText += `- ${month.yearMonth}: ユーザー${month.users?.toLocaleString() || 0}人, セッション${month.sessions?.toLocaleString() || 0}回, CV${month.conversions?.toLocaleString() || 0}件\n`;
       });
     }
+    
+    const conversionInfo = formatConversionInfo();
+    const totalConversions = typeof metrics.conversions === 'object' && !Array.isArray(metrics.conversions)
+      ? Object.values(metrics.conversions).reduce((sum, count) => sum + (count || 0), 0)
+      : (metrics.conversions || 0);
 
     return `
 あなたは中長期的なトレンド分析の専門家です。${period}のWebサイトパフォーマンスを13ヶ月の推移データと合わせて分析し、**成長トレンドの特定と今後の戦略に役立つビジネスインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
@@ -454,7 +487,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 - セッション数: ${metrics.sessions?.toLocaleString() || 0}回
 - ページビュー数: ${metrics.pageViews?.toLocaleString() || metrics.screenPageViews?.toLocaleString() || 0}回
 - エンゲージメント率: ${((metrics.engagementRate || 0) * 100).toFixed(1)}%
-- コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件${monthlyTrendText}
+- コンバージョン合計: ${totalConversions.toLocaleString()}件${conversionInfo}${monthlyTrendText}
 
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
@@ -704,9 +737,12 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 - CV前に閲覧されたページ総数: ${summary.totalPages?.toLocaleString() || 0}ページ
 - 平均閲覧ページ数: ${summary.avgPagesBeforeConversion?.toFixed(1) || 0}ページ`;
     }
+    
+    const conversionInfo = formatConversionInfo();
 
     return `
 あなたはコンバージョン最適化（CRO）の専門家です。${period}のWebサイトでコンバージョンに至ったユーザーの行動導線を分析し、**CVR向上に直結する改善施策に役立つビジネスインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
+${conversionInfo}
 
 【逆引き分析データ】${reverseFlowText}
 

@@ -13,7 +13,7 @@ import LoadingSpinner from './LoadingSpinner';
  * AI分析結果を表示するサイドシート（シート型UI）
  */
 export default function AIAnalysisModal({ pageType, metrics, period, onClose, onLimitExceeded }) {
-  const { selectedSiteId } = useSite();
+  const { selectedSiteId, selectedSite } = useSite();
   const { checkCanGenerate } = usePlan();
   const navigate = useNavigate();
 
@@ -43,10 +43,17 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
       }
 
       const generateAISummary = httpsCallable(functions, 'generateAISummary');
+      
+      // コンバージョン定義をmetricsに追加
+      const enrichedMetrics = {
+        ...metrics,
+        conversionEvents: selectedSite?.conversionEvents || [],
+      };
+      
       const result = await generateAISummary({
         siteId: selectedSiteId,
         pageType,
-        metrics,
+        metrics: enrichedMetrics,
         startDate: period?.startDate,
         endDate: period?.endDate,
         forceRegenerate,
