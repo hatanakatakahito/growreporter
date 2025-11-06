@@ -14,6 +14,7 @@ import { fetchMetadataCallable } from './callable/fetchMetadata.js';
 import { fetchGA4UserDemographicsCallable } from './callable/fetchGA4UserDemographics.js';
 import { exchangeOAuthCodeCallable } from './callable/exchangeOAuthCode.js';
 import { testSheetsConnectionCallable } from './callable/testSheetsConnection.js';
+import { fetchImprovementKnowledgeCallable } from './callable/fetchImprovementKnowledge.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
 import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
@@ -156,6 +157,17 @@ export const testSheetsConnection = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, testSheetsConnectionCallable);
+
+/**
+ * GrowGroup改善施策ナレッジ取得 Callable Function
+ * スプレッドシートから改善施策のナレッジデータを取得
+ */
+export const fetchImprovementKnowledge = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, fetchImprovementKnowledgeCallable);
 
 /**
  * キャッシュクリーンアップ Scheduled Function

@@ -122,13 +122,16 @@ export async function generateAISummaryCallable(request) {
     const data = await response.json();
     let rawSummary = data.candidates?.[0]?.content?.parts?.[0]?.text || 'AI要約を生成できませんでした。';
 
-    console.log('[generateAISummary] Summary generated successfully');
+    console.log('[generateAISummary] Summary generated successfully - 文字数:', rawSummary.length);
+    console.log('[generateAISummary] AIの生テキスト (先頭500文字):', rawSummary.substring(0, 500));
 
     // 推奨アクションの抽出
     const recommendations = extractRecommendations(rawSummary, pageType);
+    console.log('[generateAISummary] 抽出された推奨施策数:', recommendations.length);
     
     // AI生成テキストから「アクションプラン」セクションを削除（重複を防ぐため）
-    const summary = removeActionPlanSection(rawSummary);
+    const summary = removeActionPlanSection(rawSummary, pageType);
+    console.log('[generateAISummary] サマリー文字数:', summary.length);
 
     // 6. 新しいキャッシュシステムに保存
     const now = new Date();
@@ -250,10 +253,77 @@ async function cleanupOldSummaries(db, userId) {
 }
 
 /**
- * AI分析結果から推奨アクションを抽出
- * セクション見出しに依存せず、番号付きリスト（1., 2., 3.など）を直接検出
+ * comprehensive_improvement用の改善施策抽出
+ * 形式: タイトル:、説明:、カテゴリー:、優先度:、期待効果: を解析
  */
-function extractRecommendations(summary, pageType) {
+function extractImprovementRecommendations(summary) {
+  console.log('[extractImprovementRecommendations] 開始 - 入力テキスト長:', summary.length);
+  const recommendations = [];
+  
+  // "---"で区切られたブロックに分割
+  const blocks = summary.split(/---+/);
+  console.log('[extractImprovementRecommendations] ブロック数:', blocks.length);
+  
+  blocks.forEach((block, blockIndex) => {
+    const lines = block.trim().split('\n');
+    let currentRec = {};
+    
+    lines.forEach((line) => {
+      const trimmedLine = line.trim();
+      
+      // 各フィールドを抽出
+      if (trimmedLine.startsWith('タイトル:')) {
+        currentRec.title = trimmedLine.substring('タイトル:'.length).trim();
+      } else if (trimmedLine.startsWith('説明:')) {
+        currentRec.description = trimmedLine.substring('説明:'.length).trim();
+      } else if (trimmedLine.startsWith('カテゴリー:')) {
+        const category = trimmedLine.substring('カテゴリー:'.length).trim().toLowerCase();
+        currentRec.category = category;
+      } else if (trimmedLine.startsWith('優先度:')) {
+        const priority = trimmedLine.substring('優先度:'.length).trim().toLowerCase();
+        currentRec.priority = priority;
+      } else if (trimmedLine.startsWith('期待効果:')) {
+        currentRec.expectedImpact = trimmedLine.substring('期待効果:'.length).trim();
+      } else if (currentRec.description && trimmedLine && !trimmedLine.startsWith('タイトル:') && !trimmedLine.startsWith('説明:') && !trimmedLine.startsWith('カテゴリー:') && !trimmedLine.startsWith('優先度:') && !trimmedLine.startsWith('期待効果:')) {
+        // 説明文が複数行にわたる場合は追加
+        currentRec.description += ' ' + trimmedLine;
+      }
+    });
+    
+    // 必須フィールドがすべて揃っている場合のみ追加
+    if (currentRec.title && currentRec.description && currentRec.category && currentRec.priority) {
+      console.log(`[extractImprovementRecommendations] ブロック${blockIndex}をパース成功:`, currentRec.title);
+      recommendations.push(currentRec);
+    } else {
+      console.log(`[extractImprovementRecommendations] ブロック${blockIndex}をスキップ - 不足フィールド:`, {
+        hasTitle: !!currentRec.title,
+        hasDescription: !!currentRec.description,
+        hasCategory: !!currentRec.category,
+        hasPriority: !!currentRec.priority,
+      });
+    }
+  });
+  
+  console.log('[extractImprovementRecommendations] 抽出完了:', recommendations.length, '件');
+  
+  // もし抽出できなかった場合は、一般的な抽出関数を試す（フォールバック）
+  if (recommendations.length === 0) {
+    console.warn('[extractImprovementRecommendations] 「タイトル:」形式で抽出できませんでした。番号付きリスト形式を試します。');
+    console.warn('[extractImprovementRecommendations] AIの生テキスト (先頭1000文字):', summary.substring(0, 1000));
+    
+    // 一般的な抽出関数（番号付きリスト対応）にフォールバック
+    const fallbackRecommendations = extractRecommendationsFromNumberedList(summary);
+    console.log('[extractImprovementRecommendations] フォールバック抽出完了:', fallbackRecommendations.length, '件');
+    return fallbackRecommendations;
+  }
+  
+  return recommendations;
+}
+
+/**
+ * 番号付きリストから改善施策を抽出（フォールバック用）
+ */
+function extractRecommendationsFromNumberedList(summary) {
   const recommendations = [];
   const lines = summary.split('\n');
   let currentRecommendation = null;
@@ -297,21 +367,82 @@ function extractRecommendations(summary, pageType) {
         }
       }
       
-      // タイトルから不要な接頭辞・接尾辞を削除
-      title = title
-        .replace(/^(優先順位高|優先順位中|優先順位低)[：:]\s*/g, '') // 優先順位：
-        .replace(/^(緊急|重要|必須)[：:]\s*/g, '') // 緊急：重要：必須：
-        .replace(/^【[^】]+】\s*/g, '') // 【...】
-        .replace(/^\([^)]+\)\s*/g, '') // (...)
-        .replace(/[（(]優先度[^）)]*[）)]?$/g, '') // 末尾の（優先度...）または（優先度
-        .replace(/[（(]優先度[^）)]*[）)]?\s*/g, '') // 途中の（優先度...）
-        .trim(); // 前後の空白を削除
+      currentRecommendation = {
+        title,
+        description,
+        category: estimateCategory(fullText),
+        priority: estimatePriority(fullText, itemIndex),
+        expectedImpact: '',
+      };
+      itemIndex++;
+    } else if (currentRecommendation && trimmedLine && !trimmedLine.startsWith('-')) {
+      // 現在の推奨アクションの説明文を追加
+      // ただし、箇条書き（-で始まる）は除外
+      currentRecommendation.description += (currentRecommendation.description ? ' ' : '') + trimmedLine.replace(/\*\*/g, '');
+    }
+  });
+  
+  // 最後の推奨アクションを保存
+  if (currentRecommendation) {
+    recommendations.push(currentRecommendation);
+  }
+  
+  console.log('[extractRecommendationsFromNumberedList] 番号付きリストから抽出:', recommendations.length, '件');
+  return recommendations;
+}
+
+/**
+ * AI分析結果から推奨アクションを抽出
+ * セクション見出しに依存せず、番号付きリスト（1., 2., 3.など）を直接検出
+ */
+function extractRecommendations(summary, pageType) {
+  // comprehensive_improvementの場合は専用の抽出処理
+  if (pageType === 'comprehensive_improvement') {
+    return extractImprovementRecommendations(summary);
+  }
+  
+  const recommendations = [];
+  const lines = summary.split('\n');
+  let currentRecommendation = null;
+  let itemIndex = 0;
+  
+  lines.forEach((line) => {
+    const trimmedLine = line.trim();
+    
+    // 見出し行（#で始まる）はスキップ
+    if (trimmedLine.startsWith('#')) {
+      return;
+    }
+    
+    // 番号付きリスト（1. 2. 3. など）を検出
+    const match = trimmedLine.match(/^([0-9]+)\.\s*\*?\*?(.+)\*?\*?$/);
+    
+    if (match) {
+      // 前の推奨アクションを保存
+      if (currentRecommendation) {
+        recommendations.push(currentRecommendation);
+      }
       
-      // 説明文からも不要な文字列を削除
-      description = description
-        .replace(/^[（(]優先度[^）)]*[（)]?\s*/g, '') // 先頭の（優先度...）
-        .replace(/\s*[（(]優先度[^）)]*[）)]?\s*/g, ' ') // 途中の（優先度...）
-        .trim();
+      // 新しい推奨アクションを開始
+      const fullText = match[2].replace(/\*\*/g, '').trim();
+      
+      // タイトルと説明を分離
+      let title = fullText;
+      let description = '';
+      
+      // コロン（:）で分割
+      const colonIndex = fullText.indexOf(':');
+      if (colonIndex > 0) {
+        title = fullText.substring(0, colonIndex).trim();
+        description = fullText.substring(colonIndex + 1).trim();
+      } else {
+        // コロンがない場合は、最初の句点（。）で分割
+        const periodIndex = fullText.indexOf('。');
+        if (periodIndex > 0 && periodIndex < 50) { // 50文字以内に句点がある場合のみ
+          title = fullText.substring(0, periodIndex).trim();
+          description = fullText.substring(periodIndex + 1).trim();
+        }
+      }
       
       currentRecommendation = {
         title,
@@ -341,7 +472,28 @@ function extractRecommendations(summary, pageType) {
  * 
  * 番号付きリスト（1., 2., 3.）が連続して出現する直前の見出しから削除
  */
-function removeActionPlanSection(text) {
+function removeActionPlanSection(text, pageType) {
+  // comprehensive_improvementの場合は「### 選択した施策ID」セクション以降を削除
+  if (pageType === 'comprehensive_improvement') {
+    const lines = text.split('\n');
+    const resultLines = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const trimmedLine = lines[i].trim();
+      
+      // 「選択した施策ID」「推奨改善施策」「おすすめの改善施策」セクションを検出したら、そこで終了
+      if (trimmedLine.includes('選択した施策') || 
+          trimmedLine.includes('推奨改善施策') || 
+          trimmedLine.includes('おすすめの改善施策')) {
+        break;
+      }
+      
+      resultLines.push(lines[i]);
+    }
+    
+    return resultLines.join('\n').trim();
+  }
+  
   const lines = text.split('\n');
   let numberedListStartIndex = -1;
   let lastHeadingBeforeListIndex = -1;
@@ -481,9 +633,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
 - **今後3ヶ月の戦略として、具体的なアクションを1-3点提案**：
   - 成長トレンドを加速させる施策
   - 減少トレンドを反転させる施策
-  - **タイトルは改善内容のみを簡潔に記載**（例：「ページ読み込み速度の改善」）
-  - タイトルに「優先度」「優先順位」「緊急」などの接頭辞や括弧書きは含めない
-  - 優先順位、ビジネスインパクト、具体的な方法は説明文で詳しく補足
+  - 各提案の優先順位とビジネスインパクトを明示
 - 数値の羅列ではなく、ビジネス判断に直結するインサイトを提供
 `;
   }
@@ -518,8 +668,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
   - アクセスが多い曜日を活用した施策（コンテンツ公開、キャンペーン実施など）
   - アクセスが少ない曜日の改善策
   - CV率が高い日の特徴を他の日に応用する方法
-  - **タイトルは改善内容のみを簡潔に記載**（タイトルに優先度情報は含めない）
-  - 実施タイミング、期待効果、優先順位は説明文で詳しく補足
+  - 各提案の実施タイミングと期待効果を明示
 - 数値の羅列ではなく、「次にどう動くべきか」の視点で記述
 `;
   }
@@ -545,8 +694,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
   - 【広告配信】：最も効果的な曜日・時間帯と予算配分（例：「火曜20-22時に予算の30%を投下」）
   - 【コンテンツ投稿】：新規記事やSNS投稿の最適な曜日・時間（例：「月曜9時に新記事を公開」）
   - 【キャンペーン実施】：プロモーションやメルマガ配信の最適なタイミング
-  - **タイトルは改善内容のみを簡潔に記載**（タイトルに優先度情報は含めない）
-  - 実施方法、期待効果、優先順位は説明文で詳しく補足
+  - 各提案の実施方法と期待効果を具体的に明示
 - 数値の羅列ではなく、「いつ、何をすべきか」を明確に記述
 `;
   }
@@ -586,8 +734,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
   - 【コンテンツ投稿】：SNS投稿やメルマガ配信の最適な時刻（例：「毎日12時にSNS投稿」）
   - 【リアルタイム対応】：問い合わせやチャット対応の優先時間帯
   - 【リターゲティング】：CVが高い時間帯に集中配信
-  - **タイトルは改善内容のみを簡潔に記載**（タイトルに優先度情報は含めない）
-  - 実施方法、期待ROI、優先順位は説明文で詳しく補足
+  - 各提案の実施方法と期待ROIを明示
 - 数値の羅列ではなく、「何時に、何をすべきか」を具体的に記述
 `;
   }
@@ -710,9 +857,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
   - 【コンテンツ最適化】：ターゲット層のニーズに合わせたコンテンツ改善（言葉遣い、デザイン、情報量など）
   - 【デバイス最適化】：主要デバイスでのUX改善（モバイルファーストなど）
   - 【新規開拓】：弱いセグメントの獲得戦略（未開拓の年齢層へのアプローチ）
-  - **タイトルは改善内容のみを簡潔に記載**（例：「モバイルUXの最適化」）
-  - タイトルに「優先度」「優先順位」「緊急」などの接頭辞や括弧書きは含めない
-  - 優先順位、ビジネスインパクト、具体的な方法は説明文で詳しく補足
+  - 各提案の優先順位とビジネスインパクトを明示
 - 数値の羅列ではなく、「誰に、何を、どう訴求すべきか」を明確に記述
 `;
   }
@@ -749,28 +894,223 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
   - 【導線改善】：CV貢献ページへの誘導強化（CTA配置、関連記事リンクなど）
   - 【コンテンツ改善】：CV貢献ページの情報充実（追加すべき情報、削除すべき障壁）
   - 【新規ページ作成】：導線に不足しているページの追加提案
-  - **タイトルは改善内容のみを簡潔に記載**（タイトルに優先度情報は含めない）
-  - 実装難易度、CVRへのインパクト、優先順位は説明文で詳しく補足
+  - 各提案の実装難易度とCVRへのインパクトを明示
 - 数値の羅列ではなく、「どのページを、どう改善すべきか」を具体的に記述
 `;
   }
 
-  // その他のページタイプ用のデフォルト
-  return `
-あなたはWebサイト分析の専門家です。${period}のデータを分析し、**ビジネス改善に役立つ具体的なアクション**を含む日本語の要約を**必ず800文字以内**で生成してください。
+  if (pageType === 'comprehensive_improvement') {
+    // 包括的改善案生成用のプロンプト
+    // データ範囲: 過去365日
+    // 分析重点: 直近30日
 
-【データ】
-${JSON.stringify(metrics, null, 2)}
+    // 月次トレンドデータの整形
+    let monthlyTrendText = '';
+    if (metrics.monthlyTrend && metrics.monthlyTrend.monthlyData && Array.isArray(metrics.monthlyTrend.monthlyData)) {
+      const monthlyData = metrics.monthlyTrend.monthlyData;
+      monthlyTrendText = '\n\n【過去13ヶ月の推移】\n';
+      monthlyData.forEach(month => {
+        monthlyTrendText += `- ${month.month}: ユーザー${month.users?.toLocaleString() || 0}人, セッション${month.sessions?.toLocaleString() || 0}回, CV${month.conversions?.toLocaleString() || 0}件\n`;
+      });
+    }
+
+    // 直近30日のサマリー
+    const recent30Days = metrics.summary?.metrics || {};
+    let conversionDetails = '';
+    if (recent30Days.conversions && typeof recent30Days.conversions === 'object') {
+      const cvList = Object.entries(recent30Days.conversions)
+        .map(([name, count]) => `  - ${name}: ${count}件`)
+        .join('\n');
+      conversionDetails = `\n${cvList}`;
+    }
+    const recentSummaryText = `
+【直近30日のサマリー（${startDate} 〜 ${endDate}）】
+- ユーザー数: ${recent30Days.totalUsers?.toLocaleString() || 0}人
+- セッション数: ${recent30Days.sessions?.toLocaleString() || 0}回
+- ページビュー数: ${recent30Days.screenPageViews?.toLocaleString() || 0}回
+- エンゲージメント率: ${((recent30Days.engagementRate || 0) * 100).toFixed(1)}%
+- コンバージョン数: ${recent30Days.totalConversions?.toLocaleString() || 0}件${conversionDetails}
+`;
+
+    // 集客チャネル
+    let channelsText = '';
+    if (metrics.channels && Array.isArray(metrics.channels) && metrics.channels.length > 0) {
+      channelsText = '\n\n【集客チャネル（直近30日）】\n';
+      metrics.channels.slice(0, 5).forEach(channel => {
+        channelsText += `- ${channel.channel}: セッション${channel.sessions?.toLocaleString() || 0}回, CV${channel.conversions?.toLocaleString() || 0}件\n`;
+      });
+    }
+
+    // 人気ランディングページ
+    let landingPagesText = '';
+    if (metrics.landingPages && Array.isArray(metrics.landingPages) && metrics.landingPages.length > 0) {
+      landingPagesText = '\n\n【人気ランディングページ（直近30日、トップ5）】\n';
+      metrics.landingPages.slice(0, 5).forEach(page => {
+        landingPagesText += `- ${page.page}: セッション${page.sessions?.toLocaleString() || 0}回, ENG率${(page.engagementRate * 100).toFixed(1)}%, CV${page.conversions?.toLocaleString() || 0}件\n`;
+      });
+    }
+
+    // ページ別データ
+    let pagesText = '';
+    if (metrics.pages && Array.isArray(metrics.pages) && metrics.pages.length > 0) {
+      pagesText = '\n\n【ページ別アクセス（直近30日、トップ10）】\n';
+      metrics.pages.slice(0, 10).forEach(page => {
+        pagesText += `- ${page.path}: PV${page.pageViews?.toLocaleString() || 0}, ユーザー${page.users?.toLocaleString() || 0}人, CV${page.conversions?.toLocaleString() || 0}件\n`;
+      });
+    }
+
+    // ページ分類別データ
+    let pageCategoriesText = '';
+    if (metrics.pageCategories && Array.isArray(metrics.pageCategories) && metrics.pageCategories.length > 0) {
+      pageCategoriesText = '\n\n【ページ分類別（直近30日、トップ5）】\n';
+      metrics.pageCategories.slice(0, 5).forEach(category => {
+        pageCategoriesText += `- ${category.category}: PV${category.pageViews?.toLocaleString() || 0}, ENG率${(category.engagementRate * 100).toFixed(1)}%, CV${category.conversions?.toLocaleString() || 0}件\n`;
+      });
+    }
+
+    // 月次コンバージョンデータ
+    let monthlyConversionsText = '';
+    const conversionData = metrics.monthlyConversions?.data || metrics.monthlyConversions?.monthlyData;
+    if (conversionData && Array.isArray(conversionData)) {
+      monthlyConversionsText = '\n\n【過去13ヶ月のコンバージョン推移】\n';
+      conversionData.forEach(month => {
+        monthlyConversionsText += `- ${month.month}: CV${month.totalConversions?.toLocaleString() || 0}件`;
+        if (month.conversions && Object.keys(month.conversions).length > 0) {
+          const cvDetails = Object.entries(month.conversions).map(([name, count]) => `${name}:${count}件`).join(', ');
+          monthlyConversionsText += ` (${cvDetails})`;
+        }
+        monthlyConversionsText += '\n';
+      });
+    }
+
+    // 改善施策ナレッジベース（スプレッドシートから取得）
+    let knowledgeText = '';
+    if (metrics.improvementKnowledge && Array.isArray(metrics.improvementKnowledge) && metrics.improvementKnowledge.length > 0) {
+      knowledgeText = `\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
+      knowledgeText += `【改善施策のナレッジベース：全${metrics.improvementKnowledge.length}件】\n`;
+      knowledgeText += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n`;
+      knowledgeText += '以下のリストから、このサイトに最も効果的な施策を3〜5件選んでください。\n';
+      knowledgeText += '【重要】このリスト以外の施策を提案することは禁止です。\n\n';
+      
+      metrics.improvementKnowledge.forEach((knowledge, index) => {
+        knowledgeText += `【施策ID: ${index + 1}】\n`;
+        knowledgeText += `カテゴリー: ${knowledge.category || 'その他'}\n`;
+        knowledgeText += `サイト種別: ${knowledge.siteType || '全般'}\n`;
+        knowledgeText += `タイトル: ${knowledge.title || ''}\n`;
+        knowledgeText += `内容: ${knowledge.description || ''}\n`;
+        knowledgeText += `\n`;
+      });
+    }
+
+    return `
+あなたはWebサイト改善コンサルタントです。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【タスク1】サイトデータの分析（分析サマリー作成）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+過去365日分のデータを参照し、直近30日のパフォーマンスを分析してください。
+**【重要】分析サマリーには「改善施策」や「アクション」を含めないでください。現状の分析と課題特定のみです。**
+
+${recentSummaryText}
+${monthlyTrendText}
+${channelsText}
+${landingPagesText}
+${pagesText}
+${pageCategoriesText}
+${monthlyConversionsText}
+
+【分析の視点】
+- 長期トレンド（過去13ヶ月）と直近30日の比較
+- 季節性や前年同期との変化
+- 最もビジネスインパクトが大きい課題の特定（チャネル、コンテンツ、CV導線など）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【タスク2】改善施策の選択（ナレッジベースから厳選）
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${knowledgeText}
+
+【選択ルール】
+✓ 上記リストから「施策ID」を指定して3〜5件選択する
+✓ リストにない独自の施策は提案禁止
+✓ サイトの課題に最も効果的な施策を選ぶ
+✓ 選択した施策の説明文は、このサイトのデータに合わせてカスタマイズする
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【出力形式】以下の形式で厳密に出力してください
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+## 分析サマリー
+
+（800文字以内。過去1年のトレンドを踏まえ、直近30日を分析。ビジネスインサイトを提供。改善施策は含めない。）
+
+### 選択した施策ID
+
+施策ID: [選択したID], [選択したID], [選択したID]（3〜5件）
+
+### 推奨改善施策
+
+タイトル: （選択した施策IDのタイトルをそのまま使用、または微調整）
+説明: （このサイトの具体的な状況に合わせてカスタマイズした説明）
+カテゴリー: （選択した施策のカテゴリー: acquisition, content, design, feature, other）
+優先度: （このサイトでの優先度: high, medium, low）
+期待効果: （具体的な数値を含めず、定性的に記述）
+
+---
+
+タイトル: （2件目）
+説明: （2件目）
+カテゴリー: （2件目）
+優先度: （2件目）
+期待効果: （2件目）
+
+---
+
+（以下、選択した件数分繰り返す。必ず3〜5件）
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【厳守事項】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. 分析サマリーには改善施策を含めない
+2. 必ず「選択した施策ID」セクションを出力する
+3. 推奨改善施策はナレッジベースから選択（独自提案禁止）
+4. 件数は必ず3〜5件（6件以上は禁止、2件以下も禁止）
+5. タイトルはナレッジベースのものを基本的に使用
+6. 説明はこのサイトのデータに基づいてカスタマイズ
+7. 必ず「タイトル:」「説明:」「カテゴリー:」「優先度:」「期待効果:」の形式で出力
+8. 番号付きリスト（1. 2. 3.）は使用禁止
+9. 期待効果に具体的な数値は含めない
+10. タイトル、説明、期待効果にマークダウン記号（**、#、-、*）は使用禁止
+11. 各改善施策の間に「---」を挿入
+
+【出力例】
+## 分析サマリー
+（分析内容）
+
+### 選択した施策ID
+施策ID: 15, 42, 78, 103
+
+### 推奨改善施策
+
+タイトル: メタディスクリプションの最適化
+説明: 主要ページのメタディスクリプションを検索意図に沿った内容に書き換え、クリック率を改善します
+カテゴリー: acquisition
+優先度: high
+期待効果: オーガニック流入の増加
+
+---
+
+（以下同様）
+`;
+  }
+
+  // デフォルト（未対応のpageType）
+  return `
+あなたはWebサイト分析の専門家です。${period}のWebサイトデータを分析し、ビジネスインサイトを含む日本語の要約を800文字以内で生成してください。
 
 【要求事項】
-- **800文字以内で簡潔にまとめる**（これは厳守してください）
-- Markdownの見出し記法（##, ###）を使用して構造化
-- **データから主要なトレンドや特徴を3-5点抽出**
-- **トレンドの原因を考察**：「なぜそうなったか」の視点で記述
-- **具体的なアクションを1-3点提案**：
-  - **タイトルは改善内容のみを簡潔に記載**（タイトルに優先度情報は含めない）
-  - 実施方法、期待効果、優先順位、ビジネスインパクトは説明文で詳しく補足
-- 数値の羅列ではなく、「次に何をすべきか」を明確に記述
+- **800文字以内で簡潔にまとめる**
+- 数値の羅列ではなく、ビジネス判断に役立つインサイトを提供
+- 具体的なアクションを1-3点提案
 `;
 }
 

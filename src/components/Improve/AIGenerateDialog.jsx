@@ -1,27 +1,88 @@
 import React, { useState } from 'react';
 import { X, Sparkles, Loader2 } from 'lucide-react';
-import { db } from '../../config/firebase';
+import { db, functions } from '../../config/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { format, subDays } from 'date-fns';
+import ReactMarkdown from 'react-markdown';
+import { fetchComprehensiveDataForImprovement } from '../../utils/comprehensiveDataFetcher';
 
 export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
   const { currentUser } = useAuth();
   const queryClient = useQueryClient();
   
+  // 固定期間：直近30日
+  const today = new Date();
+  const thirtyDaysAgo = subDays(today, 30);
+  const startDate = format(thirtyDaysAgo, 'yyyy-MM-dd');
+  const endDate = format(today, 'yyyy-MM-dd');
+  
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedSummary, setGeneratedSummary] = useState('');
   const [generatedSuggestions, setGeneratedSuggestions] = useState([]);
   const [selectedSuggestions, setSelectedSuggestions] = useState(new Set());
 
   const handleGenerate = async () => {
+    console.log('[AIGenerateDialog] AI改善案生成開始:', { siteId, startDate, endDate });
+
     setIsGenerating(true);
+    setGeneratedSummary('');
     setGeneratedSuggestions([]);
     setSelectedSuggestions(new Set());
 
     try {
-      // ここでは簡易的なモックデータを使用
-      // 実際のプロダクションでは Gemini API を呼び出します
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Step 1: 包括的データを取得（365日分のデータ、直近30日重点）
+      console.log('[AIGenerateDialog] データ取得開始...');
+      const comprehensiveData = await fetchComprehensiveDataForImprovement(siteId);
+      console.log('[AIGenerateDialog] データ取得完了:', comprehensiveData);
+
+      // Step 2: AI改善案を生成
+      console.log('[AIGenerateDialog] AI生成開始...');
+      const generateAISummary = httpsCallable(functions, 'generateAISummary');
+      
+      const result = await generateAISummary({
+        siteId,
+        pageType: 'comprehensive_improvement',
+        startDate,  // 直近30日の開始日
+        endDate,    // 直近30日の終了日
+        metrics: comprehensiveData,
+        forceRegenerate: true,
+      });
+
+      console.log('[AIGenerateDialog] AI生成完了:', result.data);
+
+      // Step 3: 結果を設定
+      if (result.data.summary) {
+        setGeneratedSummary(result.data.summary);
+      }
+
+      if (result.data.recommendations && Array.isArray(result.data.recommendations)) {
+        console.log('[AIGenerateDialog] 推奨施策数:', result.data.recommendations.length);
+        setGeneratedSuggestions(result.data.recommendations);
+        
+        // 推奨施策が0件の場合は警告
+        if (result.data.recommendations.length === 0) {
+          console.warn('[AIGenerateDialog] 推奨施策が0件です。AIのレスポンス形式に問題がある可能性があります。');
+          // モックデータを表示
+          throw new Error('推奨施策の抽出に失敗しました（0件）');
+        }
+      } else {
+        console.warn('[AIGenerateDialog] recommendations が存在しないか、配列ではありません');
+        throw new Error('推奨施策データが不正です');
+      }
+
+    } catch (error) {
+      console.error('[AIGenerateDialog] エラー:', error);
+      alert(`AI改善案の生成に失敗しました: ${error.message}`);
+      
+      // エラー時はモックデータを表示（開発用）
+      const mockSummary = `## 分析サマリー
+
+直近30日間（${startDate} 〜 ${endDate}）のデータを分析した結果、全体的なパフォーマンスは安定しています。セッション数は前期比で15%増加し、コンバージョン率も改善傾向にあります。特にオーガニック検索からの流入が好調で、主要なランディングページのエンゲージメント率が向上しています。`;
+
+      setGeneratedSummary(mockSummary);
       
       const mockSuggestions = [
         {
@@ -29,42 +90,39 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
           description: 'メインビジュアル下のCTAボタンをより目立つデザインに変更し、マイクロコピーを追加してアクション誘導を強化',
           category: 'design',
           priority: 'high',
-          expectedImpact: 'CVR 15%向上',
+          expectedImpact: 'コンバージョン率の向上',
         },
         {
           title: 'SEO対策: メタディスクリプション最適化',
           description: '主要ページのメタディスクリプションを検索意図に沿った内容に書き換え、クリック率を改善',
           category: 'acquisition',
           priority: 'high',
-          expectedImpact: 'オーガニック流入 20%増',
+          expectedImpact: 'オーガニック流入の増加',
         },
         {
           title: 'モバイルページ速度の改善',
           description: '画像の遅延読み込みとWebP形式への変換により、モバイルでの読み込み速度を改善',
           category: 'feature',
           priority: 'medium',
-          expectedImpact: 'ページ速度 40%向上',
+          expectedImpact: 'ページ速度とUXの向上',
         },
         {
           title: 'コンテンツの読みやすさ改善',
           description: '段落の改行や見出しの階層を見直し、スキャンしやすいレイアウトに変更',
           category: 'content',
           priority: 'medium',
-          expectedImpact: '滞在時間 30%増',
+          expectedImpact: 'ユーザーエンゲージメントの向上',
         },
         {
           title: 'お客様の声セクション追加',
           description: 'トップページに実際の利用者の声を掲載し、信頼性を向上',
           category: 'content',
           priority: 'low',
-          expectedImpact: '信頼性向上',
+          expectedImpact: '信頼性とブランド価値の向上',
         },
       ];
       
       setGeneratedSuggestions(mockSuggestions);
-    } catch (error) {
-      console.error('Error generating suggestions:', error);
-      alert('AI改善案の生成に失敗しました');
     } finally {
       setIsGenerating(false);
     }
@@ -156,7 +214,7 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6 dark:bg-dark-2">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-6 flex items-center justify-between">
           <h3 className="text-xl font-semibold text-dark dark:text-white">
             AI改善案生成
           </h3>
@@ -172,7 +230,7 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
           <div className="py-12 text-center">
             <Sparkles className="mx-auto mb-4 h-12 w-12 text-purple-500" />
             <p className="mb-6 text-body-color">
-              AIがサイトのデータを分析し、改善案を提案します
+              過去365日分のデータを分析し、直近30日のパフォーマンスを重点的に改善提案します。
             </p>
             <button
               onClick={handleGenerate}
@@ -194,8 +252,42 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
           </div>
         ) : (
           <>
+            {/* 分析サマリー */}
+            {generatedSummary && (
+              <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+                <ReactMarkdown
+                  components={{
+                    h2: ({ node, ...props }) => (
+                      <h2 className="mb-3 text-xl font-bold text-dark dark:text-white" {...props} />
+                    ),
+                    h3: ({ node, ...props }) => (
+                      <h3 className="mb-2 text-lg font-semibold text-dark dark:text-white" {...props} />
+                    ),
+                    p: ({ node, ...props }) => (
+                      <p className="mb-3 text-body-color leading-relaxed" {...props} />
+                    ),
+                    ul: ({ node, ...props }) => (
+                      <ul className="mb-3 list-disc space-y-1 pl-5 text-body-color" {...props} />
+                    ),
+                    li: ({ node, ...props }) => (
+                      <li className="text-body-color" {...props} />
+                    ),
+                    strong: ({ node, ...props }) => (
+                      <strong className="font-semibold text-dark dark:text-white" {...props} />
+                    ),
+                  }}
+                >
+                  {generatedSummary}
+                </ReactMarkdown>
+              </div>
+            )}
+
+            {/* おすすめの改善施策 */}
+            <h3 className="mb-3 text-lg font-semibold text-dark dark:text-white">
+              おすすめの改善施策（{generatedSuggestions.length}件）
+            </h3>
             <p className="mb-4 text-sm text-body-color">
-              {generatedSuggestions.length}件の改善案が生成されました。追加する項目を選択してください。
+              追加する項目を選択してください。
             </p>
             
             <div className="mb-6 space-y-3">
@@ -221,7 +313,7 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
                     />
                   </div>
                   
-                  <p className="mb-3 text-sm text-body-color">
+                  <p className="mb-3 text-sm text-dark dark:text-white">
                     {suggestion.description}
                   </p>
                   
@@ -230,11 +322,11 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
                       {categoryLabels[suggestion.category]}
                     </span>
                     <span className={`rounded px-2 py-0.5 text-xs font-medium ${priorityColors[suggestion.priority]}`}>
-                      優先度: {priorityLabels[suggestion.priority]}
+                      {priorityLabels[suggestion.priority]}
                     </span>
                     {suggestion.expectedImpact && (
                       <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-900/20 dark:text-gray-300">
-                        期待効果: {suggestion.expectedImpact}
+                        {suggestion.expectedImpact}
                       </span>
                     )}
                   </div>
@@ -242,20 +334,40 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
               ))}
             </div>
 
-            <div className="flex justify-end gap-3 border-t border-stroke pt-4 dark:border-dark-3">
+            <div className="flex justify-between border-t border-stroke pt-4 dark:border-dark-3">
               <button
-                onClick={onClose}
-                className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                onClick={handleGenerate}
+                disabled={isGenerating}
+                className="inline-flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                キャンセル
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    生成中...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    再生成
+                  </>
+                )}
               </button>
-              <button
-                onClick={handleAddSelected}
-                disabled={selectedSuggestions.size === 0}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                選択した{selectedSuggestions.size}件を追加
-              </button>
+              
+              <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleAddSelected}
+                  disabled={selectedSuggestions.size === 0}
+                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  選択した{selectedSuggestions.size}件を追加
+                </button>
+              </div>
             </div>
           </>
         )}

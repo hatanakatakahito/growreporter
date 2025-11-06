@@ -21,7 +21,7 @@ function getAuthClient() {
 /**
  * Google Sheets APIクライアントを取得
  */
-async function getSheetsClient() {
+export async function getSheetsClient() {
   const auth = getAuthClient();
   const authClient = await auth.getClient();
   return google.sheets({ version: 'v4', auth: authClient });

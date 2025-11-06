@@ -48,10 +48,6 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     staleTime: 1000 * 60, // 1分間キャッシュ
   });
 
-  useEffect(() => {
-    loadAnalysis(false);
-  }, []);
-
   /**
    * AI分析を読み込み
    */
@@ -100,6 +96,12 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
       setIsLoading(false);
     }
   };
+
+  // マウント時にAI分析を実行
+  useEffect(() => {
+    loadAnalysis(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /**
    * タスク追加のmutation
