@@ -48,18 +48,18 @@ export async function generateAISummaryCallable(request) {
       }
       
       // 旧キャッシュもチェック（互換性のため）
-      const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
-      if (cachedSummary) {
+    const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
+    if (cachedSummary) {
         console.log('[generateAISummary] Cache hit (legacy aiSummaries):', cachedSummary.id);
-        return {
-          summary: cachedSummary.summary,
-          recommendations: cachedSummary.recommendations || [],
+      return {
+        summary: cachedSummary.summary,
+        recommendations: cachedSummary.recommendations || [],
           fromCache: true,
-          generatedAt: cachedSummary.generatedAt,
-        };
-      }
+        generatedAt: cachedSummary.generatedAt,
+      };
     }
-    
+    }
+
     // 2. プラン制限チェック
     const canGenerate = await checkCanGenerate(userId);
     if (!canGenerate) {
@@ -839,7 +839,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
       }
     }
 
-    return `
+  return `
 あなたはターゲティング戦略とペルソナ設計の専門家です。${period}のWebサイトのユーザー属性データを分析し、**ターゲット層の特定とマーケティング施策の最適化に役立つビジネスインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
 
 【ユーザー属性データ】${demographicsText}
@@ -964,7 +964,7 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
     if (metrics.pageCategories && Array.isArray(metrics.pageCategories) && metrics.pageCategories.length > 0) {
       pageCategoriesText = '\n\n【ページ分類別（直近30日、トップ5）】\n';
       metrics.pageCategories.slice(0, 5).forEach(category => {
-        pageCategoriesText += `- ${category.category}: PV${category.pageViews?.toLocaleString() || 0}, ENG率${(category.engagementRate * 100).toFixed(1)}%, CV${category.conversions?.toLocaleString() || 0}件\n`;
+        pageCategoriesText += `- ${category.category}: PV${category.pageViews?.toLocaleString() || 0}, ユーザー${category.users?.toLocaleString() || 0}人, ENG率${(category.engagementRate * 100).toFixed(1)}%\n`;
       });
     }
 
@@ -1041,7 +1041,34 @@ ${knowledgeText}
 
 ## 分析サマリー
 
-（800文字以内。過去1年のトレンドを踏まえ、直近30日を分析。ビジネスインサイトを提供。改善施策は含めない。）
+（800文字以内。過去1年のトレンドを踏まえ、直近30日を分析。ビジネスインサイトを提供。改善施策は含めない。**必ず具体的な数値を含めてください**）
+
+【必須の分析要素】
+1. **直近30日の主要指標**（具体的な数値を明記）
+   - ユーザー数、セッション数、PV数、エンゲージメント率
+   - コンバージョン数、コンバージョン率
+   - コンバージョンの内訳と件数
+
+2. **前月比の分析**（増減率を％で表示）
+   - 各指標の前月との比較
+   - 増減の傾向を明確に
+
+3. **前年同月比の分析**（可能な場合）
+   - 1年前の同時期との比較
+   - 季節性の影響を考慮
+
+4. **過去13ヶ月のトレンド**
+   - 最高値・最低値の月と数値
+   - 全体的な傾向（上昇・下降・横ばい）
+
+5. **原因の仮説**（必須）
+   - なぜこのような結果になったのか、データから読み取れる原因を2-3点挙げる
+   - 例：季節要因、マーケティング施策の影響、市場環境の変化など
+
+【記載例】
+- 「直近30日のセッション数は10,471回（前月10,991回から-4.7％、前年同月比+15.2％）」
+- 「コンバージョン率は1.19％（前月0.94％から+0.25ポイント改善）」
+- 「原因として、①季節的な閑散期、②広告予算の削減、③競合サイトの台頭などが考えられます」
 
 ### 選択した施策ID
 
@@ -1084,7 +1111,23 @@ ${knowledgeText}
 
 【出力例】
 ## 分析サマリー
-（分析内容）
+
+**過去13ヶ月のトレンド**
+2月に最高値（ユーザー数14,795人、セッション数18,232回）を記録した後、増減を繰り返しています。最低値は6月（ユーザー数4,203人、セッション数5,891回）でした。
+
+**直近30日（2025年10月7日〜2025年11月6日）の実績**
+- ユーザー数: 8,163人（前月8,632人から-5.4％、前年同月比+12.3％）
+- セッション数: 10,471回（前月10,991回から-4.7％、前年同月比+15.8％）
+- ページビュー数: 26,800回（前月比-3.2％）
+- エンゲージメント率: 59.4％（前月61.2％から-1.8ポイント）
+- コンバージョン数: 125件（前月103件から+21.4％）
+- コンバージョン率: 1.19％（前月0.94％から+0.25ポイント改善）
+
+**コンバージョン内訳**
+資料請求申込完了86件（68.8％）、入居のお申込完了21件（16.8％）、見学のお申込完了18件（14.4％）
+
+**原因の仮説**
+前月比でユーザー数とセッション数が減少している主な原因として、①11月の季節的な閑散期に入ったこと、②広告キャンペーンの終了、③競合サイトのプロモーション強化が考えられます。一方で、コンバージョン率が大幅に改善している点は、サイト内のCTA改善やコンテンツ最適化の効果が表れていると推測されます。前年同月比ではプラス成長を維持しており、中長期的には順調な成長トレンドにあると言えます。
 
 ### 選択した施策ID
 施策ID: 15, 42, 78, 103

@@ -24,8 +24,8 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
   const [generatedSuggestions, setGeneratedSuggestions] = useState([]);
   const [selectedSuggestions, setSelectedSuggestions] = useState(new Set());
 
-  const handleGenerate = async () => {
-    console.log('[AIGenerateDialog] AI改善案生成開始:', { siteId, startDate, endDate });
+  const handleGenerate = async (forceRegenerate = false) => {
+    console.log('[AIGenerateDialog] AI改善案生成開始:', { siteId, startDate, endDate, forceRegenerate });
 
     setIsGenerating(true);
     setGeneratedSummary('');
@@ -48,7 +48,7 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
         startDate,  // 直近30日の開始日
         endDate,    // 直近30日の終了日
         metrics: comprehensiveData,
-        forceRegenerate: true,
+        forceRegenerate: forceRegenerate,
       });
 
       console.log('[AIGenerateDialog] AI生成完了:', result.data);
@@ -233,7 +233,7 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
               過去365日分のデータを分析し、直近30日のパフォーマンスを重点的に改善提案します。
             </p>
             <button
-              onClick={handleGenerate}
+              onClick={() => handleGenerate(false)}
               disabled={isGenerating}
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 text-sm font-medium text-white hover:from-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
             >
@@ -264,13 +264,13 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
                       <h3 className="mb-2 text-lg font-semibold text-dark dark:text-white" {...props} />
                     ),
                     p: ({ node, ...props }) => (
-                      <p className="mb-3 text-body-color leading-relaxed" {...props} />
+                      <p className="mb-3 leading-relaxed text-dark dark:text-white" {...props} />
                     ),
                     ul: ({ node, ...props }) => (
-                      <ul className="mb-3 list-disc space-y-1 pl-5 text-body-color" {...props} />
+                      <ul className="mb-3 list-disc space-y-1 pl-5 text-dark dark:text-white" {...props} />
                     ),
                     li: ({ node, ...props }) => (
-                      <li className="text-body-color" {...props} />
+                      <li className="text-dark dark:text-white" {...props} />
                     ),
                     strong: ({ node, ...props }) => (
                       <strong className="font-semibold text-dark dark:text-white" {...props} />
@@ -336,7 +336,7 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
 
             <div className="flex justify-between border-t border-stroke pt-4 dark:border-dark-3">
               <button
-                onClick={handleGenerate}
+                onClick={() => handleGenerate(true)}
                 disabled={isGenerating}
                 className="inline-flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
               >

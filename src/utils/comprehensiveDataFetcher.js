@@ -255,7 +255,7 @@ async function fetchGA4PageCategories(siteId, startDate, endDate) {
     startDate,
     endDate,
     dimensions: ['pagePathLevel1'],
-    metrics: ['screenPageViews', 'totalUsers', 'engagementRate', 'conversions'],
+    metrics: ['screenPageViews', 'totalUsers', 'engagementRate'],
   });
   
   if (!result.data?.rows) return [];
@@ -265,7 +265,6 @@ async function fetchGA4PageCategories(siteId, startDate, endDate) {
     pageViews: parseInt(row.metricValues[0]?.value || '0'),
     users: parseInt(row.metricValues[1]?.value || '0'),
     engagementRate: parseFloat(row.metricValues[2]?.value || '0'),
-    conversions: parseInt(row.metricValues[3]?.value || '0'),
   }));
 }
 
