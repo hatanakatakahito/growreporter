@@ -44,6 +44,7 @@ import AdminSiteList from './pages/Admin/Sites/SiteList';
 import AdminSiteDetail from './pages/Admin/Sites/SiteDetail';
 import ActivityLogs from './pages/Admin/Logs/ActivityLogs';
 import AdminSettings from './pages/Admin/Settings/AdminSettings';
+import PlanSettings from './pages/Admin/Settings/PlanSettings';
 
 function App() {
   return (
@@ -299,6 +300,7 @@ function App() {
               <Route path="sites/:siteId" element={<AdminSiteDetail />} />
               <Route path="logs" element={<ActivityLogs />} />
               <Route path="settings" element={<AdminSettings />} />
+              <Route path="settings/plans" element={<PlanSettings />} />
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
             </Route>
           </Routes>

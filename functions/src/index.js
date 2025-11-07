@@ -25,6 +25,12 @@ import { getSiteDetailCallable } from './callable/admin/getSiteDetail.js';
 import { setCustomLimitsCallable } from './callable/admin/setCustomLimits.js';
 import { getCustomLimitsCallable } from './callable/admin/getCustomLimits.js';
 import { removeCustomLimitsCallable } from './callable/admin/removeCustomLimits.js';
+import { getAdminListCallable } from './callable/admin/getAdminList.js';
+import { updateAdminRoleCallable } from './callable/admin/updateAdminRole.js';
+import { addAdminCallable } from './callable/admin/addAdmin.js';
+import { deleteAdminCallable } from './callable/admin/deleteAdmin.js';
+import { getPlanConfigCallable } from './callable/admin/getPlanConfig.js';
+import { updatePlanConfigCallable } from './callable/admin/updatePlanConfig.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
 import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
@@ -330,3 +336,69 @@ export const removeCustomLimits = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, removeCustomLimitsCallable);
+
+/**
+ * 管理者一覧取得 Callable Function
+ * すべての管理者情報を取得
+ */
+export const getAdminList = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, getAdminListCallable);
+
+/**
+ * 管理者ロール変更 Callable Function
+ * 管理者のロール（admin/editor/viewer）を変更
+ */
+export const updateAdminRole = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, updateAdminRoleCallable);
+
+/**
+ * 管理者追加 Callable Function
+ * 新しい管理者を追加
+ */
+export const addAdmin = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, addAdminCallable);
+
+/**
+ * 管理者削除 Callable Function
+ * 管理者を削除
+ */
+export const deleteAdmin = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, deleteAdminCallable);
+
+/**
+ * プラン設定取得 Callable Function
+ * 現在のプラン設定を取得
+ */
+export const getPlanConfig = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, getPlanConfigCallable);
+
+/**
+ * プラン設定更新 Callable Function
+ * プラン設定を更新
+ */
+export const updatePlanConfig = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, updatePlanConfigCallable);

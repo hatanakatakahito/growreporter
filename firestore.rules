@@ -118,6 +118,15 @@ service cloud.firestore {
       // 書き込みはCloud Functionsのみ（管理者権限チェックは関数内で実施）
       allow write: if false;
     }
+    
+    // プラン設定コレクション
+    match /planConfig/{configId} {
+      // 管理者のみ読み取り可能
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+      // 書き込みはCloud Functionsのみ（adminロールチェックは関数内で実施）
+      allow write: if false;
+    }
   }
 }
 

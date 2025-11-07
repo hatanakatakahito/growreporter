@@ -4,7 +4,8 @@ import {
   Users, 
   Globe, 
   FileText, 
-  Settings 
+  Settings,
+  CreditCard
 } from 'lucide-react';
 
 /**
@@ -35,8 +36,13 @@ export default function AdminSidebar() {
       path: '/admin/logs',
     },
     {
+      icon: CreditCard,
+      label: 'プラン設定',
+      path: '/admin/settings/plans',
+    },
+    {
       icon: Settings,
-      label: '設定',
+      label: '管理者設定',
       path: '/admin/settings',
     },
   ];
