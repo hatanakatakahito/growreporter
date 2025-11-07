@@ -48,7 +48,18 @@ export default function AdminSidebar() {
   ];
 
   const isActive = (path) => {
-    return location.pathname === path || location.pathname.startsWith(path + '/');
+    // 完全一致をチェック
+    if (location.pathname === path) {
+      return true;
+    }
+    
+    // /admin/settings は完全一致のみアクティブ（子パス /admin/settings/plans を除外）
+    if (path === '/admin/settings') {
+      return false;
+    }
+    
+    // その他のパスは子パスもアクティブ
+    return location.pathname.startsWith(path + '/');
   };
 
   return (
