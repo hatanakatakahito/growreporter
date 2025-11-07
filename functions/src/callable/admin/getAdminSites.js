@@ -89,8 +89,13 @@ export const getAdminSitesCallable = async (request) => {
 
         usersSnapshot.forEach((doc) => {
           const data = doc.data();
+          // ユーザー名を lastName + firstName で構成
+          const userName = (data.lastName && data.firstName) 
+            ? `${data.lastName} ${data.firstName}` 
+            : (data.displayName || '');
+          
           userMap[doc.id] = {
-            displayName: data.displayName || '',
+            displayName: userName,
             email: data.email || '',
           };
         });

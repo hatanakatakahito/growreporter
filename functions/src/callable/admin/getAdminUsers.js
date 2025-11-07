@@ -54,9 +54,16 @@ export const getAdminUsersCallable = async (request) => {
     let users = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
+      // ユーザー名を lastName + firstName で構成
+      const userName = (data.lastName && data.firstName) 
+        ? `${data.lastName} ${data.firstName}` 
+        : (data.displayName || '');
+      
       users.push({
         uid: doc.id,
-        displayName: data.displayName || '',
+        displayName: userName,
+        lastName: data.lastName || '',
+        firstName: data.firstName || '',
         email: data.email || '',
         photoURL: data.photoURL || null,
         plan: data.plan || 'free',

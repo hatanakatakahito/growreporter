@@ -51,9 +51,14 @@ export const getSiteDetailCallable = async (request) => {
       const userDoc = await db.collection('users').doc(siteData.userId).get();
       if (userDoc.exists) {
         const user = userDoc.data();
+        // ユーザー名を lastName + firstName で構成
+        const userName = (user.lastName && user.firstName) 
+          ? `${user.lastName} ${user.firstName}` 
+          : (user.displayName || '');
+        
         userData = {
           uid: userDoc.id,
-          displayName: user.displayName || '',
+          displayName: userName,
           email: user.email || '',
           plan: user.plan || 'free',
         };
