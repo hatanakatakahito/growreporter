@@ -34,6 +34,12 @@ import Reports from './pages/Reports';
 import AccountSettings from './pages/AccountSettings';
 import OAuthCallback from './components/OAuthCallback';
 
+// Admin
+import AdminRoute from './components/Admin/AdminRoute';
+import AdminLayout from './components/Admin/AdminLayout';
+import AdminDashboard from './pages/Admin/Dashboard';
+import UserList from './pages/Admin/Users/UserList';
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -269,6 +275,22 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            
+            {/* 管理画面 */}
+            <Route 
+              path="/admin/*" 
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminLayout />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            >
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="users" element={<UserList />} />
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            </Route>
           </Routes>
         </div>
         </Router>
