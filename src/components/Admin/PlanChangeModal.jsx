@@ -17,6 +17,14 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
 
   if (!user) return null;
 
+  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  const getUserName = () => {
+    if (user.lastName && user.firstName) {
+      return `${user.lastName} ${user.firstName}`;
+    }
+    return user.displayName || user.email;
+  };
+
   const plans = ['free', 'standard', 'premium'];
   const currentPlan = user.plan || 'free';
 
@@ -100,7 +108,7 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
             <div>
               <p className="text-xs text-body-color dark:text-dark-6">ユーザー</p>
               <p className="text-sm font-medium text-dark dark:text-white">
-                {user.displayName} ({user.email})
+                {getUserName()} ({user.email})
               </p>
             </div>
             <div>
@@ -166,7 +174,7 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
               プラン変更
             </h2>
             <p className="mt-1 text-sm text-body-color dark:text-dark-6">
-              {user.displayName} ({user.email})
+              {getUserName()} ({user.email})
             </p>
           </div>
           <button

@@ -5,7 +5,17 @@ import { Bell } from 'lucide-react';
  * アドミン画面のヘッダー
  */
 export default function AdminHeader() {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
+
+  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  const getUserName = () => {
+    if (userProfile?.lastName && userProfile?.firstName) {
+      return `${userProfile.lastName} ${userProfile.firstName}`;
+    }
+    return currentUser?.displayName || '管理者';
+  };
+
+  const userInitial = getUserName().charAt(0);
 
   return (
     <header className="sticky top-0 z-40 border-b border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
@@ -39,12 +49,12 @@ export default function AdminHeader() {
               />
             ) : (
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold">
-                {currentUser?.displayName?.charAt(0) || currentUser?.email?.charAt(0) || 'A'}
+                {userInitial}
               </div>
             )}
             <div>
               <p className="text-sm font-medium text-dark dark:text-white">
-                {currentUser?.displayName || '管理者'}
+                {getUserName()}
               </p>
               <p className="text-xs text-body-color">
                 Administrator

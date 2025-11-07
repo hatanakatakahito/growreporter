@@ -18,6 +18,15 @@ export default function AdminSiteDetail() {
     setPageTitle('サイト詳細');
   }, []);
 
+  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  const getUserName = () => {
+    const user = siteDetail?.user;
+    if (user?.lastName && user?.firstName) {
+      return `${user.lastName} ${user.firstName}`;
+    }
+    return user?.displayName || '-';
+  };
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -131,7 +140,7 @@ export default function AdminSiteDetail() {
             <div className="space-y-3">
               <div>
                 <div className="text-sm text-body-color dark:text-dark-6">名前</div>
-                <div className="text-dark dark:text-white">{siteDetail.user.displayName || '-'}</div>
+                <div className="text-dark dark:text-white">{getUserName()}</div>
               </div>
               <div>
                 <div className="text-sm text-body-color dark:text-dark-6">メールアドレス</div>

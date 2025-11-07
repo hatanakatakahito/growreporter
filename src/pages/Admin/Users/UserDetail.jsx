@@ -85,6 +85,14 @@ export default function UserDetail() {
     }
   };
 
+  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  const getUserName = () => {
+    if (userDetail?.lastName && userDetail?.firstName) {
+      return `${userDetail.lastName} ${userDetail.firstName}`;
+    }
+    return userDetail?.displayName || userDetail?.email || 'Unknown';
+  };
+
   // プランバッジの色
   const getPlanBadgeColor = (plan) => {
     switch (plan) {
@@ -135,7 +143,7 @@ export default function UserDetail() {
               ユーザー詳細
             </h2>
             <p className="mt-1 text-sm text-body-color dark:text-dark-6">
-              {userDetail.displayName || userDetail.email}
+              {getUserName()}
             </p>
           </div>
         </div>
@@ -163,17 +171,17 @@ export default function UserDetail() {
             {userDetail.photoURL ? (
               <img
                 src={userDetail.photoURL}
-                alt={userDetail.displayName}
+                alt={getUserName()}
                 className="h-16 w-16 rounded-full object-cover"
               />
             ) : (
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-2xl font-semibold text-primary">
-                {userDetail.displayName?.charAt(0) || userDetail.email?.charAt(0) || 'U'}
+                {getUserName().charAt(0)}
               </div>
             )}
             <div>
               <h3 className="text-lg font-semibold text-dark dark:text-white">
-                {userDetail.displayName || 'Unknown'}
+                {getUserName()}
               </h3>
               <p className="text-sm text-body-color dark:text-dark-6">
                 {userDetail.email}

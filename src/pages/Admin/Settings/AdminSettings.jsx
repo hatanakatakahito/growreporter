@@ -46,7 +46,7 @@ export default function AdminSettings() {
 
   // 管理者削除
   const handleDelete = async (admin) => {
-    if (!confirm(`${admin.displayName}さんを管理者から削除してもよろしいですか？`)) {
+    if (!confirm(`${getAdminName(admin)}さんを管理者から削除してもよろしいですか？`)) {
       return;
     }
 
@@ -66,6 +66,14 @@ export default function AdminSettings() {
     setTimeout(() => setSuccessMessage(''), 5000);
     setShowAddModal(false);
     refetch();
+  };
+
+  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  const getAdminName = (admin) => {
+    if (admin.lastName && admin.firstName) {
+      return `${admin.lastName} ${admin.firstName}`;
+    }
+    return admin.displayName || '名前未設定';
   };
 
   // ロールバッジの色
@@ -171,17 +179,17 @@ export default function AdminSettings() {
                         {admin.photoURL ? (
                           <img
                             src={admin.photoURL}
-                            alt={admin.displayName}
+                            alt={getAdminName(admin)}
                             className="h-10 w-10 rounded-full object-cover"
                           />
                         ) : (
                           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                            {admin.displayName?.charAt(0) || admin.email?.charAt(0) || 'A'}
+                            {getAdminName(admin).charAt(0)}
                           </div>
                         )}
                         <div>
                           <div className="font-medium text-dark dark:text-white">
-                            {admin.displayName || '名前未設定'}
+                            {getAdminName(admin)}
                           </div>
                           {admin.uid === userProfile?.uid && (
                             <span className="text-xs text-primary">(あなた)</span>

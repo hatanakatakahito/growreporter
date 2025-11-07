@@ -17,6 +17,14 @@ export default function CustomLimitsModal({ user, currentLimits, onClose, onSave
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  const getUserName = () => {
+    if (user.lastName && user.firstName) {
+      return `${user.lastName} ${user.firstName}`;
+    }
+    return user.displayName || user.email;
+  };
+
   useEffect(() => {
     if (currentLimits) {
       setFormData({
@@ -80,7 +88,7 @@ export default function CustomLimitsModal({ user, currentLimits, onClose, onSave
         {/* ユーザー情報 */}
         <div className="mb-6 rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
           <div className="text-sm text-body-color dark:text-dark-6">対象ユーザー</div>
-          <div className="font-medium text-dark dark:text-white">{user.displayName}</div>
+          <div className="font-medium text-dark dark:text-white">{getUserName()}</div>
           <div className="text-sm text-body-color dark:text-dark-6">{user.email}</div>
         </div>
 

@@ -23,6 +23,14 @@ export default function UserList() {
     setPageTitle('ユーザー管理');
   }, []);
 
+  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  const getUserName = (user) => {
+    if (user.lastName && user.firstName) {
+      return `${user.lastName} ${user.firstName}`;
+    }
+    return user.displayName || 'Unknown';
+  };
+
   // 検索実行
   const handleSearch = () => {
     setParams({ searchQuery: searchInput, page: 1 });
@@ -45,7 +53,7 @@ export default function UserList() {
     const csvHeaders = ['UID', '名前', 'メールアドレス', 'プラン', '登録日', '最終ログイン', 'サイト数', 'AI分析使用', 'AI改善使用'];
     const csvRows = users.map((user) => [
       user.uid,
-      user.displayName || '',
+      getUserName(user),
       user.email || '',
       getPlanDisplayName(user.plan),
       user.createdAt ? new Date(user.createdAt).toLocaleDateString('ja-JP') : '',
@@ -221,17 +229,17 @@ export default function UserList() {
                           {user.photoURL ? (
                             <img
                               src={user.photoURL}
-                              alt={user.displayName}
+                              alt={getUserName(user)}
                               className="h-10 w-10 rounded-full object-cover"
                             />
                           ) : (
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
-                              {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                              {getUserName(user).charAt(0)}
                             </div>
                           )}
                           <div>
                             <p className="text-sm font-medium text-dark dark:text-white">
-                              {user.displayName || 'Unknown'}
+                              {getUserName(user)}
                             </p>
                             <p className="text-xs text-body-color dark:text-dark-6">
                               {user.email}
