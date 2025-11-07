@@ -108,3 +108,25 @@ export const getPlanList = () => {
     PLANS[PLAN_TYPES.PREMIUM],
   ];
 };
+
+/**
+ * ページタイプ定数
+ * AIフローティングボタンで使用
+ */
+export const PAGE_TYPES = {
+  SUMMARY: 'summary',
+  USERS: 'users',
+  DAY: 'day',
+  WEEK: 'week',
+  HOUR: 'hour',
+  CHANNELS: 'channels',
+  KEYWORDS: 'keywords',
+  REFERRALS: 'referrals',
+  PAGES: 'pages',
+  PAGE_CATEGORIES: 'pageCategories',
+  LANDING_PAGES: 'landingPages',
+  FILE_DOWNLOADS: 'fileDownloads',
+  EXTERNAL_LINKS: 'externalLinks',
+  CONVERSIONS: 'conversions',
+  REVERSE_FLOW: 'reverseFlow',
+};

@@ -85,9 +85,6 @@ export default function AccountSettings() {
     navigate(-1);
   };
 
-  // 現在のプラン情報を取得
-  const currentPlan = getPlanInfo(userProfile?.plan);
-
   if (!currentUser || !userProfile) {
     return (
       <MainLayout>
@@ -97,6 +94,9 @@ export default function AccountSettings() {
       </MainLayout>
     );
   }
+
+  // 現在のプラン情報を取得（userProfileがロード済みであることを確認後）
+  const currentPlan = getPlanInfo(userProfile.plan);
 
   return (
     <MainLayout>
@@ -354,7 +354,13 @@ export default function AccountSettings() {
               </h3>
               <div className="space-y-4">
                 <div>
-                  <span className="inline-block rounded bg-primary px-3 py-1 text-sm font-medium text-white">
+                  <span className={`inline-block rounded px-3 py-1 text-sm font-medium text-white shadow-md ${
+                    currentPlan.id === 'free' 
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
+                      : currentPlan.id === 'standard'
+                      ? 'bg-gradient-to-r from-red-500 to-red-600'
+                      : 'bg-gradient-to-r from-amber-400 to-yellow-500'
+                  }`}>
                     {currentPlan.displayName}
                   </span>
                   {currentPlan.price > 0 && (
