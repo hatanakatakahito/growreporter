@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 
@@ -7,7 +7,7 @@ import { logger } from 'firebase-functions/v2';
  * 
  * @returns {Object} 統計データ
  */
-export const getAdminStatsCallable = onCall(async (request) => {
+export const getAdminStatsCallable = async (request) => {
   const uid = request.auth?.uid;
 
   if (!uid) {
@@ -75,7 +75,7 @@ export const getAdminStatsCallable = onCall(async (request) => {
 
     throw new HttpsError('internal', '統計データの取得に失敗しました');
   }
-});
+};
 
 /**
  * 総ユーザー数を取得

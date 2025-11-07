@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 
@@ -15,7 +15,7 @@ import { logger } from 'firebase-functions/v2';
  * @param {string} data.sortOrder - ソート順（asc/desc）
  * @returns {Object} ユーザーリストとページネーション情報
  */
-export const getAdminUsersCallable = onCall(async (request) => {
+export const getAdminUsersCallable = async (request) => {
   const uid = request.auth?.uid;
 
   if (!uid) {
@@ -166,5 +166,5 @@ export const getAdminUsersCallable = onCall(async (request) => {
 
     throw new HttpsError('internal', 'ユーザー一覧の取得に失敗しました');
   }
-});
+};
 

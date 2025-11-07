@@ -1,4 +1,4 @@
-import { onCall, HttpsError } from 'firebase-functions/v2/https';
+import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 
@@ -12,7 +12,7 @@ import { logger } from 'firebase-functions/v2';
  * @param {string} data.reason - 変更理由
  * @returns {Object} 成功メッセージ
  */
-export const updateUserPlanCallable = onCall(async (request) => {
+export const updateUserPlanCallable = async (request) => {
   const uid = request.auth?.uid;
 
   if (!uid) {
@@ -131,7 +131,7 @@ export const updateUserPlanCallable = onCall(async (request) => {
 
     throw new HttpsError('internal', 'プラン変更に失敗しました');
   }
-});
+};
 
 /**
  * プランの優先度を取得（数字が大きいほど上位プラン）
