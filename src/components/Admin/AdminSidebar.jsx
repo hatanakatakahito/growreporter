@@ -46,9 +46,9 @@ export default function AdminSidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 z-50 h-screen w-64 border-r border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+    <aside className="flex h-screen w-64 flex-shrink-0 flex-col border-r border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
       {/* ロゴ */}
-      <div className="flex h-20 items-center justify-center border-b border-stroke px-6 dark:border-dark-3">
+      <div className="flex h-20 flex-shrink-0 items-center justify-center border-b border-stroke px-6 dark:border-dark-3">
         <Link to="/admin/dashboard" className="flex items-center gap-2">
           <img 
             src="/src/assets/img/logo.svg" 
@@ -60,7 +60,7 @@ export default function AdminSidebar() {
       </div>
 
       {/* ナビゲーション */}
-      <nav className="h-[calc(100vh-5rem)] overflow-y-auto px-4 py-6">
+      <nav className="flex-1 overflow-y-auto px-4 py-6">
         <ul className="space-y-2">
           {menuItems.map((item, index) => {
             const Icon = item.icon;

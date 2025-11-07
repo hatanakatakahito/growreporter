@@ -12,13 +12,15 @@ export default function AdminLayout() {
       <AdminSidebar />
 
       {/* メインコンテンツ */}
-      <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden">
+      <div className="flex flex-1 flex-col overflow-hidden">
         {/* ヘッダー */}
         <AdminHeader />
 
         {/* コンテンツエリア */}
-        <main className="flex-1 p-6">
-          <Outlet />
+        <main className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-7xl px-6 py-10">
+            <Outlet />
+          </div>
         </main>
       </div>
     </div>

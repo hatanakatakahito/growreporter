@@ -18,6 +18,7 @@ import { fetchImprovementKnowledgeCallable } from './callable/fetchImprovementKn
 import { getAdminStatsCallable } from './callable/admin/getAdminStats.js';
 import { getAdminUsersCallable } from './callable/admin/getAdminUsers.js';
 import { updateUserPlanCallable } from './callable/admin/updateUserPlan.js';
+import { getUserDetailCallable } from './callable/admin/getUserDetail.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
 import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
@@ -246,3 +247,14 @@ export const updateUserPlan = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, updateUserPlanCallable);
+
+/**
+ * 管理者用ユーザー詳細取得 Callable Function
+ * ユーザーの詳細情報、サイト一覧、プラン履歴を取得
+ */
+export const getUserDetail = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, getUserDetailCallable);
