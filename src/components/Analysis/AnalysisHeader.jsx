@@ -17,12 +17,20 @@ export default function AnalysisHeader({
   title = '',
   subtitle = '',
 }) {
-  const { currentUser, logout } = useAuth();
+  const { currentUser, userProfile, logout } = useAuth();
   const { sites, selectedSite: currentSite, selectedSiteId, selectSite } = useSite();
   const navigate = useNavigate();
   const location = useLocation();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+
+  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  const getUserName = () => {
+    if (userProfile?.lastName && userProfile?.firstName) {
+      return `${userProfile.lastName} ${userProfile.firstName}`;
+    }
+    return currentUser?.displayName || currentUser?.email || 'ユーザー';
+  };
 
   const handleLogout = async () => {
     try {
@@ -145,7 +153,7 @@ export default function AnalysisHeader({
                 >
                   <div className="min-w-0 text-right">
                     <p className="truncate text-sm font-semibold text-gray-900">
-                      {currentUser.displayName || currentUser.email}
+                      {getUserName()}
                     </p>
                     <p className="truncate text-xs text-gray-500">{currentUser.email}</p>
                   </div>
@@ -157,7 +165,7 @@ export default function AnalysisHeader({
                     />
                   ) : (
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-sm font-semibold text-white">
-                      {getInitials(currentUser.displayName || currentUser.email)}
+                      {getInitials(getUserName())}
                     </div>
                   )}
                   <ChevronDown className="h-4 w-4 text-gray-400" />
