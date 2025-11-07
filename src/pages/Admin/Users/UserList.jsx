@@ -5,7 +5,8 @@ import { useAdminUsers } from '../../../hooks/useAdminUsers';
 import { getPlanDisplayName } from '../../../constants/plans';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
-import { Search, Download, ChevronLeft, ChevronRight } from 'lucide-react';
+import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
+import { Search, Download, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react';
 
 /**
  * ユーザー一覧
@@ -14,6 +15,9 @@ export default function UserList() {
   const navigate = useNavigate();
   const { users, pagination, loading, error, refetch, setParams, currentParams } = useAdminUsers();
   const [searchInput, setSearchInput] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [showPlanModal, setShowPlanModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     setPageTitle('ユーザー管理');
@@ -70,6 +74,20 @@ export default function UserList() {
     navigate(`/admin/users/${uid}`);
   };
 
+  // プラン変更モーダルを開く
+  const handleOpenPlanModal = (e, user) => {
+    e.stopPropagation(); // 行クリックイベントを止める
+    setSelectedUser(user);
+    setShowPlanModal(true);
+  };
+
+  // プラン変更成功
+  const handlePlanChangeSuccess = (message) => {
+    setSuccessMessage(message);
+    setTimeout(() => setSuccessMessage(''), 5000);
+    refetch(); // ユーザー一覧を再取得
+  };
+
   // プランバッジの色
   const getPlanBadgeColor = (plan) => {
     switch (plan) {
@@ -93,6 +111,13 @@ export default function UserList() {
           全ユーザーの管理と詳細確認
         </p>
       </div>
+
+      {/* 成功メッセージ */}
+      {successMessage && (
+        <div className="mb-4 rounded-lg bg-green-50 p-4 text-sm text-green-600 dark:bg-green-900/20">
+          {successMessage}
+        </div>
+      )}
 
       {/* 検索・フィルタ */}
       <div className="mb-6 rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark-2">
@@ -179,6 +204,9 @@ export default function UserList() {
                     <th className="px-4 py-3 text-left text-xs font-semibold text-dark dark:text-white">
                       最終ログイン
                     </th>
+                    <th className="px-4 py-3 text-center text-xs font-semibold text-dark dark:text-white">
+                      操作
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -231,6 +259,15 @@ export default function UserList() {
                       <td className="px-4 py-4 text-sm text-body-color dark:text-dark-6">
                         {user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString('ja-JP') : '-'}
                       </td>
+                      <td className="px-4 py-4 text-center">
+                        <button
+                          onClick={(e) => handleOpenPlanModal(e, user)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/20"
+                        >
+                          <Edit2 className="h-3 w-3" />
+                          プラン変更
+                        </button>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -277,6 +314,18 @@ export default function UserList() {
               : 'ユーザーが登録されていません'}
           </p>
         </div>
+      )}
+
+      {/* プラン変更モーダル */}
+      {showPlanModal && selectedUser && (
+        <PlanChangeModal
+          user={selectedUser}
+          onClose={() => {
+            setShowPlanModal(false);
+            setSelectedUser(null);
+          }}
+          onSuccess={handlePlanChangeSuccess}
+        />
       )}
     </div>
   );
