@@ -14,6 +14,8 @@ import Tooltip from '../../components/common/Tooltip';
 import { format, sub, startOfMonth } from 'date-fns';
 import { Info, Sparkles } from 'lucide-react';
 import { getTooltip } from '../../constants/tooltips';
+import AIFloatingButton from '../../components/common/AIFloatingButton';
+import { PAGE_TYPES } from '../../constants/plans';
 import {
   ResponsiveContainer,
   LineChart,
@@ -34,23 +36,11 @@ export default function AnalysisSummary() {
   const [timelineTab, setTimelineTab] = useState('table');
   const [hiddenLines, setHiddenLines] = useState({});
   const [isAISheetOpen, setIsAISheetOpen] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
 
   // ページタイトルを設定
   useEffect(() => {
     setPageTitle('全体サマリー');
   }, []);
-
-  // AI分析ボタンのアニメーションは削除（パフォーマンス改善のため）
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     setIsAnimating(true);
-  //     // アニメーション終了後にリセット
-  //     setTimeout(() => setIsAnimating(false), 1500);
-  //   }, 5000);
-
-  //   return () => clearInterval(interval);
-  // }, []);
 
   // Search Console連携の有無をチェック（確実にブール値にする）
   const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
@@ -499,38 +489,6 @@ export default function AnalysisSummary() {
         )}
         </div>
 
-        {/* AI分析フローティングボタン */}
-        {!isError && (
-          <div className="fixed bottom-6 right-6 z-30">
-            {/* 波紋エフェクト */}
-            {isAnimating && (
-              <>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-pink-500 ai-button-ripple" />
-                </div>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-500 to-pink-500 ai-button-ripple" style={{ animationDelay: '0.3s' }} />
-                </div>
-              </>
-            )}
-            
-            {/* メインボタン */}
-            <button
-              onClick={() => setIsAISheetOpen(true)}
-              disabled={isLoading}
-              className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 ${
-                isAnimating ? 'ai-button-pulse' : ''
-              }`}
-              aria-label="AI分析を見る"
-            >
-              <div className="flex flex-col items-center">
-                <Sparkles className={`h-7 w-7 ${isAnimating ? 'ai-icon-sparkle' : ''}`} />
-                <span className="mt-1 text-[11px] font-medium">AI分析</span>
-              </div>
-            </button>
-          </div>
-        )}
-
         {/* AI分析サイドシート */}
         <AISummarySheet
           isOpen={isAISheetOpen}
@@ -550,6 +508,26 @@ export default function AnalysisSummary() {
             monthlyData: monthlyData,
           }}
         />
+
+        {/* 新しいAI分析フローティングボタン */}
+        {selectedSiteId && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.SUMMARY}
+            metrics={{
+              users: data?.metrics?.totalUsers || 0,
+              sessions: data?.metrics?.sessions || 0,
+              pageViews: data?.metrics?.pageViews || 0,
+              engagementRate: data?.metrics?.engagementRate || 0,
+              conversions: data?.totalConversions || 0,
+              monthlyData: monthlyData || [],
+              conversionEvents: selectedSite?.conversionEvents || [],
+            }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );
