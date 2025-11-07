@@ -2,10 +2,12 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { setPageTitle } from '../../../utils/pageTitle';
 import { useAdminUserDetail } from '../../../hooks/useAdminUserDetail';
+import { useCustomLimits } from '../../../hooks/useCustomLimits';
 import { getPlanDisplayName } from '../../../constants/plans';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
+import CustomLimitsModal from '../../../components/Admin/CustomLimitsModal';
 import { 
   ArrowLeft, 
   User, 
@@ -26,18 +28,61 @@ export default function UserDetail() {
   const { uid } = useParams();
   const navigate = useNavigate();
   const { userDetail, loading, error, refetch } = useAdminUserDetail(uid);
+  const { getCustomLimits, setCustomLimits, removeCustomLimits } = useCustomLimits();
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showCustomLimitsModal, setShowCustomLimitsModal] = useState(false);
+  const [customLimits, setCustomLimitsData] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     setPageTitle('ユーザー詳細');
   }, []);
 
+  // 個別制限を読み込む
+  useEffect(() => {
+    if (uid) {
+      loadCustomLimits();
+    }
+  }, [uid]);
+
+  const loadCustomLimits = async () => {
+    try {
+      const limits = await getCustomLimits(uid);
+      setCustomLimitsData(limits);
+    } catch (err) {
+      console.error('個別制限の読み込みエラー:', err);
+    }
+  };
+
   // プラン変更成功
   const handlePlanChangeSuccess = (message) => {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(''), 5000);
     refetch(); // データを再取得
+  };
+
+  // 個別制限保存
+  const handleSaveCustomLimits = async (limits, validUntil, reason) => {
+    await setCustomLimits(uid, limits, validUntil, reason);
+    setSuccessMessage('個別制限を設定しました');
+    setTimeout(() => setSuccessMessage(''), 5000);
+    await loadCustomLimits();
+  };
+
+  // 個別制限削除
+  const handleRemoveCustomLimits = async () => {
+    if (!confirm('個別制限を削除してもよろしいですか？プラン標準値に戻ります。')) {
+      return;
+    }
+
+    try {
+      await removeCustomLimits(uid, '管理者による削除');
+      setSuccessMessage('個別制限を削除しました');
+      setTimeout(() => setSuccessMessage(''), 5000);
+      await loadCustomLimits();
+    } catch (err) {
+      console.error('個別制限の削除エラー:', err);
+    }
   };
 
   // プランバッジの色
@@ -283,6 +328,100 @@ export default function UserDetail() {
         )}
       </div>
 
+      {/* 個別制限 */}
+      <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-dark dark:text-white">個別制限</h3>
+          <div className="flex gap-2">
+            {customLimits && (
+              <button
+                onClick={handleRemoveCustomLimits}
+                className="rounded-lg border border-red-500 bg-white px-4 py-2 text-sm font-medium text-red-500 transition hover:bg-red-50 dark:bg-dark-2 dark:hover:bg-red-900/20"
+              >
+                削除
+              </button>
+            )}
+            <button
+              onClick={() => setShowCustomLimitsModal(true)}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90"
+            >
+              <Edit2 className="h-4 w-4" />
+              {customLimits ? '編集' : '設定'}
+            </button>
+          </div>
+        </div>
+
+        {customLimits ? (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
+              <p className="text-sm text-blue-600 dark:text-blue-400">
+                このユーザーには個別制限が設定されています。プラン標準値よりも優先されます。
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-lg border border-stroke bg-gray-50 p-4 dark:border-dark-3 dark:bg-dark-3">
+                <p className="mb-1 text-xs text-body-color dark:text-dark-6">サイト登録数上限</p>
+                <p className="text-2xl font-bold text-dark dark:text-white">
+                  {customLimits.limits?.maxSites !== null && customLimits.limits?.maxSites !== undefined
+                    ? (customLimits.limits.maxSites >= 999999 ? '無制限' : customLimits.limits.maxSites)
+                    : 'プラン標準'}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-stroke bg-gray-50 p-4 dark:border-dark-3 dark:bg-dark-3">
+                <p className="mb-1 text-xs text-body-color dark:text-dark-6">AI分析サマリー（月間）</p>
+                <p className="text-2xl font-bold text-dark dark:text-white">
+                  {customLimits.limits?.aiSummaryMonthly !== null && customLimits.limits?.aiSummaryMonthly !== undefined
+                    ? (customLimits.limits.aiSummaryMonthly >= 999999 ? '無制限' : customLimits.limits.aiSummaryMonthly)
+                    : 'プラン標準'}
+                </p>
+              </div>
+
+              <div className="rounded-lg border border-stroke bg-gray-50 p-4 dark:border-dark-3 dark:bg-dark-3">
+                <p className="mb-1 text-xs text-body-color dark:text-dark-6">AI改善提案（月間）</p>
+                <p className="text-2xl font-bold text-dark dark:text-white">
+                  {customLimits.limits?.aiImprovementMonthly !== null && customLimits.limits?.aiImprovementMonthly !== undefined
+                    ? (customLimits.limits.aiImprovementMonthly >= 999999 ? '無制限' : customLimits.limits.aiImprovementMonthly)
+                    : 'プラン標準'}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-sm text-body-color dark:text-dark-6">
+              <div className="flex items-center justify-between">
+                <span>有効期限:</span>
+                <span className="font-medium text-dark dark:text-white">
+                  {customLimits.validUntil
+                    ? new Date(customLimits.validUntil).toLocaleDateString('ja-JP')
+                    : '無期限'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>設定理由:</span>
+                <span className="font-medium text-dark dark:text-white">{customLimits.reason || '-'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>設定者:</span>
+                <span className="font-medium text-dark dark:text-white">{customLimits.setByName || '-'}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>最終更新:</span>
+                <span className="font-medium text-dark dark:text-white">
+                  {customLimits.updatedAt
+                    ? new Date(customLimits.updatedAt).toLocaleString('ja-JP')
+                    : '-'}
+                </span>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <p className="text-center text-body-color dark:text-dark-6">
+            個別制限は設定されていません。プラン標準値が適用されます。
+          </p>
+        )}
+      </div>
+
       {/* プラン変更履歴 */}
       <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
         <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">プラン変更履歴</h3>
@@ -347,6 +486,16 @@ export default function UserDetail() {
           user={userDetail}
           onClose={() => setShowPlanModal(false)}
           onSuccess={handlePlanChangeSuccess}
+        />
+      )}
+
+      {/* 個別制限モーダル */}
+      {showCustomLimitsModal && (
+        <CustomLimitsModal
+          user={userDetail}
+          currentLimits={customLimits}
+          onClose={() => setShowCustomLimitsModal(false)}
+          onSave={handleSaveCustomLimits}
         />
       )}
     </div>

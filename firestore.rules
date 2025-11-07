@@ -108,6 +108,16 @@ service cloud.firestore {
       // 読み取りも禁止
       allow read: if false;
     }
+    
+    // 個別制限コレクション
+    match /customLimits/{userId} {
+      // 管理者のみ読み取り可能
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.role in ['admin', 'editor', 'viewer'];
+      // 書き込みはCloud Functionsのみ（管理者権限チェックは関数内で実施）
+      allow write: if false;
+    }
   }
 }
 

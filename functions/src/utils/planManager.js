@@ -22,6 +22,87 @@ const PLANS = {
 };
 
 /**
+ * 個別制限を取得
+ * @param {Object} db - Firestore instance
+ * @param {string} userId 
+ * @returns {Promise<Object|null>}
+ */
+async function getCustomLimits(db, userId) {
+  try {
+    const customLimitDoc = await db.collection('customLimits').doc(userId).get();
+    
+    if (!customLimitDoc.exists) {
+      return null;
+    }
+
+    const data = customLimitDoc.data();
+    
+    // 有効性チェック
+    if (!data.isActive) {
+      return null;
+    }
+
+    // 有効期限チェック
+    const now = new Date();
+    if (data.validUntil && data.validUntil.toDate() < now) {
+      return null;
+    }
+
+    return data.limits;
+  } catch (error) {
+    logger.error('[PlanManager] 個別制限取得エラー:', error);
+    return null;
+  }
+}
+
+/**
+ * 有効な制限値を取得（個別制限 > プラン制限）
+ * @param {string} userId 
+ * @param {string} type - 'summary' or 'improvement'
+ * @returns {Promise<number>} 制限値（-1 = 無制限）
+ */
+export async function getEffectiveLimit(userId, type = 'summary') {
+  const db = getFirestore();
+  
+  try {
+    // 1. 個別制限をチェック（最優先）
+    const customLimits = await getCustomLimits(db, userId);
+    if (customLimits) {
+      const customLimit = type === 'summary' 
+        ? customLimits.aiSummaryMonthly 
+        : customLimits.aiImprovementMonthly;
+      
+      if (customLimit !== null && customLimit !== undefined) {
+        logger.info(`[PlanManager] 個別制限適用: ${userId}, タイプ: ${type}, 制限: ${customLimit}`);
+        return customLimit;
+      }
+    }
+
+    // 2. プラン制限を使用
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data();
+
+    if (!userData) {
+      return 0; // デフォルトは使用不可
+    }
+
+    const plan = userData.plan || 'free';
+    const planConfig = PLANS[plan] || PLANS.free;
+    
+    const limit = type === 'summary' 
+      ? planConfig.aiSummaryLimit 
+      : planConfig.aiImprovementLimit;
+    
+    logger.info(`[PlanManager] プラン制限適用: ${userId}, プラン: ${plan}, タイプ: ${type}, 制限: ${limit}`);
+    
+    return limit;
+  } catch (error) {
+    logger.error('[PlanManager] 有効制限取得エラー:', error);
+    return 0;
+  }
+}
+
+/**
  * ユーザーがAI生成可能かチェック
  * @param {string} userId 
  * @param {string} type - 'summary' or 'improvement'
@@ -31,6 +112,15 @@ export async function checkCanGenerate(userId, type = 'summary') {
   const db = getFirestore();
   
   try {
+    // 有効な制限値を取得（個別制限 > プラン制限）
+    const limit = await getEffectiveLimit(userId, type);
+    
+    // 無制限チェック
+    if (limit === -1 || limit >= 999999) {
+      return true;
+    }
+
+    // 使用回数を取得
     const userDoc = await db.collection('users').doc(userId).get();
     const userData = userDoc.data();
 
@@ -39,28 +129,13 @@ export async function checkCanGenerate(userId, type = 'summary') {
       return false;
     }
 
-    const plan = userData.plan || 'free';
-    const planConfig = PLANS[plan] || PLANS.free;
-    
-    // 無制限プラン
-    if (type === 'summary' && planConfig.aiSummaryLimit === -1) {
-      return true;
-    }
-    if (type === 'improvement' && planConfig.aiImprovementLimit === -1) {
-      return true;
-    }
-
-    // 使用回数チェック
     const used = type === 'summary' 
       ? (userData.aiSummaryUsage || 0)
       : (userData.aiImprovementUsage || 0);
-    const limit = type === 'summary' 
-      ? planConfig.aiSummaryLimit 
-      : planConfig.aiImprovementLimit;
     
     const canGenerate = used < limit;
     
-    logger.info(`[PlanManager] AI生成チェック: ${userId}, プラン: ${plan}, タイプ: ${type}, 使用: ${used}/${limit}, 可能: ${canGenerate}`);
+    logger.info(`[PlanManager] AI生成チェック: ${userId}, タイプ: ${type}, 使用: ${used}/${limit}, 可能: ${canGenerate}`);
     
     return canGenerate;
   } catch (error) {

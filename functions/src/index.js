@@ -22,6 +22,9 @@ import { getUserDetailCallable } from './callable/admin/getUserDetail.js';
 import { getActivityLogsCallable } from './callable/admin/getActivityLogs.js';
 import { getAdminSitesCallable } from './callable/admin/getAdminSites.js';
 import { getSiteDetailCallable } from './callable/admin/getSiteDetail.js';
+import { setCustomLimitsCallable } from './callable/admin/setCustomLimits.js';
+import { getCustomLimitsCallable } from './callable/admin/getCustomLimits.js';
+import { removeCustomLimitsCallable } from './callable/admin/removeCustomLimits.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
 import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
@@ -294,3 +297,36 @@ export const getSiteDetail = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, getSiteDetailCallable);
+
+/**
+ * 管理者用個別制限設定 Callable Function
+ * 特定ユーザーに個別の制限を設定
+ */
+export const setCustomLimits = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, setCustomLimitsCallable);
+
+/**
+ * 管理者用個別制限取得 Callable Function
+ * ユーザーの個別制限を取得
+ */
+export const getCustomLimits = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, getCustomLimitsCallable);
+
+/**
+ * 管理者用個別制限削除 Callable Function
+ * ユーザーの個別制限を削除
+ */
+export const removeCustomLimits = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, removeCustomLimitsCallable);
