@@ -230,11 +230,16 @@ export default function Register() {
                   <input
                     type="tel"
                     value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value)}
-                    placeholder="電話番号を入力"
+                    onChange={(e) => {
+                      // ハイフン、スペース、括弧を自動削除
+                      const cleaned = e.target.value.replace(/[-\s()]/g, '');
+                      setPhoneNumber(cleaned);
+                    }}
+                    placeholder="09012345678（ハイフンなし）"
                     required
                     className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                   />
+                  <p className="mt-1 text-xs text-body-color">※ハイフンは自動で削除されます</p>
                 </div>
                 <div className="mb-4">
                   <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
@@ -309,7 +314,7 @@ export default function Register() {
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="6文字以上、1つの大文字"
+                      placeholder="6文字以上"
                       required
                       className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 pr-11 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                     />
