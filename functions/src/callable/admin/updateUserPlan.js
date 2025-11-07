@@ -1,6 +1,7 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
+import { sendPlanChangeEmail } from '../../utils/emailSender.js';
 
 /**
  * 管理者用ユーザープラン変更
@@ -106,6 +107,17 @@ export const updateUserPlanCallable = async (request) => {
       targetUserId,
       oldPlan,
       newPlan,
+    });
+
+    // メール通知を送信（非同期・エラーでも続行）
+    sendPlanChangeEmail({
+      toEmail: userData.email,
+      userName: userData.displayName || userData.email || 'ユーザー',
+      oldPlan,
+      newPlan,
+      reason: reason || '',
+    }).catch(error => {
+      logger.error('プラン変更通知メール送信エラー', { error: error.message });
     });
 
     return {

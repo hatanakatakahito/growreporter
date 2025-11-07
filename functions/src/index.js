@@ -19,6 +19,7 @@ import { getAdminStatsCallable } from './callable/admin/getAdminStats.js';
 import { getAdminUsersCallable } from './callable/admin/getAdminUsers.js';
 import { updateUserPlanCallable } from './callable/admin/updateUserPlan.js';
 import { getUserDetailCallable } from './callable/admin/getUserDetail.js';
+import { getActivityLogsCallable } from './callable/admin/getActivityLogs.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
 import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
@@ -258,3 +259,14 @@ export const getUserDetail = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, getUserDetailCallable);
+
+/**
+ * 管理者用アクティビティログ取得 Callable Function
+ * 管理者の操作履歴を取得（フィルタ、ページネーション対応）
+ */
+export const getActivityLogs = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, getActivityLogsCallable);
