@@ -73,11 +73,7 @@ export default function AIFloatingButton({ pageType, metrics, period }) {
 
           {/* 残り回数バッジ */}
           {remaining !== null && (
-            <span className={`absolute -top-2 -right-2 flex h-6 ${remaining === -1 ? 'w-7' : 'w-6'} items-center justify-center rounded-full text-xs font-bold shadow-md ${
-              remaining === -1 
-                ? 'bg-gradient-to-br from-amber-400 to-yellow-500 text-white' 
-                : 'bg-red-500 text-white'
-            }`}>
+            <span className={`absolute -top-2 -right-2 flex h-6 ${remaining === -1 ? 'w-7' : 'w-6'} items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-md`}>
               {remaining === -1 ? '∞' : remaining}
             </span>
           )}
