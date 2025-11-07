@@ -20,6 +20,8 @@ import { getAdminUsersCallable } from './callable/admin/getAdminUsers.js';
 import { updateUserPlanCallable } from './callable/admin/updateUserPlan.js';
 import { getUserDetailCallable } from './callable/admin/getUserDetail.js';
 import { getActivityLogsCallable } from './callable/admin/getActivityLogs.js';
+import { getAdminSitesCallable } from './callable/admin/getAdminSites.js';
+import { getSiteDetailCallable } from './callable/admin/getSiteDetail.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
 import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
@@ -270,3 +272,25 @@ export const getActivityLogs = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, getActivityLogsCallable);
+
+/**
+ * 管理者用サイト一覧取得 Callable Function
+ * 全サイトの一覧を取得（検索、フィルタ、ページネーション対応）
+ */
+export const getAdminSites = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, getAdminSitesCallable);
+
+/**
+ * 管理者用サイト詳細取得 Callable Function
+ * サイトの詳細情報、データ収集状況、AI使用状況を取得
+ */
+export const getSiteDetail = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, getSiteDetailCallable);

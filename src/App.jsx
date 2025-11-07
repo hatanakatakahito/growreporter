@@ -41,6 +41,7 @@ import AdminDashboard from './pages/Admin/Dashboard';
 import UserList from './pages/Admin/Users/UserList';
 import UserDetail from './pages/Admin/Users/UserDetail';
 import AdminSiteList from './pages/Admin/Sites/SiteList';
+import AdminSiteDetail from './pages/Admin/Sites/SiteDetail';
 import ActivityLogs from './pages/Admin/Logs/ActivityLogs';
 import AdminSettings from './pages/Admin/Settings/AdminSettings';
 
@@ -295,6 +296,7 @@ function App() {
               <Route path="users" element={<UserList />} />
               <Route path="users/:uid" element={<UserDetail />} />
               <Route path="sites" element={<AdminSiteList />} />
+              <Route path="sites/:siteId" element={<AdminSiteDetail />} />
               <Route path="logs" element={<ActivityLogs />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route index element={<Navigate to="/admin/dashboard" replace />} />
