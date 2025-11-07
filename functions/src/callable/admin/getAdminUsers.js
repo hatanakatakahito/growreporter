@@ -48,22 +48,8 @@ export const getAdminUsersCallable = async (request) => {
       limit,
     });
 
-    // Firestoreクエリ構築
-    let query = db.collection('users');
-
-    // プランフィルタ
-    if (planFilter && planFilter !== 'all') {
-      query = query.where('plan', '==', planFilter);
-    }
-
-    // ソート
-    const sortField = sortBy || 'createdAt';
-    const order = sortOrder === 'asc' ? 'asc' : 'desc';
-    query = query.orderBy(sortField, order);
-
-    // 全件取得（クライアント側でフィルタ）
-    // Firestoreの制限により、複合検索はクライアント側で実施
-    const snapshot = await query.get();
+    // 全ユーザーを取得（フィルタ・ソートはメモリ内で実行）
+    const snapshot = await db.collection('users').get();
 
     let users = [];
     snapshot.forEach((doc) => {
@@ -76,9 +62,9 @@ export const getAdminUsersCallable = async (request) => {
         plan: data.plan || 'free',
         createdAt: data.createdAt?.toDate?.().toISOString() || null,
         lastLoginAt: data.lastLoginAt?.toDate?.().toISOString() || null,
-        // 使用状況
-        aiSummaryUsage: data.aiSummaryUsage || 0,
-        aiImprovementUsage: data.aiImprovementUsage || 0,
+        // 使用状況（後で取得）
+        aiSummaryUsage: 0,
+        aiImprovementUsage: 0,
         // サイト数（後で取得）
         siteCount: 0,
       });
@@ -96,19 +82,23 @@ export const getAdminUsersCallable = async (request) => {
       });
     }
 
-    // 各ユーザーのサイト数を取得
+    // 各ユーザーのサイト数とAI使用状況を取得
     const userUids = users.map(u => u.uid);
     if (userUids.length > 0) {
+      const now = new Date();
+      const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
       // バッチでサイト数を取得（最大10件まで一度に）
       const batchSize = 10;
       for (let i = 0; i < userUids.length; i += batchSize) {
         const batch = userUids.slice(i, i + batchSize);
+        
+        // サイト数を取得
         const sitesSnapshot = await db
           .collection('sites')
           .where('userId', 'in', batch)
           .get();
 
-        // サイト数をカウント
         const siteCounts = {};
         sitesSnapshot.forEach((doc) => {
           const data = doc.data();
@@ -118,14 +108,72 @@ export const getAdminUsersCallable = async (request) => {
           }
         });
 
+        // AI使用状況を取得（今月分）
+        const aiCacheSnapshot = await db
+          .collection('aiAnalysisCache')
+          .where('userId', 'in', batch)
+          .where('generatedAt', '>=', Timestamp.fromDate(firstDayOfMonth))
+          .get();
+
+        const aiSummaryCounts = {};
+        const aiImprovementCounts = {};
+        aiCacheSnapshot.forEach((doc) => {
+          const data = doc.data();
+          const userId = data.userId;
+          const pageType = data.pageType;
+          
+          if (userId) {
+            if (pageType === 'comprehensive_improvement') {
+              aiImprovementCounts[userId] = (aiImprovementCounts[userId] || 0) + 1;
+            } else {
+              aiSummaryCounts[userId] = (aiSummaryCounts[userId] || 0) + 1;
+            }
+          }
+        });
+
         // ユーザーデータに反映
         users.forEach((user) => {
           if (batch.includes(user.uid)) {
             user.siteCount = siteCounts[user.uid] || 0;
+            user.aiSummaryUsage = aiSummaryCounts[user.uid] || 0;
+            user.aiImprovementUsage = aiImprovementCounts[user.uid] || 0;
           }
         });
       }
     }
+
+    // プランフィルタ（メモリ内）
+    if (planFilter && planFilter !== 'all') {
+      users = users.filter((user) => user.plan === planFilter);
+    }
+
+    // ソート（メモリ内）
+    const sortField = sortBy || 'createdAt';
+    const order = sortOrder === 'asc' ? 'asc' : 'desc';
+    users.sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+
+      // 日付フィールドの場合、ISO文字列として比較
+      if (sortField === 'createdAt' || sortField === 'lastLoginAt') {
+        aValue = aValue || '';
+        bValue = bValue || '';
+      }
+      // 数値フィールドの場合
+      else if (sortField === 'siteCount' || sortField === 'aiSummaryUsage' || sortField === 'aiImprovementUsage') {
+        aValue = aValue || 0;
+        bValue = bValue || 0;
+      }
+      // 文字列フィールドの場合
+      else {
+        aValue = (aValue || '').toLowerCase();
+        bValue = (bValue || '').toLowerCase();
+      }
+
+      if (aValue < bValue) return order === 'asc' ? -1 : 1;
+      if (aValue > bValue) return order === 'asc' ? 1 : -1;
+      return 0;
+    });
 
     // ページネーション
     const totalCount = users.length;
