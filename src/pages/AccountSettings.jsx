@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import MainLayout from '../components/Layout/MainLayout';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { setPageTitle } from '../utils/pageTitle';
 import { INDUSTRIES } from '../constants/industries';
+import { getPlanDisplayName, getPlanInfo, isUnlimited } from '../constants/plans';
 import { Info, Loader2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -84,14 +85,8 @@ export default function AccountSettings() {
     navigate(-1);
   };
 
-  // プラン名のマッピング
-  const getPlanDisplayName = (planType) => {
-    const planNames = {
-      'FREE': '無料プラン',
-      'PAID': '有料プラン',
-    };
-    return planNames[planType] || '無料プラン';
-  };
+  // 現在のプラン情報を取得
+  const currentPlan = getPlanInfo(userProfile?.plan);
 
   if (!currentUser || !userProfile) {
     return (
@@ -355,16 +350,90 @@ export default function AccountSettings() {
             {/* プラン */}
             <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
               <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
-                プラン
+                現在のプラン
               </h3>
               <div className="space-y-4">
                 <div>
-                  <p className="mb-2 text-sm text-body-color dark:text-dark-6">
-                    現在のプラン
-                  </p>
                   <span className="inline-block rounded bg-primary px-3 py-1 text-sm font-medium text-white">
-                    {getPlanDisplayName(userProfile?.plan || 'FREE')}
+                    {currentPlan.displayName}
                   </span>
+                  {currentPlan.price > 0 && (
+                    <p className="mt-2 text-sm text-body-color dark:text-dark-6">
+                      ¥{currentPlan.price.toLocaleString()}/月（税込 ¥{currentPlan.priceWithTax.toLocaleString()}）
+                    </p>
+                  )}
+                </div>
+
+                {/* プラン機能 */}
+                <div className="border-t border-stroke pt-4 dark:border-dark-3">
+                  <h4 className="mb-3 text-sm font-semibold text-dark dark:text-white">
+                    プラン内容
+                  </h4>
+                  <ul className="space-y-2 text-sm text-body-color dark:text-dark-6">
+                    <li className="flex items-center gap-2">
+                      <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>サイト登録：{currentPlan.features.maxSites}サイト</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>
+                        AI分析サマリー：
+                        {isUnlimited(currentPlan.features.aiSummaryMonthly) 
+                          ? '無制限' 
+                          : `月${currentPlan.features.aiSummaryMonthly}回`}
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>
+                        AI改善提案：
+                        {isUnlimited(currentPlan.features.aiImprovementMonthly) 
+                          ? '無制限' 
+                          : `月${currentPlan.features.aiImprovementMonthly}回`}
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>データ保持：{currentPlan.features.dataRetention}</span>
+                    </li>
+                    {currentPlan.features.exportEnabled && (
+                      <li className="flex items-center gap-2">
+                        <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span>エクスポート：{currentPlan.features.exportFormats?.join('、')}</span>
+                      </li>
+                    )}
+                    {currentPlan.features.consultation && (
+                      <li className="flex items-center gap-2">
+                        <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        <span>{currentPlan.features.consultation}</span>
+                      </li>
+                    )}
+                  </ul>
+                </div>
+                
+                {/* サイト管理リンク */}
+                <div className="pt-2">
+                  <Link
+                    to="/sites/list"
+                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                  >
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
+                    </svg>
+                    サイト管理
+                  </Link>
                 </div>
               </div>
             </div>
