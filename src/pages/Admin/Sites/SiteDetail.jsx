@@ -18,6 +18,14 @@ export default function AdminSiteDetail() {
     setPageTitle('サイト詳細');
   }, []);
 
+  // デバッグ用ログ
+  useEffect(() => {
+    console.log('[AdminSiteDetail] siteId:', siteId);
+    console.log('[AdminSiteDetail] loading:', loading);
+    console.log('[AdminSiteDetail] error:', error);
+    console.log('[AdminSiteDetail] siteDetail:', siteDetail);
+  }, [siteId, loading, error, siteDetail]);
+
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
