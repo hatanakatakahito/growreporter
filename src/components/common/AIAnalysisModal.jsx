@@ -397,7 +397,8 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
                       より詳細な改善提案をご覧になりたい場合は、サイト改善画面へ移動してください。
                     </p>
                     <Link
-                      to="/improve"
+                      to="/improve?openAI=true"
+                      onClick={onClose}
                       className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-opacity-90"
                     >
                       <Sparkles className="h-4 w-4" />

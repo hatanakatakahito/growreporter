@@ -33,6 +33,15 @@ export default function Improve() {
   // URLパラメータからタスク追加を処理
   useEffect(() => {
     const action = searchParams.get('action');
+    const openAI = searchParams.get('openAI');
+    
+    // AI改善案生成モーダルを開く
+    if (openAI === 'true') {
+      setIsGenerateOpen(true);
+      // URLパラメータをクリア
+      setSearchParams({});
+      return;
+    }
     
     // AI提案からの一括タスク追加
     if (action === 'add-from-ai') {
