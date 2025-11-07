@@ -57,11 +57,14 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     setError(null);
 
     try {
-      // 再生成時のみプラン制限チェック
+      // 再生成時は常に制限チェック
       if (forceRegenerate && !checkCanGenerate()) {
         onLimitExceeded();
         return;
       }
+      
+      // 初回ロード時もバックエンドで制限チェックされるが、
+      // キャッシュがない場合のみカウントされる
 
       const generateAISummary = httpsCallable(functions, 'generateAISummary');
       

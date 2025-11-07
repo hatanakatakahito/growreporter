@@ -5,12 +5,14 @@ import { collection, addDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlan } from '../../hooks/usePlan';
 import { format, subDays } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import { fetchComprehensiveDataForImprovement } from '../../utils/comprehensiveDataFetcher';
 
 export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
   const { currentUser } = useAuth();
+  const { getRemainingByType } = usePlan();
   const queryClient = useQueryClient();
   
   // 固定期間：直近30日
@@ -26,6 +28,15 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
 
   const handleGenerate = async (forceRegenerate = false) => {
     console.log('[AIGenerateDialog] AI改善案生成開始:', { siteId, startDate, endDate, forceRegenerate });
+
+    // 再生成の場合は制限チェック（初回はキャッシュを確認するため後でチェック）
+    if (forceRegenerate) {
+      const remaining = getRemainingByType('improvement');
+      if (remaining === 0) {
+        alert('AI改善提案の月間上限に達しました。来月1日に自動的にリセットされます。');
+        return;
+      }
+    }
 
     setIsGenerating(true);
     setGeneratedSummary('');
@@ -75,6 +86,14 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
 
     } catch (error) {
       console.error('[AIGenerateDialog] エラー:', error);
+      
+      // 制限超過エラーの場合
+      if (error.code === 'functions/resource-exhausted') {
+        alert('AI改善提案の月間上限に達しました。来月1日に自動的にリセットされます。');
+        onClose();
+        return;
+      }
+      
       alert(`AI改善案の生成に失敗しました: ${error.message}`);
       
       // エラー時はモックデータを表示（開発用）

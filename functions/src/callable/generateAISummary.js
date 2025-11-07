@@ -34,11 +34,27 @@ export async function generateAISummaryCallable(request) {
   console.log('[generateAISummary] Start:', { userId, siteId, pageType, startDate, endDate, forceRegenerate });
 
   try {
-    // 1. キャッシュチェック（強制再生成でない場合）
+    // 1. usage typeを先に決定（制限チェックで使用）
+    const usageType = pageType === 'comprehensive_improvement' ? 'improvement' : 'summary';
+
+    // 2. キャッシュチェック（強制再生成でない場合）
     if (!forceRegenerate) {
       const cachedAnalysis = await getCachedAnalysis(userId, siteId, pageType, startDate, endDate);
       if (cachedAnalysis) {
         console.log('[generateAISummary] Cache hit (aiAnalysisCache):', cachedAnalysis.cacheId);
+        
+        // キャッシュがある場合でも、現在の制限を確認
+        // （プラン変更等で制限が変わっている可能性があるため）
+        const canGenerate = await checkCanGenerate(userId, usageType);
+        if (!canGenerate) {
+          console.log('[generateAISummary] キャッシュはあるが制限超過:', userId, usageType);
+          const limitTypeName = usageType === 'improvement' ? 'AI改善提案' : 'AI分析サマリー';
+          throw new HttpsError(
+            'resource-exhausted',
+            `今月の${limitTypeName}の上限に達しました。来月1日に自動的にリセットされます。`
+          );
+        }
+        
         return {
           summary: cachedAnalysis.summary,
           recommendations: cachedAnalysis.recommendations || [],
@@ -48,23 +64,34 @@ export async function generateAISummaryCallable(request) {
       }
       
       // 旧キャッシュもチェック（互換性のため）
-    const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
-    if (cachedSummary) {
+      const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
+      if (cachedSummary) {
         console.log('[generateAISummary] Cache hit (legacy aiSummaries):', cachedSummary.id);
-      return {
-        summary: cachedSummary.summary,
-        recommendations: cachedSummary.recommendations || [],
+        
+        // キャッシュがある場合でも、現在の制限を確認
+        const canGenerate = await checkCanGenerate(userId, usageType);
+        if (!canGenerate) {
+          console.log('[generateAISummary] 旧キャッシュはあるが制限超過:', userId, usageType);
+          const limitTypeName = usageType === 'improvement' ? 'AI改善提案' : 'AI分析サマリー';
+          throw new HttpsError(
+            'resource-exhausted',
+            `今月の${limitTypeName}の上限に達しました。来月1日に自動的にリセットされます。`
+          );
+        }
+        
+        return {
+          summary: cachedSummary.summary,
+          recommendations: cachedSummary.recommendations || [],
           fromCache: true,
-        generatedAt: cachedSummary.generatedAt,
-      };
-    }
+          generatedAt: cachedSummary.generatedAt,
+        };
+      }
     }
 
-    // 2. プラン制限チェック
-    const usageType = pageType === 'comprehensive_improvement' ? 'improvement' : 'summary';
+    // 3. プラン制限チェック（新規生成時）
     const canGenerate = await checkCanGenerate(userId, usageType);
     if (!canGenerate) {
-      console.log('[generateAISummary] プラン制限超過:', userId, usageType);
+      console.log('[generateAISummary] プラン制限超過（新規生成）:', userId, usageType);
       const limitTypeName = usageType === 'improvement' ? 'AI改善提案' : 'AI分析サマリー';
       throw new HttpsError(
         'resource-exhausted',
@@ -72,7 +99,7 @@ export async function generateAISummaryCallable(request) {
       );
     }
 
-    // 3. Gemini APIキーの確認
+    // 4. Gemini APIキーの確認
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
       console.error('[generateAISummary] GEMINI_API_KEY not configured');
@@ -82,10 +109,10 @@ export async function generateAISummaryCallable(request) {
       );
     }
 
-    // 4. プロンプト生成
+    // 5. プロンプト生成
     const prompt = generatePrompt(pageType, startDate, endDate, metrics);
 
-    // 5. Gemini API呼び出し
+    // 6. Gemini API呼び出し
     console.log('[generateAISummary] Calling Gemini API...');
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
@@ -135,11 +162,11 @@ export async function generateAISummaryCallable(request) {
     const summary = removeActionPlanSection(rawSummary, pageType);
     console.log('[generateAISummary] サマリー文字数:', summary.length);
 
-    // 6. 新しいキャッシュシステムに保存
+    // 7. 新しいキャッシュシステムに保存
     const now = new Date();
     await saveCachedAnalysis(userId, siteId, pageType, summary, recommendations, startDate, endDate);
     
-    // 7. 旧システムにも保存（互換性のため、将来的に削除予定）
+    // 8. 旧システムにも保存（互換性のため、将来的に削除予定）
     const summaryDoc = {
       userId,
       siteId,
@@ -155,12 +182,12 @@ export async function generateAISummaryCallable(request) {
     const docRef = await db.collection('aiSummaries').add(summaryDoc);
     console.log('[generateAISummary] Saved to Firestore (legacy):', docRef.id);
 
-    // 8. 生成回数をインクリメント
+    // 9. 生成回数をインクリメント
     // usageTypeは前で定義済み
     await incrementGenerationCount(userId, usageType);
     console.log('[generateAISummary] Generation count incremented:', usageType);
 
-    // 9. 古いキャッシュをクリーンアップ（非同期）
+    // 10. 古いキャッシュをクリーンアップ（非同期）
     cleanupOldSummaries(db, userId).catch(err => {
       console.error('[generateAISummary] Cleanup error:', err);
     });
