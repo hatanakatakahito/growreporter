@@ -68,12 +68,12 @@ service cloud.firestore {
       allow delete: if request.auth != null;
     }
     
-    // ユーザープロフィールコレクション
-    match /userProfiles/{userId} {
-      // 自分のプロフィールのみ読み書き可能
-      allow read: if request.auth != null && request.auth.uid == userId;
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
+    // ユーザープロフィールコレクション（現在はusersコレクションを使用）
+    // match /userProfiles/{userId} {
+    //   // 自分のプロフィールのみ読み書き可能
+    //   allow read: if request.auth != null && request.auth.uid == userId;
+    //   allow write: if request.auth != null && request.auth.uid == userId;
+    // }
     
     // 管理者ユーザーコレクション
     match /adminUsers/{adminId} {

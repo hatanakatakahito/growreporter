@@ -46,7 +46,7 @@ export const updateUserPlanCallable = onCall(async (request) => {
     });
 
     // 対象ユーザーの現在のプランを取得
-    const userDoc = await db.collection('userProfiles').doc(targetUserId).get();
+    const userDoc = await db.collection('users').doc(targetUserId).get();
     
     if (!userDoc.exists) {
       throw new HttpsError('not-found', 'ユーザーが見つかりません');
@@ -62,7 +62,7 @@ export const updateUserPlanCallable = onCall(async (request) => {
     // トランザクションでプラン変更と履歴記録を実行
     await db.runTransaction(async (transaction) => {
       // 1. ユーザープロフィールを更新
-      transaction.update(db.collection('userProfiles').doc(targetUserId), {
+      transaction.update(db.collection('users').doc(targetUserId), {
         plan: newPlan,
         // 月間使用回数をリセット（プランアップグレード時のみ）
         ...(getPlanPriority(newPlan) > getPlanPriority(oldPlan) ? {

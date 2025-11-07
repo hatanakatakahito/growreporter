@@ -49,7 +49,7 @@ export const getAdminUsersCallable = onCall(async (request) => {
     });
 
     // Firestoreクエリ構築
-    let query = db.collection('userProfiles');
+    let query = db.collection('users');
 
     // プランフィルタ
     if (planFilter && planFilter !== 'all') {

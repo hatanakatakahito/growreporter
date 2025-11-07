@@ -82,7 +82,7 @@ export const getAdminStatsCallable = onCall(async (request) => {
  */
 async function getTotalUsers() {
   const db = getFirestore();
-  const usersSnapshot = await db.collection('userProfiles').count().get();
+  const usersSnapshot = await db.collection('users').count().get();
   return usersSnapshot.data().count;
 }
 
@@ -104,7 +104,7 @@ async function getMonthlyActiveUsers() {
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const activeUsersSnapshot = await db
-    .collection('userProfiles')
+    .collection('users')
     .where('lastLoginAt', '>=', Timestamp.fromDate(thirtyDaysAgo))
     .count()
     .get();
@@ -121,7 +121,7 @@ async function getNewUsersThisMonth() {
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
   const newUsersSnapshot = await db
-    .collection('userProfiles')
+    .collection('users')
     .where('createdAt', '>=', Timestamp.fromDate(firstDayOfMonth))
     .count()
     .get();
@@ -135,7 +135,7 @@ async function getNewUsersThisMonth() {
 async function getPlanDistribution() {
   const db = getFirestore();
   const usersSnapshot = await db
-    .collection('userProfiles')
+    .collection('users')
     .select('plan')
     .get();
 
@@ -169,7 +169,7 @@ async function getUserTrend() {
     const nextDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
 
     const usersSnapshot = await db
-      .collection('userProfiles')
+      .collection('users')
       .where('createdAt', '<', Timestamp.fromDate(nextDate))
       .count()
       .get();
