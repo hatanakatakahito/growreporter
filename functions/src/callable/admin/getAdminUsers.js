@@ -106,14 +106,16 @@ export const getAdminUsersCallable = async (request) => {
         const sitesSnapshot = await db
           .collection('sites')
           .where('userId', 'in', batch)
-          .select()
           .get();
 
         // サイト数をカウント
         const siteCounts = {};
         sitesSnapshot.forEach((doc) => {
-          const userId = doc.data().userId;
-          siteCounts[userId] = (siteCounts[userId] || 0) + 1;
+          const data = doc.data();
+          const userId = data.userId;
+          if (userId) {
+            siteCounts[userId] = (siteCounts[userId] || 0) + 1;
+          }
         });
 
         // ユーザーデータに反映

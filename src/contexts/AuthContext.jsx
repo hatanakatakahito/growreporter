@@ -78,8 +78,10 @@ export const AuthProvider = ({ children }) => {
         phoneNumber: additionalData.phoneNumber || '',
         industry: additionalData.industry || '',
         photoURL: user.photoURL || '',
+        plan: 'free',
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
+        lastLoginAt: serverTimestamp(),
       });
 
       return userCredential;
@@ -126,8 +128,10 @@ export const AuthProvider = ({ children }) => {
           company: '',
           phoneNumber: '',
           industry: '',
+          plan: 'free',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
+          lastLoginAt: serverTimestamp(),
         });
       }
 
@@ -170,6 +174,19 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(user);
       
       if (user) {
+        // 最終ログイン日時を更新
+        try {
+          await setDoc(
+            doc(db, 'users', user.uid),
+            {
+              lastLoginAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        } catch (error) {
+          console.error('Error updating lastLoginAt:', error);
+        }
+        
         // ユーザープロファイルを取得
         const profile = await fetchUserProfile(user.uid);
         setUserProfile(profile);
