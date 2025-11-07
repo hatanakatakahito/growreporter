@@ -298,11 +298,7 @@ export default function Improve() {
                     <span className={`absolute -top-2 -right-2 flex h-5 ${remaining === -1 ? 'w-6' : 'w-5'} items-center justify-center rounded-full text-xs font-bold shadow-md ${
                       remaining === -1 
                         ? 'bg-gradient-to-br from-amber-400 to-yellow-500 text-white' 
-                        : remaining === 0
-                        ? 'bg-red-500 text-white'
-                        : remaining <= 3
-                        ? 'bg-orange-500 text-white'
-                        : 'bg-blue-500 text-white'
+                        : 'bg-red-500 text-white'
                     }`}>
                       {remaining === -1 ? '∞' : remaining}
                     </span>
