@@ -304,13 +304,13 @@ export default function Day() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && chartData && chartData.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.DAY}
             metrics={{
-              sessions: chartData.reduce((sum, row) => sum + row.sessions, 0),
-              conversions: chartData.reduce((sum, row) => sum + row.conversions, 0),
-              dailyData: chartData,
+              sessions: chartData?.reduce((sum, row) => sum + row.sessions, 0) || 0,
+              conversions: chartData?.reduce((sum, row) => sum + row.conversions, 0) || 0,
+              dailyData: chartData || [],
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{

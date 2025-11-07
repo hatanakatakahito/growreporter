@@ -405,14 +405,14 @@ export default function AcquisitionChannels() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && chartData && chartData.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.CHANNELS}
             metrics={{
-              totalSessions,
-              totalUsers,
-              totalConversions,
-              channelData: chartData,
+              totalSessions: totalSessions || 0,
+              totalUsers: totalUsers || 0,
+              totalConversions: totalConversions || 0,
+              channelData: chartData || [],
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{

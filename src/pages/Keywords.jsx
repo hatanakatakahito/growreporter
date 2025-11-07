@@ -410,16 +410,17 @@ export default function Keywords() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && hasGSCConnection && keywordData && keywordData.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.KEYWORDS}
             metrics={{
-              totalClicks,
-              totalImpressions,
-              avgCTR,
-              avgPosition,
-              keywordData: tableData,
+              totalClicks: totalClicks || 0,
+              totalImpressions: totalImpressions || 0,
+              avgCTR: avgCTR || 0,
+              avgPosition: avgPosition || 0,
+              keywordData: tableData || [],
               conversionEvents: selectedSite?.conversionEvents || [],
+              hasGSCConnection,
             }}
             period={{
               startDate: dateRange.from,

@@ -332,14 +332,14 @@ export default function Pages() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && tableData && tableData.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.PAGES}
             metrics={{
-              totalPageViews,
-              totalSessions,
-              totalUsers,
-              pageData: tableData,
+              totalPageViews: totalPageViews || 0,
+              totalSessions: totalSessions || 0,
+              totalUsers: totalUsers || 0,
+              pageData: tableData || [],
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{

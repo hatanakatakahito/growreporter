@@ -339,12 +339,12 @@ export default function ConversionList() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && conversionData && conversionData.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.CONVERSIONS}
             metrics={{
               conversionData: conversionData || [],
-              conversionEvents,
+              conversionEvents: conversionEvents || [],
             }}
             period={{
               startDate: monthlyDateRange.start,

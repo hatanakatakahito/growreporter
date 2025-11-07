@@ -418,15 +418,15 @@ export default function Referrals() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && referralData && referralData.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.REFERRALS}
             metrics={{
-              totalSessions,
-              totalUsers,
-              totalConversions,
-              avgConversionRate,
-              referralData: tableData,
+              totalSessions: totalSessions || 0,
+              totalUsers: totalUsers || 0,
+              totalConversions: totalConversions || 0,
+              avgConversionRate: avgConversionRate || 0,
+              referralData: tableData || [],
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{

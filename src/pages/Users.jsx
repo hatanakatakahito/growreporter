@@ -310,12 +310,12 @@ export default function Users() {
         />
 
         {/* 新しいAI分析フローティングボタン（統一版） */}
-        {selectedSiteId && demographicsData && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.USERS}
             metrics={{
-              demographicsData: demographicsData,
-              chartData: chartData,
+              demographicsData: demographicsData || {},
+              chartData: chartData || {},
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{

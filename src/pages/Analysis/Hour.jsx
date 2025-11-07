@@ -294,13 +294,13 @@ export default function Hour() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && chartData && chartData.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.HOUR}
             metrics={{
-              sessions: chartData.reduce((sum, row) => sum + row.sessions, 0),
-              conversions: chartData.reduce((sum, row) => sum + row.conversions, 0),
-              hourlyData: chartData,
+              sessions: chartData?.reduce((sum, row) => sum + row.sessions, 0) || 0,
+              conversions: chartData?.reduce((sum, row) => sum + row.conversions, 0) || 0,
+              hourlyData: chartData || [],
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{

@@ -368,13 +368,13 @@ export default function Week() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && matrix && matrix.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.WEEK}
             metrics={{
-              sessions: maxSessions,
-              conversions: maxConversions,
-              heatmapData: matrix,
+              sessions: maxSessions || 0,
+              conversions: maxConversions || 0,
+              heatmapData: matrix || [],
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{

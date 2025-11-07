@@ -336,14 +336,14 @@ export default function LandingPages() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && tableData && tableData.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.LANDING_PAGES}
             metrics={{
-              totalSessions,
-              totalUsers,
-              totalConversions,
-              landingPageData: tableData,
+              totalSessions: totalSessions || 0,
+              totalUsers: totalUsers || 0,
+              totalConversions: totalConversions || 0,
+              landingPageData: tableData || [],
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{

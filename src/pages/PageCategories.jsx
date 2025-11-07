@@ -349,12 +349,12 @@ export default function PageCategories() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && categoryData && categoryData.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.PAGE_CATEGORIES}
             metrics={{
-              totalPageViews,
-              categoryData,
+              totalPageViews: totalPageViews || 0,
+              categoryData: categoryData || [],
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{

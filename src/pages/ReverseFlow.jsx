@@ -656,13 +656,13 @@ export default function ReverseFlow() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && summaryData && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.REVERSE_FLOW}
             metrics={{
-              summary: summaryData,
-              monthly: monthlyData,
-              settings: selectedFlow,
+              summary: summaryData || {},
+              monthly: monthlyData || [],
+              settings: selectedFlow || {},
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{

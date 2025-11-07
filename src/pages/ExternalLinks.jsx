@@ -166,13 +166,13 @@ export default function ExternalLinks() {
         />
 
         {/* 新しいAI分析フローティングボタン */}
-        {selectedSiteId && tableData && tableData.length > 0 && (
+        {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.EXTERNAL_LINKS}
             metrics={{
-              totalClicks,
-              totalUsers,
-              clickData: tableData,
+              totalClicks: totalClicks || 0,
+              totalUsers: totalUsers || 0,
+              clickData: tableData || [],
               conversionEvents: selectedSite?.conversionEvents || [],
             }}
             period={{
