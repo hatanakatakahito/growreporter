@@ -1,25 +1,90 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 
-const PLANS = {
+// デフォルトのプラン設定（フォールバック用）
+const DEFAULT_PLANS = {
   free: { 
+    maxSites: 1,
     aiSummaryLimit: 10,
     aiImprovementLimit: 2,
   },
   standard: { 
+    maxSites: 3,
     aiSummaryLimit: 50,
     aiImprovementLimit: 10,
   },
   premium: { 
+    maxSites: 10,
     aiSummaryLimit: -1, // 無制限
     aiImprovementLimit: -1, // 無制限
   },
   // 旧システム互換
   paid: { 
+    maxSites: 999999,
     aiSummaryLimit: -1,
     aiImprovementLimit: -1,
   },
 };
+
+// プラン設定のキャッシュ（メモリキャッシュ、1時間有効）
+let planConfigCache = null;
+let planConfigCacheTime = 0;
+const CACHE_DURATION = 60 * 60 * 1000; // 1時間
+
+/**
+ * Firestoreからプラン設定を取得（キャッシュ付き）
+ * @param {Object} db - Firestore instance
+ * @returns {Promise<Object>}
+ */
+async function getPlanConfig(db) {
+  const now = Date.now();
+  
+  // キャッシュが有効ならそれを返す
+  if (planConfigCache && (now - planConfigCacheTime) < CACHE_DURATION) {
+    return planConfigCache;
+  }
+
+  try {
+    const configDoc = await db.collection('planConfig').doc('default').get();
+    
+    if (configDoc.exists) {
+      const config = configDoc.data();
+      
+      // キャッシュに保存
+      planConfigCache = {
+        free: {
+          maxSites: config.free?.maxSites ?? DEFAULT_PLANS.free.maxSites,
+          aiSummaryLimit: config.free?.aiSummaryLimit ?? DEFAULT_PLANS.free.aiSummaryLimit,
+          aiImprovementLimit: config.free?.aiImprovementLimit ?? DEFAULT_PLANS.free.aiImprovementLimit,
+        },
+        standard: {
+          maxSites: config.standard?.maxSites ?? DEFAULT_PLANS.standard.maxSites,
+          aiSummaryLimit: config.standard?.aiSummaryLimit ?? DEFAULT_PLANS.standard.aiSummaryLimit,
+          aiImprovementLimit: config.standard?.aiImprovementLimit ?? DEFAULT_PLANS.standard.aiImprovementLimit,
+        },
+        premium: {
+          maxSites: config.premium?.maxSites ?? DEFAULT_PLANS.premium.maxSites,
+          aiSummaryLimit: config.premium?.aiSummaryLimit ?? DEFAULT_PLANS.premium.aiSummaryLimit,
+          aiImprovementLimit: config.premium?.aiImprovementLimit ?? DEFAULT_PLANS.premium.aiImprovementLimit,
+        },
+        paid: DEFAULT_PLANS.paid, // 旧システム互換
+      };
+      
+      planConfigCacheTime = now;
+      logger.info('[PlanManager] プラン設定をFirestoreから取得してキャッシュ');
+      
+      return planConfigCache;
+    }
+  } catch (error) {
+    logger.error('[PlanManager] プラン設定取得エラー:', error);
+  }
+
+  // エラーまたは設定が存在しない場合はデフォルト値を使用
+  logger.info('[PlanManager] デフォルトプラン設定を使用');
+  planConfigCache = DEFAULT_PLANS;
+  planConfigCacheTime = now;
+  return DEFAULT_PLANS;
+}
 
 /**
  * 個別制限を取得
@@ -78,7 +143,7 @@ export async function getEffectiveLimit(userId, type = 'summary') {
       }
     }
 
-    // 2. プラン制限を使用
+    // 2. プラン制限を使用（Firestoreから動的に取得）
     const userDoc = await db.collection('users').doc(userId).get();
     const userData = userDoc.data();
 
@@ -87,7 +152,10 @@ export async function getEffectiveLimit(userId, type = 'summary') {
     }
 
     const plan = userData.plan || 'free';
-    const planConfig = PLANS[plan] || PLANS.free;
+    
+    // Firestoreからプラン設定を取得
+    const allPlanConfigs = await getPlanConfig(db);
+    const planConfig = allPlanConfigs[plan] || allPlanConfigs.free;
     
     const limit = type === 'summary' 
       ? planConfig.aiSummaryLimit 
