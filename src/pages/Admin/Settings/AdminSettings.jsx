@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { setPageTitle } from '../../../utils/pageTitle';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useAdmin } from '../../../hooks/useAdmin';
 import { useAdminManagement } from '../../../hooks/useAdminManagement';
 import { getAdminRoleLabel, hasPermission } from '../../../constants/adminRoles';
 import AdminRoleModal from '../../../components/Admin/AdminRoleModal';
@@ -14,6 +15,7 @@ import { Settings, UserPlus, Shield, Edit2, Trash2, AlertCircle } from 'lucide-r
  */
 export default function AdminSettings() {
   const { userProfile } = useAuth();
+  const { adminRole } = useAdmin();
   const { admins, loading, error, refetch, updateRole, deleteAdmin } = useAdminManagement();
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -24,12 +26,10 @@ export default function AdminSettings() {
     setPageTitle('管理者設定');
   }, []);
 
-  const currentRole = userProfile?.isAdmin ? 'admin' : null;
-
   // 権限チェック
-  const canAddAdmin = hasPermission(currentRole, 'ADD_ADMIN');
-  const canEditRole = hasPermission(currentRole, 'EDIT_ADMIN_ROLE');
-  const canDeleteAdmin = hasPermission(currentRole, 'DELETE_ADMIN');
+  const canAddAdmin = hasPermission(adminRole, 'ADD_ADMIN');
+  const canEditRole = hasPermission(adminRole, 'EDIT_ADMIN_ROLE');
+  const canDeleteAdmin = hasPermission(adminRole, 'DELETE_ADMIN');
 
   // ロール変更
   const handleRoleChange = async (adminId, newRole, reason) => {

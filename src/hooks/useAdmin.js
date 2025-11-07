@@ -5,17 +5,19 @@ import { useAuth } from '../contexts/AuthContext';
 
 /**
  * 管理者権限チェックフック
- * @returns {Object} { isAdmin, loading }
+ * @returns {Object} { isAdmin, adminRole, loading }
  */
 export function useAdmin() {
   const { currentUser } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
+  const [adminRole, setAdminRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!currentUser) {
         setIsAdmin(false);
+        setAdminRole(null);
         setLoading(false);
         return;
       }
@@ -26,14 +28,17 @@ export function useAdmin() {
         
         if (adminDoc.exists()) {
           const role = adminDoc.data().role;
+          setAdminRole(role);
           // editor または admin のみ許可
-          setIsAdmin(['editor', 'admin'].includes(role));
+          setIsAdmin(['editor', 'admin', 'viewer'].includes(role));
         } else {
           setIsAdmin(false);
+          setAdminRole(null);
         }
       } catch (error) {
         console.error('Admin check error:', error);
         setIsAdmin(false);
+        setAdminRole(null);
       } finally {
         setLoading(false);
       }
@@ -42,6 +47,6 @@ export function useAdmin() {
     checkAdminStatus();
   }, [currentUser]);
 
-  return { isAdmin, loading };
+  return { isAdmin, adminRole, loading };
 }
 

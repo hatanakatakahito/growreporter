@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { setPageTitle } from '../../../utils/pageTitle';
-import { useAuth } from '../../../contexts/AuthContext';
+import { useAdmin } from '../../../hooks/useAdmin';
 import { usePlanConfig } from '../../../hooks/usePlanConfig';
 import { hasPermission } from '../../../constants/adminRoles';
 import { PLAN_TYPES } from '../../../constants/plans';
@@ -12,7 +12,7 @@ import { Settings, Save, AlertCircle, RefreshCw } from 'lucide-react';
  * プラン設定画面
  */
 export default function PlanSettings() {
-  const { userProfile } = useAuth();
+  const { adminRole } = useAdmin();
   const { planConfig, loading, error, updateConfig, refetch } = usePlanConfig();
   const [formData, setFormData] = useState({});
   const [isSaving, setIsSaving] = useState(false);
@@ -29,8 +29,7 @@ export default function PlanSettings() {
     }
   }, [planConfig]);
 
-  const currentRole = userProfile?.isAdmin ? 'admin' : null;
-  const canEdit = hasPermission(currentRole, 'EDIT_PLAN_CONFIG');
+  const canEdit = hasPermission(adminRole, 'EDIT_PLAN_CONFIG');
 
   const handleChange = (plan, field, value) => {
     setFormData((prev) => ({
