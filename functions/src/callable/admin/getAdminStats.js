@@ -185,8 +185,16 @@ async function getUserTrend() {
 
 /**
  * AI機能の使用状況（今月）
+ * TODO: Firestoreインデックス作成後に有効化
  */
 async function getAIUsage() {
+  // 一時的に無効化（インデックスが必要）
+  return {
+    analysisCount: 0,
+    improvementCount: 0,
+  };
+  
+  /* インデックス作成後に以下を有効化
   const db = getFirestore();
   const now = new Date();
   const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -210,5 +218,6 @@ async function getAIUsage() {
     analysisCount: analysisCacheSnapshot.data().count,
     improvementCount: improvementCacheSnapshot.data().count,
   };
+  */
 }
 
