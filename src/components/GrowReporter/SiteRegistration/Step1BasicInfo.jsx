@@ -18,8 +18,8 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
   const [errors, setErrors] = useState({});
   const [pcScreenshot, setPcScreenshot] = useState(siteData.pcScreenshotUrl || null);
   const [mobileScreenshot, setMobileScreenshot] = useState(siteData.mobileScreenshotUrl || null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [isAutoFetching, setIsAutoFetching] = useState(false);
+  const [isManualUploading, setIsManualUploading] = useState(false); // 手動アップロード中
+  const [isAutoFetching, setIsAutoFetching] = useState(false); // 自動取得中
   const [screenshotProgress, setScreenshotProgress] = useState(''); // スクリーンショット進行状況
 
   // フォームデータが変更されたら親コンポーネントに通知
@@ -120,7 +120,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
     }
   };
 
-  // 画像アップロード処理
+  // 画像アップロード処理（手動アップロード）
   const handleImageUpload = async (file, type) => {
     if (!file) return;
 
@@ -136,7 +136,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       return;
     }
 
-    setIsUploading(true);
+    setIsManualUploading(true);
 
     try {
       // 一時的なIDを生成（サイトIDがない場合）
@@ -156,11 +156,13 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       } else {
         setMobileScreenshot(downloadURL);
       }
+      
+      console.log(`[handleImageUpload] ${type} screenshot uploaded successfully`);
     } catch (error) {
       console.error('Upload error:', error);
       alert('アップロードに失敗しました: ' + error.message);
     } finally {
-      setIsUploading(false);
+      setIsManualUploading(false);
     }
   };
 
@@ -182,7 +184,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       return;
     }
     
-    setIsUploading(true);
+    setIsAutoFetching(true);
     setScreenshotProgress('スクリーンショット取得を開始しています...');
     
     try {
@@ -214,7 +216,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       setScreenshotProgress('');
       alert(`スクリーンショットの取得に失敗しました: ${error.message}\n手動でアップロードしてください。`);
     } finally {
-      setIsUploading(false);
+      setIsAutoFetching(false);
       setScreenshotProgress('');
     }
   };
@@ -397,17 +399,17 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
           <button
             type="button"
             onClick={handleAutoFetchScreenshots}
-            disabled={!formData.siteUrl || isUploading}
+            disabled={!formData.siteUrl || isAutoFetching}
             className="flex items-center gap-1 rounded bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isUploading ? (
+            {isAutoFetching ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             )}
-            {isUploading ? '取得中...' : '自動取得'}
+            {isAutoFetching ? '取得中...' : '自動取得'}
           </button>
         </div>
         
@@ -443,11 +445,11 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
                 </button>
               </div>
             ) : (
-              <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: '250px' }}>
-                {isUploading ? (
+              <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isManualUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: '250px' }}>
+                {isManualUploading ? (
                   <>
                     <Loader2 className="mb-2 h-8 w-8 animate-spin text-primary" />
-                    <span className="text-sm text-primary">取得中...</span>
+                    <span className="text-sm text-primary">アップロード中...</span>
                   </>
                 ) : (
                   <>
@@ -461,7 +463,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
                   accept="image/*"
                   className="hidden"
                   onChange={(e) => handleImageUpload(e.target.files[0], 'pc')}
-                  disabled={isUploading}
+                  disabled={isManualUploading}
                 />
               </label>
             )}
@@ -487,11 +489,11 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
                 </button>
               </div>
             ) : (
-              <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: '250px' }}>
-                {isUploading ? (
+              <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isManualUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: '250px' }}>
+                {isManualUploading ? (
                   <>
                     <Loader2 className="mb-2 h-8 w-8 animate-spin text-primary" />
-                    <span className="text-sm text-primary">取得中...</span>
+                    <span className="text-sm text-primary">アップロード中...</span>
                   </>
                 ) : (
                   <>
@@ -505,7 +507,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
                   accept="image/*"
                   className="hidden"
                   onChange={(e) => handleImageUpload(e.target.files[0], 'mobile')}
-                  disabled={isUploading}
+                  disabled={isManualUploading}
                 />
               </label>
             )}
