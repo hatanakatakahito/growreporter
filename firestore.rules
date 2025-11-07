@@ -67,6 +67,39 @@ service cloud.firestore {
       allow update: if request.auth != null;
       allow delete: if request.auth != null;
     }
+    
+    // ユーザープロフィールコレクション
+    match /userProfiles/{userId} {
+      // 自分のプロフィールのみ読み書き可能
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // 管理者ユーザーコレクション
+    match /adminUsers/{adminId} {
+      // 自分自身の管理者情報のみ読み取り可能
+      allow read: if request.auth != null && request.auth.uid == adminId;
+      // 作成・更新・削除は禁止（Firebase Consoleで手動管理）
+      allow write: if false;
+    }
+    
+    // プラン変更履歴コレクション
+    match /planChangeHistory/{historyId} {
+      // 管理者のみ読み取り可能（Cloud Functionsで権限チェック済み）
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+      // 書き込みはCloud Functionsのみ
+      allow write: if false;
+    }
+    
+    // 管理者アクティビティログコレクション
+    match /adminActivityLogs/{logId} {
+      // 管理者のみ読み取り可能
+      allow read: if request.auth != null && 
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+      // 書き込みはCloud Functionsのみ
+      allow write: if false;
+    }
   }
 }
 

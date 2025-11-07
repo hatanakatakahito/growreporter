@@ -18,22 +18,27 @@
 
 ### Step 3: 管理者ドキュメントを追加
 
-#### ドキュメントID
-```
-MmvJRYa8GTafpodTY5YcOBTKEjS2
-```
-※これは畑中様のUID（現在ログイン中のユーザーID）です
+#### 🔍 まず、自分のUIDを確認
 
-#### フィールド
+1. Firebase Console → Authentication → Users
+2. 自分のメールアドレス（`hatanaka@grow-group.jp`）を探す
+3. **UID**をコピー（例: `MmvJRYa8GTafpodTY5YcOBTKEjS2`）
 
-| フィールド名 | 型 | 値 |
-|-------------|---|---|
-| adminId | string | `MmvJRYa8GTafpodTY5YcOBTKEjS2` |
-| email | string | `hatanaka@grow-group.jp` |
-| displayName | string | `畑中 孝仁` |
-| role | string | `admin` |
-| createdAt | timestamp | （現在日時を選択） |
-| lastLoginAt | timestamp | `null` |
+#### ドキュメントを作成
+
+1. Firestore Database → `adminUsers`コレクション → 「ドキュメントを追加」
+2. 以下の内容で作成：
+
+| フィールド名 | 型 | 値 | 説明 |
+|-------------|---|---|---|
+| adminId | string | `[あなたのUID]` | 上でコピーしたUID |
+| email | string | `hatanaka@grow-group.jp` | メールアドレス |
+| displayName | string | `畑中 孝仁` | 表示名 |
+| role | string | `admin` | 権限レベル（admin/editor） |
+| createdAt | timestamp | （現在日時） | 作成日時 |
+| lastLoginAt | timestamp | `null` | 最終ログイン（null） |
+
+**⚠️ 重要**: ドキュメントIDは**あなたのUID**と同じにしてください！
 
 #### role の種類
 - **`admin`**: すべての操作が可能（推奨）
