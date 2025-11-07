@@ -8,9 +8,19 @@ export default function Header({ title, subtitle, backLink, backLabel, action, s
   const [isSiteDropdownOpen, setIsSiteDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const siteDropdownRef = useRef(null);
-  const { currentUser, logout } = useAuth();
+  const { currentUser, userProfile, logout } = useAuth();
   const { sites, selectedSite, selectSite } = useSite();
   const navigate = useNavigate();
+
+  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  const getUserName = () => {
+    if (userProfile?.lastName && userProfile?.firstName) {
+      return `${userProfile.lastName} ${userProfile.firstName}`;
+    }
+    return currentUser?.displayName || 'ユーザー';
+  };
+
+  const userInitial = getUserName().charAt(0);
 
   // ドロップダウン外をクリックしたら閉じる
   useEffect(() => {
@@ -147,12 +157,12 @@ export default function Header({ title, subtitle, backLink, backLabel, action, s
                   />
                 ) : (
                   <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white text-xs font-semibold">
-                    {currentUser?.displayName?.charAt(0) || currentUser?.email?.charAt(0) || 'U'}
+                    {userInitial}
                   </div>
                 )}
                 <div className="text-left">
                   <p className="text-sm font-medium text-dark dark:text-white">
-                    {currentUser?.displayName || 'ユーザー'}
+                    {getUserName()}
                   </p>
                   <p className="text-xs text-body-color">
                     {currentUser?.email}

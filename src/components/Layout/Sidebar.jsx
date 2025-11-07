@@ -5,12 +5,22 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, userProfile, logout } = useAuth();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
   const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
   const [isEngagementOpen, setIsEngagementOpen] = useState(false);
   const [isConversionOpen, setIsConversionOpen] = useState(false);
+
+  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  const getUserName = () => {
+    if (userProfile?.lastName && userProfile?.firstName) {
+      return `${userProfile.lastName} ${userProfile.firstName}`;
+    }
+    return currentUser?.displayName || 'ユーザー';
+  };
+
+  const userInitial = getUserName().charAt(0);
 
   // 現在のパスに基づいてメニューを開く
   useEffect(() => {
@@ -288,12 +298,12 @@ export default function Sidebar() {
               />
             ) : (
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold">
-                {currentUser?.displayName?.charAt(0) || currentUser?.email?.charAt(0) || 'U'}
+                {userInitial}
               </div>
             )}
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-medium text-dark dark:text-white">
-                {currentUser?.displayName || 'ユーザー'}
+                {getUserName()}
               </p>
               <p className="truncate text-xs text-body-color">
                 {currentUser?.email}
