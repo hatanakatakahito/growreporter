@@ -84,6 +84,15 @@ export default function AccountSettings() {
     navigate(-1);
   };
 
+  // プラン名のマッピング
+  const getPlanDisplayName = (planType) => {
+    const planNames = {
+      'FREE': '無料プラン',
+      'PAID': '有料プラン',
+    };
+    return planNames[planType] || '無料プラン';
+  };
+
   if (!currentUser || !userProfile) {
     return (
       <MainLayout>
@@ -354,7 +363,7 @@ export default function AccountSettings() {
                     現在のプラン
                   </p>
                   <span className="inline-block rounded bg-primary px-3 py-1 text-sm font-medium text-white">
-                    FREE
+                    {getPlanDisplayName(userProfile?.plan || 'FREE')}
                   </span>
                 </div>
               </div>

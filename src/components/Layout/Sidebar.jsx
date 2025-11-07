@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function Sidebar() {
   const location = useLocation();
+  const navigate = useNavigate();
   const { currentUser, logout } = useAuth();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
@@ -43,6 +44,15 @@ export default function Sidebar() {
 
   const isActive = (path) => {
     return location.pathname === path;
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('ログアウトエラー:', error);
+    }
   };
 
   const menuItems = [
@@ -267,26 +277,50 @@ export default function Sidebar() {
       </nav>
 
       {/* ユーザー情報 */}
-      <div className="absolute bottom-0 left-0 right-0 border-t border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark-2">
-        <div className="flex items-center gap-3">
-          {currentUser?.photoURL ? (
-            <img 
-              src={currentUser.photoURL} 
-              alt="Profile" 
-              className="h-10 w-10 rounded-full object-cover"
-            />
-          ) : (
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold">
-              {currentUser?.displayName?.charAt(0) || currentUser?.email?.charAt(0) || 'U'}
+      <div className="absolute bottom-0 left-0 right-0 border-t border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+        <div className="p-4">
+          <div className="flex items-center gap-3 mb-3">
+            {currentUser?.photoURL ? (
+              <img 
+                src={currentUser.photoURL} 
+                alt="Profile" 
+                className="h-10 w-10 rounded-full object-cover"
+              />
+            ) : (
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold">
+                {currentUser?.displayName?.charAt(0) || currentUser?.email?.charAt(0) || 'U'}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="truncate text-sm font-medium text-dark dark:text-white">
+                {currentUser?.displayName || 'ユーザー'}
+              </p>
+              <p className="truncate text-xs text-body-color">
+                {currentUser?.email}
+              </p>
             </div>
-          )}
-          <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-medium text-dark dark:text-white">
-              {currentUser?.displayName || 'ユーザー'}
-            </p>
-            <p className="truncate text-xs text-body-color">
-              {currentUser?.email}
-            </p>
+          </div>
+          
+          {/* アカウント設定とログアウトボタン */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => navigate('/account/settings')}
+              className="flex flex-1 items-center justify-center gap-2 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              アカウント
+            </button>
+            <button
+              onClick={handleLogout}
+              className="flex flex-1 items-center justify-center gap-2 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              </svg>
+              ログアウト
+            </button>
           </div>
         </div>
       </div>

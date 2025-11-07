@@ -112,7 +112,7 @@ export default function Register() {
           
           {/* 左側：イラストエリア */}
           <div className="flex w-full items-center justify-center bg-[#F9FAFB] px-6 py-10 dark:bg-dark-3 lg:w-1/2 lg:px-8">
-            <div className="w-full max-w-[350px] text-center">
+            <div className="w-full max-w-[400px] text-center">
               <div className="mb-5 flex items-center justify-center">
                 <img 
                   src="/src/assets/img/logo.svg" 
@@ -120,8 +120,8 @@ export default function Register() {
                   className="h-10 w-auto"
                 />
               </div>
-              <p className="mb-8 text-sm text-body-color dark:text-dark-6 lg:text-base">
-                GA4、Search Consoleのデータを統合分析し、ビジネス成長をサポートします。
+              <p className="mb-8 text-left text-sm text-body-color dark:text-dark-6 lg:text-base">
+                GrowReporterはGoogleアナリティクス、サーチコンソールを統合的に分析し、プロの知見を活かした有益なサイト改善までサポートする統合ツールです。
               </p>
               
               {/* イラスト */}
@@ -129,7 +129,7 @@ export default function Register() {
                 <img 
                   src="/src/assets/img/login.svg" 
                   alt="Register Illustration" 
-                  className="w-full max-w-[280px] h-auto"
+                  className="w-full max-w-[400px] h-auto"
                 />
               </div>
             </div>
