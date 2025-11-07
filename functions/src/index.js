@@ -16,6 +16,7 @@ import { exchangeOAuthCodeCallable } from './callable/exchangeOAuthCode.js';
 import { testSheetsConnectionCallable } from './callable/testSheetsConnection.js';
 import { fetchImprovementKnowledgeCallable } from './callable/fetchImprovementKnowledge.js';
 import { getAdminStatsCallable } from './callable/admin/getAdminStats.js';
+import { getAdminUsersCallable } from './callable/admin/getAdminUsers.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
 import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
@@ -222,3 +223,14 @@ export const getAdminStats = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, getAdminStatsCallable);
+
+/**
+ * 管理者用ユーザー一覧取得 Callable Function
+ * 検索、フィルタ、ページネーション対応
+ */
+export const getAdminUsers = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, getAdminUsersCallable);
