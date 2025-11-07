@@ -13,10 +13,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ImprovementDialog from '../components/Improve/ImprovementDialog';
 import AIGenerateDialog from '../components/Improve/AIGenerateDialog';
 import EvaluationModal from '../components/Improve/EvaluationModal';
+import { usePlan } from '../hooks/usePlan';
 
 export default function Improve() {
   const { selectedSite, selectedSiteId } = useSite();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { getRemainingByType } = usePlan();
   const [isGenerateOpen, setIsGenerateOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -284,10 +286,28 @@ export default function Improve() {
             <div className="flex gap-3">
               <button
                 onClick={() => setIsGenerateOpen(true)}
-                className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-purple-600 hover:to-pink-600"
+                className="relative inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-purple-600 hover:to-pink-600"
               >
                 <Sparkles className="h-4 w-4" />
                 AI改善案生成
+                {/* 残り回数バッジ */}
+                {(() => {
+                  const remaining = getRemainingByType('improvement');
+                  if (remaining === null) return null;
+                  return (
+                    <span className={`absolute -top-2 -right-2 flex h-5 ${remaining === -1 ? 'w-6' : 'w-5'} items-center justify-center rounded-full text-xs font-bold shadow-md ${
+                      remaining === -1 
+                        ? 'bg-gradient-to-br from-amber-400 to-yellow-500 text-white' 
+                        : remaining === 0
+                        ? 'bg-red-500 text-white'
+                        : remaining <= 3
+                        ? 'bg-orange-500 text-white'
+                        : 'bg-blue-500 text-white'
+                    }`}>
+                      {remaining === -1 ? '∞' : remaining}
+                    </span>
+                  );
+                })()}
               </button>
               <button
                 onClick={() => {

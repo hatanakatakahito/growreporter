@@ -1,5 +1,5 @@
 import { useAuth } from '../contexts/AuthContext';
-import { PLANS } from '../constants/plans';
+import { PLANS, isUnlimited } from '../constants/plans';
 
 /**
  * プラン機能を管理するカスタムフック
@@ -31,6 +31,33 @@ export function usePlan() {
   };
 
   /**
+   * タイプ別の残りAI生成回数を取得
+   * @param {string} type - 'summary' または 'improvement'
+   * @returns {number} 残り回数（無制限の場合は-1）
+   */
+  const getRemainingByType = (type) => {
+    if (!userProfile) return 0;
+    
+    if (type === 'summary') {
+      const limit = plan.features?.aiSummaryMonthly || 0;
+      // 無制限チェック
+      if (isUnlimited(limit)) return -1;
+      
+      const used = userProfile.aiSummaryUsage || 0;
+      return Math.max(0, limit - used);
+    } else if (type === 'improvement') {
+      const limit = plan.features?.aiImprovementMonthly || 0;
+      // 無制限チェック
+      if (isUnlimited(limit)) return -1;
+      
+      const used = userProfile.aiImprovementUsage || 0;
+      return Math.max(0, limit - used);
+    }
+    
+    return 0;
+  };
+
+  /**
    * 今月の使用回数を取得
    */
   const getUsedGenerations = () => {
@@ -42,6 +69,7 @@ export function usePlan() {
     plan,
     checkCanGenerate,
     getRemainingGenerations,
+    getRemainingByType,
     getUsedGenerations,
     isLoading: !userProfile,
   };

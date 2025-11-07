@@ -12,9 +12,11 @@ export default function AIFloatingButton({ pageType, metrics, period }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [shouldAnimate, setShouldAnimate] = useState(false);
-  const { plan, getRemainingGenerations } = usePlan();
+  const { plan, getRemainingByType } = usePlan();
 
-  const remaining = getRemainingGenerations();
+  // pageTypeに応じて適切な残り回数を取得
+  const type = pageType === 'comprehensive_improvement' ? 'improvement' : 'summary';
+  const remaining = getRemainingByType(type);
 
   // planがロード中の場合は何も表示しない
   if (!plan) {
@@ -69,10 +71,18 @@ export default function AIFloatingButton({ pageType, metrics, period }) {
             <span className="mt-1 text-[11px] font-medium">AI分析</span>
           </div>
 
-          {/* 無料プラン時: 残り回数バッジ */}
-          {plan.id === 'free' && remaining >= 0 && (
-            <span className="absolute -top-2 -right-2 flex h-6 w-6 items-center justify-center rounded-full bg-red-500 text-xs font-bold shadow-md">
-              {remaining}
+          {/* 残り回数バッジ */}
+          {remaining !== null && (
+            <span className={`absolute -top-2 -right-2 flex h-6 ${remaining === -1 ? 'w-7' : 'w-6'} items-center justify-center rounded-full text-xs font-bold shadow-md ${
+              remaining === -1 
+                ? 'bg-gradient-to-br from-amber-400 to-yellow-500 text-white' 
+                : remaining === 0
+                ? 'bg-red-500 text-white'
+                : remaining <= 3
+                ? 'bg-orange-500 text-white'
+                : 'bg-blue-500 text-white'
+            }`}>
+              {remaining === -1 ? '∞' : remaining}
             </span>
           )}
         </button>
