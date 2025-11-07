@@ -2,16 +2,32 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 
 const PLANS = {
-  free: { aiGenerationsPerMonth: 4 },
-  paid: { aiGenerationsPerMonth: -1 }, // 無制限
+  free: { 
+    aiSummaryLimit: 10,
+    aiImprovementLimit: 2,
+  },
+  standard: { 
+    aiSummaryLimit: 50,
+    aiImprovementLimit: 10,
+  },
+  premium: { 
+    aiSummaryLimit: -1, // 無制限
+    aiImprovementLimit: -1, // 無制限
+  },
+  // 旧システム互換
+  paid: { 
+    aiSummaryLimit: -1,
+    aiImprovementLimit: -1,
+  },
 };
 
 /**
  * ユーザーがAI生成可能かチェック
  * @param {string} userId 
+ * @param {string} type - 'summary' or 'improvement'
  * @returns {Promise<boolean>}
  */
-export async function checkCanGenerate(userId) {
+export async function checkCanGenerate(userId, type = 'summary') {
   const db = getFirestore();
   
   try {
@@ -24,17 +40,27 @@ export async function checkCanGenerate(userId) {
     }
 
     const plan = userData.plan || 'free';
+    const planConfig = PLANS[plan] || PLANS.free;
     
-    // 有料プランは無制限
-    if (plan === 'paid') {
+    // 無制限プラン
+    if (type === 'summary' && planConfig.aiSummaryLimit === -1) {
+      return true;
+    }
+    if (type === 'improvement' && planConfig.aiImprovementLimit === -1) {
       return true;
     }
 
-    // 無料プランは月4回まで
-    const used = userData.planLimits?.aiGenerationsUsed || 0;
-    const canGenerate = used < PLANS.free.aiGenerationsPerMonth;
+    // 使用回数チェック
+    const used = type === 'summary' 
+      ? (userData.aiSummaryUsage || 0)
+      : (userData.aiImprovementUsage || 0);
+    const limit = type === 'summary' 
+      ? planConfig.aiSummaryLimit 
+      : planConfig.aiImprovementLimit;
     
-    logger.info(`[PlanManager] AI生成チェック: ${userId}, プラン: ${plan}, 使用: ${used}/4, 可能: ${canGenerate}`);
+    const canGenerate = used < limit;
+    
+    logger.info(`[PlanManager] AI生成チェック: ${userId}, プラン: ${plan}, タイプ: ${type}, 使用: ${used}/${limit}, 可能: ${canGenerate}`);
     
     return canGenerate;
   } catch (error) {
@@ -46,17 +72,19 @@ export async function checkCanGenerate(userId) {
 /**
  * AI生成回数をインクリメント
  * @param {string} userId 
+ * @param {string} type - 'summary' or 'improvement'
  */
-export async function incrementGenerationCount(userId) {
+export async function incrementGenerationCount(userId, type = 'summary') {
   const db = getFirestore();
   const userRef = db.collection('users').doc(userId);
 
   try {
+    const fieldName = type === 'summary' ? 'aiSummaryUsage' : 'aiImprovementUsage';
     await userRef.update({
-      'planLimits.aiGenerationsUsed': FieldValue.increment(1),
+      [fieldName]: FieldValue.increment(1),
     });
     
-    logger.info(`[PlanManager] AI生成回数をインクリメント: ${userId}`);
+    logger.info(`[PlanManager] AI生成回数をインクリメント: ${userId}, タイプ: ${type}`);
   } catch (error) {
     logger.error('[PlanManager] 生成回数の更新エラー:', error);
     throw error;
@@ -70,29 +98,40 @@ export async function resetMonthlyLimits() {
   const db = getFirestore();
 
   try {
-    // 無料プランのユーザーのみ取得
-    const usersSnapshot = await db.collection('users')
-      .where('plan', '==', 'free')
-      .get();
+    // 全ユーザーを取得
+    const usersSnapshot = await db.collection('users').get();
 
     if (usersSnapshot.empty) {
       logger.info('[PlanManager] リセット対象ユーザーなし');
       return;
     }
 
-    // バッチ処理でリセット
-    const batch = db.batch();
+    // バッチ処理でリセット（最大500件）
+    let batch = db.batch();
     let count = 0;
+    let batchCount = 0;
 
-    usersSnapshot.docs.forEach(doc => {
+    for (const doc of usersSnapshot.docs) {
       batch.update(doc.ref, {
-        'planLimits.aiGenerationsUsed': 0,
-        'planLimits.lastResetAt': FieldValue.serverTimestamp(),
+        aiSummaryUsage: 0,
+        aiImprovementUsage: 0,
+        updatedAt: FieldValue.serverTimestamp(),
       });
       count++;
-    });
+      batchCount++;
 
-    await batch.commit();
+      // Firestoreのバッチ制限は500件
+      if (batchCount >= 500) {
+        await batch.commit();
+        batch = db.batch();
+        batchCount = 0;
+      }
+    }
+
+    // 残りのバッチをコミット
+    if (batchCount > 0) {
+      await batch.commit();
+    }
     
     logger.info(`[PlanManager] ${count}件のユーザーの月次制限をリセット完了`);
   } catch (error) {

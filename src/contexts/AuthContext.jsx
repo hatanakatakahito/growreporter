@@ -79,6 +79,8 @@ export const AuthProvider = ({ children }) => {
         industry: additionalData.industry || '',
         photoURL: user.photoURL || '',
         plan: 'free',
+        aiSummaryUsage: 0,
+        aiImprovementUsage: 0,
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         lastLoginAt: serverTimestamp(),
@@ -129,6 +131,8 @@ export const AuthProvider = ({ children }) => {
           phoneNumber: '',
           industry: '',
           plan: 'free',
+          aiSummaryUsage: 0,
+          aiImprovementUsage: 0,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           lastLoginAt: serverTimestamp(),
@@ -176,15 +180,31 @@ export const AuthProvider = ({ children }) => {
       if (user) {
         // 最終ログイン日時を更新
         try {
+          // まずユーザープロファイルを取得
+          const currentProfile = await fetchUserProfile(user.uid);
+          
+          // 更新データを準備
+          const updateData = {
+            lastLoginAt: serverTimestamp(),
+          };
+          
+          // AI使用カウントフィールドがない場合のみ初期化
+          if (currentProfile) {
+            if (currentProfile.aiSummaryUsage === undefined) {
+              updateData.aiSummaryUsage = 0;
+            }
+            if (currentProfile.aiImprovementUsage === undefined) {
+              updateData.aiImprovementUsage = 0;
+            }
+          }
+          
           await setDoc(
             doc(db, 'users', user.uid),
-            {
-              lastLoginAt: serverTimestamp(),
-            },
+            updateData,
             { merge: true }
           );
         } catch (error) {
-          console.error('Error updating lastLoginAt:', error);
+          console.error('Error updating user data:', error);
         }
         
         // ユーザープロファイルを取得

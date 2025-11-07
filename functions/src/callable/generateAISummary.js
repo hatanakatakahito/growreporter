@@ -61,12 +61,14 @@ export async function generateAISummaryCallable(request) {
     }
 
     // 2. プラン制限チェック
-    const canGenerate = await checkCanGenerate(userId);
+    const usageType = pageType === 'comprehensive_improvement' ? 'improvement' : 'summary';
+    const canGenerate = await checkCanGenerate(userId, usageType);
     if (!canGenerate) {
-      console.log('[generateAISummary] プラン制限超過:', userId);
+      console.log('[generateAISummary] プラン制限超過:', userId, usageType);
+      const limitTypeName = usageType === 'improvement' ? 'AI改善提案' : 'AI分析サマリー';
       throw new HttpsError(
         'resource-exhausted',
-        '今月のAI生成回数の上限に達しました。来月1日に自動的にリセットされます。'
+        `今月の${limitTypeName}の上限に達しました。来月1日に自動的にリセットされます。`
       );
     }
 
@@ -154,8 +156,9 @@ export async function generateAISummaryCallable(request) {
     console.log('[generateAISummary] Saved to Firestore (legacy):', docRef.id);
 
     // 8. 生成回数をインクリメント
-    await incrementGenerationCount(userId);
-    console.log('[generateAISummary] Generation count incremented');
+    // usageTypeは前で定義済み
+    await incrementGenerationCount(userId, usageType);
+    console.log('[generateAISummary] Generation count incremented:', usageType);
 
     // 9. 古いキャッシュをクリーンアップ（非同期）
     cleanupOldSummaries(db, userId).catch(err => {
