@@ -1,5 +1,6 @@
 import { X, RefreshCw, Sparkles, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import { usePlan } from '../../hooks/usePlan';
 import { useAuth } from '../../contexts/AuthContext';
@@ -326,8 +327,8 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
                 </ReactMarkdown>
               </div>
 
-              {/* 推奨アクション */}
-              {recommendations && recommendations.length > 0 && (
+              {/* comprehensive_improvementの場合のみ推奨アクションを表示 */}
+              {pageType === 'comprehensive_improvement' && recommendations && recommendations.length > 0 && (
                 <div className="mt-6 pt-6 border-t border-stroke dark:border-dark-3">
                   <h4 className="text-base font-semibold text-dark dark:text-white mb-4 flex items-center gap-2">
                     <span>💡</span>
@@ -384,6 +385,24 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
                         </div>
                       );
                     })}
+                  </div>
+                </div>
+              )}
+
+              {/* 分析画面の場合は「サイト改善を起案する」ボタンを表示 */}
+              {pageType !== 'comprehensive_improvement' && (
+                <div className="mt-6 pt-6 border-t border-stroke dark:border-dark-3">
+                  <div className="text-center">
+                    <p className="text-sm text-body-color mb-4">
+                      より詳細な改善提案をご覧になりたい場合は、サイト改善画面へ移動してください。
+                    </p>
+                    <Link
+                      to="/improve"
+                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-opacity-90"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      サイト改善を起案する
+                    </Link>
                   </div>
                 </div>
               )}
