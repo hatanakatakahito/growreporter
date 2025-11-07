@@ -18,14 +18,6 @@ export default function AdminSiteDetail() {
     setPageTitle('サイト詳細');
   }, []);
 
-  // デバッグ用ログ
-  useEffect(() => {
-    console.log('[AdminSiteDetail] siteId:', siteId);
-    console.log('[AdminSiteDetail] loading:', loading);
-    console.log('[AdminSiteDetail] error:', error);
-    console.log('[AdminSiteDetail] siteDetail:', siteDetail);
-  }, [siteId, loading, error, siteDetail]);
-
   if (loading) {
     return (
       <div className="flex min-h-[400px] items-center justify-center">
@@ -288,15 +280,33 @@ export default function AdminSiteDetail() {
             コンバージョンイベント
           </h3>
           <div className="space-y-2">
-            {siteDetail.conversionEvents.map((event, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-dark-3"
-              >
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span className="text-dark dark:text-white">{event}</span>
-              </div>
-            ))}
+            {siteDetail.conversionEvents.map((event, index) => {
+              // イベントが文字列かオブジェクトかを判定
+              const eventName = typeof event === 'string' ? event : (event.eventName || event.displayName || 'Unknown');
+              const eventDisplay = typeof event === 'string' ? event : (event.displayName || event.eventName || 'Unknown');
+              
+              return (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-dark-3"
+                >
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                  <div className="flex-1">
+                    <span className="text-dark dark:text-white">{eventDisplay}</span>
+                    {typeof event === 'object' && event.description && (
+                      <div className="text-xs text-body-color dark:text-dark-6">
+                        {event.description}
+                      </div>
+                    )}
+                  </div>
+                  {typeof event === 'object' && event.isActive !== undefined && (
+                    <span className={`text-xs ${event.isActive ? 'text-green-600' : 'text-gray-400'}`}>
+                      {event.isActive ? '有効' : '無効'}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
