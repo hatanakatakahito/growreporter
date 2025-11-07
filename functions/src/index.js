@@ -15,6 +15,7 @@ import { fetchGA4UserDemographicsCallable } from './callable/fetchGA4UserDemogra
 import { exchangeOAuthCodeCallable } from './callable/exchangeOAuthCode.js';
 import { testSheetsConnectionCallable } from './callable/testSheetsConnection.js';
 import { fetchImprovementKnowledgeCallable } from './callable/fetchImprovementKnowledge.js';
+import { getAdminStatsCallable } from './callable/admin/getAdminStats.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
 import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
@@ -210,3 +211,14 @@ export const siteCreatedSheetsExport = onDocumentWritten({
  * 毎月1日0時に全ユーザーのAI生成回数をリセット
  */
 export const resetMonthlyLimits = resetMonthlyLimitsScheduled;
+
+/**
+ * 管理者ダッシュボード統計データ取得 Callable Function
+ * 管理者のみアクセス可能
+ */
+export const getAdminStats = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, getAdminStatsCallable);
