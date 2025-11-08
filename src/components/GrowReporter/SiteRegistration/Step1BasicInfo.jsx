@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { SITE_TYPES, BUSINESS_TYPES } from '../../../constants/siteOptions';
+import { SITE_TYPES } from '../../../constants/siteOptions';
 import { storage, functions } from '../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { Upload, X, Loader2 } from 'lucide-react';
+import BusinessTypeSelector from './BusinessTypeSelector';
 
 export default function Step1BasicInfo({ siteData, setSiteData }) {
   const [formData, setFormData] = useState({
@@ -292,31 +293,17 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       </div>
 
       {/* ビジネス形態 */}
-      <div>
-        <label htmlFor="businessType" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-          ビジネス形態
-          <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-        </label>
-        <div className="relative">
-          <select
-            id="businessType"
-            value={formData.businessType}
-            onChange={handleChange}
-            className="w-full appearance-none rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
-            required
-          >
-            <option value="" disabled>選択してください</option>
-            {BUSINESS_TYPES.map((type) => (
-              <option key={type.value} value={type.value}>{type.label}</option>
-            ))}
-          </select>
-          <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
-            <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M5 7.5L10 12.5L15 7.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-          </span>
-        </div>
-      </div>
+      <BusinessTypeSelector
+        value={formData.businessType}
+        onChange={(value) => {
+          setFormData(prev => ({ ...prev, businessType: value }));
+          // エラーをクリア
+          if (errors.businessType) {
+            setErrors(prev => ({ ...prev, businessType: '' }));
+          }
+        }}
+        error={errors.businessType}
+      />
 
       {/* サイトタイトル */}
       <div>
