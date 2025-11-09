@@ -225,28 +225,43 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
   };
 
   const priorityLabels = {
-    high: '高',
-    medium: '中',
-    low: '低',
+    high: '優先度 高',
+    medium: '優先度 中',
+    low: '優先度 低',
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white p-6 dark:bg-dark-2">
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-dark dark:text-white">
-            AI改善案生成
-          </h3>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 hover:bg-gray-2 dark:hover:bg-dark-3"
-          >
-            <X className="h-5 w-5" />
-          </button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-6">
+      <div className="max-h-[90vh] w-full max-w-6xl overflow-hidden rounded-2xl bg-white shadow-2xl">
+        {/* ヘッダー（グラデーション） */}
+        <div className="bg-gradient-to-r from-purple-600 to-pink-600 px-8 py-5 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              {/* AIアイコン */}
+              <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/20 backdrop-blur-sm shadow-lg">
+                <Sparkles className="h-7 w-7 text-white" />
+              </div>
+              <div>
+                <h3 className="text-2xl font-bold text-white">AI改善案生成</h3>
+                <p className="text-sm text-white/90 mt-1">365日分のデータから導き出された改善施策</p>
+              </div>
+            </div>
+            
+            {/* 閉じるボタン */}
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/20 backdrop-blur-sm text-white transition hover:bg-white/30"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
+        {/* コンテンツエリア */}
+        <div className="max-h-[calc(90vh-200px)] overflow-y-auto bg-gray-50">{/* スクロール可能エリア */}
+
         {generatedSuggestions.length === 0 ? (
-          <div className="py-12 text-center">
+          <div className="py-12 text-center p-8">
             <Sparkles className="mx-auto mb-4 h-12 w-12 text-purple-500" />
             <p className="mb-6 text-body-color">
               過去365日分のデータを分析し、直近30日のパフォーマンスを重点的に改善提案します。
@@ -270,94 +285,120 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
             </button>
           </div>
         ) : (
-          <>
+          <div className="p-8 space-y-8">
             {/* 分析サマリー */}
             {generatedSummary && (
-              <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-                <ReactMarkdown
-                  components={{
-                    h2: ({ node, ...props }) => (
-                      <h2 className="mb-3 text-xl font-bold text-dark dark:text-white" {...props} />
-                    ),
-                    h3: ({ node, ...props }) => (
-                      <h3 className="mb-2 text-lg font-semibold text-dark dark:text-white" {...props} />
-                    ),
-                    p: ({ node, ...props }) => (
-                      <p className="mb-3 leading-relaxed text-dark dark:text-white" {...props} />
-                    ),
-                    ul: ({ node, ...props }) => (
-                      <ul className="mb-3 list-disc space-y-1 pl-5 text-dark dark:text-white" {...props} />
-                    ),
-                    li: ({ node, ...props }) => (
-                      <li className="text-dark dark:text-white" {...props} />
-                    ),
-                    strong: ({ node, ...props }) => (
-                      <strong className="font-semibold text-dark dark:text-white" {...props} />
-                    ),
-                  }}
-                >
-                  {generatedSummary}
-                </ReactMarkdown>
+              <div>
+                <h4 className="text-xl font-bold text-gray-900 mb-4">分析サマリー</h4>
+
+                <div className="rounded-xl bg-white border border-gray-200 p-6 shadow-sm">
+                  <ReactMarkdown
+                    components={{
+                      h2: ({ node, ...props }) => (
+                        <h2 className="mb-3 text-xl font-bold text-gray-900" {...props} />
+                      ),
+                      h3: ({ node, ...props }) => (
+                        <h3 className="mb-2 text-lg font-semibold text-gray-900" {...props} />
+                      ),
+                      p: ({ node, ...props }) => (
+                        <p className="mb-3 leading-relaxed text-gray-700" {...props} />
+                      ),
+                      ul: ({ node, ...props }) => (
+                        <ul className="mb-3 list-disc space-y-1 pl-5 text-gray-700" {...props} />
+                      ),
+                      li: ({ node, ...props }) => (
+                        <li className="text-gray-700" {...props} />
+                      ),
+                      strong: ({ node, ...props }) => (
+                        <strong className="font-bold text-gray-900" {...props} />
+                      ),
+                    }}
+                  >
+                    {generatedSummary}
+                  </ReactMarkdown>
+                </div>
               </div>
             )}
 
             {/* おすすめの改善施策 */}
-            <h3 className="mb-3 text-lg font-semibold text-dark dark:text-white">
-              おすすめの改善施策（{generatedSuggestions.length}件）
-            </h3>
-            <p className="mb-4 text-sm text-body-color">
-              追加する項目を選択してください。
-            </p>
-            
-            <div className="mb-6 space-y-3">
-              {generatedSuggestions.map((suggestion, index) => (
-                <div
-                  key={index}
-                  onClick={() => toggleSelection(index)}
-                  className={`cursor-pointer rounded-lg border p-4 transition-all ${
-                    selectedSuggestions.has(index)
-                      ? 'border-primary bg-blue-50 dark:bg-blue-900/10'
-                      : 'border-stroke hover:border-gray-400 dark:border-dark-3'
-                  }`}
-                >
-                  <div className="mb-2 flex items-start justify-between">
-                    <h4 className="flex-1 font-medium text-dark dark:text-white">
-                      {suggestion.title}
-                    </h4>
-                    <input
-                      type="checkbox"
-                      checked={selectedSuggestions.has(index)}
-                      onChange={() => toggleSelection(index)}
-                      className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
-                    />
-                  </div>
-                  
-                  <p className="mb-3 text-sm text-dark dark:text-white">
-                    {suggestion.description}
-                  </p>
-                  
-                  <div className="flex flex-wrap gap-2">
-                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${categoryColors[suggestion.category]}`}>
-                      {categoryLabels[suggestion.category]}
-                    </span>
-                    <span className={`rounded px-2 py-0.5 text-xs font-medium ${priorityColors[suggestion.priority]}`}>
-                      {priorityLabels[suggestion.priority]}
-                    </span>
-                    {suggestion.expectedImpact && (
-                      <span className="rounded bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-800 dark:bg-gray-900/20 dark:text-gray-300">
-                        {suggestion.expectedImpact}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+            <div>
+              <h4 className="text-xl font-bold text-gray-900 mb-4">おすすめの改善施策（{generatedSuggestions.length}件）</h4>
 
-            <div className="flex justify-between border-t border-stroke pt-4 dark:border-dark-3">
+              <p className="text-sm text-gray-600 mb-4">追加する項目を選択してください。</p>
+
+              {/* 改善施策リスト */}
+              <div className="space-y-3">
+                {generatedSuggestions.map((suggestion, index) => (
+                  <div
+                    key={index}
+                    onClick={() => toggleSelection(index)}
+                    className={`rounded-xl p-5 shadow-sm cursor-pointer transition-all ${
+                      selectedSuggestions.has(index)
+                        ? 'border-2 border-purple-600 bg-purple-50'
+                        : 'border-2 border-gray-200 bg-white hover:border-purple-300 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      {/* チェックボックス */}
+                      <div className="flex-shrink-0 pt-0.5">
+                        <div className={`flex h-6 w-6 items-center justify-center rounded-md shadow-sm ${
+                          selectedSuggestions.has(index)
+                            ? 'bg-purple-600'
+                            : 'border-2 border-gray-300 bg-white'
+                        }`}>
+                          {selectedSuggestions.has(index) && (
+                            <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                          <h5 className="text-base font-bold text-gray-900">{suggestion.title}</h5>
+                          <span className={`flex-shrink-0 rounded-md px-2.5 py-1 text-xs font-bold ${
+                            suggestion.priority === 'high' ? 'bg-red-500 text-white' :
+                            suggestion.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-blue-100 text-blue-800'
+                          }`}>
+                            {priorityLabels[suggestion.priority]}
+                          </span>
+                        </div>
+                        
+                        <p className="text-sm text-gray-700 mb-3 leading-relaxed">
+                          {suggestion.description}
+                        </p>
+                        
+                        {suggestion.expectedImpact && (
+                          <p className="text-sm text-green-700 mb-3 leading-relaxed">
+                            期待する効果：{suggestion.expectedImpact}
+                          </p>
+                        )}
+                        
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-md px-2.5 py-1 text-xs font-semibold ${categoryColors[suggestion.category]}`}>
+                            {categoryLabels[suggestion.category]}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+        </div>
+
+        {/* フッター */}
+        {generatedSuggestions.length > 0 && (
+          <div className="border-t border-gray-200 bg-white px-8 py-5">
+            <div className="flex items-center justify-between">
               <button
                 onClick={() => handleGenerate(true)}
                 disabled={isGenerating}
-                className="inline-flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isGenerating ? (
                   <>
@@ -366,7 +407,9 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
                   </>
                 ) : (
                   <>
-                    <Sparkles className="h-4 w-4" />
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"/>
+                    </svg>
                     再生成
                   </>
                 )}
@@ -375,20 +418,20 @@ export default function AIGenerateDialog({ isOpen, onClose, siteId }) {
               <div className="flex gap-3">
                 <button
                   onClick={onClose}
-                  className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                  className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
                 >
                   キャンセル
                 </button>
                 <button
                   onClick={handleAddSelected}
                   disabled={selectedSuggestions.size === 0}
-                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="rounded-lg bg-purple-600 px-6 py-2.5 text-sm font-semibold text-white shadow-lg transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   選択した{selectedSuggestions.size}件を追加
                 </button>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
