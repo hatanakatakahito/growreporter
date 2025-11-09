@@ -5,7 +5,15 @@ import chromium from '@sparticuz/chromium';
 import sharp from 'sharp';
 
 /**
- * スクリーンショット取得 Callable Function（最適化版）
+ * スクリーンショット取得 Callable Function（ファーストビュー特化版）
+ * 
+ * 改善内容：
+ * - ファーストビュー+セカンドビュー（モバイル1200px、PC1400px）に最適化
+ * - アニメーション完全停止（CSS + JavaScript + IntersectionObserver無効化）
+ * - 賢い画像読み込み待機（ファーストビュー内の画像のみ、最大5秒）
+ * - 最小限の待機時間（500ms）
+ * - 品質向上（JPEG 75%）
+ * 
  * @param {object} request - リクエストオブジェクト
  * @returns {Promise<object>} - スクリーンショットURL
  */
@@ -81,18 +89,40 @@ export async function captureScreenshotCallable(request) {
     // 🔥 最適化: キャッシュ無効化
     await page.setCacheEnabled(false);
     
-    // デバイス設定（元の縦サイズに戻す）
+    // デバイス設定（ファーストビュー+セカンドビュー特化）
     const viewport = deviceType === 'mobile' 
-      ? { width: 375, height: 667, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }  // 元に戻す
-      : { width: 1920, height: 1080, deviceScaleFactor: 1 };  // 元に戻す
+      ? { width: 375, height: 1200, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }  // 1200px（ファーストビュー+α）
+      : { width: 1920, height: 1400, deviceScaleFactor: 1 };  // 1400px（ファーストビュー+α）
     
     await page.setViewport(viewport);
     
-    // 🔥 最適化2: CSSアニメーション無効化（レンダリング高速化）
+    // 🔥 最適化2: アニメーション完全停止（強化版）
     await page.evaluateOnNewDocument(() => {
+      // CSS アニメーション完全停止
       const style = document.createElement('style');
-      style.innerHTML = '* { animation: none !important; transition: none !important; }';
-      document.head.appendChild(style);
+      style.innerHTML = `
+        *, *::before, *::after {
+          animation: none !important;
+          animation-duration: 0s !important;
+          animation-delay: 0s !important;
+          transition: none !important;
+          transition-duration: 0s !important;
+          transition-delay: 0s !important;
+        }
+      `;
+      document.head?.appendChild(style) || setTimeout(() => document.head.appendChild(style), 0);
+      
+      // JavaScript アニメーション最適化
+      const originalRAF = window.requestAnimationFrame;
+      window.requestAnimationFrame = (cb) => setTimeout(cb, 0);
+      
+      // IntersectionObserver無効化（遅延読み込み対策）
+      window.IntersectionObserver = class {
+        constructor() {}
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      };
     });
     
     // 🔥 最適化: 不要なリソースをブロック（50-70%高速化）
@@ -133,41 +163,66 @@ export async function captureScreenshotCallable(request) {
     // 🔥 最適化: domcontentloaded（networkidle2より10-30秒早い）
     await page.goto(siteUrl, {
       waitUntil: 'domcontentloaded',
-      timeout: 30000,  // 45秒 → 30秒
+      timeout: 20000,  // 20秒（ファーストビュー用に短縮）
     });
     
     console.log(`[captureScreenshot] Navigation completed in ${Date.now() - navStartTime}ms`);
     
-    // 🔥 最適化: レンダリング完了を確実に待つ
+    // 🔥 最適化: ファーストビューの画像読み込みを賢く待つ
     await page.evaluate(() => {
       return new Promise((resolve) => {
-        if (document.readyState === 'complete') {
+        // ファーストビュー+αの画像のみを対象
+        const viewportHeight = window.innerHeight;
+        const images = Array.from(document.querySelectorAll('img')).filter(img => {
+          const rect = img.getBoundingClientRect();
+          // ファーストビュー+セカンドビュー（1.5倍）内の画像のみ
+          return rect.top < viewportHeight * 1.5;
+        }).slice(0, 8);  // 最大8枚
+        
+        if (images.length === 0) {
           resolve();
-        } else {
-          window.addEventListener('load', resolve);
+          return;
         }
+        
+        const promises = images.map(img => {
+          if (img.complete && img.naturalHeight !== 0) {
+            return Promise.resolve();
+          }
+          return new Promise(imgResolve => {
+            img.addEventListener('load', imgResolve);
+            img.addEventListener('error', imgResolve);
+            // 各画像2秒でタイムアウト
+            setTimeout(imgResolve, 2000);
+          });
+        });
+        
+        // 全体で5秒でタイムアウト
+        Promise.race([
+          Promise.all(promises),
+          new Promise(timeoutResolve => setTimeout(timeoutResolve, 5000))
+        ]).then(resolve);
       });
     });
     
-    // さらに2秒待機してレンダリングを完全に完了させる
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    // 最小限の待機（アニメーション停止の効果を確実にするため）
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     console.log(`[captureScreenshot] Page rendered, taking screenshot...`);
     const screenshotStartTime = Date.now();
     
-    // 🔥 最適化4: リサイズを小さく（ファイルサイズ削減）
-    const targetWidth = deviceType === 'mobile' ? 300 : 500;  // 400/600 → 300/500
+    // ファーストビュー用の適切なサイズ（プレビューに十分な品質）
+    const targetWidth = deviceType === 'mobile' ? 375 : 600;
     
-    // 🔥 最適化3: JPEG品質を60に（ファイルサイズ30-40%削減）
+    // ファーストビュー用の適切な品質（プレビューに十分）
     const screenshot = await page.screenshot({
       type: 'jpeg',
-      quality: 60,  // 70 → 60
+      quality: 75,  // ファーストビュー用に品質を少し上げる
       fullPage: false,
     });
     
     console.log(`[captureScreenshot] Screenshot captured in ${Date.now() - screenshotStartTime}ms`);
     
-    // 高速リサイズ
+    // 高速リサイズ（ファーストビュー用最適化）
     const resizedImage = await sharp(screenshot, {
       failOnError: false,
     })
@@ -177,7 +232,7 @@ export async function captureScreenshotCallable(request) {
         fastShrinkOnLoad: true,
       })
       .jpeg({ 
-        quality: 60,  // 70 → 60
+        quality: 75,  // ファーストビュー用に品質を保持
         progressive: true,
         mozjpeg: true,
       })
