@@ -2,6 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { checkCanGenerate, incrementGenerationCount } from '../utils/planManager.js';
 import { getCachedAnalysis, saveCachedAnalysis } from '../utils/aiCacheManager.js';
+import { buildPrompt } from '../utils/aiPromptBuilder.js';
 
 /**
  * AI要約生成 Callable Function
@@ -632,6 +633,19 @@ function estimatePriority(text, order) {
  */
 function generatePrompt(pageType, startDate, endDate, metrics) {
   const period = `${startDate}から${endDate}までの期間`;
+
+  // ✅ 16種類の分析ページタイプは共通化プロンプトを使用
+  const TARGET_PAGE_TYPES = [
+    'dashboard', 'summary', 'users', 'day', 'week', 'hour',
+    'channels', 'keywords', 'referrals', 'pages', 'pageCategories',
+    'landingPages', 'fileDownloads', 'externalLinks', 'conversions', 'reverseFlow'
+  ];
+
+  if (TARGET_PAGE_TYPES.includes(pageType) && pageType !== 'comprehensive_improvement') {
+    return buildPrompt(pageType, metrics, period);
+  }
+
+  // ✅ comprehensive_improvementは既存の個別プロンプト処理へ（下部で定義）
 
   if (pageType === 'summary') {
     // 13ヶ月推移データの整形

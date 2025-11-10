@@ -9,9 +9,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
 import DataTable from '../../components/Analysis/DataTable';
 import ChartContainer from '../../components/Analysis/ChartContainer';
-import AISummarySheet from '../../components/Analysis/AISummarySheet';
 import { format, sub } from 'date-fns';
-import { Sparkles } from 'lucide-react';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
 import {
@@ -35,7 +33,6 @@ export default function Hour() {
   const [searchParams] = useSearchParams();
   const [hiddenBars, setHiddenBars] = useState({});
   const [activeTab, setActiveTab] = useState('chart');
-  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
 
   // ページタイトルを設定
@@ -278,30 +275,15 @@ export default function Hour() {
           )}
         </div>
 
-        {/* AI分析サイドシート */}
-        <AISummarySheet
-          isOpen={isAISheetOpen}
-          onClose={() => setIsAISheetOpen(false)}
-          siteId={selectedSiteId}
-          pageType="hour"
-          startDate={dateRange.from}
-          endDate={dateRange.to}
-          metrics={{
-            sessions: chartData.reduce((sum, row) => sum + row.sessions, 0),
-            conversions: chartData.reduce((sum, row) => sum + row.conversions, 0),
-            hourlyData: chartData,
-          }}
-        />
-
-        {/* 新しいAI分析フローティングボタン */}
+        {/* AI分析フローティングボタン */}
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.HOUR}
             metrics={{
               sessions: chartData?.reduce((sum, row) => sum + row.sessions, 0) || 0,
               conversions: chartData?.reduce((sum, row) => sum + row.conversions, 0) || 0,
-              hourlyData: chartData || [],
-              conversionEvents: selectedSite?.conversionEvents || [],
+              hourlyDataCount: chartData?.length || 0,
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

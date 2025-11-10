@@ -58,7 +58,8 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
 
     try {
       // 再生成時は常に制限チェック
-      if (forceRegenerate && !checkCanGenerate()) {
+      const usageType = pageType === 'comprehensive_improvement' ? 'improvement' : 'summary';
+      if (forceRegenerate && !checkCanGenerate(usageType)) {
         onLimitExceeded();
         setIsLoading(false);
         return;
@@ -82,16 +83,10 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
 
       const generateAISummary = httpsCallable(functions, 'generateAISummary');
       
-      // コンバージョン定義をmetricsに追加
-      const enrichedMetrics = {
-        ...metrics,
-        conversionEvents: selectedSite?.conversionEvents || [],
-      };
-      
       console.log('[AIAnalysisModal] AI分析リクエスト:', {
         siteId: selectedSiteId,
         pageType,
-        metricsKeys: Object.keys(enrichedMetrics),
+        metricsKeys: Object.keys(metrics),
         startDate: period?.startDate,
         endDate: period?.endDate,
       });
@@ -99,7 +94,7 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
       const result = await generateAISummary({
         siteId: selectedSiteId,
         pageType,
-        metrics: enrichedMetrics,
+        metrics: metrics,
         startDate: period?.startDate,
         endDate: period?.endDate,
         forceRegenerate,

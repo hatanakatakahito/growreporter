@@ -6,8 +6,7 @@ import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import Sidebar from '../components/Layout/Sidebar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
-import AISummarySheet from '../components/Analysis/AISummarySheet';
-import { Sparkles, Plus, Edit, Trash2, GitMerge, Settings, Info } from 'lucide-react';
+import { Plus, Edit, Trash2, GitMerge, Settings, Info } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -40,7 +39,6 @@ const Arrow = ({ rate }) => (
 export default function ReverseFlow() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [selectedFlowId, setSelectedFlowId] = useState(null);
-  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingFlow, setEditingFlow] = useState(null);
@@ -640,30 +638,16 @@ export default function ReverseFlow() {
           )}
         </div>
 
-        {/* AI分析サイドシート */}
-        <AISummarySheet
-          isOpen={isAISheetOpen}
-          onClose={() => setIsAISheetOpen(false)}
-          siteId={selectedSiteId}
-          pageType="reverseFlow"
-          startDate={dateRange.from}
-          endDate={dateRange.to}
-          metrics={{
-            summary: summaryData,
-            monthly: monthlyData,
-            settings: selectedFlow,
-          }}
-        />
-
-        {/* 新しいAI分析フローティングボタン */}
+        {/* AI分析フローティングボタン */}
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.REVERSE_FLOW}
             metrics={{
-              summary: summaryData || {},
-              monthly: monthlyData || [],
-              settings: selectedFlow || {},
-              conversionEvents: selectedSite?.conversionEvents || [],
+              goalCompletions: summaryData?.goalCompletions || 0,
+              totalSessions: summaryData?.totalSessions || 0,
+              avgConversionRate: summaryData?.conversionRate || 0,
+              monthlyDataCount: monthlyData?.length || 0,
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

@@ -7,8 +7,6 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
 import DataTable from '../components/Analysis/DataTable';
 import ChartContainer from '../components/Analysis/ChartContainer';
-import AISummarySheet from '../components/Analysis/AISummarySheet';
-import { Sparkles } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
 import { useQuery } from '@tanstack/react-query';
@@ -32,7 +30,6 @@ import {
 export default function ConversionList() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [activeTab, setActiveTab] = useState('table');
-  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
   const [hiddenLines, setHiddenLines] = useState({});
 
   // ページタイトルを設定
@@ -312,39 +309,26 @@ export default function ConversionList() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {!isLoading && conversionData && conversionData.length > 0 && (
-          <button
-            onClick={() => setIsAISheetOpen(true)}
-            className="fixed bottom-6 right-6 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
-            aria-label="AI分析を見る"
-          >
-            <div className="flex flex-col items-center">
-              <Sparkles className="h-6 w-6" />
-              <span className="mt-0.5 text-[10px] font-medium">AI分析</span>
-            </div>
-          </button>
-        )}
-
-        {/* AI分析サイドシート */}
-        <AISummarySheet
-          isOpen={isAISheetOpen}
-          onClose={() => setIsAISheetOpen(false)}
-          pageType="conversionList"
-          startDate={monthlyDateRange.start}
-          endDate={monthlyDateRange.end}
-          metrics={{
-            conversionData: conversionData || [],
-            conversionEvents,
-          }}
-        />
-
-        {/* 新しいAI分析フローティングボタン */}
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.CONVERSIONS}
             metrics={{
-              conversionData: conversionData || [],
-              conversionEvents: conversionEvents || [],
+              monthlyDataPoints: conversionData?.length || 0,
+              conversionEventCount: conversionEvents?.length || 0,
+              conversionSummaryText: (() => {
+                if (!conversionData || !conversionEvents.length) return '';
+                
+                // 各イベントの合計を計算
+                const eventTotals = conversionEvents.map(event => {
+                  const total = conversionData.reduce((sum, month) => 
+                    sum + (month[event.eventName] || 0), 0
+                  );
+                  return `${event.eventName}: ${total.toLocaleString()}件`;
+                }).join('\n');
+                
+                return eventTotals;
+              })(),
+              conversionEventNames: conversionEvents?.map(e => e.eventName) || [],
             }}
             period={{
               startDate: monthlyDateRange.start,

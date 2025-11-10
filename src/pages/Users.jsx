@@ -3,10 +3,9 @@ import { useSite } from '../contexts/SiteContext';
 import { useGA4UserDemographics } from '../hooks/useGA4UserDemographics';
 import Sidebar from '../components/Layout/Sidebar';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
-import AISummarySheet from '../components/Analysis/AISummarySheet';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
-import { Info, Sparkles } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
@@ -49,8 +48,6 @@ const GENDER_COLORS = {
 export default function Users() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [locationType, setLocationType] = useState('city');
-  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
-  const [isAnimating, setIsAnimating] = useState(false);
 
   // ページタイトルを設定
   useEffect(() => {
@@ -295,28 +292,14 @@ export default function Users() {
           )}
         </div>
 
-        {/* AI分析サイドシート */}
-        <AISummarySheet
-          isOpen={isAISheetOpen}
-          onClose={() => setIsAISheetOpen(false)}
-          siteId={selectedSiteId}
-          pageType="users"
-          startDate={dateRange.from}
-          endDate={dateRange.to}
-          metrics={{
-            demographicsData: demographicsData,
-            chartData: chartData,
-          }}
-        />
-
-        {/* 新しいAI分析フローティングボタン（統一版） */}
+        {/* AI分析フローティングボタン */}
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.USERS}
             metrics={{
-              demographicsData: demographicsData || {},
-              chartData: chartData || {},
-              conversionEvents: selectedSite?.conversionEvents || [],
+              hasDemographicsData: !!demographicsData,
+              hasChartData: !!chartData,
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

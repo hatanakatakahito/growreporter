@@ -7,8 +7,7 @@ import Sidebar from '../components/Layout/Sidebar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
 import DataTable from '../components/Analysis/DataTable';
-import AISummarySheet from '../components/Analysis/AISummarySheet';
-import { Sparkles, ExternalLink as ExternalLinkIcon } from 'lucide-react';
+import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
 
@@ -18,7 +17,6 @@ import { PAGE_TYPES } from '../constants/plans';
  */
 export default function ExternalLinks() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
-  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // ページタイトルを設定
   useEffect(() => {
@@ -137,43 +135,14 @@ export default function ExternalLinks() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {!isError && (
-          <button
-            onClick={() => setIsAISheetOpen(true)}
-            disabled={isLoading}
-            className="fixed bottom-6 right-6 z-30 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
-            aria-label="AI分析を見る"
-          >
-            <div className="flex flex-col items-center">
-              <Sparkles className="h-6 w-6" />
-              <span className="mt-0.5 text-[10px] font-medium">AI分析</span>
-            </div>
-          </button>
-        )}
-
-        {/* AI分析サイドシート */}
-        <AISummarySheet
-          isOpen={isAISheetOpen}
-          onClose={() => setIsAISheetOpen(false)}
-          pageType="externalLinks"
-          startDate={dateRange.from}
-          endDate={dateRange.to}
-          metrics={{
-            totalClicks,
-            totalUsers,
-            clickData: tableData,
-          }}
-        />
-
-        {/* 新しいAI分析フローティングボタン */}
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.EXTERNAL_LINKS}
             metrics={{
               totalClicks: totalClicks || 0,
               totalUsers: totalUsers || 0,
-              clickData: tableData || [],
-              conversionEvents: selectedSite?.conversionEvents || [],
+              clickCount: tableData?.length || 0,
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

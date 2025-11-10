@@ -3,11 +3,17 @@ import { usePlan } from '../../hooks/usePlan';
 
 /**
  * AI生成回数制限超過時のモーダル
+ * @param {object} props
+ * @param {function} props.onClose - モーダルを閉じる関数
+ * @param {string} props.type - 'summary' または 'improvement'
  */
-export default function PlanLimitModal({ onClose }) {
-  const { plan, getUsedGenerations } = usePlan();
-  const used = getUsedGenerations();
-  const limit = plan.aiGenerationsPerMonth;
+export default function PlanLimitModal({ onClose, type = 'summary' }) {
+  const { plan, getUsedByType, getRemainingByType } = usePlan();
+  const used = getUsedByType(type);
+  const limit = type === 'summary' 
+    ? plan.features?.aiSummaryMonthly || 0
+    : plan.features?.aiImprovementMonthly || 0;
+  const typeName = type === 'summary' ? 'AI分析' : 'AI改善提案';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -34,23 +40,23 @@ export default function PlanLimitModal({ onClose }) {
         <div className="p-6">
           <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
             <p className="mb-4 text-sm text-blue-900 dark:text-blue-200">
-              今月のAI分析生成回数の上限に達しました。
+              今月の{typeName}生成回数の上限に達しました。
             </p>
 
             {/* 利用状況 */}
             <div className="mb-4 rounded-lg bg-white p-4 dark:bg-dark-3">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-dark dark:text-white">
-                  AI生成回数
+                  {typeName}回数
                 </span>
                 <span className="text-lg font-bold text-dark dark:text-white">
-                  {used} / {limit}回
+                  {used} / {limit === -1 ? '∞' : limit}回
                 </span>
               </div>
               <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-4">
                 <div
                   className="h-full bg-gradient-to-r from-blue-500 to-pink-500 transition-all"
-                  style={{ width: `${(used / limit) * 100}%` }}
+                  style={{ width: limit === -1 ? '100%' : `${Math.min((used / limit) * 100, 100)}%` }}
                 />
               </div>
             </div>

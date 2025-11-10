@@ -9,10 +9,9 @@ import Sidebar from '../../components/Layout/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import DataTable from '../../components/Analysis/DataTable';
 import ChartContainer from '../../components/Analysis/ChartContainer';
-import AISummarySheet from '../../components/Analysis/AISummarySheet';
 import Tooltip from '../../components/common/Tooltip';
 import { format, sub, startOfMonth } from 'date-fns';
-import { Info, Sparkles } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { getTooltip } from '../../constants/tooltips';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
@@ -35,7 +34,6 @@ export default function AnalysisSummary() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [timelineTab, setTimelineTab] = useState('table');
   const [hiddenLines, setHiddenLines] = useState({});
-  const [isAISheetOpen, setIsAISheetOpen] = useState(false);
 
   // ページタイトルを設定
   useEffect(() => {
@@ -489,27 +487,7 @@ export default function AnalysisSummary() {
         )}
         </div>
 
-        {/* AI分析サイドシート */}
-        <AISummarySheet
-          isOpen={isAISheetOpen}
-          onClose={() => setIsAISheetOpen(false)}
-          siteId={selectedSiteId}
-          pageType="summary"
-          startDate={dateRange.from}
-          endDate={dateRange.to}
-          metrics={{
-            // 現在期間のデータ
-            users: data?.metrics?.totalUsers,
-            sessions: data?.metrics?.sessions,
-            pageViews: data?.metrics?.pageViews,
-            engagementRate: data?.metrics?.engagementRate,
-            conversions: data?.totalConversions,
-            // 13ヶ月推移データ
-            monthlyData: monthlyData,
-          }}
-        />
-
-        {/* 新しいAI分析フローティングボタン */}
+        {/* AI分析フローティングボタン */}
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.SUMMARY}
@@ -519,8 +497,8 @@ export default function AnalysisSummary() {
               pageViews: data?.metrics?.pageViews || 0,
               engagementRate: data?.metrics?.engagementRate || 0,
               conversions: data?.totalConversions || 0,
-              monthlyData: monthlyData || [],
-              conversionEvents: selectedSite?.conversionEvents || [],
+              monthlyDataCount: monthlyData?.length || 0,
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

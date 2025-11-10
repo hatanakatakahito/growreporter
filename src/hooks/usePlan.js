@@ -11,23 +11,24 @@ export function usePlan() {
 
   /**
    * AI生成が可能かチェック
+   * @param {string} type - 'summary' または 'improvement'
+   * @returns {boolean} 生成可能ならtrue
    */
-  const checkCanGenerate = () => {
+  const checkCanGenerate = (type = 'summary') => {
     if (!userProfile) return false;
-    if (plan.id === 'paid') return true;
-    const used = userProfile?.planLimits?.aiGenerationsUsed || 0;
-    return used < plan.aiGenerationsPerMonth;
-  };
-
-  /**
-   * 残りAI生成回数を取得
-   * @returns {number} 残り回数（有料プランの場合は-1）
-   */
-  const getRemainingGenerations = () => {
-    if (!userProfile) return 0;
-    if (plan.id === 'paid') return -1; // 無制限
-    const used = userProfile?.planLimits?.aiGenerationsUsed || 0;
-    return Math.max(0, plan.aiGenerationsPerMonth - used);
+    
+    const limit = type === 'summary' 
+      ? plan.features?.aiSummaryMonthly || 0
+      : plan.features?.aiImprovementMonthly || 0;
+    
+    // 無制限チェック
+    if (isUnlimited(limit)) return true;
+    
+    const used = type === 'summary'
+      ? userProfile.aiSummaryUsage || 0
+      : userProfile.aiImprovementUsage || 0;
+    
+    return used < limit;
   };
 
   /**
@@ -58,19 +59,22 @@ export function usePlan() {
   };
 
   /**
-   * 今月の使用回数を取得
+   * タイプ別の今月の使用回数を取得
+   * @param {string} type - 'summary' または 'improvement'
+   * @returns {number} 使用回数
    */
-  const getUsedGenerations = () => {
+  const getUsedByType = (type = 'summary') => {
     if (!userProfile) return 0;
-    return userProfile?.planLimits?.aiGenerationsUsed || 0;
+    return type === 'summary'
+      ? userProfile.aiSummaryUsage || 0
+      : userProfile.aiImprovementUsage || 0;
   };
 
   return {
     plan,
     checkCanGenerate,
-    getRemainingGenerations,
     getRemainingByType,
-    getUsedGenerations,
+    getUsedByType,
     isLoading: !userProfile,
   };
 }

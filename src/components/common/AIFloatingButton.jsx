@@ -93,7 +93,10 @@ export default function AIFloatingButton({ pageType, metrics, period }) {
 
       {/* 制限超過モーダル */}
       {isLimitModalOpen && (
-        <PlanLimitModal onClose={() => setIsLimitModalOpen(false)} />
+        <PlanLimitModal 
+          onClose={() => setIsLimitModalOpen(false)}
+          type={pageType === 'comprehensive_improvement' ? 'improvement' : 'summary'}
+        />
       )}
     </>
   );
