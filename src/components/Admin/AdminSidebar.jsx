@@ -7,6 +7,7 @@ import {
   Settings,
   CreditCard
 } from 'lucide-react';
+import logoImg from '../../assets/img/logo.svg';
 
 /**
  * アドミン画面のサイドバー
@@ -68,7 +69,7 @@ export default function AdminSidebar() {
       <div className="flex h-20 flex-shrink-0 items-center justify-center border-b border-stroke px-6 dark:border-dark-3">
         <Link to="/admin/dashboard" className="flex items-center gap-2">
           <img 
-            src="/src/assets/img/logo.svg" 
+            src={logoImg} 
             alt="GROW REPORTER" 
             className="h-10 w-auto"
           />

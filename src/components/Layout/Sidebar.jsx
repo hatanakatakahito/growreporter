@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
+import logoImg from '../../assets/img/logo.svg';
 
 export default function Sidebar() {
   const location = useLocation();
@@ -163,7 +164,7 @@ export default function Sidebar() {
       <div className="flex h-20 items-center justify-center border-b border-stroke px-6 dark:border-dark-3">
         <Link to="/dashboard" className="flex items-center gap-2">
           <img 
-            src="/src/assets/img/logo.svg" 
+            src={logoImg}
             alt="GROW REPORTER" 
             className="h-10 w-auto"
           />
