@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
@@ -47,6 +47,22 @@ import AdminSettings from './pages/Admin/Settings/AdminSettings';
 import PlanSettings from './pages/Admin/Settings/PlanSettings';
 
 function App() {
+  // 正式ドメインへのリダイレクト
+  useEffect(() => {
+    const currentHostname = window.location.hostname;
+    const officialDomain = 'grow-reporter.com';
+    
+    // ローカル開発環境（localhost）は除外
+    if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
+      return;
+    }
+    
+    // 正式ドメイン以外からのアクセスの場合、リダイレクト
+    if (currentHostname !== officialDomain) {
+      const newUrl = `https://${officialDomain}${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.location.replace(newUrl);
+    }
+  }, []);
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
