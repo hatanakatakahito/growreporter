@@ -498,7 +498,7 @@ export default function AnalysisSummary() {
               engagementRate: data?.metrics?.engagementRate || 0,
               conversions: data?.totalConversions || 0,
               monthlyDataCount: monthlyData?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

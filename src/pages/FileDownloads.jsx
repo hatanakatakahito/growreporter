@@ -284,7 +284,7 @@ export default function FileDownloads() {
               totalDownloads: totalDownloads || 0,
               totalUsers: totalUsers || 0,
               downloadCount: tableData?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

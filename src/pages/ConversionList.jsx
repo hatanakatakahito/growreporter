@@ -328,7 +328,7 @@ export default function ConversionList() {
                 
                 return eventTotals;
               })(),
-              conversionEventNames: conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: monthlyDateRange.start,

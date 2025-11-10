@@ -391,7 +391,7 @@ export default function Keywords() {
                 const position = (k.position || 0);
                 return `${i+1}. "${k.keyword || ''}": クリック${k.clicks?.toLocaleString() || 0}回, 表示回数${k.impressions?.toLocaleString() || 0}回, CTR${ctr}%, 掲載順位${position}位`;
               }).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
               hasGSCConnection,
             }}
             period={{

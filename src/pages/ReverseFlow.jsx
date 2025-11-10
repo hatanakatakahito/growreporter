@@ -647,7 +647,7 @@ export default function ReverseFlow() {
               totalSessions: summaryData?.totalSessions || 0,
               avgConversionRate: summaryData?.conversionRate || 0,
               monthlyDataCount: monthlyData?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

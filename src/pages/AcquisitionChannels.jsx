@@ -383,7 +383,7 @@ export default function AcquisitionChannels() {
               channelsText: chartData?.map((c, i) => 
                 `${i+1}. ${c.channel}: セッション${c.sessions?.toLocaleString() || 0}回, CV${c.conversions?.toLocaleString() || 0}件, ユーザー${c.users?.toLocaleString() || 0}人`
               ).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

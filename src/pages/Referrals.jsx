@@ -398,7 +398,7 @@ export default function Referrals() {
                 const cvr = (r.sessions > 0 ? ((r.conversions || 0) / r.sessions * 100) : 0).toFixed(2);
                 return `${i+1}. ${r.source || 'unknown'}: セッション${r.sessions?.toLocaleString() || 0}回, ユーザー${r.users?.toLocaleString() || 0}人, CV${r.conversions?.toLocaleString() || 0}件, CVR${cvr}%`;
               }).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

@@ -311,7 +311,7 @@ export default function Pages() {
               topPagesText: tableData?.slice(0, 10).map((p, i) => 
                 `${i+1}. ${p.pagePath || '/'}: PV${p.pageViews?.toLocaleString() || 0}, セッション${p.sessions?.toLocaleString() || 0}回, ユーザー${p.users?.toLocaleString() || 0}人`
               ).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

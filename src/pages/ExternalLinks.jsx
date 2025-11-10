@@ -142,7 +142,7 @@ export default function ExternalLinks() {
               totalClicks: totalClicks || 0,
               totalUsers: totalUsers || 0,
               clickCount: tableData?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

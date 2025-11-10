@@ -327,7 +327,7 @@ export default function PageCategories() {
               topCategoriesText: categoryData?.slice(0, 5).map((c, i) => 
                 `${i+1}. ${c.category}: PV${c.pageViews?.toLocaleString() || 0}, ページ数${c.pages || 0}件`
               ).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

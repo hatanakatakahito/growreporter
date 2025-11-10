@@ -356,7 +356,7 @@ export default function Week() {
               sessions: maxSessions || 0,
               conversions: maxConversions || 0,
               totalDataPoints: matrix?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,

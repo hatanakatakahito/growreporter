@@ -293,7 +293,7 @@ export default function Day() {
               sessions: chartData?.reduce((sum, row) => sum + row.sessions, 0) || 0,
               conversions: chartData?.reduce((sum, row) => sum + row.conversions, 0) || 0,
               dailyDataCount: chartData?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
             }}
             period={{
               startDate: dateRange.from,
