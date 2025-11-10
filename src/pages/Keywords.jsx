@@ -387,9 +387,9 @@ export default function Keywords() {
               avgPosition: avgPosition || 0,
               keywordCount: tableData?.length || 0,
               topKeywordsText: tableData?.slice(0, 10).map((k, i) => {
-                const ctr = ((k.ctr || 0) * 100).toFixed(2);
-                const position = (k.position || 0).toFixed(1);
-                return `${i+1}. "${k.query || ''}": クリック${k.clicks?.toLocaleString() || 0}回, 表示回数${k.impressions?.toLocaleString() || 0}回, CTR${ctr}%, 掲載順位${position}位`;
+                const ctr = (k.ctr || 0);  // 既に%換算済み（73行目）
+                const position = (k.position || 0);
+                return `${i+1}. "${k.keyword || ''}": クリック${k.clicks?.toLocaleString() || 0}回, 表示回数${k.impressions?.toLocaleString() || 0}回, CTR${ctr}%, 掲載順位${position}位`;
               }).join('\n') || '',
               conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
               hasGSCConnection,
