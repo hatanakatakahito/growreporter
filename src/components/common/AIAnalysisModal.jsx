@@ -60,7 +60,21 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
       // 再生成時は常に制限チェック
       if (forceRegenerate && !checkCanGenerate()) {
         onLimitExceeded();
+        setIsLoading(false);
         return;
+      }
+      
+      // データ検証
+      if (!selectedSiteId) {
+        throw new Error('サイトが選択されていません');
+      }
+      
+      if (!pageType) {
+        throw new Error('ページタイプが指定されていません');
+      }
+      
+      if (!metrics || typeof metrics !== 'object') {
+        throw new Error('分析データが不正です');
       }
       
       // 初回ロード時もバックエンドで制限チェックされるが、
@@ -74,6 +88,14 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         conversionEvents: selectedSite?.conversionEvents || [],
       };
       
+      console.log('[AIAnalysisModal] AI分析リクエスト:', {
+        siteId: selectedSiteId,
+        pageType,
+        metricsKeys: Object.keys(enrichedMetrics),
+        startDate: period?.startDate,
+        endDate: period?.endDate,
+      });
+      
       const result = await generateAISummary({
         siteId: selectedSiteId,
         pageType,
@@ -83,16 +105,38 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         forceRegenerate,
       });
 
+      if (!result || !result.data) {
+        throw new Error('AI分析の結果が取得できませんでした');
+      }
+
       const data = result.data;
+      
+      if (!data.summary) {
+        throw new Error('AI分析の要約が生成されませんでした');
+      }
+      
+      console.log('[AIAnalysisModal] AI分析成功:', {
+        summaryLength: data.summary?.length || 0,
+        recommendationsCount: data.recommendations?.length || 0,
+        fromCache: data.fromCache,
+      });
+      
       setSummary(data.summary);
       setRecommendations(data.recommendations || []);
       setGeneratedAt(data.generatedAt ? new Date(data.generatedAt) : new Date());
       setFromCache(data.fromCache || false);
     } catch (err) {
       console.error('[AIAnalysisModal] AI分析エラー:', err);
+      console.error('[AIAnalysisModal] エラー詳細:', {
+        message: err.message,
+        code: err.code,
+        stack: err.stack,
+      });
       
       if (err.code === 'functions/resource-exhausted') {
         onLimitExceeded();
+      } else if (err.message) {
+        setError(`AI分析エラー: ${err.message}`);
       } else {
         setError('AI分析の生成に失敗しました。しばらくしてから再度お試しください。');
       }
