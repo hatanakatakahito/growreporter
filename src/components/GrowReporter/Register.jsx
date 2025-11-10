@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { INDUSTRIES } from '../../constants/industries';
+import logoImg from '../../assets/img/logo.svg';
+import loginIllustration from '../../assets/img/login.svg';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -115,7 +117,7 @@ export default function Register() {
             <div className="w-full max-w-[400px] text-center">
               <div className="mb-5 flex items-center justify-center">
                 <img 
-                  src="/src/assets/img/logo.svg" 
+                  src={logoImg} 
                   alt="GROW REPORTER" 
                   className="h-10 w-auto"
                 />
@@ -127,7 +129,7 @@ export default function Register() {
               {/* イラスト */}
               <div className="mx-auto flex items-center justify-center">
                 <img 
-                  src="/src/assets/img/login.svg" 
+                  src={loginIllustration} 
                   alt="Register Illustration" 
                   className="w-full max-w-[400px] h-auto"
                 />

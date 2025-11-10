@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { INDUSTRIES } from '../../constants/industries';
+import logoImg from '../../assets/img/logo.svg';
 
 export default function CompleteProfile() {
   const [formData, setFormData] = useState({
@@ -96,7 +97,7 @@ export default function CompleteProfile() {
           <div className="bg-primary px-8 py-6 text-center">
             <div className="mb-3 flex items-center justify-center">
               <img 
-                src="/src/assets/img/logo.svg" 
+                src={logoImg} 
                 alt="GROW REPORTER" 
                 className="h-10 w-auto brightness-0 invert"
               />

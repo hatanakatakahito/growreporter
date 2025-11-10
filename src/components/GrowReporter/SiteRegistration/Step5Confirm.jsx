@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import StepIndicator from './StepIndicator';
+import logoImg from '../../../assets/img/logo.svg';
 
 export default function Step5Confirm({ onBack, siteData }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -38,7 +39,7 @@ export default function Step5Confirm({ onBack, siteData }) {
           <div className="mb-8 text-center">
             <div className="mb-4 flex items-center justify-center">
               <img 
-                src="/src/assets/img/logo.svg" 
+                src={logoImg} 
                 alt="GROW REPORTER" 
                 className="h-12 w-auto"
               />

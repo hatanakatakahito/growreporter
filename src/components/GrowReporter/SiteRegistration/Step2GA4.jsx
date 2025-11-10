@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import StepIndicator from './StepIndicator';
+import logoImg from '../../../assets/img/logo.svg';
 
 export default function Step2GA4({ onNext, onBack, initialData = {} }) {
   const [propertyId, setPropertyId] = useState(initialData.ga4PropertyId || '');
@@ -55,7 +56,7 @@ export default function Step2GA4({ onNext, onBack, initialData = {} }) {
           <div className="mb-8 text-center">
             <div className="mb-4 flex items-center justify-center">
               <img 
-                src="/src/assets/img/logo.svg" 
+                src={logoImg} 
                 alt="GROW REPORTER" 
                 className="h-12 w-auto"
               />
