@@ -11,6 +11,7 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import { ExternalLink } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -303,16 +304,24 @@ export default function Pages() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.PAGES}
-            metrics={{
-              totalPageViews: totalPageViews || 0,
-              totalSessions: totalSessions || 0,
-              totalUsers: totalUsers || 0,
-              pageCount: tableData?.length || 0,
-              topPagesText: tableData?.slice(0, 10).map((p, i) => 
-                `${i+1}. ${p.pagePath || '/'}: PV${p.pageViews?.toLocaleString() || 0}, セッション${p.sessions?.toLocaleString() || 0}回, ユーザー${p.users?.toLocaleString() || 0}人`
-              ).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // ページ別データを準備
+              const pageData = tableData || [];
+              
+              // 集計値を計算
+              const aggregates = {
+                totalPageViews: pageData.reduce((sum, p) => sum + (p.pageViews || 0), 0),
+                totalSessions: pageData.reduce((sum, p) => sum + (p.sessions || 0), 0),
+                totalUsers: pageData.reduce((sum, p) => sum + (p.users || 0), 0),
+                pageCount: pageData.length,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('pages', pageData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

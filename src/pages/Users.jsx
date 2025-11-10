@@ -9,6 +9,7 @@ import { Info } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   PieChart,
@@ -296,11 +297,19 @@ export default function Users() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.USERS}
-            metrics={{
-              hasDemographicsData: !!demographicsData,
-              hasChartData: !!chartData,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // ユーザー属性データを準備（複雑なのでそのまま渡す）
+              const usersData = {
+                demographicsData,
+                chartData,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('users', usersData, {}, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

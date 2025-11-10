@@ -13,6 +13,7 @@ import { setPageTitle } from '../utils/pageTitle';
 import { getTooltip } from '../constants/tooltips';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 
 /**
  * ダッシュボード画面
@@ -698,39 +699,47 @@ export default function Dashboard() {
 
     {/* AI分析フローティングボタン */}
     {selectedSiteId && data && (() => {
-      // AI分析用のメトリクスを構築
-      const aiMetrics = {
-        // 現在期間の基本メトリクス
-        users: data.metrics?.totalUsers || 0,
+      // ダッシュボード用のデータを準備
+      const dashboardData = {
+        totalUsers: data.metrics?.totalUsers || 0,
         sessions: data.metrics?.sessions || 0,
         pageViews: data.metrics?.pageViews || 0,
         engagementRate: data.metrics?.engagementRate || 0,
-        conversions: data.conversions || {}, // コンバージョン内訳（オブジェクト）
-        
-        // 13ヶ月推移データ
-        monthlyData: monthlyTrendData?.monthlyData || [],
-        
+        conversions: data.metrics?.conversions || 0,
+        avgPageViewsPerSession: data.metrics?.sessions > 0 
+          ? (data.metrics?.pageViews || 0) / data.metrics.sessions
+          : 0,
+        conversionRate: data.metrics?.sessions > 0 
+          ? (data.metrics?.conversions || 0) / data.metrics.sessions
+          : 0,
         // 前月比較データ
         previousMonth: previousMonthData ? {
-          users: previousMonthData.metrics?.totalUsers || 0,
+          totalUsers: previousMonthData.metrics?.totalUsers || 0,
           sessions: previousMonthData.metrics?.sessions || 0,
           pageViews: previousMonthData.metrics?.pageViews || 0,
-          conversions: previousMonthData.conversions || {},
+          conversions: previousMonthData.metrics?.conversions || 0,
         } : null,
-        
         // 前年同月比較データ
         yearAgo: yearAgoData ? {
-          users: yearAgoData.metrics?.totalUsers || 0,
+          totalUsers: yearAgoData.metrics?.totalUsers || 0,
           sessions: yearAgoData.metrics?.sessions || 0,
           pageViews: yearAgoData.metrics?.pageViews || 0,
-          conversions: yearAgoData.conversions || {},
+          conversions: yearAgoData.metrics?.conversions || 0,
         } : null,
+        // 13ヶ月推移データ
+        monthlyData: monthlyTrendData?.monthlyData || [],
       };
+      
+      // コンバージョンイベント名のリスト
+      const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+      
+      // formatForAI関数を使用してデータをフォーマット
+      const formattedMetrics = formatForAI('dashboard', dashboardData, {}, conversionEventNames);
       
       return (
         <AIFloatingButton
           pageType={PAGE_TYPES.SUMMARY}
-          metrics={aiMetrics}
+          metrics={formattedMetrics}
           period={{
             startDate: dateRange.from,
             endDate: dateRange.to,

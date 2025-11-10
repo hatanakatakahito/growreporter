@@ -12,6 +12,7 @@ import ChartContainer from '../../components/Analysis/ChartContainer';
 import { format, sub } from 'date-fns';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import { formatForAI } from '../../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -279,12 +280,23 @@ export default function Hour() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.HOUR}
-            metrics={{
-              sessions: chartData?.reduce((sum, row) => sum + row.sessions, 0) || 0,
-              conversions: chartData?.reduce((sum, row) => sum + row.conversions, 0) || 0,
-              hourlyDataCount: chartData?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // 時間帯別データを準備
+              const hourlyData = chartData || [];
+              
+              // 集計値を計算
+              const aggregates = {
+                sessions: hourlyData.reduce((sum, row) => sum + (row.sessions || 0), 0),
+                conversions: hourlyData.reduce((sum, row) => sum + (row.conversions || 0), 0),
+                dataPoints: hourlyData.length,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('hour', hourlyData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

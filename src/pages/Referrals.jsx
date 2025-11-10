@@ -11,6 +11,7 @@ import { ExternalLink } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -388,18 +389,24 @@ export default function Referrals() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.REFERRALS}
-            metrics={{
-              totalSessions: totalSessions || 0,
-              totalUsers: totalUsers || 0,
-              totalConversions: totalConversions || 0,
-              avgConversionRate: avgConversionRate || 0,
-              referralCount: tableData?.length || 0,
-              topReferralsText: tableData?.slice(0, 10).map((r, i) => {
-                const cvr = (r.sessions > 0 ? ((r.conversions || 0) / r.sessions * 100) : 0).toFixed(2);
-                return `${i+1}. ${r.source || 'unknown'}: セッション${r.sessions?.toLocaleString() || 0}回, ユーザー${r.users?.toLocaleString() || 0}人, CV${r.conversions?.toLocaleString() || 0}件, CVR${cvr}%`;
-              }).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // 被リンク元データを準備
+              const referralData = tableData || [];
+              
+              // 集計値を計算
+              const aggregates = {
+                totalSessions: referralData.reduce((sum, r) => sum + (r.sessions || 0), 0),
+                totalUsers: referralData.reduce((sum, r) => sum + (r.users || 0), 0),
+                totalConversions: referralData.reduce((sum, r) => sum + (r.conversions || 0), 0),
+                referralCount: referralData.length,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('referrals', referralData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

@@ -10,6 +10,7 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import { setPageTitle } from '../utils/pageTitle';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -375,16 +376,24 @@ export default function AcquisitionChannels() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.CHANNELS}
-            metrics={{
-              totalSessions: totalSessions || 0,
-              totalUsers: totalUsers || 0,
-              totalConversions: totalConversions || 0,
-              channelCount: chartData?.length || 0,
-              channelsText: chartData?.map((c, i) => 
-                `${i+1}. ${c.channel}: セッション${c.sessions?.toLocaleString() || 0}回, CV${c.conversions?.toLocaleString() || 0}件, ユーザー${c.users?.toLocaleString() || 0}人`
-              ).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // チャネル別データを準備
+              const channelData = chartData || [];
+              
+              // 集計値を計算
+              const aggregates = {
+                totalSessions: channelData.reduce((sum, c) => sum + (c.sessions || 0), 0),
+                totalUsers: channelData.reduce((sum, c) => sum + (c.users || 0), 0),
+                totalConversions: channelData.reduce((sum, c) => sum + (c.conversions || 0), 0),
+                channelCount: channelData.length,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('channels', channelData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

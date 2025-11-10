@@ -9,6 +9,7 @@ import DataTable from '../components/Analysis/DataTable';
 import ChartContainer from '../components/Analysis/ChartContainer';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
@@ -312,24 +313,25 @@ export default function ConversionList() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.CONVERSIONS}
-            metrics={{
-              monthlyDataPoints: conversionData?.length || 0,
-              conversionEventCount: conversionEvents?.length || 0,
-              conversionSummaryText: (() => {
-                if (!conversionData || !conversionEvents.length) return '';
-                
-                // 各イベントの合計を計算
-                const eventTotals = conversionEvents.map(event => {
-                  const total = conversionData.reduce((sum, month) => 
-                    sum + (month[event.eventName] || 0), 0
-                  );
-                  return `${event.eventName}: ${total.toLocaleString()}件`;
-                }).join('\n');
-                
-                return eventTotals;
-              })(),
-              conversionEventNames: conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // コンバージョンデータを準備
+              const conversionListData = {
+                conversionData: conversionData || [],
+                conversionEvents: conversionEvents || [],
+              };
+              
+              // 集計値を計算
+              const aggregates = {
+                monthlyDataPoints: conversionData?.length || 0,
+                conversionEventCount: conversionEvents?.length || 0,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('conversions', conversionListData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: monthlyDateRange.start,
               endDate: monthlyDateRange.end,

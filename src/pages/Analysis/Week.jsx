@@ -11,6 +11,7 @@ import ChartContainer from '../../components/Analysis/ChartContainer';
 import { format, sub } from 'date-fns';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import { formatForAI } from '../../utils/aiDataFormatter';
 
 /**
  * 曜日別分析画面
@@ -352,12 +353,38 @@ export default function Week() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.WEEK}
-            metrics={{
-              sessions: maxSessions || 0,
-              conversions: maxConversions || 0,
-              totalDataPoints: matrix?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // 曜日別データを準備
+              const dayNames = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+              const weekData = [];
+              
+              // matrixから曜日別に集計
+              if (data && data.length > 0) {
+                const daySummary = {};
+                data.forEach((row) => {
+                  const dayOfWeek = row.dayOfWeek || 0;
+                  if (!daySummary[dayOfWeek]) {
+                    daySummary[dayOfWeek] = { dayOfWeek, day: dayNames[dayOfWeek], sessions: 0, conversions: 0 };
+                  }
+                  daySummary[dayOfWeek].sessions += row.sessions || 0;
+                  daySummary[dayOfWeek].conversions += row.conversions || 0;
+                });
+                weekData.push(...Object.values(daySummary));
+              }
+              
+              // 集計値を計算
+              const aggregates = {
+                sessions: weekData.reduce((sum, row) => sum + (row.sessions || 0), 0),
+                conversions: weekData.reduce((sum, row) => sum + (row.conversions || 0), 0),
+                dataPoints: weekData.length,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('week', weekData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

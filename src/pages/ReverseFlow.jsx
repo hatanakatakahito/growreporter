@@ -9,6 +9,7 @@ import ErrorAlert from '../components/common/ErrorAlert';
 import { Plus, Edit, Trash2, GitMerge, Settings, Info } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions, db } from '../config/firebase';
@@ -642,13 +643,20 @@ export default function ReverseFlow() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.REVERSE_FLOW}
-            metrics={{
-              goalCompletions: summaryData?.goalCompletions || 0,
-              totalSessions: summaryData?.totalSessions || 0,
-              avgConversionRate: summaryData?.conversionRate || 0,
-              monthlyDataCount: monthlyData?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // 逆算フローデータを準備（複雑なのでそのまま渡す）
+              const reverseFlowData = {
+                summaryData,
+                monthlyData,
+                flowData,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('reverseFlow', reverseFlowData, {}, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

@@ -11,6 +11,7 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import { Download } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -280,12 +281,23 @@ export default function FileDownloads() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.FILE_DOWNLOADS}
-            metrics={{
-              totalDownloads: totalDownloads || 0,
-              totalUsers: totalUsers || 0,
-              downloadCount: tableData?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // ファイルダウンロードデータを準備
+              const downloadData = tableData || [];
+              
+              // 集計値を計算
+              const aggregates = {
+                totalDownloads: downloadData.reduce((sum, d) => sum + (d.downloads || 0), 0),
+                totalUsers: downloadData.reduce((sum, d) => sum + (d.users || 0), 0),
+                downloadCount: downloadData.length,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('fileDownloads', downloadData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

@@ -12,6 +12,7 @@ import { format, sub } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import { formatForAI } from '../../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   LineChart,
@@ -289,12 +290,23 @@ export default function Day() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.DAY}
-            metrics={{
-              sessions: chartData?.reduce((sum, row) => sum + row.sessions, 0) || 0,
-              conversions: chartData?.reduce((sum, row) => sum + row.conversions, 0) || 0,
-              dailyDataCount: chartData?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // 日別分析データを準備
+              const dailyData = chartData || [];
+              
+              // 集計値を計算
+              const aggregates = {
+                sessions: dailyData.reduce((sum, row) => sum + (row.sessions || 0), 0),
+                conversions: dailyData.reduce((sum, row) => sum + (row.conversions || 0), 0),
+                dataPoints: dailyData.length,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('day', dailyData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

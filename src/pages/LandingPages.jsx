@@ -11,6 +11,7 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import { ExternalLink } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -307,17 +308,24 @@ export default function LandingPages() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.LANDING_PAGES}
-            metrics={{
-              totalSessions: totalSessions || 0,
-              totalUsers: totalUsers || 0,
-              totalConversions: totalConversions || 0,
-              landingPageCount: tableData?.length || 0,
-              topLandingPagesText: tableData?.slice(0, 10).map((p, i) => {
-                const cvr = (p.sessions > 0 ? ((p.conversions || 0) / p.sessions * 100) : 0).toFixed(2);
-                return `${i+1}. ${p.landingPage || '/'}: セッション${p.sessions?.toLocaleString() || 0}回, ユーザー${p.users?.toLocaleString() || 0}人, CV${p.conversions?.toLocaleString() || 0}件, CVR${cvr}%`;
-              }).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // ランディングページデータを準備
+              const landingPageData = tableData || [];
+              
+              // 集計値を計算
+              const aggregates = {
+                totalSessions: landingPageData.reduce((sum, p) => sum + (p.sessions || 0), 0),
+                totalUsers: landingPageData.reduce((sum, p) => sum + (p.users || 0), 0),
+                totalConversions: landingPageData.reduce((sum, p) => sum + (p.conversions || 0), 0),
+                landingPageCount: landingPageData.length,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('landingPages', landingPageData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

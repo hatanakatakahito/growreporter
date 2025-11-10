@@ -11,6 +11,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -380,20 +381,29 @@ export default function Keywords() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.KEYWORDS}
-            metrics={{
-              totalClicks: totalClicks || 0,
-              totalImpressions: totalImpressions || 0,
-              avgCTR: avgCTR || 0,
-              avgPosition: avgPosition || 0,
-              keywordCount: tableData?.length || 0,
-              topKeywordsText: tableData?.slice(0, 10).map((k, i) => {
-                const ctr = (k.ctr || 0);  // 既に%換算済み（73行目）
-                const position = (k.position || 0);
-                return `${i+1}. "${k.keyword || ''}": クリック${k.clicks?.toLocaleString() || 0}回, 表示回数${k.impressions?.toLocaleString() || 0}回, CTR${ctr}%, 掲載順位${position}位`;
-              }).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-              hasGSCConnection,
-            }}
+            metrics={(() => {
+              // キーワード別データを準備
+              const keywordData = tableData || [];
+              
+              // 集計値を計算
+              const aggregates = {
+                totalClicks: keywordData.reduce((sum, k) => sum + (k.clicks || 0), 0),
+                totalImpressions: keywordData.reduce((sum, k) => sum + (k.impressions || 0), 0),
+                avgCTR: keywordData.length > 0 
+                  ? keywordData.reduce((sum, k) => sum + (k.ctr || 0), 0) / keywordData.length
+                  : 0,
+                avgPosition: keywordData.length > 0
+                  ? keywordData.reduce((sum, k) => sum + (k.position || 0), 0) / keywordData.length
+                  : 0,
+                keywordCount: keywordData.length,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('keywords', keywordData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

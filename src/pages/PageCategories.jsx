@@ -10,6 +10,7 @@ import DataTable from '../components/Analysis/DataTable';
 import ChartContainer from '../components/Analysis/ChartContainer';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -321,14 +322,22 @@ export default function PageCategories() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.PAGE_CATEGORIES}
-            metrics={{
-              totalPageViews: totalPageViews || 0,
-              categoryCount: categoryData?.length || 0,
-              topCategoriesText: categoryData?.slice(0, 5).map((c, i) => 
-                `${i+1}. ${c.category}: PV${c.pageViews?.toLocaleString() || 0}, ページ数${c.pages || 0}件`
-              ).join('\n') || '',
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // ページ分類別データを準備
+              const pageCategoryData = categoryData || [];
+              
+              // 集計値を計算
+              const aggregates = {
+                totalPageViews: pageCategoryData.reduce((sum, c) => sum + (c.pageViews || 0), 0),
+                categoryCount: pageCategoryData.length,
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('pageCategories', pageCategoryData, aggregates, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

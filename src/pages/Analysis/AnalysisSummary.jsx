@@ -15,6 +15,7 @@ import { Info } from 'lucide-react';
 import { getTooltip } from '../../constants/tooltips';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import { formatForAI } from '../../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   LineChart,
@@ -491,15 +492,20 @@ export default function AnalysisSummary() {
         {selectedSiteId && (
           <AIFloatingButton
             pageType={PAGE_TYPES.SUMMARY}
-            metrics={{
-              users: data?.metrics?.totalUsers || 0,
-              sessions: data?.metrics?.sessions || 0,
-              pageViews: data?.metrics?.pageViews || 0,
-              engagementRate: data?.metrics?.engagementRate || 0,
-              conversions: data?.totalConversions || 0,
-              monthlyDataCount: monthlyData?.length || 0,
-              conversionEventNames: selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [],
-            }}
+            metrics={(() => {
+              // 全体サマリー用のデータを準備
+              const summaryData = {
+                metrics: data?.metrics,
+                totalConversions: data?.totalConversions || 0,
+                monthlyData: monthlyData || [],
+              };
+              
+              // コンバージョンイベント名のリスト
+              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
+              
+              // formatForAI関数を使用してデータをフォーマット
+              return formatForAI('summary', summaryData, {}, conversionEventNames);
+            })()}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,
