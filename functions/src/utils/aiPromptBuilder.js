@@ -290,8 +290,5 @@ function getActionProposals(pageType, meta) {
   return proposals[pageType] || '  - データに基づく具体的な改善施策\n  - 実装難易度と効果の明示\n  - 優先順位の提示';
 }
 
-module.exports = {
-  buildPrompt,
-  PAGE_TYPE_META,
-};
+export { buildPrompt, PAGE_TYPE_META };
 
