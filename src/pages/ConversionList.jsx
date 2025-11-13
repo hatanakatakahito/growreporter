@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { setPageTitle } from '../utils/pageTitle';
+import { Link } from 'react-router-dom';
 import { useSite } from '../contexts/SiteContext';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import Sidebar from '../components/Layout/Sidebar';
@@ -9,10 +10,10 @@ import DataTable from '../components/Analysis/DataTable';
 import ChartContainer from '../components/Analysis/ChartContainer';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
+import { Info, Settings } from 'lucide-react';
 import {
   ResponsiveContainer,
   LineChart,
@@ -177,12 +178,28 @@ export default function ConversionList() {
           </div>
 
           {!conversionEvents || conversionEvents.length === 0 ? (
-            <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
-              <p className="text-body-color">
-                コンバージョンイベントが登録されていません。
-                <br />
-                サイト設定からコンバージョンイベントを登録してください。
-              </p>
+            <div className="mt-8 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 shadow-sm dark:bg-red-900/20 dark:border-red-600">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-600 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
+                    コンバージョン定義が未設定です
+                  </h3>
+                  <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                    正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
+                  </p>
+                  <Link
+                    to={`/sites/${selectedSiteId}/edit?step=4`}
+                    className="mt-3 inline-block rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                  >
+                    サイト設定（STEP4）でコンバージョンを設定する
+                  </Link>
+                </div>
+              </div>
             </div>
           ) : isLoading ? (
             <LoadingSpinner message="コンバージョンデータを読み込んでいます..." />
@@ -222,21 +239,31 @@ export default function ConversionList() {
 
               {/* タブコンテンツ */}
               {activeTab === 'table' ? (
-                <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+                <div className="relative rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+                  {/* 横スクロールヒント */}
+                  <div className="border-b border-stroke px-4 py-2 dark:border-dark-3">
+                    <div className="flex items-center gap-2 text-xs text-body-color">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                      </svg>
+                      <span>左右にスクロールできます</span>
+                    </div>
+                  </div>
+                  
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className="min-w-full">
                       <thead className="border-b border-stroke dark:border-dark-3">
                         <tr>
-                          <th className="px-4 py-3 text-left text-sm font-semibold text-dark dark:text-white">
+                          <th className="whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark dark:text-white">
                             年月
                           </th>
-                          <th className="px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">
+                          <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">
                             合計
                           </th>
                           {conversionEvents.map((event) => (
                             <th
                               key={event.eventName}
-                              className="px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white"
+                              className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white"
                             >
                               {event.displayName}
                             </th>
@@ -256,16 +283,16 @@ export default function ConversionList() {
                               key={row.yearMonth}
                               className="border-b border-stroke last:border-0 dark:border-dark-3"
                             >
-                              <td className="px-4 py-3 text-sm font-medium text-dark dark:text-white">
+                              <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-dark dark:text-white">
                                 {`${row.yearMonth.slice(0, 4)}年${row.yearMonth.slice(4)}月`}
                               </td>
-                              <td className="px-4 py-3 text-right text-sm font-bold text-dark dark:text-white">
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-bold text-dark dark:text-white">
                                 {rowTotal.toLocaleString()}
                               </td>
                               {conversionEvents.map((event) => (
                                 <td
                                   key={event.eventName}
-                                  className="px-4 py-3 text-right text-sm text-dark dark:text-white"
+                                  className="whitespace-nowrap px-4 py-3 text-right text-sm text-dark dark:text-white"
                                 >
                                   {(row[event.eventName] || 0).toLocaleString()}
                                 </td>
@@ -310,36 +337,32 @@ export default function ConversionList() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.CONVERSIONS}
-            metrics={(() => {
-              // コンバージョンデータを準備
-              const conversionListData = {
-                conversionData: conversionData || [],
-                conversionEvents: conversionEvents || [],
-              };
-              
-              // 集計値を計算
-              const aggregates = {
-                monthlyDataPoints: conversionData?.length || 0,
-                conversionEventCount: conversionEvents?.length || 0,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('conversions', conversionListData, aggregates, conversionEventNames);
-            })()}
-            period={{
-              startDate: monthlyDateRange.start,
-              endDate: monthlyDateRange.end,
-            }}
-          />
-        )}
+        {selectedSiteId && (() => {
+          const metrics = {
+            conversionData: conversionData || [],
+            conversionEvents: conversionEvents || [],
+            hasConversionDefinitions: conversionEvents && conversionEvents.length > 0,
+            conversionEventNames: conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[ConversionList] AI分析に送信するデータ:', {
+            conversionDataCount: metrics.conversionData.length,
+            conversionEventsCount: metrics.conversionEvents.length,
+            sampleData: metrics.conversionData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.CONVERSIONS}
+              metrics={metrics}
+              period={{
+                startDate: monthlyDateRange.start,
+                endDate: monthlyDateRange.end,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );
 }
-
