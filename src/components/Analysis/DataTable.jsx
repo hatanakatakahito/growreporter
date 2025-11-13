@@ -152,15 +152,25 @@ export default function DataTable({
 
   return (
     <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+      {/* 横スクロールヒント */}
+      <div className="border-b border-stroke px-4 py-2 dark:border-dark-3">
+        <div className="flex items-center gap-2 text-xs text-body-color">
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+          </svg>
+          <span>左右にスクロールできます</span>
+        </div>
+      </div>
+      
       {/* テーブル */}
       <div className="overflow-x-auto">
-        <table className="w-full">
+        <table className="min-w-full">
           <thead>
             <tr className="border-b border-stroke bg-gray-2 dark:border-dark-3 dark:bg-dark-3">
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`px-4 py-3 text-left text-sm font-semibold text-dark dark:text-white ${
+                  className={`whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark dark:text-white ${
                     column.sortable !== false ? 'cursor-pointer hover:bg-gray-3 dark:hover:bg-dark-4' : ''
                   }`}
                   onClick={() => column.sortable !== false && handleSort(column.key)}
@@ -202,7 +212,7 @@ export default function DataTable({
                 {columns.map((column) => (
                   <td
                     key={column.key}
-                    className={`px-4 py-3 text-sm text-dark dark:text-white ${
+                    className={`whitespace-nowrap px-4 py-3 text-sm text-dark dark:text-white ${
                       column.align === 'right' ? 'text-right' : 'text-left'
                     }`}
                   >
