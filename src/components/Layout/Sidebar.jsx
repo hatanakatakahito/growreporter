@@ -109,12 +109,13 @@ export default function Sidebar() {
           ]
         },
         { 
-          label: 'エンゲージメント', 
+          label: 'ページ', 
           hasSubmenu: true,
           submenu: [
             { label: 'ページ別', path: '/engagement/pages' },
             { label: 'ページ分類別', path: '/engagement/page-categories' },
             { label: 'ランディングページ', path: '/engagement/landing-pages' },
+            { label: 'ページフロー', path: '/engagement/page-flow' },
             { label: 'ファイルダウンロード', path: '/engagement/file-downloads' },
             { label: '外部リンククリック', path: '/engagement/external-links' },
           ]
@@ -207,7 +208,7 @@ export default function Sidebar() {
                                     setIsTimeSeriesOpen(!isTimeSeriesOpen);
                                   } else if (subItem.label === '集客') {
                                     setIsAcquisitionOpen(!isAcquisitionOpen);
-                                  } else if (subItem.label === 'エンゲージメント') {
+                                  } else if (subItem.label === 'ページ') {
                                     setIsEngagementOpen(!isEngagementOpen);
                                   } else if (subItem.label === 'コンバージョン') {
                                     setIsConversionOpen(!isConversionOpen);
@@ -220,7 +221,7 @@ export default function Sidebar() {
                                   className={`h-3 w-3 transition-transform ${
                                     (subItem.label === '時系列' && isTimeSeriesOpen) ||
                                     (subItem.label === '集客' && isAcquisitionOpen) ||
-                                    (subItem.label === 'エンゲージメント' && isEngagementOpen) ||
+                                    (subItem.label === 'ページ' && isEngagementOpen) ||
                                     (subItem.label === 'コンバージョン' && isConversionOpen)
                                       ? 'rotate-180'
                                       : ''
@@ -234,7 +235,7 @@ export default function Sidebar() {
                               </button>
                               {((subItem.label === '時系列' && isTimeSeriesOpen) ||
                                 (subItem.label === '集客' && isAcquisitionOpen) ||
-                                (subItem.label === 'エンゲージメント' && isEngagementOpen) ||
+                                (subItem.label === 'ページ' && isEngagementOpen) ||
                                 (subItem.label === 'コンバージョン' && isConversionOpen)) && (
                                 <ul className="ml-4 mt-1 space-y-1 border-l-2 border-stroke pl-4 dark:border-dark-3">
                                   {subItem.submenu.map((subSubItem, subSubIndex) => (

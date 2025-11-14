@@ -5,8 +5,15 @@ import { initializeApp } from 'firebase-admin/app';
 import { fetchGA4DataCallable } from './callable/fetchGA4Data.js';
 import { fetchGA4MonthlyDataCallable } from './callable/fetchGA4MonthlyData.js';
 import { fetchGA4MonthlyConversionDataCallable } from './callable/fetchGA4MonthlyConversionData.js';
+import { fetchGA4DailyConversionDataCallable } from './callable/fetchGA4DailyConversionData.js';
+import { fetchGA4WeeklyConversionDataCallable } from './callable/fetchGA4WeeklyConversionData.js';
+import { fetchGA4HourlyConversionDataCallable } from './callable/fetchGA4HourlyConversionData.js';
+import { fetchGA4ChannelConversionDataCallable } from './callable/fetchGA4ChannelConversionData.js';
+import { fetchGA4ReferralConversionDataCallable } from './callable/fetchGA4ReferralConversionData.js';
+import { fetchGA4LandingPageConversionDataCallable } from './callable/fetchGA4LandingPageConversionData.js';
 import { fetchGA4ReverseFlowDataCallable } from './callable/fetchGA4ReverseFlowData.js';
 import { fetchGA4PagePathsCallable } from './callable/fetchGA4PagePaths.js';
+import { fetchGA4PageTransitionCallable } from './callable/fetchGA4PageTransition.js';
 import { fetchGSCDataCallable } from './callable/fetchGSCData.js';
 import { captureScreenshotCallable } from './callable/captureScreenshot.js';
 import { generateAISummaryCallable } from './callable/generateAISummary.js';
@@ -15,6 +22,7 @@ import { fetchGA4UserDemographicsCallable } from './callable/fetchGA4UserDemogra
 import { exchangeOAuthCodeCallable } from './callable/exchangeOAuthCode.js';
 import { testSheetsConnectionCallable } from './callable/testSheetsConnection.js';
 import { fetchImprovementKnowledgeCallable } from './callable/fetchImprovementKnowledge.js';
+import { getDefaultPromptCallable } from './callable/getDefaultPrompt.js';
 import { getAdminStatsCallable } from './callable/admin/getAdminStats.js';
 import { getAdminUsersCallable } from './callable/admin/getAdminUsers.js';
 import { updateUserPlanCallable } from './callable/admin/updateUserPlan.js';
@@ -75,6 +83,72 @@ export const fetchGA4MonthlyConversionData = onCall({
 }, fetchGA4MonthlyConversionDataCallable);
 
 /**
+ * GA4日別コンバージョンデータ取得 Callable Function
+ * サイト設定で定義したコンバージョンイベントのみをカウント
+ */
+export const fetchGA4DailyConversionData = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1',
+  cors: true,
+}, fetchGA4DailyConversionDataCallable);
+
+/**
+ * GA4曜日×時間帯別コンバージョンデータ取得 Callable Function
+ * サイト設定で定義したコンバージョンイベントのみをカウント
+ */
+export const fetchGA4WeeklyConversionData = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1',
+  cors: true,
+}, fetchGA4WeeklyConversionDataCallable);
+
+/**
+ * GA4時間帯別コンバージョンデータ取得 Callable Function
+ * サイト設定で定義したコンバージョンイベントのみをカウント
+ */
+export const fetchGA4HourlyConversionData = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1',
+  cors: true,
+}, fetchGA4HourlyConversionDataCallable);
+
+/**
+ * GA4チャネル別コンバージョンデータ取得 Callable Function
+ * サイト設定で定義したコンバージョンイベントのみをカウント
+ */
+export const fetchGA4ChannelConversionData = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1',
+  cors: true,
+}, fetchGA4ChannelConversionDataCallable);
+
+/**
+ * GA4参照元/メディア別コンバージョンデータ取得 Callable Function
+ * サイト設定で定義したコンバージョンイベントのみをカウント
+ */
+export const fetchGA4ReferralConversionData = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1',
+  cors: true,
+}, fetchGA4ReferralConversionDataCallable);
+
+/**
+ * GA4ランディングページ別コンバージョンデータ取得 Callable Function
+ * サイト設定で定義したコンバージョンイベントのみをカウント
+ */
+export const fetchGA4LandingPageConversionData = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1',
+  cors: true,
+}, fetchGA4LandingPageConversionDataCallable);
+
+/**
  * GA4逆算フローデータ取得 Callable Function
  * フォームページからのコンバージョンフローデータを取得
  */
@@ -95,6 +169,17 @@ export const fetchGA4PagePaths = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, fetchGA4PagePathsCallable);
+
+/**
+ * GA4ページ遷移分析 Callable Function
+ * 特定ページの流入元、遷移先、離脱率を取得
+ */
+export const fetchGA4PageTransition = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 60,
+  region: 'asia-northeast1',
+  cors: true,
+}, fetchGA4PageTransitionCallable);
 
 /**
  * GSCデータ取得 Callable Function
@@ -129,6 +214,17 @@ export const generateAISummary = onCall({
   cors: true, // CORS を有効化
   secrets: ['GEMINI_API_KEY'], // Secretへのアクセス権を付与
 }, generateAISummaryCallable);
+
+/**
+ * デフォルトプロンプト取得 Callable Function
+ * 管理画面でプロンプトをデフォルトに戻す際に使用
+ */
+export const getDefaultPrompt = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 30,
+  region: 'asia-northeast1',
+  cors: true,
+}, getDefaultPromptCallable);
 
 /**
  * メタデータ取得 Callable Function

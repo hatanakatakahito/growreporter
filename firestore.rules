@@ -127,6 +127,15 @@ service cloud.firestore {
       // 書き込みはCloud Functionsのみ（adminロールチェックは関数内で実施）
       allow write: if false;
     }
+    
+    // プロンプトテンプレートコレクション
+    match /promptTemplates/{templateId} {
+      // Cloud Functionsから全ユーザーが読み取り可能（AI分析に使用）
+      allow read: if request.auth != null;
+      // 管理者のみ書き込み可能
+      allow write: if request.auth != null && 
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+    }
   }
 }
 

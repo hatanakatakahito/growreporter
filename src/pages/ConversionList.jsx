@@ -202,7 +202,7 @@ export default function ConversionList() {
               </div>
             </div>
           ) : isLoading ? (
-            <LoadingSpinner message="コンバージョンデータを読み込んでいます..." />
+            <LoadingSpinner skeleton="table" skeletonProps={{ rows: 8, columns: 5 }} />
           ) : isError ? (
             <ErrorAlert
               message={error?.message || 'データの読み込みに失敗しました。'}

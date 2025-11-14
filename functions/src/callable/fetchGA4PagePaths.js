@@ -72,25 +72,42 @@ export async function fetchGA4PagePathsCallable(request) {
       property: `properties/${siteData.ga4PropertyId}`,
       requestBody: {
         dateRanges: [{ startDate, endDate }],
-        dimensions: [{ name: 'pagePath' }],
+        dimensions: [
+          { name: 'pagePath' },
+          { name: 'pageTitle' }
+        ],
         metrics: [{ name: 'screenPageViews' }],
         orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
         limit: 1000,
       },
     });
 
-    // 4. データ整形
-    const pagePaths = response.data.rows
-      ?.map(row => row.dimensionValues[0].value)
-      .filter(path => path && path !== '(not set)')
-      .filter((value, index, self) => self.indexOf(value) === index) // ユニーク化
-      .sort() || [];
+    // 4. データ整形（パスとタイトルのマップを作成）
+    const pageMap = new Map();
+    
+    response.data.rows?.forEach(row => {
+      const path = row.dimensionValues[0].value;
+      const title = row.dimensionValues[1].value;
+      
+      if (path && path !== '(not set)') {
+        // 同じパスで複数のタイトルがある場合、最初のもの（PV数が多い）を使用
+        if (!pageMap.has(path)) {
+          pageMap.set(path, {
+            path,
+            title: title && title !== '(not set)' ? title : path,
+          });
+        }
+      }
+    });
 
-    console.log(`[fetchGA4PagePaths] Success: ${pagePaths.length} paths`);
+    // パス順にソート
+    const pageData = Array.from(pageMap.values()).sort((a, b) => a.path.localeCompare(b.path));
+
+    console.log(`[fetchGA4PagePaths] Success: ${pageData.length} paths`);
     
     return {
       success: true,
-      data: pagePaths,
+      data: pageData,
       period: {
         startDate,
         endDate,

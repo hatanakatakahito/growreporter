@@ -9,7 +9,6 @@ import { Info } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   PieChart,
@@ -294,28 +293,37 @@ export default function Users() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.USERS}
-            metrics={(() => {
-              // ユーザー属性データを準備（複雑なのでそのまま渡す）
-              const usersData = {
-                demographicsData,
-                chartData,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('users', usersData, {}, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && demographicsData && (() => {
+          const metrics = {
+            demographicsData: {
+              newReturning: demographicsData.newReturning || [],
+              device: demographicsData.device || [],
+              location: demographicsData.location || {},
+              age: demographicsData.age || [],
+              gender: demographicsData.gender || [],
+            },
+            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[Users] AI分析に送信するデータ:', {
+            newReturning: metrics.demographicsData.newReturning,
+            device: metrics.demographicsData.device,
+            age: metrics.demographicsData.age,
+            gender: metrics.demographicsData.gender,
+            locationKeys: Object.keys(metrics.demographicsData.location),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.USERS}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );

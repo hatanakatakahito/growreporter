@@ -114,6 +114,7 @@ export const getPlanList = () => {
  * AIフローティングボタンで使用
  */
 export const PAGE_TYPES = {
+  DASHBOARD: 'dashboard',
   SUMMARY: 'summary',
   USERS: 'users',
   DAY: 'day',
@@ -127,6 +128,8 @@ export const PAGE_TYPES = {
   LANDING_PAGES: 'landingPages',
   FILE_DOWNLOADS: 'fileDownloads',
   EXTERNAL_LINKS: 'externalLinks',
+  PAGE_FLOW: 'pageFlow',
   CONVERSIONS: 'conversions',
   REVERSE_FLOW: 'reverseFlow',
 };
+

@@ -67,10 +67,18 @@ export async function setCache(cacheKey, data, siteId, userId) {
  * @param {string} siteId - サイトID
  * @param {string} startDate - 開始日
  * @param {string} endDate - 終了日
+ * @param {string} dimensions - ディメンション（オプション）
+ * @param {string} metrics - メトリクス（オプション）
  * @returns {string} - キャッシュキー
  */
-export function generateCacheKey(type, siteId, startDate, endDate) {
-  return `${type}_${siteId}_${startDate}_${endDate}`;
+export function generateCacheKey(type, siteId, startDate, endDate, dimensions = '', metrics = '') {
+  // スラッシュをアンダースコアに置換（Firestoreのドキュメントパスとして使用できるように）
+  const sanitizedDimensions = dimensions ? dimensions.replace(/\//g, '_') : '';
+  const sanitizedMetrics = metrics ? metrics.replace(/\//g, '_') : '';
+  
+  // ディメンション/メトリクスがある場合はキーに含める
+  const suffix = sanitizedDimensions || sanitizedMetrics ? `_${sanitizedDimensions}_${sanitizedMetrics}` : '';
+  return `${type}_${siteId}_${startDate}_${endDate}${suffix}`;
 }
 
 /**

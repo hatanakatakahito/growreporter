@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
-import { useGA4Data } from '../../hooks/useGA4Data';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import Sidebar from '../../components/Layout/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -12,7 +11,9 @@ import ChartContainer from '../../components/Analysis/ChartContainer';
 import { format, sub } from 'date-fns';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
-import { formatForAI } from '../../utils/aiDataFormatter';
+import { useQuery } from '@tanstack/react-query';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../config/firebase';
 import {
   ResponsiveContainer,
   BarChart,
@@ -59,19 +60,29 @@ export default function Hour() {
     }
   }, [searchParams, selectedSiteId, sites, selectSite]);
 
-  // GA4データ取得（時間帯別）
+  // ✅ GA4時間帯別コンバージョンデータ取得（サイト設定で定義したコンバージョンイベントのみ）
   const {
     data: hourData,
     isLoading,
     isError,
     error,
-  } = useGA4Data(
-    selectedSiteId,
-    dateRange.from,
-    dateRange.to,
-    ['sessions', 'conversions'],
-    ['hour']
-  );
+  } = useQuery({
+    queryKey: ['ga4-hourly-conversions', selectedSiteId, dateRange.from, dateRange.to],
+    queryFn: async () => {
+      console.log('[Hour] Fetching hourly conversion data...');
+      const fetchHourlyConversionData = httpsCallable(functions, 'fetchGA4HourlyConversionData');
+      const result = await fetchHourlyConversionData({
+        siteId: selectedSiteId,
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+      });
+      console.log('[Hour] Hourly conversion data fetched:', result.data);
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!dateRange.from && !!dateRange.to,
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5分間キャッシュ
+  });
 
   // 凡例クリックでグラフの表示/非表示を切り替え
   const handleLegendClick = (dataKey) => {
@@ -168,6 +179,33 @@ export default function Hour() {
               時間帯別のセッションとコンバージョンの推移を確認できます
             </p>
           </div>
+
+          {/* コンバージョン未設定の警告 */}
+          {(!selectedSite?.conversionEvents || selectedSite.conversionEvents.length === 0) && (
+            <div className="mb-8 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 shadow-sm dark:bg-red-900/20 dark:border-red-600">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-600 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
+                    コンバージョン定義が未設定です
+                  </h3>
+                  <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                    正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
+                  </p>
+                  <Link
+                    to={`/sites/${selectedSiteId}/edit?step=4`}
+                    className="mt-3 inline-block rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                  >
+                    サイト設定（STEP4）でコンバージョンを設定する
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
 
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
@@ -277,32 +315,30 @@ export default function Hour() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.HOUR}
-            metrics={(() => {
-              // 時間帯別データを準備
-              const hourlyData = chartData || [];
-              
-              // 集計値を計算
-              const aggregates = {
-                sessions: hourlyData.reduce((sum, row) => sum + (row.sessions || 0), 0),
-                conversions: hourlyData.reduce((sum, row) => sum + (row.conversions || 0), 0),
-                dataPoints: hourlyData.length,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('hour', hourlyData, aggregates, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && (() => {
+          const metrics = {
+            hourlyData: chartData || [],  // ← 画面表示データをそのまま使用
+            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[Hour] AI分析に送信するデータ:', {
+            hourlyDataCount: metrics.hourlyData.length,
+            hasConversions: metrics.hasConversionDefinitions,
+            sampleData: metrics.hourlyData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.HOUR}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );

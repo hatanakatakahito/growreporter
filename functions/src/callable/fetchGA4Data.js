@@ -71,7 +71,16 @@ export async function fetchGA4DataCallable(request) {
       );
     }
 
-    // 2. OAuthトークン取得・更新
+    // 2. キャッシュチェック（パフォーマンス最適化）
+    const cacheKey = generateCacheKey('ga4', siteId, startDate, endDate, dimensionsStr, metricsStr);
+    const cachedData = await getCache(cacheKey);
+    
+    if (cachedData) {
+      console.log(`[fetchGA4Data] Returning cached data: ${cacheKey}`);
+      return cachedData;
+    }
+
+    // 3. OAuthトークン取得・更新
     const { oauth2Client } = await getAndRefreshToken(siteData.ga4OauthTokenId);
 
     // 4. GA4 Data API 呼び出し
@@ -139,43 +148,40 @@ export async function fetchGA4DataCallable(request) {
       };
       
       console.log(`[fetchGA4Data] Success (custom): rows=${result.rows.length}`);
+      
+      // キャッシュに保存（パフォーマンス最適化）
+      await setCache(cacheKey, result, siteId, userId);
+      
       return result;
     }
     
     // 基本指標の取得（既存のロジック）
     console.log(`[fetchGA4Data] Fetching basic metrics from GA4 API...`);
-    const response = await analyticsData.properties.runReport({
-      auth: oauth2Client,
-      property: `properties/${siteData.ga4PropertyId}`,
-      requestBody: {
-        dateRanges: [{ startDate, endDate }],
-        metrics: [
-          { name: 'sessions' },
-          { name: 'totalUsers' },
-          { name: 'newUsers' },
-          { name: 'screenPageViews' },
-          { name: 'engagementRate' },
-        ],
-      },
-    });
-
-    // 5. データ整形
-    const metricsData = {
-      sessions: parseInt(response.data.rows?.[0]?.metricValues?.[0]?.value || 0),
-      totalUsers: parseInt(response.data.rows?.[0]?.metricValues?.[1]?.value || 0),
-      newUsers: parseInt(response.data.rows?.[0]?.metricValues?.[2]?.value || 0),
-      screenPageViews: parseInt(response.data.rows?.[0]?.metricValues?.[3]?.value || 0),
-      engagementRate: parseFloat(response.data.rows?.[0]?.metricValues?.[4]?.value || 0),
-    };
-
-    // 6. コンバージョンイベントの取得
-    const conversions = {};
     
+    // 🚀 パフォーマンス最適化: 基本メトリクスとコンバージョンを並列取得
+    const promises = [
+      // 基本メトリクスの取得
+      analyticsData.properties.runReport({
+        auth: oauth2Client,
+        property: `properties/${siteData.ga4PropertyId}`,
+        requestBody: {
+          dateRanges: [{ startDate, endDate }],
+          metrics: [
+            { name: 'sessions' },
+            { name: 'totalUsers' },
+            { name: 'newUsers' },
+            { name: 'screenPageViews' },
+            { name: 'engagementRate' },
+          ],
+        },
+      }),
+    ];
+    
+    // コンバージョンイベントがある場合は並列取得
     if (siteData.conversionEvents && siteData.conversionEvents.length > 0) {
-      console.log(`[fetchGA4Data] Fetching conversion events (${siteData.conversionEvents.length} events)...`);
-      
-      try {
-        const cvResponse = await analyticsData.properties.runReport({
+      console.log(`[fetchGA4Data] Fetching conversion events (${siteData.conversionEvents.length} events) in parallel...`);
+      promises.push(
+        analyticsData.properties.runReport({
           auth: oauth2Client,
           property: `properties/${siteData.ga4PropertyId}`,
           requestBody: {
@@ -191,17 +197,36 @@ export async function fetchGA4DataCallable(request) {
               },
             },
           },
-        });
+        })
+      );
+    }
+    
+    // 並列実行
+    const results = await Promise.allSettled(promises);
+    
+    // 5. データ整形
+    const response = results[0].status === 'fulfilled' ? results[0].value : null;
+    const metricsData = {
+      sessions: parseInt(response?.data.rows?.[0]?.metricValues?.[0]?.value || 0),
+      totalUsers: parseInt(response?.data.rows?.[0]?.metricValues?.[1]?.value || 0),
+      newUsers: parseInt(response?.data.rows?.[0]?.metricValues?.[2]?.value || 0),
+      screenPageViews: parseInt(response?.data.rows?.[0]?.metricValues?.[3]?.value || 0),
+      engagementRate: parseFloat(response?.data.rows?.[0]?.metricValues?.[4]?.value || 0),
+    };
 
-        cvResponse.data.rows?.forEach(row => {
-          const eventName = row.dimensionValues[0].value;
-          const count = parseInt(row.metricValues[0].value);
-          conversions[eventName] = count;
-        });
-      } catch (cvError) {
-        console.error('[fetchGA4Data] Error fetching conversion events:', cvError);
-        // コンバージョンデータの取得エラーは致命的ではないので続行
-      }
+    // 6. コンバージョンイベントの取得結果を処理
+    const conversions = {};
+    
+    if (results.length > 1 && results[1].status === 'fulfilled') {
+      const cvResponse = results[1].value;
+      cvResponse.data.rows?.forEach(row => {
+        const eventName = row.dimensionValues[0].value;
+        const count = parseInt(row.metricValues[0].value);
+        conversions[eventName] = count;
+      });
+    } else if (results.length > 1 && results[1].status === 'rejected') {
+      console.error('[fetchGA4Data] Error fetching conversion events:', results[1].reason);
+      // コンバージョンデータの取得エラーは致命的ではないので続行
     }
 
     // 7. コンバージョン率の計算
@@ -225,6 +250,9 @@ export async function fetchGA4DataCallable(request) {
     };
 
     console.log(`[fetchGA4Data] Success: siteId=${siteId}, period=${startDate} to ${endDate}`);
+    
+    // キャッシュに保存（パフォーマンス最適化）
+    await setCache(cacheKey, result, siteId, userId);
     
     return result;
 

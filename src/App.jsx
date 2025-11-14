@@ -27,6 +27,7 @@ import PageCategories from './pages/PageCategories';
 import LandingPages from './pages/LandingPages';
 import FileDownloads from './pages/FileDownloads';
 import ExternalLinks from './pages/ExternalLinks';
+import PageFlow from './pages/PageFlow';
 import ConversionList from './pages/ConversionList';
 import ReverseFlow from './pages/ReverseFlow';
 import Improve from './pages/Improve';
@@ -43,6 +44,8 @@ import UserDetail from './pages/Admin/Users/UserDetail';
 import AdminSiteList from './pages/Admin/Sites/SiteList';
 import AdminSiteDetail from './pages/Admin/Sites/SiteDetail';
 import ActivityLogs from './pages/Admin/Logs/ActivityLogs';
+import PromptTemplateList from './pages/Admin/PromptTemplates/PromptTemplateList';
+import PromptTemplateEditor from './pages/Admin/PromptTemplates/PromptTemplateEditor';
 import AdminSettings from './pages/Admin/Settings/AdminSettings';
 import PlanSettings from './pages/Admin/Settings/PlanSettings';
 
@@ -239,6 +242,14 @@ function App() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/engagement/page-flow" 
+              element={
+                <ProtectedRoute>
+                  <PageFlow />
+                </ProtectedRoute>
+              } 
+            />
             
             {/* コンバージョン */}
             <Route 
@@ -315,6 +326,9 @@ function App() {
               <Route path="sites" element={<AdminSiteList />} />
               <Route path="sites/:siteId" element={<AdminSiteDetail />} />
               <Route path="logs" element={<ActivityLogs />} />
+              <Route path="prompt-templates" element={<PromptTemplateList />} />
+              <Route path="prompt-templates/:id/edit" element={<PromptTemplateEditor />} />
+              <Route path="prompt-templates/new" element={<PromptTemplateEditor />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="settings/plans" element={<PlanSettings />} />
               <Route index element={<Navigate to="/admin/dashboard" replace />} />

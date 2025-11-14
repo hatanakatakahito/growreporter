@@ -106,7 +106,7 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
 
       const data = result.data;
       
-      if (!data.summary) {
+      if (!data.summary || data.summary.trim() === '') {
         throw new Error('AI分析の要約が生成されませんでした');
       }
       
@@ -200,6 +200,7 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
    */
   const getPageTypeLabel = () => {
     const labels = {
+      dashboard: 'ダッシュボード',
       summary: '全体サマリー',
       users: 'ユーザー属性',
       day: '日別分析',
@@ -471,3 +472,4 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
     </>
   );
 }
+

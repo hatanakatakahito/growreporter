@@ -2,7 +2,6 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { checkCanGenerate, incrementGenerationCount } from '../utils/planManager.js';
 import { getCachedAnalysis, saveCachedAnalysis } from '../utils/aiCacheManager.js';
-import { buildPrompt } from '../utils/aiPromptBuilder.js';
 
 /**
  * AI要約生成 Callable Function
@@ -634,18 +633,19 @@ function estimatePriority(text, order) {
 function generatePrompt(pageType, startDate, endDate, metrics) {
   const period = `${startDate}から${endDate}までの期間`;
 
-  // ✅ 16種類の分析ページタイプは共通化プロンプトを使用
-  const TARGET_PAGE_TYPES = [
-    'dashboard', 'summary', 'users', 'day', 'week', 'hour',
+  // ✅ 17種類の分析ページタイプ（個別プロンプトが定義されているもの）
+  // pageFlow, reverseFlow, comprehensive_improvementなどは下部で個別に定義
+  const UNIMPLEMENTED_PAGE_TYPES = [
     'channels', 'keywords', 'referrals', 'pages', 'pageCategories',
-    'landingPages', 'fileDownloads', 'externalLinks', 'conversions', 'reverseFlow'
+    'landingPages', 'fileDownloads', 'externalLinks', 'conversions'
   ];
 
-  if (TARGET_PAGE_TYPES.includes(pageType) && pageType !== 'comprehensive_improvement') {
-    return buildPrompt(pageType, metrics, period);
+  if (UNIMPLEMENTED_PAGE_TYPES.includes(pageType)) {
+    // buildPrompt関数は未実装のため、エラーをスロー
+    throw new HttpsError('unimplemented', `Page type "${pageType}" is not yet supported`);
   }
 
-  // ✅ comprehensive_improvementは既存の個別プロンプト処理へ（下部で定義）
+  // ✅ 個別プロンプトが定義されているページタイプは下部で処理
 
   if (pageType === 'summary') {
     // 13ヶ月推移データの整形
@@ -940,6 +940,74 @@ function generatePrompt(pageType, startDate, endDate, metrics) {
   - 【新規ページ作成】：導線に不足しているページの追加提案
   - 各提案の実装難易度とCVRへのインパクトを明示
 - 数値の羅列ではなく、「どのページを、どう改善すべきか」を具体的に記述
+`;
+  }
+
+  if (pageType === 'pageFlow') {
+    // ページフロー分析データの整形（画面に表示されているデータのみ）
+    let pageFlowText = '';
+    if (metrics.pagePath) {
+      pageFlowText = `\n\n【対象ページ】
+- ページパス: ${metrics.pagePath}`;
+      
+      if (metrics.metrics && metrics.metrics.pageViews) {
+        pageFlowText += `\n- 合計ページビュー数: ${metrics.metrics.pageViews?.toLocaleString() || 0}PV`;
+      }
+    }
+
+    let inboundText = '';
+    if (metrics.inbound && Array.isArray(metrics.inbound) && metrics.inbound.length > 0) {
+      inboundText = '\n\n【サイト内の直前ページ（Top 10）】\n';
+      metrics.inbound.forEach((item, index) => {
+        inboundText += `${index + 1}. ${item.page}: ${item.pageViews?.toLocaleString() || 0}PV (${item.percentage?.toFixed(1) || 0}%)\n`;
+      });
+    }
+
+    let trafficBreakdownText = '';
+    if (metrics.trafficBreakdown) {
+      const tb = metrics.trafficBreakdown;
+      const totalPV = (metrics.metrics?.pageViews || 0);
+      const landingPagePV = totalPV - tb.total;
+      
+      trafficBreakdownText = `\n\n【ページ概要】
+- 合計ページビュー: ${totalPV?.toLocaleString() || 0}PV
+
+【内訳】
+- ランディングページ: ${landingPagePV?.toLocaleString() || 0}PV (${totalPV > 0 ? ((landingPagePV / totalPV) * 100).toFixed(1) : 0}%)
+- サイト内遷移から: ${tb.internal?.count?.toLocaleString() || 0}PV (${totalPV > 0 ? ((tb.internal?.count / totalPV) * 100).toFixed(1) : 0}%)
+- 外部・直接アクセスから: ${((tb.external?.count || 0) + (tb.direct?.count || 0))?.toLocaleString()}PV (${totalPV > 0 ? (((tb.external?.count || 0) + (tb.direct?.count || 0)) / totalPV * 100).toFixed(1) : 0}%)`;
+    }
+
+    return `
+あなたはページ導線最適化の専門家です。${period}の特定ページ「${metrics.pagePath || '対象ページ'}」への流入元を分析し、**サイト内導線の改善とページへの流入増加に役立つビジネスインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
+
+【画面表示データ】${pageFlowText}${inboundText}${trafficBreakdownText}
+
+【要求事項】
+- **800文字以内で簡潔にまとめる**（これは厳守してください）
+- Markdownの見出し記法（##, ###）を使用して構造化
+- **サイト内の流入元ページの特徴を分析**：
+  - 主要な流入元ページ（Top 3-5）を特定
+  - それぞれの流入元ページの役割・特性を考察
+  - 流入割合から導線の強さを評価
+- **流入パターンの評価**：「なぜそのページから流入が多いのか」を推測
+  - 内部リンクの配置状況
+  - コンテンツの関連性
+  - ユーザーの自然な行動フロー
+- **ランディングページと遷移の割合を評価**：
+  - ランディングページ（セッション最初）の割合
+  - サイト内遷移の割合
+  - 外部・直接アクセスの割合
+- **具体的なアクションを1-3点提案**：
+  - 【サイト内導線強化】：主要流入元ページからのリンク改善、関連ページへの内部リンク追加
+  - 【流入増加施策】：流入が少ないが関連性の高いページからの導線追加
+  - 【ページ改善】：流入元ページからのユーザー期待に応える情報充実
+  - 各提案の優先順位と期待効果を明示
+- 数値の羅列ではなく、「どこから、どう流入を増やすか」を具体的に記述
+
+【禁止事項】
+- ❌ 画面に表示されていない情報（離脱率、セッション数など）について言及する
+- ❌ 離脱改善について提案する（このページでは離脱データを扱わない）
 `;
   }
 

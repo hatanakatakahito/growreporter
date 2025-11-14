@@ -11,7 +11,6 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import { Download } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -234,37 +233,39 @@ export default function FileDownloads() {
                       key: 'fileName',
                       label: 'ファイル名',
                       sortable: true,
-                    },
-                    {
-                      key: 'linkUrl',
-                      label: 'URL',
-                      sortable: true,
-                      render: (value) =>
-                        value ? (
-                          <a
-                            href={value}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-primary hover:underline"
-                          >
-                            <span className="truncate max-w-md">{value}</span>
-                            <Download className="h-3 w-3 flex-shrink-0" />
-                          </a>
-                        ) : (
-                          '(不明)'
-                        ),
+                      tooltip: 'fileName',
+                      render: (value, row) => (
+                        <div className="flex flex-col gap-1">
+                          <span className="truncate max-w-md font-medium">{value || '(不明)'}</span>
+                          {row.linkUrl && (
+                            <a
+                              href={row.linkUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-1 text-xs text-primary hover:underline"
+                            >
+                              <span className="truncate max-w-md">{row.linkUrl}</span>
+                              <Download className="h-3 w-3 flex-shrink-0" />
+                            </a>
+                          )}
+                        </div>
+                      ),
                     },
                     {
                       key: 'downloads',
                       label: 'ダウンロード数',
                       format: 'number',
+                      sortable: true,
                       align: 'right',
+                      tooltip: 'downloads',
                     },
                     {
                       key: 'users',
                       label: 'ユーザー数',
                       format: 'number',
+                      sortable: true,
                       align: 'right',
+                      tooltip: 'users',
                     },
                   ]}
                   data={tableData}
@@ -278,34 +279,31 @@ export default function FileDownloads() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.FILE_DOWNLOADS}
-            metrics={(() => {
-              // ファイルダウンロードデータを準備
-              const downloadData = tableData || [];
-              
-              // 集計値を計算
-              const aggregates = {
-                totalDownloads: downloadData.reduce((sum, d) => sum + (d.downloads || 0), 0),
-                totalUsers: downloadData.reduce((sum, d) => sum + (d.users || 0), 0),
-                downloadCount: downloadData.length,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('fileDownloads', downloadData, aggregates, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && (() => {
+          const metrics = {
+            downloadsData: tableData || [],
+            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[FileDownloads] AI分析に送信するデータ:', {
+            downloadsDataCount: metrics.downloadsData.length,
+            hasConversions: metrics.hasConversionDefinitions,
+            sampleData: metrics.downloadsData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.FILE_DOWNLOADS}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );
 }
-

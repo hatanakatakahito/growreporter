@@ -112,19 +112,37 @@ async function fetchDimension(propertyId, startDate, endDate, accessToken, dimen
 function formatNewReturning(data) {
   if (!data.rows) return [];
   
-  const total = data.rows.reduce((sum, row) => sum + parseInt(row.metricValues[0].value), 0);
+  logger.info('[formatNewReturning] Raw data rows:', JSON.stringify(data.rows));
   
-  return data.rows.map(row => {
-    const value = parseInt(row.metricValues[0].value);
-    const dimensionValue = row.dimensionValues[0].value;
-    let name = dimensionValue === 'new' ? '新規ユーザー' : 'リピーター';
-    
-    return {
-      name,
-      value,
-      percentage: (value / total) * 100,
-    };
-  });
+  // 新規とリピーターを別々に集計
+  const newUsers = data.rows.find(row => row.dimensionValues[0].value === 'new');
+  const returningUsers = data.rows.find(row => row.dimensionValues[0].value === 'returning');
+  
+  const newValue = newUsers ? parseInt(newUsers.metricValues[0].value) : 0;
+  const returningValue = returningUsers ? parseInt(returningUsers.metricValues[0].value) : 0;
+  const total = newValue + returningValue;
+  
+  logger.info('[formatNewReturning] New:', newValue, 'Returning:', returningValue, 'Total:', total);
+  
+  const result = [];
+  
+  if (newValue > 0) {
+    result.push({
+      name: '新規ユーザー',
+      value: newValue,
+      percentage: (newValue / total) * 100,
+    });
+  }
+  
+  if (returningValue > 0) {
+    result.push({
+      name: 'リピーター',
+      value: returningValue,
+      percentage: (returningValue / total) * 100,
+    });
+  }
+  
+  return result;
 }
 
 /**

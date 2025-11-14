@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useSite } from '../contexts/SiteContext';
-import { useGA4Data } from '../hooks/useGA4Data';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import Sidebar from '../components/Layout/Sidebar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -10,7 +10,9 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import { setPageTitle } from '../utils/pageTitle';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
+import { useQuery } from '@tanstack/react-query';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../config/firebase';
 import {
   ResponsiveContainer,
   BarChart,
@@ -39,20 +41,29 @@ export default function AcquisitionChannels() {
     setPageTitle('集客チャネル');
   }, []);
 
-  // GA4データ取得（チャネル別）
+  // ✅ GA4チャネル別コンバージョンデータ取得（サイト設定で定義したコンバージョンイベントのみ）
   const {
     data: channelData,
     isLoading,
     isError,
     error,
-  } = useGA4Data(
-    selectedSiteId,
-    dateRange.from,
-    dateRange.to,
-    ['sessions', 'conversions', 'activeUsers'],
-    ['sessionDefaultChannelGroup'],
-    null
-  );
+  } = useQuery({
+    queryKey: ['ga4-channel-conversions', selectedSiteId, dateRange.from, dateRange.to],
+    queryFn: async () => {
+      console.log('[AcquisitionChannels] Fetching channel conversion data...');
+      const fetchChannelConversionData = httpsCallable(functions, 'fetchGA4ChannelConversionData');
+      const result = await fetchChannelConversionData({
+        siteId: selectedSiteId,
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+      });
+      console.log('[AcquisitionChannels] Channel conversion data fetched:', result.data);
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!dateRange.from && !!dateRange.to,
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5分間キャッシュ
+  });
 
   // チャネル名の日本語化
   const channelNameMap = {
@@ -370,36 +381,60 @@ export default function AcquisitionChannels() {
               )}
             </>
           )}
+
+        {/* 🔴 コンバージョン定義未設定の警告バナー（下部） */}
+        {selectedSite && (!selectedSite.conversionEvents || selectedSite.conversionEvents.length === 0) && (
+          <div className="mt-8 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 shadow-sm dark:bg-red-900/20 dark:border-red-600">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-600 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
+                  コンバージョン定義が未設定です
+                </h3>
+                <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                  正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
+                </p>
+                <Link
+                  to={`/sites/${selectedSiteId}/edit?step=4`}
+                  className="mt-3 inline-block rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                >
+                  サイト設定（STEP4）でコンバージョンを設定する
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.CHANNELS}
-            metrics={(() => {
-              // チャネル別データを準備
-              const channelData = chartData || [];
-              
-              // 集計値を計算
-              const aggregates = {
-                totalSessions: channelData.reduce((sum, c) => sum + (c.sessions || 0), 0),
-                totalUsers: channelData.reduce((sum, c) => sum + (c.users || 0), 0),
-                totalConversions: channelData.reduce((sum, c) => sum + (c.conversions || 0), 0),
-                channelCount: channelData.length,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('channels', channelData, aggregates, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && (() => {
+          const metrics = {
+            channelsData: chartData || [],
+            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[AcquisitionChannels] AI分析に送信するデータ:', {
+            channelsDataCount: metrics.channelsData.length,
+            hasConversions: metrics.hasConversionDefinitions,
+            sampleData: metrics.channelsData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.CHANNELS}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );

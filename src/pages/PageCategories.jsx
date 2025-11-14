@@ -10,7 +10,6 @@ import DataTable from '../components/Analysis/DataTable';
 import ChartContainer from '../components/Analysis/ChartContainer';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -319,31 +318,30 @@ export default function PageCategories() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.PAGE_CATEGORIES}
-            metrics={(() => {
-              // ページ分類別データを準備
-              const pageCategoryData = categoryData || [];
-              
-              // 集計値を計算
-              const aggregates = {
-                totalPageViews: pageCategoryData.reduce((sum, c) => sum + (c.pageViews || 0), 0),
-                categoryCount: pageCategoryData.length,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('pageCategories', pageCategoryData, aggregates, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && (() => {
+          const metrics = {
+            categoriesData: categoryData || [],
+            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[PageCategories] AI分析に送信するデータ:', {
+            categoriesDataCount: metrics.categoriesData.length,
+            hasConversions: metrics.hasConversionDefinitions,
+            sampleData: metrics.categoriesData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.PAGE_CATEGORIES}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );

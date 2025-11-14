@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
 import { useSite } from '../../contexts/SiteContext';
-import { useGA4Data } from '../../hooks/useGA4Data';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import Sidebar from '../../components/Layout/Sidebar';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -12,7 +11,9 @@ import { format, sub } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
-import { formatForAI } from '../../utils/aiDataFormatter';
+import { useQuery } from '@tanstack/react-query';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../config/firebase';
 import {
   ResponsiveContainer,
   LineChart,
@@ -49,20 +50,29 @@ export default function Day() {
   //   return () => clearInterval(interval);
   // }, []);
 
-  // GA4データ取得（日別）
+  // ✅ GA4日別コンバージョンデータ取得（サイト設定で定義したコンバージョンイベントのみ）
   const {
     data: dailyData,
     isLoading,
     isError,
     error,
-  } = useGA4Data(
-    selectedSiteId,
-    dateRange.from,
-    dateRange.to,
-    ['sessions', 'conversions'],
-    ['date'],
-    null
-  );
+  } = useQuery({
+    queryKey: ['ga4-daily-conversions', selectedSiteId, dateRange.from, dateRange.to],
+    queryFn: async () => {
+      console.log('[Day] Fetching daily conversion data...');
+      const fetchDailyConversionData = httpsCallable(functions, 'fetchGA4DailyConversionData');
+      const result = await fetchDailyConversionData({
+        siteId: selectedSiteId,
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+      });
+      console.log('[Day] Daily conversion data fetched:', result.data);
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!dateRange.from && !!dateRange.to,
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5分間キャッシュ
+  });
 
   // 日付フォーマット関数
   const parseYYYYMMDD = (dateStr) => {
@@ -146,12 +156,8 @@ export default function Day() {
   };
 
   // テーブル用のデータ整形（昇順ソート：1日から末日へ）
-  const tableData =
-    dailyData?.rows?.map((row) => ({
-      date: row.date,
-      sessions: row.sessions || 0,
-      conversions: row.conversions || 0,
-    })).sort((a, b) => a.date.localeCompare(b.date)) || [];
+  // ✅ 新しいCloud Functionからのレスポンス（rows）をそのまま使用
+  const tableData = dailyData?.rows || [];
 
   // グラフ用のデータ整形（tableDataと同じ昇順）
   const chartData = tableData;
@@ -287,32 +293,30 @@ export default function Day() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.DAY}
-            metrics={(() => {
-              // 日別分析データを準備
-              const dailyData = chartData || [];
-              
-              // 集計値を計算
-              const aggregates = {
-                sessions: dailyData.reduce((sum, row) => sum + (row.sessions || 0), 0),
-                conversions: dailyData.reduce((sum, row) => sum + (row.conversions || 0), 0),
-                dataPoints: dailyData.length,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('day', dailyData, aggregates, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && (() => {
+          const metrics = {
+            dailyData: chartData || [],  // ← 画面表示データをそのまま使用
+            hasConversionDefinitions: dailyData?.hasConversionEvents || false,
+            conversionEventNames: dailyData?.conversionEventNames || [],
+          };
+          
+          console.log('[Day] AI分析に送信するデータ:', {
+            dailyDataCount: metrics.dailyData.length,
+            hasConversions: metrics.hasConversionDefinitions,
+            sampleData: metrics.dailyData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.DAY}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );

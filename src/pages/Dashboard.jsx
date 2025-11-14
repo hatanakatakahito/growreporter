@@ -13,7 +13,6 @@ import { setPageTitle } from '../utils/pageTitle';
 import { getTooltip } from '../constants/tooltips';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
 
 /**
  * ダッシュボード画面
@@ -128,10 +127,8 @@ export default function Dashboard() {
         <Sidebar />
         <div className="relative flex flex-1 flex-col overflow-y-auto overflow-x-hidden ml-64">
           <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
-          <main className="flex-1">
-          <div className="flex min-h-[60vh] items-center justify-center">
-            <LoadingSpinner message="データを読み込んでいます..." />
-          </div>
+          <main className="flex-1 p-6">
+            <LoadingSpinner skeleton="dashboard" />
           </main>
         </div>
       </div>
@@ -691,6 +688,33 @@ export default function Dashboard() {
               )}
             </div>
           )}
+
+        {/* 🔴 コンバージョン定義未設定の警告バナー（下部） */}
+        {selectedSite && (!selectedSite.conversionEvents || selectedSite.conversionEvents.length === 0) && (
+          <div className="mt-8 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 shadow-sm dark:bg-red-900/20 dark:border-red-600">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-600 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
+                  コンバージョン定義が未設定です
+                </h3>
+                <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                  正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
+                </p>
+                <Link
+                  to={`/sites/${selectedSiteId}/edit?step=4`}
+                  className="mt-3 inline-block rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                >
+                  サイト設定（STEP4）でコンバージョンを設定する
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
         </div>
         </div>
         </main>
@@ -698,48 +722,144 @@ export default function Dashboard() {
     </div>
 
     {/* AI分析フローティングボタン */}
-    {selectedSiteId && data && (() => {
-      // ダッシュボード用のデータを準備
-      const dashboardData = {
-        totalUsers: data.metrics?.totalUsers || 0,
+    {selectedSiteId && data && monthlyTrendData && (() => {
+      // AI分析用のメトリクスを構築
+      // 総コンバージョン数を計算
+      const totalConversions = data.conversions 
+        ? Object.values(data.conversions).reduce((sum, val) => sum + (val || 0), 0)
+        : 0;
+      
+      const previousMonthTotalConversions = previousMonthData?.conversions
+        ? Object.values(previousMonthData.conversions).reduce((sum, val) => sum + (val || 0), 0)
+        : 0;
+        
+      const yearAgoTotalConversions = yearAgoData?.conversions
+        ? Object.values(yearAgoData.conversions).reduce((sum, val) => sum + (val || 0), 0)
+        : 0;
+      
+      // コンバージョン内訳データの整形
+      const conversionBreakdown = {};
+      if (selectedSite?.conversionEvents && data?.conversions) {
+        selectedSite.conversionEvents.forEach(event => {
+          const currentCount = data.conversions[event.eventName] || 0;
+          const previousCount = previousMonthData?.conversions?.[event.eventName] || 0;
+          const yearAgoCount = yearAgoData?.conversions?.[event.eventName] || 0;
+          
+          conversionBreakdown[event.displayName] = {
+            current: currentCount,
+            previous: previousCount,
+            yearAgo: yearAgoCount,
+            monthChange: previousCount > 0 ? ((currentCount - previousCount) / previousCount) * 100 : (currentCount > 0 ? 100 : 0),
+            yearChange: yearAgoCount > 0 ? ((currentCount - yearAgoCount) / yearAgoCount) * 100 : (currentCount > 0 ? 100 : 0),
+          };
+        });
+      }
+
+      // KPI予実データの整形
+      const kpiData = [];
+      if (selectedSite?.kpiSettings?.kpiList && data?.metrics) {
+        selectedSite.kpiSettings.kpiList.forEach(kpi => {
+          const actualValue = data.metrics[kpi.kpiName] || 0;
+          const targetValue = kpi.targetValue || 0;
+          const achievement = targetValue > 0 ? (actualValue / targetValue) * 100 : 0;
+          
+          kpiData.push({
+            name: kpi.displayName,
+            actual: actualValue,
+            target: targetValue,
+            achievement: achievement,
+            unit: kpi.unit || '',
+          });
+        });
+      }
+
+      const aiMetrics = {
+        // 現在期間の基本メトリクス
+        users: data.metrics?.totalUsers || 0,
+        newUsers: data.metrics?.newUsers || 0,
         sessions: data.metrics?.sessions || 0,
         pageViews: data.metrics?.pageViews || 0,
         engagementRate: data.metrics?.engagementRate || 0,
-        conversions: data.metrics?.conversions || 0,
-        avgPageViewsPerSession: data.metrics?.sessions > 0 
-          ? (data.metrics?.pageViews || 0) / data.metrics.sessions
-          : 0,
-        conversionRate: data.metrics?.sessions > 0 
-          ? (data.metrics?.conversions || 0) / data.metrics.sessions
-          : 0,
-        // 前月比較データ
-        previousMonth: previousMonthData ? {
-          totalUsers: previousMonthData.metrics?.totalUsers || 0,
-          sessions: previousMonthData.metrics?.sessions || 0,
-          pageViews: previousMonthData.metrics?.pageViews || 0,
-          conversions: previousMonthData.metrics?.conversions || 0,
-        } : null,
-        // 前年同月比較データ
-        yearAgo: yearAgoData ? {
-          totalUsers: yearAgoData.metrics?.totalUsers || 0,
-          sessions: yearAgoData.metrics?.sessions || 0,
-          pageViews: yearAgoData.metrics?.pageViews || 0,
-          conversions: yearAgoData.metrics?.conversions || 0,
-        } : null,
+        bounceRate: data.metrics?.bounceRate || 0,
+        avgSessionDuration: data.metrics?.averageSessionDuration || 0,
+        conversions: totalConversions, // ✅ 総コンバージョン数（数値）
+        conversionRate: data.metrics?.sessions > 0 ? (totalConversions / data.metrics.sessions) : 0,
+        
+        // コンバージョン内訳
+        conversionBreakdown: conversionBreakdown,
+        hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+        
+        // KPI予実
+        kpiData: kpiData,
+        hasKpiSettings: kpiData.length > 0,
+        
         // 13ヶ月推移データ
         monthlyData: monthlyTrendData?.monthlyData || [],
+        monthlyDataCount: monthlyTrendData?.monthlyData?.length || 0,
+        monthlyTrendText: (() => {
+          if (!monthlyTrendData?.monthlyData || monthlyTrendData.monthlyData.length === 0) {
+            return '';
+          }
+          
+          // 月次推移データを整形（ConversionList.jsxと同じパターン）
+          const trendText = monthlyTrendData.monthlyData.map(month => {
+            const monthLabel = month.label || month.month || month.date || '月';
+            const users = month.users || month.totalUsers || 0;
+            const sessions = month.sessions || 0;
+            const pageViews = month.pageViews || month.screenPageViews || 0;
+            const engRate = month.engagementRate || 0;
+            const convs = month.conversions || 0;
+            return `${monthLabel}: ユーザー${users.toLocaleString()}人, セッション${sessions.toLocaleString()}回, PV${pageViews.toLocaleString()}, ENG率${(engRate * 100).toFixed(1)}%, CV${convs}件`;
+          }).join('\n');
+          
+          return trendText;
+        })(),
+        
+        // 前月比較データ（月次変化率計算用）
+        monthOverMonth: previousMonthData ? {
+          users: {
+            current: data.metrics?.totalUsers || 0,
+            previous: previousMonthData.metrics?.totalUsers || 0,
+            change: previousMonthData.metrics?.totalUsers > 0 
+              ? ((data.metrics?.totalUsers || 0) - previousMonthData.metrics.totalUsers) / previousMonthData.metrics.totalUsers * 100 
+              : 0,
+          },
+          sessions: {
+            current: data.metrics?.sessions || 0,
+            previous: previousMonthData.metrics?.sessions || 0,
+            change: previousMonthData.metrics?.sessions > 0 
+              ? ((data.metrics?.sessions || 0) - previousMonthData.metrics.sessions) / previousMonthData.metrics.sessions * 100 
+              : 0,
+          },
+          conversions: {
+            current: totalConversions,
+            previous: previousMonthTotalConversions,
+            change: previousMonthTotalConversions > 0 
+              ? ((totalConversions - previousMonthTotalConversions) / previousMonthTotalConversions) * 100 
+              : 0,
+          },
+          engagementRate: {
+            current: data.metrics?.engagementRate || 0,
+            previous: previousMonthData.metrics?.engagementRate || 0,
+            change: previousMonthData.metrics?.engagementRate > 0 
+              ? (((data.metrics?.engagementRate || 0) - previousMonthData.metrics.engagementRate) / previousMonthData.metrics.engagementRate) * 100 
+              : 0,
+          },
+        } : null,
+        
+        // 前年同月比較データ
+        yearAgo: yearAgoData ? {
+          users: yearAgoData.metrics?.totalUsers || 0,
+          sessions: yearAgoData.metrics?.sessions || 0,
+          pageViews: yearAgoData.metrics?.pageViews || 0,
+          conversions: yearAgoTotalConversions, // ✅ 総コンバージョン数（数値）
+        } : null,
       };
-      
-      // コンバージョンイベント名のリスト
-      const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-      
-      // formatForAI関数を使用してデータをフォーマット
-      const formattedMetrics = formatForAI('dashboard', dashboardData, {}, conversionEventNames);
       
       return (
         <AIFloatingButton
-          pageType={PAGE_TYPES.SUMMARY}
-          metrics={formattedMetrics}
+          pageType={PAGE_TYPES.DASHBOARD}
+          metrics={aiMetrics}
           period={{
             startDate: dateRange.from,
             endDate: dateRange.to,
@@ -750,4 +870,3 @@ export default function Dashboard() {
     </>
   );
 }
-

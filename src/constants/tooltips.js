@@ -18,6 +18,7 @@ export const TOOLTIPS = {
   conversionRate: 'コンバージョンが発生したセッションの割合',
   
   // SEO指標
+  keywords: 'ユーザーがGoogle検索で使用した検索クエリ（キーワード）。Search Consoleから取得されます。',
   clicks: 'Google検索結果からサイトへのクリック数。',
   impressions: 'Google検索結果にサイトが表示された回数。',
   ctr: 'クリック率。表示回数に対するクリック数の割合。（クリック数 ÷ 表示回数）× 100',
@@ -40,6 +41,7 @@ export const TOOLTIPS = {
   pagePath: 'ページのURL パス。',
   landingPage: 'ユーザーが最初に訪れたページ。',
   exitPage: 'ユーザーが最後に閲覧したページ。',
+  avgSessionDuration: 'セッションあたりの平均滞在時間。',
   
   // 時系列
   date: '日付。',

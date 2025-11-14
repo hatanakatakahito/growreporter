@@ -406,8 +406,8 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
 
       {/* GA4イベント選択モーダル */}
       {showEventModal && (
-        <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-3xl rounded-lg bg-white shadow-xl dark:bg-dark-2">
+        <div className="!fixed !inset-0 !z-[9999] flex items-center justify-center overflow-y-auto bg-black/50 p-4" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
+          <div className="my-auto w-full max-w-3xl rounded-lg bg-white shadow-xl dark:bg-dark-2">
             {/* ヘッダー */}
             <div className="flex items-center justify-between border-b border-stroke px-6 py-4 dark:border-dark-3">
               <h3 className="text-xl font-semibold text-dark dark:text-white">
@@ -424,7 +424,7 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
             </div>
 
             {/* コンテンツ */}
-            <div className="max-h-[60vh] overflow-y-auto p-6">
+            <div className="max-h-[50vh] overflow-y-auto p-6">
               <div className="space-y-2">
                 {ga4Events.map((event) => {
                   const selected = isEventSelected(event.eventName);

@@ -5,7 +5,8 @@ import {
   Globe, 
   FileText, 
   Settings,
-  CreditCard
+  CreditCard,
+  MessageSquare
 } from 'lucide-react';
 import logoImg from '../../assets/img/logo.svg';
 
@@ -40,6 +41,11 @@ export default function AdminSidebar() {
       icon: CreditCard,
       label: 'プラン設定',
       path: '/admin/settings/plans',
+    },
+    {
+      icon: MessageSquare,
+      label: 'プロンプト管理',
+      path: '/admin/prompt-templates',
     },
     {
       icon: Settings,

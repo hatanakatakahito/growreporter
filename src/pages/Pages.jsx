@@ -11,7 +11,6 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import { ExternalLink } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -47,7 +46,7 @@ export default function Pages() {
     selectedSiteId,
     dateRange.from,
     dateRange.to,
-    ['screenPageViews', 'sessions', 'activeUsers', 'averageSessionDuration'],
+    ['screenPageViews', 'sessions', 'activeUsers', 'engagementRate', 'averageSessionDuration'],
     ['pagePath', 'pageTitle'],
     null
   );
@@ -61,6 +60,10 @@ export default function Pages() {
     return url;
   };
 
+  // 合計ページビュー数を先に計算
+  const totalPageViews = pageData?.rows
+    ?.reduce((sum, row) => sum + (row.screenPageViews || 0), 0) || 0;
+
   // テーブル用のデータ整形（ページビュー数降順）
   const tableData =
     pageData?.rows
@@ -69,8 +72,12 @@ export default function Pages() {
         title: row.pageTitle || '(タイトルなし)',
         shortUrl: shortenUrl(row.pagePath),
         pageViews: row.screenPageViews || 0,
+        percentage: totalPageViews > 0 
+          ? ((row.screenPageViews / totalPageViews) * 100).toFixed(1) 
+          : '0.0',
         sessions: row.sessions || 0,
         users: row.activeUsers || 0,
+        engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
         avgDuration: row.averageSessionDuration || 0,
       }))
       .sort((a, b) => b.pageViews - a.pageViews) || [];
@@ -79,7 +86,6 @@ export default function Pages() {
   const chartData = [...tableData].slice(0, 10);
 
   // 合計値の計算
-  const totalPageViews = tableData.reduce((sum, row) => sum + row.pageViews, 0);
   const totalSessions = tableData.reduce((sum, row) => sum + row.sessions, 0);
   const totalUsers = tableData.reduce((sum, row) => sum + row.users, 0);
 
@@ -248,6 +254,7 @@ export default function Pages() {
                       key: 'path',
                       label: 'ページパス',
                       sortable: true,
+                      tooltip: 'pagePath',
                       render: (value, row) => (
                         <div className="flex flex-col gap-1">
                           <a
@@ -268,25 +275,37 @@ export default function Pages() {
                     {
                       key: 'pageViews',
                       label: 'ページビュー',
-                      format: 'number',
+                      sortable: true,
                       align: 'right',
+                      tooltip: 'pageViews',
+                      render: (value, row) => (
+                        <span>
+                          {value?.toLocaleString() || 0} <span className="text-body-color">({row.percentage}%)</span>
+                        </span>
+                      ),
                     },
                     {
                       key: 'sessions',
                       label: 'セッション',
                       format: 'number',
+                      sortable: true,
                       align: 'right',
+                      tooltip: 'sessions',
                     },
                     {
-                      key: 'users',
-                      label: 'ユーザー',
-                      format: 'number',
+                      key: 'engagementRate',
+                      label: 'ENG率',
+                      sortable: true,
                       align: 'right',
+                      tooltip: 'engagementRate',
+                      render: (value) => `${value}%`,
                     },
                     {
                       key: 'avgDuration',
                       label: '平均滞在時間',
+                      sortable: true,
                       align: 'right',
+                      tooltip: 'avgEngagementTime',
                       render: (value) => formatDuration(value),
                     },
                   ]}
@@ -301,33 +320,30 @@ export default function Pages() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.PAGES}
-            metrics={(() => {
-              // ページ別データを準備
-              const pageData = tableData || [];
-              
-              // 集計値を計算
-              const aggregates = {
-                totalPageViews: pageData.reduce((sum, p) => sum + (p.pageViews || 0), 0),
-                totalSessions: pageData.reduce((sum, p) => sum + (p.sessions || 0), 0),
-                totalUsers: pageData.reduce((sum, p) => sum + (p.users || 0), 0),
-                pageCount: pageData.length,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('pages', pageData, aggregates, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && (() => {
+          const metrics = {
+            pagesData: tableData || [],
+            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[Pages] AI分析に送信するデータ:', {
+            pagesDataCount: metrics.pagesData.length,
+            hasConversions: metrics.hasConversionDefinitions,
+            sampleData: metrics.pagesData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.PAGES}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );

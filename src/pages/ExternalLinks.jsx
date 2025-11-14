@@ -10,7 +10,6 @@ import DataTable from '../components/Analysis/DataTable';
 import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
 
 /**
  * 外部リンククリック分析画面
@@ -99,6 +98,7 @@ export default function ExternalLinks() {
                   key: 'linkUrl',
                   label: 'URL',
                   sortable: true,
+                  tooltip: 'externalLinkUrl',
                   render: (value) =>
                     value && value !== '(不明)' ? (
                       <a
@@ -119,12 +119,14 @@ export default function ExternalLinks() {
                   label: 'クリック数',
                   format: 'number',
                   align: 'right',
+                  tooltip: 'clicks',
                 },
                 {
                   key: 'users',
                   label: 'ユーザー数',
                   format: 'number',
                   align: 'right',
+                  tooltip: 'users',
                 },
               ]}
               data={tableData}
@@ -136,34 +138,31 @@ export default function ExternalLinks() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.EXTERNAL_LINKS}
-            metrics={(() => {
-              // 外部リンククリックデータを準備
-              const linkData = tableData || [];
-              
-              // 集計値を計算
-              const aggregates = {
-                totalClicks: linkData.reduce((sum, l) => sum + (l.clicks || 0), 0),
-                totalUsers: linkData.reduce((sum, l) => sum + (l.users || 0), 0),
-                clickCount: linkData.length,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('externalLinks', linkData, aggregates, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && (() => {
+          const metrics = {
+            linksData: tableData || [],
+            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[ExternalLinks] AI分析に送信するデータ:', {
+            linksDataCount: metrics.linksData.length,
+            hasConversions: metrics.hasConversionDefinitions,
+            sampleData: metrics.linksData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.EXTERNAL_LINKS}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );
 }
-

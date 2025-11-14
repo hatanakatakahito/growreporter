@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { setPageTitle } from '../utils/pageTitle';
 import { useSite } from '../contexts/SiteContext';
-import { useGA4Data } from '../hooks/useGA4Data';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import Sidebar from '../components/Layout/Sidebar';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -11,7 +11,9 @@ import ChartContainer from '../components/Analysis/ChartContainer';
 import { ExternalLink } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
+import { useQuery } from '@tanstack/react-query';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../config/firebase';
 import {
   ResponsiveContainer,
   BarChart,
@@ -32,25 +34,42 @@ export default function LandingPages() {
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
 
+  // 滞在時間をフォーマット
+  const formatDuration = (seconds) => {
+    if (!seconds || seconds === 0) return '0秒';
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`;
+  };
+
   // ページタイトルを設定
   useEffect(() => {
     setPageTitle('ランディングページ');
   }, []);
 
-  // GA4データ取得（ランディングページ別）
+  // ✅ GA4ランディングページ別コンバージョンデータ取得（サイト設定で定義したコンバージョンイベントのみ）
   const {
     data: landingPageData,
     isLoading,
     isError,
     error,
-  } = useGA4Data(
-    selectedSiteId,
-    dateRange.from,
-    dateRange.to,
-    ['sessions', 'activeUsers', 'newUsers', 'bounceRate', 'conversions'],
-    ['landingPage'],
-    null
-  );
+  } = useQuery({
+    queryKey: ['ga4-landing-page-conversions', selectedSiteId, dateRange.from, dateRange.to],
+    queryFn: async () => {
+      console.log('[LandingPages] Fetching landing page conversion data...');
+      const fetchLandingPageConversionData = httpsCallable(functions, 'fetchGA4LandingPageConversionData');
+      const result = await fetchLandingPageConversionData({
+        siteId: selectedSiteId,
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+      });
+      console.log('[LandingPages] Landing page conversion data fetched:', result.data);
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!dateRange.from && !!dateRange.to,
+    retry: false,
+    staleTime: 5 * 60 * 1000, // 5分間キャッシュ
+  });
 
   // URLを短縮表示
   const shortenUrl = (url) => {
@@ -68,9 +87,8 @@ export default function LandingPages() {
         path: row.landingPage || '/',
         shortUrl: shortenUrl(row.landingPage),
         sessions: row.sessions || 0,
-        users: row.activeUsers || 0,
-        newUsers: row.newUsers || 0,
-        bounceRate: row.bounceRate ? (row.bounceRate * 100).toFixed(2) : '0.00',
+        engagementRate: row.engagementRate ? (row.engagementRate * 100).toFixed(1) : '0.0',
+        avgEngagementTime: row.averageSessionDuration || 0,
         conversions: row.conversions || 0,
         conversionRate:
           row.sessions > 0
@@ -245,6 +263,7 @@ export default function LandingPages() {
                       key: 'path',
                       label: 'ランディングページ',
                       sortable: true,
+                      tooltip: 'landingPage',
                       render: (value) => (
                         <a
                           href={value}
@@ -262,35 +281,34 @@ export default function LandingPages() {
                       label: 'セッション',
                       format: 'number',
                       align: 'right',
+                      tooltip: 'sessions',
                     },
                     {
-                      key: 'users',
-                      label: 'ユーザー',
-                      format: 'number',
+                      key: 'engagementRate',
+                      label: 'ENG率',
                       align: 'right',
-                    },
-                    {
-                      key: 'newUsers',
-                      label: '新規ユーザー',
-                      format: 'number',
-                      align: 'right',
-                    },
-                    {
-                      key: 'bounceRate',
-                      label: '直帰率',
-                      align: 'right',
+                      tooltip: 'engagementRate',
                       render: (value) => `${value}%`,
+                    },
+                    {
+                      key: 'avgEngagementTime',
+                      label: '平均滞在時間',
+                      align: 'right',
+                      tooltip: 'avgEngagementTime',
+                      render: (value) => formatDuration(value),
                     },
                     {
                       key: 'conversions',
                       label: 'コンバージョン',
                       format: 'number',
                       align: 'right',
+                      tooltip: 'conversions',
                     },
                     {
                       key: 'conversionRate',
                       label: 'CVR',
                       align: 'right',
+                      tooltip: 'conversionRate',
                       render: (value) => `${value}%`,
                     },
                   ]}
@@ -302,36 +320,60 @@ export default function LandingPages() {
               )}
             </>
           )}
+
+        {/* 🔴 コンバージョン定義未設定の警告バナー（下部） */}
+        {selectedSite && (!selectedSite.conversionEvents || selectedSite.conversionEvents.length === 0) && (
+          <div className="mt-8 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 shadow-sm dark:bg-red-900/20 dark:border-red-600">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0">
+                <svg className="h-5 w-5 text-red-600 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
+                  コンバージョン定義が未設定です
+                </h3>
+                <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                  正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
+                </p>
+                <Link
+                  to={`/sites/${selectedSiteId}/edit?step=4`}
+                  className="mt-3 inline-block rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                >
+                  サイト設定（STEP4）でコンバージョンを設定する
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.LANDING_PAGES}
-            metrics={(() => {
-              // ランディングページデータを準備
-              const landingPageData = tableData || [];
-              
-              // 集計値を計算
-              const aggregates = {
-                totalSessions: landingPageData.reduce((sum, p) => sum + (p.sessions || 0), 0),
-                totalUsers: landingPageData.reduce((sum, p) => sum + (p.users || 0), 0),
-                totalConversions: landingPageData.reduce((sum, p) => sum + (p.conversions || 0), 0),
-                landingPageCount: landingPageData.length,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('landingPages', landingPageData, aggregates, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && (() => {
+          const metrics = {
+            landingPagesData: tableData || [],
+            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[LandingPages] AI分析に送信するデータ:', {
+            landingPagesDataCount: metrics.landingPagesData.length,
+            hasConversions: metrics.hasConversionDefinitions,
+            sampleData: metrics.landingPagesData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.LANDING_PAGES}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );

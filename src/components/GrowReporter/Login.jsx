@@ -264,6 +264,9 @@ export default function Login() {
                 </button>
               </form>
 
+              {/* 区切り線 */}
+              <div className="my-6 border-t border-gray-200 dark:border-dark-3"></div>
+
               {/* Googleログインボタン */}
               <button
                 type="button"

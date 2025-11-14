@@ -58,50 +58,59 @@ export async function fetchGSCDataCallable(request) {
       );
     }
 
-    // 2. OAuthトークン取得・更新
+    // 2. キャッシュチェック（パフォーマンス最適化）
+    const cacheKey = generateCacheKey('gsc', siteId, startDate, endDate);
+    const cachedData = await getCache(cacheKey);
+    
+    if (cachedData) {
+      console.log(`[fetchGSCData] Returning cached data: ${cacheKey}`);
+      return cachedData;
+    }
+
+    // 3. OAuthトークン取得・更新
     const { oauth2Client } = await getAndRefreshToken(siteData.gscOauthTokenId);
 
     // 4. Search Console API 呼び出し
     const searchConsole = google.searchconsole('v1');
     
-    // 基本指標の取得
-    console.log(`[fetchGSCData] Fetching basic metrics from GSC API...`);
-    const response = await searchConsole.searchanalytics.query({
-      auth: oauth2Client,
-      siteUrl: siteData.gscSiteUrl,
-      requestBody: {
-        startDate,
-        endDate,
-        dimensions: [], // 全体の集計
-        rowLimit: 1,
-      },
-    });
-
-    // トップクエリの取得（最大25,000件）
-    console.log(`[fetchGSCData] Fetching top queries...`);
-    const topQueriesResponse = await searchConsole.searchanalytics.query({
-      auth: oauth2Client,
-      siteUrl: siteData.gscSiteUrl,
-      requestBody: {
-        startDate,
-        endDate,
-        dimensions: ['query'],
-        rowLimit: 25000,
-      },
-    });
-
-    // トップページの取得（最大25,000件）
-    console.log(`[fetchGSCData] Fetching top pages...`);
-    const topPagesResponse = await searchConsole.searchanalytics.query({
-      auth: oauth2Client,
-      siteUrl: siteData.gscSiteUrl,
-      requestBody: {
-        startDate,
-        endDate,
-        dimensions: ['page'],
-        rowLimit: 25000,
-      },
-    });
+    // 🚀 パフォーマンス最適化: 基本メトリクス、トップクエリ、トップページを並列取得
+    console.log(`[fetchGSCData] Fetching metrics, queries, and pages in parallel...`);
+    
+    const [response, topQueriesResponse, topPagesResponse] = await Promise.all([
+      // 基本指標の取得
+      searchConsole.searchanalytics.query({
+        auth: oauth2Client,
+        siteUrl: siteData.gscSiteUrl,
+        requestBody: {
+          startDate,
+          endDate,
+          dimensions: [], // 全体の集計
+          rowLimit: 1,
+        },
+      }),
+      // トップクエリの取得（最大25,000件）
+      searchConsole.searchanalytics.query({
+        auth: oauth2Client,
+        siteUrl: siteData.gscSiteUrl,
+        requestBody: {
+          startDate,
+          endDate,
+          dimensions: ['query'],
+          rowLimit: 25000,
+        },
+      }),
+      // トップページの取得（最大25,000件）
+      searchConsole.searchanalytics.query({
+        auth: oauth2Client,
+        siteUrl: siteData.gscSiteUrl,
+        requestBody: {
+          startDate,
+          endDate,
+          dimensions: ['page'],
+          rowLimit: 25000,
+        },
+      }),
+    ]);
 
     // 5. データ整形
     const result = {
@@ -134,6 +143,9 @@ export async function fetchGSCDataCallable(request) {
     };
 
     console.log(`[fetchGSCData] Success: siteId=${siteId}, period=${startDate} to ${endDate}`);
+    
+    // キャッシュに保存（パフォーマンス最適化）
+    await setCache(cacheKey, result, siteId, userId);
     
     return result;
 

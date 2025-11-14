@@ -11,7 +11,6 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
 import {
   ResponsiveContainer,
   BarChart,
@@ -149,7 +148,7 @@ export default function Keywords() {
           <p className="text-sm text-body-color">クリック数: {data.clicks}</p>
           <p className="text-sm text-body-color">順位: {data.position.toFixed(1)}</p>
           <p className="text-sm text-body-color">
-            CTR: {(data.ctr * 100).toFixed(2)}%
+            クリック率: {(data.ctr * 100).toFixed(2)}%
           </p>
         </div>
       );
@@ -279,7 +278,7 @@ export default function Keywords() {
 
                   {/* 散布図：クリック数 vs 順位 */}
                   <ChartContainer
-                    title="クリック数 vs 掲載順位（バブルサイズ：CTR）"
+                    title="クリック数 vs 掲載順位（バブルサイズ：クリック率）"
                     height={400}
                   >
                     <ResponsiveContainer width="100%" height="100%">
@@ -316,7 +315,7 @@ export default function Keywords() {
                           type="number"
                           dataKey="ctr"
                           range={[50, 400]}
-                          name="CTR"
+                          name="クリック率"
                         />
                         <RechartsTooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3' }} />
                         <Scatter
@@ -336,29 +335,34 @@ export default function Keywords() {
                       key: 'keyword',
                       label: 'キーワード',
                       sortable: true,
+                      tooltip: 'keywords',
                     },
                     {
                       key: 'clicks',
                       label: 'クリック数',
                       format: 'number',
                       align: 'right',
+                      tooltip: 'clicks',
                     },
                     {
                       key: 'impressions',
                       label: '表示回数',
                       format: 'number',
                       align: 'right',
+                      tooltip: 'impressions',
                     },
                     {
                       key: 'ctr',
-                      label: 'CTR',
+                      label: 'クリック率',
                       align: 'right',
                       render: (value) => `${value}%`,
+                      tooltip: 'ctr',
                     },
                     {
                       key: 'position',
                       label: '平均掲載順位',
                       align: 'right',
+                      tooltip: 'position',
                       render: (value, row) => (
                         <div className="flex items-center justify-end gap-2">
                           {getPositionIcon(parseFloat(value))}
@@ -378,38 +382,31 @@ export default function Keywords() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.KEYWORDS}
-            metrics={(() => {
-              // キーワード別データを準備
-              const keywordData = tableData || [];
-              
-              // 集計値を計算
-              const aggregates = {
-                totalClicks: keywordData.reduce((sum, k) => sum + (k.clicks || 0), 0),
-                totalImpressions: keywordData.reduce((sum, k) => sum + (k.impressions || 0), 0),
-                avgCTR: keywordData.length > 0 
-                  ? keywordData.reduce((sum, k) => sum + (k.ctr || 0), 0) / keywordData.length
-                  : 0,
-                avgPosition: keywordData.length > 0
-                  ? keywordData.reduce((sum, k) => sum + (k.position || 0), 0) / keywordData.length
-                  : 0,
-                keywordCount: keywordData.length,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('keywords', keywordData, aggregates, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && (() => {
+          const metrics = {
+            keywordsData: tableData || [],
+            hasGSCConnection,
+            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[Keywords] AI分析に送信するデータ:', {
+            keywordsDataCount: metrics.keywordsData.length,
+            hasGSC: metrics.hasGSCConnection,
+            sampleData: metrics.keywordsData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.KEYWORDS}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
     </>
   );

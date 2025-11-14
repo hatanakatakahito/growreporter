@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { setPageTitle } from '../utils/pageTitle';
+import { Link } from 'react-router-dom';
 import CreatableSelect from 'react-select/creatable';
 import { useSite } from '../contexts/SiteContext';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
@@ -9,7 +10,6 @@ import ErrorAlert from '../components/common/ErrorAlert';
 import { Plus, Edit, Trash2, GitMerge, Settings, Info } from 'lucide-react';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
-import { formatForAI } from '../utils/aiDataFormatter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions, db } from '../config/firebase';
@@ -158,10 +158,24 @@ export default function ReverseFlow() {
 
   // React Select用のオプション
   const pagePathOptions = useMemo(() => {
-    return pagePathsData.map(path => ({
-      value: path,
-      label: path,
-    }));
+    if (!pagePathsData || pagePathsData.length === 0) {
+      return [];
+    }
+    return pagePathsData.map(item => {
+      // 新しい形式（{ path, title }）と古い形式（文字列）の両方に対応
+      if (typeof item === 'string') {
+        return {
+          value: item,
+          label: item,
+          title: item,
+        };
+      }
+      return {
+        value: item.path,
+        label: item.path,
+        title: item.title,
+      };
+    });
   }, [pagePathsData]);
 
   // 初回表示時に最初のフローを選択
@@ -444,17 +458,28 @@ export default function ReverseFlow() {
           </div>
 
           {!conversionEvents || conversionEvents.length === 0 ? (
-            <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
-              <Info className="mx-auto mb-4 h-12 w-12 text-orange-500" />
-              <p className="mb-4 text-body-color">
-                コンバージョンイベントが設定されていません。
-                <br />
-                分析を開始するには設定が必要です。
-              </p>
-              <button className="inline-flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3">
-                <Settings className="h-4 w-4" />
-                設定する
-              </button>
+            <div className="mt-8 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 shadow-sm dark:bg-red-900/20 dark:border-red-600">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-600 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
+                    コンバージョン定義が未設定です
+                  </h3>
+                  <p className="mt-1 text-sm text-red-700 dark:text-red-400">
+                    正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
+                  </p>
+                  <Link
+                    to={`/sites/${selectedSiteId}/edit?step=4`}
+                    className="mt-3 inline-block rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
+                  >
+                    サイト設定（STEP4）でコンバージョンを設定する
+                  </Link>
+                </div>
+              </div>
             </div>
           ) : (
             <>
@@ -640,29 +665,37 @@ export default function ReverseFlow() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.REVERSE_FLOW}
-            metrics={(() => {
-              // 逆算フローデータを準備（複雑なのでそのまま渡す）
-              const reverseFlowData = {
-                summaryData,
-                monthlyData,
-                flowData,
-              };
-              
-              // コンバージョンイベント名のリスト
-              const conversionEventNames = selectedSite?.conversionEvents?.map(e => e.displayName || e.eventName) || [];
-              
-              // formatForAI関数を使用してデータをフォーマット
-              return formatForAI('reverseFlow', reverseFlowData, {}, conversionEventNames);
-            })()}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
-          />
-        )}
+        {selectedSiteId && selectedFlow && (() => {
+          const metrics = {
+            flowData: {
+              flowName: selectedFlow?.flow_name || '',
+              formPagePath: selectedFlow?.form_page_path || '',
+              targetCvEvent: selectedFlow?.target_cv_event || '',
+            },
+            summaryData: summaryData || {},
+            monthlyData: monthlyData || [],
+            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+          };
+          
+          console.log('[ReverseFlow] AI分析に送信するデータ:', {
+            flowName: metrics.flowData.flowName,
+            hasSummaryData: !!metrics.summaryData,
+            monthlyDataCount: metrics.monthlyData.length,
+            sampleMonthlyData: metrics.monthlyData.slice(0, 3),
+          });
+          
+          return (
+            <AIFloatingButton
+              pageType={PAGE_TYPES.REVERSE_FLOW}
+              metrics={metrics}
+              period={{
+                startDate: dateRange.from,
+                endDate: dateRange.to,
+              }}
+            />
+          );
+        })()}
       </main>
 
       {/* ダイアログ（フロー設定） */}
@@ -705,6 +738,14 @@ export default function ReverseFlow() {
                   noOptionsMessage={() => 'ページパスが見つかりません'}
                   loadingMessage={() => '読み込み中...'}
                   formatCreateLabel={(inputValue) => `"${inputValue}" を使用`}
+                  formatOptionLabel={(option) => (
+                    <div className="py-1">
+                      <div className="font-medium text-dark dark:text-white">{option.label}</div>
+                      {option.title && option.title !== option.label && (
+                        <div className="text-xs text-body-color mt-0.5">{option.title}</div>
+                      )}
+                    </div>
+                  )}
                   styles={{
                     control: (base) => ({
                       ...base,
@@ -717,6 +758,10 @@ export default function ReverseFlow() {
                     menu: (base) => ({
                       ...base,
                       zIndex: 9999,
+                    }),
+                    option: (base) => ({
+                      ...base,
+                      padding: '8px 12px',
                     }),
                   }}
                 />
