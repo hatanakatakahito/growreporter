@@ -35,22 +35,11 @@ export default function Hour() {
   const [searchParams] = useSearchParams();
   const [hiddenBars, setHiddenBars] = useState({});
   const [activeTab, setActiveTab] = useState('chart');
-  const [isAnimating, setIsAnimating] = useState(false);
 
   // ページタイトルを設定
   useEffect(() => {
     setPageTitle('時間別分析');
   }, []);
-
-  // AI分析ボタンのアニメーションは削除（パフォーマンス改善のため）
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     setIsAnimating(true);
-  //     setTimeout(() => setIsAnimating(false), 1500);
-  //   }, 5000);
-
-  //   return () => clearInterval(interval);
-  // }, []);
 
   // URLパラメータのsiteIdがあれば選択
   useEffect(() => {

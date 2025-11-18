@@ -33,22 +33,11 @@ export default function Day() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const [hiddenLines, setHiddenLines] = useState({});
   const [activeTab, setActiveTab] = useState('chart');
-  const [isAnimating, setIsAnimating] = useState(false);
 
   // ページタイトルを設定
   useEffect(() => {
-    setPageTitle('曜日別分析');
+    setPageTitle('日別分析');
   }, []);
-
-  // AI分析ボタンのアニメーションは削除（パフォーマンス改善のため）
-  // useEffect(() => {
-  //   const interval = setInterval(() => {
-  //     setIsAnimating(true);
-  //     setTimeout(() => setIsAnimating(false), 1500);
-  //   }, 5000);
-
-  //   return () => clearInterval(interval);
-  // }, []);
 
   // ✅ GA4日別コンバージョンデータ取得（サイト設定で定義したコンバージョンイベントのみ）
   const {
