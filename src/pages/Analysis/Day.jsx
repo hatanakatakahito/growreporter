@@ -293,30 +293,16 @@ export default function Day() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            dailyData: chartData || [],  // ← 画面表示データをそのまま使用
-            hasConversionDefinitions: dailyData?.hasConversionEvents || false,
-            conversionEventNames: dailyData?.conversionEventNames || [],
-          };
-          
-          console.log('[Day] AI分析に送信するデータ:', {
-            dailyDataCount: metrics.dailyData.length,
-            hasConversions: metrics.hasConversionDefinitions,
-            sampleData: metrics.dailyData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.DAY}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && dailyData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.DAY}
+            rawData={dailyData}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

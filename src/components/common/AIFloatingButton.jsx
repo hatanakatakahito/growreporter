@@ -7,8 +7,12 @@ import PlanLimitModal from './PlanLimitModal';
 /**
  * AI分析フローティングボタン
  * 全ページ統一の右下固定ボタン
+ * @param {string} pageType - ページタイプ
+ * @param {object} rawData - フロント画面で取得したCloud Functionの生データ（推奨）
+ * @param {object} metrics - AI分析用メトリクス（旧方式・後方互換性用）
+ * @param {object} period - 分析期間 { startDate, endDate }
  */
-export default function AIFloatingButton({ pageType, metrics, period }) {
+export default function AIFloatingButton({ pageType, rawData, metrics, period }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [shouldAnimate, setShouldAnimate] = useState(false);
@@ -84,6 +88,7 @@ export default function AIFloatingButton({ pageType, metrics, period }) {
       {isModalOpen && (
         <AIAnalysisModal
           pageType={pageType}
+          rawData={rawData}
           metrics={metrics}
           period={period}
           onClose={() => setIsModalOpen(false)}

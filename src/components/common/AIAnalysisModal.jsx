@@ -14,8 +14,14 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
 /**
  * AI分析結果を表示するサイドシート（シート型UI）
+ * @param {string} pageType - ページタイプ
+ * @param {object} rawData - フロント画面で取得したCloud Functionの生データ（推奨）
+ * @param {object} metrics - AI分析用メトリクス（旧方式・後方互換性用）
+ * @param {object} period - 分析期間 { startDate, endDate }
+ * @param {function} onClose - モーダルを閉じる関数
+ * @param {function} onLimitExceeded - 制限超過時のコールバック
  */
-export default function AIAnalysisModal({ pageType, metrics, period, onClose, onLimitExceeded }) {
+export default function AIAnalysisModal({ pageType, rawData, metrics, period, onClose, onLimitExceeded }) {
   const { selectedSiteId, selectedSite } = useSite();
   const { checkCanGenerate } = usePlan();
   const { user } = useAuth();
@@ -74,7 +80,8 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
         throw new Error('ページタイプが指定されていません');
       }
       
-      if (!metrics || typeof metrics !== 'object') {
+      // rawDataもmetricsもない場合はエラー
+      if (!rawData && (!metrics || typeof metrics !== 'object')) {
         throw new Error('分析データが不正です');
       }
       
@@ -86,19 +93,34 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
       console.log('[AIAnalysisModal] AI分析リクエスト:', {
         siteId: selectedSiteId,
         pageType,
-        metricsKeys: Object.keys(metrics),
+        hasRawData: !!rawData,
+        hasMetrics: !!metrics,
+        rawDataKeys: rawData ? Object.keys(rawData) : [],
+        metricsKeys: metrics ? Object.keys(metrics) : [],
         startDate: period?.startDate,
         endDate: period?.endDate,
       });
       
-      const result = await generateAISummary({
+      // 新方式と旧方式の両対応
+      const requestData = {
         siteId: selectedSiteId,
         pageType,
-        metrics: metrics,
         startDate: period?.startDate,
         endDate: period?.endDate,
         forceRegenerate,
-      });
+      };
+      
+      // rawDataがあれば優先的に使用（新方式）
+      if (rawData) {
+        requestData.rawData = rawData;
+        console.log('[AIAnalysisModal] 新方式: rawDataを送信');
+      } else if (metrics) {
+        // metricsのみの場合（旧方式・後方互換性）
+        requestData.metrics = metrics;
+        console.log('[AIAnalysisModal] 旧方式: metricsを送信');
+      }
+      
+      const result = await generateAISummary(requestData);
 
       if (!result || !result.data) {
         throw new Error('AI分析の結果が取得できませんでした');
@@ -106,7 +128,7 @@ export default function AIAnalysisModal({ pageType, metrics, period, onClose, on
 
       const data = result.data;
       
-      if (!data.summary || data.summary.trim() === '') {
+      if (!data.summary) {
         throw new Error('AI分析の要約が生成されませんでした');
       }
       

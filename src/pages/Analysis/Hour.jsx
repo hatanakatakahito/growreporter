@@ -315,30 +315,16 @@ export default function Hour() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            hourlyData: chartData || [],  // ← 画面表示データをそのまま使用
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[Hour] AI分析に送信するデータ:', {
-            hourlyDataCount: metrics.hourlyData.length,
-            hasConversions: metrics.hasConversionDefinitions,
-            sampleData: metrics.hourlyData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.HOUR}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && hourData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.HOUR}
+            rawData={hourData}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );
