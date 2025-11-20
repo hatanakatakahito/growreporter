@@ -13,7 +13,6 @@ import { PAGE_TYPES } from '../constants/plans';
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
-import SankeyMock3 from '../components/PageFlow/SankeyMock3';
 
 /**
  * ページフロー画面
@@ -25,7 +24,6 @@ export default function PageFlow() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPage, setSelectedPage] = useState('');
   const [selectedPageOption, setSelectedPageOption] = useState(null);
-  const [activeTab, setActiveTab] = useState('chart');
 
   // ページタイトルを設定
   useEffect(() => {
@@ -179,7 +177,6 @@ export default function PageFlow() {
     return new Intl.NumberFormat('ja-JP').format(Math.round(num));
   };
 
-
   return (
     <>
       <Sidebar />
@@ -277,167 +274,89 @@ export default function PageFlow() {
                 <>
                   {/* ページ概要 */}
                   <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-                    <div className="mb-4">
-                      <div className="text-sm font-medium text-body-color">このページの合計ページビュー</div>
-                      <div className="mt-1 text-4xl font-bold text-dark dark:text-white">
-                        {formatNumber(transitionData.metrics.pageViews)}
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="text-sm text-body-color">このページの合計ページビュー</div>
+                        <div className="mt-1 text-3xl font-bold text-dark dark:text-white">
+                          {formatNumber(transitionData.metrics.pageViews)}
+                        </div>
                       </div>
+                      {transitionData.trafficBreakdown && (
+                        <div className="text-right">
+                          <div className="text-sm text-body-color">サイト内遷移</div>
+                          <div className="mt-1 text-2xl font-bold text-primary">
+                            {formatNumber(transitionData.trafficBreakdown.internal.count)}
+                          </div>
+                          <div className="text-xs text-body-color">
+                            （{transitionData.trafficBreakdown.internal.percentage}%）
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    {transitionData.trafficBreakdown && (
-                      <>
-                        <div className="mb-3 border-t border-stroke pt-3 dark:border-dark-3">
-                          <div className="text-sm font-medium text-body-color">内訳</div>
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                          <div className="rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark-2">
-                            <div className="text-xs text-body-color">ランディングページ</div>
-                            <div className="mt-1 text-2xl font-bold text-primary">
-                              {formatNumber(transitionData.metrics.pageViews - transitionData.trafficBreakdown.total)}
-                            </div>
-                            <div className="text-xs text-body-color">
-                              （{((transitionData.metrics.pageViews - transitionData.trafficBreakdown.total) / transitionData.metrics.pageViews * 100).toFixed(1)}%）
-                            </div>
-                          </div>
-                          <div className="rounded-lg border-2 border-primary bg-blue-50 p-4 dark:bg-blue-900/20">
-                            <div className="text-xs text-body-color">サイト内遷移から</div>
-                            <div className="mt-1 text-2xl font-bold text-primary">
-                              {formatNumber(transitionData.trafficBreakdown.internal.count)}
-                            </div>
-                            <div className="text-xs text-body-color">
-                              （{((transitionData.trafficBreakdown.internal.count / transitionData.metrics.pageViews) * 100).toFixed(1)}%）
-                            </div>
-                          </div>
-                          <div className="rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark-2">
-                            <div className="text-xs text-body-color">外部・直接アクセスから</div>
-                            <div className="mt-1 text-2xl font-bold text-primary">
-                              {formatNumber((transitionData.trafficBreakdown.external.count || 0) + (transitionData.trafficBreakdown.direct.count || 0))}
-                            </div>
-                            <div className="text-xs text-body-color">
-                              （{(((transitionData.trafficBreakdown.external.count || 0) + (transitionData.trafficBreakdown.direct.count || 0)) / transitionData.metrics.pageViews * 100).toFixed(1)}%）
-                            </div>
-                          </div>
-                        </div>
-                        <div className="mt-4 rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
+                  </div>
+
+                  {/* サイト内の直前ページ */}
+                  {transitionData.inbound && transitionData.inbound.length > 0 && (
+                    <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+                      <div className="border-b border-stroke p-6 dark:border-dark-3">
+                        <h3 className="text-lg font-semibold text-dark dark:text-white">
+                          サイト内の直前ページ (Top 10)
+                        </h3>
+                        <div className="mt-2 rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
                           <p className="text-sm text-blue-900 dark:text-blue-100">
                             このページ（<strong>{formatNumber(transitionData.metrics.pageViews)}PV</strong>）のうち、
-                            <strong>{formatNumber(transitionData.metrics.pageViews - transitionData.trafficBreakdown.total)}PV</strong> は
-                            ランディングページ（セッションの最初のページ）としてのアクセスです。
+                            サイト内を経由したページビューは <strong>{formatNumber(transitionData.trafficBreakdown?.internal.count || 0)}PV
+                            （{transitionData.trafficBreakdown?.internal.percentage || 0}%）</strong>です。
                           </p>
-                          <p className="mt-2 text-sm text-blue-900 dark:text-blue-100">
-                            残り<strong>{formatNumber(transitionData.trafficBreakdown.total)}PV</strong>の遷移元は、
-                            サイト内が <strong>{formatNumber(transitionData.trafficBreakdown.internal.count)}PV
-                            （{transitionData.trafficBreakdown.internal.percentage}%）</strong>、
-                            外部・直接が <strong>{formatNumber((transitionData.trafficBreakdown.external.count || 0) + (transitionData.trafficBreakdown.direct.count || 0))}PV
-                            （{((transitionData.trafficBreakdown.external.percentage || 0) + (transitionData.trafficBreakdown.direct.percentage || 0)).toFixed(1)}%）</strong>です。
+                          <p className="mt-2 text-xs text-blue-800 dark:text-blue-200">
+                            残りの {formatNumber((transitionData.trafficBreakdown?.external.count || 0) + (transitionData.trafficBreakdown?.direct.count || 0))}PV は、
+                            外部サイト（Google検索、SNS等）やブックマークから直接アクセスされているため、
+                            サイト内の直前ページは存在しません。
                           </p>
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* タブ */}
-                  <div className="flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
-                    <button
-                      onClick={() => setActiveTab('chart')}
-                      className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition ${
-                        activeTab === 'chart'
-                          ? 'bg-primary text-white'
-                          : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
-                      }`}
-                    >
-                      グラフ形式
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('table')}
-                      className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition ${
-                        activeTab === 'table'
-                          ? 'bg-primary text-white'
-                          : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
-                      }`}
-                    >
-                      表形式
-                    </button>
-                  </div>
-
-                  {/* タブコンテンツ */}
-                  {activeTab === 'chart' ? (
-                    /* ページフロービジュアライゼーション */
-                    transitionData && (
-                      <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
-                        <div className="border-b border-stroke p-6 dark:border-dark-3">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <h3 className="text-lg font-semibold text-dark dark:text-white">
-                                ページフロー可視化
-                              </h3>
-                              <p className="mt-1 text-sm text-body-color">
-                                サイト内ページ遷移と外部流入の全体像を表示
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="p-6">
-                          <SankeyMock3 
-                            transitionData={transitionData} 
-                            selectedPage={selectedPage}
-                            selectedPageTitle={pagePathsData?.find(p => p.path === selectedPage)?.title || null}
-                            formatNumber={formatNumber} 
-                          />
                         </div>
                       </div>
-                    )
-                  ) : (
-                    /* サイト内の直前ページ */
-                    transitionData.inbound && transitionData.inbound.length > 0 && (
-                      <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
-                        <div className="border-b border-stroke p-6 dark:border-dark-3">
-                          <h3 className="text-lg font-semibold text-dark dark:text-white">
-                            サイト内の直前ページ (Top 10)
-                          </h3>
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full">
-                            <thead className="border-b border-stroke dark:border-dark-3">
-                              <tr>
-                                <th className="whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark dark:text-white">
-                                  直前に閲覧していたページ
-                                </th>
-                                <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">
-                                  ページビュー
-                                </th>
-                                <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">
-                                  割合*
-                                </th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {transitionData.inbound.map((item, index) => (
-                                <tr key={index} className="border-b border-stroke last:border-0 dark:border-dark-3">
-                                  <td className="whitespace-nowrap px-4 py-3 text-sm text-dark dark:text-white">
-                                    {item.page}
-                                  </td>
-                                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-dark dark:text-white">
-                                    {formatNumber(item.pageViews)}
-                                  </td>
-                                  <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-body-color">
-                                    {item.percentage.toFixed(1)}%
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr>
-                                <td colSpan="3" className="px-4 py-3">
-                                  <p className="text-xs text-body-color">
-                                    * サイト内遷移（{formatNumber(transitionData.trafficBreakdown?.internal.count || 0)}PV）に対する割合
-                                  </p>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                          <thead className="border-b border-stroke dark:border-dark-3">
+                            <tr>
+                              <th className="whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark dark:text-white">
+                                直前に閲覧していたページ
+                              </th>
+                              <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">
+                                ページビュー
+                              </th>
+                              <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">
+                                割合*
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {transitionData.inbound.map((item, index) => (
+                              <tr key={index} className="border-b border-stroke last:border-0 dark:border-dark-3">
+                                <td className="whitespace-nowrap px-4 py-3 text-sm text-dark dark:text-white">
+                                  {item.page}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-dark dark:text-white">
+                                  {formatNumber(item.pageViews)}
+                                </td>
+                                <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-body-color">
+                                  {item.percentage.toFixed(1)}%
                                 </td>
                               </tr>
-                            </tfoot>
-                          </table>
-                        </div>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr>
+                              <td colSpan="3" className="px-4 py-3">
+                                <p className="text-xs text-body-color">
+                                  * サイト内遷移（{formatNumber(transitionData.trafficBreakdown?.internal.count || 0)}PV）に対する割合
+                                </p>
+                              </td>
+                            </tr>
+                          </tfoot>
+                        </table>
                       </div>
-                    )
+                    </div>
                   )}
                 </>
               ) : null}
@@ -446,17 +365,10 @@ export default function PageFlow() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && selectedPage && transitionData && (
+        {selectedSiteId && selectedPage && !transitionIsLoading && transitionData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.PAGE_FLOW}
-            metrics={{
-              pagePath: selectedPage,
-              metrics: {
-                pageViews: transitionData.metrics?.pageViews || 0,
-              },
-              inbound: transitionData.inbound,
-              trafficBreakdown: transitionData.trafficBreakdown,
-            }}
+            rawData={transitionData}
             period={{
               startDate: dateRange.from,
               endDate: dateRange.to,

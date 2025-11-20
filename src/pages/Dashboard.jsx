@@ -773,93 +773,41 @@ export default function Dashboard() {
         });
       }
 
-      const aiMetrics = {
-        // 現在期間の基本メトリクス
-        users: data.metrics?.totalUsers || 0,
-        newUsers: data.metrics?.newUsers || 0,
-        sessions: data.metrics?.sessions || 0,
-        pageViews: data.metrics?.pageViews || 0,
-        engagementRate: data.metrics?.engagementRate || 0,
-        bounceRate: data.metrics?.bounceRate || 0,
-        avgSessionDuration: data.metrics?.averageSessionDuration || 0,
-        conversions: totalConversions, // ✅ 総コンバージョン数（数値）
-        conversionRate: data.metrics?.sessions > 0 ? (totalConversions / data.metrics.sessions) : 0,
-        
-        // コンバージョン内訳
-        conversionBreakdown: conversionBreakdown,
-        hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-        
-        // KPI予実
-        kpiData: kpiData,
-        hasKpiSettings: kpiData.length > 0,
-        
-        // 13ヶ月推移データ
-        monthlyData: monthlyTrendData?.monthlyData || [],
-        monthlyDataCount: monthlyTrendData?.monthlyData?.length || 0,
-        monthlyTrendText: (() => {
-          if (!monthlyTrendData?.monthlyData || monthlyTrendData.monthlyData.length === 0) {
-            return '';
-          }
-          
-          // 月次推移データを整形（ConversionList.jsxと同じパターン）
-          const trendText = monthlyTrendData.monthlyData.map(month => {
-            const monthLabel = month.label || month.month || month.date || '月';
-            const users = month.users || month.totalUsers || 0;
-            const sessions = month.sessions || 0;
-            const pageViews = month.pageViews || month.screenPageViews || 0;
-            const engRate = month.engagementRate || 0;
-            const convs = month.conversions || 0;
-            return `${monthLabel}: ユーザー${users.toLocaleString()}人, セッション${sessions.toLocaleString()}回, PV${pageViews.toLocaleString()}, ENG率${(engRate * 100).toFixed(1)}%, CV${convs}件`;
-          }).join('\n');
-          
-          return trendText;
-        })(),
-        
-        // 前月比較データ（月次変化率計算用）
-        monthOverMonth: previousMonthData ? {
-          users: {
-            current: data.metrics?.totalUsers || 0,
-            previous: previousMonthData.metrics?.totalUsers || 0,
-            change: previousMonthData.metrics?.totalUsers > 0 
-              ? ((data.metrics?.totalUsers || 0) - previousMonthData.metrics.totalUsers) / previousMonthData.metrics.totalUsers * 100 
-              : 0,
-          },
-          sessions: {
-            current: data.metrics?.sessions || 0,
-            previous: previousMonthData.metrics?.sessions || 0,
-            change: previousMonthData.metrics?.sessions > 0 
-              ? ((data.metrics?.sessions || 0) - previousMonthData.metrics.sessions) / previousMonthData.metrics.sessions * 100 
-              : 0,
-          },
-          conversions: {
-            current: totalConversions,
-            previous: previousMonthTotalConversions,
-            change: previousMonthTotalConversions > 0 
-              ? ((totalConversions - previousMonthTotalConversions) / previousMonthTotalConversions) * 100 
-              : 0,
-          },
-          engagementRate: {
-            current: data.metrics?.engagementRate || 0,
-            previous: previousMonthData.metrics?.engagementRate || 0,
-            change: previousMonthData.metrics?.engagementRate > 0 
-              ? (((data.metrics?.engagementRate || 0) - previousMonthData.metrics.engagementRate) / previousMonthData.metrics.engagementRate) * 100 
-              : 0,
-          },
+      // rawData方式：既に取得したデータをそのまま渡す
+      const dashboardRawData = {
+        // 現在期間のデータ
+        current: {
+          metrics: data.metrics,
+          conversions: data.conversions,
+          totalConversions,
+          conversionBreakdown,
+        },
+        // 前月期間のデータ
+        previousMonth: previousMonthData ? {
+          metrics: previousMonthData.metrics,
+          conversions: previousMonthData.conversions,
+          totalConversions: previousMonthTotalConversions,
         } : null,
-        
-        // 前年同月比較データ
+        // 前年同月期間のデータ
         yearAgo: yearAgoData ? {
-          users: yearAgoData.metrics?.totalUsers || 0,
-          sessions: yearAgoData.metrics?.sessions || 0,
-          pageViews: yearAgoData.metrics?.pageViews || 0,
-          conversions: yearAgoTotalConversions, // ✅ 総コンバージョン数（数値）
+          metrics: yearAgoData.metrics,
+          conversions: yearAgoData.conversions,
+          totalConversions: yearAgoTotalConversions,
         } : null,
+        // 13ヶ月推移データ
+        monthlyTrend: monthlyTrendData?.monthlyData || [],
+        // KPI設定
+        kpiData,
+        hasKpiSettings: kpiData.length > 0,
+        // コンバージョン定義
+        hasConversionEvents: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+        conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
       };
       
       return (
         <AIFloatingButton
           pageType={PAGE_TYPES.DASHBOARD}
-          metrics={aiMetrics}
+          rawData={dashboardRawData}
           period={{
             startDate: dateRange.from,
             endDate: dateRange.to,

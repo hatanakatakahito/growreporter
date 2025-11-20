@@ -1,8 +1,8 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { logger } from 'firebase-functions/v2';
 import { checkCanGenerate, incrementGenerationCount } from '../utils/planManager.js';
 import { getCachedAnalysis, saveCachedAnalysis } from '../utils/aiCacheManager.js';
-import { getActivePromptTemplate, incrementPromptUsage } from '../utils/promptManager.js';
 
 /**
  * AI要約生成 Callable Function
@@ -14,7 +14,9 @@ import { getActivePromptTemplate, incrementPromptUsage } from '../utils/promptMa
  */
 export async function generateAISummaryCallable(request) {
   const db = getFirestore();
-  const { siteId, pageType, startDate, endDate, metrics, rawData, forceRegenerate = false } = request.data;
+  // 【重要】legacyMetrics は後方互換性のためのみ残している
+  // 実際には rawData → finalMetrics → metrics という流れで使用する
+  const { siteId, pageType, startDate, endDate, metrics: legacyMetrics, rawData, forceRegenerate = false } = request.data;
 
   // 入力バリデーション
   if (!siteId || !pageType || !startDate || !endDate) {
@@ -24,8 +26,8 @@ export async function generateAISummaryCallable(request) {
     );
   }
   
-  // rawDataもmetricsも渡されていない場合はエラー
-  if (!metrics && !rawData) {
+  // rawDataもlegacyMetricsも渡されていない場合はエラー
+  if (!legacyMetrics && !rawData) {
     throw new HttpsError(
       'invalid-argument',
       'metrics or rawData is required'
@@ -121,22 +123,31 @@ export async function generateAISummaryCallable(request) {
     }
 
     // 5. メトリクスの準備（新方式・旧方式の両対応）
-    let finalMetrics;
+    // 【重要】ここで metrics 変数を定義し、以降はこれのみを使用
+    let metrics;
     
     if (rawData) {
-      // ✅ 新方式：rawDataが渡されている場合は変換
-      console.log('[generateAISummary] 新方式: rawDataをmetricsに変換');
-      finalMetrics = formatRawDataToMetrics(rawData, pageType);
-      console.log('[generateAISummary] 変換後のメトリクス keys:', Object.keys(finalMetrics));
+      // ✅ 新方式（推奨）：rawDataが渡されている場合は変換
+      console.log('[generateAISummary] ✅ 新方式: rawDataをmetricsに変換');
+      metrics = formatRawDataToMetrics(rawData, pageType);
+      console.log('[generateAISummary] 変換後のメトリクス keys:', Object.keys(metrics));
     } else {
-      // ❌ 旧方式：metricsが直接渡されている場合（後方互換性）
-      console.log('[generateAISummary] 旧方式: フロントから受け取ったmetricsを使用');
-      finalMetrics = metrics;
+      // ❌ 旧方式（非推奨・後方互換性のみ）：legacyMetricsが直接渡されている場合
+      console.log('[generateAISummary] ⚠️ 旧方式: フロントから受け取ったlegacyMetricsを使用（非推奨）');
+      metrics = legacyMetrics;
+    }
+    
+    // metricsが未定義の場合はエラー
+    if (!metrics) {
+      throw new HttpsError(
+        'invalid-argument',
+        'Failed to prepare metrics data'
+      );
     }
     
     // 6. プロンプト生成
-    console.log('[generateAISummary] メトリクスデータ:', JSON.stringify(finalMetrics, null, 2));
-    const prompt = await generatePrompt(db, pageType, startDate, endDate, finalMetrics);
+    console.log('[generateAISummary] メトリクスデータ:', JSON.stringify(metrics, null, 2));
+    const prompt = await generatePrompt(db, pageType, startDate, endDate, metrics);
     console.log('[generateAISummary] 生成されたプロンプト (先頭500文字):', prompt.substring(0, 500));
 
     // 7. Gemini API呼び出し
@@ -222,7 +233,7 @@ export async function generateAISummaryCallable(request) {
       endDate,
       summary,
       recommendations,
-      metrics: JSON.parse(JSON.stringify(metrics)), // undefinedを除外
+      metrics: JSON.parse(JSON.stringify(metrics)), // undefinedを除外（metricsは常に定義済み）
       generatedAt: Timestamp.fromDate(now),
       createdAt: Timestamp.fromDate(now),
     };
@@ -728,149 +739,407 @@ function formatRawDataToMetrics(rawData, pageType) {
       };
 
     case 'dashboard':
-    case 'summary':
-      // ダッシュボード・サマリー
-      // rawDataがすでに整形済みの形式で来る想定
+      // ダッシュボード：current, previousMonth, yearAgo, monthlyTrend を受け取る
+      const current = rawData.current || {};
+      const prev = rawData.previousMonth || null;
+      const yearAgo = rawData.yearAgo || null;
+      
+      // 前月比を計算
+      let monthOverMonth = null;
+      if (prev && prev.metrics) {
+        monthOverMonth = {
+          users: {
+            current: current.metrics?.totalUsers || 0,
+            previous: prev.metrics.totalUsers || 0,
+            change: prev.metrics.totalUsers > 0 
+              ? ((current.metrics?.totalUsers || 0) - prev.metrics.totalUsers) / prev.metrics.totalUsers * 100 
+              : 0,
+          },
+          sessions: {
+            current: current.metrics?.sessions || 0,
+            previous: prev.metrics.sessions || 0,
+            change: prev.metrics.sessions > 0 
+              ? ((current.metrics?.sessions || 0) - prev.metrics.sessions) / prev.metrics.sessions * 100 
+              : 0,
+          },
+          conversions: {
+            current: current.totalConversions || 0,
+            previous: prev.totalConversions || 0,
+            change: prev.totalConversions > 0 
+              ? ((current.totalConversions || 0) - prev.totalConversions) / prev.totalConversions * 100 
+              : 0,
+          },
+          engagementRate: {
+            current: current.metrics?.engagementRate || 0,
+            previous: prev.metrics.engagementRate || 0,
+            change: prev.metrics.engagementRate > 0 
+              ? ((current.metrics?.engagementRate || 0) - prev.metrics.engagementRate) / prev.metrics.engagementRate * 100 
+              : 0,
+          },
+        };
+      }
+      
       return {
-        users: rawData.users || rawData.totalUsers || 0,
-        newUsers: rawData.newUsers || 0,
-        sessions: rawData.sessions || 0,
-        pageViews: rawData.pageViews || rawData.screenPageViews || 0,
-        conversions: rawData.conversions || rawData.totalConversions || 0,
-        engagementRate: rawData.engagementRate || 0,
-        bounceRate: rawData.bounceRate || 0,
-        avgSessionDuration: rawData.avgSessionDuration || 0,
-        conversionRate: rawData.conversionRate || 0,
-        conversionBreakdown: rawData.conversionBreakdown || {},
-        monthOverMonth: rawData.monthOverMonth || null,
-        monthlyData: rawData.monthlyData || [],
+        users: current.metrics?.totalUsers || 0,
+        newUsers: current.metrics?.newUsers || 0,
+        sessions: current.metrics?.sessions || 0,
+        pageViews: current.metrics?.pageViews || 0,
+        conversions: current.totalConversions || 0,
+        engagementRate: current.metrics?.engagementRate || 0,
+        bounceRate: current.metrics?.bounceRate || 0,
+        avgSessionDuration: current.metrics?.averageSessionDuration || 0,
+        conversionRate: current.metrics?.sessions > 0 ? (current.totalConversions || 0) / current.metrics.sessions : 0,
+        conversionBreakdown: current.conversionBreakdown || {},
+        monthOverMonth,
+        yearAgoData: yearAgo,
+        monthlyData: rawData.monthlyTrend || [],
         kpiData: rawData.kpiData || [],
-        hasConversionDefinitions: rawData.hasConversionEvents || rawData.hasConversionDefinitions || false,
+        hasConversionDefinitions: rawData.hasConversionEvents || false,
         hasKpiSettings: rawData.hasKpiSettings || false,
       };
 
+    case 'summary':
+      // サマリー（全体サマリー）：current, previousMonth, yearAgo, monthlyTrend を受け取る
+      const summCurrent = rawData.current || {};
+      const summPrev = rawData.previousMonth || null;
+      const summYearAgo = rawData.yearAgo || null;
+      
+      // 前月比を計算
+      let summMonthOverMonth = null;
+      if (summPrev) {
+        const currentUsers = summCurrent.users || summCurrent.totalUsers || 0;
+        const prevUsers = summPrev.users || summPrev.totalUsers || 0;
+        const currentConversions = summCurrent.conversions || 0;
+        const prevConversions = summPrev.conversions || 0;
+        
+        summMonthOverMonth = {
+          users: {
+            current: currentUsers,
+            previous: prevUsers,
+            change: prevUsers > 0 ? ((currentUsers - prevUsers) / prevUsers) * 100 : 0,
+          },
+          sessions: {
+            current: summCurrent.sessions || 0,
+            previous: summPrev.sessions || 0,
+            change: summPrev.sessions > 0 
+              ? ((summCurrent.sessions || 0) - summPrev.sessions) / summPrev.sessions * 100 
+              : 0,
+          },
+          conversions: {
+            current: currentConversions,
+            previous: prevConversions,
+            change: prevConversions > 0 ? ((currentConversions - prevConversions) / prevConversions) * 100 : 0,
+          },
+          engagementRate: {
+            current: summCurrent.engagementRate || 0,
+            previous: summPrev.engagementRate || 0,
+            change: summPrev.engagementRate > 0 
+              ? ((summCurrent.engagementRate || 0) - summPrev.engagementRate) / summPrev.engagementRate * 100 
+              : 0,
+          },
+        };
+      }
+      
+      return {
+        users: summCurrent.users || summCurrent.totalUsers || 0,
+        sessions: summCurrent.sessions || 0,
+        pageViews: summCurrent.pageViews || summCurrent.screenPageViews || 0,
+        conversions: summCurrent.conversions || 0,
+        engagementRate: summCurrent.engagementRate || 0,
+        conversionRate: summCurrent.sessions > 0 ? (summCurrent.conversions || 0) / summCurrent.sessions : 0,
+        monthOverMonth: summMonthOverMonth,
+        yearAgoData: summYearAgo,
+        monthlyData: rawData.monthlyTrend || [],
+        hasConversionDefinitions: rawData.hasConversionEvents || false,
+        conversionEventNames: rawData.conversionEventNames || [],
+      };
+
     case 'users':
-      // ユーザー属性分析
+      // ユーザー属性分析：fetchGA4UserDemographics の結果
       return {
         totalUsers: rawData.totalUsers || 0,
         totalSessions: rawData.totalSessions || 0,
-        demographicsData: rawData.demographicsData || null,
+        demographicsData: rawData || null,
+        newReturning: rawData.newReturning || [],
+        device: rawData.device || [],
+        location: rawData.location || {},
+        age: rawData.age || [],
+        gender: rawData.gender || [],
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
       };
 
     case 'reverseFlow':
-      // 逆算フロー分析
+      // 逆算フロー分析：フロントから { summary, monthly, flow } 構造で受け取る
+      const summary = rawData.summary || {};
+      const monthly = rawData.monthly || [];
+      const flow = rawData.flow || {};
+      const totalSiteViews = summary.totalSiteViews || 0;
+      const formPageViews = summary.formPageViews || 0;
+      const submissionComplete = summary.submissionComplete || 0;
+      const achievementRate1 = totalSiteViews > 0 ? (formPageViews / totalSiteViews) * 100 : 0;
+      const achievementRate2 = formPageViews > 0 ? (submissionComplete / formPageViews) * 100 : 0;
+      const overallCVR = totalSiteViews > 0 ? (submissionComplete / totalSiteViews) * 100 : 0;
       return {
-        flowName: rawData.flowName || 'フロー名未設定',
-        formPagePath: rawData.formPagePath || '未設定',
-        targetCvEvent: rawData.targetCvEvent || '未設定',
-        totalSiteViews: rawData.totalSiteViews || 0,
-        formPageViews: rawData.formPageViews || 0,
-        submissionComplete: rawData.submissionComplete || 0,
-        achievementRate1: rawData.achievementRate1 || 0,
-        achievementRate2: rawData.achievementRate2 || 0,
-        overallCVR: rawData.overallCVR || 0,
-        monthlyData: rawData.monthlyData || [],
+        flowName: flow.flowName || 'フロー名未設定',
+        formPagePath: flow.formPagePath || '未設定',
+        targetCvEvent: flow.targetCvEvent || '未設定',
+        totalSiteViews,
+        formPageViews,
+        submissionComplete,
+        achievementRate1: achievementRate1.toFixed(2),
+        achievementRate2: achievementRate2.toFixed(2),
+        overallCVR: overallCVR.toFixed(2),
+        monthlyData: monthly,
+      };
+
+    case 'pageFlow':
+    case 'page_flow':
+      // ページフロー分析：fetchGA4PageTransition の結果
+      return {
+        pagePath: rawData.pagePath || '',
+        totalPageViews: rawData.totalPageViews || 0,
+        trafficBreakdown: rawData.trafficBreakdown || {},
+        internalTransitions: rawData.internalTransitions || [],
+        transitionCount: rawData.internalTransitions?.length || 0,
       };
 
     case 'channels':
-      // 集客チャネル分析
+      // 集客チャネル分析：fetchGA4ChannelConversionData の結果
+      const channelsRows = rawData.rows || [];
+      const totalSessions = channelsRows.reduce((sum, row) => sum + (row.sessions || 0), 0);
+      const totalUsers = channelsRows.reduce((sum, row) => sum + (row.activeUsers || 0), 0);
+      const totalConversions = channelsRows.reduce((sum, row) => sum + (row.conversions || 0), 0);
+      const channelsText = channelsRows
+        .sort((a, b) => (b.sessions || 0) - (a.sessions || 0))
+        .slice(0, 5)
+        .map(row => `${row.sessionDefaultChannelGroup || row.channel || '不明'}: ${row.sessions || 0}セッション, ${row.conversions || 0}コンバージョン`)
+        .join(', ');
       return {
-        totalSessions: rawData.totalSessions || 0,
-        totalUsers: rawData.totalUsers || 0,
-        totalConversions: rawData.totalConversions || 0,
-        channelCount: rawData.channelCount || 0,
-        channelsText: rawData.channelsText || '',
+        totalSessions,
+        totalUsers,
+        totalConversions,
+        channelCount: channelsRows.length,
+        channelsText,
+        channelsData: channelsRows,
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
       };
 
     case 'keywords':
-      // 流入キーワード分析
+      // 流入キーワード分析：fetchGSCData の結果
+      const topQueries = rawData.topQueries || [];
+      const totalClicks = rawData.metrics?.clicks || 0;
+      const totalImpressions = rawData.metrics?.impressions || 0;
+      const avgCTR = rawData.metrics?.ctr || 0;
+      const avgPosition = rawData.metrics?.position || 0;
+      const topKeywordsText = topQueries
+        .slice(0, 10)
+        .map(q => `${q.query}: ${q.clicks}クリック, ${q.impressions}表示, CTR ${(q.ctr * 100).toFixed(2)}%, 平均順位 ${q.position.toFixed(1)}`)
+        .join('\n');
       return {
-        totalClicks: rawData.totalClicks || 0,
-        totalImpressions: rawData.totalImpressions || 0,
-        avgCTR: rawData.avgCTR || 0,
-        avgPosition: rawData.avgPosition || 0,
-        keywordCount: rawData.keywordCount || 0,
-        topKeywordsText: rawData.topKeywordsText || '',
-        hasGSCConnection: rawData.hasGSCConnection || false,
+        totalClicks,
+        totalImpressions,
+        avgCTR,
+        avgPosition,
+        keywordCount: topQueries.length,
+        topKeywordsText,
+        keywordsData: topQueries,
+        hasGSCConnection: true,
       };
 
     case 'referrals':
-      // 参照元/メディア分析
+      // 参照元/メディア分析：fetchGA4ReferralConversionData の結果
+      const referralsRows = rawData.rows || [];
+      const referralsTotalSessions = referralsRows.reduce((sum, row) => sum + (row.sessions || 0), 0);
+      const referralsTotalUsers = referralsRows.reduce((sum, row) => sum + (row.users || 0), 0);
+      const referralsTotalConversions = referralsRows.reduce((sum, row) => sum + (row.conversions || 0), 0);
+      const avgConversionRate = referralsTotalSessions > 0 ? (referralsTotalConversions / referralsTotalSessions) * 100 : 0;
+      const topReferralsText = referralsRows
+        .sort((a, b) => (b.sessions || 0) - (a.sessions || 0))
+        .slice(0, 10)
+        .map(row => {
+          const sessions = row.sessions || 0;
+          const users = row.users || 0;
+          const conversions = row.conversions || 0;
+          const cvr = sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : '0.00';
+          const engRate = ((row.engagementRate || 0) * 100).toFixed(1);
+          const avgDuration = row.avgSessionDuration || 0;
+          const durationMin = Math.floor(avgDuration / 60);
+          const durationSec = Math.floor(avgDuration % 60);
+          return `${row.source}: ${sessions}セッション, ${users}ユーザー, CV ${conversions}件 (CVR ${cvr}%), ENG率 ${engRate}%, 滞在時間 ${durationMin}分${durationSec}秒`;
+        })
+        .join('\n');
       return {
-        totalSessions: rawData.totalSessions || 0,
-        totalUsers: rawData.totalUsers || 0,
-        totalConversions: rawData.totalConversions || 0,
-        avgConversionRate: rawData.avgConversionRate || 0,
-        referralCount: rawData.referralCount || 0,
-        topReferralsText: rawData.topReferralsText || '',
+        totalSessions: referralsTotalSessions,
+        totalUsers: referralsTotalUsers,
+        totalConversions: referralsTotalConversions,
+        avgConversionRate,
+        referralCount: referralsRows.length,
+        topReferralsText,
+        referralsData: referralsRows,
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
       };
 
     case 'landingPages':
-      // ランディングページ分析
+      // ランディングページ分析：fetchGA4LandingPageConversionData の結果
+      const landingPagesRows = rawData.rows || [];
+      const landingPagesTotalSessions = landingPagesRows.reduce((sum, row) => sum + (row.sessions || 0), 0);
+      const landingPagesTotalConversions = landingPagesRows.reduce((sum, row) => sum + (row.conversions || 0), 0);
+      const topLandingPagesText = landingPagesRows
+        .sort((a, b) => (b.sessions || 0) - (a.sessions || 0))
+        .slice(0, 10)
+        .map(row => {
+          const sessions = row.sessions || 0;
+          const engRate = ((row.engagementRate || 0) * 100).toFixed(1);
+          const avgDuration = row.averageSessionDuration ? `${Math.floor(row.averageSessionDuration / 60)}分${Math.floor(row.averageSessionDuration % 60)}秒` : '0秒';
+          const conversions = row.conversions || 0;
+          const cvr = sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : '0.00';
+          return `${row.landingPage}: ${sessions}セッション, ENG率 ${engRate}%, 滞在時間 ${avgDuration}, CV ${conversions}件 (CVR ${cvr}%)`;
+        })
+        .join('\n');
       return {
-        totalSessions: rawData.totalSessions || 0,
-        totalUsers: rawData.totalUsers || 0,
-        totalConversions: rawData.totalConversions || 0,
-        landingPageCount: rawData.landingPageCount || 0,
-        topLandingPagesText: rawData.topLandingPagesText || '',
+        totalSessions: landingPagesTotalSessions,
+        totalConversions: landingPagesTotalConversions,
+        landingPageCount: landingPagesRows.length,
+        topLandingPagesText,
+        landingPagesData: landingPagesRows,
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
       };
 
     case 'pages':
-      // ページ別分析
+      // ページ別分析：useGA4Data (pagePath, pageTitle) の結果
+      const pagesRows = rawData.rows || [];
+      const pagesTotalPageViews = pagesRows.reduce((sum, row) => sum + (row.screenPageViews || 0), 0);
+      const topPagesText = pagesRows
+        .sort((a, b) => (b.screenPageViews || 0) - (a.screenPageViews || 0))
+        .slice(0, 10)
+        .map(row => {
+          const pv = row.screenPageViews || 0;
+          const engRate = ((row.engagementRate || 0) * 100).toFixed(1);
+          const avgDuration = row.averageSessionDuration || 0;
+          const durationMin = Math.floor(avgDuration / 60);
+          const durationSec = Math.floor(avgDuration % 60);
+          return `${row.pagePath || row.pageTitle}: ${pv}PV, ENG率 ${engRate}%, 滞在時間 ${durationMin}分${durationSec}秒`;
+        })
+        .join('\n');
       return {
-        totalPageViews: rawData.totalPageViews || 0,
-        totalSessions: rawData.totalSessions || 0,
-        totalUsers: rawData.totalUsers || 0,
-        pageCount: rawData.pageCount || 0,
-        topPagesText: rawData.topPagesText || '',
+        totalPageViews: pagesTotalPageViews,
+        pageCount: pagesRows.length,
+        topPagesText,
+        pagesData: pagesRows,
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
       };
 
     case 'pageCategories':
-      // ページ分類別分析
+      // ページ分類別分析：categoryDataの結果
+      const pageCategoriesRows = rawData.rows || [];
+      const categoriesTotalPageViews = pageCategoriesRows.reduce((sum, row) => sum + (row.pageViews || 0), 0);
+      
+      // カテゴリ別の詳細テキスト生成（上位10件）
+      const topCategoriesText = pageCategoriesRows
+        .sort((a, b) => (b.pageViews || 0) - (a.pageViews || 0))
+        .slice(0, 10)
+        .map(row => {
+          const category = row.category || '不明';
+          const pageCount = row.pages || 0;
+          const pv = row.pageViews || 0;
+          const percentage = categoriesTotalPageViews > 0 ? ((pv / categoriesTotalPageViews) * 100).toFixed(1) : 0;
+          return `${category}: ${pageCount}ページ, ${pv.toLocaleString()}PV (${percentage}%)`;
+        })
+        .join('\n');
+      
       return {
-        totalPageViews: rawData.totalPageViews || 0,
-        categoryCount: rawData.categoryCount || 0,
-        topCategoriesText: rawData.topCategoriesText || '',
-        hasConversionDefinitions: rawData.hasConversionEvents || false,
-        conversionEventNames: rawData.conversionEventNames || [],
+        totalPageViews: categoriesTotalPageViews,
+        categoryCount: pageCategoriesRows.length,
+        topCategoriesText,
+        pageCategoriesData: pageCategoriesRows,
       };
 
     case 'conversions':
-      // コンバージョン一覧分析
+      // コンバージョン一覧分析：fetchGA4MonthlyConversionData の結果
+      const conversionsData = rawData.data || [];
+      const conversionEventNames = Object.keys(conversionsData[0] || {}).filter(key => key !== 'yearMonth');
+      
+      // イベント別の合計値を計算
+      const eventTotals = {};
+      conversionEventNames.forEach(eventName => {
+        eventTotals[eventName] = conversionsData.reduce((sum, month) => sum + (month[eventName] || 0), 0);
+      });
+      
+      // イベント別の合計をテキスト化
+      const conversionSummaryText = conversionEventNames.length > 0
+        ? conversionEventNames.map(name => `${name}: ${eventTotals[name].toLocaleString()}件`).join(', ')
+        : 'データなし';
+      
+      // 月次データの詳細テキストを生成
+      let monthlyDetailText = '';
+      if (conversionsData.length > 0 && conversionEventNames.length > 0) {
+        monthlyDetailText = '\n\n【月次データ詳細】\n';
+        conversionsData.forEach(month => {
+          const yearMonth = month.yearMonth || '不明';
+          const eventDetails = conversionEventNames.map(name => `${name}: ${month[name] || 0}件`).join(', ');
+          monthlyDetailText += `${yearMonth}: ${eventDetails}\n`;
+        });
+      }
+      
+      // 当月（最新月）のデータを取得
+      const latestMonth = conversionsData.length > 0 ? conversionsData[conversionsData.length - 1] : null;
+      const latestMonthText = latestMonth
+        ? conversionEventNames.map(name => `${name}: ${latestMonth[name] || 0}件`).join(', ')
+        : 'データなし';
+      
       return {
-        monthlyDataPoints: rawData.monthlyDataPoints || 0,
-        conversionEventCount: rawData.conversionEventCount || 0,
-        conversionSummaryText: rawData.conversionSummaryText || '',
+        monthlyDataPoints: conversionsData.length,
+        conversionEventCount: conversionEventNames.length,
+        conversionSummaryText,
+        monthlyDetailText,
+        latestMonth: latestMonth?.yearMonth || '不明',
+        latestMonthText,
+        monthlyConversions: conversionsData,
+        conversionEventNames,
+        eventTotals,
       };
 
     case 'fileDownloads':
-      // ファイルダウンロード分析
+      // ファイルダウンロード分析：useGA4Data (file_download) の結果
+      const downloadRows = rawData.rows?.filter(row => row.eventName === 'file_download') || [];
+      const totalDownloads = downloadRows.reduce((sum, row) => sum + (row.eventCount || 0), 0);
+      const downloadTotalUsers = downloadRows.reduce((sum, row) => sum + (row.activeUsers || 0), 0);
+      const topFilesText = downloadRows
+        .sort((a, b) => (b.eventCount || 0) - (a.eventCount || 0))
+        .slice(0, 10)
+        .map(row => `${row.fileName || row.linkUrl}: ${row.eventCount || 0}ダウンロード`)
+        .join(', ');
       return {
-        totalDownloads: rawData.totalDownloads || 0,
-        totalUsers: rawData.totalUsers || 0,
-        downloadCount: rawData.downloadCount || 0,
-        topFilesText: rawData.topFilesText || '',
+        totalDownloads,
+        totalUsers: downloadTotalUsers,
+        downloadCount: downloadRows.length,
+        topFilesText,
+        downloadsData: downloadRows,
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
       };
 
     case 'externalLinks':
-      // 外部リンククリック分析
+      // 外部リンククリック分析：useGA4Data (click) の結果
+      const clickRows = rawData.rows?.filter(row => row.eventName === 'click') || [];
+      const totalClicksCount = clickRows.reduce((sum, row) => sum + (row.eventCount || 0), 0);
+      const clickTotalUsers = clickRows.reduce((sum, row) => sum + (row.activeUsers || 0), 0);
+      const topLinksText = clickRows
+        .sort((a, b) => (b.eventCount || 0) - (a.eventCount || 0))
+        .slice(0, 10)
+        .map(row => `${row.linkUrl}: ${row.eventCount || 0}クリック`)
+        .join(', ');
       return {
-        totalClicks: rawData.totalClicks || 0,
-        totalUsers: rawData.totalUsers || 0,
-        clickCount: rawData.clickCount || 0,
-        topLinksText: rawData.topLinksText || '',
+        totalClicks: totalClicksCount,
+        totalUsers: clickTotalUsers,
+        clickCount: clickRows.length,
+        topLinksText,
+        linksData: clickRows,
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
       };
@@ -900,71 +1169,9 @@ function formatRawDataToMetrics(rawData, pageType) {
  */
 async function generatePrompt(db, pageType, startDate, endDate, metrics) {
   const period = `${startDate}から${endDate}までの期間`;
+  console.log(`[generatePrompt] ページタイプ「${pageType}」のデフォルトプロンプトを使用`);
 
-  // 1. Firestoreからアクティブなプロンプトテンプレートを取得を試みる
-  try {
-    const customTemplate = await getActivePromptTemplate(db, pageType);
-    
-    if (customTemplate) {
-      console.log(`[generatePrompt] Using custom template from Firestore for ${pageType}`);
-      
-      // プロンプト使用回数を記録（非同期・非ブロッキング）
-      incrementPromptUsage(db, pageType).catch(err => {
-        console.warn('[generatePrompt] Failed to increment usage:', err);
-      });
-      
-      // テンプレート内の変数を評価して置換
-      // ${period}, ${metrics.xxx} などの変数をそのまま評価
-      try {
-        // テンプレートで使用される変数を事前に計算
-        const hasConversions = metrics.hasConversionDefinitions && metrics.conversionBreakdown && Object.keys(metrics.conversionBreakdown).length > 0;
-        
-        let conversionText = '';
-        if (hasConversions) {
-          conversionText = '\n- 総コンバージョン数: ' + (metrics.conversions?.toLocaleString() || 0) + '件';
-          conversionText += '\n\n【コンバージョン内訳】';
-          for (const [name, data] of Object.entries(metrics.conversionBreakdown)) {
-            conversionText += `\n- ${name}: ${data.current?.toLocaleString() || 0}件 (前月比${data.monthChange >= 0 ? '+' : ''}${data.monthChange?.toFixed(1) || 0}%)`;
-          }
-          conversionText += '\n- コンバージョン率: ' + ((metrics.conversionRate || 0) * 100).toFixed(2) + '%';
-        }
-        
-        let monthOverMonthText = '';
-        if (metrics.monthOverMonth) {
-          monthOverMonthText = '\n\n【前月比サマリー】';
-          monthOverMonthText += '\n- ユーザー数: ' + (metrics.monthOverMonth.users?.current?.toLocaleString() || 0) + '人 (前月' + (metrics.monthOverMonth.users?.previous?.toLocaleString() || 0) + '人, ' + (metrics.monthOverMonth.users?.change >= 0 ? '+' : '') + (metrics.monthOverMonth.users?.change?.toFixed(1) || 0) + '%)';
-          monthOverMonthText += '\n- セッション数: ' + (metrics.monthOverMonth.sessions?.current?.toLocaleString() || 0) + '回 (前月' + (metrics.monthOverMonth.sessions?.previous?.toLocaleString() || 0) + '回, ' + (metrics.monthOverMonth.sessions?.change >= 0 ? '+' : '') + (metrics.monthOverMonth.sessions?.change?.toFixed(1) || 0) + '%)';
-          if (hasConversions) {
-            monthOverMonthText += '\n- コンバージョン数: ' + (metrics.monthOverMonth.conversions?.current?.toLocaleString() || 0) + '件 (前月' + (metrics.monthOverMonth.conversions?.previous?.toLocaleString() || 0) + '件, ' + (metrics.monthOverMonth.conversions?.change >= 0 ? '+' : '') + (metrics.monthOverMonth.conversions?.change?.toFixed(1) || 0) + '%)';
-          }
-          monthOverMonthText += '\n- エンゲージメント率: ' + ((metrics.monthOverMonth.engagementRate?.current || 0) * 100).toFixed(1) + '% (前月' + ((metrics.monthOverMonth.engagementRate?.previous || 0) * 100).toFixed(1) + '%, ' + (metrics.monthOverMonth.engagementRate?.change >= 0 ? '+' : '') + (metrics.monthOverMonth.engagementRate?.change?.toFixed(1) || 0) + '%)';
-        }
-        
-        let kpiText = '';
-        if (metrics.hasKpiSettings && metrics.kpiData && metrics.kpiData.length > 0) {
-          kpiText = '\n\n【KPI予実】';
-          for (const kpi of metrics.kpiData) {
-            if (kpi.name) { // nameがnullでない場合のみ追加
-              kpiText += `\n- ${kpi.name}: 実績${kpi.actual?.toLocaleString() || 0}${kpi.unit || ''} / 目標${kpi.target?.toLocaleString() || 0}${kpi.unit || ''} (達成率${kpi.achievement?.toFixed(1) || 0}%)`;
-            }
-          }
-        }
-        
-        // eval を安全に使用するため、Function コンストラクタを使用
-        const templateFunction = new Function('period', 'metrics', 'startDate', 'endDate', 'hasConversions', 'conversionText', 'monthOverMonthText', 'kpiText', `return \`${customTemplate}\`;`);
-        const renderedPrompt = templateFunction(period, metrics, startDate, endDate, hasConversions, conversionText, monthOverMonthText, kpiText);
-        console.log('[generatePrompt] Custom template rendered successfully');
-        return renderedPrompt;
-      } catch (renderError) {
-        console.warn('[generatePrompt] Failed to render custom template, falling back to default:', renderError);
-        console.warn('[generatePrompt] Error details:', renderError.stack);
-      }
-    }
-  } catch (error) {
-    console.warn('[generatePrompt] Failed to fetch custom template, falling back to default:', error);
-  }
-
-  // 2. Firestoreにテンプレートがない場合、またはレンダリングに失敗した場合、デフォルトプロンプトを使用
+  // デフォルトプロンプトを使用（カスタムプロンプト機能は廃止）
   console.log(`[generatePrompt] Using default prompt for ${pageType}`);
 
   if (pageType === 'summary') {
@@ -985,20 +1192,48 @@ async function generatePrompt(db, pageType, startDate, endDate, metrics) {
 - 総ユーザー数: ${metrics.users?.toLocaleString() || metrics.totalUsers?.toLocaleString() || 0}人
 - セッション数: ${metrics.sessions?.toLocaleString() || 0}回
 - ページビュー数: ${metrics.pageViews?.toLocaleString() || metrics.screenPageViews?.toLocaleString() || 0}回
+- 平均PV/セッション: ${metrics.pageViews && metrics.sessions ? (metrics.pageViews / metrics.sessions).toFixed(2) : '0.00'}
 - エンゲージメント率: ${((metrics.engagementRate || 0) * 100).toFixed(1)}%
 - コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件${monthlyTrendText}
 
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **13ヶ月推移から成長トレンド、季節性、転換点を分析**
-- 良い点（成長している指標）と改善点（停滞・減少している指標）の両方を明確に指摘
+- **構成比や割合を示す際は、必ず数値（件数・人数など）とパーセンテージをセットで明示する**
+  例：「上位3で全体の65%（12,150PV）」「男性60%（1,200人）」
+- **必ず以下のセクションを含める**：
+
+## 概要
+- 期間全体のパフォーマンスを2-3文で簡潔に総括
+- 主要指標サマリ（セッション、ユーザー、新規ユーザー、表示回数、平均PV、エンゲージメント率、コンバージョン数、CVR）の全体像を俯瞰
+- 最も注目すべきポイントを冒頭で明示
+
+## 主要指標サマリの考察
+- セッション、ユーザー、新規ユーザー、表示回数（ページビュー）、平均PV、エンゲージメント率、コンバージョン数、CVRの総評
+- 各指標の数値を明示し、ビジネスへの影響を考察
+- 良い点（成長・改善している指標）と課題点（停滞・減少している指標）の両方を明確に指摘
+
+## 当月の考察
+- 直近1ヶ月にフォーカスした分析
+- 前月比データから増減傾向を具体的な数値で分析
+- 特に変化の大きい指標（±10%以上）を優先的に取り上げる
+- 当月の特徴的な動きやイベントがあれば言及
+
+## 過去の推移の考察
+- 13ヶ月間の推移にフォーカスした分析
+- 成長トレンド、季節性、転換点を特定
 - **トレンドの原因を考察**：「なぜそうなったか」の視点で記述
-- **今後3ヶ月の戦略として、具体的なアクションを1-3点提案**：
-  - 成長トレンドを加速させる施策
-  - 減少トレンドを反転させる施策
-  - 各提案の優先順位とビジネスインパクトを明示
-- 数値の羅列ではなく、ビジネス判断に直結するインサイトを提供
+- 中長期的なパターンや傾向を読み取り、今後の予測に役立てる
+
+## 改善点
+- 課題となっている指標とその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+- 優先順位とビジネスインパクトを明示
+
+【禁止事項】
+- ❌ 数値の羅列のみで終わる
+- ❌ 抽象的な表現（「多い」「少ない」など）のみで数値を示さない
+- ❌ 5つのセクション（概要、主要指標サマリの考察、当月の考察、過去の推移の考察、改善点）の欠落
 `;
   }
 
@@ -1006,35 +1241,95 @@ async function generatePrompt(db, pageType, startDate, endDate, metrics) {
     // CV定義の有無をチェック
     const hasConversions = metrics.hasConversionDefinitions === true;
     
-    // 日別分析データの整形（統計情報のみ）
+    // 日別分析データの詳細整形（統計+曜日別平均）
     let dailyStatsText = '';
     if (metrics.dailyData && Array.isArray(metrics.dailyData) && metrics.dailyData.length > 0) {
       const allDays = metrics.dailyData;
       
-      // 最大・最小・平均を計算
+      // セッションの最大・最小・平均を計算
       let maxSessions = 0, minSessions = Infinity;
-      let maxDay = '', minDay = '';
+      let maxSessionDay = '', minSessionDay = '';
       let totalSessions = 0;
+      
+      // コンバージョンの最大・最小・平均を計算
+      let maxConversions = 0, minConversions = Infinity;
+      let maxConversionDay = '', minConversionDay = '';
+      let totalConversions = 0;
+      let hasConversionData = false;
+      
+      // 曜日別の集計
+      const dayOfWeekStats = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+      const dayOfWeekConversions = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
       
       allDays.forEach(day => {
         const sessions = day.sessions || 0;
+        const conversions = day.conversions || 0;
+        
         totalSessions += sessions;
+        totalConversions += conversions;
+        
+        if (conversions > 0) hasConversionData = true;
+        
+        // セッションの最大・最小
         if (sessions > maxSessions) {
           maxSessions = sessions;
-          maxDay = day.date;
+          maxSessionDay = day.date;
         }
         if (sessions < minSessions) {
           minSessions = sessions;
-          minDay = day.date;
+          minSessionDay = day.date;
+        }
+        
+        // コンバージョンの最大・最小
+        if (conversions > maxConversions) {
+          maxConversions = conversions;
+          maxConversionDay = day.date;
+        }
+        if (conversions < minConversions && conversions > 0) {
+          minConversions = conversions;
+          minConversionDay = day.date;
+        }
+        
+        // 曜日を判定（dateがYYYY-MM-DD形式と仮定）
+        if (day.date) {
+          const date = new Date(day.date);
+          const dayOfWeek = date.getDay(); // 0=日, 1=月, ..., 6=土
+          if (!isNaN(dayOfWeek)) {
+            dayOfWeekStats[dayOfWeek].push(sessions);
+            dayOfWeekConversions[dayOfWeek].push(conversions);
+          }
         }
       });
       
       const avgSessions = Math.round(totalSessions / allDays.length);
+      const avgConversions = hasConversionData ? (totalConversions / allDays.length).toFixed(1) : 0;
+      
+      // 曜日別平均を計算
+      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+      const dayOfWeekAvg = Object.keys(dayOfWeekStats).map(day => {
+        const sessions = dayOfWeekStats[day];
+        if (sessions.length === 0) return null;
+        const avg = Math.round(sessions.reduce((a, b) => a + b, 0) / sessions.length);
+        return `${dayNames[day]}曜: ${avg.toLocaleString()}`;
+      }).filter(Boolean).join(', ');
+      
       dailyStatsText = `\n\n【日別データの統計】
-- 最大: ${maxDay}（${maxSessions.toLocaleString()}セッション）
-- 最小: ${minDay}（${minSessions.toLocaleString()}セッション）
+セッション:
+- 最大: ${maxSessionDay}（${maxSessions.toLocaleString()}セッション）
+- 最小: ${minSessionDay}（${minSessions.toLocaleString()}セッション）
 - 平均: ${avgSessions.toLocaleString()}セッション/日
-- 変動幅: ${((maxSessions - minSessions) / avgSessions * 100).toFixed(0)}%`;
+- 変動幅: ${((maxSessions - minSessions) / avgSessions * 100).toFixed(0)}%
+- 曜日別平均: ${dayOfWeekAvg}`;
+      
+      if (hasConversions && hasConversionData) {
+        const maxCvr = maxSessions > 0 ? ((maxConversions / maxSessions) * 100).toFixed(2) : 0;
+        const minCvr = minSessions > 0 ? ((minConversions / minSessions) * 100).toFixed(2) : 0;
+        
+        dailyStatsText += `\n\nコンバージョン:
+- 最大: ${maxConversionDay}（${maxConversions}件、CVR ${maxCvr}%）
+- 最小: ${minConversionDay}（${minConversions}件、CVR ${minCvr}%）
+- 平均: ${avgConversions}件/日`;
+      }
     }
 
     // CV定義がない場合の警告文
@@ -1052,106 +1347,129 @@ async function generatePrompt(db, pageType, startDate, endDate, metrics) {
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：全体概要、日別変動パターン、ビジネスへの影響、原因の考察
+- **必ず以下のセクションを含める**：
 
-## 全体概要
-- 総セッション数、1日平均、全体CVR（CV定義ありの場合）を数値で明示
-- 変動の安定性を評価
-- 例：「総セッション数11,250回、1日平均363回。変動幅65%で比較的安定している」
+## 概要
+- 日別のセッションとコンバージョンの総括（2-3文で簡潔に）
+- 総セッション数、1日平均${hasConversions ? '、全体CVR' : ''}を数値で明示
+- 最も特徴的なポイント（例：変動の大きさ、曜日傾向など）を冒頭で述べる
 
-## 日別変動パターンの分析
-- **最大日・最小日**：具体的な日付と数値を明示
-  例：「10月15日（金）が最大で485セッション、10月3日（月）が最小で248セッション」
+## セッションの考察
+- **最大日・最小日の対比**：具体的な日付と数値を明示
+  例：「10月15日（金）が最大で485セッション、10月3日（月）が最小で248セッション（1.96倍の差）」
 - **曜日による傾向**：各曜日の特徴を数値で示す
   例：「週末（土日）は平日比+32%で、平均で120セッション多い」
-- **週次トレンド**：期間内での変化
+  例：「月曜日が最も少なく、金曜日が最も多い傾向」
+- **期間内でのトレンド**：週次・前半後半での変化
   例：「第1週平均340回 → 第4週385回（+13.2%の増加傾向）」
-${hasConversions ? `- **CVRと曜日の相関**：CVRが高い曜日/低い曜日の傾向を分析` : ''}
+- セッションが多い日・少ない日の特徴を分析し、その要因を考察
+  例：「イベント開催日、キャンペーン実施日、広告配信強化日など」
 
-## ビジネスへの影響
-- **トラフィックの安定性**：
-  - 変動が大きい場合：「不安定なトラフィックは広告費の無駄や機会損失につながる可能性」
-  - 変動が小さい場合：「安定したトラフィックは計画的な施策実行が可能」
-- **曜日パターンの活用**：
-  例：「特定曜日への集中は、施策タイミングの最適化が可能」
-${hasConversions ? `- **CVRの変動**：
-  例：「CVRが安定している場合は導線が機能、変動が大きい場合は要因分析が必要」` : ''}
+## コンバージョンの考察
+- ${hasConversions ? 'コンバージョンが多い日・少ない日の対比を具体的な数値で示す' : 'コンバージョン定義が未設定のため、このセクションは「コンバージョン未設定」と簡潔に記載'}
+  ${hasConversions ? '例：「10月18日が最大で25件（CVR 4.8%）、10月5日が最小で8件（CVR 2.5%）」' : ''}
+- ${hasConversions ? 'CVRと曜日の相関を分析' : ''}
+  ${hasConversions ? '例：「水曜日のCVRが平均3.8%で最も高く、月曜日が2.1%で最も低い」' : ''}
+- ${hasConversions ? 'セッション数とCVRの関係性を考察' : ''}
+  ${hasConversions ? '例：「セッション数が多い日でもCVRが低い場合、質の低いトラフィックの可能性」' : ''}
 
-## 原因の考察
-**なぜこのような変動パターンが生じているか**（2-3つの仮説を提示）：
-- 仮説1: 曜日効果（週末にアクセス増加/減少の傾向）
-- 仮説2: イベント・キャンペーンの影響（特定日の急増など）
-- 仮説3: 広告配信の波（広告予算配分や配信スケジュール）
-${hasConversions ? '- 仮説4: CVに至るユーザーの検討期間（特定曜日に決断しやすい）' : ''}
+## 改善点
+- 課題となっている日別パターンとその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「セッションが少ない曜日への広告配信強化」
+  例：「CVRが低い曜日のランディングページ改善」
+  例：「トラフィックが多い曜日にキャンペーンを集中」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
 - ❌ 統計値の羅列のみで終わる
 - ❌ 数値を示さない抽象的な表現
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 4つのセクション（概要、セッションの考察、コンバージョンの考察、改善点）の欠落
 `;
   }
 
   if (pageType === 'week') {
     // CV定義の有無をチェック
     const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
+    
+    // 曜日別データの詳細テキスト化（rawDataから正確に）
+    let weeklyDetailsText = '';
+    if (metrics.weeklyData && Array.isArray(metrics.weeklyData) && metrics.weeklyData.length > 0) {
+      const dayMap = {};
+      metrics.weeklyData.forEach(row => {
+        const dayOfWeek = parseInt(row.dayOfWeek); // 0=日曜, 1=月曜, ..., 6=土曜
+        const sessions = row.sessions || 0;
+        const conversions = row.conversions || 0;
+        const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // 月曜日を0にする
+        if (!dayMap[adjustedDay]) {
+          dayMap[adjustedDay] = { sessions: 0, conversions: 0 };
+        }
+        dayMap[adjustedDay].sessions += sessions;
+        dayMap[adjustedDay].conversions += conversions;
+      });
+      
+      const dayNames = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
+      weeklyDetailsText = `\n\n【曜日別の詳細データ】\n` + dayNames.map((name, index) => {
+        const data = dayMap[index] || { sessions: 0, conversions: 0 };
+        const cvText = hasConversions ? `, CV: ${data.conversions}件` : '';
+        return `${name}: ${data.sessions}セッション${cvText}`;
+      }).join('\n');
+    }
+    
     const conversionNote = hasConversions ? `
 - コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件` : '\n\n⚠️ **注意**: コンバージョン定義が未設定です。CV分析をご希望の場合、サイト設定画面から設定してください。';
 
     return `
-あなたは【タイミング最適化分析の専門家】です。${period}のWebサイトの曜日×時間帯データを分析し、**マーケティング施策のタイミング最適化に役立つインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
+あなたは【曜日別分析の専門家】です。${period}のWebサイトの曜日別データを分析し、**曜日ごとのトレンドと最適な施策タイミング**を含む日本語の要約を**必ず800文字以内**で生成してください。
 
-【曜日×時間帯のデータ概要】
-- 総セッション数: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}
-- 曜日×時間帯のヒートマップで傾向を可視化
+【曜日別データの概要】
+- 総セッション数: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}${weeklyDetailsText}
 
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：全体パターン、ピークタイム分析、ビジネスへの影響、原因の考察
+- **必ず以下のセクションを含める**：
 
-## 全体的なアクセスパターン
-- **平日vs週末の比較**を数値で示す
-  例：「平日平均380回/日、週末平均520回/日（週末が+36.8%多い）」
-- **日中vs夜間の比較**を割合で示す
-  例：「日中（9-17時）が全体の45%、夜間（19-23時）が35%を占める」
+## 概要
+- 曜日毎のセッションとコンバージョンの総括（2-3文で簡潔に）
+- 総セッション数${hasConversions ? '、全体CVR' : ''}を数値で明示
+- 最も特徴的なポイント（例：平日vs週末、最多曜日vs最少曜日など）を冒頭で述べる
 
-## ピークタイムの特定と分析
-- **最大3つのピーク時間帯**を具体的な数値で明示
-  例：「①火曜20時: 1,250セッション（全体の11.2%）
-       ②木曜21時: 1,180セッション（10.6%）
-       ③土曜14時: 1,120セッション（10.0%）」
-- **ピーク時間帯の集中度**を評価
-  例：「上位3時間帯で全体の31.8%を占める（高集中型）」
+## セッションの考察
+- **最多曜日・最少曜日の対比**：具体的な数値を明示
+  例：「火曜日が2,273セッション（全体の17.3%）で最多、水曜日が1,716セッション（13.1%）で最少（1.32倍の差）」
+- **平日vs週末の比較**：
+  例：「平日平均390回/日（月～金の合計1,950回）、週末平均510回/日（土日の合計1,020回）で週末が+30.8%多い」
+- **セッションが多い上位3曜日**を具体的に列挙
+  例：「①火曜日: 2,273セッション（17.3%）、②月曜日: 2,030セッション（15.5%）、③土曜日: 1,864セッション（14.2%）」
+- **セッションが少ない下位3曜日**も列挙し、なぜその曜日が少ないか考察
 - **ユーザー行動パターンの推測**：
-  - 通勤時間帯（7-9時）、昼休み（12-13時）、帰宅後（20-22時）のピーク分析
-  - 平日日中が多い → BtoB寄り（業務時間中の閲覧）
-  - 夜間・週末が多い → BtoC寄り（プライベート時間の閲覧）
-${hasConversions ? `- **CVが発生しやすい時間帯**：
-  CVRが高い曜日×時間帯を特定し、費用対効果を評価` : ''}
+  例：「平日が多い → BtoB寄り（業務時間中に情報収集）」
+  例：「週末が多い → BtoC寄り（プライベート時間でじっくり検討）」
 
-## ビジネスへの影響
-- **リソース配分**：
-  - ピーク時間帯への人的リソース集中の必要性（カスタマーサポート、チャット対応など）
-  - デッドタイム（低アクセス時間帯）の効率的な活用
-- **マーケティング効率**：
-  - 集中度が高い場合：「特定時間帯に絞った施策で効率化が可能」
-  - 分散している場合：「24時間対応や自動化の検討が有効」
-${hasConversions ? `- **CV獲得効率**：
-  CVRが高い時間帯は広告費用対効果（ROAS）が良好` : ''}
+## コンバージョンの考察
+- ${hasConversions ? 'コンバージョンが多い曜日・少ない曜日の対比を具体的な数値で示す' : 'コンバージョン定義が未設定のため、このセクションは「コンバージョン未設定」と簡潔に記載'}
+  ${hasConversions ? '例：「日曜日が最大で21件（CVR 1.30%）、木曜日が最小で8件（CVR 0.55%）」' : ''}
+- ${hasConversions ? 'CVRが高い曜日と低い曜日を分析' : ''}
+  ${hasConversions ? '例：「日曜日のCVR 1.30%が最も高く、木曜日が0.55%で最も低い」' : ''}
+- ${hasConversions ? 'セッション数とCVRの関係性を考察' : ''}
+  ${hasConversions ? '例：「セッション数が多い曜日でもCVRが低い場合、質の低いトラフィックの可能性」' : ''}
+  ${hasConversions ? '例：「セッション数が少ない曜日でもCVRが高い場合、購買意欲の高いユーザーが来訪」' : ''}
 
-## 原因の考察
-**なぜこのようなアクセスパターンが形成されているか**（2-3つの仮説を提示）：
-- 仮説1: ターゲット層のライフスタイル
-  例：「会社員が帰宅後（20-22時）に情報収集している」
-- 仮説2: コンテンツ・商材の特性
-  例：「BtoB商材で業務時間内（9-17時）に意思決定者が閲覧」
-- 仮説3: 現在の広告配信設定の影響
-  例：「特定時間帯への広告集中がアクセスパターンを形成」
+## 改善点
+- 課題となっている曜日別パターンとその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「セッションが少ない曜日への広告配信強化」
+  例：「CVRが低い曜日のランディングページ改善」
+  例：「CVRが高い曜日に予算・キャンペーンを集中」
+  例：「平日と週末で訴求メッセージを変える」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
-- ❌ 「ピークタイムがある」程度の抽象的な記述
-- ❌ 数値を示さない曖昧な表現
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 「曜日による違いがある」程度の抽象的な記述
+- ❌ 数値を示さない曖昧な表現（「多い」「少ない」だけで終わる）
+- ❌ 4つのセクション（概要、セッションの考察、コンバージョンの考察、改善点）の欠落
+- ❌ 時間帯（9時、20時など）の言及（このデータには時間帯情報が含まれていません）
 `;
   }
 
@@ -1159,10 +1477,17 @@ ${hasConversions ? `- **CV獲得効率**：
     // CV定義の有無をチェック
     const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
     
-    // 時間帯別データの統計（簡略版）
-    let peakHoursText = '';
-    if (metrics.hourlyDataCount && metrics.hourlyDataCount > 0) {
-      peakHoursText = `\n- 24時間のデータで分析`;
+    // 時間帯別データの詳細テキスト化（rawDataから正確に）
+    let hourlyDetailsText = '';
+    if (metrics.hourlyData && Array.isArray(metrics.hourlyData) && metrics.hourlyData.length > 0) {
+      const sortedByHour = [...metrics.hourlyData].sort((a, b) => parseInt(a.hour) - parseInt(b.hour));
+      hourlyDetailsText = `\n\n【時間帯別の詳細データ】\n` + sortedByHour.map(row => {
+        const hour = parseInt(row.hour);
+        const sessions = row.sessions || 0;
+        const conversions = row.conversions || 0;
+        const cvText = hasConversions ? `, CV: ${conversions}件` : '';
+        return `${hour}時: ${sessions}セッション${cvText}`;
+      }).join('\n');
     }
     
     const conversionNote = hasConversions ? `
@@ -1172,60 +1497,53 @@ ${hasConversions ? `- **CV獲得効率**：
 あなたは【24時間行動分析の専門家】です。${period}のWebサイトの時間帯別データを分析し、**時間軸でのユーザー行動理解とビジネスへの影響**を含む日本語の要約を**必ず800文字以内**で生成してください。
 
 【時間帯別データの概要】
-- 総セッション数: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}${peakHoursText}
+- 総セッション数: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}${hourlyDetailsText}
 
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：全体分布、ピークとデッドタイム、ビジネスへの影響、原因の考察
+- **必ず以下のセクションを含める**：
 
-## 全体的なアクセス分布
-- **時間帯区分別の割合**を明示
-  例：「朝（6-9時）: 8%、日中（10-17時）: 42%、夜（18-23時）: 38%、深夜（0-5時）: 12%」
-- アクセスの偏りを評価
-  例：「日中と夜間に集中し、深夜は低調」
+## 概要
+- 時間帯毎のセッションとコンバージョンの総括（2-3文で簡潔に）
+- 総セッション数${hasConversions ? '、全体CVR' : ''}を数値で明示
+- 最も特徴的なポイント（例：ピーク時間帯、デッドタイムなど）を冒頭で述べる
 
-## ピーク時間帯とデッドタイム
+## セッションの考察
 - **ピーク時間帯トップ3**を具体的な数値で特定
-  例：「①20時: 1,450セッション（全体の12.9%）
-       ②21時: 1,380セッション（12.3%）
-       ③14時: 1,120セッション（10.0%）」
-- **ピーク時間の集中度**を評価
-  例：「上位3時間で全体の35%を占める（高集中型）」
-- **デッドタイム**を特定
+  例：「①20時: 1,450セッション（全体の12.9%）、②21時: 1,380セッション（12.3%）、③14時: 1,120セッション（10.0%）」
+- **デッドタイム**（セッションが最も少ない時間帯）を特定
   例：「4-6時は平均50セッション/時で最も低調（全体の1.3%）」
-- **ユーザー行動パターンの解釈**：
-  - 通勤時間（7-9時）のアクセスが多い → モバイル利用が中心と推測
-  - 昼休み（12-14時）のピーク → 休憩時間の閲覧
-  - 夜間（20-22時）が最大 → 帰宅後のゆっくりした時間に閲覧
-  - 深夜（0-5時）が極少 → 一般消費者向けコンテンツの特徴
-${hasConversions ? `- **CVRが高い時間帯**：
-  セッション単価の視点でCV効率を評価
-  例：「14時はセッション少ないがCVR高く、費用対効果が良好」` : ''}
+- **時間帯区分別の割合**を明示
+  例：「朝（6-9時）: 8%（900セッション）、日中（10-17時）: 42%（4,720セッション）、夜（18-23時）: 38%（4,270セッション）、深夜（0-5時）: 12%（1,350セッション）」
+- **セッションが多い時間帯・少ない時間帯の対比**を行い、その特徴を分析
+  例：「ピークとデッドタイムの差は29倍で、時間帯による差が顕著」
+- **ユーザー行動パターンの推測**：
+  例：「通勤時間（7-9時）のアクセスが多い → モバイル利用が中心」
+  例：「昼休み（12-14時）のピーク → 休憩時間の閲覧」
+  例：「夜間（20-22時）が最大 → 帰宅後のゆっくりした時間に閲覧」
 
-## ビジネスへの影響
-- **リソース配分**：
-  - ピーク時間帯への人的リソース集中（カスタマーサポート、チャット対応）
-  - デッドタイムの活用（システムメンテナンス、データ処理など）
-- **広告配信効率**：
-  - ピーク時間は競争が激しく、デッドタイムは低コストで獲得可能
-  - 時間帯別の入札調整で費用対効果を最適化
-${hasConversions ? `- **CV獲得効率**：
-  CVRが高い時間帯への予算集中で、全体のCV数増加が期待できる` : ''}
+## コンバージョンの考察
+- ${hasConversions ? 'コンバージョンが多い時間帯・少ない時間帯の対比を具体的な数値で示す' : 'コンバージョン定義が未設定のため、このセクションは「コンバージョン未設定」と簡潔に記載'}
+  ${hasConversions ? '例：「21時が最大で45件（CVR 3.3%）、5時が最小で1件（CVR 0.8%）」' : ''}
+- ${hasConversions ? 'CVRが高い時間帯と低い時間帯を分析' : ''}
+  ${hasConversions ? '例：「14時はセッション少ないがCVR 4.2%で高く、費用対効果が良好」' : ''}
+- ${hasConversions ? 'セッション数とCVRの関係性を考察' : ''}
+  ${hasConversions ? '例：「ピーク時間帯（20-22時）はセッション多いがCVRは平均的、質より量のトラフィック」' : ''}
 
-## 原因の考察
-**なぜこのような時間分布になっているか**（2-3つの仮説を提示）：
-- 仮説1: ターゲット層のライフスタイル
-  例：「会社員が昼休みと帰宅後に閲覧している」
-- 仮説2: 商材の特性
-  例：「緊急性の低い商材で、じっくり検討できる夜間に閲覧が多い」
-- 仮説3: 現在の広告配信スケジュール
-  例：「特定時間帯への広告集中がアクセスパターンを形成」
+## 改善点
+- 課題となっている時間帯別パターンとその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「デッドタイム（深夜・早朝）の活用：システムメンテナンス、データ処理に充てる」
+  例：「ピーク時間帯（20-22時）への広告予算集中でリーチを最大化」
+  例：「CVRが高い時間帯（14時など）へ予算シフトで費用対効果を向上」
+  例：「時間帯別の入札調整で広告配信効率を最適化」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
 - ❌ 時間ごとの数値羅列のみで終わる
 - ❌ 数値を示さない抽象的な表現
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 4つのセクション（概要、セッションの考察、コンバージョンの考察、改善点）の欠落
 `;
   }
 
@@ -1279,12 +1597,20 @@ ${hasConversions ? `- **CV獲得効率**：
 
     // KPI予実データの整形
     let kpiText = '';
+    logger.info(`[Dashboard KPI] hasKpiSettings: ${metrics.hasKpiSettings}, kpiData length: ${metrics.kpiData?.length || 0}`);
+    if (metrics.kpiData && Array.isArray(metrics.kpiData)) {
+      logger.info(`[Dashboard KPI] kpiData内容:`, JSON.stringify(metrics.kpiData));
+    }
+    
     if (metrics.hasKpiSettings && metrics.kpiData && Array.isArray(metrics.kpiData) && metrics.kpiData.length > 0) {
       kpiText = '\n\n【KPI予実】';
       metrics.kpiData.forEach(kpi => {
         const achievementColor = kpi.achievement >= 100 ? '✅' : kpi.achievement >= 80 ? '⚠️' : '❌';
         kpiText += `\n- ${kpi.name}: 実績${kpi.actual?.toLocaleString() || 0}${kpi.unit || ''} / 目標${kpi.target?.toLocaleString() || 0}${kpi.unit || ''} (達成率${kpi.achievement.toFixed(1)}% ${achievementColor})`;
       });
+      logger.info(`[Dashboard KPI] KPI予実テキスト生成成功`);
+    } else {
+      logger.warn(`[Dashboard KPI] KPI予実データが不足しています`);
     }
 
     return `
@@ -1295,6 +1621,7 @@ ${hasConversions ? `- **CV獲得効率**：
 - 新規ユーザー数: ${metrics.newUsers?.toLocaleString() || 0}人
 - セッション数: ${metrics.sessions?.toLocaleString() || 0}回
 - ページビュー数: ${metrics.pageViews?.toLocaleString() || 0}回
+- 平均PV/セッション: ${metrics.pageViews && metrics.sessions ? (metrics.pageViews / metrics.sessions).toFixed(2) : '0.00'}
 - エンゲージメント率: ${((metrics.engagementRate || 0) * 100).toFixed(1)}%
 - 直帰率: ${((metrics.bounceRate || 0) * 100).toFixed(1)}%
 - 平均セッション時間: ${metrics.avgSessionDuration ? `${Math.floor(metrics.avgSessionDuration / 60)}分${Math.floor(metrics.avgSessionDuration % 60)}秒` : '0秒'}${conversionText}${hasConversions ? `\n- コンバージョン率: ${((metrics.conversionRate || 0) * 100).toFixed(2)}%` : ''}${monthOverMonthText}${kpiText}
@@ -1302,33 +1629,36 @@ ${hasConversions ? `- **CV獲得効率**：
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
+- **構成比や割合を示す際は、必ず数値（件数・人数など）とパーセンテージをセットで明示する**
+  例：「上位3チャネルで全体の78%（8,950セッション）」「男性60%（1,200人）」
 - **必ず以下の4つのセクションを含める**：
 
 ## 概要
-- 期間全体のパフォーマンスを2-3文で簡潔にまとめる
-- 最も重要な指標（ユーザー、セッション、エンゲージメント率）の数値を明示
-- ${hasConversions ? 'コンバージョン総数と主要イベントの概況' : ''}${metrics.hasKpiSettings ? '、KPI達成状況の全体像' : ''}を冒頭で述べる
+- 期間全体のパフォーマンスを2-3文で簡潔に総括
+- 主要指標サマリ、コンバージョン内訳${metrics.hasKpiSettings ? '、KPI予実' : ''}の全体像を俯瞰
+- 最も注目すべきポイントを冒頭で明示
 
-## 直近のトレンド
+## 主要指標サマリの考察
+- セッション、ユーザー、新規ユーザー、表示回数（ページビュー）、平均PV、エンゲージメント率、コンバージョン数、CVRの総評
 - 前月比データから増減傾向を具体的な数値で分析
 - 特に変化の大きい指標（±10%以上）を優先的に取り上げる
-- ${hasConversions ? 'コンバージョン内訳の各イベントの前月比を具体的に分析' : '基本指標の前月比を分析'}
+- 数値を明示し、ビジネスへの影響を考察
 
-## 評価できる点
-- 成長している指標、改善している指標を2-3点挙げる
-- 数値と前月比を明示（例：「ユーザー数が前月比+15.2%で5,000人に増加」）
-- ${metrics.hasKpiSettings ? 'KPI予実で達成率が高い項目（達成率80%以上）を具体的に評価' : '改善傾向にある指標を評価'}
+## コンバージョン内訳の考察
+- ${hasConversions ? 'コンバージョン内訳の各イベントを具体的に分析' : 'コンバージョン定義が未設定のため、このセクションは「コンバージョン未設定」と簡潔に記載'}
+- ${hasConversions ? '前月比で増減が大きいイベントに注目し、その要因を考察' : ''}
+- ${hasConversions ? '各イベントの数値と割合を明示' : ''}
 
-## 改善に向けた仮説
-- 課題となっている指標とその原因仮説を2-3点提示
-- ${metrics.hasKpiSettings ? 'KPI予実で未達成の項目（達成率80%未満）について、改善の方向性を具体的に示唆' : '低下傾向の指標について改善案を提示'}
-- 具体的で実行可能な改善アプローチを提案
+## KPI予実の考察
+- ${metrics.hasKpiSettings ? 'KPI予実の達成状況を具体的に評価' : 'KPI設定が未設定のため、このセクションは「KPI未設定」と簡潔に記載'}
+- ${metrics.hasKpiSettings ? '達成率が高い項目（80%以上）と未達成の項目（80%未満）を明確に区別' : ''}
+- ${metrics.hasKpiSettings ? '未達成項目については改善の方向性を具体的に示唆' : ''}
 
 【禁止事項】
 - ❌ 数値の羅列のみで終わる
 - ❌ 抽象的な表現（「多い」「少ない」など）のみで数値を示さない
-- ❌ 4つのセクション（概要、直近のトレンド、評価できる点、改善に向けた仮説）の欠落
-- ❌ ${hasConversions ? '提供されたコンバージョン内訳データを無視する' : 'コンバージョンについて言及する（未設定のため）'}
+- ❌ 4つのセクション（概要、主要指標サマリの考察、コンバージョン内訳の考察、KPI予実の考察）の欠落
+- ❌ ${hasConversions ? '提供されたコンバージョン内訳データを無視する' : 'コンバージョンについて詳細に言及する（未設定のため）'}
 `;
   }
 
@@ -1342,18 +1672,37 @@ ${hasConversions ? `- **CV獲得効率**：
 
     if (metrics.demographicsData) {
       const demo = metrics.demographicsData;
+      logger.info('[Users] demographicsData全体:', JSON.stringify(demo, null, 2));
       demographicsText = '\n\n【ユーザー属性の分布】\n';
       
-      // デバイス別（最優先）
+      // 新規/リピーター別（最優先）
+      if (demo.newReturning && Array.isArray(demo.newReturning) && demo.newReturning.length > 0) {
+        logger.info('[Users] newReturning:', JSON.stringify(demo.newReturning));
+        demographicsText += '新規/リピーター別:\n';
+        demo.newReturning.forEach(nr => {
+          const label = nr.name || '不明';
+          const userCount = nr.value || 0;
+          const percentage = nr.percentage || 0;
+          logger.info(`[Users] newReturning処理: label=${label}, userCount=${userCount}, percentage=${percentage}`);
+          if (label !== '不明' && userCount > 0) {
+            demographicsText += `- ${label}: ${userCount.toLocaleString()}人 (${percentage.toFixed(1)}%)\n`;
+          }
+        });
+        demographicsText += '\n';
+      }
+      
+      // デバイス別
       if (demo.device && Array.isArray(demo.device) && demo.device.length > 0) {
         hasDeviceData = true;
+        logger.info('[Users] device:', JSON.stringify(demo.device));
         demographicsText += 'デバイス別:\n';
         demo.device.forEach(d => {
-          const deviceName = d.deviceCategory || d.device || '不明';
-          const sessions = d.sessions || 0;
+          const deviceName = d.name || d.deviceCategory || d.device || '不明';
+          const userCount = d.value || d.sessions || 0;
           const percentage = d.percentage || 0;
-          if (deviceName !== '不明' && sessions > 0) {
-            demographicsText += `- ${deviceName}: ${sessions.toLocaleString()}セッション (${percentage.toFixed(1)}%)\n`;
+          logger.info(`[Users] device処理: name=${deviceName}, userCount=${userCount}, percentage=${percentage}`);
+          if (deviceName !== '不明' && userCount > 0) {
+            demographicsText += `- ${deviceName}: ${userCount.toLocaleString()}人 (${percentage.toFixed(1)}%)\n`;
           }
         });
         demographicsText += '\n';
@@ -1366,11 +1715,11 @@ ${hasConversions ? `- **CV獲得効率**：
           hasLocationData = true;
           demographicsText += '地域別（上位5）:\n';
           locationData.slice(0, 5).forEach(loc => {
-            const locationName = loc.city || loc.region || '不明';
-            const sessions = loc.sessions || 0;
+            const locationName = loc.name || loc.city || loc.region || '不明';
+            const userCount = loc.value || loc.sessions || 0;
             const percentage = loc.percentage || 0;
-            if (locationName !== '不明' && sessions > 0) {
-              demographicsText += `- ${locationName}: ${sessions.toLocaleString()}セッション (${percentage.toFixed(1)}%)\n`;
+            if (locationName !== '不明' && userCount > 0) {
+              demographicsText += `- ${locationName}: ${userCount.toLocaleString()}人 (${percentage.toFixed(1)}%)\n`;
             }
           });
           demographicsText += '\n';
@@ -1382,11 +1731,11 @@ ${hasConversions ? `- **CV獲得効率**：
         hasAgeData = true;
         demographicsText += '年齢別:\n';
         demo.age.forEach(a => {
-          const ageLabel = a.ageRange || a.age || '不明';
-          const sessions = a.sessions || 0;
+          const ageLabel = a.name || a.ageRange || a.age || '不明';
+          const userCount = a.value || a.sessions || 0;
           const percentage = a.percentage || 0;
-          if (ageLabel !== '不明' && sessions > 0) {
-            demographicsText += `- ${ageLabel}: ${sessions.toLocaleString()}セッション (${percentage.toFixed(1)}%)\n`;
+          if (ageLabel !== '不明' && userCount > 0) {
+            demographicsText += `- ${ageLabel}: ${userCount.toLocaleString()}人 (${percentage.toFixed(1)}%)\n`;
           }
         });
         demographicsText += '\n';
@@ -1397,11 +1746,11 @@ ${hasConversions ? `- **CV獲得効率**：
         hasGenderData = true;
         demographicsText += '性別:\n';
         demo.gender.forEach(g => {
-          const genderLabel = g.gender === 'male' ? '男性' : g.gender === 'female' ? '女性' : (g.gender || '不明');
-          const sessions = g.sessions || 0;
+          const genderLabel = g.name || (g.gender === 'male' ? '男性' : g.gender === 'female' ? '女性' : (g.gender || '不明'));
+          const userCount = g.value || g.sessions || 0;
           const percentage = g.percentage || 0;
-          if (genderLabel !== '不明' && sessions > 0) {
-            demographicsText += `- ${genderLabel}: ${sessions.toLocaleString()}セッション (${percentage.toFixed(1)}%)\n`;
+          if (genderLabel !== '不明' && userCount > 0) {
+            demographicsText += `- ${genderLabel}: ${userCount.toLocaleString()}人 (${percentage.toFixed(1)}%)\n`;
           }
         });
       }
@@ -1423,56 +1772,56 @@ ${hasConversions ? `- **CV獲得効率**：
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：主要セグメント、属性別特徴、ビジネスへの影響、原因の考察
-- **各セクションで必ず具体的な数値（セッション数とパーセンテージ）を引用する**
+- **必ず以下のセクションを含める**：
+- **各セクションで必ず具体的な数値（人数・ユーザー数とパーセンテージ）を引用する**
 
-## 主要セグメントの特定
-${hasDeviceData ? `- **デバイス別の構成**：
-  例：「モバイルが9,182セッション (83.5%)と圧倒的に多く、デスクトップは1,696セッション (15.4%)、タブレットは121セッション (1.1%)」
-- **最大セグメントと2番目の差分**：
-  例：「モバイルがデスクトップの5.4倍で、モバイル最適化が最優先課題」` : ''}
-${hasLocationData ? `- **地域の集中度**：
-  例：「上位3地域（東京32.3%、大阪21.7%、神奈川16.5%）で全体の70.5%を占める（高集中）」` : ''}
-${hasAgeData || hasGenderData ? `- **ターゲット層**：
-  例：「25-34歳の女性が最大セグメント（全体の28.5%、3,134セッション）」` : ''}
+## 概要
+- ユーザー属性の全体像を2-3文で簡潔に総括
+- 新規ユーザー/リピーター比率、性別比率、年齢比率、デバイス比率、地域比率の概況を俯瞰
+- 最も特徴的なポイントを冒頭で明示
 
-${hasDeviceData || hasLocationData || hasAgeData || hasGenderData ? `## 属性別の特徴分析` : ''}
-${hasDeviceData ? `- **デバイス特性**：各デバイスの利用状況を数値で示し、その意味を考察
-  例：「デスクトップが15.4%と一定の割合を占めており、詳細情報を求めるBtoB層の可能性」` : ''}
-${hasLocationData ? `- **地域分散の評価**：
-  例：「特定地域に集中 → 地域特化型マーケティングが効果的」
-  または「全国的に分散 → 全国展開のポテンシャルあり」` : ''}
-${hasAgeData || hasGenderData ? `- **デモグラフィック特性**：
-  年齢・性別データから主要ターゲット層を特定し、ペルソナ像を具体化
-  例：「若年層が多い → SNS施策、年配層が多い → 信頼性重視のコンテンツ」` : ''}
+## 新規ユーザー/リピーター比率の考察
+- 新規ユーザーとリピーターの割合を具体的な数値で示す
+  例：「新規ユーザーが2,500人 (65%)、リピーターが1,500人 (35%)」
+- ビジネスへの影響を考察
+  - 新規比率が高い → 認知拡大施策が効果的、ただしリピート施策も強化必要
+  - リピート比率が高い → ロイヤル顧客の育成が成功、新規獲得施策も必要
+- なぜこのような比率になっているか、仮説を提示
 
-## ビジネスへの影響
-- **マーケティング戦略**：
-${hasDeviceData ? `  - モバイル比率が高い → モバイルUX、SNS施策、AMP対応が重要
-  - デスクトップ比率が高い → 詳細情報提供、BtoB向けコンテンツが重要` : ''}
-${hasLocationData ? `  - 地域集中度が高い → 地域特化型のマーケティングが効果的
-  - 地域分散 → 全国規模の施策が必要` : ''}
-- **リソース配分**：
-  例：「最大セグメント（○○%）への投資を優先し、ROIを最大化」
-${hasAgeData || hasGenderData ? `- **コミュニケーション戦略**：
-  ターゲット層の特性に合わせたメッセージング、デザイン、チャネル選定` : ''}
+## 年齢・性別の考察
+- ${hasAgeData || hasGenderData ? '年齢・性別データから主要ターゲット層を特定し、数値で示す' : '年齢・性別データが不足している場合は「データ不足のため分析不可」と記載'}
+  ${hasAgeData ? '例：「25-34歳が最大セグメント（35%、1,200人）」' : ''}
+  ${hasGenderData ? '例：「男性60%（1,200人）、女性40%（800人）」' : ''}
+- ${hasAgeData || hasGenderData ? 'ターゲット層の特性に合わせた施策を提案' : ''}
+  ${hasAgeData || hasGenderData ? '例：「若年層が多い → SNS施策、年配層が多い → 信頼性重視のコンテンツ」' : ''}
 
-## 原因の考察
-**なぜこのような属性分布になっているか**（2-3つの仮説を提示）：
-- 仮説1: 商材・サービスの特性
-  例：「モバイルアプリ関連サービスのため、モバイルユーザーが多い」
-- 仮説2: 現在の広告配信ターゲット設定
-  例：「特定地域への広告集中が地域偏在を生んでいる」
-- 仮説3: コンテンツの特性
-  例：「スマホで完結しやすいコンテンツ設計のため、モバイル比率が高い」
-${hasAgeData || hasGenderData ? '- 仮説4: ターゲット市場の人口動態との一致度' : ''}
+## デバイス比率の考察
+- ${hasDeviceData ? 'デバイス別の構成を具体的な数値で示す' : 'デバイスデータが不足している場合は「データ不足のため分析不可」と記載'}
+  ${hasDeviceData ? '例：「モバイルが9,182人 (83.5%)、デスクトップは1,696人 (15.4%)、タブレットは121人 (1.1%)」' : ''}
+- ${hasDeviceData ? 'デバイス特性とビジネスへの影響を考察' : ''}
+  ${hasDeviceData ? '例：「モバイル比率が高い → モバイルUX最適化、AMP対応が重要」' : ''}
+  ${hasDeviceData ? '例：「デスクトップ比率が高い → 詳細情報提供、BtoB向けコンテンツが重要」' : ''}
+
+## 地域比率の考察
+- ${hasLocationData ? '地域別の構成を具体的な数値で示す（上位5地域）' : '地域データが不足している場合は「データ不足のため分析不可」と記載'}
+  ${hasLocationData ? '例：「東京が2,500人 (32.3%)、大阪が1,680人 (21.7%)、神奈川が1,280人 (16.5%)」' : ''}
+- ${hasLocationData ? '地域集中度の評価とビジネスへの影響を考察' : ''}
+  ${hasLocationData ? '例：「特定地域に集中 → 地域特化型マーケティングが効果的」' : ''}
+  ${hasLocationData ? '例：「全国的に分散 → 全国展開のポテンシャルあり」' : ''}
+
+## 改善点
+- 課題となっている属性分布とその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「リピーター率が低い → メルマガ施策、リマーケティング広告の強化」
+  例：「特定地域に偏りすぎている → 他地域への広告配信拡大」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
 - ❌ 数値の羅列のみで終わる
 - ❌ 数値を示さない抽象的な表現（「多い」「少ない」など）
 - ❌ セグメント間の比較がない
 - ❌ 「undefined」などの不明な値の出力
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 6つのセクション（概要、新規ユーザー/リピーター比率の考察、年齢・性別の考察、デバイス比率の考察、地域比率の考察、改善点）の欠落
 `;
   }
 
@@ -1834,54 +2183,52 @@ ${metrics.channelsText || 'データなし'}
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：主要チャネル分析、チャネル特性、ビジネスへの影響、原因の考察
+- **必ず以下のセクションを含める**：
 
-## 主要チャネルの分析
+## 概要
+- 流入チャネルの全体像を2-3文で簡潔に総括
+- 総セッション数、総ユーザー数${hasConversions ? '、総コンバージョン数、全体CVR' : ''}を数値で明示
+- 最も特徴的なポイント（例：主要チャネル、チャネル集中度など）を冒頭で述べる
+
+## セッションの考察
 - **上位3チャネル**を具体的な数値で明示
   例：「Organic Search: 4,250セッション（37.8%）、Direct: 2,890セッション（25.7%）、Paid Search: 1,680セッション（14.9%）」
 - **チャネルの集中度**を評価
-  例：「上位3チャネルで全体の78.4%を占める（高集中型）」
-${hasConversions ? `- **各チャネルのCVR**を比較
-  例：「Organic SearchのCVRが1.8%と最も高く、Directは0.9%」` : ''}
-
-## チャネル別の特性分析
-- **オーガニック vs 有料**の比較
-  例：「Organic（自然流入）が全体の52%、Paid（有料広告）が23%、Direct（直接流入）が25%」
-- **各チャネルの役割と特徴**：
-  - Organic Search: SEOの成果、ブランド認知度の指標
+  例：「上位3チャネルで全体の78.4%（8,950セッション）を占める（高集中型）」
+- **チャネルごとのセッション特性を分析**：
+  - Organic Search: SEOの成果、自然検索からの流入
   - Paid Search/Display: 広告投資の直接的な成果
   - Direct: ブランド力、リピーター、ブックマークの指標
   - Social: SNS施策の効果
   - Referral: 外部サイトからの被リンク効果
-${hasConversions ? `- **費用対効果の評価**：
-  有料チャネル（Paid Search, Display）のCVRと、オーガニックチャネルのCVRを比較` : ''}
+- **オーガニック vs 有料**の比較
+  例：「Organic（自然流入）が全体の52%（5,940セッション）、Paid（有料広告）が23%（2,630セッション）で、SEO資産が効果的に機能」
+- チャネル依存度のリスクを考察
+  例：「特定チャネルへの過度な依存（50%超、5,000セッション以上）はアルゴリズム変更リスクあり」
 
-## ビジネスへの影響
-- **マーケティング予算配分**：
-  - 高CVRチャネルへの予算増額の検討
-  - 低パフォーマンスチャネルの見直し
-- **チャネル依存度のリスク**：
-  - 特定チャネルへの過度な依存は、アルゴリズム変更や規約変更のリスク
-  - 分散投資でリスクヘッジの必要性
-- **オーガニック流入の重要性**：
-  - Organic Searchが多い → SEO資産が蓄積、広告費削減効果
-  - Organic Searchが少ない → SEO強化で中長期的なコスト削減が可能
-${hasConversions ? `- **獲得効率**：
-  CVRが高いチャネルは1CV当たりのコストが低く、ROIが高い` : ''}
+## コンバージョンの考察
+- ${hasConversions ? 'チャネルごとのコンバージョン数とCVRを具体的な数値で示す' : 'コンバージョン定義が未設定のため、このセクションは「コンバージョン未設定」と簡潔に記載'}
+  ${hasConversions ? '例：「Organic Search: 76件（CVR 1.8%）、Direct: 26件（CVR 0.9%）、Paid Search: 22件（CVR 1.3%）」' : ''}
+- ${hasConversions ? 'CVRが高いチャネルと低いチャネルを対比' : ''}
+  ${hasConversions ? '例：「Organic SearchのCVR 1.8%が最も高く、費用対効果が良好」' : ''}
+- ${hasConversions ? '費用対効果の評価' : ''}
+  ${hasConversions ? '例：「有料チャネル（Paid Search）のCVR 1.3%は、オーガニック（1.8%）より低く、改善余地あり」' : ''}
+- ${hasConversions ? 'セッション数とCVRの関係性を考察' : ''}
+  ${hasConversions ? '例：「セッション数が多いチャネルでもCVRが低い場合、質より量のトラフィック」' : ''}
 
-## 原因の考察
-**なぜこのようなチャネル構成になっているか**（2-3つの仮説を提示）：
-- 仮説1: 現在のマーケティング戦略の反映
-  例：「Paid Searchが多い → 広告投資に依存、SEOが少ない → SEO施策不足」
-- 仮説2: ブランド認知度の影響
-  例：「Directが多い → 高いブランド認知度、リピーター獲得に成功」
-- 仮説3: コンテンツ戦略の成果
-  例：「Organic Searchが多い → SEOコンテンツが効果的に機能」
+## 改善点
+- 課題となっているチャネル構成とその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「低CVRの有料チャネルの広告クリエイティブ・ターゲティング見直し」
+  例：「Organic Searchの強化でSEO資産を蓄積、広告費削減」
+  例：「特定チャネル依存度を下げ、チャネル分散でリスクヘッジ」
+  例：「高CVRチャネルへの予算シフトでROI向上」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
 - ❌ チャネル名の羅列のみで終わる
 - ❌ 数値を示さない抽象的な表現
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 4つのセクション（概要、セッションの考察、コンバージョンの考察、改善点）の欠落
 `;
   }
 
@@ -1906,54 +2253,52 @@ ${metrics.topReferralsText || 'データなし'}
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：主要参照元、参照元特性、ビジネスへの影響、原因の考察
+- **必ず以下のセクションを含める**：
 
-## 主要参照元の分析
-- **上位3参照元**を具体的な数値で明示
+## 概要
+- 参照元/被リンク元の全体像を2-3文で簡潔に総括
+- 総セッション数、総ユーザー数${hasConversions ? '、総コンバージョン数、平均CVR' : ''}を数値で明示
+- 最も特徴的なポイント（例：主要参照元、集中度など）を冒頭で述べる
+
+## セッションの考察
+- **上位3参照元**をセッション数で具体的に明示
   例：「google.com: 2,450セッション（42.3%）、facebook.com: 1,230セッション（21.2%）、twitter.com: 890セッション（15.4%）」
 - **参照元の集中度**を評価
-  例：「上位3参照元で全体の78.9%を占める（高集中型）」
-${hasConversions ? `- **各参照元のCVR**を比較
-  例：「google.comのCVRが2.1%と最も高く、SNS系は0.8%程度」` : ''}
-
-## 参照元の特性分析
+  例：「上位3参照元で全体の78.9%（4,570セッション）を占める（高集中型）」
 - **ドメインタイプ別の分類**：
   - 検索エンジン（google.com, yahoo.co.jpなど）
   - SNS（facebook.com, twitter.com, instagram.comなど）
   - ポータルサイト（yahoo.co.jp, msn.comなど）
   - ニュースサイト、ブログ、フォーラムなど
-- **メディアタイプの傾向**：
-  - referral（一般的なリンク）vs cpc（有料広告）vs organic（自然検索）
-  - 各タイプの割合と特徴
-${hasConversions ? `- **CVRとの相関**：
-  どの参照元/メディアタイプがコンバージョンに繋がりやすいか` : ''}
+- セッションが多い参照元・少ない参照元の特徴を分析
 
-## ビジネスへの影響
-- **パートナーシップ戦略**：
-  - 流入の多い参照元との関係強化（タイアップ、広告出稿など）
-  - 新規参照元の開拓機会
-- **被リンク戦略**：
-  - 質の高い参照元からのリンク獲得がSEOにも好影響
-  - 低品質な参照元からのリンクは排除を検討
-- **コンテンツ戦略**：
-  - 参照元の特性に合わせたコンテンツ制作
-  - シェアされやすいコンテンツフォーマットの特定
-${hasConversions ? `- **獲得効率**：
-  CVRが高い参照元への露出を増やすことで、全体のCV数増加が期待できる` : ''}
+## ユーザーの考察
+- 参照元ごとのユーザー数を分析
+  例：「google.comからのユーザー数が1,850人（新規率75.5%）で最多」
+- セッション数とユーザー数の関係性を考察
+  例：「SNS系はセッション数は多いが新規ユーザー率が低い（リピート訪問が多い）」
 
-## 原因の考察
-**なぜこのような参照元構成になっているか**（2-3つの仮説を提示）：
-- 仮説1: PR・広報活動の成果
-  例：「ニュースサイトからの流入が多い → プレスリリースやメディア露出が効果的」
-- 仮説2: SNS施策の効果
-  例：「SNSからの流入が多い → SNSマーケティングが機能している」
-- 仮説3: 他社サイトとの提携・協業
-  例：「特定企業サイトからの流入が多い → アライアンスやアフィリエイトが成功」
+## コンバージョンの考察
+- ${hasConversions ? '参照元ごとのコンバージョン数とCVRを具体的な数値で示す' : 'コンバージョン定義が未設定のため、このセクションは「コンバージョン未設定」と簡潔に記載'}
+  ${hasConversions ? '例：「google.com: 51件（CVR 2.1%）、facebook.com: 10件（CVR 0.8%）、twitter.com: 8件（CVR 0.9%）」' : ''}
+- ${hasConversions ? 'CVRが高い参照元と低い参照元を対比' : ''}
+  ${hasConversions ? '例：「google.comのCVR 2.1%が最も高く、SNS系は0.8%程度で低調」' : ''}
+- ${hasConversions ? 'セッション数とCVRの関係性を考察' : ''}
+  ${hasConversions ? '例：「セッション数が多い参照元でもCVRが低い場合、質の低いトラフィックの可能性」' : ''}
+
+## 改善点
+- 課題となっている参照元構成とその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「CVRが高い参照元（google.comなど）への露出を増やす（被リンク獲得、PR強化）」
+  例：「低CVRのSNS参照元の改善（ターゲティング見直し、LP最適化）」
+  例：「質の高い参照元からのリンク獲得でSEO効果も向上」
+  例：「特定参照元依存度を下げ、参照元分散でリスクヘッジ」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
 - ❌ 参照元の羅列のみで終わる
 - ❌ 数値を示さない抽象的な表現
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 5つのセクション（概要、セッションの考察、ユーザーの考察、コンバージョンの考察、改善点）の欠落
 `;
   }
 
@@ -1966,8 +2311,7 @@ ${hasConversions ? `- **獲得効率**：
 あなたは【ランディングページ最適化の専門家】です。${period}のWebサイトのランディングページデータを分析し、**ファーストインプレッション改善に役立つインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
 
 【ランディングページデータ】
-- 総セッション数: ${metrics.totalSessions?.toLocaleString() || 0}回
-- 総ユーザー数: ${metrics.totalUsers?.toLocaleString() || 0}人${hasConversions ? `
+- 総セッション数: ${metrics.totalSessions?.toLocaleString() || 0}回${hasConversions ? `
 - 総コンバージョン数: ${metrics.totalConversions?.toLocaleString() || 0}件` : ''}
 - LP数: ${metrics.landingPageCount || 0}ページ${conversionNote}
 
@@ -1977,55 +2321,53 @@ ${metrics.topLandingPagesText || 'データなし'}
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：主要LP、LP特性、ビジネスへの影響、原因の考察
+- **構成比や割合を示す際は、必ず数値（件数・人数など）とパーセンテージをセットで明示する** 例：「上位3で全体の65%（1,950セッション）」「セッション数上位3LPで70%」
+- **必ず以下のセクションを含める**：
 
-## 主要LPの分析
-- **上位3LP**を具体的な数値で明示
+## 概要
+- ランディングページパフォーマンスの全体像を2-3文で簡潔に総括
+- 総セッション数${hasConversions ? '、総コンバージョン数、平均CVR' : ''}を数値で明示
+- 最も特徴的なポイント（例：主要LP、集中度など）を冒頭で述べる
+
+## セッションの考察
+- **上位3LP**をセッション数で具体的に明示
   例：「/ (トップページ): 3,450セッション（38.2%）、/products/abc: 1,230セッション（13.6%）、/campaign2025: 890セッション（9.9%）」
 - **LPの集中度**を評価
-  例：「上位3LPで全体の61.7%を占める（中集中型）」
-${hasConversions ? `- **各LPのCVR**を比較
-  例：「/campaign2025のCVRが3.2%と最も高く、トップページは0.9%」` : ''}
+  例：「上位3LPで全体の61.7%（5,570セッション）を占める（中集中型）」
+- **LPタイプ別の分類**と特徴を分析：
+  - トップページ（/）→ ブランド認知、直接訪問
+  - 商品ページ（/products/, /services/）→ 検討・比較
+  - キャンペーンLP（/campaign/, /lp/）→ 広告流入
+  - ブログ・記事（/blog/, /articles/）→ SEO・認知拡大
+- セッション数が多いLP・少ないLPの特徴を分析
 
-## LPの特性分析
-- **LPタイプ別の分類**：
-  - トップページ（/）
-  - 商品・サービス詳細ページ（/products/, /services/）
-  - キャンペーンLP（/campaign/, /lp/）
-  - ブログ・記事ページ（/blog/, /articles/）
-  - その他（カテゴリページ、会社情報など）
-- **流入源との関係**：
-  - 広告流入のLPは専用LPが多い傾向
-  - 自然検索流入はブログや商品詳細ページが多い傾向
-${hasConversions ? `- **CVRの傾向**：
-  どのタイプのLPがコンバージョンに繋がりやすいか` : ''}
+## エンゲージメント率の考察
+- **ENG率が高いLP**と**ENG率が低いLP**を対比
+  例：「/campaign2025のENG率が78.5%で最も高く、トップページは52.3%で改善余地あり」
+- ENG率とLPタイプの関係性を考察
+  例：「キャンペーンLPのENG率が高い → ターゲットが明確で訴求が効果的」
+  例：「トップページのENG率が低い → 導線改善、コンテンツ充実が必要」
 
-## ビジネスへの影響
-- **ファーストインプレッションの重要性**：
-  - LPはユーザーの第一印象を決定する最重要ページ
-  - 高トラフィックLPの改善は全体のパフォーマンス向上に直結
-- **LP最適化の優先順位**：
-  - トラフィックは多いがCVRが低いLP → 早急な改善が必要
-  - CVRは高いがトラフィックが少ないLP → 流入増加施策が有効
-- **コンテンツ戦略**：
-  - 流入の多いLPタイプを特定し、同様のコンテンツを増産
-  - 流入が少ないページタイプは露出増加や統廃合を検討
-${hasConversions ? `- **CV最大化**：
-  高CVRのLPへの流入を増やすことで、全体のCV数増加が期待できる` : ''}
+## 平均滞在時間の考察
+- **滞在時間が長いLP**と**滞在時間が短いLP**を対比
+  例：「/blog/article-789の平均滞在時間が4分12秒で最も長く、トップページは1分8秒」
+- 滞在時間とLPタイプの関係性を考察
+  例：「ブログ記事LPは滞在時間が長い → じっくり読まれている」
+  例：「トップページは滞在時間が短い → 次のページへの遷移が早い（回遊性が高い）」
 
-## 原因の考察
-**なぜこのようなLP構成になっているか**（2-3つの仮説を提示）：
-- 仮説1: 広告キャンペーンの影響
-  例：「特定のキャンペーンLPへの流入が多い → 現在の広告施策の成果」
-- 仮説2: SEOコンテンツの効果
-  例：「ブログ記事がLPとして機能 → コンテンツSEOが成功している」
-- 仮説3: サイト構造・ナビゲーションの影響
-  例：「トップページへの集中 → ブランド認知度が高い、または直接訪問が多い」
+## 改善点
+- 課題となっているLPパフォーマンスとその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「セッションは多いがENG率が低いLP → ファーストビュー改善、明確なCTA配置」
+  例：「滞在時間が短いLP → コンテンツ充実、関連コンテンツへの内部リンク追加」
+  例：「高ENG率・高CVRのLP → 広告予算を集中投下してセッション数増加」
+  例：「低セッションのLP → SEO改善、広告配信強化」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
 - ❌ LPの羅列のみで終わる
 - ❌ 数値を示さない抽象的な表現
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 5つのセクション（概要、ページビューの考察、エンゲージメント率の考察、平均滞在時間の考察、改善点）の欠落
 `;
   }
 
@@ -2039,8 +2381,6 @@ ${hasConversions ? `- **CV最大化**：
 
 【ページ別データ】
 - 総ページビュー数: ${metrics.totalPageViews?.toLocaleString() || 0}PV
-- 総セッション数: ${metrics.totalSessions?.toLocaleString() || 0}回
-- 総ユーザー数: ${metrics.totalUsers?.toLocaleString() || 0}人
 - ページ数: ${metrics.pageCount || 0}ページ${conversionNote}
 
 【ページ別の内訳（上位10件）】
@@ -2049,127 +2389,109 @@ ${metrics.topPagesText || 'データなし'}
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：主要ページ、コンテンツ特性、ビジネスへの影響、原因の考察
+- **必ず以下のセクションを含める**：
 
-## 主要ページの分析
-- **上位3ページ**を具体的な数値で明示
+## 概要
+- ページ別パフォーマンスの全体像を2-3文で簡潔に総括
+- 総ページビュー数を数値で明示
+- 最も特徴的なポイント（例：主要ページ、集中度など）を冒頭で述べる
+
+## ページビューの考察
+- **上位3ページ**をページビュー数で具体的に明示
   例：「/ (トップ): 5,230PV（28.5%）、/products/abc: 2,140PV（11.7%）、/blog/article-123: 1,890PV（10.3%）」
 - **ページの集中度**を評価
-  例：「上位10ページで全体の65%を占める（中集中型）」
-- **PV/セッション比**を計算
-  例：「平均PV/セッション: ${metrics.totalPageViews && metrics.totalSessions ? (metrics.totalPageViews / metrics.totalSessions).toFixed(2) : 'N/A'}（ユーザーの回遊度を示す）」
+  例：「上位10ページで全体の65%（12,150PV）を占める（中集中型）」
+- PVが多いページ・少ないページの特徴を分析
+  例：「トップページが圧倒的に多い → 内部リンクがトップに集中」
 
-## コンテンツタイプ別の特性
-- **ページタイプ別の分類**：
-  - トップページ（/）
-  - 商品・サービスページ（/products/, /services/）
-  - ブログ・記事（/blog/, /articles/, /news/）
-  - 会社情報（/about/, /company/）
-  - お問い合わせ・申込（/contact/, /apply/）
-  - その他（カテゴリ、FAQ、利用規約など）
-- **各タイプの役割**：
-  - 情報提供型（ブログ、記事） → 集客・認知拡大
-  - 商品紹介型 → 検討・比較
-  - コンバージョン型（申込、問い合わせ） → 成果獲得
-- **回遊性の評価**：
-  PV/セッションが高い → ユーザーが複数ページを閲覧（良好）
-  PV/セッションが低い → 1ページで離脱（改善必要）
+## エンゲージメント率の考察
+- **ENG率が高いページ**と**ENG率が低いページ**を対比
+  例：「/blog/article-123のENG率が85.3%で最も高く、/products/abc は52.1%で改善余地あり」
+- ENG率とページタイプの関係性を考察
+  例：「ブログ記事のENG率が高い → コンテンツの質が高く、ユーザーが満足している」
+  例：「商品ページのENG率が低い → コンテンツ改善、関連情報の充実が必要」
+- ENG率とPVの関係性を考察
+  例：「PVは多いがENG率が低いページ → 導線は機能しているがコンテンツ改善が必要」
 
-## ビジネスへの影響
-- **コンテンツ投資の優先順位**：
-  - 高PVページ → 改善・更新の優先度が高い（影響範囲が大きい）
-  - 低PVページ → 統廃合や導線改善を検討
-- **コンテンツ戦略**：
-  - 人気コンテンツタイプを特定し、同様のコンテンツを増産
-  - 低パフォーマンスコンテンツは品質改善またはnoindex化
-- **ユーザー体験**：
-  - 回遊率が高い → ユーザーが情報を探しやすいサイト構造
-  - 回遊率が低い → ナビゲーション改善、関連コンテンツの充実が必要
+## 平均滞在時間の考察
+- **滞在時間が長いページ**と**滞在時間が短いページ**を対比
+  例：「/blog/article-456の平均滞在時間が3分45秒で最も長く、/products/xyz は28秒で短い」
+- 滞在時間とコンテンツタイプの関係性を考察
+  例：「ブログ記事は滞在時間が長い → じっくり読まれている」
+  例：「商品ページは滞在時間が短い → 簡潔に情報を得て次のアクションへ」
+- 滞在時間とENG率の関係性を考察
+  例：「滞在時間が長くENG率も高いページ → 質の高いコンテンツで満足度が高い」
 
-## 原因の考察
-**なぜこのようなページ構成になっているか**（2-3つの仮説を提示）：
-- 仮説1: SEOコンテンツの成果
-  例：「特定のブログ記事のPVが多い → SEOで上位表示されている」
-- 仮説2: サイト設計・導線の影響
-  例：「トップページのPVが圧倒的に多い → 内部リンクがトップに集中」
-- 仮説3: ユーザーニーズとの合致度
-  例：「商品詳細ページのPVが多い → ユーザーの関心が高い商品」
+## 改善点
+- 課題となっているページパフォーマンスとその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「PVは多いがENG率が低いページ → コンテンツ改善、関連ページへの内部リンク追加」
+  例：「滞在時間が短いページ → コンテンツの充実、ビジュアル改善」
+  例：「低PVページ → SEO改善、内部リンク強化、統廃合を検討」
+  例：「高ENG率・高滞在時間のページ → 同様のコンテンツを増産して成功パターンを横展開」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
 - ❌ ページの羅列のみで終わる
 - ❌ 数値を示さない抽象的な表現
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 5つのセクション（概要、ページビューの考察、エンゲージメント率の考察、平均滞在時間の考察、改善点）の欠落
 `;
   }
 
   if (pageType === 'pageCategories') {
     // ページカテゴリ別分析用のプロンプト
-    const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
-    const conversionNote = hasConversions ? '' : '\n\n⚠️ **注意**: コンバージョン定義が未設定です。CV分析をご希望の場合、サイト設定画面から設定してください。';
-
     return `
 あなたは【コンテンツカテゴリ戦略の専門家】です。${period}のWebサイトのカテゴリ別データを分析し、**サイト構造最適化に役立つインサイト**を含む日本語の要約を**必ず800文字以内**で生成してください。
 
 【カテゴリ別データ】
 - 総ページビュー数: ${metrics.totalPageViews?.toLocaleString() || 0}PV
-- カテゴリ数: ${metrics.categoryCount || 0}カテゴリ${conversionNote}
+- カテゴリ数: ${metrics.categoryCount || 0}カテゴリ
 
-【カテゴリ別の内訳（上位5件）】
+【カテゴリ別の内訳（上位10件）】
 ${metrics.topCategoriesText || 'データなし'}
 
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：主要カテゴリ、カテゴリ特性、ビジネスへの影響、原因の考察
+- **必ず以下のセクションを含める**：
 
-## 主要カテゴリの分析
-- **上位3カテゴリ**を具体的な数値で明示
+## 概要
+- ページカテゴリ別パフォーマンスの全体像を2-3文で簡潔に総括
+- 総ページビュー数、カテゴリ数を数値で明示
+- 最も特徴的なポイント（例：主要カテゴリ、集中度など）を冒頭で述べる
+
+## カテゴリに対するページビューの考察
+- **上位3カテゴリ**をページビュー数で具体的に明示
   例：「/ (トップレベル): 8,450PV（45.2%）、/blog: 3,230PV（17.3%）、/products: 2,890PV（15.5%）」
 - **カテゴリの集中度**を評価
-  例：「上位3カテゴリで全体の78.0%を占める（高集中型）」
+  例：「上位3カテゴリで全体の78.0%（14,570PV）を占める（高集中型）」
 - **カテゴリ規模の比較**：
   PV数だけでなく、含まれるページ数も考慮
-  例：「/blogは230ページあるが、/productsは15ページのみで高PV」
-
-## カテゴリの特性分析
-- **カテゴリタイプ別の役割**：
+  例：「/blogは230ページあるが、/productsは15ページのみで高PV → 商品ページの訴求力が高い」
+- **カテゴリタイプ別の役割**を分析：
   - コアコンテンツ（/, /products, /servicesなど）→ ビジネスの中核
   - 集客コンテンツ（/blog, /news, /articlesなど）→ SEO・認知拡大
   - サポートコンテンツ（/faq, /support, /guideなど）→ ユーザーサポート
-  - トランザクション（/contact, /apply, /cartなど）→ コンバージョン獲得
-- **カテゴリの充実度**：
-  - ページ数が多いカテゴリ → コンテンツが充実
-  - ページ数が少ないカテゴリ → 拡充の余地あり
+  - トランザクション（/contact, /apply, /cartなど）→ ユーザーアクション獲得
 - **カテゴリ間のバランス**：
-  集客カテゴリとコンバージョンカテゴリのバランスを評価
+  集客カテゴリとビジネス目標達成に向けたカテゴリのバランスを評価
+  例：「ブログカテゴリが全体の55%（10,285PV）を占め、集客重視のサイト構造」
+- PVが多いカテゴリ・少ないカテゴリの特徴を分析し、ビジネス目標との一致度を考察
+  例：「重要な商品カテゴリのPVが少ない → 導線改善、露出強化が必要」
 
-## ビジネスへの影響
-- **サイト構造の評価**：
-  - 高PVカテゴリがビジネス目標と一致しているか
-  - 重要なカテゴリのPVが少ない場合は導線改善が必要
-- **コンテンツ投資戦略**：
-  - 高PVカテゴリ → 継続的なコンテンツ拡充と品質維持
-  - 低PVカテゴリ → 拡充 or 統廃合を検討
-- **ユーザーニーズの把握**：
-  - どのカテゴリがユーザーに求められているか
-  - 需要の高いカテゴリへのリソース集中
-- **サイトナビゲーション**：
-  - 高PVカテゴリへのアクセスしやすさを確保
-  - メガメニュー、フッター、サイドバーでの露出を最適化
-
-## 原因の考察
-**なぜこのようなカテゴリ構成になっているか**（2-3つの仮説を提示）：
-- 仮説1: ビジネスモデルの反映
-  例：「商品カテゴリのPVが多い → ECサイトまたは製品販売が主力」
-- 仮説2: コンテンツマーケティングの成果
-  例：「ブログカテゴリのPVが多い → SEO施策が成功している」
-- 仮説3: ユーザーの行動パターン
-  例：「トップページのPVが圧倒的 → ブランド認知度が高く、直接訪問が多い」
+## 改善点
+- 課題となっているカテゴリ構成とその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「高PVカテゴリ → 継続的なコンテンツ拡充と品質維持でさらに伸ばす」
+  例：「低PVカテゴリ → 拡充 or 統廃合を検討、SEO改善、内部リンク強化」
+  例：「カテゴリ間のバランスが偏っている → 戦略的にバランスを調整」
+  例：「高PVカテゴリへのアクセス導線を強化（メガメニュー、フッター、サイドバー）」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
 - ❌ カテゴリの羅列のみで終わる
 - ❌ 数値を示さない抽象的な表現
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 3つのセクション（概要、カテゴリに対するページビューの考察、改善点）の欠落
 `;
   }
 
@@ -2194,53 +2516,53 @@ ${metrics.topKeywordsText || 'データなし'}
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：主要キーワード、キーワード特性、ビジネスへの影響、原因の考察
+- **必ず以下のセクションを含める**：
 
-## 主要キーワードの分析
-- **上位3キーワード**を具体的な数値で明示
-  例：「○○○○: クリック450回（CTR 12.5%、順位2.3位）、△△△△: クリック320回（CTR 8.2%、順位4.1位）」
+## 概要
+- 流入キーワードの全体像を2-3文で簡潔に総括
+- 総クリック数、総表示回数、平均CTR、平均掲載順位を数値で明示
+- 最も特徴的なポイント（例：主要キーワード、キーワード集中度など）を冒頭で述べる
+
+## クリック数の考察
+- **上位3キーワード**をクリック数で具体的に明示
+  例：「○○○○: 450クリック（全体の15.2%）、△△△△: 320クリック（10.8%）、□□□□: 280クリック（9.5%）」
 - **キーワードの集中度**を評価
-  例：「上位10キーワードで全クリックの65%を占める（中集中型）」
-- **CTRと掲載順位の関係**：
-  高順位でもCTRが低いキーワード → タイトル・ディスクリプション改善が必要
-  低順位でもCTRが高いキーワード → 順位向上でクリック大幅増加が期待できる
+  例：「上位10キーワードで全クリックの65%（1,950クリック）を占める（中集中型）」
+- クリック数が多いキーワード・少ないキーワードの特徴を分析
+  例：「ブランドキーワードがクリック数トップ → 指名検索が強い」
 
-## キーワードの特性分析
-- **キーワードタイプ別の分類**：
-  - ブランドキーワード（企業名、商品名など）
-  - 一般キーワード（検索ニーズを示すキーワード）
-  - ロングテールキーワード（3語以上の詳細なキーワード）
-  - 情報検索型（○○とは、○○方法など）
-  - 商業検索型（○○価格、○○比較など）
-- **検索意図の推測**：
-  各キーワードからユーザーが何を求めているかを分析
-- **競争度の評価**：
-  順位が高いキーワード → 競争に勝てている
-  順位が低いキーワード → 競合が強い、またはコンテンツ改善が必要
+## 表示回数の考察
+- **表示回数が多い上位3キーワード**を明示
+  例：「○○○○: 3,600表示、△△△△: 2,800表示、□□□□: 2,100表示」
+- 表示回数とクリック数の関係性を考察
+  例：「表示回数は多いがクリック数が少ないキーワード → CTR低下の要因分析が必要」
 
-## ビジネスへの影響
-- **SEO戦略の有効性**：
-  - ブランドキーワードが多い → ブランド認知度が高い
-  - 一般キーワードが多い → SEOコンテンツが効果的
-- **機会損失の特定**：
-  - 表示回数は多いがCTRが低いキーワード → タイトル改善で大幅なクリック増加が見込める
-  - 掲載順位が4-10位のキーワード → 上位3位以内を目指すことでクリック数が2-3倍になる可能性
-- **コンテンツギャップ**：
-  - 流入が少ないキーワード → 競合との差別化ポイント、新規コンテンツ制作の機会
+## クリック率（CTR）の考察
+- **CTRが高いキーワード**と**CTRが低いキーワード**を対比
+  例：「ブランドキーワードのCTRが25.3%で最も高く、一般キーワードは8.2%」
+- CTRと掲載順位の関係を分析
+  例：「高順位（1-3位）でもCTRが低いキーワード → タイトル・ディスクリプション改善が必要」
+  例：「低順位（4-10位）でもCTRが高いキーワード → 順位向上でクリック大幅増加が期待できる」
 
-## 原因の考察
-**なぜこのようなキーワード構成になっているか**（2-3つの仮説を提示）：
-- 仮説1: SEOコンテンツ戦略の成果
-  例：「特定の情報検索型キーワードが多い → ブログ記事が検索上位表示されている」
-- 仮説2: ブランド認知度の反映
-  例：「ブランドキーワードが多い → 指名検索が増えている」
-- 仮説3: 競合との差別化
-  例：「ロングテールキーワードが多い → ニッチな検索ニーズを捉えている」
+## 平均掲載順位の考察
+- **掲載順位が高いキーワード**（上位1-3位）と**掲載順位が低いキーワード**（4位以下）を対比
+  例：「ブランドキーワードは平均1.8位で安定、一般キーワードは5.2位で改善余地あり」
+- 掲載順位が低いキーワードの改善機会を提示
+  例：「4-10位のキーワードは上位3位以内を目指すことでクリック数が2-3倍になる可能性」
+
+## 改善点
+- 課題となっているキーワード構成とその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「表示回数は多いがCTRが低いキーワード → タイトル・ディスクリプション改善でクリック数増加」
+  例：「掲載順位が4-10位のキーワード → コンテンツ強化で上位3位以内を目指す」
+  例：「ロングテールキーワードの強化で検索流入の多様化」
+  例：「CTRが高いキーワードへの追加コンテンツ投資でROI向上」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
 - ❌ キーワードの羅列のみで終わる
 - ❌ 数値を示さない抽象的な表現
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 6つのセクション（概要、クリック数の考察、表示回数の考察、クリック率の考察、平均掲載順位の考察、改善点）の欠落
 `;
   }
 
@@ -2254,61 +2576,73 @@ ${metrics.topKeywordsText || 'データなし'}
 
 【コンバージョンデータ】
 - データポイント数: ${metrics.monthlyDataPoints || 0}ヶ月分
-- 定義済みコンバージョンイベント数: ${metrics.conversionEventCount || 0}種類${noDataNote}
+- 定義済みコンバージョンイベント数: ${metrics.conversionEventCount || 0}種類
+- 最新月: ${metrics.latestMonth || '不明'}${noDataNote}
 
 【コンバージョンイベント別の合計】
 ${metrics.conversionSummaryText || 'データなし'}
 
+【最新月（${metrics.latestMonth || '不明'}）のコンバージョン】
+${metrics.latestMonthText || 'データなし'}
+${metrics.monthlyDetailText || ''}
+
 【重要な制約】
-⚠️ **必ず上記の【コンバージョンイベント別の合計】に記載されているイベント名と数値のみを使用してください。記載されていないイベント名や数値を推測したり、例として挙げたりしないでください。**
+⚠️ **必ず上記の【コンバージョンイベント別の合計】および【月次データ詳細】に記載されているイベント名と数値のみを使用してください。記載されていないイベント名や数値を推測したり、例として挙げたりしないでください。**
 
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：主要CV、CV推移、ビジネスへの影響、原因の考察
+- **構成比や割合を示す際は、必ず数値（件数）とパーセンテージをセットで明示する** 例：「お問い合わせが全CVの48.9%（245件）」
+- **必ず以下のセクションを含める**：
 
-## 主要コンバージョンの分析
+## 概要
+- コンバージョン全体の推移を2-3文で簡潔に総括
+- データポイント数（○ヶ月分）、定義済みCVイベント数を数値で明示
+- 最も特徴的なポイント（例：増加傾向、主要CVイベントなど）を冒頭で述べる
+
+## 各コンバージョンごとの考察
 - **上記【コンバージョンイベント別の合計】に記載されている各CVイベントの件数**を具体的な数値で明示
+  例：「お問い合わせ: 245件、資料ダウンロード: 189件、無料トライアル申込: 67件」
 - **CVの集中度**を評価（複数イベントがある場合のみ）
+  例：「お問い合わせが全CVの48.9%（245件）を占め、主要なCVイベント」
 - **CVイベント間の関係**：
-  複数のCVイベントがある場合のみ、カスタマージャーニー上の位置づけを分析
+  複数のCVイベントがある場合、カスタマージャーニー上の位置づけを分析
+  例：「資料DL → 無料トライアル → お問い合わせの順でCV難易度が上がる」
+- 件数が多いCVイベント・少ないCVイベントの特徴を分析
 
-## コンバージョン推移の分析
-- **月次トレンド**：
+## 当月コンバージョンの考察
+- **上記【最新月のコンバージョン】に記載されている最新月（${metrics.latestMonth || '不明'}）の各CVイベントの実績**を具体的な数値で明示
+  例：「${metrics.latestMonth || '不明'}実績：お問い合わせ 28件、資料ダウンロード 45件、無料トライアル申込 12件」
+- **前月比**を評価（【月次データ詳細】から計算可能な場合）
+  例：「お問い合わせは前月比+15%（+4件）で好調」
+- **当月の特徴的なポイント**を分析
+  例：「資料DLが急増 → 新規コンテンツが効果的」「お問い合わせが減少 → 要因分析が必要」
+
+## 月次推移の考察
+- **上記【月次データ詳細】に基づいて月次トレンド**を具体的な数値で示す：
   増加傾向・減少傾向・季節変動を特定
-  例：「過去3ヶ月で15%増加傾向」「○月が最も多い（季節要因）」
-- **変動の大きさ**：
-  安定しているか、ブレが大きいかを評価
+  例：「過去3ヶ月で15%増加傾向」「2025年6月が最も多い（季節要因）」
+- **変動の大きさ**を評価：
+  安定しているか、ブレが大きいかを分析
+  例：「月ごとの変動が±10%以内で安定」
 - **異常値の特定**：
-  特定月の急増・急減があれば、その要因を推測
-  例：「○月にキャンペーン実施で2倍に増加」
+  特定月の急増・急減があれば、【月次データ詳細】から具体的な月と数値を示し、その要因を推測
+  例：「2025年3月にキャンペーン実施でCV数が前月比2倍に増加（120件→240件）」
+- CVが増加した月と減少した月を【月次データ詳細】から特定し、その要因を考察
 
-## ビジネスへの影響
-- **売上・成果への直結度**：
-  - CVが増加 → ビジネス成果の向上
-  - CVが減少 → 早急な対策が必要
-- **マーケティング施策の評価**：
-  - CV増加月 → その月の施策（広告、キャンペーン、SEOなど）が効果的
-  - CV減少月 → 施策の見直しが必要
-- **リソース配分の最適化**：
-  - 件数の多いCVイベント → 現状の主力施策を強化
-  - 件数の少ないCVイベント → 新規施策や導線改善で伸ばす余地あり
-- **ファネル最適化**：
-  各CVイベントの役割を理解し、段階的な改善施策を実施
-
-## 原因の考察
-**なぜこのようなCV推移になっているか**（2-3つの仮説を提示）：
-- 仮説1: マーケティング施策の影響
-  例：「○月のCV増加 → 広告予算増額やキャンペーン実施の成果」
-- 仮説2: 季節要因・外部環境
-  例：「特定月の増加 → 業界の繁忙期や季節需要」
-- 仮説3: サイト改善の効果
-  例：「継続的な増加傾向 → LP改善やEFO（入力フォーム最適化）の成果」
+## 改善点
+- 課題となっているCV推移とその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「CV減少月の要因分析 → 広告予算、LP品質、季節要因を確認」
+  例：「件数の多いCVイベント → 現状の主力施策を強化してさらに伸ばす」
+  例：「件数の少ないCVイベント → 新規施策や導線改善で伸ばす余地あり」
+  例：「CV増加月の成功要因を特定 → 他の月にも横展開」
+- 優先順位とビジネスインパクトを明示
 
 【禁止事項】
 - ❌ CV数の羅列のみで終わる
 - ❌ 数値を示さない抽象的な表現
-- ❌ 「ビジネスへの影響」「原因の考察」セクションの欠落
+- ❌ 5つのセクション（概要、各コンバージョンごとの考察、当月コンバージョンの考察、月次推移の考察、改善点）の欠落
 - ❌ 【コンバージョンイベント別の合計】に記載されていないイベント名や数値を使用する
 - ❌ 架空のイベント名（入居のお申込完了、見学のお申込完了など）を推測して記載する
 `;
@@ -2333,45 +2667,37 @@ ${metrics.topFilesText || 'データなし'}
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：主要ファイル、ファイル特性、ビジネスへの影響、原因の考察
+- **必ず以下のセクションを含める**：
 
-## 主要ファイルの分析
-- **上位3ファイル**を具体的な数値で明示
+## 概要
+- ファイルダウンロードの全体像を2-3文で簡潔に総括
+- 総ダウンロード数、総ユーザー数、ファイル数を数値で明示
+- 最も特徴的なポイント（例：主要ファイル、集中度など）を冒頭で述べる
+
+## ダウンロード数の考察
+- **上位3ファイル**をダウンロード数で具体的に明示
   例：「product_catalog.pdf: 890DL（42.3%）、whitepaper_2025.pdf: 520DL（24.7%）、price_list.xlsx: 340DL（16.2%）」
 - **ファイルの集中度**を評価
-  例：「上位3ファイルで全体の83.2%を占める（高集中型）」
-- **ユーザー当たりDL数**：
+  例：「上位3ファイルで全体の83.2%（1,750ダウンロード）を占める（高集中型）」
+- **ユーザー当たりDL数**を計算
   例：「平均${metrics.totalDownloads && metrics.totalUsers ? (metrics.totalDownloads / metrics.totalUsers).toFixed(2) : 'N/A'}DL/ユーザー → 複数資料をDLするユーザーが多い」
+- **ファイルタイプ別の分類**と特徴を分析：
+  - 製品カタログ・パンフレット（PDF）→ 商品情報
+  - ホワイトペーパー・事例集（PDF）→ 専門知識、実績
+  - 価格表・見積書（PDF, Excel）→ 検討段階
+  - 技術資料・マニュアル（PDF）→ 導入後サポート
+- DL数が多いファイル・少ないファイルの特徴を分析し、顧客ニーズを把握
+  例：「価格表のDLが多い → 具体的な検討段階の顧客が多い」
+  例：「技術資料のDLが少ない → 導入前の認知段階の顧客が多い」
 
-## ファイルタイプ別の特性
-- **ファイルタイプ別の分類**：
-  - 製品カタログ・パンフレット（PDF）
-  - ホワイトペーパー・事例集（PDF）
-  - 価格表・見積書（PDF, Excel）
-  - プレゼン資料・提案書（PowerPoint, PDF）
-  - 技術資料・マニュアル（PDF）
-  - その他（画像、動画など）
-- **ファイル形式の傾向**：
-  PDFが多い → 印刷・閲覧用の資料
-  Excelが多い → データ・計算用の資料
-- **ファイル名の傾向**：
-  具体的な名前 → ユーザーが明確な目的でDL
-  一般的な名前 → 幅広いニーズに対応
-
-## ビジネスへの影響
-- **リード獲得への貢献**：
-  - 資料DLは見込み顧客（リード）の獲得機会
-  - DL数が多い → コンテンツマーケティングが機能している
-- **顧客ニーズの把握**：
-  - どの資料が求められているかでニーズを特定
-  - DL数の多い資料 → 市場の関心が高い分野
-  - DL数の少ない資料 → 改善または廃止を検討
-- **営業・マーケティング活用**：
-  - DLユーザーへのフォローアップ（メール、電話など）
-  - DL後のCV率を分析し、効果的な資料を特定
-- **コンテンツ戦略**：
-  - 人気資料と同様のコンテンツを増産
-  - DL数の少ない資料は内容見直しまたはプロモーション強化
+## 改善点
+- 課題となっているファイルDL状況とその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「DL数の多い資料 → 同様のコンテンツを増産、営業フォローアップ強化」
+  例：「DL数の少ない資料 → 内容見直し、プロモーション強化、または廃止」
+  例：「DLユーザーへのフォローアップ施策（メール、電話）でCV率向上」
+  例：「人気資料の露出を増やす（トップページ、ブログ記事内）」
+- 優先順位とビジネスインパクトを明示
 
 ## 原因の考察
 **なぜこのようなDL構成になっているか**（2-3つの仮説を提示）：
@@ -2408,44 +2734,38 @@ ${metrics.topLinksText || 'データなし'}
 【要求事項】
 - **800文字以内で簡潔にまとめる**（これは厳守してください）
 - Markdownの見出し記法（##, ###）を使用して構造化
-- **必ず以下のセクションを含める**：主要リンク、リンク特性、ビジネスへの影響、原因の考察
+- **必ず以下のセクションを含める**：
 
-## 主要外部リンクの分析
-- **上位3リンク**を具体的な数値で明示
-  例：「https://example.com/shop: 1,230クリック（45.2%）、https://partner.com: 680クリック（25.0%）」
+## 概要
+- 外部リンククリックの全体像を2-3文で簡潔に総括
+- 総クリック数、総ユーザー数、外部リンク数を数値で明示
+- 最も特徴的なポイント（例：主要リンク、集中度など）を冒頭で述べる
+
+## 外部リンククリックの考察
+- **上位3リンク**をクリック数で具体的に明示
+  例：「https://example.com/shop: 1,230クリック（45.2%）、https://partner.com: 680クリック（25.0%）、https://sns.com: 450クリック（16.5%）」
 - **リンクの集中度**を評価
-  例：「上位3リンクで全体の75%を占める（高集中型）」
-- **ユーザー当たりクリック数**：
+  例：「上位3リンクで全体の75%（2,360クリック）を占める（高集中型）」
+- **ユーザー当たりクリック数**を計算
   例：「平均${metrics.totalClicks && metrics.totalUsers ? (metrics.totalClicks / metrics.totalUsers).toFixed(2) : 'N/A'}クリック/ユーザー」
+- **リンク先タイプ別の分類**と特徴を分析：
+  - ECサイト・購入ページ（Amazon, 楽天, 自社ECなど）→ 購入誘導
+  - SNS・ソーシャルメディア（Twitter, Facebook, Instagramなど）→ 拡散・認知拡大
+  - パートナーサイト・関連サービス → 連携・協業
+  - 求人サイト（採用情報への誘導）→ 採用活動
+- **リンクの役割**を考察：
+  購入誘導、情報補足、SNSシェア、パートナー連携など
+- クリック数が多いリンク・少ないリンクの特徴を分析
+  例：「自社ECへのクリックが多い → 購入意欲の高いユーザーが多い」
 
-## 外部リンクの特性分析
-- **リンク先タイプ別の分類**：
-  - ECサイト・購入ページ（Amazon, 楽天, 自社ECなど）
-  - SNS・ソーシャルメディア（Twitter, Facebook, Instagramなど）
-  - パートナーサイト・関連サービス
-  - 求人サイト（採用情報への誘導）
-  - その他のサービスサイト
-- **リンクの役割**：
-  - 購入・申込への誘導 → コンバージョン促進
-  - 情報提供・補足 → ユーザー体験向上
-  - SNSシェア → 拡散・認知拡大
-- **クリック先の傾向**：
-  特定ドメインへの集中 → 特定パートナーや自社ECへの誘導が多い
-
-## ビジネスへの影響
-- **収益機会の評価**：
-  - ECサイトへのクリックが多い → アフィリエイト収益や自社EC売上に貢献
-  - クリック数 = 潜在的な顧客流出または送客
-- **パートナーシップ戦略**：
-  - クリックの多いリンク先 → 重要なパートナー、関係強化を検討
-  - クリックの少ないリンク先 → 配置見直しまたは削除を検討
-- **ユーザー導線の最適化**：
-  - 外部リンククリック = サイト離脱のリスク
-  - 必要な外部リンクは残し、不要なリンクは削減
-  - 外部リンクの前に自社コンテンツで価値提供
-- **成果計測**：
-  - 外部リンククリック後のCV率を追跡（可能な場合）
-  - 効果的な外部リンクを特定し、プロモーション強化
+## 改善点
+- 課題となっている外部リンククリック状況とその原因仮説を2-3点提示
+- 具体的で実行可能な改善アプローチを提案
+  例：「クリック数の多いリンク先 → 重要なパートナー、関係強化（タイアップ、広告出稿）」
+  例：「クリック数の少ないリンク先 → 配置見直しまたは削除を検討」
+  例：「外部リンククリック = サイト離脱リスク → 必要なリンクのみ残し、不要なリンクは削減」
+  例：「外部リンクの前に自社コンテンツで価値提供し、離脱を最小化」
+- 優先順位とビジネスインパクトを明示
 
 ## 原因の考察
 **なぜこのようなクリック構成になっているか**（2-3つの仮説を提示）：

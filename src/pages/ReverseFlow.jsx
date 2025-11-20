@@ -665,37 +665,24 @@ export default function ReverseFlow() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && selectedFlow && (() => {
-          const metrics = {
-            flowData: {
-              flowName: selectedFlow?.flow_name || '',
-              formPagePath: selectedFlow?.form_page_path || '',
-              targetCvEvent: selectedFlow?.target_cv_event || '',
-            },
-            summaryData: summaryData || {},
-            monthlyData: monthlyData || [],
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[ReverseFlow] AI分析に送信するデータ:', {
-            flowName: metrics.flowData.flowName,
-            hasSummaryData: !!metrics.summaryData,
-            monthlyDataCount: metrics.monthlyData.length,
-            sampleMonthlyData: metrics.monthlyData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.REVERSE_FLOW}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && selectedFlow && !summaryLoading && summaryData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.REVERSE_FLOW}
+            rawData={{
+              summary: summaryData,
+              monthly: monthlyData || [],
+              flow: {
+                flowName: selectedFlow?.flow_name || '',
+                formPagePath: selectedFlow?.form_page_path || '',
+                targetCvEvent: selectedFlow?.target_cv_event || '',
+              },
+            }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
 
       {/* ダイアログ（フロー設定） */}

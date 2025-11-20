@@ -34,14 +34,6 @@ export default function LandingPages() {
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
 
-  // 滞在時間をフォーマット
-  const formatDuration = (seconds) => {
-    if (!seconds || seconds === 0) return '0秒';
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return mins > 0 ? `${mins}分${secs}秒` : `${secs}秒`;
-  };
-
   // ページタイトルを設定
   useEffect(() => {
     setPageTitle('ランディングページ');
@@ -87,8 +79,8 @@ export default function LandingPages() {
         path: row.landingPage || '/',
         shortUrl: shortenUrl(row.landingPage),
         sessions: row.sessions || 0,
-        engagementRate: row.engagementRate ? (row.engagementRate * 100).toFixed(1) : '0.0',
-        avgEngagementTime: row.averageSessionDuration || 0,
+        engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
+        avgSessionDuration: row.averageSessionDuration || 0,
         conversions: row.conversions || 0,
         conversionRate:
           row.sessions > 0
@@ -102,7 +94,6 @@ export default function LandingPages() {
 
   // 合計値の計算
   const totalSessions = tableData.reduce((sum, row) => sum + row.sessions, 0);
-  const totalUsers = tableData.reduce((sum, row) => sum + row.users, 0);
   const totalConversions = tableData.reduce((sum, row) => sum + row.conversions, 0);
 
   // 凡例クリックハンドラー
@@ -263,18 +254,22 @@ export default function LandingPages() {
                       key: 'path',
                       label: 'ランディングページ',
                       sortable: true,
-                      tooltip: 'landingPage',
-                      render: (value) => (
-                        <a
-                          href={value}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-primary hover:underline"
-                        >
-                          <span className="truncate max-w-md">{value}</span>
-                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                        </a>
-                      ),
+                      render: (value) => {
+                        const fullUrl = selectedSite?.siteUrl 
+                          ? `${selectedSite.siteUrl.replace(/\/$/, '')}${value}`
+                          : value;
+                        return (
+                          <a
+                            href={fullUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-primary hover:underline"
+                          >
+                            <span className="truncate max-w-md">{value}</span>
+                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                          </a>
+                        );
+                      },
                     },
                     {
                       key: 'sessions',
@@ -287,15 +282,19 @@ export default function LandingPages() {
                       key: 'engagementRate',
                       label: 'ENG率',
                       align: 'right',
-                      tooltip: 'engagementRate',
                       render: (value) => `${value}%`,
+                      tooltip: 'engagementRate',
                     },
                     {
-                      key: 'avgEngagementTime',
+                      key: 'avgSessionDuration',
                       label: '平均滞在時間',
                       align: 'right',
-                      tooltip: 'avgEngagementTime',
-                      render: (value) => formatDuration(value),
+                      render: (value) => {
+                        const minutes = Math.floor(value / 60);
+                        const seconds = Math.floor(value % 60);
+                        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                      },
+                      tooltip: 'avgSessionDuration',
                     },
                     {
                       key: 'conversions',
@@ -308,8 +307,8 @@ export default function LandingPages() {
                       key: 'conversionRate',
                       label: 'CVR',
                       align: 'right',
-                      tooltip: 'conversionRate',
                       render: (value) => `${value}%`,
+                      tooltip: 'conversionRate',
                     },
                   ]}
                   data={tableData}
@@ -350,30 +349,16 @@ export default function LandingPages() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            landingPagesData: tableData || [],
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[LandingPages] AI分析に送信するデータ:', {
-            landingPagesDataCount: metrics.landingPagesData.length,
-            hasConversions: metrics.hasConversionDefinitions,
-            sampleData: metrics.landingPagesData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.LANDING_PAGES}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && landingPageData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.LANDING_PAGES}
+            rawData={landingPageData}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

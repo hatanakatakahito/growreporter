@@ -72,12 +72,8 @@ export async function setCache(cacheKey, data, siteId, userId) {
  * @returns {string} - キャッシュキー
  */
 export function generateCacheKey(type, siteId, startDate, endDate, dimensions = '', metrics = '') {
-  // スラッシュをアンダースコアに置換（Firestoreのドキュメントパスとして使用できるように）
-  const sanitizedDimensions = dimensions ? dimensions.replace(/\//g, '_') : '';
-  const sanitizedMetrics = metrics ? metrics.replace(/\//g, '_') : '';
-  
   // ディメンション/メトリクスがある場合はキーに含める
-  const suffix = sanitizedDimensions || sanitizedMetrics ? `_${sanitizedDimensions}_${sanitizedMetrics}` : '';
+  const suffix = dimensions || metrics ? `_${dimensions}_${metrics}` : '';
   return `${type}_${siteId}_${startDate}_${endDate}${suffix}`;
 }
 

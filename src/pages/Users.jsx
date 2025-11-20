@@ -293,37 +293,16 @@ export default function Users() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && demographicsData && (() => {
-          const metrics = {
-            demographicsData: {
-              newReturning: demographicsData.newReturning || [],
-              device: demographicsData.device || [],
-              location: demographicsData.location || {},
-              age: demographicsData.age || [],
-              gender: demographicsData.gender || [],
-            },
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[Users] AI分析に送信するデータ:', {
-            newReturning: metrics.demographicsData.newReturning,
-            device: metrics.demographicsData.device,
-            age: metrics.demographicsData.age,
-            gender: metrics.demographicsData.gender,
-            locationKeys: Object.keys(metrics.demographicsData.location),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.USERS}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && demographicsData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.USERS}
+            rawData={demographicsData}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

@@ -46,7 +46,6 @@ export async function fetchGA4LandingPageConversionDataCallable(request) {
         dimensions: [{ name: 'landingPage' }],
         metrics: [
           { name: 'sessions' },
-          { name: 'activeUsers' },
           { name: 'engagementRate' },
           { name: 'averageSessionDuration' }
         ],
@@ -57,13 +56,12 @@ export async function fetchGA4LandingPageConversionDataCallable(request) {
     (sessionsResponse.data.rows || []).forEach(row => {
       const landingPage = row.dimensionValues[0].value;
       const sessions = parseInt(row.metricValues[0].value || 0);
-      const users = parseInt(row.metricValues[1].value || 0);
-      const engagementRate = parseFloat(row.metricValues[2].value || 0);
-      const averageSessionDuration = parseFloat(row.metricValues[3].value || 0);
+      const engagementRate = parseFloat(row.metricValues[1].value || 0);
+      const averageSessionDuration = parseFloat(row.metricValues[2].value || 0);
+      
       landingPageData[landingPage] = {
         landingPage,
         sessions,
-        users,
         engagementRate,
         averageSessionDuration,
         conversions: 0

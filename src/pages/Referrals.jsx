@@ -431,30 +431,16 @@ export default function Referrals() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            referralsData: tableData || [],
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[Referrals] AI分析に送信するデータ:', {
-            referralsDataCount: metrics.referralsData.length,
-            hasConversions: metrics.hasConversionDefinitions,
-            sampleData: metrics.referralsData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.REFERRALS}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && referralData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.REFERRALS}
+            rawData={referralData}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

@@ -411,30 +411,16 @@ export default function AcquisitionChannels() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            channelsData: chartData || [],
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[AcquisitionChannels] AI分析に送信するデータ:', {
-            channelsDataCount: metrics.channelsData.length,
-            hasConversions: metrics.hasConversionDefinitions,
-            sampleData: metrics.channelsData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.CHANNELS}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && channelData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.CHANNELS}
+            rawData={channelData}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

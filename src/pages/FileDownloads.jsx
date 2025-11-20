@@ -279,30 +279,16 @@ export default function FileDownloads() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            downloadsData: tableData || [],
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[FileDownloads] AI分析に送信するデータ:', {
-            downloadsDataCount: metrics.downloadsData.length,
-            hasConversions: metrics.hasConversionDefinitions,
-            sampleData: metrics.downloadsData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.FILE_DOWNLOADS}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && downloadData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.FILE_DOWNLOADS}
+            rawData={downloadData}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

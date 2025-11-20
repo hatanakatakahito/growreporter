@@ -86,7 +86,8 @@ export default function ConversionList() {
         endDate: monthlyDateRange.end,
       });
       
-      return result.data.data;
+      // AI分析用にrawData全体を保持
+      return result.data;
     },
     enabled: !!selectedSiteId && !!monthlyDateRange.start && conversionEvents.length > 0,
     retry: false,
@@ -154,6 +155,35 @@ export default function ConversionList() {
     );
   };
 
+  // データの整形（画面表示用）
+  const displayData = conversionData?.data || [];
+  
+  // AI分析用の統合データ生成（画面表示データと同じ）
+  const pageData = React.useMemo(() => {
+    if (!displayData || displayData.length === 0) {
+      return {
+        forDisplay: [],
+        forAI: {
+          monthlyTrends: [],
+          conversionEventNames: [],
+        },
+      };
+    }
+    
+    // コンバージョンイベント名を抽出（'month'と'合計'を除く）
+    const eventNames = Object.keys(displayData[0] || {}).filter(
+      key => key !== 'month' && key !== '合計'
+    );
+    
+    return {
+      forDisplay: displayData,
+      forAI: {
+        monthlyTrends: displayData,
+        conversionEventNames: eventNames,
+      },
+    };
+  }, [displayData]);
+
   return (
     <>
       <Sidebar />
@@ -207,7 +237,7 @@ export default function ConversionList() {
             <ErrorAlert
               message={error?.message || 'データの読み込みに失敗しました。'}
             />
-          ) : !conversionData || conversionData.length === 0 ? (
+          ) : !displayData || displayData.length === 0 ? (
             <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
               <p className="text-body-color">表示するデータがありません。</p>
             </div>
@@ -271,7 +301,7 @@ export default function ConversionList() {
                         </tr>
                       </thead>
                       <tbody>
-                        {[...conversionData].reverse().map((row) => {
+                        {[...displayData].reverse().map((row) => {
                           // 各行の合計を計算
                           const rowTotal = conversionEvents.reduce(
                             (sum, event) => sum + (row[event.eventName] || 0),
@@ -307,7 +337,7 @@ export default function ConversionList() {
               ) : (
                 <ChartContainer title="コンバージョン月次推移" height={400}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={conversionData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                    <LineChart data={displayData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis 
                         dataKey="yearMonth" 
@@ -337,31 +367,16 @@ export default function ConversionList() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            conversionData: conversionData || [],
-            conversionEvents: conversionEvents || [],
-            hasConversionDefinitions: conversionEvents && conversionEvents.length > 0,
-            conversionEventNames: conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[ConversionList] AI分析に送信するデータ:', {
-            conversionDataCount: metrics.conversionData.length,
-            conversionEventsCount: metrics.conversionEvents.length,
-            sampleData: metrics.conversionData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.CONVERSIONS}
-              metrics={metrics}
-              period={{
-                startDate: monthlyDateRange.start,
-                endDate: monthlyDateRange.end,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && conversionData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.CONVERSIONS}
+            rawData={conversionData}
+            period={{
+              startDate: monthlyDateRange.start,
+              endDate: monthlyDateRange.end,
+            }}
+          />
+        )}
       </main>
     </>
   );

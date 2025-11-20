@@ -525,82 +525,25 @@ export default function AnalysisSummary() {
           // 前年同月の総コンバージョン数
           const yearAgoConversions = yearAgoData?.conversions || 0;
           
-          // 13ヶ月推移テキストを生成
-          const monthlyTrendText = monthlyData && monthlyData.length > 0 
-            ? monthlyData.map(month => {
-                const monthLabel = month.label || month.month || month.date || '月';
-                const users = month.users || month.totalUsers || 0;
-                const sessions = month.sessions || 0;
-                const pageViews = month.pageViews || month.screenPageViews || 0;
-                const engRate = month.engagementRate || 0;
-                const convs = month.conversions || 0;
-                return `${monthLabel}: ユーザー${users.toLocaleString()}人, セッション${sessions.toLocaleString()}回, PV${pageViews.toLocaleString()}, ENG率${(engRate * 100).toFixed(1)}%, CV${convs}件`;
-              }).join('\n')
-            : '';
-          
-          const aiMetrics = {
-            // 現在期間の基本メトリクス
-            users: currentMonthData?.users || currentMonthData?.totalUsers || 0,
-            sessions: currentMonthData?.sessions || 0,
-            pageViews: currentMonthData?.pageViews || currentMonthData?.screenPageViews || 0,
-            engagementRate: currentMonthData?.engagementRate || 0,
-            conversions: totalConversions,
-            conversionRate: currentMonthData?.sessions > 0 ? (totalConversions / currentMonthData.sessions) : 0,
-            
+          // rawData方式：既に取得したデータをそのまま渡す
+          const summaryRawData = {
+            // 現在期間のデータ
+            current: currentMonthData,
+            // 前月期間のデータ
+            previousMonth: previousMonthData,
+            // 前年同月期間のデータ
+            yearAgo: yearAgoData,
             // 13ヶ月推移データ
-            monthlyData: monthlyData || [],
-            monthlyDataCount: monthlyData?.length || 0,
-            monthlyTrendText: monthlyTrendText,
-            
-            // 前月比較データ
-            monthOverMonth: previousMonthData ? {
-              users: {
-                current: currentMonthData?.users || currentMonthData?.totalUsers || 0,
-                previous: previousMonthData.users || previousMonthData.totalUsers || 0,
-                change: (previousMonthData.users || previousMonthData.totalUsers) > 0 
-                  ? (((currentMonthData?.users || currentMonthData?.totalUsers || 0) - (previousMonthData.users || previousMonthData.totalUsers)) / (previousMonthData.users || previousMonthData.totalUsers)) * 100 
-                  : 0,
-              },
-              sessions: {
-                current: currentMonthData?.sessions || 0,
-                previous: previousMonthData.sessions || 0,
-                change: previousMonthData.sessions > 0 
-                  ? ((currentMonthData?.sessions || 0) - previousMonthData.sessions) / previousMonthData.sessions * 100 
-                  : 0,
-              },
-              conversions: {
-                current: totalConversions,
-                previous: previousMonthConversions,
-                change: previousMonthConversions > 0 
-                  ? ((totalConversions - previousMonthConversions) / previousMonthConversions) * 100 
-                  : 0,
-              },
-              engagementRate: {
-                current: currentMonthData?.engagementRate || 0,
-                previous: previousMonthData.engagementRate || 0,
-                change: previousMonthData.engagementRate > 0 
-                  ? (((currentMonthData?.engagementRate || 0) - previousMonthData.engagementRate) / previousMonthData.engagementRate) * 100 
-                  : 0,
-              },
-            } : null,
-            
-            // 前年同月比較データ
-            yearAgo: yearAgoData ? {
-              users: yearAgoData.users || yearAgoData.totalUsers || 0,
-              sessions: yearAgoData.sessions || 0,
-              pageViews: yearAgoData.pageViews || yearAgoData.screenPageViews || 0,
-              conversions: yearAgoConversions,
-            } : null,
-            
-            // その他
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+            monthlyTrend: monthlyData || [],
+            // コンバージョン定義
+            hasConversionEvents: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
             conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
           };
           
           return (
             <AIFloatingButton
               pageType={PAGE_TYPES.SUMMARY}
-              metrics={aiMetrics}
+              rawData={summaryRawData}
               period={{
                 startDate: dateRange.from,
                 endDate: dateRange.to,

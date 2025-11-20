@@ -115,9 +115,9 @@ export default function Sidebar() {
             { label: 'ページ別', path: '/engagement/pages' },
             { label: 'ページ分類別', path: '/engagement/page-categories' },
             { label: 'ランディングページ', path: '/engagement/landing-pages' },
-            { label: 'ページフロー', path: '/engagement/page-flow' },
             { label: 'ファイルダウンロード', path: '/engagement/file-downloads' },
             { label: '外部リンククリック', path: '/engagement/external-links' },
+            { label: 'ページフロー', path: '/engagement/page-flow' },
           ]
         },
         { 

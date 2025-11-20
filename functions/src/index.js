@@ -39,6 +39,7 @@ import { addAdminCallable } from './callable/admin/addAdmin.js';
 import { deleteAdminCallable } from './callable/admin/deleteAdmin.js';
 import { getPlanConfigCallable } from './callable/admin/getPlanConfig.js';
 import { updatePlanConfigCallable } from './callable/admin/updatePlanConfig.js';
+import { clearAllAICacheCallable } from './callable/admin/clearAllAICache.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
 import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
@@ -498,3 +499,14 @@ export const updatePlanConfig = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, updatePlanConfigCallable);
+
+/**
+ * すべてのAI分析キャッシュをクリア Callable Function
+ * 管理者専用
+ */
+export const clearAllAICache = onCall({
+  memory: '256MiB',
+  timeoutSeconds: 540,
+  region: 'asia-northeast1',
+  cors: true,
+}, clearAllAICacheCallable);

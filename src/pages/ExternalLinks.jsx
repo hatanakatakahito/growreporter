@@ -138,30 +138,16 @@ export default function ExternalLinks() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            linksData: tableData || [],
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[ExternalLinks] AI分析に送信するデータ:', {
-            linksDataCount: metrics.linksData.length,
-            hasConversions: metrics.hasConversionDefinitions,
-            sampleData: metrics.linksData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.EXTERNAL_LINKS}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && clickData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.EXTERNAL_LINKS}
+            rawData={clickData}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

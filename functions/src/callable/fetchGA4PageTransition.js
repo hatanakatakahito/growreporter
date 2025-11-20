@@ -57,21 +57,13 @@ export async function fetchGA4PageTransitionCallable(request) {
     const { oauth2Client } = await getAndRefreshToken(siteData.ga4OauthTokenId);
     const analyticsData = google.analyticsdata('v1beta');
 
-    // サイトのドメインを取得
-    let siteDomain = siteData.domain || siteData.url?.replace(/^https?:\/\//, '').replace(/\/$/, '');
-    
-    // siteDataにドメイン情報がない場合、pagePathから推測
-    if (!siteDomain && pagePath) {
-      // pagePathが存在する場合、そのページのドメインをGA4から取得する方法を試みる
-      // または、一般的なドメインパターンを使用
-      console.warn(`[fetchGA4PageTransition] No domain configured in siteData, will auto-detect from referrers`);
-    }
-    
-    console.log(`[fetchGA4PageTransition] Site domain (raw): ${siteDomain || '(will auto-detect)'}`);
+    // サイトのドメインを取得（pageReferrerフィルタ用）
+    const siteDomain = siteData.domain || siteData.url?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    console.log(`[fetchGA4PageTransition] Site domain (raw): ${siteDomain}`);
     console.log(`[fetchGA4PageTransition] siteData.domain: ${siteData.domain}, siteData.url: ${siteData.url}`);
 
     // 🚀 並列でデータ取得
-    const [pageMetricsResponse, inboundResponse, exitResponse, pageTitlesResponse] = await Promise.all([
+    const [pageMetricsResponse, inboundResponse, exitResponse] = await Promise.all([
       // 1. 基本指標（PV、セッション）
       analyticsData.properties.runReport({
         auth: oauth2Client,
@@ -136,19 +128,6 @@ export async function fetchGA4PageTransitionCallable(request) {
           },
         },
       }),
-
-      // 4. 全ページのpagePathとpageTitle（タイトルマッピング用）
-      analyticsData.properties.runReport({
-        auth: oauth2Client,
-        property: `properties/${siteData.ga4PropertyId}`,
-        requestBody: {
-          dateRanges: [{ startDate, endDate }],
-          dimensions: [{ name: 'pagePath' }, { name: 'pageTitle' }],
-          metrics: [{ name: 'screenPageViews' }],
-          orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
-          limit: 1000,
-        },
-      }),
     ]);
 
     // ========================================
@@ -163,69 +142,6 @@ export async function fetchGA4PageTransitionCallable(request) {
     console.log(`[fetchGA4PageTransition] Page metrics - PV: ${pageViews}, Sessions: ${sessions}`);
 
     // 2. 流入元ページ（pageReferrerベース - 全流入元を分類）
-    
-    // siteDomainが未設定の場合、リファラーから自動検出
-    if (!siteDomain) {
-      const domainCounts = {};
-      (inboundResponse.data.rows || []).forEach(row => {
-        const referrer = row.dimensionValues[0].value;
-        if (referrer && referrer.startsWith('http')) {
-          try {
-            const url = new URL(referrer);
-            const hostname = url.hostname.replace(/^www\./, '');
-            domainCounts[hostname] = (domainCounts[hostname] || 0) + parseInt(row.metricValues[0].value || 0);
-          } catch (e) {
-            // URLパース失敗は無視
-          }
-        }
-      });
-      
-      // 最も多く出現するドメインを自サイトのドメインと判定
-      const sortedDomains = Object.entries(domainCounts).sort((a, b) => b[1] - a[1]);
-      if (sortedDomains.length > 0) {
-        siteDomain = sortedDomains[0][0];
-        console.log(`[fetchGA4PageTransition] Auto-detected site domain: ${siteDomain} (${sortedDomains[0][1]} referrers)`);
-      }
-    }
-    
-    // ページパスとタイトルのマッピングを作成（日本語優先）
-    const pageTitleMap = {};
-    const pathTitles = {}; // 同じパスの全タイトルを収集
-    
-    (pageTitlesResponse.data.rows || []).forEach(row => {
-      const path = row.dimensionValues[0].value;
-      const title = row.dimensionValues[1]?.value || '';
-      const pageViews = parseInt(row.metricValues[0]?.value || 0);
-      
-      if (path && title) {
-        if (!pathTitles[path]) {
-          pathTitles[path] = [];
-        }
-        pathTitles[path].push({ title, pageViews });
-      }
-    });
-    
-    // 各パスに対して日本語タイトルを優先的に選択
-    Object.keys(pathTitles).forEach(path => {
-      const titles = pathTitles[path];
-      
-      // 日本語を含むタイトルを探す（ひらがな、カタカナ、漢字のいずれかを含む）
-      const japaneseTitle = titles.find(t => 
-        /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/.test(t.title)
-      );
-      
-      if (japaneseTitle) {
-        // 日本語タイトルがあればそれを使用
-        pageTitleMap[path] = japaneseTitle.title;
-      } else if (titles.length > 0) {
-        // 日本語がなければ最もPVの多いタイトルを使用
-        titles.sort((a, b) => b.pageViews - a.pageViews);
-        pageTitleMap[path] = titles[0].title;
-      }
-    });
-    
-    console.log(`[fetchGA4PageTransition] Page title mapping created with ${Object.keys(pageTitleMap).length} entries (Japanese prioritized)`);
-    
     let totalAllReferrers = 0;
     let totalInternalReferrers = 0;
     let totalExternalReferrers = 0;
@@ -304,7 +220,6 @@ export async function fetchGA4PageTransitionCallable(request) {
         return {
           original: referrer,
           page: displayPath,
-          title: isInternal ? (pageTitleMap[displayPath] || null) : null, // サイト内ページのタイトルを追加
           pageViews: pageViewsCount,
           type,
           isInternal,
@@ -327,7 +242,6 @@ export async function fetchGA4PageTransitionCallable(request) {
       .slice(0, 10)
       .map(item => ({
         page: item.page,
-        title: item.title, // ページタイトルを追加
         pageViews: item.pageViews,
         percentage: totalInternalReferrers > 0 ? (item.pageViews / totalInternalReferrers) * 100 : 0,
       }));

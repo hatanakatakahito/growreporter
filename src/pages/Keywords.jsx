@@ -382,31 +382,16 @@ export default function Keywords() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            keywordsData: tableData || [],
-            hasGSCConnection,
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[Keywords] AI分析に送信するデータ:', {
-            keywordsDataCount: metrics.keywordsData.length,
-            hasGSC: metrics.hasGSCConnection,
-            sampleData: metrics.keywordsData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.KEYWORDS}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && gscData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.KEYWORDS}
+            rawData={gscData}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

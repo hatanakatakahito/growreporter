@@ -32,7 +32,6 @@ export default function PromptTemplateList() {
     { value: 'externalLinks', label: '外部リンククリック' },
     { value: 'conversions', label: 'コンバージョン一覧' },
     { value: 'reverseFlow', label: '逆算フロー' },
-    { value: 'pageFlow', label: 'ページフロー' },
   ];
 
   // Firestoreからプロンプトテンプレート取得

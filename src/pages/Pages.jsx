@@ -46,7 +46,7 @@ export default function Pages() {
     selectedSiteId,
     dateRange.from,
     dateRange.to,
-    ['screenPageViews', 'sessions', 'activeUsers', 'engagementRate', 'averageSessionDuration'],
+    ['screenPageViews', 'sessions', 'activeUsers', 'averageSessionDuration', 'engagementRate'],
     ['pagePath', 'pageTitle'],
     null
   );
@@ -60,10 +60,6 @@ export default function Pages() {
     return url;
   };
 
-  // 合計ページビュー数を先に計算
-  const totalPageViews = pageData?.rows
-    ?.reduce((sum, row) => sum + (row.screenPageViews || 0), 0) || 0;
-
   // テーブル用のデータ整形（ページビュー数降順）
   const tableData =
     pageData?.rows
@@ -72,9 +68,6 @@ export default function Pages() {
         title: row.pageTitle || '(タイトルなし)',
         shortUrl: shortenUrl(row.pagePath),
         pageViews: row.screenPageViews || 0,
-        percentage: totalPageViews > 0 
-          ? ((row.screenPageViews / totalPageViews) * 100).toFixed(1) 
-          : '0.0',
         sessions: row.sessions || 0,
         users: row.activeUsers || 0,
         engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
@@ -86,8 +79,14 @@ export default function Pages() {
   const chartData = [...tableData].slice(0, 10);
 
   // 合計値の計算
-  const totalSessions = tableData.reduce((sum, row) => sum + row.sessions, 0);
-  const totalUsers = tableData.reduce((sum, row) => sum + row.users, 0);
+  const totalPageViews = tableData.reduce((sum, row) => sum + row.pageViews, 0);
+
+  // 時間のフォーマット
+  const formatDuration = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
 
   // 凡例クリックハンドラー
   const handleLegendClick = (dataKey) => {
@@ -150,13 +149,6 @@ export default function Pages() {
     return null;
   };
 
-  // 平均セッション時間のフォーマット（秒 → 分:秒）
-  const formatDuration = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
   return (
     <>
       <Sidebar />
@@ -176,7 +168,7 @@ export default function Pages() {
               エンゲージメント - ページ別
             </h2>
             <p className="text-body-color">
-              ページ別のページビュー数、セッション数、ユーザー数を確認できます
+              ページ別のページビュー数、エンゲージメント率、平均滞在時間を確認できます
             </p>
           </div>
 
@@ -254,7 +246,6 @@ export default function Pages() {
                       key: 'path',
                       label: 'ページパス',
                       sortable: true,
-                      tooltip: 'pagePath',
                       render: (value, row) => (
                         <div className="flex flex-col gap-1">
                           <a
@@ -275,27 +266,13 @@ export default function Pages() {
                     {
                       key: 'pageViews',
                       label: 'ページビュー',
-                      sortable: true,
-                      align: 'right',
-                      tooltip: 'pageViews',
-                      render: (value, row) => (
-                        <span>
-                          {value?.toLocaleString() || 0} <span className="text-body-color">({row.percentage}%)</span>
-                        </span>
-                      ),
-                    },
-                    {
-                      key: 'sessions',
-                      label: 'セッション',
                       format: 'number',
-                      sortable: true,
                       align: 'right',
-                      tooltip: 'sessions',
+                      tooltip: 'screenPageViews',
                     },
                     {
                       key: 'engagementRate',
                       label: 'ENG率',
-                      sortable: true,
                       align: 'right',
                       tooltip: 'engagementRate',
                       render: (value) => `${value}%`,
@@ -303,9 +280,8 @@ export default function Pages() {
                     {
                       key: 'avgDuration',
                       label: '平均滞在時間',
-                      sortable: true,
                       align: 'right',
-                      tooltip: 'avgEngagementTime',
+                      tooltip: 'avgSessionDuration',
                       render: (value) => formatDuration(value),
                     },
                   ]}
@@ -320,30 +296,16 @@ export default function Pages() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            pagesData: tableData || [],
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[Pages] AI分析に送信するデータ:', {
-            pagesDataCount: metrics.pagesData.length,
-            hasConversions: metrics.hasConversionDefinitions,
-            sampleData: metrics.pagesData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.PAGES}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && pageData && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.PAGES}
+            rawData={pageData}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

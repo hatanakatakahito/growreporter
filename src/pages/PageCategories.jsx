@@ -10,6 +10,7 @@ import DataTable from '../components/Analysis/DataTable';
 import ChartContainer from '../components/Analysis/ChartContainer';
 import AIFloatingButton from '../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../constants/plans';
+import { Folder, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -30,8 +31,9 @@ import {
  */
 export default function PageCategories() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
-  const [activeTab, setActiveTab] = useState('table');
+  const [activeTab, setActiveTab] = useState('sitemap');
   const [hiddenSeries, setHiddenSeries] = useState({});
+  const [expandedPaths, setExpandedPaths] = useState(new Set(['/']));
 
   // ページタイトルを設定
   useEffect(() => {
@@ -99,6 +101,173 @@ export default function PageCategories() {
 
   // 合計値
   const totalPageViews = categoryData.reduce((sum, row) => sum + row.pageViews, 0);
+
+  // サイトマップツリー構造の生成（全ページデータを使用）
+  const sitemapTree = useMemo(() => {
+    if (!pageData?.rows || pageData.rows.length === 0) return null;
+
+    const tree = { name: '/', children: {}, data: null, pageViews: 0 };
+
+    pageData.rows.forEach((page) => {
+      const path = page.pagePath || '/';
+      const parts = path.split('/').filter(Boolean);
+
+      let current = tree;
+      let currentPath = '';
+
+      if (parts.length === 0) {
+        // ルートページ
+        tree.data = {
+          path: '/',
+          pageViews: page.screenPageViews || 0,
+        };
+        tree.pageViews += page.screenPageViews || 0;
+      } else {
+        parts.forEach((part, index) => {
+          currentPath += '/' + part;
+          
+          if (!current.children[part]) {
+            current.children[part] = {
+              name: part,
+              fullPath: currentPath,
+              children: {},
+              data: null,
+              pageViews: 0,
+            };
+          }
+
+          current.children[part].pageViews += page.screenPageViews || 0;
+
+          // 最後の部分の場合、ページデータを設定
+          if (index === parts.length - 1) {
+            current.children[part].data = {
+              path: page.pagePath,
+              pageViews: page.screenPageViews || 0,
+            };
+          }
+
+          current = current.children[part];
+        });
+      }
+    });
+
+    return tree;
+  }, [pageData]);
+
+  // ツリーの展開/折りたたみ
+  const togglePath = (path) => {
+    setExpandedPaths((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(path)) {
+        newSet.delete(path);
+      } else {
+        newSet.add(path);
+      }
+      return newSet;
+    });
+  };
+
+  // サイトマップツリーのレンダリング（テーブル風・リンク付き）
+  const renderSitemapTree = (node, depth = 0) => {
+    if (!node) return null;
+
+    const hasChildren = Object.keys(node.children).length > 0;
+    const isExpanded = expandedPaths.has(node.fullPath || '/');
+    const isRoot = depth === 0;
+    const percentage = totalPageViews > 0 ? ((node.pageViews / totalPageViews) * 100).toFixed(1) : 0;
+    
+    // 実際のページURLを生成
+    const fullUrl = selectedSite?.siteUrl && node.data?.path
+      ? `${selectedSite.siteUrl.replace(/\/$/, '')}${node.data.path}`
+      : null;
+
+    return (
+      <div key={node.fullPath || 'root'}>
+        {!isRoot && (
+          <div className="flex items-center border-b border-stroke hover:bg-gray-50 dark:border-dark-3 dark:hover:bg-dark-3">
+            {/* カテゴリ列 */}
+            <div 
+              className="flex items-center gap-2 py-3 px-4 min-w-[350px] flex-1"
+              style={{ paddingLeft: `${depth * 1.5 + 1}rem` }}
+            >
+              {hasChildren ? (
+                <div
+                  onClick={() => togglePath(node.fullPath)}
+                  className="cursor-pointer"
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-4 w-4 text-body-color flex-shrink-0" />
+                  ) : (
+                    <ChevronRight className="h-4 w-4 text-body-color flex-shrink-0" />
+                  )}
+                </div>
+              ) : (
+                <div className="w-4 flex-shrink-0" />
+              )}
+              
+              {hasChildren ? (
+                <Folder className="h-4 w-4 text-primary flex-shrink-0" />
+              ) : fullUrl ? (
+                <a
+                  href={fullUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-0.5 hover:opacity-70"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <FileText className="h-4 w-4 text-body-color flex-shrink-0" />
+                </a>
+              ) : (
+                <FileText className="h-4 w-4 text-body-color flex-shrink-0" />
+              )}
+              
+              {fullUrl ? (
+                <a
+                  href={fullUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-sm text-primary hover:underline truncate"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {node.name}
+                </a>
+              ) : (
+                <span className="text-sm text-dark dark:text-white truncate">
+                  {node.name}
+                </span>
+              )}
+            </div>
+            
+            {/* 配下のページ数列 */}
+            <div className="py-3 px-4 text-right min-w-[150px]">
+              <span className="text-sm font-medium text-dark dark:text-white">
+                {hasChildren ? `${Object.keys(node.children).length}ページ` : '-'}
+              </span>
+            </div>
+            
+            {/* ページビュー列 */}
+            <div className="py-3 px-4 text-right min-w-[150px]">
+              <span className="text-sm font-medium text-dark dark:text-white">
+                {node.pageViews.toLocaleString()} PV
+              </span>
+            </div>
+            
+            {/* 割合列 */}
+            <div className="py-3 px-4 text-right min-w-[100px]">
+              <span className="text-sm font-medium text-dark dark:text-white">
+                {percentage}%
+              </span>
+            </div>
+          </div>
+        )}
+
+        {(isRoot || isExpanded) &&
+          Object.values(node.children)
+            .sort((a, b) => b.pageViews - a.pageViews)
+            .map((child) => renderSitemapTree(child, depth + 1))}
+      </div>
+    );
+  };
 
   // 凡例クリックハンドラー
   const handleLegendClick = (dataKey) => {
@@ -205,6 +374,16 @@ export default function PageCategories() {
               {/* タブ */}
               <div className="mb-6 flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
                 <button
+                  onClick={() => setActiveTab('sitemap')}
+                  className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition ${
+                    activeTab === 'sitemap'
+                      ? 'bg-primary text-white'
+                      : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                  }`}
+                >
+                  サイトマップ形式
+                </button>
+                <button
                   onClick={() => setActiveTab('chart')}
                   className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition ${
                     activeTab === 'chart'
@@ -227,7 +406,47 @@ export default function PageCategories() {
               </div>
 
               {/* タブコンテンツ */}
-              {activeTab === 'chart' ? (
+              {activeTab === 'sitemap' ? (
+                <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+                  <div className="border-b border-stroke p-4 dark:border-dark-3">
+                    <h3 className="text-lg font-semibold text-dark dark:text-white">
+                      サイトマップ形式
+                    </h3>
+                    <p className="mt-1 text-sm text-body-color">
+                      ページを階層構造で表示します（PV数の多い順）
+                    </p>
+                  </div>
+                  
+                  {/* ヘッダー行 */}
+                  <div className="flex items-center border-b border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-2">
+                    <div className="py-3 px-4 min-w-[350px] flex-1">
+                      <span className="text-sm font-semibold text-dark dark:text-white">
+                        カテゴリ
+                      </span>
+                    </div>
+                    <div className="py-3 px-4 text-right min-w-[150px]">
+                      <span className="text-sm font-semibold text-dark dark:text-white">
+                        配下のページ数
+                      </span>
+                    </div>
+                    <div className="py-3 px-4 text-right min-w-[150px]">
+                      <span className="text-sm font-semibold text-dark dark:text-white">
+                        ページビュー
+                      </span>
+                    </div>
+                    <div className="py-3 px-4 text-right min-w-[100px]">
+                      <span className="text-sm font-semibold text-dark dark:text-white">
+                        割合
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* ツリーコンテンツ */}
+                  <div className="overflow-auto">
+                    {sitemapTree && renderSitemapTree(sitemapTree)}
+                  </div>
+                </div>
+              ) : activeTab === 'chart' ? (
                 <div className="space-y-6">
                   {/* 円グラフ */}
                   <ChartContainer title="カテゴリ別ページビュー構成比" height={400}>
