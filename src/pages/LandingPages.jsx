@@ -259,15 +259,15 @@ export default function LandingPages() {
                           ? `${selectedSite.siteUrl.replace(/\/$/, '')}${value}`
                           : value;
                         return (
-                          <a
+                        <a
                             href={fullUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center gap-1 text-primary hover:underline"
-                          >
-                            <span className="truncate max-w-md">{value}</span>
-                            <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                          </a>
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-primary hover:underline"
+                        >
+                          <span className="truncate max-w-md">{value}</span>
+                          <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                        </a>
                         );
                       },
                     },

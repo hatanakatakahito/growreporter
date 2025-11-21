@@ -537,30 +537,16 @@ export default function PageCategories() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && (() => {
-          const metrics = {
-            categoriesData: categoryData || [],
-            hasConversionDefinitions: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-            conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-          };
-          
-          console.log('[PageCategories] AI分析に送信するデータ:', {
-            categoriesDataCount: metrics.categoriesData.length,
-            hasConversions: metrics.hasConversionDefinitions,
-            sampleData: metrics.categoriesData.slice(0, 3),
-          });
-          
-          return (
-            <AIFloatingButton
-              pageType={PAGE_TYPES.PAGE_CATEGORIES}
-              metrics={metrics}
-              period={{
-                startDate: dateRange.from,
-                endDate: dateRange.to,
-              }}
-            />
-          );
-        })()}
+        {selectedSiteId && !isLoading && categoryData && categoryData.length > 0 && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.PAGE_CATEGORIES}
+            rawData={{ rows: categoryData }}
+            period={{
+              startDate: dateRange.from,
+              endDate: dateRange.to,
+            }}
+          />
+        )}
       </main>
     </>
   );

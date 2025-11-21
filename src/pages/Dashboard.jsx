@@ -759,16 +759,58 @@ export default function Dashboard() {
       const kpiData = [];
       if (selectedSite?.kpiSettings?.kpiList && data?.metrics) {
         selectedSite.kpiSettings.kpiList.forEach(kpi => {
-          const actualValue = data.metrics[kpi.kpiName] || 0;
-          const targetValue = kpi.targetValue || 0;
+          const metricValue = kpi.metric;
+          const metricLabel = kpi.label;
+          const targetValue = kpi.target;
+          
+          // KPIのmetricから実績値を取得（フロント表示と同じロジック）
+          let actualValue = 0;
+          
+          switch (metricValue) {
+            case 'users':
+              actualValue = data.metrics.users || 0;
+              break;
+            case 'sessions':
+              actualValue = data.metrics.sessions || 0;
+              break;
+            case 'pageviews':
+              actualValue = data.metrics.pageViews || 0;
+              break;
+            case 'engagement_rate':
+              actualValue = (data.metrics.engagementRate || 0) * 100;
+              break;
+            case 'target_sessions':
+              actualValue = data.metrics.sessions || 0;
+              break;
+            case 'target_users':
+              actualValue = data.metrics.users || 0;
+              break;
+            case 'target_conversions':
+              actualValue = data.metrics.conversions || 0;
+              break;
+            case 'target_conversion_rate':
+              actualValue = data.metrics.sessions > 0 
+                ? ((data.metrics.conversions || 0) / data.metrics.sessions) * 100 
+                : 0;
+              break;
+            default:
+              // コンバージョンイベントの場合
+              if (metricValue?.startsWith('conversion_') && kpi.eventName) {
+                actualValue = data.conversions?.[kpi.eventName] || 0;
+              }
+          }
+          
           const achievement = targetValue > 0 ? (actualValue / targetValue) * 100 : 0;
           
+          // レートタイプの判定
+          const isRateMetric = metricValue?.includes('rate');
+          
           kpiData.push({
-            name: kpi.displayName,
+            name: metricLabel,
             actual: actualValue,
             target: targetValue,
             achievement: achievement,
-            unit: kpi.unit || '',
+            unit: isRateMetric ? '%' : '',
           });
         });
       }

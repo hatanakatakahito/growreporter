@@ -58,9 +58,10 @@ export async function fetchGA4PageTransitionCallable(request) {
     const analyticsData = google.analyticsdata('v1beta');
 
     // サイトのドメインを取得（pageReferrerフィルタ用）
-    const siteDomain = siteData.domain || siteData.url?.replace(/^https?:\/\//, '').replace(/\/$/, '');
+    // siteUrlを優先的に使用（正規化済みのURL）
+    const siteDomain = siteData.siteUrl || siteData.domain || siteData.url?.replace(/^https?:\/\//, '').replace(/\/$/, '');
     console.log(`[fetchGA4PageTransition] Site domain (raw): ${siteDomain}`);
-    console.log(`[fetchGA4PageTransition] siteData.domain: ${siteData.domain}, siteData.url: ${siteData.url}`);
+    console.log(`[fetchGA4PageTransition] siteData.siteUrl: ${siteData.siteUrl}, siteData.domain: ${siteData.domain}, siteData.url: ${siteData.url}`);
 
     // 🚀 並列でデータ取得
     const [pageMetricsResponse, inboundResponse, exitResponse] = await Promise.all([
@@ -148,6 +149,15 @@ export async function fetchGA4PageTransitionCallable(request) {
     let totalDirectReferrers = 0;
     let logCount = 0; // ログ出力の回数制限
     
+    // デバッグ：取得したpageReferrerの生データを確認
+    console.log(`[fetchGA4PageTransition] Raw pageReferrer data count: ${inboundResponse.data.rows?.length || 0}`);
+    if (inboundResponse.data.rows && inboundResponse.data.rows.length > 0) {
+      console.log(`[fetchGA4PageTransition] Sample pageReferrer values (first 10):`);
+      inboundResponse.data.rows.slice(0, 10).forEach((row, idx) => {
+        console.log(`  [${idx}] "${row.dimensionValues[0].value}" - ${row.metricValues[0].value}PV`);
+      });
+    }
+    
     const allReferrers = (inboundResponse.data.rows || [])
       .map(row => {
         const referrer = row.dimensionValues[0].value;
@@ -186,23 +196,27 @@ export async function fetchGA4PageTransitionCallable(request) {
               referrerHostname.endsWith('.' + normalizedSiteDomain)
             );
             
+            // デバッグ情報を詳しく出力
+            if (logCount < 10) {
+              console.log(`[fetchGA4PageTransition] Domain check [${logCount}]:`, {
+                referrer,
+                referrerHostname,
+                normalizedSiteDomain,
+                isInternalDomain,
+                pageViewsCount
+              });
+            }
+            
             if (isInternalDomain) {
               type = 'internal';
               displayPath = url.pathname;
               isInternal = true;
               totalInternalReferrers += pageViewsCount;
-              if (logCount < 5) {
-                console.log(`[fetchGA4PageTransition] INTERNAL: ${referrer} -> ${displayPath} (hostname: ${referrerHostname}, siteDomain: ${normalizedSiteDomain})`);
-                logCount++;
-              }
+              logCount++;
             } else {
               type = 'external';
               displayPath = `${url.hostname}${url.pathname}`;
               totalExternalReferrers += pageViewsCount;
-              if (logCount < 5) {
-                console.log(`[fetchGA4PageTransition] EXTERNAL: ${referrer} -> ${displayPath} (hostname: ${referrerHostname}, siteDomain: ${normalizedSiteDomain})`);
-                logCount++;
-              }
             }
           } catch (e) {
             type = 'external';
@@ -228,6 +242,7 @@ export async function fetchGA4PageTransitionCallable(request) {
       .filter(item => {
         // 自分自身（ページリロード等）を除外
         if (item.isInternal && item.page === pagePath) {
+          console.log(`[fetchGA4PageTransition] Excluding self-referrer: ${item.page} (${item.pageViews}PV)`);
           totalInternalReferrers -= item.pageViews;
           totalAllReferrers -= item.pageViews;
           return false;
@@ -235,11 +250,11 @@ export async function fetchGA4PageTransitionCallable(request) {
         return true;
       });
 
-    // サイト内遷移のみを抽出
+    // サイト内遷移のみを抽出（上位20件）
     const internalPages = allReferrers
       .filter(item => item.isInternal)
       .sort((a, b) => b.pageViews - a.pageViews)
-      .slice(0, 10)
+      .slice(0, 20)
       .map(item => ({
         page: item.page,
         pageViews: item.pageViews,

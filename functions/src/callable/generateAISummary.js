@@ -1036,7 +1036,10 @@ function formatRawDataToMetrics(rawData, pageType) {
 
     case 'pageCategories':
       // ページ分類別分析：categoryDataの結果
+      console.log('[formatRawDataToMetrics - pageCategories] rawData:', JSON.stringify(rawData, null, 2));
       const pageCategoriesRows = rawData.rows || [];
+      console.log('[formatRawDataToMetrics - pageCategories] rows count:', pageCategoriesRows.length);
+      console.log('[formatRawDataToMetrics - pageCategories] sample row:', pageCategoriesRows[0]);
       const categoriesTotalPageViews = pageCategoriesRows.reduce((sum, row) => sum + (row.pageViews || 0), 0);
       
       // カテゴリ別の詳細テキスト生成（上位10件）
@@ -1260,6 +1263,10 @@ async function generatePrompt(db, pageType, startDate, endDate, metrics) {
       // 曜日別の集計
       const dayOfWeekStats = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
       const dayOfWeekConversions = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+      
+      // 日別詳細データ（日付+曜日）を格納
+      const dailyDetailList = [];
       
       allDays.forEach(day => {
         const sessions = day.sessions || 0;
@@ -1290,13 +1297,27 @@ async function generatePrompt(db, pageType, startDate, endDate, metrics) {
           minConversionDay = day.date;
         }
         
-        // 曜日を判定（dateがYYYY-MM-DD形式と仮定）
+        // 曜日を判定（dateがYYYYMMDD形式）
         if (day.date) {
-          const date = new Date(day.date);
+          const dateStr = day.date.toString();
+          const year = parseInt(dateStr.substring(0, 4));
+          const month = parseInt(dateStr.substring(4, 6)) - 1; // 0-indexed
+          const dayNum = parseInt(dateStr.substring(6, 8));
+          const date = new Date(year, month, dayNum);
           const dayOfWeek = date.getDay(); // 0=日, 1=月, ..., 6=土
+          
           if (!isNaN(dayOfWeek)) {
             dayOfWeekStats[dayOfWeek].push(sessions);
             dayOfWeekConversions[dayOfWeek].push(conversions);
+            
+            // 日別詳細リストに追加（日付、曜日、セッション、コンバージョン）
+            const formattedDate = `${year}/${month + 1}/${dayNum}`;
+            dailyDetailList.push({
+              date: formattedDate,
+              dayOfWeek: dayNames[dayOfWeek],
+              sessions,
+              conversions
+            });
           }
         }
       });
@@ -1305,7 +1326,6 @@ async function generatePrompt(db, pageType, startDate, endDate, metrics) {
       const avgConversions = hasConversionData ? (totalConversions / allDays.length).toFixed(1) : 0;
       
       // 曜日別平均を計算
-      const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
       const dayOfWeekAvg = Object.keys(dayOfWeekStats).map(day => {
         const sessions = dayOfWeekStats[day];
         if (sessions.length === 0) return null;
@@ -1313,13 +1333,23 @@ async function generatePrompt(db, pageType, startDate, endDate, metrics) {
         return `${dayNames[day]}曜: ${avg.toLocaleString()}`;
       }).filter(Boolean).join(', ');
       
+      // 日別詳細データをテキスト化（上位10件と下位5件を表示）
+      const topDays = [...dailyDetailList]
+        .sort((a, b) => b.sessions - a.sessions)
+        .slice(0, 10)
+        .map(d => `${d.date}(${d.dayOfWeek}): ${d.sessions.toLocaleString()}セッション, ${d.conversions}CV`)
+        .join('\n');
+      
       dailyStatsText = `\n\n【日別データの統計】
 セッション:
 - 最大: ${maxSessionDay}（${maxSessions.toLocaleString()}セッション）
 - 最小: ${minSessionDay}（${minSessions.toLocaleString()}セッション）
 - 平均: ${avgSessions.toLocaleString()}セッション/日
 - 変動幅: ${((maxSessions - minSessions) / avgSessions * 100).toFixed(0)}%
-- 曜日別平均: ${dayOfWeekAvg}`;
+- 曜日別平均: ${dayOfWeekAvg}
+
+【日別詳細データ（上位10日）】
+${topDays}`;
       
       if (hasConversions && hasConversionData) {
         const maxCvr = maxSessions > 0 ? ((maxConversions / maxSessions) * 100).toFixed(2) : 0;

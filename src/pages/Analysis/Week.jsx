@@ -108,6 +108,14 @@ export default function Week() {
   const chartData = generateDayData();
   const dayNames = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
 
+  // 凡例クリックでグラフの表示/非表示を切り替え
+  const handleLegendClick = (dataKey) => {
+    setHiddenBars((prev) => ({
+      ...prev,
+      [dataKey]: !prev[dataKey],
+    }));
+  };
+
   return (
     <>
       <Sidebar />
@@ -207,7 +215,10 @@ export default function Week() {
                         label={{ value: 'コンバージョン', angle: 90, position: 'insideRight' }}
                       />
                       <RechartsTooltip />
-                      <Legend />
+                      <Legend 
+                        onClick={(e) => handleLegendClick(e.dataKey)}
+                        wrapperStyle={{ cursor: 'pointer' }}
+                      />
                       <Bar
                         yAxisId="left"
                         dataKey="sessions"

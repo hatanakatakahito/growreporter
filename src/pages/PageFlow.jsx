@@ -278,17 +278,17 @@ export default function PageFlow() {
                       <div>
                         <div className="text-sm text-body-color">このページの合計ページビュー</div>
                         <div className="mt-1 text-3xl font-bold text-dark dark:text-white">
-                          {formatNumber(transitionData.metrics.pageViews)}
+                          {formatNumber(transitionData?.metrics?.pageViews || 0)}
                         </div>
                       </div>
-                      {transitionData.trafficBreakdown && (
+                      {transitionData?.trafficBreakdown?.internal && (
                         <div className="text-right">
                           <div className="text-sm text-body-color">サイト内遷移</div>
                           <div className="mt-1 text-2xl font-bold text-primary">
-                            {formatNumber(transitionData.trafficBreakdown.internal.count)}
+                            {formatNumber(transitionData.trafficBreakdown.internal.count || 0)}
                           </div>
                           <div className="text-xs text-body-color">
-                            （{transitionData.trafficBreakdown.internal.percentage}%）
+                            （{transitionData.trafficBreakdown.internal.percentage || 0}%）
                           </div>
                         </div>
                       )}
@@ -300,16 +300,16 @@ export default function PageFlow() {
                     <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
                       <div className="border-b border-stroke p-6 dark:border-dark-3">
                         <h3 className="text-lg font-semibold text-dark dark:text-white">
-                          サイト内の直前ページ (Top 10)
+                          サイト内の直前ページ (Top 20)
                         </h3>
                         <div className="mt-2 rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
                           <p className="text-sm text-blue-900 dark:text-blue-100">
-                            このページ（<strong>{formatNumber(transitionData.metrics.pageViews)}PV</strong>）のうち、
-                            サイト内を経由したページビューは <strong>{formatNumber(transitionData.trafficBreakdown?.internal.count || 0)}PV
-                            （{transitionData.trafficBreakdown?.internal.percentage || 0}%）</strong>です。
+                            このページ（<strong>{formatNumber(transitionData?.metrics?.pageViews || 0)}PV</strong>）のうち、
+                            サイト内を経由したページビューは <strong>{formatNumber(transitionData?.trafficBreakdown?.internal?.count || 0)}PV
+                            （{transitionData?.trafficBreakdown?.internal?.percentage || 0}%）</strong>です。
                           </p>
                           <p className="mt-2 text-xs text-blue-800 dark:text-blue-200">
-                            残りの {formatNumber((transitionData.trafficBreakdown?.external.count || 0) + (transitionData.trafficBreakdown?.direct.count || 0))}PV は、
+                            残りの {formatNumber((transitionData?.trafficBreakdown?.external?.count || 0) + (transitionData?.trafficBreakdown?.direct?.count || 0))}PV は、
                             外部サイト（Google検索、SNS等）やブックマークから直接アクセスされているため、
                             サイト内の直前ページは存在しません。
                           </p>
@@ -334,13 +334,13 @@ export default function PageFlow() {
                             {transitionData.inbound.map((item, index) => (
                               <tr key={index} className="border-b border-stroke last:border-0 dark:border-dark-3">
                                 <td className="whitespace-nowrap px-4 py-3 text-sm text-dark dark:text-white">
-                                  {item.page}
+                                  {item?.page || '-'}
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-dark dark:text-white">
-                                  {formatNumber(item.pageViews)}
+                                  {formatNumber(item?.pageViews || 0)}
                                 </td>
                                 <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-body-color">
-                                  {item.percentage.toFixed(1)}%
+                                  {(item?.percentage || 0).toFixed(1)}%
                                 </td>
                               </tr>
                             ))}
@@ -349,7 +349,7 @@ export default function PageFlow() {
                             <tr>
                               <td colSpan="3" className="px-4 py-3">
                                 <p className="text-xs text-body-color">
-                                  * サイト内遷移（{formatNumber(transitionData.trafficBreakdown?.internal.count || 0)}PV）に対する割合
+                                  * サイト内遷移（{formatNumber(transitionData?.trafficBreakdown?.internal?.count || 0)}PV）に対する割合
                                 </p>
                               </td>
                             </tr>
@@ -365,7 +365,7 @@ export default function PageFlow() {
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && selectedPage && !transitionIsLoading && transitionData && (
+        {selectedSiteId && selectedPage && !transitionLoading && transitionData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.PAGE_FLOW}
             rawData={transitionData}

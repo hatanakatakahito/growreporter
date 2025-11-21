@@ -72,8 +72,10 @@ export async function setCache(cacheKey, data, siteId, userId) {
  * @returns {string} - キャッシュキー
  */
 export function generateCacheKey(type, siteId, startDate, endDate, dimensions = '', metrics = '') {
-  // ディメンション/メトリクスがある場合はキーに含める
-  const suffix = dimensions || metrics ? `_${dimensions}_${metrics}` : '';
+  // ディメンション/メトリクスがある場合はキーに含める（スラッシュをエスケープ）
+  const escapedDimensions = dimensions ? dimensions.replace(/\//g, '__SLASH__') : '';
+  const escapedMetrics = metrics ? metrics.replace(/\//g, '__SLASH__') : '';
+  const suffix = escapedDimensions || escapedMetrics ? `_${escapedDimensions}_${escapedMetrics}` : '';
   return `${type}_${siteId}_${startDate}_${endDate}${suffix}`;
 }
 

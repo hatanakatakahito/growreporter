@@ -20,7 +20,8 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
   const [pcScreenshot, setPcScreenshot] = useState(siteData.pcScreenshotUrl || null);
   const [mobileScreenshot, setMobileScreenshot] = useState(siteData.mobileScreenshotUrl || null);
   const [isManualUploading, setIsManualUploading] = useState(false); // 手動アップロード中
-  const [isAutoFetching, setIsAutoFetching] = useState(false); // 自動取得中
+  const [isAutoFetchingMetadata, setIsAutoFetchingMetadata] = useState(false); // メタ情報自動取得中
+  const [isAutoFetchingScreenshots, setIsAutoFetchingScreenshots] = useState(false); // スクリーンショット自動取得中
   const [screenshotProgress, setScreenshotProgress] = useState(''); // スクリーンショット進行状況
 
   // フォームデータが変更されたら親コンポーネントに通知
@@ -79,7 +80,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       return;
     }
     
-    setIsAutoFetching(true);
+    setIsAutoFetchingMetadata(true);
     
     // 一時的にローディング表示
     setFormData(prev => ({
@@ -117,7 +118,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
         metaDescription: '',
       }));
     } finally {
-      setIsAutoFetching(false);
+      setIsAutoFetchingMetadata(false);
     }
   };
 
@@ -185,7 +186,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       return;
     }
     
-    setIsAutoFetching(true);
+    setIsAutoFetchingScreenshots(true);
     setScreenshotProgress('スクリーンショット取得を開始しています...');
     
     try {
@@ -217,7 +218,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       setScreenshotProgress('');
       alert(`スクリーンショットの取得に失敗しました: ${error.message}\n手動でアップロードしてください。`);
     } finally {
-      setIsAutoFetching(false);
+      setIsAutoFetchingScreenshots(false);
       setScreenshotProgress('');
     }
   };
@@ -315,17 +316,17 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
           <button
             type="button"
             onClick={handleAutoFetchMetadata}
-            disabled={isAutoFetching || !formData.siteUrl}
+            disabled={isAutoFetchingMetadata || !formData.siteUrl}
             className="flex items-center gap-1 rounded bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            {isAutoFetching ? (
+            {isAutoFetchingMetadata ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             )}
-            {isAutoFetching ? '取得中...' : '自動取得'}
+            {isAutoFetchingMetadata ? '取得中...' : '自動取得'}
           </button>
         </div>
         <div className="relative">
@@ -334,11 +335,11 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
             id="metaTitle"
             value={formData.metaTitle}
             onChange={handleChange}
-            disabled={isAutoFetching}
+            disabled={isAutoFetchingMetadata}
             placeholder="サイトのタイトルを入力してください"
             className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white dark:focus:border-primary"
           />
-          {isAutoFetching && (
+          {isAutoFetchingMetadata && (
             <div className="absolute inset-0 flex items-center justify-center rounded-md bg-primary/10 backdrop-blur-sm dark:bg-primary/20">
               <div className="flex items-center gap-2 text-sm font-medium text-primary">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -360,12 +361,12 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
             id="metaDescription"
             value={formData.metaDescription}
             onChange={handleChange}
-            disabled={isAutoFetching}
+            disabled={isAutoFetchingMetadata}
             placeholder="サイトの説明文を入力してください"
             rows={3}
             className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white dark:focus:border-primary"
           />
-          {isAutoFetching && (
+          {isAutoFetchingMetadata && (
             <div className="absolute inset-0 flex items-center justify-center rounded-md bg-primary/10 backdrop-blur-sm dark:bg-primary/20">
               <div className="flex items-center gap-2 text-sm font-medium text-primary">
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -386,17 +387,17 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
           <button
             type="button"
             onClick={handleAutoFetchScreenshots}
-            disabled={!formData.siteUrl || isAutoFetching}
+            disabled={!formData.siteUrl || isAutoFetchingScreenshots}
             className="flex items-center gap-1 rounded bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isAutoFetching ? (
+            {isAutoFetchingScreenshots ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
             ) : (
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
               </svg>
             )}
-            {isAutoFetching ? '取得中...' : '自動取得'}
+            {isAutoFetchingScreenshots ? '取得中...' : '自動取得'}
           </button>
         </div>
         
