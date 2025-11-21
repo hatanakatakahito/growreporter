@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* スクロールバーを常に表示してレイアウトのずれを防ぐ */
+html {
+  overflow-y: scroll;
+}
+
 /* AI分析ボタンのアニメーション */
 @keyframes ai-pulse {
   0%, 100% {

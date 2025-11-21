@@ -10,9 +10,9 @@ import Tooltip from '../../common/Tooltip';
 export default function BusinessTypeSelector({ value, onChange, error }) {
   return (
     <div>
-      <label className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
+      <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">
         ビジネス形態
-        <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+        <span className="ml-1 text-red-500">*</span>
       </label>
       
       <div className="space-y-3">
