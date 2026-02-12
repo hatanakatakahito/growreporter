@@ -1,0 +1,32 @@
+{
+  "name": "growreporter-functions",
+  "version": "1.1.0",
+  "description": "Firebase Functions for GrowReporter - API on-demand strategy",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "serve": "firebase emulators:start --only functions,firestore",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "20"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^131.0.0",
+    "date-fns": "^4.1.0",
+    "firebase-admin": "^12.0.0",
+    "firebase-functions": "^5.0.0",
+    "googleapis": "^134.0.0",
+    "highcharts": "^12.4.0",
+    "highcharts-react-official": "^3.2.3",
+    "puppeteer-core": "^23.11.1",
+    "sharp": "^0.33.0"
+  },
+  "devDependencies": {
+    "firebase-functions-test": "^3.1.0"
+  },
+  "private": true
+}

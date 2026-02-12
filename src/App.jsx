@@ -1,0 +1,204 @@
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { queryClient } from './config/queryClient';
+import { AuthProvider } from './contexts/AuthContext';
+import { SiteProvider } from './contexts/SiteContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Login from './components/GrowReporter/Login';
+import Register from './components/GrowReporter/Register';
+import CompleteProfile from './components/GrowReporter/CompleteProfile';
+import SiteRegistration from './components/GrowReporter/SiteRegistration/index';
+import Complete from './components/GrowReporter/SiteRegistration/Complete';
+import MainLayout from './components/Layout/MainLayout';
+import SiteList from './pages/SiteList';
+import Dashboard from './pages/Dashboard';
+import AnalysisNavigation from './pages/Analysis/AnalysisNavigation';
+import AnalysisSummary from './pages/Analysis/AnalysisSummary';
+import Day from './pages/Analysis/Day';
+import Week from './pages/Analysis/Week';
+import Hour from './pages/Analysis/Hour';
+import Users from './pages/Users';
+import AcquisitionChannels from './pages/AcquisitionChannels';
+import Keywords from './pages/Keywords';
+import Referrals from './pages/Referrals';
+import Pages from './pages/Pages';
+import PageCategories from './pages/PageCategories';
+import LandingPages from './pages/LandingPages';
+import FileDownloads from './pages/FileDownloads';
+import ExternalLinks from './pages/ExternalLinks';
+import PageFlow from './pages/PageFlow';
+import ConversionList from './pages/ConversionList';
+import ReverseFlow from './pages/ReverseFlow';
+import Improve from './pages/Improve';
+import Reports from './pages/Reports';
+import AccountSettings from './pages/AccountSettings';
+import OAuthCallback from './components/OAuthCallback';
+
+// Admin
+import AdminRoute from './components/Admin/AdminRoute';
+import AdminLayout from './components/Admin/AdminLayout';
+import AdminDashboard from './pages/Admin/Dashboard';
+import UserList from './pages/Admin/Users/UserList';
+import UserDetail from './pages/Admin/Users/UserDetail';
+import AdminSiteList from './pages/Admin/Sites/SiteList';
+import AdminSiteDetail from './pages/Admin/Sites/SiteDetail';
+// import ActivityLogs from './pages/Admin/Logs/ActivityLogs'; // ファイルが存在しないためコメントアウト
+import PromptTemplateList from './pages/Admin/PromptTemplates/PromptTemplateList';
+import PromptTemplateEditor from './pages/Admin/PromptTemplates/PromptTemplateEditor';
+import AdminSettings from './pages/Admin/Settings/AdminSettings';
+import PlanSettings from './pages/Admin/Settings/PlanSettings';
+
+function App() {
+  // 正式ドメインへのリダイレクト
+  useEffect(() => {
+    const currentHostname = window.location.hostname;
+    const officialDomain = 'grow-reporter.com';
+    
+    // ローカル開発環境（localhost）は除外
+    if (currentHostname === 'localhost' || currentHostname === '127.0.0.1') {
+      return;
+    }
+    
+    // 正式ドメイン以外からのアクセスの場合、リダイレクト
+    if (currentHostname !== officialDomain) {
+      const newUrl = `https://${officialDomain}${window.location.pathname}${window.location.search}${window.location.hash}`;
+      window.location.replace(newUrl);
+    }
+  }, []);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <SiteProvider>
+          <Router>
+          <div className="App">
+          <Routes>
+            {/* OAuth コールバック（認証不要） */}
+            <Route path="/oauth/callback" element={<OAuthCallback />} />
+            
+            {/* 認証関連 */}
+            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route 
+              path="/register/complete" 
+              element={
+                <ProtectedRoute>
+                  <CompleteProfile />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* サイト登録・完了（ワンカラムレイアウト） */}
+            <Route 
+              path="/sites/new" 
+              element={
+                <ProtectedRoute>
+                  <SiteRegistration mode="new" />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/sites/:siteId/edit" 
+              element={
+                <ProtectedRoute>
+                  <SiteRegistration mode="edit" />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/sites/complete" 
+              element={
+                <ProtectedRoute>
+                  <Complete />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* メインアプリケーション - MainLayoutでラップ */}
+            <Route 
+              element={
+                <ProtectedRoute>
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
+              {/* サイト管理 */}
+              <Route path="/sites/list" element={<SiteList />} />
+              
+              {/* ダッシュボード */}
+              <Route path="/dashboard" element={<Dashboard />} />
+              
+              {/* 分析 */}
+              <Route path="/analysis" element={<AnalysisNavigation />} />
+              <Route path="/analysis/summary" element={<AnalysisSummary />} />
+              <Route path="/analysis/day" element={<Day />} />
+              <Route path="/analysis/week" element={<Week />} />
+              <Route path="/analysis/hour" element={<Hour />} />
+              
+              {/* 集客 */}
+              <Route path="/acquisition/channels" element={<AcquisitionChannels />} />
+              <Route path="/acquisition/keywords" element={<Keywords />} />
+              <Route path="/acquisition/referrals" element={<Referrals />} />
+              
+              {/* エンゲージメント */}
+              <Route path="/engagement/pages" element={<Pages />} />
+              <Route path="/engagement/page-categories" element={<PageCategories />} />
+              <Route path="/engagement/landing-pages" element={<LandingPages />} />
+              <Route path="/engagement/file-downloads" element={<FileDownloads />} />
+              <Route path="/engagement/external-links" element={<ExternalLinks />} />
+              <Route path="/engagement/page-flow" element={<PageFlow />} />
+              
+              {/* コンバージョン */}
+              <Route path="/conversion/list" element={<ConversionList />} />
+              <Route path="/conversion/reverse-flow" element={<ReverseFlow />} />
+              
+              {/* 改善する */}
+              <Route path="/improve" element={<Improve />} />
+              
+              {/* 評価する */}
+              <Route path="/reports" element={<Reports />} />
+              
+              {/* ユーザー管理 */}
+              <Route path="/users" element={<Users />} />
+              
+              {/* アカウント設定 */}
+              <Route path="/account/settings" element={<AccountSettings />} />
+            </Route>
+            
+            {/* 管理画面 */}
+            <Route 
+              path="/admin/*" 
+              element={
+                <ProtectedRoute>
+                  <AdminRoute>
+                    <AdminLayout />
+                  </AdminRoute>
+                </ProtectedRoute>
+              }
+            >
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="users" element={<UserList />} />
+              <Route path="users/:uid" element={<UserDetail />} />
+              <Route path="sites" element={<AdminSiteList />} />
+              <Route path="sites/:siteId" element={<AdminSiteDetail />} />
+              {/* <Route path="logs" element={<ActivityLogs />} /> */}
+              <Route path="prompt-templates" element={<PromptTemplateList />} />
+              <Route path="prompt-templates/:id/edit" element={<PromptTemplateEditor />} />
+              <Route path="prompt-templates/new" element={<PromptTemplateEditor />} />
+              <Route path="settings" element={<AdminSettings />} />
+              <Route path="settings/plans" element={<PlanSettings />} />
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+            </Route>
+          </Routes>
+        </div>
+        </Router>
+      </SiteProvider>
+    </AuthProvider>
+    <ReactQueryDevtools initialIsOpen={false} />
+  </QueryClientProvider>
+  );
+}
+
+export default App;
