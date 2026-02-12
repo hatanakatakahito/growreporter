@@ -1,0 +1,58 @@
+/* AI系グラデーション（ブルー→紫）のプライマリーカラー定義 */
+
+:root {
+  /* AI Gradient Colors */
+  --gradient-from: #3b82f6; /* Blue-500 */
+  --gradient-to: #8b5cf6;   /* Purple-500 */
+  
+  /* Primary color using gradient */
+  --primary-gradient: linear-gradient(135deg, var(--gradient-from) 0%, var(--gradient-to) 100%);
+  
+  /* Solid colors for borders and backgrounds */
+  --primary-blue: #3b82f6;
+  --primary-purple: #8b5cf6;
+  --primary-mid: #6366f1; /* Indigo-500 - middle color */
+}
+
+/* Gradient background utility */
+.bg-gradient-primary {
+  background: var(--primary-gradient);
+}
+
+/* Gradient text utility */
+.text-gradient-primary {
+  background: var(--primary-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Gradient border utility */
+.border-gradient-primary {
+  border-image: var(--primary-gradient) 1;
+}
+
+/* Hover gradient effect */
+.hover-gradient-primary {
+  position: relative;
+  overflow: hidden;
+}
+
+.hover-gradient-primary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--primary-gradient);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.hover-gradient-primary:hover::before {
+  opacity: 0.1;
+}
+
+/* Active/Current state with gradient */
+.active-gradient-primary {
+  background: var(--primary-gradient);
+  color: white;
+}
