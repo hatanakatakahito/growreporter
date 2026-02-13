@@ -60,41 +60,42 @@ function parsePeriod(period) {
  * 全体サマリー用プロンプト
  */
 function getSummaryPrompt(period, metrics) {
-  let monthlyTrendText = '';
-  if (metrics.monthlyData && Array.isArray(metrics.monthlyData) && metrics.monthlyData.length > 0) {
-    const recentMonths = metrics.monthlyData.slice(0, 5);
-    monthlyTrendText = '\n\n【13ヶ月推移（最新5ヶ月）】\n';
-    recentMonths.forEach(month => {
-      monthlyTrendText += `- ${month.yearMonth}: ユーザー${month.users?.toLocaleString() || 0}人, セッション${month.sessions?.toLocaleString() || 0}回, CV${month.conversions?.toLocaleString() || 0}件\n`;
-    });
+  // 前月比データの取得
+  let changeText = '';
+  if (metrics.monthOverMonth) {
+    const mom = metrics.monthOverMonth;
+    if (mom.sessions) {
+      const sign = mom.sessions.change >= 0 ? '増加' : '減少';
+      changeText += `\n- 訪問者: 前月比${mom.sessions.change >= 0 ? '+' : ''}${mom.sessions.change.toFixed(1)}%（${sign}）`;
+    }
+    if (mom.conversions) {
+      const sign = mom.conversions.change >= 0 ? '増加' : '減少';
+      changeText += `\n- 成果: 前月比${mom.conversions.change >= 0 ? '+' : ''}${mom.conversions.change.toFixed(1)}%（${sign}）`;
+    }
   }
 
   return `
-あなたはWebアクセス解析の専門家です。${period}のWebサイトパフォーマンスを分析し、**Web担当者にわかりやすく端的に伝える**日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}のデータを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総ユーザー数: ${metrics.users?.toLocaleString() || metrics.totalUsers?.toLocaleString() || 0}人
-- セッション数: ${metrics.sessions?.toLocaleString() || 0}回
-- ページビュー数: ${metrics.pageViews?.toLocaleString() || metrics.screenPageViews?.toLocaleString() || 0}回
-- エンゲージメント率: ${((metrics.engagementRate || 0) * 100).toFixed(1)}%
-- コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件${monthlyTrendText}
+【データ】
+- 訪問者数: ${metrics.sessions?.toLocaleString() || 0}回
+- 成果（お問い合わせなど）: ${metrics.conversions?.toLocaleString() || 0}件${changeText}
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）例: CVR（成果率）、直帰率（すぐ離脱する割合）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は下の『AI改善提案を生成』をご利用ください」で締める
 
-【記述内容】
-1. 最重要ポイント：最も注目すべき変化や傾向（数値付き）
-2. 原因分析：なぜそうなったか（簡潔に）
-3. 改善提案：何をすべきか（1-2個、端的に）
-
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
 【記述例】
-• サイト全体は流入が減少傾向の一方、CVは増加。
-• 流入減の主因はトップページPVの大幅減（-14%）で、トップの改善がインパクト大。
-• エンゲージメント率は前月比+5.2%と改善傾向で、コンテンツの質は向上している。
+${period}は訪問者が前月比15%増加し、良い傾向です。ただしCVR（成果率）は2.8%から2.3%に低下しており、訪問者は増えても成果につながっていません。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -103,105 +104,42 @@ function getSummaryPrompt(period, metrics) {
  */
 function getDayPrompt(period, metrics) {
   const hasConversions = metrics.hasConversionDefinitions === true;
-
-  let dailyStatsText = '';
+  
+  // 最大・最小の日を簡易計算
+  let maxDay = '', minDay = '';
   if (metrics.dailyData && Array.isArray(metrics.dailyData) && metrics.dailyData.length > 0) {
-    const allDays = metrics.dailyData;
-    let maxSessions = 0, minSessions = Infinity;
-    let maxSessionDay = '', minSessionDay = '';
-    let totalSessions = 0;
-    let maxConversions = 0, minConversions = Infinity;
-    let maxConversionDay = '', minConversionDay = '';
-    let totalConversions = 0;
-    let hasConversionData = false;
-    const dayOfWeekStats = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
-    const dayOfWeekConversions = { 0: [], 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
-    const dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-    const dailyDetailList = [];
-
-    allDays.forEach(day => {
-      const sessions = day.sessions || 0;
-      const conversions = day.conversions || 0;
-      totalSessions += sessions;
-      totalConversions += conversions;
-      if (conversions > 0) hasConversionData = true;
-      if (sessions > maxSessions) { maxSessions = sessions; maxSessionDay = day.date; }
-      if (sessions < minSessions) { minSessions = sessions; minSessionDay = day.date; }
-      if (conversions > maxConversions) { maxConversions = conversions; maxConversionDay = day.date; }
-      if (conversions < minConversions && conversions > 0) { minConversions = conversions; minConversionDay = day.date; }
-      if (day.date) {
-        const dateStr = day.date.toString();
-        const year = parseInt(dateStr.substring(0, 4));
-        const month = parseInt(dateStr.substring(4, 6)) - 1;
-        const dayNum = parseInt(dateStr.substring(6, 8));
-        const date = new Date(year, month, dayNum);
-        const dayOfWeek = date.getDay();
-        if (!isNaN(dayOfWeek)) {
-          dayOfWeekStats[dayOfWeek].push(sessions);
-          dayOfWeekConversions[dayOfWeek].push(conversions);
-          const formattedDate = `${year}/${month + 1}/${dayNum}`;
-          dailyDetailList.push({ date: formattedDate, dayOfWeek: dayNames[dayOfWeek], sessions, conversions });
-        }
-      }
-    });
-
-    const avgSessions = Math.round(totalSessions / allDays.length);
-    const avgConversions = hasConversionData ? (totalConversions / allDays.length).toFixed(1) : 0;
-    const dayOfWeekAvg = Object.keys(dayOfWeekStats).map(day => {
-      const sessions = dayOfWeekStats[day];
-      if (sessions.length === 0) return null;
-      const avg = Math.round(sessions.reduce((a, b) => a + b, 0) / sessions.length);
-      return `${dayNames[day]}曜: ${avg.toLocaleString()}`;
-    }).filter(Boolean).join(', ');
-    const topDays = [...dailyDetailList]
-      .sort((a, b) => b.sessions - a.sessions)
-      .slice(0, 10)
-      .map(d => `${d.date}(${d.dayOfWeek}): ${d.sessions.toLocaleString()}セッション, ${d.conversions}CV`)
-      .join('\n');
-
-    dailyStatsText = `\n\n【日別データの統計】
-セッション:
-- 最大: ${maxSessionDay}（${maxSessions.toLocaleString()}セッション）
-- 最小: ${minSessionDay}（${minSessions.toLocaleString()}セッション）
-- 平均: ${avgSessions.toLocaleString()}セッション/日
-- 変動幅: ${((maxSessions - minSessions) / avgSessions * 100).toFixed(0)}%
-- 曜日別平均: ${dayOfWeekAvg}
-
-【日別詳細データ（上位10日）】
-${topDays}`;
-
-    if (hasConversions && hasConversionData) {
-      const maxCvr = maxSessions > 0 ? ((maxConversions / maxSessions) * 100).toFixed(2) : 0;
-      const minCvr = minSessions > 0 ? ((minConversions / minSessions) * 100).toFixed(2) : 0;
-      dailyStatsText += `\n\nコンバージョン:
-- 最大: ${maxConversionDay}（${maxConversions}件、CVR ${maxCvr}%）
-- 最小: ${minConversionDay}（${minConversions}件、CVR ${minCvr}%）
-- 平均: ${avgConversions}件/日`;
+    const sorted = [...metrics.dailyData].sort((a, b) => (b.sessions || 0) - (a.sessions || 0));
+    if (sorted.length > 0) {
+      maxDay = sorted[0].date;
+      minDay = sorted[sorted.length - 1].date;
     }
   }
 
-  const conversionWarning = !hasConversions ? `\n\n⚠️ **注意**: コンバージョン定義が未設定です。サイト設定画面から設定すると、CV分析が可能になります。` : '';
+  const conversionNote = hasConversions ? `\n- 成果: ${metrics.conversions?.toLocaleString() || 0}件` : '';
 
   return `
-あなたは【トラフィック変動分析の専門家】です。${period}のWebサイトの日別データを分析し、**ビジネスへの影響と実用的なインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}の日別データを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総セッション数: ${metrics.sessions?.toLocaleString() || 0}回
-- 1日平均: ${metrics.sessions && dailyStatsText ? Math.round(metrics.sessions / (metrics.dailyData?.length || 30)).toLocaleString() : 0}回${hasConversions ? `
-- 総コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件
-- 全体CVR: ${(metrics.sessions > 0 ? ((metrics.conversions / metrics.sessions) * 100) : 0).toFixed(2)}%` : ''}${dailyStatsText}${conversionWarning}
+【データ】
+- 訪問者数: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}
+- 最も多い日: ${maxDay}
+- 最も少ない日: ${minDay}
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【記述内容】
-1. 最重要ポイント：最大日・最小日や曜日傾向など、最も注目すべき変化（数値付き）
-2. 原因分析：なぜその変動パターンになったか（簡潔に）
-3. 改善提案：セッション少ない曜日への施策、CVR改善など（1-2個、端的に）
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}は週末に訪問者が集中し、特に土曜日が最も多くなっています。平日は訪問者が少なく、特に月曜日が最少です。週末と平日で約2倍の差があります。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -210,44 +148,29 @@ ${topDays}`;
  */
 function getWeekPrompt(period, metrics) {
   const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
-  let weeklyDetailsText = '';
-  if (metrics.weeklyData && Array.isArray(metrics.weeklyData) && metrics.weeklyData.length > 0) {
-    const dayMap = {};
-    metrics.weeklyData.forEach(row => {
-      const dayOfWeek = parseInt(row.dayOfWeek);
-      const sessions = row.sessions || 0;
-      const conversions = row.conversions || 0;
-      const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      if (!dayMap[adjustedDay]) dayMap[adjustedDay] = { sessions: 0, conversions: 0 };
-      dayMap[adjustedDay].sessions += sessions;
-      dayMap[adjustedDay].conversions += conversions;
-    });
-    const dayNames = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
-    weeklyDetailsText = `\n\n【曜日別の詳細データ】\n` + dayNames.map((name, index) => {
-      const data = dayMap[index] || { sessions: 0, conversions: 0 };
-      const cvText = hasConversions ? `, CV: ${data.conversions}件` : '';
-      return `${name}: ${data.sessions}セッション${cvText}`;
-    }).join('\n');
-  }
-  const conversionNote = hasConversions ? `\n- コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件` : '\n\n⚠️ **注意**: コンバージョン定義が未設定です。CV分析をご希望の場合、サイト設定画面から設定してください。';
+  const conversionNote = hasConversions ? `\n- 成果: ${metrics.conversions?.toLocaleString() || 0}件` : '';
 
   return `
-あなたは【曜日別分析の専門家】です。${period}のWebサイトの曜日別データを分析し、**曜日ごとのトレンドと最適な施策タイミング**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}の曜日別データを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総セッション数: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}${weeklyDetailsText}
+【データ】
+- 訪問者数: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【記述内容】
-1. 最重要ポイント：最多曜日・最少曜日、平日vs週末の差など（数値付き）
-2. 原因分析：なぜその曜日傾向になったか（簡潔に）
-3. 改善提案：セッション少ない曜日への施策、CVR高い曜日への集中など（1-2個、端的に）
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字、時間帯の言及（データに含まれない）
+【記述例】
+${period}は土日に訪問者が集中し、平日は少ない傾向です。特に月曜日が最も少なく、土曜日と比較して約40%少なくなっています。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -256,36 +179,29 @@ function getWeekPrompt(period, metrics) {
  */
 function getHourPrompt(period, metrics) {
   const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
-  let hourlyDetailsText = '';
-  if (metrics.hourlyData && Array.isArray(metrics.hourlyData) && metrics.hourlyData.length > 0) {
-    const sortedByHour = [...metrics.hourlyData].sort((a, b) => parseInt(a.hour) - parseInt(b.hour));
-    hourlyDetailsText = `\n\n【時間帯別の詳細データ】\n` + sortedByHour.map(row => {
-      const hour = parseInt(row.hour);
-      const sessions = row.sessions || 0;
-      const conversions = row.conversions || 0;
-      const cvText = hasConversions ? `, CV: ${conversions}件` : '';
-      return `${hour}時: ${sessions}セッション${cvText}`;
-    }).join('\n');
-  }
-  const conversionNote = hasConversions ? `\n- コンバージョン数: ${metrics.conversions?.toLocaleString() || 0}件` : '\n\n⚠️ **注意**: コンバージョン定義が未設定です。CV分析をご希望の場合、サイト設定画面から設定してください。';
+  const conversionNote = hasConversions ? `\n- 成果: ${metrics.conversions?.toLocaleString() || 0}件` : '';
 
   return `
-あなたは【24時間行動分析の専門家】です。${period}のWebサイトの時間帯別データを分析し、**時間軸でのユーザー行動理解とビジネスへの影響**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}の時間帯別データを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総セッション数: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}${hourlyDetailsText}
+【データ】
+- 訪問者数: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【記述内容】
-1. 最重要ポイント：ピーク時間帯・デッドタイム、時間帯別の割合など（数値付き）
-2. 原因分析：なぜその時間帯傾向になったか（簡潔に）
-3. 改善提案：ピーク時間帯への広告集中、CVR高い時間帯への予算シフトなど（1-2個、端的に）
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}は昼間（12-14時）に訪問者が集中し、夜間は少ない傾向です。朝の通勤時間帯も比較的多く、深夜と比較して約3倍の差があります。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -320,7 +236,7 @@ function getDashboardPrompt(period, metrics) {
     }
     if (mom.sessions) {
       const sign = mom.sessions.change >= 0 ? '+' : '';
-      monthOverMonthText += `\n- セッション数: ${mom.sessions.current?.toLocaleString() || 0}回 (前月${mom.sessions.previous?.toLocaleString() || 0}回, ${sign}${mom.sessions.change.toFixed(1)}%)`;
+      monthOverMonthText += `\n- 訪問者数: ${mom.sessions.current?.toLocaleString() || 0}回 (前月${mom.sessions.previous?.toLocaleString() || 0}回, ${sign}${mom.sessions.change.toFixed(1)}%)`;
     }
     if (mom.conversions && hasConversions) {
       const sign = mom.conversions.change >= 0 ? '+' : '';
@@ -341,29 +257,27 @@ function getDashboardPrompt(period, metrics) {
   }
 
   return `
-あなたは優秀なWebアクセスの解析士です。${period}のWebサイト全体のパフォーマンスを分析し、ビジネス成長に役立つ洞察を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}のダッシュボードデータを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総ユーザー数: ${metrics.users?.toLocaleString() || 0}人
-- 新規ユーザー数: ${metrics.newUsers?.toLocaleString() || 0}人
-- セッション数: ${metrics.sessions?.toLocaleString() || 0}回
-- ページビュー数: ${metrics.pageViews?.toLocaleString() || 0}回
-- 平均PV/セッション: ${metrics.pageViews && metrics.sessions ? (metrics.pageViews / metrics.sessions).toFixed(2) : '0.00'}
-- エンゲージメント率: ${((metrics.engagementRate || 0) * 100).toFixed(1)}%
-- 直帰率: ${((metrics.bounceRate || 0) * 100).toFixed(1)}%
-- 平均セッション時間: ${metrics.avgSessionDuration ? `${Math.floor(metrics.avgSessionDuration / 60)}分${Math.floor(metrics.avgSessionDuration % 60)}秒` : '0秒'}${conversionText}${hasConversions ? `\n- コンバージョン率: ${((metrics.conversionRate || 0) * 100).toFixed(2)}%` : ''}${monthOverMonthText}${kpiText}
+【データ】
+- 訪問者数: ${metrics.sessions?.toLocaleString() || 0}回
+- 成果（お問い合わせなど）: ${metrics.conversions?.toLocaleString() || 0}件${monthOverMonthText}${conversionText}${kpiText}
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）例: CVR（成果率）、エンゲージメント率（訪問者の関与度）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【記述内容】
-1. 最重要ポイント：前月比で変化の大きい指標、主要な傾向（数値付き）
-2. 原因分析：なぜその結果になったか（簡潔に）
-3. 改善提案：未達成KPIの改善、CV内訳の強化など（1-2個、端的に）
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}は訪問者が前月比15%増加し、良い傾向です。ただしCVR（成果率）は2.8%から2.3%に低下しており、訪問者は増えても成果につながっていません。エンゲージメント率（訪問者の関与度）も前月比5%低下しています。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -456,21 +370,25 @@ function getUsersPrompt(period, metrics) {
   }
 
   return `
-あなたは【ターゲット層分析の専門家】です。${period}のWebサイトのユーザー属性データを分析し、**マーケティング戦略の最適化に役立つインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}のユーザー属性データを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】${demographicsText}${dataLimitationNote}
+【データ】${demographicsText}${dataLimitationNote}
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【記述内容】
-1. 最重要ポイント：新規/リピーター比率、デバイス・地域・年齢・性別の主要傾向（数値付き）
-2. 原因分析：なぜその属性分布になったか（簡潔に）
-3. 改善提案：リピーター強化、地域拡大、デバイス最適化など（1-2個、端的に）
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字、「undefined」の出力
+【記述例】
+${period}はスマホからの訪問者が全体の80%を占めています。地域別では東京・大阪などの都市部からのアクセスが多く、全体の65%を占めています。新規訪問者とリピーターの比率は6:4です。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -540,7 +458,7 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate) 
     const monthlyData = metrics.monthlyTrend.monthlyData;
     monthlyTrendText = '\n\n【過去13ヶ月の推移】\n';
     monthlyData.forEach(month => {
-      monthlyTrendText += `- ${month.month}: ユーザー${month.users?.toLocaleString() || 0}人, セッション${month.sessions?.toLocaleString() || 0}回, CV${month.conversions?.toLocaleString() || 0}件\n`;
+      monthlyTrendText += `- ${month.month}: ユーザー${month.users?.toLocaleString() || 0}人, 訪問${month.sessions?.toLocaleString() || 0}回, CV${month.conversions?.toLocaleString() || 0}件\n`;
     });
   }
 
@@ -555,7 +473,7 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate) 
   const recentSummaryText = `
 【直近30日のサマリー（${sd} 〜 ${ed}）】
 - ユーザー数: ${recent30Days.totalUsers?.toLocaleString() || 0}人
-- セッション数: ${recent30Days.sessions?.toLocaleString() || 0}回
+- 訪問者数: ${recent30Days.sessions?.toLocaleString() || 0}回
 - ページビュー数: ${recent30Days.screenPageViews?.toLocaleString() || 0}回
 - エンゲージメント率: ${((recent30Days.engagementRate || 0) * 100).toFixed(1)}%
 - コンバージョン数: ${recent30Days.totalConversions?.toLocaleString() || 0}件${conversionDetails}
@@ -565,7 +483,7 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate) 
   if (metrics.channels && Array.isArray(metrics.channels) && metrics.channels.length > 0) {
     channelsText = '\n\n【集客チャネル（直近30日）】\n';
     metrics.channels.slice(0, 5).forEach(channel => {
-      channelsText += `- ${channel.channel}: セッション${channel.sessions?.toLocaleString() || 0}回, CV${channel.conversions?.toLocaleString() || 0}件\n`;
+      channelsText += `- ${channel.channel}: 訪問${channel.sessions?.toLocaleString() || 0}回, CV${channel.conversions?.toLocaleString() || 0}件\n`;
     });
   }
 
@@ -573,7 +491,7 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate) 
   if (metrics.landingPages && Array.isArray(metrics.landingPages) && metrics.landingPages.length > 0) {
     landingPagesText = '\n\n【人気ランディングページ（直近30日、トップ5）】\n';
     metrics.landingPages.slice(0, 5).forEach(page => {
-      landingPagesText += `- ${page.page}: セッション${page.sessions?.toLocaleString() || 0}回, ENG率${(page.engagementRate * 100).toFixed(1)}%, CV${page.conversions?.toLocaleString() || 0}件\n`;
+      landingPagesText += `- ${page.page}: 訪問${page.sessions?.toLocaleString() || 0}回, ENG率${(page.engagementRate * 100).toFixed(1)}%, CV${page.conversions?.toLocaleString() || 0}件\n`;
     });
   }
 
@@ -667,7 +585,7 @@ ${knowledgeText}
 - 改善提案は含めない（タスク2で別途出力）
 
 【記述例】
-• 直近30日のセッションは10,471回（前月比-4.7%）で減少傾向、一方CV率は+0.25pt改善。
+• 直近30日の訪問は10,471回（前月比-4.7%）で減少傾向、一方CV率は+0.25pt改善。
 • 流入減の主因は季節的閑散期と広告予算削減、CV率改善はCTA最適化の効果と推測。
 • 過去13ヶ月で2月が最高値、6月が最低値。中長期では横ばい〜微増傾向。
 
@@ -712,7 +630,7 @@ ${knowledgeText}
 
 【出力例】
 分析サマリー
-• 直近30日のセッションは10,471回（前月比-4.7%）で減少傾向、一方CV数は125件（前月比+21.4%）で増加。
+• 直近30日の訪問は10,471回（前月比-4.7%）で減少傾向、一方CV数は125件（前月比+21.4%）で増加。
 • 流入減の主因は季節的閑散期と広告キャンペーン終了、CV率改善はCTA最適化の効果と推測。
 • 過去13ヶ月で2月が最高値、6月が最低値。前年同月比ではプラス成長を維持。
 
@@ -738,31 +656,29 @@ ${knowledgeText}
  */
 function getChannelsPrompt(period, metrics) {
   const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
-  const conversionNote = hasConversions ? '' : '\n\n⚠️ **注意**: コンバージョン定義が未設定です。CV分析をご希望の場合、サイト設定画面から設定してください。';
+  const conversionNote = hasConversions ? `\n- 成果: ${metrics.totalConversions?.toLocaleString() || 0}件` : '';
 
   return `
-あなたは【流入チャネル最適化の専門家】です。${period}のWebサイトの流入チャネルデータを分析し、**マーケティングROI最適化に役立つインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}の流入経路データを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総セッション数: ${metrics.totalSessions?.toLocaleString() || 0}回
-- 総ユーザー数: ${metrics.totalUsers?.toLocaleString() || 0}人${hasConversions ? `
-- 総コンバージョン数: ${metrics.totalConversions?.toLocaleString() || 0}件` : ''}
-- チャネル数: ${metrics.channelCount || 0}個${conversionNote}
+【データ】
+- 訪問者数: ${metrics.totalSessions?.toLocaleString() || 0}回${conversionNote}
 
-【チャネル別の内訳】
-${metrics.channelsText || 'データなし'}
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）例: オーガニック検索（自然検索）、リファラル（他サイトからのリンク）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【記述内容】
-1. 最重要ポイント：上位3チャネル、集中度、オーガニックvs有料の割合など（数値付き）
-2. 原因分析：なぜそのチャネル構成になったか（簡潔に）
-3. 改善提案：低CVRチャネルへの施策、チャネル分散など（1-2個、端的に）
-
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}はオーガニック検索（自然検索）からの訪問が全体の60%を占め、最も多い流入経路です。SNSからの訪問は10%程度で、リファラル（他サイトからのリンク）は15%です。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -771,32 +687,29 @@ ${metrics.channelsText || 'データなし'}
  */
 function getReferralsPrompt(period, metrics) {
   const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
-  const conversionNote = hasConversions ? '' : '\n\n⚠️ **注意**: コンバージョン定義が未設定です。CV分析をご希望の場合、サイト設定画面から設定してください。';
+  const conversionNote = hasConversions ? `\n- 成果: ${metrics.totalConversions?.toLocaleString() || 0}件` : '';
 
   return `
-あなたは【参照元最適化分析の専門家】です。${period}のWebサイトの参照元/メディアデータを分析し、**外部サイトからの流入最適化に役立つインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}の参照元データを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総セッション数: ${metrics.totalSessions?.toLocaleString() || 0}回
-- 総ユーザー数: ${metrics.totalUsers?.toLocaleString() || 0}人${hasConversions ? `
-- 総コンバージョン数: ${metrics.totalConversions?.toLocaleString() || 0}件
-- 平均CVR: ${(metrics.avgConversionRate || 0).toFixed(2)}%` : ''}
-- 参照元数: ${metrics.referralCount || 0}件${conversionNote}
+【データ】
+- 訪問者数: ${metrics.totalSessions?.toLocaleString() || 0}回${conversionNote}
 
-【参照元別の内訳（上位10件）】
-${metrics.topReferralsText || 'データなし'}
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【記述内容】
-1. 最重要ポイント：上位3参照元、集中度、CVRの高い/低い参照元など（数値付き）
-2. 原因分析：なぜその参照元構成になったか（簡潔に）
-3. 改善提案：高CVR参照元への露出強化、低CVR参照元の改善など（1-2個、端的に）
-
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}はGoogleからの訪問が全体の55%を占め、最も多い参照元です。Yahoo!からの訪問は8%、SNSからは12%です。直接訪問（ブックマークなど）は20%を占めています。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -805,30 +718,29 @@ ${metrics.topReferralsText || 'データなし'}
  */
 function getLandingPagesPrompt(period, metrics) {
   const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
-  const conversionNote = hasConversions ? '' : '\n\n⚠️ **注意**: コンバージョン定義が未設定です。CV分析をご希望の場合、サイト設定画面から設定してください。';
+  const conversionNote = hasConversions ? `\n- 成果: ${metrics.totalConversions?.toLocaleString() || 0}件` : '';
 
   return `
-あなたは【ランディングページ最適化の専門家】です。${period}のWebサイトのランディングページデータを分析し、**ファーストインプレッション改善に役立つインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}のランディングページ（最初に見られたページ）データを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総セッション数: ${metrics.totalSessions?.toLocaleString() || 0}回${hasConversions ? `
-- 総コンバージョン数: ${metrics.totalConversions?.toLocaleString() || 0}件` : ''}
-- LP数: ${metrics.landingPageCount || 0}ページ${conversionNote}
+【データ】
+- 訪問者数: ${metrics.totalSessions?.toLocaleString() || 0}回${conversionNote}
 
-【LP別の内訳（上位10件）】
-${metrics.topLandingPagesText || 'データなし'}
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）例: ランディングページ（最初に見られるページ）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【記述内容】
-1. 最重要ポイント：上位3LP、集中度、ENG率の高い/低いLPなど（数値付き）
-2. 原因分析：なぜそのLPパフォーマンスになったか（簡潔に）
-3. 改善提案：ENG率低いLPの改善、高セッションLPへの予算集中など（1-2個、端的に）
-
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}はトップページから入ってくる訪問者が全体の45%を占め、最も多いランディングページ（最初に見られるページ）です。商品ページから直接入ってくる訪問者も30%あり、検索からの流入が多いことがわかります。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -837,29 +749,29 @@ ${metrics.topLandingPagesText || 'データなし'}
  */
 function getPagesPrompt(period, metrics) {
   const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
-  const conversionNote = hasConversions ? '' : '\n\n⚠️ **注意**: コンバージョン定義が未設定です。CV分析をご希望の場合、サイト設定画面から設定してください。';
+  const conversionNote = hasConversions ? `\n- 成果: ${metrics.totalConversions?.toLocaleString() || 0}件` : '';
 
   return `
-あなたは【コンテンツパフォーマンス分析の専門家】です。${period}のWebサイトのページ別データを分析し、**コンテンツ最適化に役立つインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}のページ別データを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総ページビュー数: ${metrics.totalPageViews?.toLocaleString() || 0}PV
-- ページ数: ${metrics.pageCount || 0}ページ${conversionNote}
+【データ】
+- ページ閲覧数: ${metrics.totalPageViews?.toLocaleString() || 0}回${conversionNote}
 
-【ページ別の内訳（上位10件）】
-${metrics.topPagesText || 'データなし'}
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）例: PV（ページビュー、閲覧数）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【記述内容】
-1. 最重要ポイント：上位3ページ、集中度、ENG率・滞在時間の高い/低いページなど（数値付き）
-2. 原因分析：なぜそのページパフォーマンスになったか（簡潔に）
-3. 改善提案：ENG率低いページの改善、高PVページの導線強化など（1-2個、端的に）
-
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}はトップページが最もよく見られており、全体のPV（ページビュー、閲覧数）の35%を占めています。商品ページも25%を占めていますが、お問い合わせページは5%程度です。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -868,26 +780,26 @@ ${metrics.topPagesText || 'データなし'}
  */
 function getPageCategoriesPrompt(period, metrics) {
   return `
-あなたは【コンテンツカテゴリ戦略の専門家】です。${period}のWebサイトのカテゴリ別データを分析し、**サイト構造最適化に役立つインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}のページ分類別データを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総ページビュー数: ${metrics.totalPageViews?.toLocaleString() || 0}PV
-- カテゴリ数: ${metrics.categoryCount || 0}カテゴリ
+【データ】
+- ページ閲覧数: ${metrics.totalPageViews?.toLocaleString() || 0}回
 
-【カテゴリ別の内訳（上位10件）】
-${metrics.topCategoriesText || 'データなし'}
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【記述内容】
-1. 最重要ポイント：上位3カテゴリ、集中度、カテゴリ間のバランスなど（数値付き）
-2. 原因分析：なぜそのカテゴリ構成になったか（簡潔に）
-3. 改善提案：低PVカテゴリの強化、導線改善など（1-2個、端的に）
-
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}は商品カテゴリが最もよく見られており、全体のPV（ページビュー）の40%を占めています。ブログカテゴリは15%程度で、サービス紹介カテゴリは25%です。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -896,32 +808,30 @@ ${metrics.topCategoriesText || 'データなし'}
  */
 function getKeywordsPrompt(period, metrics) {
   const hasGSCConnection = metrics.hasGSCConnection === true;
-  const noDataNote = !hasGSCConnection ? '\n\n⚠️ **注意**: Search Consoleが未連携です。キーワードデータを取得するには、サイト設定でSearch Consoleを連携してください。' : '';
+  const noDataNote = !hasGSCConnection ? '\n\n⚠️ Search Consoleが未連携です。' : '';
 
   return `
-あなたは【SEOキーワード戦略の専門家】です。${period}のWebサイトの流入キーワードデータを分析し、**検索流入最適化に役立つインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}の検索キーワードデータを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総クリック数: ${metrics.totalClicks?.toLocaleString() || 0}回
-- 総表示回数: ${metrics.totalImpressions?.toLocaleString() || 0}回
-- 平均CTR: ${(metrics.avgCTR || 0).toFixed(2)}%
-- 平均掲載順位: ${(metrics.avgPosition || 0).toFixed(1)}位
-- キーワード数: ${metrics.keywordCount || 0}個${noDataNote}
+【データ】
+- クリック数: ${metrics.totalClicks?.toLocaleString() || 0}回
+- 表示回数: ${metrics.totalImpressions?.toLocaleString() || 0}回${noDataNote}
 
-【キーワード別の内訳（上位10件）】
-${metrics.topKeywordsText || 'データなし'}
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）例: CTR（クリック率）、インプレッション（表示回数）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【記述内容】
-1. 最重要ポイント：上位3キーワード、集中度、CTR・掲載順位の傾向など（数値付き）
-2. 原因分析：なぜそのキーワード構成になったか（簡潔に）
-3. 改善提案：CTR低いキーワードのタイトル改善、4-10位キーワードの順位向上など（1-2個、端的に）
-
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}は「商品名」での検索が最も多く、全体のクリック数の30%を占めています。「サービス名」での検索は15%程度です。CTR（クリック率）は平均5.2%で、インプレッション（表示回数）に対してクリックされる割合は良好です。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -930,37 +840,29 @@ ${metrics.topKeywordsText || 'データなし'}
  */
 function getConversionsPrompt(period, metrics) {
   const hasConversions = metrics.conversionEventCount > 0;
-  const noDataNote = !hasConversions ? '\n\n⚠️ **注意**: コンバージョン定義が未設定です。サイト設定でコンバージョンイベントを定義してください。' : '';
+  const noDataNote = !hasConversions ? '\n\n⚠️ 成果の定義が未設定です。' : '';
 
   return `
-あなたは【コンバージョン最適化の専門家】です。${period}のWebサイトのコンバージョン推移データを分析し、**成果最大化に役立つインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}の成果データを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- データポイント数: ${metrics.monthlyDataPoints || 0}ヶ月分
-- 定義済みコンバージョンイベント数: ${metrics.conversionEventCount || 0}種類
+【データ】
 - 最新月: ${metrics.latestMonth || '不明'}${noDataNote}
 
-【コンバージョンイベント別の合計】
-${metrics.conversionSummaryText || 'データなし'}
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）例: CV（コンバージョン、成果）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【最新月（${metrics.latestMonth || '不明'}）のコンバージョン】
-${metrics.latestMonthText || 'データなし'}
-${metrics.monthlyDetailText || ''}
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【重要な制約】
-⚠️ 上記データに記載されているイベント名と数値のみを使用。記載されていないイベント名や数値を推測したり例として挙げたりしないこと。
-
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
-
-【記述内容】
-1. 最重要ポイント：主要CVイベント、集中度、最新月の前月比、月次トレンドなど（数値付き）
-2. 原因分析：なぜそのCV推移になったか（簡潔に）
-3. 改善提案：CV減少月の要因分析、主力CVイベントの強化など（1-2個、端的に）
-
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字、架空データの記載
+【記述例】
+${period}はお問い合わせCV（コンバージョン、成果）が前月比10%増加し、良い傾向です。資料ダウンロードは横ばいで、前月と同水準の50件です。全体のCV数は前月比8%増加しています。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -968,31 +870,27 @@ ${metrics.monthlyDetailText || ''}
  * ファイルダウンロード分析用プロンプト
  */
 function getFileDownloadsPrompt(period, metrics) {
-  const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
-  const conversionNote = hasConversions ? '' : '\n\n⚠️ **注意**: コンバージョン定義が未設定です。CV分析をご希望の場合、サイト設定画面から設定してください。';
-
   return `
-あなたは【コンテンツエンゲージメント分析の専門家】です。${period}のWebサイトのファイルダウンロードデータを分析し、**資料配布戦略最適化に役立つインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}のファイルダウンロードデータを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総ダウンロード数: ${metrics.totalDownloads?.toLocaleString() || 0}回
-- 総ユーザー数: ${metrics.totalUsers?.toLocaleString() || 0}人
-- ファイル数: ${metrics.downloadCount || 0}種類${conversionNote}
+【データ】
+- ダウンロード数: ${metrics.totalDownloads?.toLocaleString() || 0}回
 
-【ファイル別の内訳（上位10件）】
-${metrics.topFilesText || 'データなし'}
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【記述内容】
-1. 最重要ポイント：上位3ファイル、集中度、ユーザー当たりDL数など（数値付き）
-2. 原因分析：なぜそのDL構成になったか（簡潔に）
-3. 改善提案：人気資料の露出強化、DL少ない資料の見直しなど（1-2個、端的に）
-
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}はカタログPDFが最も多くダウンロードされており、全体の45%を占めています。価格表のダウンロードは15%程度で、会社案内は20%です。全体のダウンロード数は前月比12%増加しています。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 
@@ -1000,31 +898,27 @@ ${metrics.topFilesText || 'データなし'}
  * 外部リンククリック分析用プロンプト
  */
 function getExternalLinksPrompt(period, metrics) {
-  const hasConversions = metrics.conversionEventNames && metrics.conversionEventNames.length > 0;
-  const conversionNote = hasConversions ? '' : '\n\n⚠️ **注意**: コンバージョン定義が未設定です。CV分析をご希望の場合、サイト設定画面から設定してください。';
-
   return `
-あなたは【ユーザー行動分析の専門家】です。${period}のWebサイトの外部リンククリックデータを分析し、**ユーザー導線最適化に役立つインサイト**を含む日本語の要約を生成してください。
+あなたはWebサイト分析の専門家です。${period}の外部リンククリックデータを分析し、初心者にも分かりやすく説明してください。
 
-【現在期間のデータ】
-- 総クリック数: ${metrics.totalClicks?.toLocaleString() || 0}回
-- 総ユーザー数: ${metrics.totalUsers?.toLocaleString() || 0}人
-- 外部リンク数: ${metrics.clickCount || 0}種類${conversionNote}
+【データ】
+- クリック数: ${metrics.totalClicks?.toLocaleString() || 0}回
 
-【外部リンク別の内訳（上位10件）】
-${metrics.topLinksText || 'データなし'}
+【出力ルール】
+- 150-200文字程度の自然な文章（段落形式）
+- 前置きや挨拶は一切不要、分析内容から直接始める
+- 専門用語は使用可（ただし必ず補足を付ける）
+- 数値は実数値またはパーセンテージのみ（「ポイント」表記は禁止）
+- 改善提案は含めず、最後に「詳しい改善提案は『AI改善提案を生成』をご利用ください」で締める
 
-【出力形式】
-箇条書き（•）で2-4個の要点のみ。見出し（##）は一切使わない。合計300-400文字程度。
+【禁止】
+- 「承知しました」「分析します」などの前置き
+- 箇条書き記号（•、-、1.など）
+- 「ポイント」という単位
+- 具体的な改善提案
 
-【記述内容】
-1. 最重要ポイント：上位3リンク、集中度、リンク先タイプ別の傾向など（数値付き）
-2. 原因分析：なぜそのクリック構成になったか（簡潔に）
-3. 改善提案：重要リンクの強化、不要リンクの削減など（1-2個、端的に）
-
-【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
-
-【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+【記述例】
+${period}はSNSへのリンクが最も多くクリックされており、全体の40%を占めています。関連サイトへのリンクは15%程度で、パートナーサイトへは25%です。全体のクリック数は前月比8%増加しています。詳しい改善提案は下の「AI改善提案を生成」をご利用ください。
 `;
 }
 

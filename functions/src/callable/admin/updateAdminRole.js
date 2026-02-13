@@ -4,11 +4,11 @@ import { logger } from 'firebase-functions/v2';
 import { logActivity } from '../../utils/activityLogger.js';
 
 /**
- * 管理者のロールを変更
+ * 管理者の権限を変更
  * 
  * @param {Object} data - リクエストパラメータ
  * @param {string} data.adminId - 対象管理者のUID
- * @param {string} data.newRole - 新しいロール (admin/editor/viewer)
+ * @param {string} data.newRole - 新しい権限 (admin/editor/viewer)
  * @param {string} data.reason - 変更理由
  * @returns {Object} 変更結果
  */
@@ -30,11 +30,11 @@ export const updateAdminRoleCallable = async (request) => {
   }
 
   if (!newRole || !['admin', 'editor', 'viewer'].includes(newRole)) {
-    throw new HttpsError('invalid-argument', '有効なロールを指定してください');
+    throw new HttpsError('invalid-argument', '有効な権限を指定してください');
   }
 
   if (uid === adminId) {
-    throw new HttpsError('invalid-argument', '自分自身のロールは変更できません');
+    throw new HttpsError('invalid-argument', '自分自身の権限は変更できません');
   }
 
   try {
@@ -72,7 +72,7 @@ export const updateAdminRoleCallable = async (request) => {
       updatedBy: uid,
     });
 
-    logger.info('管理者ロール変更完了', { 
+    logger.info('管理者権限変更完了', { 
       executorId: uid,
       adminId,
       oldRole,
@@ -96,11 +96,11 @@ export const updateAdminRoleCallable = async (request) => {
 
     return {
       success: true,
-      message: `${targetName}さんのロールを変更しました`,
+      message: `${targetName}さんの権限を変更しました`,
     };
 
   } catch (error) {
-    logger.error('管理者ロール変更エラー', { 
+    logger.error('管理者権限変更エラー', { 
       error: error.message,
       executorId: uid,
       adminId,
@@ -110,7 +110,7 @@ export const updateAdminRoleCallable = async (request) => {
       throw error;
     }
 
-    throw new HttpsError('internal', '管理者ロールの変更に失敗しました');
+    throw new HttpsError('internal', '管理者権限の変更に失敗しました');
   }
 };
 

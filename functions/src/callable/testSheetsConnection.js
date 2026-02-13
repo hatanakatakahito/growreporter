@@ -33,7 +33,7 @@ export async function testSheetsConnectionCallable(request) {
       'テスト',
       'テスト',
       '2025-01',
-      100, // セッション数
+      100, // 訪問者数
       50,  // 新規ユーザー
       80,  // ユーザー数
       200, // PV数
