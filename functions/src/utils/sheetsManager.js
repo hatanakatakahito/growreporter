@@ -190,10 +190,10 @@ export function createRowData(siteInfo, monthlyData) {
     conversions = 0,
   } = monthlyData;
 
-  // 平均PV = ページビュー数 / セッション数
+  // 平均PV = ページビュー数 / 訪問者数
   const avgPageViews = sessions > 0 ? (pageViews / sessions).toFixed(2) : 0;
 
-  // CVR = コンバージョン数 / セッション数 * 100
+  // CVR = コンバージョン数 / 訪問者数 * 100
   const cvr = sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : 0;
 
   return [
@@ -203,7 +203,7 @@ export function createRowData(siteInfo, monthlyData) {
     siteType,                 // D: サイト種別
     businessType,             // E: ビジネス形態
     yearMonth,                // F: 対象年月
-    sessions,                 // G: セッション数
+    sessions,                 // G: 訪問者数
     newUsers,                 // H: 新規ユーザー
     users,                    // I: ユーザー数
     pageViews,                // J: PV数

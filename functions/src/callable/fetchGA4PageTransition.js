@@ -9,7 +9,7 @@ import { getCache, setCache, generateCacheKey } from '../utils/cacheManager.js';
  * 特定ページの流入元（直前のページ）と離脱を正確に取得
  * 
  * 取得データ:
- * - 基本指標（PV、セッション、離脱）
+ * - 基本指標（PV、訪問者、離脱）
  * - 流入元ページ（pageReferrerベース - 直前のページ）
  * - 離脱数・離脱率（exitPageベース - 実測値）
  */
@@ -65,7 +65,7 @@ export async function fetchGA4PageTransitionCallable(request) {
 
     // 🚀 並列でデータ取得
     const [pageMetricsResponse, inboundResponse, exitResponse] = await Promise.all([
-      // 1. 基本指標（PV、セッション）
+      // 1. 基本指標（PV、訪問者）
       analyticsData.properties.runReport({
         auth: oauth2Client,
         property: `properties/${siteData.ga4PropertyId}`,
@@ -135,7 +135,7 @@ export async function fetchGA4PageTransitionCallable(request) {
     // データ整形
     // ========================================
 
-    // 1. 基本指標（PV、セッション）
+    // 1. 基本指標（PV、訪問者）
     const pageRow = pageMetricsResponse.data.rows?.[0];
     const pageViews = parseInt(pageRow?.metricValues?.[0]?.value || 0);
     const sessions = parseInt(pageRow?.metricValues?.[1]?.value || 0);

@@ -70,7 +70,7 @@ export async function fetchGA4ChannelConversionDataCallable(request) {
     
     console.log(`[fetchGA4ChannelConversionData] Fetching channel data from GA4 API...`);
     
-    // セッションとユーザーデータを取得
+    // 訪問者とユーザーデータを取得
     const sessionsResponse = await analyticsData.properties.runReport({
       auth: oauth2Client,
       property: `properties/${siteData.ga4PropertyId}`,

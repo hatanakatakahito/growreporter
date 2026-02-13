@@ -153,8 +153,10 @@ export async function generateAISummaryCallable(request) {
 
     // 7. Gemini API呼び出し
     console.log('[generateAISummary] Calling Gemini API...');
+    const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    console.log('[generateAISummary] Using model:', geminiModel);
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${geminiApiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
       {
         method: 'POST',
         headers: {
@@ -788,7 +790,6 @@ function formatRawDataToMetrics(rawData, pageType) {
         conversions: current.totalConversions || 0,
         engagementRate: current.metrics?.engagementRate || 0,
         bounceRate: current.metrics?.bounceRate || 0,
-        avgSessionDuration: current.metrics?.averageSessionDuration || 0,
         conversionRate: current.metrics?.sessions > 0 ? (current.totalConversions || 0) / current.metrics.sessions : 0,
         conversionBreakdown: current.conversionBreakdown || {},
         monthOverMonth,
@@ -914,7 +915,7 @@ function formatRawDataToMetrics(rawData, pageType) {
       const channelsText = channelsRows
         .sort((a, b) => (b.sessions || 0) - (a.sessions || 0))
         .slice(0, 5)
-        .map(row => `${row.sessionDefaultChannelGroup || row.channel || '不明'}: ${row.sessions || 0}セッション, ${row.conversions || 0}コンバージョン`)
+        .map(row => `${row.sessionDefaultChannelGroup || row.channel || '不明'}: ${row.sessions || 0}訪問, ${row.conversions || 0}コンバージョン`)
         .join(', ');
       return {
         totalSessions,
@@ -968,7 +969,7 @@ function formatRawDataToMetrics(rawData, pageType) {
           const avgDuration = row.avgSessionDuration || 0;
           const durationMin = Math.floor(avgDuration / 60);
           const durationSec = Math.floor(avgDuration % 60);
-          return `${row.source}: ${sessions}セッション, ${users}ユーザー, CV ${conversions}件 (CVR ${cvr}%), ENG率 ${engRate}%, 滞在時間 ${durationMin}分${durationSec}秒`;
+          return `${row.source}: ${sessions}訪問, ${users}ユーザー, CV ${conversions}件 (CVR ${cvr}%), ENG率 ${engRate}%, 滞在時間 ${durationMin}分${durationSec}秒`;
         })
         .join('\n');
       return {
@@ -997,7 +998,7 @@ function formatRawDataToMetrics(rawData, pageType) {
           const avgDuration = row.averageSessionDuration ? `${Math.floor(row.averageSessionDuration / 60)}分${Math.floor(row.averageSessionDuration % 60)}秒` : '0秒';
           const conversions = row.conversions || 0;
           const cvr = sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : '0.00';
-          return `${row.landingPage}: ${sessions}セッション, ENG率 ${engRate}%, 滞在時間 ${avgDuration}, CV ${conversions}件 (CVR ${cvr}%)`;
+          return `${row.landingPage}: ${sessions}訪問, ENG率 ${engRate}%, 滞在時間 ${avgDuration}, CV ${conversions}件 (CVR ${cvr}%)`;
         })
         .join('\n');
       return {

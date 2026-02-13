@@ -36,6 +36,7 @@ import { getAdminListCallable } from './callable/admin/getAdminList.js';
 import { updateAdminRoleCallable } from './callable/admin/updateAdminRole.js';
 import { addAdminCallable } from './callable/admin/addAdmin.js';
 import { deleteAdminCallable } from './callable/admin/deleteAdmin.js';
+import { deleteUserCallable } from './callable/admin/deleteUser.js';
 import { getPlanConfigCallable } from './callable/admin/getPlanConfig.js';
 import { updatePlanConfigCallable } from './callable/admin/updatePlanConfig.js';
 import { clearAllAICacheCallable } from './callable/admin/clearAllAICache.js';
@@ -468,6 +469,17 @@ export const deleteAdmin = onCall({
   region: 'asia-northeast1', // 東京リージョン
   cors: true, // CORS を有効化
 }, deleteAdminCallable);
+
+/**
+ * ユーザー削除 Callable Function
+ * ユーザーとすべての関連データを削除
+ */
+export const deleteUser = onCall({
+  memory: '512MiB',
+  timeoutSeconds: 120,  // 複数のコレクションを削除するため時間を長めに
+  region: 'asia-northeast1', // 東京リージョン
+  cors: true, // CORS を有効化
+}, deleteUserCallable);
 
 /**
  * プラン設定取得 Callable Function
