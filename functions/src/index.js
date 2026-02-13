@@ -22,7 +22,6 @@ import { fetchGA4UserDemographicsCallable } from './callable/fetchGA4UserDemogra
 import { exchangeOAuthCodeCallable } from './callable/exchangeOAuthCode.js';
 import { testSheetsConnectionCallable } from './callable/testSheetsConnection.js';
 import { fetchImprovementKnowledgeCallable } from './callable/fetchImprovementKnowledge.js';
-import { getDefaultPromptCallable } from './callable/getDefaultPrompt.js';
 import { getAdminStatsCallable } from './callable/admin/getAdminStats.js';
 import { getAdminUsersCallable } from './callable/admin/getAdminUsers.js';
 import { updateUserPlanCallable } from './callable/admin/updateUserPlan.js';
@@ -43,6 +42,9 @@ import { clearAllAICacheCallable } from './callable/admin/clearAllAICache.js';
 import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
 import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
 import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
+import { sendWeeklyReports } from './scheduled/sendWeeklyReports.js';
+import { sendMonthlyReports } from './scheduled/sendMonthlyReports.js';
+import { sendTestReportEmail } from './callable/sendTestReportEmail.js';
 import { onSiteCreatedTrigger } from './triggers/onSiteCreated.js';
 
 // Firebase Admin初期化
@@ -215,17 +217,6 @@ export const generateAISummary = onCall({
   cors: true, // CORS を有効化
   secrets: ['GEMINI_API_KEY'], // Secretへのアクセス権を付与
 }, generateAISummaryCallable);
-
-/**
- * デフォルトプロンプト取得 Callable Function
- * 管理画面でプロンプトをデフォルトに戻す際に使用
- */
-export const getDefaultPrompt = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1',
-  cors: true,
-}, getDefaultPromptCallable);
 
 /**
  * メタデータ取得 Callable Function
@@ -510,3 +501,21 @@ export const clearAllAICache = onCall({
   region: 'asia-northeast1',
   cors: true,
 }, clearAllAICacheCallable);
+
+/**
+ * テストメール送信 Callable Function
+ * 管理者が設定画面からテストメールを送信
+ */
+export { sendTestReportEmail };
+
+/**
+ * 週次レポート送信 Scheduled Function
+ * Cloud Schedulerから定期実行
+ */
+export { sendWeeklyReports };
+
+/**
+ * 月次レポート送信 Scheduled Function
+ * Cloud Schedulerから定期実行
+ */
+export { sendMonthlyReports };
