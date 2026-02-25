@@ -9,10 +9,10 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
   // 基本指標のプリセット
   const BASIC_METRICS = [
     { value: 'users', label: 'ユーザー数' },
-    { value: 'sessions', label: 'セッション数' },
+    { value: 'sessions', label: '訪問者数' },
     { value: 'pageviews', label: 'ページビュー数' },
     { value: 'engagement_rate', label: 'エンゲージメント率 (%)' },
-    { value: 'target_sessions', label: '目標セッション数' },
+    { value: 'target_sessions', label: '目標訪問者数' },
     { value: 'target_users', label: '目標ユーザー数' },
     { value: 'target_conversions', label: '目標コンバージョン数' },
     { value: 'target_conversion_rate', label: '目標コンバージョン率 (%)' },
@@ -261,9 +261,14 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
       {/* スキップ可能の注意 */}
       {kpiList.length === 0 && (
         <div className="rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark-2">
-          <p className="text-sm text-body-color">
-            ℹ️ KPI設定は任意です。後から設定することもできます。
-          </p>
+          <div className="flex items-start gap-2">
+            <svg className="h-5 w-5 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <p className="text-sm text-body-color">
+              KPI設定は任意です。後から設定することもできます。
+            </p>
+          </div>
         </div>
       )}
     </div>

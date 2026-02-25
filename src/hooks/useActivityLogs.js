@@ -3,53 +3,70 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
 
 /**
- * アクティビティログを取得するカスタムフック
- * @param {Object} params - フィルタとページネーション設定
+ * アクティビティログ取得フック
  */
-export function useActivityLogs(params = {}) {
-  const [logs, setLogs] = useState([]);
+export function useActivityLogs() {
+  const [logs, setLogs] = useState(null);
   const [pagination, setPagination] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [currentParams, setCurrentParams] = useState({
-    actionFilter: 'all',
-    adminFilter: 'all',
+  const [params, setParams] = useState({
     page: 1,
     limit: 50,
-    ...params,
+    searchQuery: '',
+    actionType: undefined,
   });
+  const [triggerFetch, setTriggerFetch] = useState(0);
 
-  const fetchLogs = async () => {
-    try {
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchLogs = async () => {
       setLoading(true);
       setError(null);
 
-      const getActivityLogs = httpsCallable(functions, 'getActivityLogs');
-      const result = await getActivityLogs(currentParams);
+      try {
+        const getActivityLogs = httpsCallable(functions, 'getActivityLogs');
+        
+        const result = await getActivityLogs({
+          page: params.page,
+          limit: params.limit,
+          searchQuery: params.searchQuery || undefined,
+          actionType: params.actionType,
+        });
 
-      if (result.data.success) {
-        setLogs(result.data.data.logs);
-        setPagination(result.data.data.pagination);
-      } else {
-        throw new Error('アクティビティログの取得に失敗しました');
+        if (!mounted) return;
+
+        if (result.data.success) {
+          setLogs(result.data.logs);
+          setPagination(result.data.pagination);
+        } else {
+          setError(result.data.message || 'ログの取得に失敗しました');
+        }
+      } catch (err) {
+        if (!mounted) return;
+        console.error('Activity logs fetch error:', err);
+        setError(err.message || 'ログの取得に失敗しました');
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    } catch (err) {
-      console.error('アクティビティログ取得エラー:', err);
-      setError(err.message || 'アクティビティログの取得に失敗しました');
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    fetchLogs();
+
+    return () => {
+      mounted = false;
+    };
+  }, [params.page, params.limit, params.searchQuery, params.actionType, triggerFetch]);
+
+  const refetch = () => {
+    setTriggerFetch(prev => prev + 1);
   };
 
-  useEffect(() => {
-    fetchLogs();
-  }, [currentParams]);
-
-  const setParams = (newParams) => {
-    setCurrentParams(prev => ({
-      ...prev,
-      ...newParams,
-    }));
+  const updateParams = (newParams) => {
+    setParams(prev => ({ ...prev, ...newParams }));
   };
 
   return {
@@ -57,9 +74,8 @@ export function useActivityLogs(params = {}) {
     pagination,
     loading,
     error,
-    refetch: fetchLogs,
-    setParams,
-    currentParams,
+    refetch,
+    setParams: updateParams,
+    currentParams: params,
   };
 }
-

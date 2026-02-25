@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { setPageTitle } from '../../../utils/pageTitle';
 import { useAdminSites } from '../../../hooks/useAdminSites';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
-import { Search, Download, ChevronLeft, ChevronRight, Globe, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { Search, Download, ChevronLeft, ChevronRight, Globe, AlertTriangle, CheckCircle, XCircle, BarChart3 } from 'lucide-react';
+import { SITE_PURPOSES } from '../../../constants/siteOptions';
 
 /**
  * サイト管理一覧
@@ -32,19 +33,26 @@ export default function AdminSiteList() {
   const handleExportCSV = () => {
     if (!sites || sites.length === 0) return;
 
-    const csvHeaders = ['サイトID', 'サイト名', 'URL', 'ユーザー名', 'メールアドレス', '業種', 'サイトタイプ', 'GA4', 'GSC', '登録日'];
-    const csvRows = sites.map((site) => [
-      site.siteId,
-      site.siteName || '',
-      site.siteUrl || '',
-      site.userName || '',
-      site.userEmail || '',
-      site.industry || '',
-      site.siteType || '',
-      site.hasGA4 ? '設定済' : '未設定',
-      site.hasGSC ? '設定済' : '未設定',
-      site.createdAt ? new Date(site.createdAt).toLocaleDateString('ja-JP') : '',
-    ]);
+    const csvHeaders = ['サイトID', 'サイト名', 'URL', 'ユーザー名', 'メールアドレス', '業界・業種', 'サイト種別', 'サイトの目的', 'GA4', 'GSC', '登録日'];
+    const csvRows = sites.map((site) => {
+      const industryStr = Array.isArray(site.industry) && site.industry.length > 0 ? site.industry.join('、') : (site.userIndustry || '');
+      const purposeStr = Array.isArray(site.sitePurpose) && site.sitePurpose.length > 0
+        ? site.sitePurpose.map((v) => SITE_PURPOSES.find((p) => p.value === v)?.label ?? v).join('、')
+        : '';
+      return [
+        site.siteId,
+        site.siteName || '',
+        site.siteUrl || '',
+        site.userName || '',
+        site.userEmail || '',
+        industryStr,
+        site.siteType || '',
+        purposeStr,
+        site.hasGA4 ? '設定済' : '未設定',
+        site.hasGSC ? '設定済' : '未設定',
+        site.createdAt ? new Date(site.createdAt).toLocaleDateString('ja-JP') : '',
+      ];
+    });
 
     const csvContent = [csvHeaders, ...csvRows]
       .map((row) => row.map((cell) => `"${cell}"`).join(','))
@@ -167,14 +175,16 @@ export default function AdminSiteList() {
                     <th className="px-4 py-4 text-center text-sm font-semibold text-dark dark:text-white">
                       ステータス
                     </th>
+                    <th className="px-4 py-4 text-center text-sm font-semibold text-dark dark:text-white">
+                      操作
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {sites.map((site) => (
                     <tr
                       key={site.siteId}
-                      onClick={() => handleSiteClick(site.siteId)}
-                      className="cursor-pointer border-b border-stroke transition hover:bg-gray-1 dark:border-dark-3 dark:hover:bg-dark-3"
+                      className="border-b border-stroke transition hover:bg-gray-1 dark:border-dark-3 dark:hover:bg-dark-3"
                     >
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
@@ -193,6 +203,11 @@ export default function AdminSiteList() {
                       </td>
                       <td className="px-4 py-4">
                         <div>
+                          {site.userCompany && (
+                            <div className="text-xs font-medium text-primary">
+                              {site.userCompany}
+                            </div>
+                          )}
                           <div className="text-sm text-dark dark:text-white">
                             {site.userName}
                           </div>
@@ -236,6 +251,59 @@ export default function AdminSiteList() {
                             正常
                           </span>
                         )}
+                      </td>
+                      <td className="px-4 py-4 text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSiteClick(site.siteId);
+                            }}
+                            className="rounded-lg border border-stroke bg-white px-3 py-1.5 text-xs font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                            title="サイト詳細"
+                          >
+                            詳細
+                          </button>
+                          {!site.isOrphan && (() => {
+                            // GA4とGSCの未設定状況を確認
+                            const needsGA4 = !site.hasGA4;
+                            const needsGSC = !site.hasGSC;
+                            
+                            // 両方設定済みならダッシュボードへ、未設定があればサイト設定へ
+                            if (needsGA4 || needsGSC) {
+                              // 未設定がある場合はサイト設定画面へ（STEP2またはSTEP3）
+                              const step = needsGA4 ? 2 : 3;
+                              return (
+                                <Link
+                                  to={`/sites/${site.siteId}/edit?step=${step}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition hover:bg-opacity-90"
+                                  title="サイト設定"
+                                >
+                                  <BarChart3 className="h-3 w-3" />
+                                  開く
+                                </Link>
+                              );
+                            } else {
+                              // 設定済みの場合はダッシュボードへ
+                              return (
+                                <Link
+                                  to={`/dashboard?siteId=${site.siteId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition hover:bg-opacity-90"
+                                  title="ダッシュボードを開く"
+                                >
+                                  <BarChart3 className="h-3 w-3" />
+                                  開く
+                                </Link>
+                              );
+                            }
+                          })()}
+                        </div>
                       </td>
                     </tr>
                   ))}

@@ -9,14 +9,14 @@ export const TOOLTIPS = {
   users: 'サイトを訪問したユニークユーザーの総数',
   pageViews: 'ページが閲覧された総回数（同じページの再表示も含む）',
   screenPageViews: 'ページが閲覧された総回数（同じページの再表示も含む）',
-  avgPageviews: '1セッションあたりの平均ページビュー数',
-  engagementRate: 'エンゲージメント率：10秒以上滞在または2ページ以上閲覧したセッションの割合',
-  bounceRate: '1ページのみ閲覧して離脱したセッションの割合。',
-  avgSessionDuration: 'セッションあたりの平均滞在時間。',
+  avgPageviews: '1訪問あたりの平均ページビュー数',
+  engagementRate: 'エンゲージメント率：10秒以上滞在または2ページ以上閲覧した訪問の割合',
+  bounceRate: '1ページのみ閲覧して離脱した訪問の割合。',
+  avgSessionDuration: '訪問あたりの平均滞在時間。',
   
   // コンバージョン
   conversions: 'サイト設定で定義したコンバージョンの合計数',
-  conversionRate: 'コンバージョンが発生したセッションの割合',
+  conversionRate: 'コンバージョンが発生した訪問の割合',
   
   // SEO指標
   keywords: 'ユーザーがGoogle検索で使用した検索クエリ（キーワード）。Search Consoleから取得されます。',
@@ -42,7 +42,7 @@ export const TOOLTIPS = {
   pagePath: 'ページのURL パス。',
   landingPage: 'ユーザーが最初に訪れたページ。',
   exitPage: 'ユーザーが最後に閲覧したページ。',
-  avgSessionDuration: 'セッションあたりの平均滞在時間。',
+  avgSessionDuration: '訪問あたりの平均滞在時間。',
   
   // 時系列
   date: '日付。',
@@ -50,7 +50,7 @@ export const TOOLTIPS = {
   hour: '時間帯。',
   
   // KPI
-  targetSessions: '目標セッション数。月次での目標値を設定します。',
+  targetSessions: '目標訪問者数。月次での目標値を設定します。',
   targetUsers: '目標ユーザー数。月次での目標値を設定します。',
   targetConversions: '目標コンバージョン数。月次での目標値を設定します。',
   targetConversionRate: '目標コンバージョン率。月次での目標値を設定します。',

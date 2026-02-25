@@ -1,6 +1,42 @@
 {
   "indexes": [
     {
+      "collectionGroup": "accountMembers",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "accountOwnerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "invitations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "accountOwnerId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "sites",
       "queryScope": "COLLECTION",
       "fields": [
@@ -183,6 +219,20 @@
       ]
     },
     {
+      "collectionGroup": "activityLogs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "action",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "customLimits",
       "queryScope": "COLLECTION",
       "fields": [
@@ -212,6 +262,126 @@
           "fieldPath": "updatedAt",
           "order": "DESCENDING"
         }
+      ]
+    },
+    {
+      "collectionGroup": "aiAnalysisCache",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "siteId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "generatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pageScrapingData",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "siteId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "pageViews",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "pageScrapingData",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "siteId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "scrapedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "scrapingErrors",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "siteId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "timestamp",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "aiAnalysisCache",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "userId", "order": "ASCENDING"},
+        {"fieldPath": "generatedAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "aiAnalysisCache",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "userId", "order": "ASCENDING"},
+        {"fieldPath": "pageType", "order": "ASCENDING"},
+        {"fieldPath": "generatedAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "aiAnalysisCache",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "pageType", "order": "ASCENDING"},
+        {"fieldPath": "generatedAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "aiAnalysisCache",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "userId", "order": "ASCENDING"},
+        {"fieldPath": "pageType", "order": "ASCENDING"},
+        {"fieldPath": "period.startDate", "order": "ASCENDING"},
+        {"fieldPath": "period.endDate", "order": "ASCENDING"},
+        {"fieldPath": "generatedAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "aiSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "userId", "order": "ASCENDING"},
+        {"fieldPath": "pageType", "order": "ASCENDING"},
+        {"fieldPath": "startDate", "order": "ASCENDING"},
+        {"fieldPath": "endDate", "order": "ASCENDING"},
+        {"fieldPath": "generatedAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "aiSummaries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "userId", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "aiAnalysisCache",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "userId", "order": "ASCENDING"},
+        {"fieldPath": "generatedAt", "order": "ASCENDING"},
+        {"fieldPath": "__name__", "order": "ASCENDING"}
       ]
     }
   ],

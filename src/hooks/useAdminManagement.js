@@ -35,7 +35,7 @@ export function useAdminManagement() {
   }, []);
 
   /**
-   * 管理者のロールを変更
+   * 管理者の権限を変更
    */
   const updateRole = useCallback(async (adminId, newRole, reason) => {
     try {
@@ -47,12 +47,12 @@ export function useAdminManagement() {
       });
 
       if (!result.data.success) {
-        throw new Error('ロールの変更に失敗しました');
+        throw new Error('権限の変更に失敗しました');
       }
 
       return result.data;
     } catch (err) {
-      console.error('[useAdminManagement] ロール変更エラー:', err);
+      console.error('[useAdminManagement] 権限変更エラー:', err);
       throw err;
     }
   }, []);

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { INDUSTRIES } from '../../constants/industries';
 import logoImg from '../../assets/img/logo.svg';
 import loginIllustration from '../../assets/img/login.svg';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../config/firebase';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -16,11 +17,60 @@ export default function Register() {
   const [lastName, setLastName] = useState('');
   const [firstName, setFirstName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
-  const [industry, setIndustry] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isFromInvitation, setIsFromInvitation] = useState(false);
+  const [isLoadingInvitation, setIsLoadingInvitation] = useState(false);
   
-  const { signup, loginWithGoogle, fetchUserProfile } = useAuth();
+  const { signup, loginWithGoogle, loginWithMicrosoft, fetchUserProfile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectUrl = searchParams.get('redirect') || '/dashboard';
+
+  // 招待トークンから情報を取得
+  useEffect(() => {
+    const fetchInvitationInfo = async () => {
+      const redirectParam = searchParams.get('redirect');
+      console.log('[Register] redirect param:', redirectParam);
+      
+      if (!redirectParam || !redirectParam.includes('accept-invitation')) {
+        console.log('[Register] No invitation redirect found');
+        return;
+      }
+
+      // redirect URLからトークンを抽出
+      const tokenMatch = redirectParam.match(/token=([^&]+)/);
+      console.log('[Register] token match:', tokenMatch);
+      
+      if (!tokenMatch) {
+        console.log('[Register] No token found in redirect URL');
+        return;
+      }
+
+      const token = tokenMatch[1];
+      console.log('[Register] Extracted token:', token);
+      setIsLoadingInvitation(true);
+
+      try {
+        const getInvitationByToken = httpsCallable(functions, 'getInvitationByToken');
+        const result = await getInvitationByToken({ token });
+        const invitation = result.data;
+        console.log('[Register] Invitation data:', invitation);
+
+        if (invitation) {
+          setEmail(invitation.email);
+          setCompanyName(invitation.accountOwnerName || '');
+          setIsFromInvitation(true);
+          console.log('[Register] Set email:', invitation.email, 'company:', invitation.accountOwnerName);
+        }
+      } catch (err) {
+        console.error('[Register] Error fetching invitation:', err);
+      } finally {
+        setIsLoadingInvitation(false);
+      }
+    };
+
+    fetchInvitationInfo();
+  }, [searchParams]);
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -28,7 +78,7 @@ export default function Register() {
     setIsSubmitting(true);
 
     // バリデーション
-    if (!companyName || !lastName || !firstName || !phoneNumber || !industry) {
+    if (!companyName || !lastName || !firstName || !phoneNumber) {
       setError('すべての必須項目を入力してください');
       setIsSubmitting(false);
       return;
@@ -44,13 +94,35 @@ export default function Register() {
       const displayName = `${lastName} ${firstName}`;
       await signup(email, password, {
         displayName,
+        lastName,
+        firstName,
         company: companyName,
         phoneNumber,
-        industry,
       });
       
-      // 登録成功後、ダッシュボードへリダイレクト
-      navigate('/dashboard');
+      // 招待経由の場合、自動的に招待を承認してダッシュボードへ
+      if (isFromInvitation) {
+        try {
+          // redirect URLからトークンを抽出
+          const tokenMatch = redirectUrl.match(/token=([^&]+)/);
+          if (tokenMatch) {
+            const token = tokenMatch[1];
+            const acceptInvitation = httpsCallable(functions, 'acceptInvitation');
+            await acceptInvitation({ token });
+            console.log('[Register] Auto-accepted invitation after signup');
+          }
+        } catch (inviteError) {
+          console.error('[Register] Failed to auto-accept invitation:', inviteError);
+          // 招待承認に失敗しても登録は成功しているので、招待画面へ遷移
+          navigate(redirectUrl);
+          return;
+        }
+        // 招待承認成功、ダッシュボードへ
+        navigate('/dashboard');
+      } else {
+        // 通常の新規登録の場合、リダイレクト先へ遷移
+        navigate(redirectUrl);
+      }
     } catch (err) {
       console.error('Register error:', err);
       
@@ -82,11 +154,11 @@ export default function Register() {
           const profile = await fetchUserProfile(userCredential.user.uid);
           
           // 必須情報が不足している場合はSSO後の情報補完画面へ
-          if (!profile?.company || !profile?.phoneNumber || !profile?.industry) {
+          if (!profile?.company || !profile?.phoneNumber) {
             navigate('/register/complete');
           } else {
-            // 情報が揃っている場合は初回サイト登録へ
-            navigate('/sites/new');
+            // 情報が揃っている場合はリダイレクト先へ遷移
+            navigate(redirectUrl);
           }
         }, 500);
     } catch (err) {
@@ -104,38 +176,75 @@ export default function Register() {
     }
   };
 
+  const handleMicrosoftSignIn = async () => {
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const userCredential = await loginWithMicrosoft();
+
+      setTimeout(async () => {
+        const profile = await fetchUserProfile(userCredential.user.uid);
+
+        if (!profile?.company || !profile?.phoneNumber) {
+          navigate('/register/complete');
+        } else {
+          navigate(redirectUrl);
+        }
+      }, 500);
+    } catch (err) {
+      console.error('Microsoft sign in error:', err);
+
+      let errorMessage = 'Microsoft認証エラーが発生しました';
+      if (err.code === 'auth/popup-closed-by-user') {
+        errorMessage = '認証がキャンセルされました';
+      } else if (err.code === 'auth/popup-blocked') {
+        errorMessage = 'ポップアップがブロックされました。ブラウザの設定を確認してください';
+      }
+
+      setError(errorMessage);
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <section className="relative z-10 flex min-h-screen items-center justify-center py-12 lg:py-20" style={{
       backgroundColor: 'rgb(244, 244, 244)'
     }}>
       <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-[820px] overflow-hidden rounded-2xl bg-white dark:bg-dark-2">
+        <div className="mx-auto max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-lg dark:bg-dark-2">
+          {/* ロゴエリア（青紫グラデーション） */}
+          <div className="bg-gradient-primary px-8 py-6 text-center">
+            <p className="text-sm text-white/90">AI搭載のアクセス解析ツール</p>
+            <div className="mt-2 flex items-center justify-center">
+              <img src={logoImg} alt="グローレポータ" className="h-10 w-auto brightness-0 invert" />
+            </div>
+            {isFromInvitation && (
+              <h2 className="mt-2 text-lg font-bold text-white">
+                招待を受けてアカウント作成
+              </h2>
+            )}
+          </div>
           {/* フォームエリア */}
-          <div className="flex w-full items-center justify-center px-20 py-16">
+          <div className="flex w-full items-center justify-center px-20 py-10">
             <div className="w-full">
-              {/* ロゴ */}
-              <div className="mb-8 flex items-center justify-center">
-                <img 
-                  src={logoImg} 
-                  alt="GROW REPORTER" 
-                  className="h-12 w-auto"
-                />
-              </div>
-              {/* タブナビゲーション */}
-              <div className="mb-6 flex gap-2 rounded-lg bg-gray-100 p-1 dark:bg-dark-3">
-                <Link
-                  to="/login"
-                  className="flex-1 rounded-md px-4 py-2.5 text-center text-sm font-medium transition-all text-body-color hover:text-dark dark:text-dark-6 dark:hover:text-white"
-                >
-                  ログイン
-                </Link>
-                <button
-                  type="button"
-                  className="flex-1 rounded-md px-4 py-2.5 text-sm font-medium transition-all bg-white text-dark shadow-sm dark:bg-dark-2 dark:text-white"
-                >
-                  新規ユーザー登録
-                </button>
-              </div>
+              {/* タブナビゲーション（招待経由の場合は非表示） */}
+              {!isFromInvitation && (
+                <div className="mb-6 flex gap-2 rounded-lg bg-gray-100 p-1 dark:bg-dark-3">
+                  <Link
+                    to="/login"
+                    className="flex-1 rounded-md px-4 py-2.5 text-center text-sm font-medium transition-all text-body-color hover:text-dark dark:text-dark-6 dark:hover:text-white"
+                  >
+                    ログイン
+                  </Link>
+                  <button
+                    type="button"
+                    className="flex-1 rounded-md px-4 py-2.5 text-sm font-medium transition-all bg-white text-dark shadow-sm dark:bg-dark-2 dark:text-white"
+                  >
+                    新規ユーザー登録
+                  </button>
+                </div>
+              )}
 
               {/* エラーメッセージ */}
               {error && (
@@ -160,37 +269,65 @@ export default function Register() {
                 </div>
               )}
 
-              {/* Googleから登録ボタン */}
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                disabled={isSubmitting}
-                className="mb-4 flex w-full items-center justify-center gap-3 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <g clipPath="url(#clip0_google)">
-                    <path d="M19.9895 10.1871C19.9895 9.36767 19.9214 8.76973 19.7742 8.14966H10.1992V11.848H15.8195C15.7062 12.7671 15.0943 14.1512 13.7346 15.0813L13.7155 15.2051L16.7429 17.4969L16.9527 17.5174C18.879 15.7789 19.9895 13.221 19.9895 10.1871Z" fill="#4285F4"/>
-                    <path d="M10.1993 19.9313C12.9527 19.9313 15.2643 19.0454 16.9527 17.5174L13.7346 15.0813C12.8734 15.6682 11.7176 16.0779 10.1993 16.0779C7.50243 16.0779 5.21352 14.3395 4.39759 11.9366L4.27799 11.9465L1.13003 14.3273L1.08887 14.4391C2.76588 17.6945 6.21061 19.9313 10.1993 19.9313Z" fill="#34A853"/>
-                    <path d="M4.39748 11.9366C4.18219 11.3166 4.05759 10.6521 4.05759 9.96565C4.05759 9.27909 4.18219 8.61473 4.38615 7.99466L4.38045 7.8626L1.19304 5.44366L1.08875 5.49214C0.397576 6.84305 0.000976562 8.36008 0.000976562 9.96565C0.000976562 11.5712 0.397576 13.0882 1.08875 14.4391L4.39748 11.9366Z" fill="#FBBC05"/>
-                    <path d="M10.1993 3.85336C12.1142 3.85336 13.406 4.66168 14.1425 5.33718L17.0207 2.59107C15.253 0.985496 12.9527 0 10.1993 0C6.2106 0 2.76588 2.23672 1.08887 5.49214L4.38626 7.99466C5.21352 5.59183 7.50242 3.85336 10.1993 3.85336Z" fill="#EB4335"/>
-                  </g>
-                  <defs>
-                    <clipPath id="clip0_google">
-                      <rect width="20" height="20" fill="white"/>
-                    </clipPath>
-                  </defs>
-                </svg>
-                Googleから登録
-              </button>
+              {/* Googleから登録ボタン（招待経由の場合は非表示） */}
+              {!isFromInvitation && (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    disabled={isSubmitting}
+                    className="mb-2 flex w-full items-center justify-center gap-3 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <g clipPath="url(#clip0_google)">
+                        <path d="M19.9895 10.1871C19.9895 9.36767 19.9214 8.76973 19.7742 8.14966H10.1992V11.848H15.8195C15.7062 12.7671 15.0943 14.1512 13.7346 15.0813L13.7155 15.2051L16.7429 17.4969L16.9527 17.5174C18.879 15.7789 19.9895 13.221 19.9895 10.1871Z" fill="#4285F4"/>
+                        <path d="M10.1993 19.9313C12.9527 19.9313 15.2643 19.0454 16.9527 17.5174L13.7346 15.0813C12.8734 15.6682 11.7176 16.0779 10.1993 16.0779C7.50243 16.0779 5.21352 14.3395 4.39759 11.9366L4.27799 11.9465L1.13003 14.3273L1.08887 14.4391C2.76588 17.6945 6.21061 19.9313 10.1993 19.9313Z" fill="#34A853"/>
+                        <path d="M4.39748 11.9366C4.18219 11.3166 4.05759 10.6521 4.05759 9.96565C4.05759 9.27909 4.18219 8.61473 4.38615 7.99466L4.38045 7.8626L1.19304 5.44366L1.08875 5.49214C0.397576 6.84305 0.000976562 8.36008 0.000976562 9.96565C0.000976562 11.5712 0.397576 13.0882 1.08875 14.4391L4.39748 11.9366Z" fill="#FBBC05"/>
+                        <path d="M10.1993 3.85336C12.1142 3.85336 13.406 4.66168 14.1425 5.33718L17.0207 2.59107C15.253 0.985496 12.9527 0 10.1993 0C6.2106 0 2.76588 2.23672 1.08887 5.49214L4.38626 7.99466C5.21352 5.59183 7.50242 3.85336 10.1993 3.85336Z" fill="#EB4335"/>
+                      </g>
+                      <defs>
+                        <clipPath id="clip0_google">
+                          <rect width="20" height="20" fill="white"/>
+                        </clipPath>
+                      </defs>
+                    </svg>
+                    Googleから登録
+                  </button>
 
-              {/* 区切り線 */}
-              <div className="my-6 border-t border-gray-200 dark:border-dark-3"></div>
+                  <button
+                    type="button"
+                    onClick={handleMicrosoftSignIn}
+                    disabled={isSubmitting}
+                    className="mb-0 flex w-full items-center justify-center gap-3 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M0 0H10V10H0V0Z" fill="#F25022"/>
+                      <path d="M11 0H21V10H11V0Z" fill="#7FBA00"/>
+                      <path d="M0 11H10V21H0V11Z" fill="#00A4EF"/>
+                      <path d="M11 11H21V21H11V11Z" fill="#FFB900"/>
+                    </svg>
+                    Microsoftから登録
+                  </button>
+
+                  {/* 区切り線 */}
+                  <div className="my-6 border-t border-gray-200 dark:border-dark-3"></div>
+                </>
+              )}
+
+              {isFromInvitation && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg dark:bg-blue-900/20 dark:border-blue-800">
+                  <p className="text-sm text-blue-800 dark:text-blue-300">
+                    <strong>{companyName}</strong> への招待を受けています。アカウントを作成して参加しましょう。
+                  </p>
+                </div>
+              )}
 
               <form onSubmit={handleRegister}>
                 <div className="mb-6">
                   <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
                     組織名
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+                    <span className="text-red-500">*</span>
+                    {isFromInvitation && <span className="text-xs text-gray-500">（招待元）</span>}
                   </label>
                   <input
                     type="text"
@@ -198,14 +335,17 @@ export default function Register() {
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="組織名を入力"
                     required
-                    className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                    readOnly={isFromInvitation}
+                    className={`w-full rounded-md border border-stroke px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white ${
+                      isFromInvitation ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : 'bg-transparent'
+                    }`}
                   />
                 </div>
                 <div className="mb-4 grid grid-cols-2 gap-4">
                   <div>
                     <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
                       姓
-                      <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -219,7 +359,7 @@ export default function Register() {
                   <div>
                     <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
                       名
-                      <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+                      <span className="text-red-500">*</span>
                     </label>
                     <input
                       type="text"
@@ -234,7 +374,7 @@ export default function Register() {
                 <div className="mb-6">
                   <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
                     電話番号
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
@@ -250,29 +390,13 @@ export default function Register() {
                   />
                   <p className="mt-1 text-xs text-body-color">※ハイフンは自動で削除されます</p>
                 </div>
-                <div className="mb-6">
-                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-                    業界・業種
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-                  </label>
-                  <select
-                    value={industry}
-                    onChange={(e) => setIndustry(e.target.value)}
-                    required
-                    className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
-                  >
-                    <option value="">選択してください</option>
-                    {INDUSTRIES.map((ind) => (
-                      <option key={ind} value={ind}>{ind}</option>
-                    ))}
-                  </select>
-                </div>
 
                 {/* メールアドレス */}
                 <div className="mb-6">
                   <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
                     メールアドレス
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+                    <span className="text-red-500">*</span>
+                    {isFromInvitation && <span className="text-xs text-gray-500">（招待先）</span>}
                   </label>
                   <div className="relative">
                     <input
@@ -281,7 +405,10 @@ export default function Register() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="メールアドレスを入力"
                       required
-                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 pr-11 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                      readOnly={isFromInvitation}
+                      className={`w-full rounded-md border border-stroke px-4 py-2.5 pr-11 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white ${
+                        isFromInvitation ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : 'bg-transparent'
+                      }`}
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2">
                       <svg
@@ -316,7 +443,7 @@ export default function Register() {
                 <div className="mb-5">
                   <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
                     パスワード
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+                    <span className="text-red-500">*</span>
                   </label>
                   <div className="relative">
                     <input

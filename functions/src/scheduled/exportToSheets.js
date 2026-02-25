@@ -68,8 +68,9 @@ export async function exportToSheetsScheduled() {
           {
             siteName: site.siteName,
             siteUrl: site.siteUrl,
-            siteType: site.siteType,
-            businessType: site.businessType,
+            industry: site.industry ?? [],
+            siteType: site.siteType ?? [],
+            sitePurpose: site.sitePurpose ?? [],
           },
           {
             yearMonth,

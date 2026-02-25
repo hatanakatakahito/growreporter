@@ -17,6 +17,7 @@ export const PLANS = {
     priceWithTax: 0,
     features: {
       maxSites: 1,
+      maxMembers: 1,
       aiSummaryMonthly: 10,
       aiImprovementMonthly: 2,
       dataRetention: '無制限',
@@ -34,6 +35,7 @@ export const PLANS = {
     priceWithTax: 10780,
     features: {
       maxSites: 3,
+      maxMembers: 3,
       aiSummaryMonthly: 50,
       aiImprovementMonthly: 10,
       dataRetention: '無制限',
@@ -53,6 +55,7 @@ export const PLANS = {
     priceWithTax: 21780,
     features: {
       maxSites: 10,
+      maxMembers: 5,
       aiSummaryMonthly: 999999, // 無制限を大きな数値で表現
       aiImprovementMonthly: 999999,
       dataRetention: '無制限',
@@ -65,6 +68,25 @@ export const PLANS = {
     },
     description: '大企業、マーケティング代理店、EC事業者向け',
   },
+};
+
+/**
+ * プランバッジ用の Tailwind クラス（管理画面と統一）
+ * @param {string} planType - プランタイプ (free, standard, premium)
+ * @returns {string} バッジ用 className
+ */
+export const getPlanBadgeColor = (planType) => {
+  const normalized = (planType || '').toLowerCase();
+  switch (normalized) {
+    case 'free':
+      return 'bg-gradient-to-r from-blue-400 to-blue-600 text-white shadow-md';
+    case 'standard':
+      return 'bg-gradient-to-r from-red-400 to-pink-600 text-white shadow-md';
+    case 'premium':
+      return 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md';
+    default:
+      return 'bg-gray-200 text-gray-700';
+  }
 };
 
 /**

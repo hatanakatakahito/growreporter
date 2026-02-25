@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db, functions } from '../../../config/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 
 export default function Step2GA4Connect({ siteData, setSiteData }) {
@@ -44,18 +44,14 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
 
       try {
         console.log('[GA4Connect] トークンID取得:', siteData.ga4OauthTokenId);
-        
-        const tokenDoc = await getDocs(
-          query(
-            collection(db, 'oauth_tokens'),
-            where('__name__', '==', siteData.ga4OauthTokenId)
-          )
-        );
+        const ownerId = siteData.userId ?? currentUser?.uid;
+        const tokenRef = doc(db, 'users', ownerId, 'oauth_tokens', siteData.ga4OauthTokenId);
+        const tokenSnap = await getDoc(tokenRef);
 
-        console.log('[GA4Connect] トークンドキュメント:', tokenDoc.empty ? '見つかりません' : '見つかりました');
+        console.log('[GA4Connect] トークンドキュメント:', tokenSnap.exists() ? '見つかりました' : '見つかりません');
 
-        if (!tokenDoc.empty) {
-          const tokenData = { id: tokenDoc.docs[0].id, ...tokenDoc.docs[0].data() };
+        if (tokenSnap.exists()) {
+          const tokenData = { id: tokenSnap.id, ...tokenSnap.data() };
           console.log('[GA4Connect] トークンデータ:', tokenData);
           setToken(tokenData);
           
@@ -312,19 +308,15 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
 
       const { tokenId, googleAccount } = result.data;
 
-      // トークンデータを作成（プロパティ取得用）
-      const tokenDoc = await getDocs(
-        query(
-          collection(db, 'oauth_tokens'),
-          where('__name__', '==', tokenId)
-        )
-      );
+      // トークンデータを作成（プロパティ取得用）※直前に保存したので currentUser.uid 配下
+      const tokenRef = doc(db, 'users', currentUser.uid, 'oauth_tokens', tokenId);
+      const tokenSnap = await getDoc(tokenRef);
 
-      if (tokenDoc.empty) {
+      if (!tokenSnap.exists()) {
         throw new Error('トークンの取得に失敗しました');
       }
 
-      const savedToken = { id: tokenId, ...tokenDoc.docs[0].data() };
+      const savedToken = { id: tokenId, ...tokenSnap.data() };
       setToken(savedToken);
 
       // サイトデータを更新
@@ -476,7 +468,7 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
           <div>
             <label htmlFor="ga4-property" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
               GA4プロパティを選択
-              <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+              <span className="text-red-500">*</span>
             </label>
             
             {isLoadingProperties ? (

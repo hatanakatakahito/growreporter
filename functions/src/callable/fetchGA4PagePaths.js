@@ -46,11 +46,15 @@ export async function fetchGA4PagePathsCallable(request) {
 
     const siteData = siteDoc.data();
     
+    // サイト所有者本人、または管理者権限（admin/editor/viewer）がある場合のみアクセス許可
     if (siteData.userId !== userId) {
-      throw new HttpsError(
-        'permission-denied',
-        'このサイトにアクセスする権限がありません'
-      );
+      const adminDoc = await db.collection('adminUsers').doc(userId).get();
+      if (!adminDoc.exists || !['admin', 'editor', 'viewer'].includes(adminDoc.data().role)) {
+        throw new HttpsError(
+          'permission-denied',
+          'このサイトにアクセスする権限がありません'
+        );
+      }
     }
 
     // GA4設定の確認
@@ -62,7 +66,8 @@ export async function fetchGA4PagePathsCallable(request) {
     }
 
     // 2. OAuthトークン取得・更新
-    const { oauth2Client } = await getAndRefreshToken(siteData.ga4OauthTokenId);
+    const tokenOwnerId = siteData.ga4TokenOwner || siteData.userId;
+    const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, siteData.ga4OauthTokenId);
 
     // 3. GA4 Data API 呼び出し
     const analyticsData = google.analyticsdata('v1beta');

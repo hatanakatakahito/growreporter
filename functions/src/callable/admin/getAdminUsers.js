@@ -1,6 +1,20 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { logger } from 'firebase-functions/v2';
+
+/** タイムスタンプを安全に ISO 文字列に変換 */
+function toISOString(value) {
+  if (!value) return null;
+  try {
+    if (value && typeof value.toDate === 'function') return value.toDate().toISOString();
+    if (value && value._seconds != null) return new Date(value._seconds * 1000).toISOString();
+    if (typeof value === 'string') return new Date(value).toISOString();
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * 管理者用ユーザー一覧取得
@@ -27,7 +41,10 @@ export const getAdminUsersCallable = async (request) => {
     
     // 管理者権限チェック
     const adminDoc = await db.collection('adminUsers').doc(uid).get();
-    if (!adminDoc.exists || !['admin', 'editor'].includes(adminDoc.data()?.role)) {
+    const adminData = adminDoc.exists ? adminDoc.data() : null;
+    const adminRole = adminData && adminData.role;
+    if (!adminDoc.exists || !['admin', 'editor'].includes(adminRole)) {
+      logger.warn('getAdminUsers: permission denied', { uid, hasDoc: adminDoc.exists, role: adminRole });
       throw new HttpsError('permission-denied', '管理者権限がありません');
     }
 
@@ -52,6 +69,8 @@ export const getAdminUsersCallable = async (request) => {
     const snapshot = await db.collection('users').get();
 
     let users = [];
+    const ownerPlanCache = {}; // オーナーのプランをキャッシュ
+    
     snapshot.forEach((doc) => {
       const data = doc.data();
       // ユーザー名を lastName + firstName で構成
@@ -59,16 +78,26 @@ export const getAdminUsersCallable = async (request) => {
         ? `${data.lastName} ${data.firstName}` 
         : (data.displayName || '');
       
+      // メンバーシップをチェック（招待ユーザー = 自分以外のアカウントのメンバー）
+      const memberships = data.memberships || {};
+      const accountOwnerIds = Object.keys(memberships);
+      const isMember = accountOwnerIds.some((ownerId) => ownerId !== doc.id);
+      const accountOwnerId = isMember ? accountOwnerIds.find((id) => id !== doc.id) ?? accountOwnerIds[0] : null;
+      
       users.push({
         uid: doc.id,
         displayName: userName,
         lastName: data.lastName || '',
         firstName: data.firstName || '',
         email: data.email || '',
+        company: data.company || '',
         photoURL: data.photoURL || null,
         plan: data.plan || 'free',
-        createdAt: data.createdAt?.toDate?.().toISOString() || null,
-        lastLoginAt: data.lastLoginAt?.toDate?.().toISOString() || null,
+        isMember,
+        accountOwnerId,
+        memberRole: data.memberRole || 'owner',
+        createdAt: toISOString(data.createdAt) || null,
+        lastLoginAt: toISOString(data.lastLoginAt) || null,
         // 使用状況（後で取得）
         aiSummaryUsage: 0,
         aiImprovementUsage: 0,
@@ -76,6 +105,48 @@ export const getAdminUsersCallable = async (request) => {
         siteCount: 0,
       });
     });
+
+    // Firestore に photoURL が無い場合、Firebase Auth（SSO）の写真を補完
+    if (users.length > 0) {
+      try {
+        const auth = getAuth();
+        const BATCH_SIZE = 100;
+        const authPhotoByUid = {};
+        for (let i = 0; i < users.length; i += BATCH_SIZE) {
+          const batch = users.slice(i, i + BATCH_SIZE);
+          const identifiers = batch.map((u) => ({ uid: u.uid }));
+          const result = await auth.getUsers(identifiers);
+          for (const authUser of result.users || []) {
+            if (authUser.photoURL) authPhotoByUid[authUser.uid] = authUser.photoURL;
+          }
+        }
+        for (const user of users) {
+          if (!user.photoURL && authPhotoByUid[user.uid]) {
+            user.photoURL = authPhotoByUid[user.uid];
+          }
+        }
+      } catch (authErr) {
+        logger.warn('getAdminUsers: Auth photoURL 補完でエラー（一覧は継続）', { error: authErr.message });
+      }
+    }
+
+    // メンバーの場合、オーナーのプランを取得
+    for (const user of users) {
+      if (user.isMember && user.accountOwnerId) {
+        // キャッシュにあればそれを使用
+        if (ownerPlanCache[user.accountOwnerId]) {
+          user.plan = ownerPlanCache[user.accountOwnerId];
+        } else {
+          // オーナーのプランを取得
+          const ownerDoc = await db.collection('users').doc(user.accountOwnerId).get();
+          if (ownerDoc.exists) {
+            const ownerPlan = ownerDoc.data().plan || 'free';
+            ownerPlanCache[user.accountOwnerId] = ownerPlan;
+            user.plan = ownerPlan;
+          }
+        }
+      }
+    }
 
     // 検索フィルタ（クライアント側）
     if (searchQuery && searchQuery.trim() !== '') {
@@ -117,7 +188,7 @@ export const getAdminUsersCallable = async (request) => {
 
         // AI使用状況を取得（今月分）
         const aiCacheSnapshot = await db
-          .collection('aiAnalysisCache')
+          .collectionGroup('aiAnalysisCache')
           .where('userId', 'in', batch)
           .where('generatedAt', '>=', Timestamp.fromDate(firstDayOfMonth))
           .get();
@@ -214,6 +285,7 @@ export const getAdminUsersCallable = async (request) => {
   } catch (error) {
     logger.error('ユーザー一覧取得エラー', { 
       error: error.message,
+      stack: error.stack,
       adminId: uid,
     });
 
@@ -221,7 +293,7 @@ export const getAdminUsersCallable = async (request) => {
       throw error;
     }
 
-    throw new HttpsError('internal', 'ユーザー一覧の取得に失敗しました');
+    throw new HttpsError('internal', error.message || 'ユーザー一覧の取得に失敗しました');
   }
 };
 

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
+import { useSidebar } from '../../contexts/SidebarContext';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import logoImg from '../../assets/img/logo.svg';
 
 export default function Sidebar() {
@@ -9,6 +11,7 @@ export default function Sidebar() {
   const navigate = useNavigate();
   const { currentUser, userProfile, logout } = useAuth();
   const { isAdmin } = useAdmin();
+  const { isSidebarOpen, toggleSidebar } = useSidebar();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
   const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
@@ -89,7 +92,7 @@ export default function Sidebar() {
       hasSubmenu: true,
       submenu: [
         { label: '全体サマリー', path: '/analysis/summary' },
-        { label: 'ユーザー属性', path: '/users' },
+        { label: 'ユーザー属性', path: '/analysis/users' },
         { 
           label: '時系列', 
           hasSubmenu: true,
@@ -103,29 +106,29 @@ export default function Sidebar() {
           label: '集客', 
           hasSubmenu: true,
           submenu: [
-            { label: '集客チャネル', path: '/acquisition/channels' },
-            { label: '流入キーワード元', path: '/acquisition/keywords' },
-            { label: '被リンク元', path: '/acquisition/referrals' },
+            { label: '集客チャネル', path: '/analysis/channels' },
+            { label: '流入キーワード元', path: '/analysis/keywords' },
+            { label: '被リンク元', path: '/analysis/referrals' },
           ]
         },
         { 
           label: 'ページ', 
           hasSubmenu: true,
           submenu: [
-            { label: 'ページ別', path: '/engagement/pages' },
-            { label: 'ページ分類別', path: '/engagement/page-categories' },
-            { label: 'ランディングページ', path: '/engagement/landing-pages' },
-            { label: 'ファイルダウンロード', path: '/engagement/file-downloads' },
-            { label: '外部リンククリック', path: '/engagement/external-links' },
-            { label: 'ページフロー', path: '/engagement/page-flow' },
+            { label: 'ページ別', path: '/analysis/pages' },
+            { label: 'ページ分類別', path: '/analysis/page-categories' },
+            { label: 'ランディングページ', path: '/analysis/landing-pages' },
+            { label: 'ファイルダウンロード', path: '/analysis/file-downloads' },
+            { label: '外部リンククリック', path: '/analysis/external-links' },
+            { label: 'ページフロー', path: '/analysis/page-flow' },
           ]
         },
         { 
           label: 'コンバージョン', 
           hasSubmenu: true,
           submenu: [
-            { label: 'コンバージョン一覧', path: '/conversion/list' },
-            { label: '逆算フロー', path: '/conversion/reverse-flow' },
+            { label: 'コンバージョン一覧', path: '/analysis/conversions' },
+            { label: '逆算フロー', path: '/analysis/reverse-flow' },
           ]
         },
       ],
@@ -157,46 +160,71 @@ export default function Sidebar() {
       label: 'サイト管理',
       path: '/sites/list',
     },
+    {
+      icon: (
+        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998-3.5A7.5 7.5 0 0 1 19.5 19.5H4.5Z" />
+        </svg>
+      ),
+      label: 'アカウント設定',
+      path: '/account/settings',
+    },
   ];
 
   return (
-    <aside className="fixed left-0 top-0 z-50 h-screen w-64 border-r border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+    <>
+    <aside className={`fixed left-0 top-0 z-50 h-screen border-r border-stroke bg-white transition-all duration-300 dark:border-dark-3 dark:bg-dark-2 ${
+      isSidebarOpen ? 'w-64' : 'w-16'
+    }`}>
       {/* ロゴ */}
       <div className="flex h-20 items-center justify-center border-b border-stroke px-6 dark:border-dark-3">
-        <Link to="/dashboard" className="flex items-center gap-2">
-          <img 
-            src={logoImg}
-            alt="GROW REPORTER" 
-            className="h-10 w-auto"
-          />
-        </Link>
+        {isSidebarOpen ? (
+          <Link to="/dashboard" className="flex items-center gap-2">
+            <img 
+              src={logoImg}
+              alt="GROW REPORTER" 
+              className="h-10 w-auto"
+            />
+          </Link>
+        ) : (
+          <Link to="/dashboard" className="flex items-center justify-center">
+            <img src="/favicon.ico" alt="GROW REPORTER" className="h-8 w-8 object-contain" />
+          </Link>
+        )}
       </div>
 
       {/* ナビゲーション */}
-      <nav className="h-[calc(100vh-5rem)] overflow-y-auto px-4 py-6">
+      <nav className={`overflow-y-auto py-4 scrollbar-hide ${
+        isSidebarOpen ? 'h-[calc(100vh-16rem)] px-4' : 'h-[calc(100vh-18rem)] px-2'
+      }`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <ul className="space-y-2">
           {menuItems.map((item, index) => (
             <li key={index}>
               {item.hasSubmenu ? (
                 <>
                   <button
-                    onClick={() => setIsAnalysisOpen(!isAnalysisOpen)}
-                    className="flex w-full items-center justify-between rounded-lg px-4 py-3 text-sm font-medium text-dark transition hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
+                    onClick={() => isSidebarOpen && setIsAnalysisOpen(!isAnalysisOpen)}
+                    className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium text-dark transition hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3 ${
+                      isSidebarOpen ? 'justify-between' : 'justify-center'
+                    }`}
+                    title={!isSidebarOpen ? item.label : ''}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
                       {item.icon}
-                      <span>{item.label}</span>
+                      {isSidebarOpen && <span>{item.label}</span>}
                     </div>
-                    <svg
-                      className={`h-4 w-4 transition-transform ${isAnalysisOpen ? 'rotate-180' : ''}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
+                    {isSidebarOpen && (
+                      <svg
+                        className={`h-4 w-4 transition-transform ${isAnalysisOpen ? 'rotate-180' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
                   </button>
-                  {isAnalysisOpen && (
+                  {isAnalysisOpen && isSidebarOpen && (
                     <ul className="ml-4 mt-2 space-y-1 border-l-2 border-stroke pl-4 dark:border-dark-3">
                       {item.submenu.map((subItem, subIndex) => (
                         <li key={subIndex}>
@@ -275,14 +303,17 @@ export default function Sidebar() {
               ) : (
                 <Link
                   to={item.path}
-                  className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                  className={`flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                    isSidebarOpen ? 'gap-3' : 'justify-center'
+                  } ${
                     isActive(item.path)
                       ? 'bg-primary text-white'
                       : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
                   }`}
+                  title={!isSidebarOpen ? item.label : ''}
                 >
                   {item.icon}
-                  <span>{item.label}</span>
+                  {isSidebarOpen && <span>{item.label}</span>}
                 </Link>
               )}
             </li>
@@ -292,66 +323,103 @@ export default function Sidebar() {
 
       {/* ユーザー情報 */}
       <div className="absolute bottom-0 left-0 right-0 border-t border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
-        <div className="p-4">
-          <div className="flex items-center gap-3 mb-3">
-            {currentUser?.photoURL ? (
-              <img 
-                src={currentUser.photoURL} 
-                alt="Profile" 
-                className="h-10 w-10 rounded-full object-cover"
-              />
+        <div className={isSidebarOpen ? 'p-4' : 'p-2'}>
+          {/* ユーザー情報（クリックでアカウント設定へ） */}
+          <button
+            onClick={() => navigate('/account/settings')}
+            className="w-full rounded-lg transition hover:bg-gray-100 dark:hover:bg-dark-3"
+          >
+            {isSidebarOpen ? (
+              <div className="flex items-center gap-3 p-2">
+                {currentUser?.photoURL ? (
+                  <img 
+                    src={currentUser.photoURL} 
+                    alt="Profile" 
+                    className="h-10 w-10 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold">
+                    {userInitial}
+                  </div>
+                )}
+                <div className="flex-1 min-w-0 text-left">
+                  <p className="truncate text-sm font-medium text-dark dark:text-white">
+                    {getUserName()}
+                  </p>
+                  <p className="truncate text-xs text-body-color">
+                    {currentUser?.email}
+                  </p>
+                </div>
+              </div>
             ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold">
-                {userInitial}
+              <div className="flex justify-center p-1">
+                {currentUser?.photoURL ? (
+                  <img 
+                    src={currentUser.photoURL} 
+                    alt="Profile" 
+                    className="h-8 w-8 rounded-full object-cover"
+                    title={getUserName()}
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white text-xs font-semibold" title={getUserName()}>
+                    {userInitial}
+                  </div>
+                )}
               </div>
             )}
-            <div className="flex-1 min-w-0">
-              <p className="truncate text-sm font-medium text-dark dark:text-white">
-                {getUserName()}
-              </p>
-              <p className="truncate text-xs text-body-color">
-                {currentUser?.email}
-              </p>
-            </div>
-          </div>
-          
+          </button>
+
+          {/* ログアウト */}
+          <button
+            onClick={handleLogout}
+            className={`mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-body-color transition hover:bg-gray-100 dark:border-dark-3 dark:text-dark-6 dark:hover:bg-dark-3 ${
+              isSidebarOpen ? '' : 'p-1.5'
+            }`}
+            title={!isSidebarOpen ? 'ログアウト' : ''}
+          >
+            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+            </svg>
+            {isSidebarOpen && 'ログアウト'}
+          </button>
+
           {/* 管理者画面ボタン（管理者のみ表示） */}
           {isAdmin && (
             <button
               onClick={() => navigate('/admin/dashboard')}
-              className="mb-2 flex w-full items-center justify-center gap-2 rounded-md bg-primary px-3 py-2 text-xs font-medium text-white transition hover:bg-opacity-90"
+              className={`mt-2 flex w-full items-center justify-center rounded-md bg-primary text-white transition hover:bg-opacity-90 ${
+                isSidebarOpen ? 'gap-2 px-3 py-2 text-xs font-medium' : 'p-1.5'
+              }`}
+              title={!isSidebarOpen ? '管理者画面' : ''}
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
-              管理者画面
+              {isSidebarOpen && '管理者画面'}
             </button>
           )}
-          
-          {/* アカウント設定とログアウトボタン */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => navigate('/account/settings')}
-              className="flex flex-1 items-center justify-center gap-2 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              アカウント
-            </button>
-            <button
-              onClick={handleLogout}
-              className="flex flex-1 items-center justify-center gap-2 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              ログアウト
-            </button>
-          </div>
         </div>
       </div>
     </aside>
+    
+    {/* サイドバー開閉ボタン（境界線の中央に円形で表示） */}
+    <button
+      onClick={toggleSidebar}
+      className={`fixed top-1/2 z-50 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-stroke bg-gray-100 shadow-md transition-all duration-300 hover:bg-gray-200 dark:border-dark-3 dark:bg-dark-3 dark:hover:bg-dark-3 ${
+        isSidebarOpen ? 'left-64' : 'left-16'
+      }`}
+      title={isSidebarOpen ? 'サイドバーを閉じる' : 'サイドバーを開く'}
+    >
+      {isSidebarOpen ? (
+        <ChevronLeft className="h-4 w-4 text-body-color dark:text-dark-6" />
+      ) : (
+        <ChevronRight className="h-4 w-4 text-body-color dark:text-dark-6" />
+      )}
+    </button>
+
+    </>
   );
 }
 

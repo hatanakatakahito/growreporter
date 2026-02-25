@@ -46,7 +46,7 @@ export default function AnalysisNavigation() {
           icon: <Users className="h-6 w-6" />,
           title: 'ユーザー属性',
           description: '年齢、性別、地域などユーザーの属性データを分析します。',
-          path: '/users',
+          path: '/analysis/users',
         },
       ],
     },
@@ -80,19 +80,19 @@ export default function AnalysisNavigation() {
           icon: <TrendingUp className="h-6 w-6" />,
           title: '集客チャネル',
           description: 'オーガニック検索、SNS、広告など流入経路別の効果を測定します。',
-          path: '/acquisition/channels',
+          path: '/analysis/channels',
         },
         {
           icon: <Search className="h-6 w-6" />,
           title: '流入キーワード元',
           description: '検索キーワードのパフォーマンスから、SEO改善のヒントを得ます。',
-          path: '/acquisition/keywords',
+          path: '/analysis/keywords',
         },
         {
           icon: <ExternalLinkIcon className="h-6 w-6" />,
           title: '被リンク元',
           description: '参照元サイトからのトラフィックを分析し、効果的な連携先を特定します。',
-          path: '/acquisition/referrals',
+          path: '/analysis/referrals',
         },
       ],
     },
@@ -103,31 +103,31 @@ export default function AnalysisNavigation() {
           icon: <FileText className="h-6 w-6" />,
           title: 'ページ別',
           description: '各ページのパフォーマンスを詳細に分析し、改善ポイントを発見します。',
-          path: '/engagement/pages',
+          path: '/analysis/pages',
         },
         {
           icon: <FolderTree className="h-6 w-6" />,
           title: 'ページ分類別',
           description: 'ディレクトリ単位でコンテンツの傾向を把握します。',
-          path: '/engagement/page-categories',
+          path: '/analysis/page-categories',
         },
         {
           icon: <LayoutGrid className="h-6 w-6" />,
           title: 'ランディングページ',
           description: '最初に訪問されるページの効果を測定し、導線を最適化します。',
-          path: '/engagement/landing-pages',
+          path: '/analysis/landing-pages',
         },
         {
           icon: <FileText className="h-6 w-6" />,
           title: 'ファイルダウンロード',
           description: 'ダウンロードされた資料やファイルの人気度を確認します。',
-          path: '/engagement/file-downloads',
+          path: '/analysis/file-downloads',
         },
         {
           icon: <MousePointerClick className="h-6 w-6" />,
           title: '外部リンククリック',
           description: 'サイトから外部へのリンククリック状況を追跡します。',
-          path: '/engagement/external-links',
+          path: '/analysis/external-links',
         },
       ],
     },
@@ -138,13 +138,13 @@ export default function AnalysisNavigation() {
           icon: <Target className="h-6 w-6" />,
           title: 'コンバージョン一覧',
           description: '登録済みコンバージョンの月次推移と達成状況を一覧表示します。',
-          path: '/conversion/list',
+          path: '/analysis/conversions',
         },
         {
           icon: <GitMerge className="h-6 w-6" />,
           title: '逆算フロー',
           description: 'コンバージョンまでのステップを逆算し、離脱ポイントを特定します。',
-          path: '/conversion/reverse-flow',
+          path: '/analysis/reverse-flow',
         },
       ],
     },
@@ -160,7 +160,7 @@ export default function AnalysisNavigation() {
         />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         {/* コンテンツ */}
-        <div className="mx-auto max-w-7xl px-6 py-10">
+        <div className="mx-auto max-w-content px-6 py-10">
           {/* ページタイトル */}
           <div className="mb-8">
             <h2 className="mb-2 text-3xl font-bold text-dark dark:text-white">分析する</h2>

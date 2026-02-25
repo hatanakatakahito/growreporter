@@ -40,7 +40,7 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
     setIsSaving(true);
 
     try {
-      const improvementRef = doc(db, 'improvements', item.id);
+      const improvementRef = doc(db, 'sites', siteId, 'improvements', item.id);
       await updateDoc(improvementRef, {
         ...formData,
         evaluatedAt: new Date(),

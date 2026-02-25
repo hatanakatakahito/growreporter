@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { setPageTitle } from '../../../utils/pageTitle';
 import { useAdminUsers } from '../../../hooks/useAdminUsers';
-import { getPlanDisplayName } from '../../../constants/plans';
+import { getPlanDisplayName, getPlanBadgeColor } from '../../../constants/plans';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
@@ -50,11 +50,13 @@ export default function UserList() {
   const handleExportCSV = () => {
     if (!users || users.length === 0) return;
 
-    const csvHeaders = ['UID', '名前', 'メールアドレス', 'プラン', '登録日', '最終ログイン', 'サイト数', 'AI分析使用', 'AI改善使用'];
+    const csvHeaders = ['UID', '名前', 'メールアドレス', '組織名', '種別', 'プラン', '登録日', '最終ログイン', 'サイト数', 'AI分析使用', 'AI改善使用'];
     const csvRows = users.map((user) => [
       user.uid,
       getUserName(user),
       user.email || '',
+      user.company || '',
+      user.isMember ? '招待ユーザー' : 'オーナー',
       getPlanDisplayName(user.plan),
       user.createdAt ? new Date(user.createdAt).toLocaleDateString('ja-JP') : '',
       user.lastLoginAt ? new Date(user.lastLoginAt).toLocaleDateString('ja-JP') : '',
@@ -94,20 +96,6 @@ export default function UserList() {
     setSuccessMessage(message);
     setTimeout(() => setSuccessMessage(''), 5000);
     refetch(); // ユーザー一覧を再取得
-  };
-
-  // プランバッジの色
-  const getPlanBadgeColor = (plan) => {
-    switch (plan) {
-      case 'free':
-        return 'bg-gradient-to-r from-blue-400 to-blue-600 text-white shadow-md';
-      case 'standard':
-        return 'bg-gradient-to-r from-red-400 to-pink-600 text-white shadow-md';
-      case 'premium':
-        return 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md';
-      default:
-        return 'bg-gray-200 text-gray-700';
-    }
   };
 
   return (
@@ -198,6 +186,9 @@ export default function UserList() {
                       ユーザー
                     </th>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-dark dark:text-white">
+                      組織名
+                    </th>
+                    <th className="px-4 py-3 text-left text-xs font-semibold text-dark dark:text-white">
                       プラン
                     </th>
                     <th className="px-4 py-3 text-center text-xs font-semibold text-dark dark:text-white">
@@ -226,17 +217,23 @@ export default function UserList() {
                     >
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
-                          {user.photoURL ? (
-                            <img
-                              src={user.photoURL}
-                              alt={getUserName(user)}
-                              className="h-10 w-10 rounded-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                          <span className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                            <span className={user.photoURL ? 'invisible' : ''}>
                               {getUserName(user).charAt(0)}
-                            </div>
-                          )}
+                            </span>
+                            {user.photoURL && (
+                              <img
+                                src={user.photoURL}
+                                alt=""
+                                className="absolute inset-0 h-full w-full rounded-full object-cover"
+                                referrerPolicy="no-referrer"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.previousElementSibling?.classList.remove('invisible');
+                                }}
+                              />
+                            )}
+                          </span>
                           <div>
                             <p className="text-sm font-medium text-dark dark:text-white">
                               {getUserName(user)}
@@ -247,10 +244,24 @@ export default function UserList() {
                           </div>
                         </div>
                       </td>
+                      <td className="px-4 py-4 text-sm text-body-color dark:text-dark-6">
+                        {user.company || '-'}
+                      </td>
                       <td className="px-4 py-4">
-                        <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getPlanBadgeColor(user.plan)}`}>
-                          {getPlanDisplayName(user.plan)}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getPlanBadgeColor(user.plan)}`}>
+                            {getPlanDisplayName(user.plan)}
+                          </span>
+                          {user.isMember ? (
+                            <span className="inline-block rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-300">
+                              招待ユーザー
+                            </span>
+                          ) : (
+                            <span className="inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-300">
+                              オーナー
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-4 py-4 text-center text-sm text-dark dark:text-white">
                         {user.siteCount || 0}

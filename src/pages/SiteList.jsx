@@ -2,24 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { setPageTitle } from '../utils/pageTitle';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { db } from '../config/firebase';
-import { collection, query, where, getDocs, deleteDoc, doc, orderBy } from 'firebase/firestore';
-import Header from '../components/Layout/Header';
+import { db, functions } from '../config/firebase';
+import { collection, query, where, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 
 export default function SiteList() {
   const [sites, setSites] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
+  
+  const memberRole = userProfile?.memberRole || 'owner';
+  const isOwner = memberRole === 'owner';
 
   // ページタイトルを設定
   useEffect(() => {
     setPageTitle('サイト一覧');
   }, []);
 
-  // サイト一覧を取得
+  // サイト一覧を取得（アカウント全体のサイトを取得）
   useEffect(() => {
     const fetchSites = async () => {
       if (!currentUser) return;
@@ -28,9 +31,17 @@ export default function SiteList() {
       try {
         console.log('[SiteList] ユーザーID:', currentUser.uid);
         
+        // 自分のaccountOwnerIdを取得
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const userData = userDoc.data();
+        const accountOwnerId = userData?.accountOwnerId || currentUser.uid;
+        
+        console.log('[SiteList] アカウントオーナーID:', accountOwnerId);
+        
+        // accountOwnerIdが一致するサイトを全て取得
         const q = query(
           collection(db, 'sites'),
-          where('userId', '==', currentUser.uid)
+          where('userId', '==', accountOwnerId)
         );
         
         const querySnapshot = await getDocs(q);
@@ -71,6 +82,27 @@ export default function SiteList() {
     setIsDeleting(true);
     try {
       await deleteDoc(doc(db, 'sites', deleteTarget.id));
+      
+      // サイト削除ログを記録（非同期で、エラーは無視）
+      try {
+        const userProfile = await getDoc(doc(db, 'users', currentUser.uid));
+        const userData = userProfile.data();
+        const displayName = userData?.lastName && userData?.firstName 
+          ? `${userData.lastName} ${userData.firstName}` 
+          : currentUser.displayName || '';
+        
+        const logSiteDeleted = httpsCallable(functions, 'logSiteDeleted');
+        await logSiteDeleted({
+          siteId: deleteTarget.id,
+          siteName: deleteTarget.name,
+          siteUrl: deleteTarget.url,
+          displayName,
+        });
+      } catch (logError) {
+        console.error('Log site deleted error:', logError);
+        // ログ記録エラーは無視して処理を続行
+      }
+      
       setSites(sites.filter(site => site.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (error) {
@@ -90,39 +122,47 @@ export default function SiteList() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col h-full">
-        <Header title="サイト管理" subtitle="分析対象のサイトを登録・管理します" />
-        <main className="flex-1 overflow-y-auto">
-          <div className="flex min-h-[60vh] items-center justify-center p-6">
+      <div className="w-full min-w-0">
+        <div className="w-full !max-w-[1400px] mx-auto px-6 py-10 box-border" style={{ maxWidth: '1400px' }}>
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">サイト管理</h1>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">分析対象のサイトを登録・管理します</p>
+          </div>
+          <div className="flex min-h-[60vh] items-center justify-center">
             <div className="text-center">
               <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
               <p className="mt-4 text-body-color">読み込み中...</p>
             </div>
           </div>
-        </main>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-full">
-      <Header
-        title="サイト管理"
-        subtitle="分析対象のサイトを登録・管理します"
-        action={
+    <>
+    <div className="w-full min-w-0">
+      <div className="w-full !max-w-[1400px] mx-auto px-6 py-10 box-border" style={{ maxWidth: '1400px' }}>
+        {/* ヘッダー（アカウント設定ページと同一構成） */}
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">サイト管理</h1>
+            <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+              分析対象のサイトを登録・管理します
+            </p>
+          </div>
           <Link
             to="/sites/new"
-            className="flex items-center gap-2 rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90"
+            className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             新規サイト登録
           </Link>
-        }
-      />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-6">
+        </div>
+
+        <div>
         {sites.length === 0 ? (
           // サイトが登録されていない場合
           <div className="mx-auto max-w-2xl pt-20">
@@ -230,6 +270,15 @@ export default function SiteList() {
                   {/* アクションボタン */}
                   <div className="flex gap-2 border-t border-stroke pt-3 dark:border-dark-3">
                     <Link
+                      to={`/sites/${site.id}`}
+                      className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                      サイト詳細
+                    </Link>
+                    <Link
                       to={`/sites/${site.id}/edit?step=1`}
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
                     >
@@ -254,7 +303,8 @@ export default function SiteList() {
           </div>
         )}
         </div>
-      </main>
+      </div>
+    </div>
 
       {/* 削除確認モーダル */}
       {deleteTarget && (
@@ -285,7 +335,7 @@ export default function SiteList() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
 

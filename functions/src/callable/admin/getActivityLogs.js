@@ -4,10 +4,11 @@ import { logger } from 'firebase-functions/v2';
 
 /**
  * アクティビティログ一覧を取得
+ * ユーザー活動ログを管理者が閲覧する
  * 
  * @param {Object} data - リクエストパラメータ
- * @param {string} data.actionFilter - アクションフィルタ（任意）
- * @param {string} data.adminFilter - 管理者フィルタ（任意）
+ * @param {string} data.actionType - アクションフィルタ（任意）
+ * @param {string} data.searchQuery - 検索クエリ（任意）
  * @param {number} data.page - ページ番号（デフォルト: 1）
  * @param {number} data.limit - 1ページあたりの件数（デフォルト: 50）
  * @returns {Object} アクティビティログ一覧とページネーション情報
@@ -20,8 +21,8 @@ export const getActivityLogsCallable = async (request) => {
   }
 
   const {
-    actionFilter = 'all',
-    adminFilter = 'all',
+    actionType = 'all',
+    searchQuery = '',
     page = 1,
     limit = 50,
   } = request.data || {};
@@ -37,44 +38,52 @@ export const getActivityLogsCallable = async (request) => {
 
     logger.info('アクティビティログ取得開始', { 
       adminId: uid,
-      actionFilter,
-      adminFilter,
+      actionType,
+      searchQuery,
       page,
       limit,
     });
 
-    // クエリ構築
-    let query = db.collection('adminActivityLogs');
+    // クエリ構築（activityLogsコレクションから取得）
+    let query = db.collection('activityLogs');
 
-    // アクションフィルタ
-    if (actionFilter && actionFilter !== 'all') {
-      query = query.where('action', '==', actionFilter);
-    }
-
-    // 管理者フィルタ
-    if (adminFilter && adminFilter !== 'all') {
-      query = query.where('adminId', '==', adminFilter);
+    // アクションタイプフィルタ
+    if (actionType && actionType !== 'all') {
+      query = query.where('action', '==', actionType);
     }
 
     // 日付降順でソート
     query = query.orderBy('createdAt', 'desc');
 
-    // 総件数を取得
-    const countSnapshot = await query.count().get();
-    const totalCount = countSnapshot.data().count;
-
-    // ページネーション
-    const offset = (page - 1) * limit;
-    query = query.limit(limit).offset(offset);
-
     // データ取得
     const snapshot = await query.get();
 
-    const logs = snapshot.docs.map(doc => ({
+    let logs = snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
+      timestamp: doc.data().createdAt?.toDate?.().toISOString() || null,
       createdAt: doc.data().createdAt?.toDate?.().toISOString() || null,
     }));
+
+    // 検索クエリでフィルタリング（クライアントサイド）
+    if (searchQuery && searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      logs = logs.filter(log => {
+        const userName = (log.userName || '').toLowerCase();
+        const userEmail = (log.userEmail || '').toLowerCase();
+        const details = JSON.stringify(log.details || {}).toLowerCase();
+        
+        return userName.includes(query) || 
+               userEmail.includes(query) ||
+               details.includes(query);
+      });
+    }
+
+    const totalCount = logs.length;
+
+    // ページネーション
+    const offset = (page - 1) * limit;
+    const paginatedLogs = logs.slice(offset, offset + limit);
 
     const pagination = {
       currentPage: page,
@@ -87,16 +96,14 @@ export const getActivityLogsCallable = async (request) => {
 
     logger.info('アクティビティログ取得完了', { 
       adminId: uid,
-      count: logs.length,
+      count: paginatedLogs.length,
       totalCount,
     });
 
     return {
       success: true,
-      data: {
-        logs,
-        pagination,
-      },
+      logs: paginatedLogs,
+      pagination,
     };
 
   } catch (error) {
@@ -112,4 +119,3 @@ export const getActivityLogsCallable = async (request) => {
     throw new HttpsError('internal', 'アクティビティログの取得に失敗しました');
   }
 };
-

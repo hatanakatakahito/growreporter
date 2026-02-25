@@ -15,7 +15,20 @@ export const SITE_TYPES = [
   { value: 'other', label: 'その他' },
 ];
 
-// ビジネス形態の選択肢
+// サイトの目的（複数選択可能・サイト種別を包含）
+export const SITE_PURPOSES = [
+  { value: 'branding', label: '認知・ブランディング' },
+  { value: 'lead', label: 'リード・問い合わせ獲得' },
+  { value: 'sales', label: '販売' },
+  { value: 'recruit', label: '採用' },
+  { value: 'media', label: '情報発信' },
+  { value: 'ir', label: '投資家向け（IR）' },
+  { value: 'internal', label: '社内・業務利用' },
+  { value: 'member', label: '会員獲得' },
+  { value: 'other', label: 'その他' },
+];
+
+// ビジネス形態の選択肢（廃止・既存データ表示用に残す）
 export const BUSINESS_TYPES = [
   { 
     value: 'btob', 

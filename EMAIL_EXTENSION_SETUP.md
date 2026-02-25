@@ -1,121 +1,75 @@
-# Firebase Extensions "Trigger Email" セットアップガイド
+# メール送信の設定（拡張不要・SMTP 直接送信）
 
 ## 概要
 
-GROW REPORTERでは、プラン変更時にユーザーへメール通知を送信するために、Firebase Extensions の **Trigger Email** を使用します。
+GROW REPORTERでは、**Trigger Email 拡張は使わず**、Cloud Functions から **AWS SES（SMTP）で直接**メールを送信しています。
 
-## セットアップ手順
+- メンバー招待（承認メール）
+- プラン変更通知
+- メンバー削除通知・オーナー譲渡通知
+- サイト改善相談フォーム
+- 管理者アラート
 
-### 1. Firebase Extensions のインストール
+**必要な作業は「環境変数の設定」だけです。** Extensions のインストールや Firestore の `mail` コレクションは不要です。
 
-Firebase Consoleから、以下の手順でExtensionをインストールします。
+---
 
-1. [Firebase Console](https://console.firebase.google.com/) にアクセス
-2. `growgroupreporter` プロジェクトを選択
-3. 左メニューから「Extensions」を選択
-4. 「Trigger Email」を検索してインストール
+## 設定手順（これだけ）
 
-または、Firebase CLIから：
+### 1. Firebase の環境変数に SES SMTP を設定
+
+Firebase Console で次の環境変数を設定します。
+
+1. [Firebase Console](https://console.firebase.google.com/) → プロジェクト **growgroupreporter** を選択
+2. 左メニュー **「ビルド」** → **「Functions」**
+3. **「環境変数」**（または「構成」）を開く
+4. 次の変数を追加（値は AWS SES の SMTP 認証情報に合わせてください）
+
+| 変数名 | 説明 | 例（AWS SES） |
+|--------|------|-------------------------------|
+| `SES_SMTP_HOST` | SMTP ホスト | `email-smtp.ap-northeast-1.amazonaws.com` |
+| `SES_SMTP_PORT` | ポート（587=STARTTLS, 465=SSL） | `587` |
+| `SES_SMTP_USER` | SMTP ユーザー名 | SES の SMTP 認証情報のユーザー名（例: AKIA...） |
+| `SES_SMTP_PASSWORD` | SMTP パスワード | SES の SMTP 認証情報のパスワード |
+| `SES_FROM_EMAIL` | 送信元（任意・未設定時は info@grow-reporter.com） | `info@grow-reporter.com` |
+| `SES_FROM_NAME` | 差出人表示名（任意・未設定時は グローレポータ） | `グローレポータ` |
+
+※ Firebase Authentication の SMTP で使っているのと同じ SES 認証情報で問題ありません。
+
+### 2. デプロイ
+
+環境変数を保存したあと、Functions を再デプロイすると反映されます。
 
 ```bash
-firebase ext:install firestore-send-email --project=growgroupreporter
+firebase deploy --only functions
 ```
 
-### 2. SMTP設定
+---
 
-Extension インストール時に以下の情報を設定します：
+## 注意事項
 
-#### Gmail を使用する場合
+- **AWS SES** で送信元 `info@grow-reporter.com` を使う場合、SES 側でそのメールアドレス（またはドメイン）を**検証済み**にしておいてください。
+- 環境変数は **Firebase Console → Functions → 環境変数** で設定するか、`functions/.env` に書いてデプロイすると読み込まれます（`.env` は git に含めないでください。機密は Secret Manager の利用を推奨）。
 
-- **SMTP connection URI**: 
-  ```
-  smtps://username@gmail.com:password@smtp.gmail.com:465
-  ```
-  
-  ⚠️ Gmailの場合は「アプリパスワード」を生成する必要があります：
-  1. Googleアカウント > セキュリティ
-  2. 2段階認証を有効化
-  3. 「アプリパスワード」を生成
-
-#### SendGrid を使用する場合
-
-- **SMTP connection URI**: 
-  ```
-  smtps://apikey:YOUR_SENDGRID_API_KEY@smtp.sendgrid.net:465
-  ```
-
-#### その他のSMTPサービス
-
-- **SMTP connection URI**: 
-  ```
-  smtps://username:password@smtp.example.com:465
-  ```
-
-### 3. Extension設定
-
-- **Default FROM address**: `noreply@grow-group.jp`
-- **Default REPLY-TO address**: `support@grow-group.jp`
-- **Users collection**: `users` (オプション)
-- **Templates collection**: （空欄でOK）
-- **Mail collection**: `mail` ← **重要！この名前を使用してください**
-
-### 4. Firestoreセキュリティルール
-
-`firestore.rules` に以下のルールを追加（既に含まれている場合はスキップ）：
-
-```javascript
-// メールコレクション（Firebase Extensions用）
-match /mail/{mailId} {
-  // 書き込みはCloud Functionsのみ
-  allow write: if false;
-  // 読み取りも禁止
-  allow read: if false;
-}
-```
-
-### 5. 動作確認
-
-プラン変更を実行して、メールが送信されることを確認します：
-
-1. アドミンパネルにログイン
-2. ユーザー一覧からユーザーを選択
-3. プラン変更を実行
-4. ユーザーのメールアドレスに通知メールが届くことを確認
+---
 
 ## トラブルシューティング
 
 ### メールが届かない場合
 
-1. **Extensionのログを確認**
-   ```bash
-   firebase functions:log --project=growgroupreporter
-   ```
+1. **環境変数**が正しく設定されているか確認（Functions の画面で確認可能）
+2. **AWS SES** で送信元アドレスが検証済みか確認
+3. **迷惑メール**フォルダを確認
+4. Functions のログでエラーが出ていないか確認:  
+   `firebase functions:log --project=growgroupreporter`
 
-2. **Firestoreの `mail` コレクションを確認**
-   - ドキュメントが作成されているか
-   - `delivery` フィールドに成功/失敗の情報があるか
+### 「SES SMTP not configured」が出る場合
 
-3. **SMTP設定を再確認**
-   - ユーザー名・パスワードが正しいか
-   - SMTPサーバー・ポートが正しいか
+`SES_SMTP_HOST` / `SES_SMTP_USER` / `SES_SMTP_PASSWORD` のいずれかが未設定です。上記の環境変数を設定し、Functions を再デプロイしてください。
 
-### Gmail のアプリパスワード生成
+---
 
-1. [Googleアカウント](https://myaccount.google.com/) にログイン
-2. 「セキュリティ」タブを選択
-3. 「2段階認証プロセス」を有効化
-4. 「アプリパスワード」を選択
-5. 「その他」を選択し、「GROW REPORTER」と入力
-6. 生成されたパスワードをコピー
+## （参考）Trigger Email 拡張を使う場合
 
-## 参考リンク
-
-- [Trigger Email Extension](https://extensions.dev/extensions/firebase/firestore-send-email)
-- [Firebase Extensions ドキュメント](https://firebase.google.com/docs/extensions)
-
-## 注意事項
-
-- 本番環境では、独自ドメインのメールアドレスを使用することを推奨します
-- 無料プランの場合、Extensionの実行回数に制限があります
-- メール送信に失敗しても、プラン変更自体は成功します（ログにエラーが記録されます）
-
+拡張を使う方式に戻す場合は、[Firebase Extensions「Trigger Email from Firestore」](https://extensions.dev/extensions/firebase/firestore-send-email) をインストールし、Mail collection を `mail` に設定します。  
+現在のコードは **拡張なしの直接送信** に統一されています。

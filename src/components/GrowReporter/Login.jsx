@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import logoImg from '../../assets/img/logo.svg';
 import loginIllustration from '../../assets/img/login.svg';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../config/firebase';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -11,8 +13,10 @@ export default function Login() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  const { login, loginWithGoogle, fetchUserProfile } = useAuth();
+  const { login, loginWithGoogle, loginWithMicrosoft, fetchUserProfile } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectUrl = searchParams.get('redirect') || '/dashboard';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -20,9 +24,24 @@ export default function Login() {
     setIsSubmitting(true);
 
     try {
-      await login(email, password);
-      // ログイン成功後、ダッシュボードへリダイレクト
-      navigate('/dashboard');
+      const userCredential = await login(email, password);
+      
+      // ログインログを記録（非同期で、エラーは無視）
+      try {
+        const profile = await fetchUserProfile(userCredential.user.uid);
+        const displayName = profile?.lastName && profile?.firstName 
+          ? `${profile.lastName} ${profile.firstName}` 
+          : userCredential.user.displayName || '';
+        
+        const logUserLogin = httpsCallable(functions, 'logUserLogin');
+        await logUserLogin({ displayName });
+      } catch (logError) {
+        console.error('Log login error:', logError);
+        // ログ記録エラーは無視して処理を続行
+      }
+      
+      // ログイン成功後、リダイレクト先へ遷移
+      navigate(redirectUrl);
     } catch (err) {
       console.error('Login error:', err);
       
@@ -57,12 +76,25 @@ export default function Login() {
         setTimeout(async () => {
           const profile = await fetchUserProfile(userCredential.user.uid);
           
+          // ログインログを記録（非同期で、エラーは無視）
+          try {
+            const displayName = profile?.lastName && profile?.firstName 
+              ? `${profile.lastName} ${profile.firstName}` 
+              : userCredential.user.displayName || '';
+            
+            const logUserLogin = httpsCallable(functions, 'logUserLogin');
+            await logUserLogin({ displayName });
+          } catch (logError) {
+            console.error('Log login error:', logError);
+            // ログ記録エラーは無視して処理を続行
+          }
+          
           // 必須情報が不足している場合はSSO後の情報補完画面へ
-          if (!profile?.company || !profile?.phoneNumber || !profile?.industry) {
+          if (!profile?.company || !profile?.phoneNumber) {
             navigate('/register/complete');
           } else {
-            // 情報が揃っている場合はダッシュボードへ
-            navigate('/dashboard');
+            // 情報が揃っている場合はリダイレクト先へ遷移
+            navigate(redirectUrl);
           }
         }, 500);
     } catch (err) {
@@ -75,6 +107,48 @@ export default function Login() {
         errorMessage = 'ポップアップがブロックされました。ブラウザの設定を確認してください';
       }
       
+      setError(errorMessage);
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleMicrosoftSignIn = async () => {
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const userCredential = await loginWithMicrosoft();
+
+      setTimeout(async () => {
+        const profile = await fetchUserProfile(userCredential.user.uid);
+
+        try {
+          const displayName = profile?.lastName && profile?.firstName
+            ? `${profile.lastName} ${profile.firstName}`
+            : userCredential.user.displayName || '';
+
+          const logUserLogin = httpsCallable(functions, 'logUserLogin');
+          await logUserLogin({ displayName });
+        } catch (logError) {
+          console.error('Log login error:', logError);
+        }
+
+        if (!profile?.company || !profile?.phoneNumber) {
+          navigate('/register/complete');
+        } else {
+          navigate(redirectUrl);
+        }
+      }, 500);
+    } catch (err) {
+      console.error('Microsoft sign in error:', err);
+
+      let errorMessage = 'Microsoft認証エラーが発生しました';
+      if (err.code === 'auth/popup-closed-by-user') {
+        errorMessage = '認証がキャンセルされました';
+      } else if (err.code === 'auth/popup-blocked') {
+        errorMessage = 'ポップアップがブロックされました。ブラウザの設定を確認してください';
+      }
+
       setError(errorMessage);
       setIsSubmitting(false);
     }
@@ -94,11 +168,13 @@ export default function Login() {
                 <img 
                   src={logoImg}
                   alt="GROW REPORTER" 
-                  className="h-10 w-auto"
+                  className="h-14 w-auto"
                 />
               </div>
-              <p className="mb-8 text-left text-sm text-body-color dark:text-dark-6 lg:text-base">
-                GrowReporterはGoogleアナリティクス、サーチコンソールを統合的に分析し、プロの知見を活かした有益なサイト改善までサポートする統合ツールです。
+              <p className="mb-8 text-center text-sm text-body-color dark:text-dark-6 lg:text-base">
+                グローレポーターは、アクセス解析にAIを掛け合わせ、
+                <br />
+                "次の打ち手"まで導くサイト改善ツールです。
               </p>
               
               {/* イラスト */}
@@ -167,7 +243,7 @@ export default function Login() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="メールアドレスを入力"
                       required
-                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 pr-11 text-sm text-body-color outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 pr-11 text-sm text-gray-900 outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                     />
                     <span className="absolute right-4 top-1/2 -translate-y-1/2">
                       <svg
@@ -210,7 +286,7 @@ export default function Login() {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="パスワードを入力"
                       required
-                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 pr-11 text-sm text-body-color outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 pr-11 text-sm text-gray-900 outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
                     />
                     <button
                       type="button"
@@ -271,7 +347,7 @@ export default function Login() {
                 type="button"
                 onClick={handleGoogleSignIn}
                 disabled={isSubmitting}
-                className="mb-5 flex w-full items-center justify-center gap-3 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mb-2 flex w-full items-center justify-center gap-3 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <g clipPath="url(#clip0_google)">
@@ -287,6 +363,22 @@ export default function Login() {
                   </defs>
                 </svg>
                 Googleでログイン
+              </button>
+
+              {/* Microsoftログインボタン */}
+              <button
+                type="button"
+                onClick={handleMicrosoftSignIn}
+                disabled={isSubmitting}
+                className="mb-0 flex w-full items-center justify-center gap-3 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M0 0H10V10H0V0Z" fill="#F25022"/>
+                  <path d="M11 0H21V10H11V0Z" fill="#7FBA00"/>
+                  <path d="M0 11H10V21H0V11Z" fill="#00A4EF"/>
+                  <path d="M11 11H21V21H11V11Z" fill="#FFB900"/>
+                </svg>
+                Microsoftでログイン
               </button>
             </div>
           </div>

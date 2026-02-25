@@ -1,7 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
-import { logActivity } from '../../utils/activityLogger.js';
 
 /**
  * 個別制限を設定
@@ -67,7 +66,7 @@ export const setCustomLimitsCallable = async (request) => {
       : null;
 
     // 現在の設定を取得
-    const existingLimitDoc = await db.collection('customLimits').doc(targetUserId).get();
+    const existingLimitDoc = await db.collection('users').doc(targetUserId).collection('customLimits').doc(targetUserId).get();
     const oldLimits = existingLimitDoc.exists ? existingLimitDoc.data().limits : null;
 
     // customLimits ドキュメントを作成/更新
@@ -92,7 +91,7 @@ export const setCustomLimitsCallable = async (request) => {
       customLimitData.createdAt = FieldValue.serverTimestamp();
     }
 
-    await db.collection('customLimits').doc(targetUserId).set(customLimitData, { merge: true });
+    await db.collection('users').doc(targetUserId).collection('customLimits').doc(targetUserId).set(customLimitData, { merge: true });
 
     logger.info('個別制限設定完了', { 
       adminId: uid,

@@ -1,7 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
-import { logActivity } from '../../utils/activityLogger.js';
 
 /**
  * プラン設定を更新
@@ -55,20 +54,6 @@ export const updatePlanConfigCallable = async (request) => {
 
     logger.info('プラン設定更新完了', { 
       executorId: uid,
-    });
-
-    // アクティビティログに記録
-    await logActivity(db, {
-      adminId: uid,
-      adminName: executorName,
-      action: 'plan_config_updated',
-      targetType: 'system',
-      targetId: 'plan_config',
-      details: {
-        oldConfig,
-        newConfig: config,
-        reason,
-      },
     });
 
     return {

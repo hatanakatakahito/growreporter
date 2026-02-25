@@ -194,14 +194,14 @@ async function getAIUsage() {
   try {
     // AI分析サマリー使用回数（全pageType）
     const analysisCacheSnapshot = await db
-      .collection('aiAnalysisCache')
+      .collectionGroup('aiAnalysisCache')
       .where('generatedAt', '>=', Timestamp.fromDate(firstDayOfMonth))
       .count()
       .get();
 
     // AI改善案生成回数（pageType: comprehensive_improvement）
     const improvementCacheSnapshot = await db
-      .collection('aiAnalysisCache')
+      .collectionGroup('aiAnalysisCache')
       .where('pageType', '==', 'comprehensive_improvement')
       .where('generatedAt', '>=', Timestamp.fromDate(firstDayOfMonth))
       .count()
@@ -220,4 +220,5 @@ async function getAIUsage() {
     };
   }
 }
+
 

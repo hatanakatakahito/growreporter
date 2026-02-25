@@ -8,7 +8,7 @@ import {
   sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, googleProvider, db } from '../config/firebase';
+import { auth, googleProvider, microsoftProvider, db } from '../config/firebase';
 
 const AuthContext = createContext();
 
@@ -69,11 +69,14 @@ export const AuthProvider = ({ children }) => {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Firestoreにユーザープロファイルを作成
+      // Firestoreにユーザープロファイルを作成（自身をアカウントオーナーとして登録しメンバー一覧に含まれるようにする）
+      const now = serverTimestamp();
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: user.email,
         displayName: additionalData.displayName || '',
+        lastName: additionalData.lastName || '',
+        firstName: additionalData.firstName || '',
         company: additionalData.company || '',
         phoneNumber: additionalData.phoneNumber || '',
         industry: additionalData.industry || '',
@@ -81,9 +84,19 @@ export const AuthProvider = ({ children }) => {
         plan: 'free',
         aiSummaryUsage: 0,
         aiImprovementUsage: 0,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        lastLoginAt: serverTimestamp(),
+        accountOwnerId: user.uid,
+        memberRole: 'owner',
+        memberships: { [user.uid]: { role: 'owner', joinedAt: now } },
+        notificationSettings: {
+          weeklyReportEmail: true,
+          monthlyReportEmail: true,
+          alertEmail: true,
+          emailNotifications: true,
+        },
+        joinedAt: now,
+        createdAt: now,
+        updatedAt: now,
+        lastLoginAt: now,
       });
 
       return userCredential;
@@ -121,7 +134,8 @@ export const AuthProvider = ({ children }) => {
       const userDoc = await getDoc(doc(db, 'users', user.uid));
 
       if (!userDoc.exists()) {
-        // 新規ユーザーの場合、基本情報のみ保存
+        // 新規ユーザーの場合、基本情報＋自身をアカウントオーナーとして保存（メンバー一覧に含まれるようにする）
+        const now = serverTimestamp();
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           email: user.email,
@@ -133,15 +147,97 @@ export const AuthProvider = ({ children }) => {
           plan: 'free',
           aiSummaryUsage: 0,
           aiImprovementUsage: 0,
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-          lastLoginAt: serverTimestamp(),
+          accountOwnerId: user.uid,
+          memberRole: 'owner',
+          memberships: { [user.uid]: { role: 'owner', joinedAt: now } },
+          joinedAt: now,
+          notificationSettings: {
+            weeklyReportEmail: true,
+            monthlyReportEmail: true,
+            alertEmail: true,
+            emailNotifications: true,
+          },
+          createdAt: now,
+          updatedAt: now,
+          lastLoginAt: now,
         });
+      } else {
+        // 既存ユーザー: SSO の写真・表示名を Firestore に反映
+        await setDoc(
+          doc(db, 'users', user.uid),
+          {
+            photoURL: user.photoURL || null,
+            displayName: user.displayName || userDoc.data()?.displayName || '',
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
       }
 
       return userCredential;
     } catch (error) {
       console.error('Error logging in with Google:', error);
+      throw error;
+    }
+  };
+
+  // Microsoftでログイン
+  const loginWithMicrosoft = async () => {
+    if (!auth || !microsoftProvider) {
+      throw new Error('Firebase is not configured. Please set up your .env file.');
+    }
+
+    try {
+      const userCredential = await signInWithPopup(auth, microsoftProvider);
+      const user = userCredential.user;
+
+      // Firestoreでユーザープロファイルを確認
+      const userDoc = await getDoc(doc(db, 'users', user.uid));
+
+      if (!userDoc.exists()) {
+        // 新規ユーザーの場合、基本情報＋自身をアカウントオーナーとして保存（メンバー一覧に含まれるようにする）
+        const now = serverTimestamp();
+        await setDoc(doc(db, 'users', user.uid), {
+          uid: user.uid,
+          email: user.email,
+          displayName: user.displayName || '',
+          photoURL: user.photoURL || '',
+          company: '',
+          phoneNumber: '',
+          industry: '',
+          plan: 'free',
+          aiSummaryUsage: 0,
+          aiImprovementUsage: 0,
+          accountOwnerId: user.uid,
+          memberRole: 'owner',
+          memberships: { [user.uid]: { role: 'owner', joinedAt: now } },
+          joinedAt: now,
+          notificationSettings: {
+            weeklyReportEmail: true,
+            monthlyReportEmail: true,
+            alertEmail: true,
+            emailNotifications: true,
+          },
+          createdAt: now,
+          updatedAt: now,
+          lastLoginAt: now,
+        });
+      } else {
+        // 既存ユーザー: SSO の写真・表示名を Firestore に反映
+        await setDoc(
+          doc(db, 'users', user.uid),
+          {
+            photoURL: user.photoURL || null,
+            displayName: user.displayName || userDoc.data()?.displayName || '',
+            updatedAt: serverTimestamp(),
+          },
+          { merge: true }
+        );
+      }
+
+      return userCredential;
+    } catch (error) {
+      console.error('Error logging in with Microsoft:', error);
       throw error;
     }
   };
@@ -227,6 +323,7 @@ export const AuthProvider = ({ children }) => {
     signup,
     login,
     loginWithGoogle,
+    loginWithMicrosoft,
     logout,
     resetPassword,
     updateUserProfile,

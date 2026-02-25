@@ -1,8 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
-import { INDUSTRIES } from '../../constants/industries';
 import logoImg from '../../assets/img/logo.svg';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { functions } from '../../config/firebase';
+
+// イニシャル取得（表示名 or メールの先頭1〜2文字）
+function getInitials(displayName, email) {
+  if (displayName && displayName.trim()) {
+    const parts = displayName.trim().split(/\s+/);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase().slice(0, 2);
+    return displayName.trim().slice(0, 2).toUpperCase();
+  }
+  if (email) return email.slice(0, 2).toUpperCase();
+  return '?';
+}
 
 export default function CompleteProfile() {
   const [formData, setFormData] = useState({
@@ -10,17 +22,21 @@ export default function CompleteProfile() {
     lastName: '',
     firstName: '',
     phoneNumber: '',
-    industry: '',
   });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photoLoadError, setPhotoLoadError] = useState(false);
   
   const { currentUser, userProfile, updateUserProfile } = useAuth();
   const navigate = useNavigate();
 
+  // SSO写真URL（Auth を優先、なければ Firestore の photoURL）
+  const photoURL = currentUser?.photoURL || userProfile?.photoURL || '';
+  const showPhoto = photoURL && !photoLoadError;
+
   useEffect(() => {
     // 既に情報が入力済みの場合はサイト登録へ
-    if (userProfile?.company && userProfile?.phoneNumber && userProfile?.industry) {
+    if (userProfile?.company && userProfile?.phoneNumber) {
       navigate('/sites/new');
     }
 
@@ -63,8 +79,8 @@ export default function CompleteProfile() {
     setIsSubmitting(true);
 
     // バリデーション
-    if (!formData.company || !formData.lastName || !formData.firstName || !formData.phoneNumber || !formData.industry) {
-      setError('すべての項目を入力してください');
+    if (!formData.company || !formData.lastName || !formData.firstName || !formData.phoneNumber) {
+      setError('必須項目を入力してください');
       setIsSubmitting(false);
       return;
     }
@@ -75,8 +91,19 @@ export default function CompleteProfile() {
         lastName: formData.lastName,
         firstName: formData.firstName,
         phoneNumber: formData.phoneNumber,
-        industry: formData.industry,
       });
+      
+      // ユーザー登録ログを記録（非同期で、エラーは無視）
+      try {
+        const logUserRegistration = httpsCallable(functions, 'logUserRegistration');
+        await logUserRegistration({
+          displayName: `${formData.lastName} ${formData.firstName}`,
+          plan: userProfile?.plan || 'free',
+        });
+      } catch (logError) {
+        console.error('Log registration error:', logError);
+        // ログ記録エラーは無視して処理を続行
+      }
       
       // 初回登録完了後はサイト登録画面へ
       navigate('/sites/new');
@@ -93,8 +120,8 @@ export default function CompleteProfile() {
       <div className="container mx-auto px-4">
         <div className="mx-auto max-w-[600px] overflow-hidden rounded-2xl bg-white shadow-lg dark:bg-dark-2">
           
-          {/* ヘッダー */}
-          <div className="bg-primary px-8 py-6 text-center">
+          {/* ヘッダー（ブルー→紫グラデーション） */}
+          <div className="bg-gradient-primary px-8 py-6 text-center">
             <div className="mb-3 flex items-center justify-center">
               <img 
                 src={logoImg} 
@@ -112,15 +139,24 @@ export default function CompleteProfile() {
 
           {/* フォームエリア */}
           <div className="px-8 py-8">
-            {/* ユーザー情報表示 */}
+            {/* ユーザー情報表示（SSO写真 or イニシャル） */}
             <div className="mb-6 rounded-lg bg-gray-100 p-4 dark:bg-dark-3">
               <div className="flex items-center gap-3">
-                {currentUser?.photoURL && (
-                  <img 
-                    src={currentUser.photoURL} 
-                    alt="Profile" 
-                    className="h-12 w-12 rounded-full"
+                {showPhoto ? (
+                  <img
+                    src={photoURL}
+                    alt="Profile"
+                    className="h-12 w-12 flex-shrink-0 rounded-full object-cover"
+                    referrerPolicy="no-referrer"
+                    onError={() => setPhotoLoadError(true)}
                   />
+                ) : (
+                  <div
+                    className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-white"
+                    aria-hidden
+                  >
+                    {getInitials(currentUser?.displayName, currentUser?.email)}
+                  </div>
                 )}
                 <div>
                   <p className="font-medium text-dark dark:text-white">
@@ -152,7 +188,7 @@ export default function CompleteProfile() {
               <div className="mb-5">
                 <label htmlFor="company" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
                   組織名
-                  <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
@@ -170,7 +206,7 @@ export default function CompleteProfile() {
                 <div>
                   <label htmlFor="lastName" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
                     姓
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -185,7 +221,7 @@ export default function CompleteProfile() {
                 <div>
                   <label htmlFor="firstName" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
                     名
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
@@ -203,44 +239,21 @@ export default function CompleteProfile() {
               <div className="mb-5">
                 <label htmlFor="phoneNumber" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
                   電話番号
-                  <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
                   id="phoneNumber"
                   value={formData.phoneNumber}
-                  onChange={handleChange}
-                  placeholder="電話番号を入力"
+                  onChange={(e) => {
+                    const cleaned = e.target.value.replace(/[-\s()]/g, '');
+                    setFormData(prev => ({ ...prev, phoneNumber: cleaned }));
+                  }}
+                  placeholder="09012345678（ハイフンなし）"
                   className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
                   required
                 />
-              </div>
-
-              {/* 業界・業種 */}
-              <div className="mb-6">
-                <label htmlFor="industry" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-                  業界・業種
-                  <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-                </label>
-                <div className="relative">
-                  <select
-                    id="industry"
-                    value={formData.industry}
-                    onChange={handleChange}
-                    className="w-full appearance-none rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
-                    required
-                  >
-                    <option value="" disabled>選択してください</option>
-                    {INDUSTRIES.map((industry) => (
-                      <option key={industry} value={industry}>{industry}</option>
-                    ))}
-                  </select>
-                  <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M5 7.5L10 12.5L15 7.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                    </svg>
-                  </span>
-                </div>
+                <p className="mt-1 text-xs text-body-color">※ハイフンは自動で削除されます</p>
               </div>
 
               {/* 送信ボタン */}

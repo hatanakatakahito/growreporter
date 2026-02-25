@@ -29,8 +29,7 @@ export default function Reports() {
       if (!selectedSiteId) return [];
       
       const q = query(
-        collection(db, 'improvements'),
-        where('siteId', '==', selectedSiteId),
+        collection(db, 'sites', selectedSiteId, 'improvements'),
         where('status', '==', 'completed')
       );
       
@@ -85,7 +84,7 @@ export default function Reports() {
   // 削除mutation
   const deleteMutation = useMutation({
     mutationFn: async (id) => {
-      await deleteDoc(doc(db, 'improvements', id));
+      await deleteDoc(doc(db, 'sites', selectedSiteId, 'improvements', id));
     },
     onSuccess: () => {
       // 「評価する」画面と「改善する」画面の両方のキャッシュを無効化
@@ -115,7 +114,7 @@ export default function Reports() {
         />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         {/* コンテンツ */}
-        <div className="mx-auto max-w-7xl px-6 py-10">
+        <div className="mx-auto max-w-content px-6 py-10">
           <div className="mb-6">
             <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">
               評価する

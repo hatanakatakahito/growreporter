@@ -1,26 +1,29 @@
 import { Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePlan } from '../../hooks/usePlan';
-import AIAnalysisModal from './AIAnalysisModal';
-import PlanLimitModal from './PlanLimitModal';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * AI分析フローティングボタン
  * 全ページ統一の右下固定ボタン
+ * クリックでAI分析タブへスクロール
  * @param {string} pageType - ページタイプ
- * @param {object} rawData - フロント画面で取得したCloud Functionの生データ（推奨）
- * @param {object} metrics - AI分析用メトリクス（旧方式・後方互換性用）
- * @param {object} period - 分析期間 { startDate, endDate }
+ * @param {function} onScrollToAI - AI分析タブへスクロールする関数
  */
-export default function AIFloatingButton({ pageType, rawData, metrics, period }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+export default function AIFloatingButton({ pageType, onScrollToAI }) {
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const { plan, getRemainingByType } = usePlan();
+  const { userProfile } = useAuth();
 
   // pageTypeに応じて適切な残り回数を取得
   const type = pageType === 'comprehensive_improvement' ? 'improvement' : 'summary';
   const remaining = getRemainingByType(type);
+  
+  // 閲覧者の場合は表示しない
+  const memberRole = userProfile?.memberRole || 'owner';
+  if (memberRole === 'viewer') {
+    return null;
+  }
 
   // planがロード中の場合は何も表示しない
   if (!plan) {
@@ -38,72 +41,46 @@ export default function AIFloatingButton({ pageType, rawData, metrics, period })
   }, []);
 
   const handleClick = () => {
-    setIsModalOpen(true);
-  };
-
-  const handleLimitExceeded = () => {
-    setIsModalOpen(false);
-    setIsLimitModalOpen(true);
+    if (onScrollToAI) {
+      onScrollToAI();
+    }
   };
 
   return (
-    <>
-      {/* フローティングボタン（既存デザイン維持） */}
-      <div className="fixed bottom-6 right-6 z-30">
-        <style>
-          {`
-            @keyframes pulse-scale {
-              0%, 100% {
-                transform: scale(1);
-              }
-              50% {
-                transform: scale(1.1);
-              }
+    <div className="fixed bottom-6 right-6 z-30">
+      <style>
+        {`
+          @keyframes pulse-scale {
+            0%, 100% {
+              transform: scale(1);
             }
-            .animate {
-              animation: pulse-scale 0.6s ease-in-out;
+            50% {
+              transform: scale(1.1);
             }
-          `}
-        </style>
-        <button
-          onClick={handleClick}
-          className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50 ${shouldAnimate ? 'animate' : ''}`}
-          aria-label="AI分析を見る"
-        >
-          <div className="flex flex-col items-center">
-            <Sparkles className="h-7 w-7" aria-hidden="true" />
-            <span className="mt-1 text-[11px] font-medium">AI分析</span>
-          </div>
+          }
+          .animate {
+            animation: pulse-scale 0.6s ease-in-out;
+          }
+        `}
+      </style>
+      <button
+        onClick={handleClick}
+        className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl ${shouldAnimate ? 'animate' : ''}`}
+        aria-label="AI分析を見る"
+      >
+        <div className="flex flex-col items-center">
+          <Sparkles className="h-7 w-7" aria-hidden="true" />
+          <span className="mt-1 text-[11px] font-medium">AI分析</span>
+        </div>
 
-          {/* 残り回数バッジ */}
-          {remaining !== null && (
-            <span className={`absolute -top-2 -right-2 flex h-6 ${remaining === -1 ? 'w-7' : 'w-6'} items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-md`}>
-              {remaining === -1 ? '∞' : remaining}
-            </span>
-          )}
-        </button>
-      </div>
-
-      {/* AI分析モーダル */}
-      {isModalOpen && (
-        <AIAnalysisModal
-          pageType={pageType}
-          rawData={rawData}
-          metrics={metrics}
-          period={period}
-          onClose={() => setIsModalOpen(false)}
-          onLimitExceeded={handleLimitExceeded}
-        />
-      )}
-
-      {/* 制限超過モーダル */}
-      {isLimitModalOpen && (
-        <PlanLimitModal 
-          onClose={() => setIsLimitModalOpen(false)}
-          type={pageType === 'comprehensive_improvement' ? 'improvement' : 'summary'}
-        />
-      )}
-    </>
+        {/* 残り回数バッジ */}
+        {remaining !== null && (
+          <span className={`absolute -top-2 -right-2 flex h-6 ${remaining === -1 ? 'w-7' : 'w-6'} items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-md`}>
+            {remaining === -1 ? '∞' : remaining}
+          </span>
+        )}
+      </button>
+    </div>
   );
 }
 

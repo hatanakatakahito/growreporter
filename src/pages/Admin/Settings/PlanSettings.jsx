@@ -112,7 +112,7 @@ export default function PlanSettings() {
       {!canEdit && (
         <div className="mb-4 flex items-center gap-2 rounded-lg bg-orange-50 p-4 text-sm text-orange-600 dark:bg-orange-900/20">
           <AlertCircle className="h-5 w-5" />
-          <span>プラン設定の変更は「管理者」ロールのみ可能です。</span>
+          <span>プラン設定の変更は「管理者」権限のみ可能です。</span>
         </div>
       )}
 

@@ -2,19 +2,28 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { google } from 'googleapis';
 
 /**
+ * トークンドキュメントを直接パスで取得（users/{userId}/oauth_tokens/{tokenId}）
+ * collection group は documentId() に単純IDを渡すと「奇数セグメント」エラーになるため使用しない
+ */
+async function getTokenDoc(db, userId, tokenId) {
+  const ref = db.collection('users').doc(userId).collection('oauth_tokens').doc(tokenId);
+  const snap = await ref.get();
+  return snap.exists ? snap : null;
+}
+
+/**
  * OAuthトークンを取得し、期限切れなら自動更新
+ * @param {string} userId - トークン所有者のユーザーID（users/{userId}/oauth_tokens の userId）
  * @param {string} tokenId - トークンドキュメントID
  * @returns {Promise<{oauth2Client: OAuth2Client, tokenData: object}>}
  */
-export async function getAndRefreshToken(tokenId) {
+export async function getAndRefreshToken(userId, tokenId) {
   const db = getFirestore();
-  const tokenDoc = await db.collection('oauth_tokens').doc(tokenId).get();
-  
-  if (!tokenDoc.exists) {
+  const tokenDocSnap = await getTokenDoc(db, userId, tokenId);
+  if (!tokenDocSnap) {
     throw new Error('OAuth token not found');
   }
-
-  const tokenData = tokenDoc.data();
+  const tokenData = tokenDocSnap.data();
   
   // OAuth2クライアントの作成
   const oauth2Client = new google.auth.OAuth2(
@@ -53,7 +62,8 @@ export async function getAndRefreshToken(tokenId) {
         console.log(`[TokenManager] New refresh token received and will be updated (tokenId: ${tokenId})`);
       }
 
-      await db.collection('oauth_tokens').doc(tokenId).update(updateData);
+      const tokenRef = db.collection('users').doc(userId).collection('oauth_tokens').doc(tokenId);
+      await tokenRef.update(updateData);
 
       oauth2Client.setCredentials(credentials);
       
@@ -76,19 +86,18 @@ export async function getAndRefreshToken(tokenId) {
 
 /**
  * トークンの有効性をチェック
+ * @param {string} userId - トークン所有者のユーザーID
  * @param {string} tokenId - トークンドキュメントID
  * @returns {Promise<boolean>}
  */
-export async function isTokenValid(tokenId) {
+export async function isTokenValid(userId, tokenId) {
   try {
     const db = getFirestore();
-    const tokenDoc = await db.collection('oauth_tokens').doc(tokenId).get();
-    
-    if (!tokenDoc.exists) {
+    const tokenDocSnap = await getTokenDoc(db, userId, tokenId);
+    if (!tokenDocSnap) {
       return false;
     }
-
-    const tokenData = tokenDoc.data();
+    const tokenData = tokenDocSnap.data();
     const expiresAt = tokenData.expires_at?.toDate ? tokenData.expires_at.toDate() : new Date(tokenData.expires_at);
     const now = new Date();
 

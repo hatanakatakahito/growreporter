@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -13,6 +13,11 @@ import { PAGE_TYPES } from '../../constants/plans';
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
+import PageNoteSection from '../../components/Analysis/PageNoteSection';
+import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
+import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
+import PlanLimitModal from '../../components/common/PlanLimitModal';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   ResponsiveContainer,
   BarChart,
@@ -26,18 +31,44 @@ import {
 
 /**
  * 曜日別分析画面
- * 曜日ごとのセッションとコンバージョンの推移を表示
+ * 曜日ごとの訪問者とコンバージョンの推移を表示
  */
 export default function Week() {
   const { selectedSite, selectedSiteId, selectSite, sites, dateRange, updateDateRange } = useSite();
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [hiddenBars, setHiddenBars] = useState({});
   const [activeTab, setActiveTab] = useState('chart');
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
+
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
     setPageTitle('曜日別分析');
   }, []);
+
+  // 初回のみコンバージョン未設定アラートを表示
+  useEffect(() => {
+    const conversionEvents = selectedSite?.conversionEvents || [];
+    if (conversionEvents.length === 0) {
+      const hasSeenAlert = sessionStorage.getItem('conversionAlertSeen');
+      if (!hasSeenAlert) {
+        setIsConversionAlertOpen(true);
+        sessionStorage.setItem('conversionAlertSeen', 'true');
+      }
+    }
+  }, [selectedSite]);
 
   // URLパラメータのsiteIdがあれば選択
   useEffect(() => {
@@ -127,40 +158,13 @@ export default function Week() {
 
       {/* コンテンツ */}
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
-        <div className="mx-auto max-w-7xl px-6 py-10">
+        <div className="mx-auto max-w-content px-6 py-10">
           <div className="mb-6">
             <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">分析する - 曜日別分析</h2>
             <p className="text-body-color">
-              曜日ごとのセッションとコンバージョンの推移を確認できます
+              曜日ごとの訪問者とコンバージョンの推移を確認できます
             </p>
           </div>
-
-          {/* コンバージョン未設定の警告 */}
-          {(!selectedSite?.conversionEvents || selectedSite.conversionEvents.length === 0) && (
-            <div className="mb-8 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 shadow-sm dark:bg-red-900/20 dark:border-red-600">
-              <div className="flex items-start gap-3">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-red-600 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
-                    コンバージョン定義が未設定です
-                  </h3>
-                  <p className="mt-1 text-sm text-red-700 dark:text-red-400">
-                    正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
-                  </p>
-                  <Link
-                    to={`/sites/${selectedSiteId}/edit?step=4`}
-                    className="mt-3 inline-block rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-                  >
-                    サイト設定（STEP4）でコンバージョンを設定する
-                  </Link>
-                </div>
-              </div>
-            </div>
-          )}
 
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
@@ -205,7 +209,7 @@ export default function Week() {
                       <XAxis dataKey="dayName" />
                       <YAxis
                         yAxisId="left"
-                        label={{ value: 'セッション', angle: -90, position: 'insideLeft' }}
+                        label={{ value: '訪問者', angle: -90, position: 'insideLeft' }}
                       />
                       <YAxis
                         yAxisId="right"
@@ -220,7 +224,7 @@ export default function Week() {
                       <Bar
                         yAxisId="left"
                         dataKey="sessions"
-                        name="セッション"
+                        name="訪問者"
                         fill="#3b82f6"
                         hide={hiddenBars.sessions}
                       />
@@ -244,7 +248,7 @@ export default function Week() {
                     },
                     {
                       key: 'sessions',
-                      label: 'セッション',
+                      label: '訪問者',
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
@@ -265,18 +269,118 @@ export default function Week() {
               )}
             </>
           )}
+
+        {/* メモ & AI分析タブ */}
+        {selectedSiteId && currentUser && (
+          <div className="mt-6">
+            <TabbedNoteAndAI
+              pageType="analysis/week"
+              noteContent={
+                <PageNoteSection
+                  userId={currentUser.uid}
+                  siteId={selectedSiteId}
+                  pageType="analysis/week"
+                  dateRange={dateRange}
+                />
+              }
+              aiContent={
+                !isLoading && weekData ? (
+                  <AIAnalysisSection
+                    pageType={PAGE_TYPES.WEEK}
+                    rawData={weekData}
+                    period={{
+                      startDate: dateRange?.from || new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                      endDate: dateRange?.to || new Date(),
+                    }}
+                    onLimitExceeded={() => setIsLimitModalOpen(true)}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    データを読み込み中...
+                  </div>
+                )
+              }
+            />
+          </div>
+        )}
         </div>
 
         {/* AI分析フローティングボタン */}
         {selectedSiteId && !isLoading && weekData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.WEEK}
-            rawData={weekData}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
+            onScrollToAI={scrollToAIAnalysis}
           />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal 
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
+          />
+        )}
+
+        {/* コンバージョン未設定アラートモーダル */}
+        {isConversionAlertOpen && (
+          <div 
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setIsConversionAlertOpen(false)}
+          >
+            <div 
+              className="w-full max-w-md rounded-lg border border-stroke bg-white shadow-xl dark:border-dark-3 dark:bg-dark-2"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* ヘッダー */}
+              <div className="flex items-center justify-between border-b border-stroke p-4 dark:border-dark-3">
+                <h3 className="text-lg font-semibold text-dark dark:text-white">
+                  コンバージョン定義が未設定です
+                </h3>
+                <button
+                  onClick={() => setIsConversionAlertOpen(false)}
+                  className="rounded-lg p-1 text-body-color transition hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
+                >
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* コンテンツ */}
+              <div className="p-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                    <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-body-color">
+                      正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* フッター */}
+              <div className="border-t border-stroke p-4 dark:border-dark-3">
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setIsConversionAlertOpen(false)}
+                    className="flex-1 rounded-md border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                  >
+                    閉じる
+                  </button>
+                  <button
+                    onClick={() => navigate(`/sites/${selectedSiteId}/edit?step=4`)}
+                    className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
+                  >
+                    設定する
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

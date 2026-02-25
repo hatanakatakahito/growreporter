@@ -2,7 +2,6 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { logger } from 'firebase-functions/v2';
-import { logActivity } from '../../utils/activityLogger.js';
 
 /**
  * 管理者を追加
@@ -90,21 +89,6 @@ export const addAdminCallable = async (request) => {
       newAdminId: targetUser.uid,
       email,
       role,
-    });
-
-    // アクティビティログに記録
-    await logActivity(db, {
-      adminId: uid,
-      adminName: executorName,
-      action: 'admin_added',
-      targetType: 'admin',
-      targetId: targetUser.uid,
-      details: {
-        targetName,
-        email,
-        role,
-        reason,
-      },
     });
 
     return {

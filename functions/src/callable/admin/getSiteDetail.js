@@ -44,23 +44,24 @@ export const getSiteDetailCallable = async (request) => {
     }
 
     const siteData = siteDoc.data();
+    logger.info('getSiteDetail siteData keys', { keys: Object.keys(siteData), industry: siteData.industry, siteType: siteData.siteType, sitePurpose: siteData.sitePurpose });
 
-    // ユーザー情報を取得
+    // ユーザー情報を取得（業種 = users.industry）
     let userData = null;
     if (siteData.userId) {
       const userDoc = await db.collection('users').doc(siteData.userId).get();
       if (userDoc.exists) {
         const user = userDoc.data();
-        // ユーザー名を lastName + firstName で構成
-        const userName = (user.lastName && user.firstName) 
-          ? `${user.lastName} ${user.firstName}` 
+        logger.info('getSiteDetail user keys', { keys: Object.keys(user), industry: user.industry });
+        const userName = (user.lastName && user.firstName)
+          ? `${user.lastName} ${user.firstName}`
           : (user.displayName || '');
-        
         userData = {
           uid: userDoc.id,
           displayName: userName,
           email: user.email || '',
           plan: user.plan || 'free',
+          industry: user.industry ?? user.Industry ?? '', // 業種: users の industry
         };
       }
     }
@@ -71,11 +72,13 @@ export const getSiteDetailCallable = async (request) => {
     
     const aiUsage = await getAISiteUsage(db, siteId, firstDayOfMonth);
 
-    // データ収集状況を取得（過去30日間）
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    
-    const dataStatus = await getDataCollectionStatus(db, siteId, thirtyDaysAgo);
+    // サイトタイプ: Firestore は配列 ["corporate"] で保存されているため、表示用に文字列化
+    const siteTypeDisplay = Array.isArray(siteData.siteType) && siteData.siteType.length > 0
+      ? siteData.siteType.join(', ')
+      : (siteData.siteType || '');
+
+    const industryArr = Array.isArray(siteData.industry) ? siteData.industry : (siteData.industry ? [siteData.industry] : []);
+    const sitePurposeArr = siteData.sitePurpose ?? [];
 
     const siteDetail = {
       siteId: siteDoc.id,
@@ -85,15 +88,14 @@ export const getSiteDetailCallable = async (request) => {
       user: userData,
       ga4PropertyId: siteData.ga4PropertyId || '',
       gscSiteUrl: siteData.gscSiteUrl || '',
-      industry: siteData.industry || '',
-      siteType: siteData.siteType || '',
+      industry: industryArr,
+      siteType: siteTypeDisplay,
+      sitePurpose: sitePurposeArr,
       conversionEvents: siteData.conversionEvents || [],
       createdAt: siteData.createdAt?.toDate?.().toISOString() || null,
       updatedAt: siteData.updatedAt?.toDate?.().toISOString() || null,
       // AI使用状況
       aiUsage,
-      // データ収集状況
-      dataStatus,
       // ステータス
       hasGA4: !!siteData.ga4PropertyId,
       hasGSC: !!siteData.gscSiteUrl,
@@ -103,6 +105,8 @@ export const getSiteDetailCallable = async (request) => {
     logger.info('サイト詳細取得完了', { 
       adminId: uid,
       siteId,
+      returnedIndustry: siteDetail.industry?.length ? siteDetail.industry : '(none)',
+      returnedSitePurpose: siteDetail.sitePurpose?.length ? siteDetail.sitePurpose : '(none)',
     });
 
     return {
@@ -131,8 +135,9 @@ export const getSiteDetailCallable = async (request) => {
 async function getAISiteUsage(db, siteId, startDate) {
   try {
     const aiCacheSnapshot = await db
+      .collection('sites')
+      .doc(siteId)
       .collection('aiAnalysisCache')
-      .where('siteId', '==', siteId)
       .where('generatedAt', '>=', Timestamp.fromDate(startDate))
       .get();
 
@@ -159,45 +164,6 @@ async function getAISiteUsage(db, siteId, startDate) {
       analysisCount: 0,
       improvementCount: 0,
       totalCount: 0,
-    };
-  }
-}
-
-/**
- * データ収集状況を取得
- */
-async function getDataCollectionStatus(db, siteId, startDate) {
-  try {
-    // GA4データの収集状況
-    // Note: 実際のデータ取得APIの呼び出し履歴をログから取得するのは複雑なため、
-    // ここでは簡易的にAI分析キャッシュの存在で判定
-    const recentDataSnapshot = await db
-      .collection('aiAnalysisCache')
-      .where('siteId', '==', siteId)
-      .where('generatedAt', '>=', Timestamp.fromDate(startDate))
-      .limit(1)
-      .get();
-
-    const hasRecentData = !recentDataSnapshot.empty;
-
-    // 最新データの日付を取得
-    let latestDataDate = null;
-    if (hasRecentData) {
-      const latestDoc = recentDataSnapshot.docs[0];
-      latestDataDate = latestDoc.data().generatedAt?.toDate?.().toISOString() || null;
-    }
-
-    return {
-      hasRecentData,
-      latestDataDate,
-      status: hasRecentData ? 'active' : 'inactive',
-    };
-  } catch (error) {
-    logger.error('データ収集状況取得エラー', { error: error.message, siteId });
-    return {
-      hasRecentData: false,
-      latestDataDate: null,
-      status: 'unknown',
     };
   }
 }

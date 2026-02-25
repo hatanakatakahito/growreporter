@@ -1,4 +1,4 @@
-import { getFirestore } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { appendOrUpdateRows, createRowData } from '../utils/sheetsManager.js';
 import { fetchGA4MonthlyDataCallable } from '../callable/fetchGA4MonthlyData.js';
@@ -80,8 +80,9 @@ export async function onSiteCreatedTrigger(event) {
           {
             siteName: siteData.siteName,
             siteUrl: siteData.siteUrl,
-            siteType: siteData.siteType,
-            businessType: siteData.businessType,
+            industry: siteData.industry ?? [],
+            siteType: siteData.siteType ?? [],
+            sitePurpose: siteData.sitePurpose ?? [],
           },
           {
             yearMonth,
@@ -114,18 +115,57 @@ export async function onSiteCreatedTrigger(event) {
       }
     }
 
-    // データをスプレッドシートに書き込み
+    // データをスプレッドシートに書き込み（失敗してもスクレイピングは実行する）
     if (rowsToExport.length > 0) {
-      logger.info(`[onSiteCreated] ${rowsToExport.length}件のデータをスプレッドシートに書き込み開始`);
-      
-      const result = await appendOrUpdateRows(rowsToExport);
-      
-      logger.info('[onSiteCreated] スプレッドシートへの書き込み完了:', {
-        inserted: result.inserted,
-        updated: result.updated,
-      });
+      try {
+        logger.info(`[onSiteCreated] ${rowsToExport.length}件のデータをスプレッドシートに書き込み開始`);
+        const result = await appendOrUpdateRows(rowsToExport);
+        logger.info('[onSiteCreated] スプレッドシートへの書き込み完了:', {
+          inserted: result.inserted,
+          updated: result.updated,
+        });
+      } catch (sheetsError) {
+        logger.error('[onSiteCreated] スプレッドシート書き込みエラー（スクレイピングは実行します）', {
+          siteId,
+          error: sheetsError.message,
+        });
+        await db.collection('error_logs').add({
+          type: 'sheets_export_error',
+          function: 'onSiteCreated',
+          siteId,
+          error: sheetsError.message,
+          stack: sheetsError.stack,
+          timestamp: new Date(),
+        });
+      }
     } else {
       logger.warn('[onSiteCreated] エクスポートするデータがありません');
+    }
+
+    // 上位100ページスクレイピングをジョブキューに追加（手動「スクレイピング開始」と同じ経路で実行され、pageScrapingMeta が確実に書き込まれる）
+    try {
+      await db.collection('scrapingJobs').add({
+        siteId,
+        requestedBy: siteData.userId,
+        forceRescrape: true,
+        status: 'pending',
+        requestedAt: FieldValue.serverTimestamp(),
+        source: 'site_created',
+      });
+      logger.info('[onSiteCreated] スクレイピングジョブをキューに追加しました（バックグラウンドで実行されます）', { siteId });
+    } catch (scrapingError) {
+      logger.error('[onSiteCreated] スクレイピングジョブ追加エラー（サイト登録は成功）', {
+        siteId,
+        error: scrapingError.message,
+      });
+      await db.collection('error_logs').add({
+        type: 'scraping_on_site_created_error',
+        function: 'onSiteCreated',
+        siteId,
+        error: scrapingError.message,
+        stack: scrapingError.stack,
+        timestamp: new Date(),
+      });
     }
 
     return { success: true, rowsExported: rowsToExport.length };

@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
-import { db } from '../../../config/firebase';
+import { db, functions } from '../../../config/firebase';
 import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import logoImg from '../../../assets/img/logo.svg';
 import StepIndicator from './StepIndicator';
@@ -17,7 +18,7 @@ export default function SiteRegistration({ mode = 'new' }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { siteId: siteIdFromParams } = useParams();
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
 
   const stepParam = parseInt(searchParams.get('step')) || 1;
   // 編集モードの場合はURLパラメータから、新規作成の場合はクエリパラメータから取得
@@ -25,15 +26,19 @@ export default function SiteRegistration({ mode = 'new' }) {
 
   const [currentStep, setCurrentStep] = useState(stepParam);
   const [siteId, setSiteId] = useState(siteIdParam);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(mode === 'edit' && !!siteIdParam);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
+  const [isAdminEditingOtherSite, setIsAdminEditingOtherSite] = useState(false);
+  /** Step1の最新値（保存タイミングのずれで industry/siteType/sitePurpose が抜けないようにする） */
+  const step1LatestRef = useRef({});
 
   const [siteData, setSiteData] = useState({
     siteName: '',
     siteUrl: '',
+    industry: [],
     siteType: [],
-    businessType: '',
+    sitePurpose: [],
     metaTitle: '',
     metaDescription: '',
     pcScreenshotUrl: '',
@@ -85,11 +90,40 @@ export default function SiteRegistration({ mode = 'new' }) {
             const data = siteDoc.data();
             console.log('[SiteRegistration] サイトデータ取得成功:', data);
             
+            // 権限チェック
+            const isDirectOwner = data.userId === currentUser.uid;
+            
+            if (!isDirectOwner) {
+              // 1. 同じアカウントのメンバーかチェック
+              const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+              const userData = userDoc.data();
+              const memberships = userData?.memberships || {};
+              const isMember = memberships[data.userId] !== undefined;
+              
+              // 2. システム管理者かチェック
+              const adminDoc = await getDoc(doc(db, 'adminUsers', currentUser.uid));
+              const isAdmin = adminDoc.exists() && ['admin', 'editor'].includes(adminDoc.data().role);
+              
+              if (!isMember && !isAdmin) {
+                setError('このサイトを編集する権限がありません');
+                setIsLoading(false);
+                return;
+              }
+              
+              if (isAdmin) {
+                setIsAdminEditingOtherSite(true);
+                console.log('[SiteRegistration] 管理者による他ユーザーサイトの代理設定');
+              } else {
+                console.log('[SiteRegistration] メンバーによるサイト編集');
+              }
+            }
+            
             setSiteData({
               siteName: data.siteName || '',
               siteUrl: data.siteUrl || '',
+              industry: Array.isArray(data.industry) ? data.industry : (data.industry ? [data.industry] : []),
               siteType: Array.isArray(data.siteType) ? data.siteType : (data.siteType ? [data.siteType] : []),
-              businessType: data.businessType || '',
+              sitePurpose: Array.isArray(data.sitePurpose) ? data.sitePurpose : (data.sitePurpose ? [data.sitePurpose] : []),
               metaTitle: data.metaTitle || '',
               metaDescription: data.metaDescription || '',
               pcScreenshotUrl: data.pcScreenshotUrl || '',
@@ -130,7 +164,7 @@ export default function SiteRegistration({ mode = 'new' }) {
     };
 
     loadSiteData();
-  }, [mode, siteIdParam]);
+  }, [mode, siteIdParam, currentUser]);
 
   // ステップクリック
   const handleStepClick = (stepNumber) => {
@@ -145,11 +179,15 @@ export default function SiteRegistration({ mode = 'new' }) {
   const canProceed = React.useMemo(() => {
     switch (currentStep) {
       case 1:
+        // 「取得中...」の状態では進めない
+        const isMetadataLoading = siteData.metaTitle === '取得中...' || siteData.metaDescription === '取得中...';
         return !!(
           siteData.siteName &&
           siteData.siteUrl &&
+          Array.isArray(siteData.industry) && siteData.industry.length > 0 &&
           Array.isArray(siteData.siteType) && siteData.siteType.length > 0 &&
-          siteData.businessType
+          Array.isArray(siteData.sitePurpose) && siteData.sitePurpose.length > 0 &&
+          !isMetadataLoading
         );
       case 2:
         return !!siteData.ga4PropertyId;
@@ -161,7 +199,7 @@ export default function SiteRegistration({ mode = 'new' }) {
       default:
         return true;
     }
-  }, [currentStep, siteData.siteName, siteData.siteUrl, siteData.siteType, siteData.businessType, siteData.ga4PropertyId]);
+  }, [currentStep, siteData.siteName, siteData.siteUrl, siteData.industry, siteData.siteType, siteData.sitePurpose, siteData.metaTitle, siteData.metaDescription, siteData.ga4PropertyId]);
 
   // 保存処理
   const saveSiteData = async (nextStep) => {
@@ -173,9 +211,17 @@ export default function SiteRegistration({ mode = 'new' }) {
       
       const dataToSave = {
         ...siteData,
+        ...step1LatestRef.current,
         setupStep: nextStep,
         updatedAt: serverTimestamp(),
       };
+      
+      console.log('[SiteRegistration] 保存データ:', {
+        metaTitle: dataToSave.metaTitle,
+        metaDescription: dataToSave.metaDescription,
+        pcScreenshotUrl: dataToSave.pcScreenshotUrl ? '(あり)' : '(なし)',
+        mobileScreenshotUrl: dataToSave.mobileScreenshotUrl ? '(あり)' : '(なし)',
+      });
 
       if (siteId) {
         // 既存サイトの更新（userIdも含める）
@@ -184,6 +230,7 @@ export default function SiteRegistration({ mode = 'new' }) {
           ...dataToSave,
           userId: currentUser.uid, // 既存ドキュメントにもuserIdを追加
         });
+        console.log('[SiteRegistration] 更新完了:', siteId);
       } else {
         // 新規サイトの作成
         console.log('[SiteRegistration] 新規サイト作成:', { userId: currentUser.uid });
@@ -193,6 +240,7 @@ export default function SiteRegistration({ mode = 'new' }) {
           createdAt: serverTimestamp(),
         });
         console.log('[SiteRegistration] サイト作成成功:', docRef.id);
+        console.log('[SiteRegistration] 保存されたデータを確認してください: Firestore > sites >', docRef.id);
         setSiteId(docRef.id);
         
         // URLにsiteIdを追加
@@ -233,6 +281,36 @@ export default function SiteRegistration({ mode = 'new' }) {
     }
   };
 
+  // 保存して終了（編集モード用）
+  const handleSaveAndExit = async () => {
+    setIsSaving(true);
+    setError('');
+
+    try {
+      const dataToSave = {
+        ...siteData,
+        ...step1LatestRef.current,
+        setupStep: currentStep,
+        updatedAt: serverTimestamp(),
+      };
+
+      if (siteId) {
+        await updateDoc(doc(db, 'sites', siteId), {
+          ...dataToSave,
+          userId: currentUser.uid,
+        });
+
+        // ダッシュボードへ戻る
+        navigate(`/dashboard?siteId=${siteId}`);
+      }
+    } catch (err) {
+      console.error('Error saving and exiting:', err);
+      setError('保存中にエラーが発生しました: ' + err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // 完了
   const handleComplete = async () => {
     setIsSaving(true);
@@ -241,12 +319,14 @@ export default function SiteRegistration({ mode = 'new' }) {
     try {
       const finalData = {
         ...siteData,
+        ...step1LatestRef.current,
         setupStep: 5,
         setupCompleted: true,
         updatedAt: serverTimestamp(),
       };
 
       let completedSiteId = siteId;
+      let isNewSite = !siteId;
 
       if (siteId) {
         await updateDoc(doc(db, 'sites', siteId), finalData);
@@ -259,8 +339,36 @@ export default function SiteRegistration({ mode = 'new' }) {
         completedSiteId = docRef.id;
       }
 
-      // 完了画面へリダイレクト（強制リロードして新規サイトをSiteContextに反映）
-      window.location.href = `/sites/complete?siteId=${completedSiteId}`;
+      // 新規サイト作成時のログを記録（非同期で、エラーは無視）
+      if (isNewSite) {
+        try {
+          const userProfile = await getDoc(doc(db, 'users', currentUser.uid));
+          const userData = userProfile.data();
+          const displayName = userData?.lastName && userData?.firstName 
+            ? `${userData.lastName} ${userData.firstName}` 
+            : currentUser.displayName || '';
+          
+          const logSiteCreated = httpsCallable(functions, 'logSiteCreated');
+          await logSiteCreated({
+            siteId: completedSiteId,
+            siteName: siteData.name,
+            siteUrl: siteData.url,
+            displayName,
+          });
+        } catch (logError) {
+          console.error('Log site created error:', logError);
+          // ログ記録エラーは無視して処理を続行
+        }
+      }
+
+      // 管理者が他ユーザーのサイトを設定している場合はダッシュボードへ、それ以外は完了画面へ
+      if (isAdminEditingOtherSite) {
+        console.log('[SiteRegistration] 管理者による設定完了 - ダッシュボードへ遷移');
+        window.location.href = `/dashboard?siteId=${completedSiteId}`;
+      } else {
+        console.log('[SiteRegistration] 通常の設定完了 - 完了画面へ遷移');
+        window.location.href = `/sites/complete?siteId=${completedSiteId}`;
+      }
     } catch (err) {
       console.error('Error completing setup:', err);
       setError('保存中にエラーが発生しました: ' + err.message);
@@ -318,7 +426,7 @@ export default function SiteRegistration({ mode = 'new' }) {
               </h2>
               <p className="mt-1 text-sm text-body-color">
                 {
-                  currentStep === 1 ? 'サイト名やURL、ビジネス形態などの基本情報を入力してください' :
+                  currentStep === 1 ? 'サイト名やURL、業界・業種、サイト種別、サイトの目的を入力してください' :
                   currentStep === 2 ? 'Google Analytics 4のプロパティを連携します' :
                   currentStep === 3 ? 'Google Search Consoleのサイトを連携します（スキップ可能）' :
                   currentStep === 4 ? 'コンバージョンイベントを設定します（スキップ可能）' :
@@ -337,7 +445,7 @@ export default function SiteRegistration({ mode = 'new' }) {
           {/* ステップコンテンツ */}
           <div className="px-8 py-8">
             {currentStep === 1 && (
-              <Step1BasicInfo siteData={siteData} setSiteData={setSiteData} />
+              <Step1BasicInfo siteData={siteData} setSiteData={setSiteData} step1LatestRef={step1LatestRef} mode={mode} />
             )}
             {currentStep === 2 && (
               <Step2GA4Connect siteData={siteData} setSiteData={setSiteData} />
@@ -366,14 +474,25 @@ export default function SiteRegistration({ mode = 'new' }) {
 
             <div className="flex gap-3">
               {currentStep < 5 ? (
-                <button
-                  onClick={handleNext}
-                  disabled={!canProceed || isSaving}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isSaving ? '保存中...' : '次へ'}
-                  {!isSaving && <ChevronRight className="h-4 w-4" />}
-                </button>
+                <>
+                  {mode === 'edit' && (
+                    <button
+                      onClick={handleSaveAndExit}
+                      disabled={isSaving}
+                      className="inline-flex items-center gap-2 rounded-lg border-2 border-primary bg-white px-6 py-2.5 text-sm font-medium text-primary transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-dark-2"
+                    >
+                      {isSaving ? '保存中...' : '保存して終了'}
+                    </button>
+                  )}
+                  <button
+                    onClick={handleNext}
+                    disabled={!canProceed || isSaving}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isSaving ? '保存中...' : (mode === 'edit' ? '保存して次へ' : '次へ')}
+                    {!isSaving && <ChevronRight className="h-4 w-4" />}
+                  </button>
+                </>
               ) : (
                 <button
                   onClick={handleComplete}

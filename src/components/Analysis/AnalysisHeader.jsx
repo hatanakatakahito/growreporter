@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSite } from '../../contexts/SiteContext';
-import { Calendar, Settings, ChevronDown, LogOut, User as UserIcon, Globe } from 'lucide-react';
+import { Calendar, Settings, ChevronDown, LogOut, User as UserIcon, Globe, Bell } from 'lucide-react';
 import { format } from 'date-fns';
+import { SCREENSHOT_PC_DISPLAY, SCREENSHOT_MOBILE_DISPLAY } from '../../constants/screenshotDisplay';
+import { useGlobalMemoNotifications } from '../../hooks/useGlobalMemoNotifications';
+import GlobalMemoNotificationModal from '../Layout/GlobalMemoNotificationModal';
 
 /**
  * 分析画面共通ヘッダーコンポーネント
@@ -16,13 +19,24 @@ export default function AnalysisHeader({
   showSiteInfo = true,
   title = '',
   subtitle = '',
+  improveActions = null,
 }) {
   const { currentUser, userProfile, logout } = useAuth();
-  const { sites, selectedSite: currentSite, selectedSiteId, selectSite } = useSite();
+  const { sites, selectedSite: currentSite, selectedSiteId, selectSite, isAdminViewing } = useSite();
   const navigate = useNavigate();
   const location = useLocation();
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  // 一時的な日付範囲（適用ボタンを押すまで保持）
+  const [tempDateRange, setTempDateRange] = useState({ from: '', to: '' });
+
+  // グローバルメモ通知
+  const { unreadMemos, unreadCount, markAllAsRead } = useGlobalMemoNotifications(
+    currentUser?.uid,
+    sites,
+    isAdminViewing
+  );
 
   // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
   const getUserName = () => {
@@ -64,7 +78,7 @@ export default function AnalysisHeader({
     <>
       {/* ヘッダーセクション */}
       <div className="bg-white border-b border-gray-200 h-20">
-        <div className="mx-auto max-w-7xl px-6 h-full flex items-center">
+        <div className="mx-auto max-w-content px-6 h-full flex items-center">
           <div className="flex items-center justify-between w-full">
             {/* サイト選択 */}
             <div className="relative">
@@ -82,64 +96,93 @@ export default function AnalysisHeader({
               </select>
             </div>
 
-            {/* 期間選択 */}
-            {showDateRange && dateRange && setDateRange && (
-              <div className="relative">
-                <button
-                  onClick={() => setIsDatePickerOpen(!isDatePickerOpen)}
-                  className="flex h-10 items-center gap-2 rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-200 focus:outline-none dark:bg-dark-2 dark:text-white"
-                >
-                  <Calendar className="h-4 w-4 text-gray-500" />
-                  {dateRange && dateRange.from && dateRange.to ? (
-                    <span className="font-medium">
-                      {format(new Date(dateRange.from), 'yyyy-MM-dd')} - {format(new Date(dateRange.to), 'yyyy-MM-dd')}
-                    </span>
-                  ) : (
-                    <span>期間を選択</span>
-                  )}
-                </button>
-                
-                {/* 簡易的な期間選択（TODO: カレンダーコンポーネントに置き換え） */}
-                {isDatePickerOpen && (
-                  <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-stroke bg-white p-4 shadow-lg dark:border-dark-3 dark:bg-dark-2">
-                    <div className="space-y-3">
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-dark dark:text-white">
-                          開始日
-                        </label>
-                        <input
-                          type="date"
-                          value={dateRange.from || ''}
-                          onChange={(e) =>
-                            setDateRange({ ...dateRange, from: e.target.value })
-                          }
-                          className="w-full rounded-md border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-xs font-medium text-dark dark:text-white">
-                          終了日
-                        </label>
-                        <input
-                          type="date"
-                          value={dateRange.to || ''}
-                          onChange={(e) =>
-                            setDateRange({ ...dateRange, to: e.target.value })
-                          }
-                          className="w-full rounded-md border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-                        />
-                      </div>
-                        <button
-                          onClick={() => setIsDatePickerOpen(false)}
-                          className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-                        >
-                          適用
-                        </button>
-                    </div>
-                  </div>
+            {/* 期間選択とベル通知 */}
+            <div className="flex items-center gap-3">
+              {/* 改善画面専用アクション */}
+              {improveActions && improveActions}
+
+              {/* メモ通知ベル */}
+              <button
+                onClick={() => setIsNotificationOpen(true)}
+                className="relative flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                title="メモ通知"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
                 )}
-              </div>
-            )}
+              </button>
+
+              {/* 期間選択 */}
+              {showDateRange && dateRange && setDateRange && (
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setTempDateRange({ from: dateRange.from, to: dateRange.to });
+                      setIsDatePickerOpen(!isDatePickerOpen);
+                    }}
+                    className="flex h-10 items-center gap-2 rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-200 focus:outline-none dark:bg-dark-2 dark:text-white"
+                  >
+                    <Calendar className="h-4 w-4 text-gray-500" />
+                    {dateRange && dateRange.from && dateRange.to ? (
+                      <span className="font-medium">
+                        {format(new Date(dateRange.from), 'yyyy-MM-dd')} - {format(new Date(dateRange.to), 'yyyy-MM-dd')}
+                      </span>
+                    ) : (
+                      <span>期間を選択</span>
+                    )}
+                  </button>
+                  
+                  {/* 簡易的な期間選択（TODO: カレンダーコンポーネントに置き換え） */}
+                  {isDatePickerOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-stroke bg-white p-4 shadow-lg dark:border-dark-3 dark:bg-dark-2">
+                      <div className="space-y-3">
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-dark dark:text-white">
+                            開始日
+                          </label>
+                          <input
+                            type="date"
+                            value={tempDateRange.from || ''}
+                            onChange={(e) =>
+                              setTempDateRange({ ...tempDateRange, from: e.target.value })
+                            }
+                            className="w-full rounded-md border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+                          />
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-dark dark:text-white">
+                            終了日
+                          </label>
+                          <input
+                            type="date"
+                            value={tempDateRange.to || ''}
+                            onChange={(e) =>
+                              setTempDateRange({ ...tempDateRange, to: e.target.value })
+                            }
+                            className="w-full rounded-md border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+                          />
+                        </div>
+                          <button
+                            onClick={() => {
+                              if (tempDateRange.from && tempDateRange.to) {
+                                setDateRange({ from: tempDateRange.from, to: tempDateRange.to });
+                                setIsDatePickerOpen(false);
+                              }
+                            }}
+                            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
+                          >
+                            適用
+                          </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+              
+            </div>
 
             {/* ユーザーメニュー - 削除 */}
             {false && currentUser && (
@@ -159,6 +202,7 @@ export default function AnalysisHeader({
                       src={currentUser.photoURL}
                       alt="User Avatar"
                       className="h-10 w-10 rounded-full object-cover"
+                      referrerPolicy="no-referrer"
                     />
                   ) : (
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-indigo-700 text-sm font-semibold text-white">
@@ -199,6 +243,14 @@ export default function AnalysisHeader({
         </div>
       </div>
 
+      {/* メモ通知モーダル */}
+      <GlobalMemoNotificationModal
+        isOpen={isNotificationOpen}
+        onClose={() => setIsNotificationOpen(false)}
+        unreadMemos={unreadMemos}
+        onMarkAllAsRead={markAllAsRead}
+      />
+
       {/* サイト情報セクション - ブルー＆パープルグラデーション */}
       {showSiteInfo && currentSite && (
         <div
@@ -206,7 +258,7 @@ export default function AnalysisHeader({
             background: 'linear-gradient(to right, #E0E7FF, #F3E8FF)',
           }}
         >
-          <div className="mx-auto max-w-7xl px-6 py-10">
+          <div className="mx-auto max-w-content px-6 py-10">
             <div className="flex items-start justify-between gap-8">
               <div className="flex-1">
                 <div className="mb-1 flex items-center gap-3">
@@ -229,30 +281,42 @@ export default function AnalysisHeader({
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-end gap-4">
                     {currentSite.pcScreenshotUrl ? (
-                      <div className="overflow-hidden rounded-lg bg-white shadow-md">
+                      <div
+                        className="flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-md"
+                        style={{ width: SCREENSHOT_PC_DISPLAY.width, height: SCREENSHOT_PC_DISPLAY.height }}
+                      >
                         <img
                           src={currentSite.pcScreenshotUrl}
                           alt="PCキャプチャ"
-                          className="h-48 w-auto object-contain"
+                          className="max-h-full max-w-full object-contain"
                         />
                       </div>
                     ) : (
-                      <div className="flex h-48 w-64 items-center justify-center overflow-hidden rounded-lg bg-white shadow-md">
+                      <div
+                        className="flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-md"
+                        style={{ width: SCREENSHOT_PC_DISPLAY.width, height: SCREENSHOT_PC_DISPLAY.height }}
+                      >
                         <p className="text-sm text-gray-400">PCスクリーンショット未設定</p>
                       </div>
                     )}
                     {currentSite.mobileScreenshotUrl ? (
-                      <div className="overflow-hidden rounded-lg bg-white shadow-md">
+                      <div
+                        className="flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-md"
+                        style={{ width: SCREENSHOT_MOBILE_DISPLAY.width, height: SCREENSHOT_MOBILE_DISPLAY.height }}
+                      >
                         <img
                           src={currentSite.mobileScreenshotUrl}
                           alt="スマホキャプチャ"
-                          className="h-48 w-auto object-contain"
+                          className="max-h-full max-w-full object-contain"
                         />
                       </div>
                     ) : (
-                      <div className="flex h-48 w-32 items-center justify-center overflow-hidden rounded-lg bg-white shadow-md">
+                      <div
+                        className="flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-md"
+                        style={{ width: SCREENSHOT_MOBILE_DISPLAY.width, height: SCREENSHOT_MOBILE_DISPLAY.height }}
+                      >
                         <p className="text-center text-sm text-gray-400">スマホ<br />スクリーン<br />ショット<br />未設定</p>
                       </div>
                     )}
@@ -261,6 +325,7 @@ export default function AnalysisHeader({
           </div>
         </div>
       )}
+      
     </>
   );
 }

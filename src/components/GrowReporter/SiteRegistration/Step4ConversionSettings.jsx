@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../config/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function Step4ConversionSettings({ siteData, setSiteData }) {
   const { currentUser } = useAuth();
@@ -10,21 +10,6 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
   const [ga4Events, setGa4Events] = useState([]);
   const [selectedEvents, setSelectedEvents] = useState(siteData.conversionEvents || []);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [customEvent, setCustomEvent] = useState({
-    eventName: '',
-    displayName: '',
-  });
-
-  // カテゴリの選択肢
-  const CONVERSION_CATEGORIES = [
-    { value: 'purchase', label: '購入系' },
-    { value: 'lead', label: 'リード獲得系' },
-    { value: 'engagement', label: 'エンゲージメント系' },
-    { value: 'custom', label: 'カスタム' },
-  ];
-
-  // 標準的なGA4イベント（プリセット）- フォールバック用のみ
-  const STANDARD_GA4_EVENTS = [];
 
   // GA4イベント一覧を取得
   useEffect(() => {
@@ -40,18 +25,16 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
       setError(null);
 
       try {
-        // トークンを取得
-        const tokenQuery = query(
-          collection(db, 'oauth_tokens'),
-          where('__name__', '==', siteData.ga4OauthTokenId)
-        );
-        const tokenSnapshot = await getDocs(tokenQuery);
+        // トークンを取得（サイトオーナー配下。編集者で開く場合は siteData.userId）
+        const ownerId = siteData.userId ?? currentUser?.uid;
+        const tokenRef = doc(db, 'users', ownerId, 'oauth_tokens', siteData.ga4OauthTokenId);
+        const tokenSnap = await getDoc(tokenRef);
 
-        if (tokenSnapshot.empty) {
+        if (!tokenSnap.exists()) {
           throw new Error('GA4トークンが見つかりません');
         }
 
-        const tokenData = tokenSnapshot.docs[0].data();
+        const tokenData = tokenSnap.data();
 
         // アクセストークンの有効期限をチェック
         const expiresAt = tokenData.expires_at?.toDate ? tokenData.expires_at.toDate() : new Date(tokenData.expires_at);
@@ -68,15 +51,15 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
         console.log('[ConversionSettings] GA4イベント取得開始');
         
         try {
-          // 過去30日間のイベントデータを取得してユニークなイベント名を抽出
+          // 過去100日間のイベントデータを取得してユニークなイベント名を抽出
           const today = new Date();
-          const thirtyDaysAgo = new Date(today);
-          thirtyDaysAgo.setDate(today.getDate() - 30);
+          const hundredDaysAgo = new Date(today);
+          hundredDaysAgo.setDate(today.getDate() - 100);
 
           const requestBody = {
             dateRanges: [
               {
-                startDate: thirtyDaysAgo.toISOString().split('T')[0],
+                startDate: hundredDaysAgo.toISOString().split('T')[0],
                 endDate: today.toISOString().split('T')[0],
               }
             ],
@@ -147,7 +130,7 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
               eventName: eventName,
               displayName: displayName,
               category: category,
-              description: `過去30日間: ${eventCount.toLocaleString()}回`,
+              description: `過去100日間: ${eventCount.toLocaleString()}回`,
             };
           });
 
@@ -221,45 +204,6 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
     }));
   };
 
-  // カスタムイベントの追加
-  const handleAddCustomEvent = (e) => {
-    e.preventDefault();
-    setError(null);
-
-    // バリデーション
-    if (!customEvent.eventName || !customEvent.displayName) {
-      setError('イベント名と表示名は必須です');
-      return;
-    }
-
-    // 重複チェック
-    if (selectedEvents.some(e => e.eventName === customEvent.eventName)) {
-      setError('同じイベント名が既に存在します');
-      return;
-    }
-
-    const newEvent = {
-      eventName: customEvent.eventName,
-      displayName: customEvent.displayName,
-      description: '',
-      category: 'custom',
-      isActive: true,
-    };
-
-    const newSelectedEvents = [...selectedEvents, newEvent];
-    setSelectedEvents(newSelectedEvents);
-    setSiteData(prev => ({
-      ...prev,
-      conversionEvents: newSelectedEvents,
-    }));
-
-    // フォームをリセット
-    setCustomEvent({
-      eventName: '',
-      displayName: '',
-    });
-  };
-
   // イベントが選択されているかチェック
   const isEventSelected = (eventName) => {
     return selectedEvents.some(e => e.eventName === eventName);
@@ -321,48 +265,9 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
         </button>
         {ga4Events.length === 0 && !isLoadingEvents && (
           <p className="mt-2 text-xs text-body-color">
-            GA4プロパティに過去30日間のイベントデータがないか、権限が不足している可能性があります。
+            GA4プロパティに過去100日間のイベントデータがないか、権限が不足している可能性があります。
           </p>
         )}
-      </div>
-
-      {/* カスタムイベント追加 */}
-      <div>
-        <div className="mb-2 text-sm font-medium text-dark dark:text-white">
-          カスタムイベントを追加
-        </div>
-        <form onSubmit={handleAddCustomEvent} className="space-y-3">
-          <div className="flex gap-3">
-            {/* イベント名 */}
-            <input
-              type="text"
-              value={customEvent.eventName}
-              onChange={(e) => setCustomEvent(prev => ({ ...prev, eventName: e.target.value }))}
-              placeholder="イベント名（例: custom_event）"
-              className="flex-1 rounded-md border border-stroke bg-transparent px-4 py-2 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
-            />
-            
-            {/* 表示名 */}
-            <input
-              type="text"
-              value={customEvent.displayName}
-              onChange={(e) => setCustomEvent(prev => ({ ...prev, displayName: e.target.value }))}
-              placeholder="表示名（例: カスタムイベント）"
-              className="flex-1 rounded-md border border-stroke bg-transparent px-4 py-2 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
-            />
-          </div>
-          
-          <button
-            type="submit"
-            disabled={!customEvent.eventName || !customEvent.displayName}
-            className="flex items-center gap-2 rounded-md border border-dashed border-stroke px-4 py-2 text-sm font-medium text-body-color transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-3"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            追加
-          </button>
-        </form>
       </div>
 
       {/* 選択中のイベント一覧 */}
@@ -398,9 +303,14 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
       {/* スキップ可能の注意 */}
       {selectedEvents.length === 0 && (
         <div className="rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark-2">
-          <p className="text-sm text-body-color">
-            ℹ️ コンバージョン設定は任意です。後から設定することもできます。
-          </p>
+          <div className="flex items-start gap-2">
+            <svg className="h-5 w-5 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+            </svg>
+            <p className="text-sm text-body-color">
+              コンバージョン設定は任意です。後から設定することもできます。
+            </p>
+          </div>
         </div>
       )}
 

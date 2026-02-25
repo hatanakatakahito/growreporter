@@ -1,7 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
-import { logActivity } from '../../utils/activityLogger.js';
 
 /**
  * 管理者の権限を変更
@@ -77,21 +76,6 @@ export const updateAdminRoleCallable = async (request) => {
       adminId,
       oldRole,
       newRole,
-    });
-
-    // アクティビティログに記録
-    await logActivity(db, {
-      adminId: uid,
-      adminName: executorName,
-      action: 'admin_role_changed',
-      targetType: 'admin',
-      targetId: adminId,
-      details: {
-        targetName,
-        oldRole,
-        newRole,
-        reason,
-      },
     });
 
     return {

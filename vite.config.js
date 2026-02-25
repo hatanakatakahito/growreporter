@@ -16,6 +16,7 @@ export default defineConfig({
     extensions: ['.mjs', '.js', '.jsx', '.ts', '.tsx', '.json']
   },
   optimizeDeps: {
+    include: ['xlsx-js-style'],
     esbuildOptions: {
       loader: {
         '.js': 'jsx',

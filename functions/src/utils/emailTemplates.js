@@ -12,6 +12,8 @@ import { ja } from 'date-fns/locale';
  */
 export function generateEmailTemplate(reportType, siteData, dateRange) {
   const { siteName, siteUrl, metrics, previousMetrics } = siteData;
+  const displaySiteName = (siteName != null && siteName !== '') ? String(siteName) : '（サイト名なし）';
+  const displaySiteUrl = (siteUrl != null && siteUrl !== '') ? String(siteUrl) : '';
   const isWeekly = reportType === 'weekly';
   const reportTitle = isWeekly ? '週次レポート' : '月次レポート';
   const periodLabel = isWeekly ? '先週' : '先月';
@@ -43,7 +45,7 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
   };
 
   // メール件名
-  const subject = `【GROW REPORTER】${siteName} - ${reportTitle}（${dateRange.startDate} 〜 ${dateRange.endDate}）`;
+  const subject = `【グローレポータ】${displaySiteName} - ${reportTitle}（${dateRange.startDate} 〜 ${dateRange.endDate}）`;
 
   // HTMLメール本文
   const html = `
@@ -62,9 +64,9 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
           
           <!-- ヘッダー -->
           <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+            <td style="background-color: #3758F9; padding: 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
-                GROW REPORTER
+                グローレポータ
               </h1>
               <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">
                 ${reportTitle}
@@ -76,10 +78,10 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
           <tr>
             <td style="padding: 30px;">
               <h2 style="margin: 0 0 5px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
-                ${siteName}
+                ${displaySiteName}
               </h2>
               <p style="margin: 0; color: #6b7280; font-size: 14px;">
-                <a href="${siteUrl}" style="color: #667eea; text-decoration: none;">${siteUrl}</a>
+                ${displaySiteUrl ? `<a href="${displaySiteUrl}" style="color: #3758F9; text-decoration: none;">${displaySiteUrl}</a>` : '（URLなし）'}
               </p>
               <p style="margin: 15px 0 0 0; color: #6b7280; font-size: 14px;">
                 📊 対象期間: ${dateRange.startDate} 〜 ${dateRange.endDate}
@@ -116,7 +118,7 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
           <tr>
             <td style="padding: 0 30px 30px 30px; text-align: center;">
               <a href="https://grow-reporter.com/dashboard" 
-                 style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(102, 126, 234, 0.3);">
+                 style="display: inline-block; background-color: #3758F9; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(55, 88, 249, 0.3);">
                 詳細を確認する
               </a>
             </td>
@@ -126,10 +128,10 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
               <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 12px;">
-                このメールは GROW REPORTER から自動送信されています
+                このメールは グローレポータ から自動送信されています
               </p>
               <p style="margin: 0; color: #9ca3af; font-size: 11px;">
-                メール通知の設定は<a href="https://grow-reporter.com/account/settings" style="color: #667eea; text-decoration: none;">アカウント設定</a>から変更できます
+                メール通知の設定は<a href="https://grow-reporter.com/account/settings" style="color: #3758F9; text-decoration: none;">アカウント設定</a>から変更できます
               </p>
             </td>
           </tr>
@@ -144,10 +146,10 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
 
   // テキスト版（HTMLメールが表示できない環境用）
   const text = `
-${reportTitle} - ${siteName}
+${reportTitle} - ${displaySiteName}
 
 対象期間: ${dateRange.startDate} 〜 ${dateRange.endDate}
-サイトURL: ${siteUrl}
+サイトURL: ${displaySiteUrl || '（URLなし）'}
 
 ■主要指標
 - 訪問者数: ${metrics.sessions.toLocaleString()} (前${isWeekly ? '週' : '月'}比 ${calculateChange(metrics.sessions, previousMetrics.sessions).toFixed(1)}%)
@@ -162,9 +164,286 @@ ${reportTitle} - ${siteName}
 詳細はこちら: https://grow-reporter.com/dashboard
 
 ---
-このメールは GROW REPORTER から自動送信されています。
+このメールは グローレポータ から自動送信されています。
 メール通知の設定変更: https://grow-reporter.com/account/settings
   `.trim();
+
+  return { subject, html, text };
+}
+
+/**
+ * メンバー招待メールテンプレート
+ * @param {Object} data - 招待情報
+ * @returns {Object} { subject, html, text }
+ */
+export function generateInvitationEmail(data) {
+  const { inviterName, companyName, role, invitationUrl, expiresAt } = data;
+  
+  const subject = `【グローレポータ】${companyName} への招待`;
+  
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', 'Hiragino Sans', Meiryo, sans-serif; background-color: #f3f4f6;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          
+          <tr>
+            <td style="background-color: #3758F9; padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">グローレポータ</h1>
+              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">メンバー招待</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
+                ${inviterName} さんから招待が届いています
+              </h2>
+              
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                <strong>${companyName}</strong> のメンバーとして招待されました。
+              </p>
+              
+              <div style="background-color: #f9fafb; border-left: 4px solid #3758F9; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0; color: #374151; font-size: 14px;">
+                  <strong>権限:</strong> ${role}
+                </p>
+              </div>
+              
+              <p style="margin: 20px 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                招待を承認すると、${companyName} の全サイトのデータにアクセスできるようになります。
+              </p>
+              
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${invitationUrl}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                      招待を承認する
+                    </a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin: 16px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+                ボタンが表示されない場合は、以下のリンクをクリックしてください：<br>
+                <a href="${invitationUrl}" style="color: #3758F9; text-decoration: underline; word-break: break-all;">${invitationUrl}</a>
+              </p>
+              <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
+                ※ この招待は <strong>${expiresAt}</strong> まで有効です。<br>
+                ※ グローレポータのアカウントをお持ちでない場合は、まず新規登録を行ってから招待を承認してください。
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                © 2026 グローレポータ by Grow Group
+              </p>
+            </td>
+          </tr>
+          
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+  
+  const text = `
+${inviterName} さんから ${companyName} への招待が届いています
+
+権限: ${role}
+
+招待を承認すると、${companyName} の全サイトのデータにアクセスできるようになります。
+
+招待を承認する: ${invitationUrl}
+
+※ この招待は ${expiresAt} まで有効です。
+※ グローレポータのアカウントをお持ちでない場合は、まず新規登録を行ってから招待を承認してください。
+  `;
+  
+  return { subject, html, text };
+}
+
+/**
+ * メンバー削除通知メールテンプレート
+ * @param {Object} data - 削除情報
+ * @returns {Object} { subject, html, text }
+ */
+export function generateMemberRemovedEmail(data) {
+  const { memberName, companyName } = data;
+  
+  const subject = `【グローレポータ】${companyName} のメンバーから削除されました`;
+  
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: sans-serif; background-color: #f3f4f6;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; padding: 30px;">
+          <tr>
+            <td>
+              <h2 style="margin: 0 0 20px 0; color: #1f2937;">メンバーから削除されました</h2>
+              <p style="margin: 0 0 15px 0; color: #4b5563;">${memberName} さん、</p>
+              <p style="margin: 0 0 15px 0; color: #4b5563;">
+                ${companyName} のメンバーから削除されました。今後、このアカウントのサイトにはアクセスできません。
+              </p>
+              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+                ご質問がある場合は、アカウントオーナーにお問い合わせください。
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+  
+  const text = `
+${memberName} さん、
+
+${companyName} のメンバーから削除されました。今後、このアカウントのサイトにはアクセスできません。
+
+ご質問がある場合は、アカウントオーナーにお問い合わせください。
+  `;
+  
+  return { subject, html, text };
+}
+
+/**
+ * オーナー譲渡通知メールテンプレート
+ * @param {Object} data - 譲渡情報
+ * @returns {Object} { subject, html, text }
+ */
+export function generateOwnershipTransferEmail(data) {
+  const { newOwnerName, previousOwnerName, companyName } = data;
+  
+  const subject = `【グローレポータ】${companyName} のオーナー権限が譲渡されました`;
+  
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: sans-serif; background-color: #f3f4f6;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; padding: 30px;">
+          <tr>
+            <td>
+              <h2 style="margin: 0 0 20px 0; color: #1f2937;">オーナー権限が譲渡されました</h2>
+              <p style="margin: 0 0 15px 0; color: #4b5563;">${newOwnerName} さん、</p>
+              <p style="margin: 0 0 15px 0; color: #4b5563;">
+                ${previousOwnerName} さんから、<strong>${companyName}</strong> のオーナー権限が譲渡されました。
+              </p>
+              <p style="margin: 0 0 20px 0; color: #4b5563;">
+                今後、あなたがこのアカウントのオーナーとして、メンバー管理やプラン変更などの全ての操作が可能になります。
+              </p>
+              <p style="margin: 0;">
+                <a href="https://grow-reporter.com/members" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 600;">
+                  メンバー管理画面を開く
+                </a>
+              </p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+  
+  const text = `
+${newOwnerName} さん、
+
+${previousOwnerName} さんから、${companyName} のオーナー権限が譲渡されました。
+
+今後、あなたがこのアカウントのオーナーとして、メンバー管理やプラン変更などの全ての操作が可能になります。
+
+メンバー管理画面: https://grow-reporter.com/members
+  `;
+  
+  return { subject, html, text };
+}
+
+/**
+ * アラート通知メールのテンプレートを生成
+ * @param {Object} alert - アラートオブジェクト（message, metricLabel, changePercent, periodCurrent, hypotheses, siteId）
+ * @param {string} siteName - サイト名
+ * @param {string} siteUrl - サイトURL
+ * @param {string} dashboardUrl - ダッシュボードのURL（例: https://app.example.com/dashboard?siteId=xxx）
+ * @returns {Object} { subject, html, text }
+ */
+export function generateAlertEmailTemplate(alert, siteName, siteUrl, dashboardUrl = '') {
+  const displaySiteName = (siteName != null && siteName !== '') ? String(siteName) : '（サイト名なし）';
+  const displaySiteUrl = (siteUrl != null && siteUrl !== '') ? String(siteUrl) : '';
+  const message = alert.message || '指標に大きな変化がありました';
+  const hypotheses = alert.hypotheses || [];
+  const hypothesesList = hypotheses.length > 0
+    ? hypotheses.map((h) => `<li style="margin-bottom: 8px;">${(h.text || '').replace(/</g, '&lt;')}</li>`).join('')
+    : '<li>仮説を取得できませんでした</li>';
+
+  const subject = `【グローレポータ】アラート: ${displaySiteName} - ${message}`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="background-color: #3758F9; padding: 24px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">グローレポータ - アラート</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 24px;">
+              <h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 18px;">${displaySiteName}</h2>
+              <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; font-weight: 600;">${message}</p>
+              ${alert.periodCurrent ? `<p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px;">対象期間: ${alert.periodCurrent}</p>` : ''}
+              <p style="margin: 0 0 12px 0; color: #374151; font-size: 14px;"><strong>考えられる原因（仮説）</strong></p>
+              <ul style="margin: 0 0 20px 0; padding-left: 20px; color: #4b5563; font-size: 14px;">
+                ${hypothesesList}
+              </ul>
+              ${dashboardUrl ? `<p style="margin: 0;"><a href="${dashboardUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3758F9; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">ダッシュボードで確認</a></p>` : ''}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `【グローレポータ】アラート: ${displaySiteName}\n\n${message}\n\n考えられる原因:\n${(hypotheses.map((h) => `・${h.text}`).join('\n') || '・仮説を取得できませんでした')}\n\n${dashboardUrl ? `ダッシュボード: ${dashboardUrl}` : ''}`;
 
   return { subject, html, text };
 }
@@ -200,11 +479,13 @@ export async function sendEmail(to, subject, html, text) {
     const smtpUser = sesConfig.smtp_user || process.env.SES_SMTP_USER;
     const smtpPassword = sesConfig.smtp_password || process.env.SES_SMTP_PASSWORD;
     const fromEmail = sesConfig.from_email || process.env.SES_FROM_EMAIL || 'info@grow-reporter.com';
-    
+    const fromName = process.env.SES_FROM_NAME || 'グローレポータ';
+    const from = `"${fromName}" <${fromEmail}>`;
+
     if (!smtpHost || !smtpUser || !smtpPassword) {
       throw new Error('Amazon SES SMTP credentials not configured');
     }
-    
+
     // Nodemailer transporterを作成
     const transporter = nodemailer.default.createTransport({
       host: smtpHost,
@@ -215,10 +496,10 @@ export async function sendEmail(to, subject, html, text) {
         pass: smtpPassword,
       },
     });
-    
+
     // メール送信
     const info = await transporter.sendMail({
-      from: fromEmail,
+      from,
       to,
       subject,
       text,

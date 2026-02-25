@@ -38,7 +38,8 @@ export function useAdminUsers(initialParams = {}) {
       }
     } catch (err) {
       console.error('ユーザー一覧取得エラー:', err);
-      setError(err.message || 'ユーザー一覧の取得に失敗しました');
+      const message = err.details ?? err.message ?? 'ユーザー一覧の取得に失敗しました';
+      setError(typeof message === 'string' ? message : 'ユーザー一覧の取得に失敗しました');
       setUsers([]);
       setPagination(null);
     } finally {

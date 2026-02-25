@@ -94,7 +94,7 @@ async function getPlanConfig(db) {
  */
 async function getCustomLimits(db, userId) {
   try {
-    const customLimitDoc = await db.collection('customLimits').doc(userId).get();
+    const customLimitDoc = await db.collection('users').doc(userId).collection('customLimits').doc(userId).get();
     
     if (!customLimitDoc.exists) {
       return null;

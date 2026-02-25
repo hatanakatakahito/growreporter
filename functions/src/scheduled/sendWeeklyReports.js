@@ -1,8 +1,8 @@
-import * as functions from 'firebase-functions';
 import { getFirestore } from 'firebase-admin/firestore';
 import { format, subDays, startOfWeek, endOfWeek, subWeeks } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { generateEmailTemplate, sendEmail } from '../utils/emailTemplates.js';
+import { generateEmailTemplate } from '../utils/emailTemplates.js';
+import { sendEmailDirect } from '../utils/emailSender.js';
 
 /**
  * 週次レポートを送信
@@ -12,11 +12,7 @@ import { generateEmailTemplate, sendEmail } from '../utils/emailTemplates.js';
  * - 毎週月曜日 9:00 JST: '0 9 * * 1'
  * - 毎週金曜日 18:00 JST: '0 18 * * 5'
  */
-export const sendWeeklyReports = functions
-  .region('asia-northeast1')
-  .pubsub.schedule('0 9 * * 1') // 暫定: 毎週月曜日 9:00 JST（後でCloud Schedulerで動的に設定）
-  .timeZone('Asia/Tokyo')
-  .onRun(async (context) => {
+export async function sendWeeklyReportsHandler(event) {
     console.log('週次レポート送信開始');
     const db = getFirestore();
 
@@ -73,10 +69,16 @@ export const sendWeeklyReports = functions
 
       for (const userDoc of usersSnapshot.docs) {
         const userId = userDoc.id;
-        const userEmail = userDoc.data().email;
+        const userData = userDoc.data();
+        const userEmail = userData.email;
+        const ns = userData.notificationSettings || {};
+        const wantWeekly = ns.weeklyReportEmail !== undefined ? ns.weeklyReportEmail : ns.emailNotifications;
 
         if (!userEmail) {
           console.log(`ユーザー ${userId} のメールアドレスが見つかりません`);
+          continue;
+        }
+        if (!wantWeekly) {
           continue;
         }
 
@@ -106,10 +108,10 @@ export const sendWeeklyReports = functions
             continue;
           }
 
-          // メールテンプレートを生成
+          // メールテンプレートを生成（Firestore の sites は siteName / siteUrl）
           const emailData = {
-            siteName: siteData.title || siteData.url,
-            siteUrl: siteData.url,
+            siteName: siteData.siteName || siteData.siteUrl || '（サイト名なし）',
+            siteUrl: siteData.siteUrl || '',
             metrics,
             previousMetrics,
           };
@@ -118,12 +120,12 @@ export const sendWeeklyReports = functions
 
           // メール送信をキューに追加
           sendPromises.push(
-            sendEmail(userEmail, subject, html, text)
+            sendEmailDirect({ to: userEmail, subject, html, text })
               .then(() => {
-                console.log(`週次レポート送信成功: ${userEmail} - ${siteData.title}`);
+                console.log(`週次レポート送信成功: ${userEmail} - ${siteData.siteName || siteId}`);
               })
               .catch((error) => {
-                console.error(`週次レポート送信失敗: ${userEmail} - ${siteData.title}`, error);
+                console.error(`週次レポート送信失敗: ${userEmail} - ${siteData.siteName || siteId}`, error);
               })
           );
         }
@@ -138,7 +140,7 @@ export const sendWeeklyReports = functions
       console.error('週次レポート送信エラー:', error);
       throw error;
     }
-  });
+  }
 
 /**
  * 週次メトリクスを取得

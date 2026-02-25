@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from './config/queryClient';
 import { AuthProvider } from './contexts/AuthContext';
 import { SiteProvider } from './contexts/SiteContext';
+import { SidebarProvider } from './contexts/SidebarContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/GrowReporter/Login';
 import Register from './components/GrowReporter/Register';
@@ -13,27 +14,33 @@ import SiteRegistration from './components/GrowReporter/SiteRegistration/index';
 import Complete from './components/GrowReporter/SiteRegistration/Complete';
 import MainLayout from './components/Layout/MainLayout';
 import SiteList from './pages/SiteList';
+import SiteDetail from './pages/SiteDetail';
 import Dashboard from './pages/Dashboard';
 import AnalysisNavigation from './pages/Analysis/AnalysisNavigation';
 import AnalysisSummary from './pages/Analysis/AnalysisSummary';
 import Day from './pages/Analysis/Day';
 import Week from './pages/Analysis/Week';
 import Hour from './pages/Analysis/Hour';
-import Users from './pages/Users';
-import AcquisitionChannels from './pages/AcquisitionChannels';
-import Keywords from './pages/Keywords';
-import Referrals from './pages/Referrals';
-import Pages from './pages/Pages';
-import PageCategories from './pages/PageCategories';
-import LandingPages from './pages/LandingPages';
-import FileDownloads from './pages/FileDownloads';
-import ExternalLinks from './pages/ExternalLinks';
-import PageFlow from './pages/PageFlow';
-import ConversionList from './pages/ConversionList';
-import ReverseFlow from './pages/ReverseFlow';
+import Users from './pages/Analysis/Users';
+import AcquisitionChannels from './pages/Analysis/AcquisitionChannels';
+import Keywords from './pages/Analysis/Keywords';
+import Referrals from './pages/Analysis/Referrals';
+import Pages from './pages/Analysis/Pages';
+import PageCategories from './pages/Analysis/PageCategories';
+import LandingPages from './pages/Analysis/LandingPages';
+import FileDownloads from './pages/Analysis/FileDownloads';
+import ExternalLinks from './pages/Analysis/ExternalLinks';
+import PageFlow from './pages/Analysis/PageFlow';
+import ConversionList from './pages/Analysis/ConversionList';
+import ReverseFlow from './pages/Analysis/ReverseFlow';
 import Improve from './pages/Improve';
+import ImproveConsultationThanks from './pages/ImproveConsultationThanks';
 import Reports from './pages/Reports';
 import AccountSettings from './pages/AccountSettings';
+import ProfileEdit from './pages/ProfileEdit';
+import PlanInfo from './pages/PlanInfo';
+import Members from './pages/Members';
+import AcceptInvitation from './pages/AcceptInvitation';
 import OAuthCallback from './components/OAuthCallback';
 
 // Admin
@@ -44,11 +51,11 @@ import UserList from './pages/Admin/Users/UserList';
 import UserDetail from './pages/Admin/Users/UserDetail';
 import AdminSiteList from './pages/Admin/Sites/SiteList';
 import AdminSiteDetail from './pages/Admin/Sites/SiteDetail';
-// import ActivityLogs from './pages/Admin/Logs/ActivityLogs'; // ファイルが存在しないためコメントアウト
-import PromptTemplateList from './pages/Admin/PromptTemplates/PromptTemplateList';
-import PromptTemplateEditor from './pages/Admin/PromptTemplates/PromptTemplateEditor';
+import ActivityLogs from './pages/Admin/Logs/ActivityLogs';
 import AdminSettings from './pages/Admin/Settings/AdminSettings';
 import PlanSettings from './pages/Admin/Settings/PlanSettings';
+import EmailNotifications from './pages/Admin/Settings/EmailNotifications';
+
 
 function App() {
   // 正式ドメインへのリダイレクト
@@ -70,10 +77,11 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <SiteProvider>
-          <Router>
-          <div className="App">
-          <Routes>
+        <Router>
+          <SiteProvider>
+            <SidebarProvider>
+              <div className="App">
+                <Routes>
             {/* OAuth コールバック（認証不要） */}
             <Route path="/oauth/callback" element={<OAuthCallback />} />
             
@@ -81,6 +89,9 @@ function App() {
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            
+            {/* 招待承認（認証不要でもアクセス可能） */}
+            <Route path="/accept-invitation" element={<AcceptInvitation />} />
             <Route 
               path="/register/complete" 
               element={
@@ -126,6 +137,7 @@ function App() {
             >
               {/* サイト管理 */}
               <Route path="/sites/list" element={<SiteList />} />
+              <Route path="/sites/:siteId" element={<SiteDetail />} />
               
               {/* ダッシュボード */}
               <Route path="/dashboard" element={<Dashboard />} />
@@ -133,26 +145,21 @@ function App() {
               {/* 分析 */}
               <Route path="/analysis" element={<AnalysisNavigation />} />
               <Route path="/analysis/summary" element={<AnalysisSummary />} />
+              <Route path="/analysis/users" element={<Users />} />
               <Route path="/analysis/day" element={<Day />} />
               <Route path="/analysis/week" element={<Week />} />
               <Route path="/analysis/hour" element={<Hour />} />
-              
-              {/* 集客 */}
-              <Route path="/acquisition/channels" element={<AcquisitionChannels />} />
-              <Route path="/acquisition/keywords" element={<Keywords />} />
-              <Route path="/acquisition/referrals" element={<Referrals />} />
-              
-              {/* エンゲージメント */}
-              <Route path="/engagement/pages" element={<Pages />} />
-              <Route path="/engagement/page-categories" element={<PageCategories />} />
-              <Route path="/engagement/landing-pages" element={<LandingPages />} />
-              <Route path="/engagement/file-downloads" element={<FileDownloads />} />
-              <Route path="/engagement/external-links" element={<ExternalLinks />} />
-              <Route path="/engagement/page-flow" element={<PageFlow />} />
-              
-              {/* コンバージョン */}
-              <Route path="/conversion/list" element={<ConversionList />} />
-              <Route path="/conversion/reverse-flow" element={<ReverseFlow />} />
+              <Route path="/analysis/channels" element={<AcquisitionChannels />} />
+              <Route path="/analysis/keywords" element={<Keywords />} />
+              <Route path="/analysis/referrals" element={<Referrals />} />
+              <Route path="/analysis/pages" element={<Pages />} />
+              <Route path="/analysis/page-categories" element={<PageCategories />} />
+              <Route path="/analysis/landing-pages" element={<LandingPages />} />
+              <Route path="/analysis/file-downloads" element={<FileDownloads />} />
+              <Route path="/analysis/external-links" element={<ExternalLinks />} />
+              <Route path="/analysis/page-flow" element={<PageFlow />} />
+              <Route path="/analysis/conversions" element={<ConversionList />} />
+              <Route path="/analysis/reverse-flow" element={<ReverseFlow />} />
               
               {/* 改善する */}
               <Route path="/improve" element={<Improve />} />
@@ -160,16 +167,28 @@ function App() {
               {/* 評価する */}
               <Route path="/reports" element={<Reports />} />
               
-              {/* ユーザー管理 */}
-              <Route path="/users" element={<Users />} />
-              
               {/* アカウント設定 */}
               <Route path="/account/settings" element={<AccountSettings />} />
+              <Route path="/account/profile" element={<ProfileEdit />} />
+              <Route path="/account/plan" element={<PlanInfo />} />
+              
+              {/* メンバー管理 */}
+              <Route path="/members" element={<Members />} />
             </Route>
+            
+            {/* サイト改善相談サンクスページ（コンバージョン測定用） */}
+            <Route 
+              path="/improve/consultation/thanks" 
+              element={
+                <ProtectedRoute>
+                  <ImproveConsultationThanks />
+                </ProtectedRoute>
+              } 
+            />
             
             {/* 管理画面 */}
             <Route 
-              path="/admin/*" 
+              path="/admin" 
               element={
                 <ProtectedRoute>
                   <AdminRoute>
@@ -178,26 +197,26 @@ function App() {
                 </ProtectedRoute>
               }
             >
+              <Route index element={<Navigate to="/admin/dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="users" element={<UserList />} />
               <Route path="users/:uid" element={<UserDetail />} />
               <Route path="sites" element={<AdminSiteList />} />
               <Route path="sites/:siteId" element={<AdminSiteDetail />} />
-              {/* <Route path="logs" element={<ActivityLogs />} /> */}
-              <Route path="prompt-templates" element={<PromptTemplateList />} />
-              <Route path="prompt-templates/:id/edit" element={<PromptTemplateEditor />} />
-              <Route path="prompt-templates/new" element={<PromptTemplateEditor />} />
+              <Route path="logs" element={<ActivityLogs />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="settings/plans" element={<PlanSettings />} />
-              <Route index element={<Navigate to="/admin/dashboard" replace />} />
+              <Route path="settings/notifications" element={<EmailNotifications />} />
             </Route>
-          </Routes>
-        </div>
+
+                </Routes>
+              </div>
+            </SidebarProvider>
+          </SiteProvider>
         </Router>
-      </SiteProvider>
-    </AuthProvider>
-    <ReactQueryDevtools initialIsOpen={false} />
-  </QueryClientProvider>
+      </AuthProvider>
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   );
 }
 
