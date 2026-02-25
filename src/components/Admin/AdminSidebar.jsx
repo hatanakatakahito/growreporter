@@ -6,7 +6,7 @@ import {
   FileText, 
   Settings,
   CreditCard,
-  MessageSquare
+  Mail
 } from 'lucide-react';
 import logoImg from '../../assets/img/logo.svg';
 
@@ -43,9 +43,9 @@ export default function AdminSidebar() {
       path: '/admin/settings/plans',
     },
     {
-      icon: MessageSquare,
-      label: 'プロンプト管理',
-      path: '/admin/prompt-templates',
+      icon: Mail,
+      label: 'メール通知設定',
+      path: '/admin/settings/notifications',
     },
     {
       icon: Settings,
@@ -73,14 +73,11 @@ export default function AdminSidebar() {
     <aside className="flex h-screen w-64 flex-shrink-0 flex-col border-r border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
       {/* ロゴ */}
       <div className="flex h-20 flex-shrink-0 items-center justify-center border-b border-stroke px-6 dark:border-dark-3">
-        <Link to="/admin/dashboard" className="flex items-center gap-2">
-          <img 
-            src={logoImg} 
-            alt="GROW REPORTER" 
-            className="h-10 w-auto"
-          />
-          <span className="text-sm font-medium text-primary">Admin</span>
-        </Link>
+        <img 
+          src={logoImg} 
+          alt="GROW REPORTER" 
+          className="h-10 w-auto"
+        />
       </div>
 
       {/* ナビゲーション */}

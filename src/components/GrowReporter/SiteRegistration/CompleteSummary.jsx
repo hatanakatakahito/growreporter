@@ -1,26 +1,20 @@
 import React from 'react';
-import { SITE_TYPES } from '../../../constants/siteOptions';
+import { SITE_TYPES, SITE_PURPOSES } from '../../../constants/siteOptions';
 
 export default function CompleteSummary({ siteData }) {
   const getSiteTypeLabel = (types) => {
-    if (!Array.isArray(types) || types.length === 0) {
-      return '未選択';
-    }
-    return types
-      .map(typeValue => {
-        const found = SITE_TYPES.find(t => t.value === typeValue);
-        return found ? found.label : typeValue;
-      })
-      .join('、');
+    if (!Array.isArray(types) || types.length === 0) return '未選択';
+    return types.map((v) => SITE_TYPES.find(t => t.value === v)?.label ?? v).join('、');
   };
 
-  const getBusinessTypeLabel = (type) => {
-    const types = {
-      btob: 'BtoB',
-      btoc: 'BtoC',
-      both: 'BtoB & BtoC',
-    };
-    return types[type] || type;
+  const getIndustryLabel = (arr) => {
+    if (!Array.isArray(arr) || arr.length === 0) return '未選択';
+    return arr.join('、');
+  };
+
+  const getSitePurposeLabel = (arr) => {
+    if (!Array.isArray(arr) || arr.length === 0) return '未選択';
+    return arr.map((v) => SITE_PURPOSES.find(p => p.value === v)?.label ?? v).join('、');
   };
 
   return (
@@ -43,16 +37,16 @@ export default function CompleteSummary({ siteData }) {
               <span className="font-medium text-dark dark:text-white">{siteData.siteUrl}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-body-color">サイト種別:</span>
-              <span className="font-medium text-dark dark:text-white">
-                {getSiteTypeLabel(siteData.siteType)}
-              </span>
+              <span className="text-body-color">業界・業種:</span>
+              <span className="font-medium text-dark dark:text-white">{getIndustryLabel(siteData.industry)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-body-color">ビジネス形態:</span>
-              <span className="font-medium text-dark dark:text-white">
-                {getBusinessTypeLabel(siteData.businessType)}
-              </span>
+              <span className="text-body-color">サイト種別:</span>
+              <span className="font-medium text-dark dark:text-white">{getSiteTypeLabel(siteData.siteType)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-body-color">サイトの目的:</span>
+              <span className="font-medium text-dark dark:text-white">{getSitePurposeLabel(siteData.sitePurpose)}</span>
             </div>
           </div>
         </div>

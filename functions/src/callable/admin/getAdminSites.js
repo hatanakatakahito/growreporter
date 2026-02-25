@@ -54,6 +54,11 @@ export const getAdminSitesCallable = async (request) => {
     let sites = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
+      const siteTypeDisplay = Array.isArray(data.siteType) && data.siteType.length > 0
+        ? data.siteType.join(', ')
+        : (data.siteType || '');
+      const industryArr = Array.isArray(data.industry) ? data.industry : (data.industry ? [data.industry] : []);
+      const sitePurposeArr = data.sitePurpose ?? [];
       sites.push({
         siteId: doc.id,
         siteName: data.siteName || '',
@@ -63,14 +68,14 @@ export const getAdminSitesCallable = async (request) => {
         userEmail: '', // 後で取得
         ga4PropertyId: data.ga4PropertyId || '',
         gscSiteUrl: data.gscSiteUrl || '',
-        industry: data.industry || '',
-        siteType: data.siteType || '',
+        industry: industryArr,
+        sitePurpose: sitePurposeArr,
+        siteType: siteTypeDisplay,
         createdAt: data.createdAt?.toDate?.().toISOString() || null,
         updatedAt: data.updatedAt?.toDate?.().toISOString() || null,
-        // データ収集状況
         hasGA4: !!data.ga4PropertyId,
         hasGSC: !!data.gscSiteUrl,
-        isOrphan: false, // 後で判定
+        isOrphan: false,
       });
     });
 
@@ -89,14 +94,14 @@ export const getAdminSitesCallable = async (request) => {
 
         usersSnapshot.forEach((doc) => {
           const data = doc.data();
-          // ユーザー名を lastName + firstName で構成
-          const userName = (data.lastName && data.firstName) 
-            ? `${data.lastName} ${data.firstName}` 
+          const userName = (data.lastName && data.firstName)
+            ? `${data.lastName} ${data.firstName}`
             : (data.displayName || '');
-          
           userMap[doc.id] = {
             displayName: userName,
             email: data.email || '',
+            company: data.company || '', // 組織名
+            industry: data.industry || '', // ユーザー登録時の「業界・業種」
           };
         });
       }
@@ -109,7 +114,9 @@ export const getAdminSitesCallable = async (request) => {
         ...site,
         userName: user?.displayName || '不明',
         userEmail: user?.email || '',
-        isOrphan: !user, // ユーザーが見つからない場合は孤立サイト
+        userCompany: user?.company || '', // 組織名
+        userIndustry: user?.industry || '', // 業種（ユーザー登録の業界・業種）
+        isOrphan: !user,
       };
     });
 

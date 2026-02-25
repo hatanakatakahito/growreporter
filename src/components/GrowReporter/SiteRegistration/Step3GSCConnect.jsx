@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db, functions } from '../../../config/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 
 export default function Step3GSCConnect({ siteData, setSiteData }) {
@@ -22,15 +22,12 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
       try {
         // サイトに紐づくトークンIDがある場合、それを読み込む
         if (siteData.gscOauthTokenId) {
-          const tokenDoc = await getDocs(
-            query(
-              collection(db, 'oauth_tokens'),
-              where('__name__', '==', siteData.gscOauthTokenId)
-            )
-          );
+          const ownerId = siteData.userId ?? currentUser?.uid;
+          const tokenRef = doc(db, 'users', ownerId, 'oauth_tokens', siteData.gscOauthTokenId);
+          const tokenSnap = await getDoc(tokenRef);
 
-          if (!tokenDoc.empty) {
-            const tokenData = { id: tokenDoc.docs[0].id, ...tokenDoc.docs[0].data() };
+          if (tokenSnap.exists()) {
+            const tokenData = { id: tokenSnap.id, ...tokenSnap.data() };
             setToken(tokenData);
             
             // トークンがあればサイト一覧を取得
@@ -256,19 +253,15 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
 
       const { tokenId, googleAccount } = result.data;
 
-      // トークンデータを作成（サイト一覧取得用）
-      const tokenDoc = await getDocs(
-        query(
-          collection(db, 'oauth_tokens'),
-          where('__name__', '==', tokenId)
-        )
-      );
+      // トークンデータを作成（サイト一覧取得用）※直前に保存したので currentUser.uid 配下
+      const tokenRef = doc(db, 'users', currentUser.uid, 'oauth_tokens', tokenId);
+      const tokenSnap = await getDoc(tokenRef);
 
-      if (tokenDoc.empty) {
+      if (!tokenSnap.exists()) {
         throw new Error('トークンの取得に失敗しました');
       }
 
-      const savedToken = { id: tokenId, ...tokenDoc.docs[0].data() };
+      const savedToken = { id: tokenId, ...tokenSnap.data() };
       setToken(savedToken);
 
       // サイトデータを更新

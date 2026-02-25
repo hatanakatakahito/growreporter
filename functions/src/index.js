@@ -1,52 +1,15 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall } from 'firebase-functions/v2/https';
-import { onDocumentWritten } from 'firebase-functions/v2/firestore';
+import { onDocumentWritten, onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { initializeApp } from 'firebase-admin/app';
-import { fetchGA4DataCallable } from './callable/fetchGA4Data.js';
-import { fetchGA4MonthlyDataCallable } from './callable/fetchGA4MonthlyData.js';
-import { fetchGA4MonthlyConversionDataCallable } from './callable/fetchGA4MonthlyConversionData.js';
-import { fetchGA4DailyConversionDataCallable } from './callable/fetchGA4DailyConversionData.js';
-import { fetchGA4WeeklyConversionDataCallable } from './callable/fetchGA4WeeklyConversionData.js';
-import { fetchGA4HourlyConversionDataCallable } from './callable/fetchGA4HourlyConversionData.js';
-import { fetchGA4ChannelConversionDataCallable } from './callable/fetchGA4ChannelConversionData.js';
-import { fetchGA4ReferralConversionDataCallable } from './callable/fetchGA4ReferralConversionData.js';
-import { fetchGA4LandingPageConversionDataCallable } from './callable/fetchGA4LandingPageConversionData.js';
-import { fetchGA4ReverseFlowDataCallable } from './callable/fetchGA4ReverseFlowData.js';
-import { fetchGA4PagePathsCallable } from './callable/fetchGA4PagePaths.js';
-import { fetchGA4PageTransitionCallable } from './callable/fetchGA4PageTransition.js';
-import { fetchGSCDataCallable } from './callable/fetchGSCData.js';
-import { captureScreenshotCallable } from './callable/captureScreenshot.js';
-import { generateAISummaryCallable } from './callable/generateAISummary.js';
-import { fetchMetadataCallable } from './callable/fetchMetadata.js';
-import { fetchGA4UserDemographicsCallable } from './callable/fetchGA4UserDemographics.js';
-import { exchangeOAuthCodeCallable } from './callable/exchangeOAuthCode.js';
-import { testSheetsConnectionCallable } from './callable/testSheetsConnection.js';
-import { fetchImprovementKnowledgeCallable } from './callable/fetchImprovementKnowledge.js';
-import { getAdminStatsCallable } from './callable/admin/getAdminStats.js';
-import { getAdminUsersCallable } from './callable/admin/getAdminUsers.js';
-import { updateUserPlanCallable } from './callable/admin/updateUserPlan.js';
-import { getUserDetailCallable } from './callable/admin/getUserDetail.js';
-import { getActivityLogsCallable } from './callable/admin/getActivityLogs.js';
-import { getAdminSitesCallable } from './callable/admin/getAdminSites.js';
-import { getSiteDetailCallable } from './callable/admin/getSiteDetail.js';
-import { setCustomLimitsCallable } from './callable/admin/setCustomLimits.js';
-import { getCustomLimitsCallable } from './callable/admin/getCustomLimits.js';
-import { removeCustomLimitsCallable } from './callable/admin/removeCustomLimits.js';
-import { getAdminListCallable } from './callable/admin/getAdminList.js';
-import { updateAdminRoleCallable } from './callable/admin/updateAdminRole.js';
-import { addAdminCallable } from './callable/admin/addAdmin.js';
-import { deleteAdminCallable } from './callable/admin/deleteAdmin.js';
-import { deleteUserCallable } from './callable/admin/deleteUser.js';
-import { getPlanConfigCallable } from './callable/admin/getPlanConfig.js';
-import { updatePlanConfigCallable } from './callable/admin/updatePlanConfig.js';
-import { clearAllAICacheCallable } from './callable/admin/clearAllAICache.js';
-import { cleanupCacheScheduled } from './scheduled/cleanupCache.js';
-import { exportToSheetsScheduled } from './scheduled/exportToSheets.js';
-import { resetMonthlyLimitsScheduled } from './scheduled/resetMonthlyLimits.js';
-import { sendWeeklyReports } from './scheduled/sendWeeklyReports.js';
-import { sendMonthlyReports } from './scheduled/sendMonthlyReports.js';
-import { sendTestReportEmail } from './callable/sendTestReportEmail.js';
-import { onSiteCreatedTrigger } from './triggers/onSiteCreated.js';
+
+// デプロイ時のロードタイムアウト回避: callable はすべて遅延読み込み
+function lazyCallable(modulePath, exportName, opts = {}) {
+  return onCall({ region: 'asia-northeast1', cors: true, ...opts }, async (req) => {
+    const m = await import(modulePath);
+    return m[exportName](req);
+  });
+}
 
 // Firebase Admin初期化
 initializeApp({
@@ -57,234 +20,144 @@ initializeApp({
  * GA4データ取得 Callable Function
  * フロントエンドから呼び出されるAPI
  */
-export const fetchGA4Data = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, fetchGA4DataCallable);
+export const fetchGA4Data = lazyCallable('./callable/fetchGA4Data.js', 'fetchGA4DataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GA4月次データ取得 Callable Function
  * 過去13ヶ月の月次データを取得
  */
-export const fetchGA4MonthlyData = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, fetchGA4MonthlyDataCallable);
+export const fetchGA4MonthlyData = lazyCallable('./callable/fetchGA4MonthlyData.js', 'fetchGA4MonthlyDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GA4月次コンバージョンデータ取得 Callable Function
  * コンバージョンイベントの月次推移データを取得
  */
-export const fetchGA4MonthlyConversionData = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, fetchGA4MonthlyConversionDataCallable);
+export const fetchGA4MonthlyConversionData = lazyCallable('./callable/fetchGA4MonthlyConversionData.js', 'fetchGA4MonthlyConversionDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GA4日別コンバージョンデータ取得 Callable Function
  * サイト設定で定義したコンバージョンイベントのみをカウント
  */
-export const fetchGA4DailyConversionData = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1',
-  cors: true,
-}, fetchGA4DailyConversionDataCallable);
+export const fetchGA4DailyConversionData = lazyCallable('./callable/fetchGA4DailyConversionData.js', 'fetchGA4DailyConversionDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GA4曜日×時間帯別コンバージョンデータ取得 Callable Function
  * サイト設定で定義したコンバージョンイベントのみをカウント
  */
-export const fetchGA4WeeklyConversionData = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1',
-  cors: true,
-}, fetchGA4WeeklyConversionDataCallable);
+export const fetchGA4WeeklyConversionData = lazyCallable('./callable/fetchGA4WeeklyConversionData.js', 'fetchGA4WeeklyConversionDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GA4時間帯別コンバージョンデータ取得 Callable Function
  * サイト設定で定義したコンバージョンイベントのみをカウント
  */
-export const fetchGA4HourlyConversionData = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1',
-  cors: true,
-}, fetchGA4HourlyConversionDataCallable);
+export const fetchGA4HourlyConversionData = lazyCallable('./callable/fetchGA4HourlyConversionData.js', 'fetchGA4HourlyConversionDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GA4チャネル別コンバージョンデータ取得 Callable Function
  * サイト設定で定義したコンバージョンイベントのみをカウント
  */
-export const fetchGA4ChannelConversionData = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1',
-  cors: true,
-}, fetchGA4ChannelConversionDataCallable);
+export const fetchGA4ChannelConversionData = lazyCallable('./callable/fetchGA4ChannelConversionData.js', 'fetchGA4ChannelConversionDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GA4参照元/メディア別コンバージョンデータ取得 Callable Function
  * サイト設定で定義したコンバージョンイベントのみをカウント
  */
-export const fetchGA4ReferralConversionData = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1',
-  cors: true,
-}, fetchGA4ReferralConversionDataCallable);
+export const fetchGA4ReferralConversionData = lazyCallable('./callable/fetchGA4ReferralConversionData.js', 'fetchGA4ReferralConversionDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GA4ランディングページ別コンバージョンデータ取得 Callable Function
  * サイト設定で定義したコンバージョンイベントのみをカウント
  */
-export const fetchGA4LandingPageConversionData = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1',
-  cors: true,
-}, fetchGA4LandingPageConversionDataCallable);
+export const fetchGA4LandingPageConversionData = lazyCallable('./callable/fetchGA4LandingPageConversionData.js', 'fetchGA4LandingPageConversionDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GA4逆算フローデータ取得 Callable Function
  * フォームページからのコンバージョンフローデータを取得
  */
-export const fetchGA4ReverseFlowData = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, fetchGA4ReverseFlowDataCallable);
+export const fetchGA4ReverseFlowData = lazyCallable('./callable/fetchGA4ReverseFlowData.js', 'fetchGA4ReverseFlowDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GA4ページパス一覧取得 Callable Function
  * 逆算フローのフォームページパス候補を取得
  */
-export const fetchGA4PagePaths = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, fetchGA4PagePathsCallable);
+export const fetchGA4PagePaths = lazyCallable('./callable/fetchGA4PagePaths.js', 'fetchGA4PagePathsCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * GA4ページ遷移分析 Callable Function
  * 特定ページの流入元、遷移先、離脱率を取得
  */
-export const fetchGA4PageTransition = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1',
-  cors: true,
-}, fetchGA4PageTransitionCallable);
+export const fetchGA4PageTransition = lazyCallable('./callable/fetchGA4PageTransition.js', 'fetchGA4PageTransitionCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * GSCデータ取得 Callable Function
  * フロントエンドから呼び出されるAPI
  */
-export const fetchGSCData = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, fetchGSCDataCallable);
+export const fetchGSCData = lazyCallable('./callable/fetchGSCData.js', 'fetchGSCDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * スクリーンショット取得 Callable Function
  * サイトのスクリーンショットを自動取得
  */
-export const captureScreenshot = onCall({
-  memory: '2GiB',
-  timeoutSeconds: 300, // 60秒 → 300秒（5分）に延長
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, captureScreenshotCallable);
+export const captureScreenshot = lazyCallable('./callable/captureScreenshot.js', 'captureScreenshotCallable', { memory: '2GiB', timeoutSeconds: 300 });
 
 /**
  * AI要約生成 Callable Function
  * Gemini APIを使用してGA4データの要約を生成
  */
-export const generateAISummary = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-  secrets: ['GEMINI_API_KEY'], // Secretへのアクセス権を付与
-}, generateAISummaryCallable);
+export const generateAISummary = lazyCallable('./callable/generateAISummary.js', 'generateAISummaryCallable', { memory: '512MiB', timeoutSeconds: 60, secrets: ['GEMINI_API_KEY'] });
 
 /**
- * メタデータ取得 Callable Function
- * サイトのメタデータ（タイトル、説明文など）を自動取得
+ * メタデータ取得 Callable Function（遅延読み込み）
  */
 export const fetchMetadata = onCall({
   memory: '256MiB',
   timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, fetchMetadataCallable);
+  region: 'asia-northeast1',
+  cors: true,
+}, async (data, context) => {
+  const { fetchMetadataCallable } = await import('./callable/fetchMetadata.js');
+  return fetchMetadataCallable({ data, auth: context?.auth });
+});
+
+/**
+ * メタデータ・スクリーンショット再取得（遅延読み込み）
+ */
+export const refreshSiteMetadataAndScreenshots = onCall({
+  memory: '2GiB',
+  timeoutSeconds: 300,
+  region: 'asia-northeast1',
+  cors: true,
+}, async (data, context) => {
+  const { refreshSiteMetadataAndScreenshotsCallableWithCatch } = await import('./callable/refreshSiteMetadataAndScreenshots.js');
+  return refreshSiteMetadataAndScreenshotsCallableWithCatch({ data, auth: context?.auth });
+});
 
 /**
  * GA4ユーザー属性データ取得 Callable Function
  * ユーザーの性別、年齢、デバイス、地域などのデモグラフィックデータを取得
  */
-export const fetchGA4UserDemographics = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, fetchGA4UserDemographicsCallable);
+export const fetchGA4UserDemographics = lazyCallable('./callable/fetchGA4UserDemographics.js', 'fetchGA4UserDemographicsCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * OAuth 2.0 認可コード交換 Callable Function
  * OAuth 2.0の認可コードをアクセストークンとリフレッシュトークンに交換
  */
-export const exchangeOAuthCode = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, exchangeOAuthCodeCallable);
-
-/**
- * Google Sheets API接続テスト Callable Function
- * スプレッドシートへの読み書きが正しく動作するかテスト
- */
-export const testSheetsConnection = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, testSheetsConnectionCallable);
-
-/**
- * GrowGroup改善施策ナレッジ取得 Callable Function
- * スプレッドシートから改善施策のナレッジデータを取得
- */
-export const fetchImprovementKnowledge = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, fetchImprovementKnowledgeCallable);
+export const exchangeOAuthCode = lazyCallable('./callable/exchangeOAuthCode.js', 'exchangeOAuthCodeCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * キャッシュクリーンアップ Scheduled Function
  * 毎日午前3時（JST）に実行
  */
 export const cleanupCache = onSchedule({
-  schedule: '0 3 * * *', // 毎日午前3時
+  schedule: '0 3 * * *',
   timeZone: 'Asia/Tokyo',
   memory: '256MiB',
   timeoutSeconds: 300,
-  region: 'asia-northeast1', // 東京リージョン
-}, cleanupCacheScheduled);
+  region: 'asia-northeast1',
+}, async (event) => {
+  const m = await import('./scheduled/cleanupCache.js');
+  return m.cleanupCacheScheduled(event);
+});
 
 /**
  * Googleスプレッドシートエクスポート Scheduled Function
@@ -292,12 +165,15 @@ export const cleanupCache = onSchedule({
  * 全サイトの前月データをスプレッドシートに自動エクスポート
  */
 export const exportToSheets = onSchedule({
-  schedule: '0 4 * * *', // 毎日午前4時
+  schedule: '0 4 * * *',
   timeZone: 'Asia/Tokyo',
   memory: '512MiB',
-  timeoutSeconds: 540, // 9分
-  region: 'asia-northeast1', // 東京リージョン
-}, exportToSheetsScheduled);
+  timeoutSeconds: 540,
+  region: 'asia-northeast1',
+}, async (event) => {
+  const m = await import('./scheduled/exportToSheets.js');
+  return m.exportToSheetsScheduled(event);
+});
 
 /**
  * サイト登録完了時トリガー
@@ -305,229 +181,319 @@ export const exportToSheets = onSchedule({
  */
 export const siteCreatedSheetsExport = onDocumentWritten({
   document: 'sites/{siteId}',
-  region: 'asia-northeast1', // 東京リージョン
-  memory: '512MiB',
-  timeoutSeconds: 300, // 5分
-}, onSiteCreatedTrigger);
+  region: 'asia-northeast1',
+  memory: '2GiB',
+  timeoutSeconds: 540,
+}, async (event) => {
+  const m = await import('./triggers/onSiteCreated.js');
+  return m.onSiteCreatedTrigger(event);
+});
 
 /**
- * 月次制限リセット Scheduled Function
- * 毎月1日0時に全ユーザーのAI生成回数をリセット
+ * サイトメタデータ自動取得トリガー（遅延読み込み）
+ * サイト作成・URL更新時にメタデータとスクリーンショットを自動取得
  */
-export const resetMonthlyLimits = resetMonthlyLimitsScheduled;
+export const onSiteChanged = onDocumentWritten(
+  {
+    document: 'sites/{siteId}',
+    region: 'asia-northeast1',
+    memory: '2GiB',
+    timeoutSeconds: 540,
+  },
+  async (event) => {
+    const { onSiteChangedHandler } = await import('./triggers/onSiteChanged.js');
+    return onSiteChangedHandler(event);
+  }
+);
+
+/**
+ * スクレイピングジョブ作成トリガー（遅延読み込み）
+ * 手動「スクレイピング開始」で scrapingJobs に追加されたジョブをバックグラウンド実行
+ */
+export const onScrapingJobCreated = onDocumentCreated(
+  {
+    document: 'scrapingJobs/{jobId}',
+    region: 'asia-northeast1',
+    memory: '2GiB',
+    timeoutSeconds: 540,
+  },
+  async (event) => {
+    const { onScrapingJobCreatedHandler } = await import('./triggers/onScrapingJobCreated.js');
+    return onScrapingJobCreatedHandler(event);
+  }
+);
+
+/**
+ * 月次制限リセット Scheduled Function（遅延読み込み）
+ */
+export const resetMonthlyLimits = onSchedule({
+  schedule: '0 0 1 * *',
+  timeZone: 'Asia/Tokyo',
+  region: 'asia-northeast1',
+  memory: '256MiB',
+}, async (event) => {
+  const m = await import('./scheduled/resetMonthlyLimits.js');
+  return m.resetMonthlyLimitsScheduled(event);
+});
 
 /**
  * 管理者ダッシュボード統計データ取得 Callable Function
  * 管理者のみアクセス可能
  */
-export const getAdminStats = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, getAdminStatsCallable);
+export const getAdminStats = lazyCallable('./callable/admin/getAdminStats.js', 'getAdminStatsCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * 管理者用ユーザー一覧取得 Callable Function
  * 検索、フィルタ、ページネーション対応
  */
-export const getAdminUsers = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, getAdminUsersCallable);
+export const getAdminUsers = lazyCallable('./callable/admin/getAdminUsers.js', 'getAdminUsersCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * 管理者用ユーザープラン変更 Callable Function
  * プラン変更 + 履歴記録 + 使用制限リセット
  */
-export const updateUserPlan = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, updateUserPlanCallable);
+export const updateUserPlan = lazyCallable('./callable/admin/updateUserPlan.js', 'updateUserPlanCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * 管理者用ユーザー詳細取得 Callable Function
  * ユーザーの詳細情報、サイト一覧、プラン履歴を取得
  */
-export const getUserDetail = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, getUserDetailCallable);
+export const getUserDetail = lazyCallable('./callable/admin/getUserDetail.js', 'getUserDetailCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * 管理者用アクティビティログ取得 Callable Function
  * 管理者の操作履歴を取得（フィルタ、ページネーション対応）
  */
-export const getActivityLogs = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, getActivityLogsCallable);
+export const getActivityLogs = lazyCallable('./callable/admin/getActivityLogs.js', 'getActivityLogsCallable', { memory: '512MiB', timeoutSeconds: 60 });
+
+/**
+ * ユーザー登録ログ記録 Callable Function
+ * ユーザー登録時のアクティビティログを記録
+ */
+export const logUserRegistration = lazyCallable('./callable/logUserRegistration.js', 'logUserRegistrationCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * ユーザーログインログ記録 Callable Function
+ * ユーザーログイン時のアクティビティログを記録
+ */
+export const logUserLogin = lazyCallable('./callable/logUserLogin.js', 'logUserLoginCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * サイト作成ログ記録 Callable Function
+ * サイト作成時のアクティビティログを記録
+ */
+export const logSiteCreated = lazyCallable('./callable/logSiteCreated.js', 'logSiteCreatedCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * サイト削除ログ記録 Callable Function
+ * サイト削除時のアクティビティログを記録
+ */
+export const logSiteDeleted = lazyCallable('./callable/logSiteDeleted.js', 'logSiteDeletedCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * 管理者用サイト一覧取得 Callable Function
  * 全サイトの一覧を取得（検索、フィルタ、ページネーション対応）
  */
-export const getAdminSites = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, getAdminSitesCallable);
+export const getAdminSites = lazyCallable('./callable/admin/getAdminSites.js', 'getAdminSitesCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
  * 管理者用サイト詳細取得 Callable Function
  * サイトの詳細情報、データ収集状況、AI使用状況を取得
  */
-export const getSiteDetail = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 60,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, getSiteDetailCallable);
+export const getSiteDetail = lazyCallable('./callable/admin/getSiteDetail.js', 'getSiteDetailCallable', { memory: '512MiB', timeoutSeconds: 60 });
+
+/**
+ * ユーザー用サイト詳細取得（オーナーまたは同一アカウントメンバー）
+ */
+export const getMySiteDetail = lazyCallable('./callable/getMySiteDetail.js', 'getMySiteDetailCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * 管理者用個別制限設定 Callable Function
  * 特定ユーザーに個別の制限を設定
  */
-export const setCustomLimits = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, setCustomLimitsCallable);
+export const setCustomLimits = lazyCallable('./callable/admin/setCustomLimits.js', 'setCustomLimitsCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * 管理者用個別制限取得 Callable Function
  * ユーザーの個別制限を取得
  */
-export const getCustomLimits = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, getCustomLimitsCallable);
+export const getCustomLimits = lazyCallable('./callable/admin/getCustomLimits.js', 'getCustomLimitsCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * 管理者用個別制限削除 Callable Function
  * ユーザーの個別制限を削除
  */
-export const removeCustomLimits = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, removeCustomLimitsCallable);
+export const removeCustomLimits = lazyCallable('./callable/admin/removeCustomLimits.js', 'removeCustomLimitsCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * 管理者一覧取得 Callable Function
  * すべての管理者情報を取得
  */
-export const getAdminList = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, getAdminListCallable);
+export const getAdminList = lazyCallable('./callable/admin/getAdminList.js', 'getAdminListCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * 管理者ロール変更 Callable Function
  * 管理者のロール（admin/editor/viewer）を変更
  */
-export const updateAdminRole = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, updateAdminRoleCallable);
+export const updateAdminRole = lazyCallable('./callable/admin/updateAdminRole.js', 'updateAdminRoleCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * 管理者追加 Callable Function
  * 新しい管理者を追加
  */
-export const addAdmin = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, addAdminCallable);
+export const addAdmin = lazyCallable('./callable/admin/addAdmin.js', 'addAdminCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * 管理者削除 Callable Function
  * 管理者を削除
  */
-export const deleteAdmin = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, deleteAdminCallable);
+export const deleteAdmin = lazyCallable('./callable/admin/deleteAdmin.js', 'deleteAdminCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * ユーザー削除 Callable Function
  * ユーザーとすべての関連データを削除
  */
-export const deleteUser = onCall({
-  memory: '512MiB',
-  timeoutSeconds: 120,  // 複数のコレクションを削除するため時間を長めに
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, deleteUserCallable);
+export const deleteUser = lazyCallable('./callable/admin/deleteUser.js', 'deleteUserCallable', { memory: '512MiB', timeoutSeconds: 120 });
 
 /**
  * プラン設定取得 Callable Function
  * 現在のプラン設定を取得
  */
-export const getPlanConfig = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, getPlanConfigCallable);
+export const getPlanConfig = lazyCallable('./callable/admin/getPlanConfig.js', 'getPlanConfigCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * プラン設定更新 Callable Function
  * プラン設定を更新
  */
-export const updatePlanConfig = onCall({
+export const updatePlanConfig = lazyCallable('./callable/admin/updatePlanConfig.js', 'updatePlanConfigCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * GA4上位100ページスクレイピング Callable Function（遅延読み込み）
+ */
+export const scrapeTop100Pages = onCall({
+  region: 'asia-northeast1',
   memory: '256MiB',
   timeoutSeconds: 30,
-  region: 'asia-northeast1', // 東京リージョン
-  cors: true, // CORS を有効化
-}, updatePlanConfigCallable);
-
-/**
- * すべてのAI分析キャッシュをクリア Callable Function
- * 管理者専用
- */
-export const clearAllAICache = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 540,
-  region: 'asia-northeast1',
   cors: true,
-}, clearAllAICacheCallable);
+}, async (request) => {
+  const { scrapeTop100PagesHandler } = await import('./callable/scrapeTop100Pages.js');
+  return scrapeTop100PagesHandler(request);
+});
 
 /**
- * テストメール送信 Callable Function
- * 管理者が設定画面からテストメールを送信
+ * テストメール送信 Callable Function（2nd Gen）
+ * ※ 既存が 1st Gen の場合は一度 npm run deploy:functions で削除→デプロイすること
  */
-export { sendTestReportEmail };
+export const sendTestReportEmail = lazyCallable('./callable/sendTestReportEmail.js', 'sendTestReportEmailHandler', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
- * 週次レポート送信 Scheduled Function
+ * サイト改善相談フォーム送信 Callable Function
+ * 宛先: info@grow-reporter.com
+ */
+export const submitImprovementConsultation = lazyCallable('./callable/submitImprovementConsultation.js', 'submitImprovementConsultationCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * ページスクレイピングデータ定期更新 Scheduled Function
+ * 毎日3時実行、最終スクレイピングから30日以上経過したサイトを1サイトずつ再スクレイピング
+ */
+/**
+ * 週次レポート送信 Scheduled Function（2nd Gen、遅延読み込み）
  * Cloud Schedulerから定期実行
  */
-export { sendWeeklyReports };
+export const sendWeeklyReports = onSchedule({
+  schedule: '0 9 * * 1',
+  timeZone: 'Asia/Tokyo',
+  region: 'asia-northeast1',
+  memory: '512MiB',
+  timeoutSeconds: 540,
+}, async (event) => {
+  const m = await import('./scheduled/sendWeeklyReports.js');
+  return m.sendWeeklyReportsHandler(event);
+});
 
 /**
- * 月次レポート送信 Scheduled Function
+ * 月次レポート送信 Scheduled Function（2nd Gen、遅延読み込み）
  * Cloud Schedulerから定期実行
  */
-export { sendMonthlyReports };
+export const sendMonthlyReports = onSchedule({
+  schedule: '0 9 1 * *',
+  timeZone: 'Asia/Tokyo',
+  region: 'asia-northeast1',
+  memory: '512MiB',
+  timeoutSeconds: 540,
+}, async (event) => {
+  const m = await import('./scheduled/sendMonthlyReports.js');
+  return m.sendMonthlyReportsHandler(event);
+});
+
+/**
+ * メトリクスアラート検知（遅延読み込み）
+ */
+export const checkMetricAlertsScheduled = onSchedule({
+  schedule: '0 8 * * *',
+  timeZone: 'Asia/Tokyo',
+  region: 'asia-northeast1',
+  memory: '512MiB',
+  timeoutSeconds: 540,
+  secrets: ['GEMINI_API_KEY'],
+}, async (event) => {
+  const m = await import('./scheduled/checkMetricAlerts.js');
+  return m.runCheckMetricAlerts();
+});
+
+/**
+ * メンバー招待 Callable Function
+ * アカウントオーナーがメンバーを招待
+ */
+export const inviteMember = lazyCallable('./callable/inviteMember.js', 'inviteMemberCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * 招待承認 Callable Function
+ * 招待されたユーザーが招待を承認
+ */
+export const acceptInvitation = lazyCallable('./callable/acceptInvitation.js', 'acceptInvitationCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * トークンで招待情報取得 Callable Function（未ログインの招待画面用）
+ */
+export const getInvitationByToken = lazyCallable('./callable/getInvitationByToken.js', 'getInvitationByTokenCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * 招待再送信 Callable Function
+ * 保留中の招待を再送信
+ */
+export const resendInvitation = lazyCallable('./callable/resendInvitation.js', 'resendInvitationCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * 招待取り消し Callable Function
+ * オーナーが保留中の招待を取り消し（削除）
+ */
+export const cancelInvitation = lazyCallable('./callable/cancelInvitation.js', 'cancelInvitationCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * メンバー削除 Callable Function
+ * アカウントオーナーがメンバーを削除
+ */
+export const removeMember = lazyCallable('./callable/removeMember.js', 'removeMemberCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * メンバー権限変更 Callable Function
+ * アカウントオーナーがメンバーの権限を変更
+ */
+export const updateMemberRole = lazyCallable('./callable/updateMemberRole.js', 'updateMemberRoleCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * オーナー権限譲渡 Callable Function
+ * 現在のオーナーが他のメンバーにオーナー権限を譲渡
+ */
+export const transferOwnership = lazyCallable('./callable/transferOwnership.js', 'transferOwnershipCallable', { memory: '256MiB', timeoutSeconds: 60 });
+
+/**
+ * データマイグレーション実行
+ */
+export const migrateData = lazyCallable('./callable/migrateData.js', 'migrateDataCallable', { memory: '512MiB', timeoutSeconds: 540 });
+
+/**
+ * アカウントメンバー一覧取得
+ */
+export const getAccountMembers = lazyCallable('./callable/getAccountMembers.js', 'getAccountMembersCallable', { memory: '256MiB', timeoutSeconds: 60 });

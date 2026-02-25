@@ -27,15 +27,21 @@ export async function fetchGA4HourlyConversionDataCallable(request) {
     }
 
     const siteData = siteDoc.data();
+    
+    // サイト所有者本人、または管理者権限（admin/editor/viewer）がある場合のみアクセス許可
     if (siteData.userId !== userId) {
-      throw new HttpsError('permission-denied', 'Access denied');
+      const adminDoc = await db.collection('adminUsers').doc(userId).get();
+      if (!adminDoc.exists || !['admin', 'editor', 'viewer'].includes(adminDoc.data().role)) {
+        throw new HttpsError('permission-denied', 'Access denied');
+      }
     }
 
     if (!siteData.ga4PropertyId || !siteData.ga4OauthTokenId) {
       throw new HttpsError('failed-precondition', 'GA4 not configured');
     }
 
-    const { oauth2Client } = await getAndRefreshToken(siteData.ga4OauthTokenId);
+    const tokenOwnerId = siteData.ga4TokenOwner || siteData.userId;
+    const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, siteData.ga4OauthTokenId);
     const analyticsData = google.analyticsdata('v1beta');
 
     const sessionsResponse = await analyticsData.properties.runReport({

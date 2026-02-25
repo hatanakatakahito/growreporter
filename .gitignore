@@ -23,6 +23,13 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment / secrets (never commit)
+.env
+.env.*
+!.env.example
+functions/.env
+functions/.env.*
+
 # Firebase and GCP credentials
 *.json
 !package.json

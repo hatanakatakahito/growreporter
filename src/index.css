@@ -5,6 +5,17 @@
 @tailwind components;
 @tailwind utilities;
 
+/* スクロールバーを非表示にするユーティリティ */
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
 /* スクロールバーを常に表示してレイアウトのずれを防ぐ */
 html {
   overflow-y: scroll;
@@ -18,6 +29,52 @@ html {
   50% {
     transform: scale(1.15);
   }
+}
+
+/* グラデーション枠線のアニメーション（滑らかに輝くグラデーション） */
+@keyframes gradient-border-animation {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+/* AI分析ボックスのグラデーション枠線（滑らかに輝くグラデーション） */
+.ai-gradient-border {
+  position: relative;
+  padding: 4px;
+  background: linear-gradient(90deg, 
+    #1e40af,
+    #3b82f6,
+    #60a5fa,
+    #93c5fd,
+    #c084fc,
+    #a855f7,
+    #9333ea,
+    #7e22ce,
+    #9333ea,
+    #a855f7,
+    #c084fc,
+    #93c5fd,
+    #60a5fa,
+    #3b82f6,
+    #1e40af
+  );
+  background-size: 400% 100%;
+  border-radius: 0.5rem;
+  animation: gradient-border-animation 10s ease infinite;
+  box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.1);
+}
+
+.ai-gradient-border > * {
+  position: relative;
+  z-index: 1;
+}
+
+.dark .ai-gradient-border {
+  box-shadow: inset 0 0 20px rgba(255, 255, 255, 0.05);
 }
 
 @keyframes ai-ripple {

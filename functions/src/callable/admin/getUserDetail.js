@@ -40,8 +40,7 @@ export const getUserDetailCallable = async (request) => {
     ] = await Promise.all([
       db.collection('users').doc(uid).get(),
       db.collection('sites').where('userId', '==', uid).get(),
-      db.collection('planChangeHistory')
-        .where('userId', '==', uid)
+      db.collection('users').doc(uid).collection('planChangeHistory')
         .orderBy('changedAt', 'desc')
         .limit(10)
         .get(),
@@ -79,6 +78,7 @@ export const getUserDetailCallable = async (request) => {
       displayName: userName,
       lastName: userData.lastName || null,
       firstName: userData.firstName || null,
+      company: userData.company || null,
       photoURL: userData.photoURL || null,
       plan: userData.plan || 'free',
       createdAt: userData.createdAt?.toDate?.().toISOString() || null,
@@ -136,7 +136,7 @@ async function getAIUsageForUser(db, userId) {
   try {
     // AI分析サマリー使用回数
     const analysisCacheSnapshot = await db
-      .collection('aiAnalysisCache')
+      .collectionGroup('aiAnalysisCache')
       .where('userId', '==', userId)
       .where('generatedAt', '>=', Timestamp.fromDate(firstDayOfMonth))
       .count()
@@ -144,7 +144,7 @@ async function getAIUsageForUser(db, userId) {
 
     // AI改善案生成回数
     const improvementCacheSnapshot = await db
-      .collection('aiAnalysisCache')
+      .collectionGroup('aiAnalysisCache')
       .where('userId', '==', userId)
       .where('pageType', '==', 'comprehensive_improvement')
       .where('generatedAt', '>=', Timestamp.fromDate(firstDayOfMonth))

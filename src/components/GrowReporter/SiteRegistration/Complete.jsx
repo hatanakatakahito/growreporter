@@ -18,7 +18,7 @@ export default function Complete() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [showContent, setShowContent] = useState(false);
-  const [numberOfPieces, setNumberOfPieces] = useState(400);
+  const [numberOfPieces, setNumberOfPieces] = useState(150);
   const [windowSize, setWindowSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,
@@ -36,6 +36,23 @@ export default function Complete() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // 紙吹雪表示中は横スクロールを防ぐ
+  useEffect(() => {
+    if (showConfetti) {
+      document.body.style.overflowX = 'hidden';
+      document.documentElement.style.overflowX = 'hidden';
+    } else {
+      document.body.style.overflowX = '';
+      document.documentElement.style.overflowX = '';
+    }
+
+    // クリーンアップ
+    return () => {
+      document.body.style.overflowX = '';
+      document.documentElement.style.overflowX = '';
+    };
+  }, [showConfetti]);
 
   // サイトデータ読み込み
   useEffect(() => {
@@ -76,13 +93,15 @@ export default function Complete() {
       // 3. コンテンツ表示
       setTimeout(() => setShowContent(true), 800);
       
-      // 4. 紙吹雪を徐々に減らす（よりゆっくりとしたタイミング）
-      setTimeout(() => setNumberOfPieces(200), 5000);   // 3秒 → 5秒
-      setTimeout(() => setNumberOfPieces(100), 7000);   // 4秒 → 7秒
-      setTimeout(() => setNumberOfPieces(50), 9000);    // 5秒 → 9秒
+      // 4. 紙吹雪を徐々に減らす（5秒後から開始）
+      setTimeout(() => setNumberOfPieces(120), 5000);
+      setTimeout(() => setNumberOfPieces(90), 7000);
+      setTimeout(() => setNumberOfPieces(60), 9000);
+      setTimeout(() => setNumberOfPieces(30), 11000);
+      setTimeout(() => setNumberOfPieces(15), 13000);
       
-      // 5. 紙吹雪停止（10秒後）
-      setTimeout(() => setShowConfetti(false), 10000);  // 6秒 → 10秒
+      // 5. 紙吹雪完全停止（15秒後）
+      setTimeout(() => setShowConfetti(false), 15000);
     }
   }, [isLoading, siteData]);
 
@@ -103,18 +122,20 @@ export default function Complete() {
   }
 
   return (
-    <div className="min-h-screen overflow-x-hidden" style={{ backgroundColor: 'rgb(244, 244, 244)' }}>
+    <div className="relative min-h-screen overflow-x-hidden" style={{ backgroundColor: 'rgb(244, 244, 244)' }}>
       {/* 紙吹雪アニメーション */}
       {showConfetti && (
-        <Confetti
-          width={windowSize.width}
-          height={windowSize.height}
-          numberOfPieces={numberOfPieces}
-          recycle={numberOfPieces > 0}
-          colors={['#3758F9', '#5B7CFA', '#4169E1', '#1E90FF', '#00BFFF', '#87CEEB']}
-          gravity={0.15}  // 0.3 → 0.15（よりゆっくり落下）
-          wind={0.01}     // 微風効果を追加（横方向のゆらぎ）
-        />
+        <div className="fixed inset-0 overflow-hidden" style={{ pointerEvents: 'none' }}>
+          <Confetti
+            width={windowSize.width}
+            height={windowSize.height}
+            numberOfPieces={numberOfPieces}
+            recycle={numberOfPieces > 0}
+            colors={['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2', '#F8B195', '#C06C84', '#6C5B7B', '#355C7D']}
+            gravity={0.08}  // よりゆっくり落下（0.15 → 0.08）
+            wind={0.005}    // 微風効果（横方向のゆらぎ）
+          />
+        </div>
       )}
 
       <div className="py-12">

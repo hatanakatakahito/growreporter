@@ -3,6 +3,9 @@ module.exports = {
   content: ["./index.html", "./src/**/*.{ts,tsx,js,jsx}"],
   theme: {
     extend: {
+      maxWidth: {
+        content: '1400px',
+      },
       colors: {
         primary: {
           DEFAULT: "#3758F9",

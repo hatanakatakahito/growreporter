@@ -4,9 +4,9 @@
  */
 export const setPageTitle = (pageName) => {
   if (pageName) {
-    document.title = `GROW REPORTER（グローレポーター）｜${pageName}`;
+    document.title = `GROW REPORTER（グローレポータ）｜${pageName}`;
   } else {
-    document.title = 'GROW REPORTER（グローレポーター）';
+    document.title = 'GROW REPORTER（グローレポータ）';
   }
 };
 

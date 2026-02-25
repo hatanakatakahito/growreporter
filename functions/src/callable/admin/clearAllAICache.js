@@ -19,8 +19,8 @@ export async function clearAllAICacheCallable(request) {
 
     let totalDeleted = 0;
 
-    // aiAnalysisCacheコレクション
-    const cacheSnapshot = await db.collection('aiAnalysisCache').get();
+    // aiAnalysisCache（サブコレクション: sites/{siteId}/aiAnalysisCache）
+    const cacheSnapshot = await db.collectionGroup('aiAnalysisCache').get();
     logger.info(`aiAnalysisCache: ${cacheSnapshot.size}件見つかりました`);
     
     if (cacheSnapshot.size > 0) {
@@ -33,8 +33,8 @@ export async function clearAllAICacheCallable(request) {
       logger.info(`aiAnalysisCache: ${cacheSnapshot.size}件削除しました`);
     }
 
-    // aiSummariesコレクション
-    const summariesSnapshot = await db.collection('aiSummaries').get();
+    // aiSummaries（サブコレクション: sites/{siteId}/aiSummaries）
+    const summariesSnapshot = await db.collectionGroup('aiSummaries').get();
     logger.info(`aiSummaries: ${summariesSnapshot.size}件見つかりました`);
     
     if (summariesSnapshot.size > 0) {

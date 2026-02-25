@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
-import { getPlanDisplayName, getPlanInfo } from '../../constants/plans';
-import LoadingSpinner from '../common/LoadingSpinner';
+import { getPlanDisplayName, getPlanInfo, getPlanBadgeColor } from '../../constants/plans';
 import { X, CheckCircle, AlertCircle } from 'lucide-react';
 
 /**
@@ -35,11 +34,6 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
       return;
     }
 
-    if (!reason.trim()) {
-      setError('変更理由を入力してください');
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
@@ -69,20 +63,6 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     setShowConfirm(true);
-  };
-
-  // プランバッジの色
-  const getPlanBadgeColor = (plan) => {
-    switch (plan) {
-      case 'free':
-        return 'bg-gradient-to-r from-blue-400 to-blue-600';
-      case 'standard':
-        return 'bg-gradient-to-r from-red-400 to-pink-600';
-      case 'premium':
-        return 'bg-gradient-to-r from-amber-400 to-yellow-500';
-      default:
-        return 'bg-gray-200';
-    }
   };
 
   // 確認ダイアログ
@@ -123,10 +103,12 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
                 </span>
               </div>
             </div>
-            <div>
-              <p className="text-xs text-body-color dark:text-dark-6">変更理由</p>
-              <p className="text-sm text-dark dark:text-white">{reason}</p>
-            </div>
+            {reason.trim() && (
+              <div>
+                <p className="text-xs text-body-color dark:text-dark-6">変更理由</p>
+                <p className="text-sm text-dark dark:text-white">{reason}</p>
+              </div>
+            )}
           </div>
 
           {error && (
@@ -150,7 +132,7 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
             >
               {loading ? (
                 <>
-                  <LoadingSpinner size="sm" />
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
                   変更中...
                 </>
               ) : (
@@ -237,14 +219,13 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
           {/* 変更理由 */}
           <div className="mb-6">
             <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-              変更理由 <span className="text-red-500">*</span>
+              変更理由
             </label>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               placeholder="プラン変更の理由を入力してください..."
               rows={3}
-              required
               className="w-full rounded-lg border border-stroke bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
             />
           </div>
@@ -267,7 +248,7 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
             </button>
             <button
               type="submit"
-              disabled={selectedPlan === currentPlan || !reason.trim()}
+              disabled={selectedPlan === currentPlan}
               className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90 disabled:opacity-50"
             >
               確認画面へ

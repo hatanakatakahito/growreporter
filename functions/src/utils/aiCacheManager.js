@@ -16,9 +16,8 @@ export async function getCachedAnalysis(userId, siteId, pageType, startDate, end
   const db = getFirestore();
 
   try {
-    const cacheSnapshot = await db.collection('aiAnalysisCache')
+    const cacheSnapshot = await db.collection('sites').doc(siteId).collection('aiAnalysisCache')
       .where('userId', '==', userId)
-      .where('siteId', '==', siteId)
       .where('pageType', '==', pageType)
       .where('period.startDate', '==', startDate)
       .where('period.endDate', '==', endDate)
@@ -101,7 +100,7 @@ export async function saveCachedAnalysis(userId, siteId, pageType, summary, reco
       },
     };
 
-    const cacheRef = await db.collection('aiAnalysisCache').add(cacheData);
+    const cacheRef = await db.collection('sites').doc(siteId).collection('aiAnalysisCache').add(cacheData);
     
     logger.info('[CacheManager] キャッシュ保存成功', {
       cacheId: cacheRef.id,

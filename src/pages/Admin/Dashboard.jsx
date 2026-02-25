@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
 import { useAdminStats } from '../../hooks/useAdminStats';
 import StatsCard from '../../components/Admin/StatsCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
-import { Users, Globe, TrendingUp, Sparkles, BarChart3 } from 'lucide-react';
+import { BarChart3, Sparkles } from 'lucide-react';
 
 /**
  * アドミンダッシュボード
@@ -12,7 +12,6 @@ import { Users, Globe, TrendingUp, Sparkles, BarChart3 } from 'lucide-react';
  */
 export default function AdminDashboard() {
   const { stats, loading, error, refetch } = useAdminStats();
-
   useEffect(() => {
     setPageTitle('管理ダッシュボード');
   }, []);
@@ -65,7 +64,6 @@ export default function AdminDashboard() {
         <StatsCard
           title="総ユーザー数"
           value={stats.totalUsers}
-          icon={Users}
           color="primary"
           trend={stats.newUsersThisMonth > 0 ? 'up' : null}
           trendValue={stats.newUsersThisMonth}
@@ -74,25 +72,84 @@ export default function AdminDashboard() {
         <StatsCard
           title="月間アクティブ"
           value={stats.monthlyActiveUsers}
-          icon={TrendingUp}
           color="green"
           subtitle="過去30日間"
         />
         <StatsCard
           title="登録サイト数"
           value={stats.totalSites}
-          icon={Globe}
           color="blue"
           subtitle="全サイト"
         />
         <StatsCard
           title="AI分析使用"
           value={stats.aiUsage?.analysisCount || 0}
-          icon={Sparkles}
           color="purple"
           subtitle="今月の使用回数"
         />
       </div>
+
+      {/* スクレイピング状況カード */}
+      {stats.scrapingStatus && (
+        <div className="mb-6">
+          <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+            <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
+              サイトマップスクレイピング状況
+            </h3>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <div className="rounded-lg bg-green-50 p-4 dark:bg-green-900/20">
+                <div className="mb-1 text-xs font-medium text-green-700 dark:text-green-400">
+                  完了
+                </div>
+                <div className="text-2xl font-bold text-green-600 dark:text-green-300">
+                  {stats.scrapingStatus.completed}
+                </div>
+                <div className="mt-1 text-xs text-green-600 dark:text-green-400">
+                  サイト
+                </div>
+              </div>
+              <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
+                <div className="mb-1 text-xs font-medium text-blue-700 dark:text-blue-400">
+                  処理中
+                </div>
+                <div className="text-2xl font-bold text-blue-600 dark:text-blue-300">
+                  {stats.scrapingStatus.processing}
+                </div>
+                <div className="mt-1 text-xs text-blue-600 dark:text-blue-400">
+                  サイト
+                </div>
+              </div>
+              <div className="rounded-lg bg-red-50 p-4 dark:bg-red-900/20">
+                <div className="mb-1 text-xs font-medium text-red-700 dark:text-red-400">
+                  失敗
+                </div>
+                <div className="text-2xl font-bold text-red-600 dark:text-red-300">
+                  {stats.scrapingStatus.failed}
+                </div>
+                <div className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  サイト
+                </div>
+              </div>
+              <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800/20">
+                <div className="mb-1 text-xs font-medium text-gray-700 dark:text-gray-400">
+                  待機中
+                </div>
+                <div className="text-2xl font-bold text-gray-600 dark:text-gray-300">
+                  {stats.scrapingStatus.pending}
+                </div>
+                <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                  サイト
+                </div>
+              </div>
+            </div>
+            {stats.scrapingStatus.total > 0 && (
+              <div className="mt-4 text-xs text-body-color dark:text-dark-6">
+                合計: {stats.scrapingStatus.total}サイト
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* プラン別ユーザー分布 */}
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">

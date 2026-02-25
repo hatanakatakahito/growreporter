@@ -78,7 +78,7 @@ GOOGLE_CLIENT_SECRET=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
 **承認済みのリダイレクトURI:**
 ```
 開発環境: http://localhost:3000/oauth/callback
-本番環境: https://growgroupreporter.web.app/oauth/callback
+本番環境: https://grow-reporter.com/oauth/callback
 ```
 
 ⚠️ **末尾にスラッシュを付けない！**

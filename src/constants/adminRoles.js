@@ -1,5 +1,5 @@
 /**
- * 管理者ロール定義
+ * 管理者権限定義
  */
 
 export const ADMIN_ROLES = {
@@ -21,14 +21,14 @@ export const ADMIN_ROLE_DESCRIPTIONS = {
 };
 
 /**
- * 管理者ロールの表示名を取得
+ * 管理者権限の表示名を取得
  */
 export function getAdminRoleLabel(role) {
   return ADMIN_ROLE_LABELS[role] || '不明';
 }
 
 /**
- * 管理者ロールの説明を取得
+ * 管理者権限の説明を取得
  */
 export function getAdminRoleDescription(role) {
   return ADMIN_ROLE_DESCRIPTIONS[role] || '';
@@ -65,7 +65,7 @@ export const PERMISSIONS = {
 
 /**
  * 権限があるかチェック
- * @param {string} userRole - ユーザーのロール
+ * @param {string} userRole - ユーザーの権限
  * @param {string} permission - 権限名（PERMISSIONS のキー）
  * @returns {boolean}
  */

@@ -24,7 +24,15 @@ export function useAdminSiteDetail(siteId) {
       const result = await getSiteDetail({ siteId });
 
       if (result.data.success) {
-        setSiteDetail(result.data.data);
+        const data = result.data.data;
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('[useAdminSiteDetail] API返却', {
+            industry: data?.industry,
+            sitePurpose: data?.sitePurpose,
+            rawDataKeys: data ? Object.keys(data) : [],
+          });
+        }
+        setSiteDetail(data);
       } else {
         throw new Error('サイト詳細の取得に失敗しました');
       }

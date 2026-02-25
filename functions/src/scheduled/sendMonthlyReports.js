@@ -1,8 +1,8 @@
-import * as functions from 'firebase-functions';
 import { getFirestore } from 'firebase-admin/firestore';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { generateEmailTemplate, sendEmail } from '../utils/emailTemplates.js';
+import { generateEmailTemplate } from '../utils/emailTemplates.js';
+import { sendEmailDirect } from '../utils/emailSender.js';
 
 /**
  * 月次レポートを送信
@@ -12,11 +12,7 @@ import { generateEmailTemplate, sendEmail } from '../utils/emailTemplates.js';
  * - 毎月1日 9:00 JST: '0 9 1 * *'
  * - 毎月5日 10:00 JST: '0 10 5 * *'
  */
-export const sendMonthlyReports = functions
-  .region('asia-northeast1')
-  .pubsub.schedule('0 9 1 * *') // 暫定: 毎月1日 9:00 JST（後でCloud Schedulerで動的に設定）
-  .timeZone('Asia/Tokyo')
-  .onRun(async (context) => {
+export async function sendMonthlyReportsHandler(event) {
     console.log('月次レポート送信開始');
     const db = getFirestore();
 
@@ -73,10 +69,16 @@ export const sendMonthlyReports = functions
 
       for (const userDoc of usersSnapshot.docs) {
         const userId = userDoc.id;
-        const userEmail = userDoc.data().email;
+        const userData = userDoc.data();
+        const userEmail = userData.email;
+        const ns = userData.notificationSettings || {};
+        const wantMonthly = ns.monthlyReportEmail !== undefined ? ns.monthlyReportEmail : ns.emailNotifications;
 
         if (!userEmail) {
           console.log(`ユーザー ${userId} のメールアドレスが見つかりません`);
+          continue;
+        }
+        if (!wantMonthly) {
           continue;
         }
 
@@ -105,10 +107,10 @@ export const sendMonthlyReports = functions
             continue;
           }
 
-          // メールテンプレートを生成
+          // メールテンプレートを生成（Firestore の sites は siteName / siteUrl）
           const emailData = {
-            siteName: siteData.title || siteData.url,
-            siteUrl: siteData.url,
+            siteName: siteData.siteName || siteData.siteUrl || '（サイト名なし）',
+            siteUrl: siteData.siteUrl || '',
             metrics,
             previousMetrics,
           };
@@ -117,12 +119,12 @@ export const sendMonthlyReports = functions
 
           // メール送信をキューに追加
           sendPromises.push(
-            sendEmail(userEmail, subject, html, text)
+            sendEmailDirect({ to: userEmail, subject, html, text })
               .then(() => {
-                console.log(`月次レポート送信成功: ${userEmail} - ${siteData.title}`);
+                console.log(`月次レポート送信成功: ${userEmail} - ${siteData.siteName || siteId}`);
               })
               .catch((error) => {
-                console.error(`月次レポート送信失敗: ${userEmail} - ${siteData.title}`, error);
+                console.error(`月次レポート送信失敗: ${userEmail} - ${siteData.siteName || siteId}`, error);
               })
           );
         }
@@ -137,7 +139,7 @@ export const sendMonthlyReports = functions
       console.error('月次レポート送信エラー:', error);
       throw error;
     }
-  });
+  }
 
 /**
  * 月次メトリクスを取得

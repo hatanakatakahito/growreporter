@@ -1,17 +1,26 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { httpsCallable } from 'firebase/functions';
 import { useSite } from '../contexts/SiteContext';
 import { useSiteMetrics } from '../hooks/useSiteMetrics';
 import { useGA4MonthlyData } from '../hooks/useGA4MonthlyData';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import { functions } from '../config/firebase';
 import { format, sub } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { BarChart3, Info, Globe } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
 import { getTooltip } from '../constants/tooltips';
 import AIFloatingButton from '../components/common/AIFloatingButton';
+import AlertCards from '../components/Dashboard/AlertCards';
 import { PAGE_TYPES } from '../constants/plans';
+import { SCREENSHOT_PC_DISPLAY, SCREENSHOT_MOBILE_DISPLAY } from '../constants/screenshotDisplay';
+import PageNoteSection from '../components/Analysis/PageNoteSection';
+import TabbedNoteAndAI from '../components/Analysis/TabbedNoteAndAI';
+import AIAnalysisSection from '../components/Analysis/AIAnalysisSection';
+import PlanLimitModal from '../components/common/PlanLimitModal';
+import { useAuth } from '../contexts/AuthContext';
 
 /**
  * ダッシュボード画面
@@ -19,9 +28,58 @@ import { PAGE_TYPES } from '../constants/plans';
  */
 export default function Dashboard() {
   const { sites, selectedSite, selectedSiteId, selectSite, dateRange, updateDateRange, isLoading: isSitesLoading } = useSite();
+  const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
+  
+  const memberRole = userProfile?.memberRole || 'owner';
+  const isViewer = memberRole === 'viewer';
   const [searchParams] = useSearchParams();
+  const siteIdParam = searchParams.get('siteId');
   const [activeTab, setActiveTab] = useState('summary');
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
+  const [isKpiAlertOpen, setIsKpiAlertOpen] = useState(false);
+  const coverRefreshRequestedFor = useRef(new Set());
+
+  // カバーにメタ・スクショが無い場合、バックグラウンドで1回だけ自動取得（ボタンなし）
+  useEffect(() => {
+    if (!selectedSiteId || !selectedSite?.siteUrl) return;
+    
+    console.log('[Dashboard] カバー表示チェック:', {
+      siteId: selectedSiteId,
+      metaTitle: selectedSite.metaTitle || '(なし)',
+      metaDescription: selectedSite.metaDescription || '(なし)',
+      pcScreenshotUrl: selectedSite.pcScreenshotUrl ? '(あり)' : '(なし)',
+      mobileScreenshotUrl: selectedSite.mobileScreenshotUrl ? '(あり)' : '(なし)',
+    });
+    
+    const hasMeta = !!(selectedSite.metaTitle || selectedSite.metaDescription);
+    const hasScreenshot = !!(selectedSite.pcScreenshotUrl || selectedSite.mobileScreenshotUrl);
+    if (hasMeta && hasScreenshot) return;
+    if (coverRefreshRequestedFor.current.has(selectedSiteId)) return;
+
+    coverRefreshRequestedFor.current.add(selectedSiteId);
+    const refresh = httpsCallable(functions, 'refreshSiteMetadataAndScreenshots');
+    refresh({ siteId: selectedSiteId }).catch(() => {
+      coverRefreshRequestedFor.current.delete(selectedSiteId);
+    });
+  }, [selectedSiteId, selectedSite?.siteUrl, selectedSite?.metaTitle, selectedSite?.metaDescription, selectedSite?.pcScreenshotUrl, selectedSite?.mobileScreenshotUrl]);
+
+  // コンバージョン設定の有無をチェック
+  const hasConversionSettings = selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0;
+  
+  // KPI設定の有無をチェック
+  const hasKpiSettings = selectedSite?.kpiList && selectedSite.kpiList.length > 0;
+
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -30,11 +88,10 @@ export default function Dashboard() {
 
   // URLパラメータのsiteIdがあれば選択
   useEffect(() => {
-    const siteIdParam = searchParams.get('siteId');
     if (siteIdParam && siteIdParam !== selectedSiteId && sites.some(site => site.id === siteIdParam)) {
       selectSite(siteIdParam);
     }
-  }, [searchParams, selectedSiteId, sites, selectSite]);
+  }, [siteIdParam, selectedSiteId, sites, selectSite]);
 
   // Search Console連携の有無をチェック（確実にブール値にする）
   const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
@@ -119,6 +176,18 @@ export default function Dashboard() {
     thirteenMonthsRange.to
   );
 
+  // サイトリスト読み込み中（URLにsiteIdがある場合）
+  if (isSitesLoading && siteIdParam) {
+    return (
+      <div className="flex flex-col h-full">
+        <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
+        <main className="flex-1 overflow-y-auto p-6">
+          <LoadingSpinner skeleton="dashboard" />
+        </main>
+      </div>
+    );
+  }
+
   // ローディング中
   if (isLoading && !data) {
     return (
@@ -193,7 +262,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <span className="text-dark dark:text-white">{formatValue(previousValue)}</span>
               {prevChange !== null && (
-                <span className={`font-medium ${prevChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`inline-block w-20 text-right font-medium ${prevChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {prevChange >= 0 ? '+' : ''}{prevChange.toFixed(1)}%
                 </span>
               )}
@@ -204,7 +273,7 @@ export default function Dashboard() {
             <div className="flex items-center gap-2">
               <span className="text-dark dark:text-white">{formatValue(yearAgoValue)}</span>
               {yearChange !== null && (
-                <span className={`font-medium ${yearChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`inline-block w-20 text-right font-medium ${yearChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                   {yearChange >= 0 ? '+' : ''}{yearChange.toFixed(1)}%
                 </span>
               )}
@@ -241,7 +310,8 @@ export default function Dashboard() {
   }
 
   // サイトが登録されていない場合（読み込み完了後）
-  if (!isSitesLoading && sites.length === 0) {
+  // ただし、URLにsiteIdパラメータがある場合は、サイト登録直後の可能性があるため表示しない
+  if (!isSitesLoading && sites.length === 0 && !siteIdParam) {
     return (
       <div className="flex flex-col h-full">
         <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
@@ -290,12 +360,12 @@ export default function Dashboard() {
         {selectedSite && (
           <div
             style={{
-              background: 'linear-gradient(to right, #E0E7FF, #F3E8FF)',
+              background: 'linear-gradient(to right, rgb(224, 242, 254), rgb(254, 249, 195))',
             }}
           >
-            <div className="mx-auto max-w-7xl px-6 py-10">
+            <div className="mx-auto max-w-content px-6 py-10">
               <div className="flex items-start justify-between gap-8">
-                <div className="flex-1">
+                <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-3">
                     <Globe className="h-5 w-5 text-primary" />
                     <h1 className="text-3xl font-bold text-gray-900">
@@ -304,52 +374,58 @@ export default function Dashboard() {
                   </div>
                   <p className="mb-6 text-xs text-gray-500">{selectedSite.siteUrl || ''}</p>
 
-                  <div className="mb-3">
-                    <p className="text-base font-semibold text-gray-900">
-                      {selectedSite.metaTitle || 'メタタイトルが設定されていません'}
-                    </p>
-                  </div>
+                  {selectedSite.metaTitle && (
+                    <div className="mb-3">
+                      <p className="text-base font-semibold text-gray-900">
+                        {selectedSite.metaTitle}
+                      </p>
+                    </div>
+                  )}
 
-                  <div>
-                    <p className="max-w-2xl text-sm leading-relaxed text-gray-600">
-                      {selectedSite.metaDescription || 'メタディスクリプションが設定されていません'}
-                    </p>
+                  {selectedSite.metaDescription && (
+                    <div>
+                      <p className="max-w-2xl text-sm leading-relaxed text-gray-600">
+                        {selectedSite.metaDescription}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                {(selectedSite.pcScreenshotUrl || selectedSite.mobileScreenshotUrl) && (
+                  <div className="flex shrink-0 items-stretch gap-4">
+                    {selectedSite.pcScreenshotUrl && (
+                      <div
+                        className="flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-md"
+                        style={{ width: SCREENSHOT_PC_DISPLAY.width, height: SCREENSHOT_PC_DISPLAY.height }}
+                      >
+                        <img
+                          src={selectedSite.pcScreenshotUrl}
+                          alt="PCキャプチャ"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                    )}
+                    {selectedSite.mobileScreenshotUrl && (
+                      <div
+                        className="flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-md"
+                        style={{ width: SCREENSHOT_MOBILE_DISPLAY.width, height: SCREENSHOT_MOBILE_DISPLAY.height }}
+                      >
+                        <img
+                          src={selectedSite.mobileScreenshotUrl}
+                          alt="スマホキャプチャ"
+                          className="max-h-full max-w-full object-contain"
+                        />
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div className="flex items-start gap-4">
-                  {selectedSite.pcScreenshotUrl ? (
-                    <div className="overflow-hidden rounded-lg bg-white shadow-md">
-                      <img
-                        src={selectedSite.pcScreenshotUrl}
-                        alt="PCキャプチャ"
-                        className="h-48 w-auto object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex h-48 w-64 items-center justify-center overflow-hidden rounded-lg bg-white shadow-md">
-                      <p className="text-sm text-gray-400">PCスクリーンショット未設定</p>
-                    </div>
-                  )}
-                  {selectedSite.mobileScreenshotUrl ? (
-                    <div className="overflow-hidden rounded-lg bg-white shadow-md">
-                      <img
-                        src={selectedSite.mobileScreenshotUrl}
-                        alt="スマホキャプチャ"
-                        className="h-48 w-auto object-contain"
-                      />
-                    </div>
-                  ) : (
-                    <div className="flex h-48 w-32 items-center justify-center overflow-hidden rounded-lg bg-white shadow-md">
-                      <p className="text-center text-sm text-gray-400">スマホ<br />スクリーン<br />ショット<br />未設定</p>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </div>
         )}
         
-        <div className="mx-auto max-w-7xl px-6 py-10">
+        <div className="mx-auto max-w-content px-6 py-10">
+          {/* アラートカード（現在選択サイトの未読のみ） */}
+          <AlertCards siteId={selectedSiteId} />
 
         {/* タブナビゲーション */}
         <div className="space-y-6">
@@ -365,24 +441,46 @@ export default function Dashboard() {
               主要指標サマリ
             </button>
             <button
-              onClick={() => setActiveTab('conversion')}
+              onClick={() => {
+                if (!hasConversionSettings) {
+                  setIsConversionAlertOpen(true);
+                } else {
+                  setActiveTab('conversion');
+                }
+              }}
               className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
                 activeTab === 'conversion'
                   ? 'bg-primary text-white transition hover:bg-opacity-90'
                   : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
-              }`}
+              } flex items-center justify-center gap-2`}
             >
               コンバージョン内訳
+              {!hasConversionSettings && (
+                <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              )}
             </button>
             <button
-              onClick={() => setActiveTab('kpi')}
+              onClick={() => {
+                if (!hasKpiSettings) {
+                  setIsKpiAlertOpen(true);
+                } else {
+                  setActiveTab('kpi');
+                }
+              }}
               className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
                 activeTab === 'kpi'
                   ? 'bg-primary text-white transition hover:bg-opacity-90'
                   : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
-              }`}
+              } flex items-center justify-center gap-2`}
             >
               KPI予実
+              {!hasKpiSettings && (
+                <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              )}
             </button>
           </div>
 
@@ -418,7 +516,7 @@ export default function Dashboard() {
               ) : data ? (
                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   <MetricCard
-                    title="セッション"
+                    title="訪問者"
                     currentValue={data?.metrics?.sessions || 0}
                     previousValue={previousMonthData?.metrics?.sessions || 0}
                     yearAgoValue={yearAgoData?.metrics?.sessions || 0}
@@ -741,30 +839,135 @@ export default function Dashboard() {
             </div>
           )}
 
-        {/* 🔴 コンバージョン定義未設定の警告バナー（下部） */}
-        {selectedSite && (!selectedSite.conversionEvents || selectedSite.conversionEvents.length === 0) && (
-          <div className="mt-8 rounded-lg border-l-4 border-red-500 bg-red-50 p-4 shadow-sm dark:bg-red-900/20 dark:border-red-600">
-            <div className="flex items-start gap-3">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-600 dark:text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-semibold text-red-800 dark:text-red-300">
-                  コンバージョン定義が未設定です
-                </h3>
-                <p className="mt-1 text-sm text-red-700 dark:text-red-400">
-                  正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
-                </p>
-                <Link
-                  to={`/sites/${selectedSiteId}/edit?step=4`}
-                  className="mt-3 inline-block rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-700"
-                >
-                  サイト設定（STEP4）でコンバージョンを設定する
-                </Link>
-              </div>
-            </div>
+        {/* メモ & AI分析タブ */}
+        {selectedSiteId && currentUser && (
+          <div className="mt-6">
+            <TabbedNoteAndAI
+              pageType="dashboard"
+              noteContent={
+                <PageNoteSection
+                  userId={currentUser.uid}
+                  siteId={selectedSiteId}
+                  pageType="dashboard"
+                  dateRange={dateRange}
+                />
+              }
+              aiContent={
+                data && monthlyTrendData ? (() => {
+                  // AI分析用のメトリクスを構築
+                  const totalConversions = data.conversions 
+                    ? Object.values(data.conversions).reduce((sum, val) => sum + (val || 0), 0)
+                    : 0;
+                  
+                  const previousMonthTotalConversions = previousMonthData?.conversions
+                    ? Object.values(previousMonthData.conversions).reduce((sum, val) => sum + (val || 0), 0)
+                    : 0;
+                    
+                  const yearAgoTotalConversions = yearAgoData?.conversions
+                    ? Object.values(yearAgoData.conversions).reduce((sum, val) => sum + (val || 0), 0)
+                    : 0;
+                  
+                  const conversionBreakdown = {};
+                  if (selectedSite?.conversionEvents && data?.conversions) {
+                    selectedSite.conversionEvents.forEach(event => {
+                      const currentCount = data.conversions[event.eventName] || 0;
+                      const previousCount = previousMonthData?.conversions?.[event.eventName] || 0;
+                      const yearAgoCount = yearAgoData?.conversions?.[event.eventName] || 0;
+                      
+                      conversionBreakdown[event.displayName] = {
+                        current: currentCount,
+                        previous: previousCount,
+                        yearAgo: yearAgoCount,
+                        monthChange: previousCount > 0 ? ((currentCount - previousCount) / previousCount) * 100 : (currentCount > 0 ? 100 : 0),
+                        yearChange: yearAgoCount > 0 ? ((currentCount - yearAgoCount) / yearAgoCount) * 100 : (currentCount > 0 ? 100 : 0),
+                      };
+                    });
+                  }
+
+                  const kpiData = [];
+                  if (selectedSite?.kpiSettings?.kpiList && data?.metrics) {
+                    selectedSite.kpiSettings.kpiList.forEach(kpi => {
+                      const metricValue = kpi.metric;
+                      const metricLabel = kpi.label;
+                      const targetValue = kpi.target;
+                      
+                      let actualValue = 0;
+                      switch (metricValue) {
+                        case 'target_sessions':
+                          actualValue = data.metrics.sessions || 0;
+                          break;
+                        case 'target_users':
+                          actualValue = data.metrics.users || 0;
+                          break;
+                        case 'target_conversions':
+                          actualValue = data.metrics.conversions || 0;
+                          break;
+                        case 'target_conversion_rate':
+                          actualValue = data.metrics.sessions > 0 
+                            ? ((data.metrics.conversions || 0) / data.metrics.sessions) * 100 
+                            : 0;
+                          break;
+                        default:
+                          if (metricValue?.startsWith('conversion_') && kpi.eventName) {
+                            actualValue = data.conversions?.[kpi.eventName] || 0;
+                          }
+                      }
+                      
+                      const achievement = targetValue > 0 ? (actualValue / targetValue) * 100 : 0;
+                      const isRateMetric = metricValue?.includes('rate');
+                      
+                      kpiData.push({
+                        name: metricLabel,
+                        actual: actualValue,
+                        target: targetValue,
+                        achievement: achievement,
+                        unit: isRateMetric ? '%' : '',
+                      });
+                    });
+                  }
+
+                  const dashboardRawData = {
+                    current: {
+                      metrics: data.metrics,
+                      conversions: data.conversions,
+                      totalConversions,
+                      conversionBreakdown,
+                    },
+                    previousMonth: previousMonthData ? {
+                      metrics: previousMonthData.metrics,
+                      conversions: previousMonthData.conversions,
+                      totalConversions: previousMonthTotalConversions,
+                    } : null,
+                    yearAgo: yearAgoData ? {
+                      metrics: yearAgoData.metrics,
+                      conversions: yearAgoData.conversions,
+                      totalConversions: yearAgoTotalConversions,
+                    } : null,
+                    monthlyTrend: monthlyTrendData?.monthlyData || [],
+                    kpiData,
+                    hasKpiSettings: kpiData.length > 0,
+                    hasConversionEvents: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
+                    conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
+                  };
+
+                  return (
+                    <AIAnalysisSection
+                      pageType={PAGE_TYPES.DASHBOARD}
+                      rawData={dashboardRawData}
+                      period={{
+                        startDate: dateRange?.from || new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                        endDate: dateRange?.to || new Date(),
+                      }}
+                      onLimitExceeded={() => setIsLimitModalOpen(true)}
+                    />
+                  );
+                })() : (
+                  <div className="text-center py-8 text-gray-500">
+                    データを読み込み中...
+                  </div>
+                )
+              }
+            />
           </div>
         )}
         </div>
@@ -772,141 +975,140 @@ export default function Dashboard() {
       </main>
 
       {/* AI分析フローティングボタン */}
-    {selectedSiteId && data && monthlyTrendData && (() => {
-      // AI分析用のメトリクスを構築
-      // 総コンバージョン数を計算
-      const totalConversions = data.conversions 
-        ? Object.values(data.conversions).reduce((sum, val) => sum + (val || 0), 0)
-        : 0;
-      
-      const previousMonthTotalConversions = previousMonthData?.conversions
-        ? Object.values(previousMonthData.conversions).reduce((sum, val) => sum + (val || 0), 0)
-        : 0;
-        
-      const yearAgoTotalConversions = yearAgoData?.conversions
-        ? Object.values(yearAgoData.conversions).reduce((sum, val) => sum + (val || 0), 0)
-        : 0;
-      
-      // コンバージョン内訳データの整形
-      const conversionBreakdown = {};
-      if (selectedSite?.conversionEvents && data?.conversions) {
-        selectedSite.conversionEvents.forEach(event => {
-          const currentCount = data.conversions[event.eventName] || 0;
-          const previousCount = previousMonthData?.conversions?.[event.eventName] || 0;
-          const yearAgoCount = yearAgoData?.conversions?.[event.eventName] || 0;
-          
-          conversionBreakdown[event.displayName] = {
-            current: currentCount,
-            previous: previousCount,
-            yearAgo: yearAgoCount,
-            monthChange: previousCount > 0 ? ((currentCount - previousCount) / previousCount) * 100 : (currentCount > 0 ? 100 : 0),
-            yearChange: yearAgoCount > 0 ? ((currentCount - yearAgoCount) / yearAgoCount) * 100 : (currentCount > 0 ? 100 : 0),
-          };
-        });
-      }
-
-      // KPI予実データの整形
-      const kpiData = [];
-      if (selectedSite?.kpiSettings?.kpiList && data?.metrics) {
-        selectedSite.kpiSettings.kpiList.forEach(kpi => {
-          const metricValue = kpi.metric;
-          const metricLabel = kpi.label;
-          const targetValue = kpi.target;
-          
-          // KPIのmetricから実績値を取得（フロント表示と同じロジック）
-          let actualValue = 0;
-          
-          switch (metricValue) {
-            case 'users':
-              actualValue = data.metrics.users || 0;
-              break;
-            case 'sessions':
-              actualValue = data.metrics.sessions || 0;
-              break;
-            case 'pageviews':
-              actualValue = data.metrics.pageViews || 0;
-              break;
-            case 'engagement_rate':
-              actualValue = (data.metrics.engagementRate || 0) * 100;
-              break;
-            case 'target_sessions':
-              actualValue = data.metrics.sessions || 0;
-              break;
-            case 'target_users':
-              actualValue = data.metrics.users || 0;
-              break;
-            case 'target_conversions':
-              actualValue = data.metrics.conversions || 0;
-              break;
-            case 'target_conversion_rate':
-              actualValue = data.metrics.sessions > 0 
-                ? ((data.metrics.conversions || 0) / data.metrics.sessions) * 100 
-                : 0;
-              break;
-            default:
-              // コンバージョンイベントの場合
-              if (metricValue?.startsWith('conversion_') && kpi.eventName) {
-                actualValue = data.conversions?.[kpi.eventName] || 0;
-              }
-          }
-          
-          const achievement = targetValue > 0 ? (actualValue / targetValue) * 100 : 0;
-          
-          // レートタイプの判定
-          const isRateMetric = metricValue?.includes('rate');
-          
-          kpiData.push({
-            name: metricLabel,
-            actual: actualValue,
-            target: targetValue,
-            achievement: achievement,
-            unit: isRateMetric ? '%' : '',
-          });
-        });
-      }
-
-      // rawData方式：既に取得したデータをそのまま渡す
-      const dashboardRawData = {
-        // 現在期間のデータ
-        current: {
-          metrics: data.metrics,
-          conversions: data.conversions,
-          totalConversions,
-          conversionBreakdown,
-        },
-        // 前月期間のデータ
-        previousMonth: previousMonthData ? {
-          metrics: previousMonthData.metrics,
-          conversions: previousMonthData.conversions,
-          totalConversions: previousMonthTotalConversions,
-        } : null,
-        // 前年同月期間のデータ
-        yearAgo: yearAgoData ? {
-          metrics: yearAgoData.metrics,
-          conversions: yearAgoData.conversions,
-          totalConversions: yearAgoTotalConversions,
-        } : null,
-        // 13ヶ月推移データ
-        monthlyTrend: monthlyTrendData?.monthlyData || [],
-        // KPI設定
-        kpiData,
-        hasKpiSettings: kpiData.length > 0,
-        // コンバージョン定義
-        hasConversionEvents: selectedSite?.conversionEvents && selectedSite.conversionEvents.length > 0,
-        conversionEventNames: selectedSite?.conversionEvents?.map(e => e.eventName) || [],
-      };
-      
-      return (
+      {selectedSiteId && data && monthlyTrendData && !isViewer && (
         <AIFloatingButton
           pageType={PAGE_TYPES.DASHBOARD}
-          rawData={dashboardRawData}
-          period={{
-            startDate: dateRange.from,
-            endDate: dateRange.to,
-          }}
+          onScrollToAI={scrollToAIAnalysis}
         />
-      );
-    })()}
+      )}
+
+      {/* 制限超過モーダル */}
+      {isLimitModalOpen && (
+        <PlanLimitModal 
+          onClose={() => setIsLimitModalOpen(false)}
+          type="summary"
+        />
+      )}
+
+      {/* コンバージョン未設定アラートモーダル */}
+      {isConversionAlertOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setIsConversionAlertOpen(false)}
+        >
+          <div 
+            className="w-full max-w-md rounded-lg border border-stroke bg-white shadow-xl dark:border-dark-3 dark:bg-dark-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between border-b border-stroke p-4 dark:border-dark-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                  <svg className="h-5 w-5 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-dark dark:text-white">
+                  コンバージョン定義が未設定です
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsConversionAlertOpen(false)}
+                className="rounded-lg p-1 text-body-color transition hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* コンテンツ */}
+            <div className="px-6 py-6">
+              <p className="text-sm text-body-color leading-relaxed">
+                正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
+              </p>
+            </div>
+
+            {/* フッター */}
+            <div className="border-t border-stroke p-4 dark:border-dark-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsConversionAlertOpen(false)}
+                  className="flex-1 rounded-md border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                >
+                  閉じる
+                </button>
+                <button
+                  onClick={() => navigate(`/sites/${selectedSiteId}/edit?step=4`)}
+                  className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
+                >
+                  設定する
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* KPI未設定アラートモーダル */}
+      {isKpiAlertOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setIsKpiAlertOpen(false)}
+        >
+          <div 
+            className="w-full max-w-md rounded-lg border border-stroke bg-white shadow-xl dark:border-dark-3 dark:bg-dark-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between border-b border-stroke p-4 dark:border-dark-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
+                  <svg className="h-5 w-5 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-dark dark:text-white">
+                  KPI目標が未設定です
+                </h3>
+              </div>
+              <button
+                onClick={() => setIsKpiAlertOpen(false)}
+                className="rounded-lg p-1 text-body-color transition hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* コンテンツ */}
+            <div className="px-6 py-6">
+              <p className="text-sm text-body-color leading-relaxed">
+                正確なKPI予実分析を行うには、サイト設定でKPI目標を定義してください。
+              </p>
+            </div>
+
+            {/* フッター */}
+            <div className="border-t border-stroke p-4 dark:border-dark-3">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsKpiAlertOpen(false)}
+                  className="flex-1 rounded-md border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                >
+                  閉じる
+                </button>
+                <button
+                  onClick={() => navigate(`/sites/${selectedSiteId}/edit?step=5`)}
+                  className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
+                >
+                  設定する
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,480 +1,362 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
-import Header from '../components/Layout/Header';
-import LoadingSpinner from '../components/common/LoadingSpinner';
-import { setPageTitle } from '../utils/pageTitle';
-import { INDUSTRIES } from '../constants/industries';
-import { getPlanDisplayName, getPlanInfo, isUnlimited } from '../constants/plans';
-import { Info, Loader2, AlertCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import { useSite } from '../contexts/SiteContext';
+import { usePlan } from '../hooks/usePlan';
+import { useAccountMembers } from '../hooks/useAccountMembers';
+import { getPlanBadgeColor } from '../constants/plans';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '../config/firebase';
 
 /**
  * アカウント設定画面
- * ユーザー情報の確認と変更
  */
 export default function AccountSettings() {
-  const { currentUser, userProfile, updateUserProfile } = useAuth();
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    company: '',
-    lastName: '',
-    firstName: '',
-    phoneNumber: '',
-    industry: '',
-    email: '',
-    notificationSettings: {
-      emailNotifications: true,
-    },
-  });
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [saveError, setSaveError] = useState(null);
+  const { userProfile, currentUser, logout } = useAuth();
+  const { sites } = useSite();
+  const { plan } = usePlan();
+  const { activeMemberCount } = useAccountMembers();
+  const [weeklyReportEmail, setWeeklyReportEmail] = useState(false);
+  const [monthlyReportEmail, setMonthlyReportEmail] = useState(false);
+  const [alertEmail, setAlertEmail] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  // ページタイトルを設定
+  // 通知設定を初期化（従来の emailNotifications があればそれでフォールバック）
   useEffect(() => {
-    setPageTitle('アカウント設定');
-  }, []);
+    const ns = userProfile?.notificationSettings;
+    if (!ns) return;
+    const fallback = ns.emailNotifications || false;
+    setWeeklyReportEmail(ns.weeklyReportEmail ?? fallback);
+    setMonthlyReportEmail(ns.monthlyReportEmail ?? fallback);
+    setAlertEmail(ns.alertEmail ?? true);
+  }, [userProfile]);
 
-  // ユーザープロファイルをフォームにセット
-  useEffect(() => {
-    if (currentUser && userProfile) {
-      setFormData({
-        company: userProfile.company || '',
-        lastName: userProfile.lastName || '',
-        firstName: userProfile.firstName || '',
-        phoneNumber: userProfile.phoneNumber || '',
-        industry: userProfile.industry || '',
-        email: currentUser.email || '',
-        notificationSettings: userProfile.notificationSettings || {
-          emailNotifications: true,
-        },
-      });
-    }
-  }, [currentUser, userProfile]);
-
-  const handleSave = async () => {
+  // 週次レポート通知のトグル
+  const handleToggleWeeklyReport = async () => {
     if (!currentUser) return;
-
     setIsSaving(true);
-    setSaveError(null);
-    setSaveSuccess(false);
-
     try {
-      await updateUserProfile(currentUser.uid, {
-        company: formData.company,
-        lastName: formData.lastName,
-        firstName: formData.firstName,
-        phoneNumber: formData.phoneNumber,
-        industry: formData.industry,
-        notificationSettings: formData.notificationSettings,
+      const newValue = !weeklyReportEmail;
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        'notificationSettings.weeklyReportEmail': newValue,
+        'notificationSettings.emailNotifications': newValue || monthlyReportEmail || alertEmail,
+        updatedAt: new Date()
       });
-      
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setWeeklyReportEmail(newValue);
     } catch (error) {
-      console.error('Error updating profile:', error);
-      setSaveError('設定の保存に失敗しました。もう一度お試しください。');
+      console.error('通知設定の更新エラー:', error);
+      alert('設定の更新に失敗しました');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    navigate(-1);
+  // 月次レポート通知のトグル
+  const handleToggleMonthlyReport = async () => {
+    if (!currentUser) return;
+    setIsSaving(true);
+    try {
+      const newValue = !monthlyReportEmail;
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        'notificationSettings.monthlyReportEmail': newValue,
+        'notificationSettings.emailNotifications': weeklyReportEmail || newValue || alertEmail,
+        updatedAt: new Date()
+      });
+      setMonthlyReportEmail(newValue);
+    } catch (error) {
+      console.error('通知設定の更新エラー:', error);
+      alert('設定の更新に失敗しました');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  if (!currentUser || !userProfile) {
+  // アラート通知のトグル
+  const handleToggleAlertEmail = async () => {
+    if (!currentUser) return;
+    setIsSaving(true);
+    try {
+      const newValue = !alertEmail;
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        'notificationSettings.alertEmail': newValue,
+        'notificationSettings.emailNotifications': weeklyReportEmail || monthlyReportEmail || newValue,
+        updatedAt: new Date()
+      });
+      setAlertEmail(newValue);
+    } catch (error) {
+      console.error('通知設定の更新エラー:', error);
+      alert('設定の更新に失敗しました');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  if (!userProfile) {
     return (
-      <main className="flex-1">
-        <div className="flex items-center justify-center py-12">
-          <LoadingSpinner />
-        </div>
-      </main>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-gray-600">読み込み中...</div>
+      </div>
     );
   }
 
-  // 現在のプラン情報を取得（userProfileがロード済みであることを確認後）
-  const currentPlan = getPlanInfo(userProfile.plan);
+  // オーナー・編集者・閲覧者とも同じ2カラムレイアウト（モック準拠）。権限による分岐は行わない。
+  const maxSites = plan?.features?.maxSites ?? 1;
+  const maxMembers = plan?.features?.maxMembers ?? 1;
+  const aiSummaryMonthly = plan?.features?.aiSummaryMonthly ?? 0;
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (err) {
+      console.error('ログアウトエラー:', err);
+    }
+  };
 
   return (
-    <div className="flex flex-col h-full">
-      <Header title="アカウント設定" subtitle="ユーザー情報の確認と変更" />
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-7xl px-6 py-10">
-        <div className="mb-8">
-          <h1 className="mb-2 text-3xl font-bold text-dark dark:text-white">
-            アカウント設定
-          </h1>
-          <p className="text-body-color dark:text-dark-6">
-            アカウント情報の確認と変更
+    <div className="w-full min-w-0" key="account-settings-layout">
+      <div className="w-full !max-w-[1400px] mx-auto px-6 py-10 box-border" style={{ maxWidth: '1400px' }}>
+      {/* ヘッダー */}
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-900">アカウント設定</h1>
+          <p className="mt-2 text-sm text-gray-600">
+            アカウント情報とメンバー管理
           </p>
         </div>
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-dark-3 dark:text-gray-300 dark:hover:bg-dark-3"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          ログアウト
+        </button>
+      </div>
 
-        {saveSuccess && (
-          <div className="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
-            <p className="text-green-800 dark:text-green-200">
-              設定を保存しました
-            </p>
-          </div>
-        )}
-
-        {saveError && (
-          <div className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400" />
-              <p className="text-red-800 dark:text-red-200">{saveError}</p>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* ========== 左カラム（モックに合わせる） ========== */}
+        <div className="space-y-6">
+          {/* プロフィール */}
+          <div className="bg-white shadow-sm rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">プロフィール</h2>
+            <dl className="space-y-2 text-sm">
+              <div>
+                <dt className="text-gray-500">組織名</dt>
+                <dd className="text-gray-900">{userProfile.company || '未設定'}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">担当者名</dt>
+                <dd className="text-gray-900">
+                  {userProfile.lastName && userProfile.firstName
+                    ? `${userProfile.lastName} ${userProfile.firstName}`
+                    : '未設定'}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">メールアドレス</dt>
+                <dd className="text-gray-900">{userProfile.email}</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500">電話番号</dt>
+                <dd className="text-gray-900">{userProfile.phoneNumber || '未設定'}</dd>
+              </div>
+            </dl>
+            <div className="mt-4">
+              <Link
+                to="/account/profile"
+                className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                プロフィールを編集
+              </Link>
             </div>
           </div>
-        )}
 
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-          {/* 左側：メインフォーム */}
-          <div className="lg:col-span-2">
-            <div className="rounded-lg border border-stroke bg-white p-8 dark:border-dark-3 dark:bg-dark-2">
-              <div className="space-y-6">
-                {/* 組織名 */}
-                <div className="space-y-2">
-                  <label
-                    htmlFor="company"
-                    className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
-                  >
-                    組織名
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-                  </label>
-                  <input
-                    id="company"
-                    type="text"
-                    value={formData.company}
-                    onChange={(e) =>
-                      setFormData({ ...formData, company: e.target.value })
-                    }
-                    placeholder="株式会社サンプル"
-                    className="h-12 w-full rounded-lg border border-stroke bg-transparent px-4 text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:text-white"
+          {/* プラン */}
+          <div className="bg-white shadow-sm rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">プラン</h2>
+            <p className="text-sm text-gray-600 mb-2">現在のプラン</p>
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getPlanBadgeColor(plan?.id || 'free')}`}>
+              {plan?.displayName ?? '無料プラン'}
+            </span>
+            <p className="mt-2 text-xs text-gray-500">
+              最大{maxSites}サイト・{maxMembers}人
+              {aiSummaryMonthly >= 999999 ? '・AI無制限' : `・AI月${aiSummaryMonthly}回`}
+            </p>
+            {userProfile?.memberRole === 'owner' && (
+              <div className="mt-4">
+                <Link
+                  to="/account/plan"
+                  className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                >
+                  プランを変更
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* メール通知 */}
+          <div className="bg-white shadow-sm rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">メール通知</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              週次・月次レポートをそれぞれオン・オフできます
+            </p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">週次レポート</p>
+                  <p className="text-xs text-gray-500 mt-0.5">毎週のレポートをメールで受け取ります</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleToggleWeeklyReport}
+                  disabled={isSaving}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                    weeklyReportEmail ? 'bg-primary' : 'bg-gray-200'
+                  } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  role="switch"
+                  aria-checked={weeklyReportEmail}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
+                      weeklyReportEmail ? 'translate-x-5' : 'translate-x-0'
+                    }`}
                   />
+                </button>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">月次レポート</p>
+                  <p className="text-xs text-gray-500 mt-0.5">毎月のレポートをメールで受け取ります</p>
                 </div>
-
-                {/* 姓・名 */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="lastName"
-                      className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
-                    >
-                      姓
-                      <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-                    </label>
-                    <input
-                      id="lastName"
-                      type="text"
-                      value={formData.lastName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
-                      }
-                      placeholder="山田"
-                      className="h-12 w-full rounded-lg border border-stroke bg-transparent px-4 text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:text-white"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label
-                      htmlFor="firstName"
-                      className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
-                    >
-                      名
-                      <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-                    </label>
-                    <input
-                      id="firstName"
-                      type="text"
-                      value={formData.firstName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
-                      }
-                      placeholder="太郎"
-                      className="h-12 w-full rounded-lg border border-stroke bg-transparent px-4 text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:text-white"
-                    />
-                  </div>
-                </div>
-
-                {/* 電話番号 */}
-                <div className="space-y-2">
-                  <label
-                    htmlFor="phoneNumber"
-                    className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
-                  >
-                    電話番号
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-                  </label>
-                  <input
-                    id="phoneNumber"
-                    type="tel"
-                    value={formData.phoneNumber}
-                    onChange={(e) =>
-                      setFormData({ ...formData, phoneNumber: e.target.value })
-                    }
-                    placeholder="09012345678"
-                    className="h-12 w-full rounded-lg border border-stroke bg-transparent px-4 text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:text-white"
+                <button
+                  type="button"
+                  onClick={handleToggleMonthlyReport}
+                  disabled={isSaving}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                    monthlyReportEmail ? 'bg-primary' : 'bg-gray-200'
+                  } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  role="switch"
+                  aria-checked={monthlyReportEmail}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
+                      monthlyReportEmail ? 'translate-x-5' : 'translate-x-0'
+                    }`}
                   />
+                </button>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-sm font-medium text-gray-900">アラート通知</p>
+                  <p className="text-xs text-gray-500 mt-0.5">急な数値変化があったときにメールで通知します</p>
                 </div>
-
-                {/* 業界・業種 */}
-                <div className="space-y-2">
-                  <label
-                    htmlFor="industry"
-                    className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
-                  >
-                    業界・業種
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-                  </label>
-                  <select
-                    id="industry"
-                    value={formData.industry}
-                    onChange={(e) =>
-                      setFormData({ ...formData, industry: e.target.value })
-                    }
-                    className="h-12 w-full rounded-lg border border-stroke bg-transparent px-4 text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:text-white"
-                  >
-                    <option value="">選択してください</option>
-                    {INDUSTRIES.map((industry) => (
-                      <option key={industry} value={industry}>
-                        {industry}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* メールアドレス */}
-                <div className="space-y-2">
-                  <label
-                    htmlFor="email"
-                    className="flex items-center gap-2 text-base font-medium text-dark dark:text-white"
-                  >
-                    メールアドレス
-                    <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-                  </label>
-                  <input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    disabled
-                    className="h-12 w-full rounded-lg border border-stroke bg-gray-100 px-4 text-dark outline-none dark:border-dark-3 dark:bg-dark-3 dark:text-white"
+                <button
+                  type="button"
+                  onClick={handleToggleAlertEmail}
+                  disabled={isSaving}
+                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
+                    alertEmail ? 'bg-primary' : 'bg-gray-200'
+                  } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  role="switch"
+                  aria-checked={alertEmail}
+                >
+                  <span
+                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
+                      alertEmail ? 'translate-x-5' : 'translate-x-0'
+                    }`}
                   />
-                  <p className="text-xs text-body-color dark:text-dark-6">
-                    メールアドレスは変更できません
-                  </p>
-                  
-                  {/* Google認証を使用中 */}
-                  <div className="mt-3 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950">
-                    <div className="flex items-start gap-2">
-                      <Info className="h-4 w-4 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-                      <div className="text-sm text-blue-800 dark:text-blue-200">
-                        <strong>Google認証を使用中</strong>
-                        <br />
-                        パスワードはGoogleアカウントで管理されています。パスワードを変更する場合は、Googleアカウントの設定から行ってください。
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 通知設定 */}
-                <div className="space-y-4 border-t border-stroke pt-4 dark:border-dark-3">
-                  <h3 className="text-lg font-semibold text-dark dark:text-white">
-                    通知設定
-                  </h3>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      id="emailNotifications"
-                      type="checkbox"
-                      checked={formData.notificationSettings.emailNotifications}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          notificationSettings: {
-                            ...formData.notificationSettings,
-                            emailNotifications: e.target.checked,
-                          },
-                        })
-                      }
-                      className="h-5 w-5 rounded border-stroke text-primary transition-all duration-200 focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3"
-                    />
-                    <label
-                      htmlFor="emailNotifications"
-                      className="cursor-pointer text-base text-dark dark:text-white"
-                    >
-                      メール通知を受け取る
-                    </label>
-                  </div>
-                </div>
-
-                {/* 保存・キャンセルボタン */}
-                <div className="flex gap-3 pt-6">
-                  <button
-                    onClick={handleSave}
-                    disabled={isSaving}
-                    className="flex h-12 items-center justify-center rounded-lg bg-primary px-8 text-base font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50"
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        保存中...
-                      </>
-                    ) : (
-                      '保存'
-                    )}
-                  </button>
-                  <button
-                    onClick={handleCancel}
-                    disabled={isSaving}
-                    className="h-12 rounded-lg border border-stroke bg-transparent px-8 text-base font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-                  >
-                    キャンセル
-                  </button>
-                </div>
+                </button>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* 右側：プランとアカウント情報 */}
-          <div className="space-y-6">
-            {/* プラン */}
-            <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-              <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
-                現在のプラン
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <span className={`inline-block rounded px-3 py-1 text-sm font-medium text-white shadow-md ${
-                    currentPlan.id === 'free' 
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-600' 
-                      : currentPlan.id === 'standard'
-                      ? 'bg-gradient-to-r from-red-500 to-red-600'
-                      : 'bg-gradient-to-r from-amber-400 to-yellow-500'
-                  }`}>
-                    {currentPlan.displayName}
-                  </span>
-                  {currentPlan.price > 0 && (
-                    <p className="mt-2 text-sm text-body-color dark:text-dark-6">
-                      ¥{currentPlan.price.toLocaleString()}/月（税込 ¥{currentPlan.priceWithTax.toLocaleString()}）
-                    </p>
-                  )}
-                </div>
-
-                {/* プラン機能 */}
-                <div className="border-t border-stroke pt-4 dark:border-dark-3">
-                  <h4 className="mb-3 text-sm font-semibold text-dark dark:text-white">
-                    プラン内容
-                  </h4>
-                  <ul className="space-y-2 text-sm text-body-color dark:text-dark-6">
-                    <li className="flex items-center gap-2">
-                      <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <span>サイト登録：{currentPlan.features.maxSites}サイト</span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <span>
-                        AI分析サマリー：
-                        {isUnlimited(currentPlan.features.aiSummaryMonthly) 
-                          ? '無制限' 
-                          : `月${currentPlan.features.aiSummaryMonthly}回`}
-                      </span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <span>
-                        AI改善提案：
-                        {isUnlimited(currentPlan.features.aiImprovementMonthly) 
-                          ? '無制限' 
-                          : `月${currentPlan.features.aiImprovementMonthly}回`}
-                      </span>
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      <span>データ保持：{currentPlan.features.dataRetention}</span>
-                    </li>
-                    {currentPlan.features.exportEnabled && (
-                      <li className="flex items-center gap-2">
-                        <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span>エクスポート：{currentPlan.features.exportFormats?.join('、')}</span>
-                      </li>
-                    )}
-                    {currentPlan.features.consultation && (
-                      <li className="flex items-center gap-2">
-                        <svg className="h-4 w-4 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                        <span>{currentPlan.features.consultation}</span>
-                      </li>
-                    )}
-                  </ul>
-                </div>
-                
-                {/* サイト管理リンク */}
-                <div className="pt-2">
+        {/* ========== 右カラム ========== */}
+        <div className="space-y-6">
+          {/* 登録しているサイト */}
+          <div className="bg-white shadow-sm rounded-lg p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">登録しているサイト</h2>
+            <p className="text-sm text-gray-600 mb-4">クリックでサイト詳細へ</p>
+            {sites && sites.length > 0 ? (
+              <ul className="space-y-3">
+                {sites.map((site) => (
+                  <li key={site.id}>
+                    <Link
+                      to={`/sites/${site.id}`}
+                      className="block p-4 rounded-lg border border-gray-200 hover:border-primary/40 hover:bg-gray-50/80 transition-colors group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-gray-900 group-hover:text-primary">
+                            {site.siteName || '名称未設定'}
+                          </p>
+                          <p className="text-sm text-gray-500 mt-0.5">{site.siteUrl || '-'}</p>
+                        </div>
+                        <span className="text-sm text-primary font-medium">管理へ</span>
+                      </div>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-6 text-center">
+                <p className="text-sm text-gray-600 mb-4">サイトがありません</p>
+                <div className="flex flex-wrap justify-center gap-3">
                   <Link
                     to="/sites/list"
-                    className="flex w-full items-center justify-center gap-2 rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                    className="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
                   >
-                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
-                    </svg>
-                    サイト管理
+                    サイト一覧
+                  </Link>
+                  <Link
+                    to="/sites/new"
+                    className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
+                  >
+                    サイトを追加
                   </Link>
                 </div>
               </div>
-            </div>
+            )}
+          </div>
 
-            {/* アカウント情報 */}
-            <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-              <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
-                アカウント情報
-              </h3>
-              <div className="space-y-4">
-                <div>
-                  <p className="mb-1 text-sm text-body-color dark:text-dark-6">
-                    登録日
-                  </p>
-                  <p className="text-base font-medium text-dark dark:text-white">
-                    {userProfile?.createdAt?.toDate
-                      ? format(
-                          userProfile.createdAt.toDate(),
-                          'yyyy/MM/dd HH:mm',
-                          { locale: ja }
-                        )
-                      : '-'}
-                  </p>
+          {/* メンバー管理 */}
+          <div className="bg-gradient-to-br from-primary/5 to-primary/10 border-2 border-primary/20 rounded-lg p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-3 mb-2">
+                  <svg className="h-6 w-6 text-primary flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                  </svg>
+                  <h2 className="text-xl font-semibold text-gray-900">メンバー管理</h2>
                 </div>
-                <div>
-                  <p className="mb-1 text-sm text-body-color dark:text-dark-6">
-                    最終更新
-                  </p>
-                  <p className="text-base font-medium text-dark dark:text-white">
-                    {userProfile?.updatedAt?.toDate
-                      ? format(
-                          userProfile.updatedAt.toDate(),
-                          'yyyy/MM/dd HH:mm',
-                          { locale: ja }
-                        )
-                      : '-'}
-                  </p>
+                <p className="text-sm text-gray-600 mb-4">
+                  アカウントのメンバーを招待・管理できます
+                </p>
+                <div className="flex flex-wrap items-center gap-3 text-sm">
+                  <span className="text-gray-700">
+                    <span className="font-semibold text-gray-900">{activeMemberCount}</span>
+                    <span> / {maxMembers}人使用中</span>
+                  </span>
+                  <span className="inline-flex items-center px-2 py-1 rounded-full bg-primary/20 text-primary text-xs font-medium">
+                    あなたの権限: {userProfile?.memberRole === 'owner' ? 'オーナー' : userProfile?.memberRole === 'editor' ? '編集者' : '閲覧者'}
+                  </span>
                 </div>
               </div>
+              <Link
+                to="/members"
+                className="flex-shrink-0 px-6 py-3 bg-primary text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
+              >
+                メンバー管理を開く
+              </Link>
             </div>
           </div>
         </div>
-        </div>
-      </main>
+      </div>
+      </div>
     </div>
   );
 }
-

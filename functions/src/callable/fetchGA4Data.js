@@ -3,6 +3,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { google } from 'googleapis';
 import { getAndRefreshToken } from '../utils/tokenManager.js';
 import { getCache, setCache, generateCacheKey } from '../utils/cacheManager.js';
+import { canAccessSite } from '../utils/permissionHelper.js';
 
 /**
  * GA4データ取得 Callable Function
@@ -56,7 +57,9 @@ export async function fetchGA4DataCallable(request) {
 
     const siteData = siteDoc.data();
     
-    if (siteData.userId !== userId) {
+    // サイトへのアクセス権限をチェック
+    const hasAccess = await canAccessSite(userId, siteId);
+    if (!hasAccess) {
       throw new HttpsError(
         'permission-denied',
         'このサイトにアクセスする権限がありません'
@@ -80,8 +83,9 @@ export async function fetchGA4DataCallable(request) {
       return cachedData;
     }
 
-    // 3. OAuthトークン取得・更新
-    const { oauth2Client } = await getAndRefreshToken(siteData.ga4OauthTokenId);
+    // 3. OAuthトークン取得・更新（users/{ownerId}/oauth_tokens/{tokenId}）
+    const tokenOwnerId = siteData.ga4TokenOwner || siteData.userId;
+    const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, siteData.ga4OauthTokenId);
 
     // 4. GA4 Data API 呼び出し
     const analyticsData = google.analyticsdata('v1beta');

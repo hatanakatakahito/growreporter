@@ -41,10 +41,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
     queryFn: async () => {
       if (!selectedSiteId) return [];
       
-      const q = query(
-        collection(db, 'improvements'),
-        where('siteId', '==', selectedSiteId)
-      );
+      const q = query(collection(db, 'sites', selectedSiteId, 'improvements'));
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({
         id: doc.id,
@@ -193,7 +190,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
       
       console.log('[AIAnalysisModal] Firestoreに追加するデータ:', newTask);
       
-      return await addDoc(collection(db, 'improvements'), newTask);
+      return await addDoc(collection(db, 'sites', selectedSiteId, 'improvements'), newTask);
     },
     onSuccess: (data, variables, context) => {
       console.log('[AIAnalysisModal] タスク追加成功:', data.id, variables);

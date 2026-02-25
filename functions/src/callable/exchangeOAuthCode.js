@@ -112,7 +112,7 @@ export async function exchangeOAuthCodeCallable(request) {
     
     logger.info(`[exchangeOAuthCode] Saving token to Firestore...`);
     
-    const docRef = await db.collection('oauth_tokens').add(tokenData);
+    const docRef = await db.collection('users').doc(userId).collection('oauth_tokens').add(tokenData);
     
     logger.info(`[exchangeOAuthCode] Token saved successfully: tokenId=${docRef.id}`);
     

@@ -1,6 +1,7 @@
-import { functions } from '../config/firebase';
+import { functions, db } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { format, subDays, subMonths } from 'date-fns';
+import { doc, getDoc, collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 
 /**
  * 改善案生成のための包括的データを取得
@@ -41,7 +42,7 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
       landingPagesResult,
       pageCategoriesResult,
       monthlyConversionResult,
-      improvementKnowledgeResult,
+      scrapingDataResult,
     ] = await Promise.allSettled([
       // 直近30日のサマリーデータ
       fetchGA4Summary(siteId, recentPeriod.startDate, recentPeriod.endDate),
@@ -70,8 +71,8 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
       // 過去13ヶ月のコンバージョンデータ
       fetchGA4MonthlyConversions(siteId),
       
-      // 改善施策ナレッジ（スプレッドシートから取得）
-      fetchImprovementKnowledge(siteId),
+      // スクレイピングデータ（上位50ページ）
+      fetchScrapingData(siteId),
     ]);
 
     // 結果を整形
@@ -99,8 +100,8 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
       // 過去13ヶ月のコンバージョンデータ
       monthlyConversions: monthlyConversionResult.status === 'fulfilled' ? monthlyConversionResult.value : null,
       
-      // GrowGroupの改善施策ナレッジ
-      improvementKnowledge: improvementKnowledgeResult.status === 'fulfilled' ? improvementKnowledgeResult.value : [],
+      // スクレイピングデータ
+      scrapingData: scrapingDataResult.status === 'fulfilled' ? scrapingDataResult.value : null,
       
       // エラー情報
       errors: {
@@ -113,7 +114,7 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
         landingPages: landingPagesResult.status === 'rejected' ? landingPagesResult.reason : null,
         pageCategories: pageCategoriesResult.status === 'rejected' ? pageCategoriesResult.reason : null,
         monthlyConversions: monthlyConversionResult.status === 'rejected' ? monthlyConversionResult.reason : null,
-        improvementKnowledge: improvementKnowledgeResult.status === 'rejected' ? improvementKnowledgeResult.reason : null,
+        scrapingData: scrapingDataResult.status === 'rejected' ? scrapingDataResult.reason : null,
       },
     };
 
@@ -283,18 +284,44 @@ async function fetchGA4MonthlyConversions(siteId) {
 }
 
 /**
- * 改善施策ナレッジ取得（GrowGroupのスプレッドシートから）
+ * スクレイピングデータ取得（上位50ページ）
  */
-async function fetchImprovementKnowledge(siteId) {
-  // TODO: siteIdからsiteTypeを取得する必要がある
-  // 暫定的に全データを取得
-  const fetchImprovementKnowledge = httpsCallable(functions, 'fetchImprovementKnowledge');
+async function fetchScrapingData(siteId) {
   try {
-    const result = await fetchImprovementKnowledge({ siteType: '' });
-    return result.data?.data || [];
+    // Firestoreから直接取得
+    const scrapingDataQuery = await getDocs(
+      query(
+        collection(db, 'sites', siteId, 'pageScrapingData'),
+        orderBy('pageViews', 'desc'),
+        limit(50)
+      )
+    );
+
+    const scrapingData = [];
+    scrapingDataQuery.forEach(doc => {
+      scrapingData.push({
+        id: doc.id,
+        ...doc.data(),
+      });
+    });
+
+    // メタデータも取得
+    const metaDoc = await getDoc(doc(db, 'sites', siteId, 'pageScrapingMeta', 'default'));
+    const metaData = metaDoc.exists() ? metaDoc.data() : null;
+
+    console.log('[fetchScrapingData] 取得:', scrapingData.length, 'ページ（AI改善案に反映）');
+    return {
+      pages: scrapingData,
+      meta: metaData,
+      totalPages: scrapingData.length,
+    };
   } catch (error) {
-    console.warn('[ComprehensiveDataFetcher] 改善施策ナレッジ取得失敗（スキップ）:', error.message);
-    return [];
+    console.warn('[fetchScrapingData] エラー:', error.message);
+    return {
+      pages: [],
+      meta: null,
+      totalPages: 0,
+    };
   }
 }
 

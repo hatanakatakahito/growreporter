@@ -1,7 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
-import { logActivity } from '../../utils/activityLogger.js';
 
 /**
  * 個別制限を削除
@@ -51,7 +50,7 @@ export const removeCustomLimitsCallable = async (request) => {
       : (adminData.displayName || adminData.email || 'Admin');
 
     // 既存の制限を取得
-    const existingLimitDoc = await db.collection('customLimits').doc(targetUserId).get();
+    const existingLimitDoc = await db.collection('users').doc(targetUserId).collection('customLimits').doc(targetUserId).get();
     
     if (!existingLimitDoc.exists) {
       throw new HttpsError('not-found', '個別制限が設定されていません');
@@ -60,24 +59,11 @@ export const removeCustomLimitsCallable = async (request) => {
     const oldLimits = existingLimitDoc.data();
 
     // customLimits ドキュメントを削除
-    await db.collection('customLimits').doc(targetUserId).delete();
+    await db.collection('users').doc(targetUserId).collection('customLimits').doc(targetUserId).delete();
 
     logger.info('個別制限削除完了', { 
       adminId: uid,
       targetUserId,
-    });
-
-    // アクティビティログに記録
-    await logActivity(db, {
-      adminId: uid,
-      adminName: adminName,
-      action: 'custom_limits_removed',
-      targetType: 'user',
-      targetId: targetUserId,
-      details: {
-        oldLimits: oldLimits.limits,
-        reason: reason,
-      },
     });
 
     // ユーザー名を取得

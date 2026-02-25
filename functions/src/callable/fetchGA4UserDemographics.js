@@ -30,8 +30,13 @@ export const fetchGA4UserDemographicsCallable = async (request) => {
     }
 
     const siteData = siteDoc.data();
+    
+    // サイト所有者本人、または管理者権限（admin/editor/viewer）がある場合のみアクセス許可
     if (siteData.userId !== userId) {
-      throw new HttpsError('permission-denied', 'Access denied');
+      const adminDoc = await db.collection('adminUsers').doc(userId).get();
+      if (!adminDoc.exists || !['admin', 'editor', 'viewer'].includes(adminDoc.data().role)) {
+        throw new HttpsError('permission-denied', 'Access denied');
+      }
     }
 
     if (!siteData.ga4PropertyId || !siteData.ga4OauthTokenId) {
@@ -39,7 +44,8 @@ export const fetchGA4UserDemographicsCallable = async (request) => {
     }
 
     // OAuthトークン取得・更新
-    const { oauth2Client } = await getAndRefreshToken(siteData.ga4OauthTokenId);
+    const tokenOwnerId = siteData.ga4TokenOwner || siteData.userId;
+    const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, siteData.ga4OauthTokenId);
     const credentials = await oauth2Client.getAccessToken();
     const accessToken = credentials.token;
 

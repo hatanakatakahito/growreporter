@@ -1,33 +1,16 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
 import { useSite } from '../../contexts/SiteContext';
 
 export default function Header({ title, subtitle, backLink, backLabel, action, showSiteSelector = false }) {
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSiteDropdownOpen, setIsSiteDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
   const siteDropdownRef = useRef(null);
-  const { currentUser, userProfile, logout } = useAuth();
   const { sites, selectedSite, selectSite } = useSite();
   const navigate = useNavigate();
-
-  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
-  const getUserName = () => {
-    if (userProfile?.lastName && userProfile?.firstName) {
-      return `${userProfile.lastName} ${userProfile.firstName}`;
-    }
-    return currentUser?.displayName || 'ユーザー';
-  };
-
-  const userInitial = getUserName().charAt(0);
 
   // ドロップダウン外をクリックしたら閉じる
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
-        setIsDropdownOpen(false);
-      }
       if (siteDropdownRef.current && !siteDropdownRef.current.contains(event.target)) {
         setIsSiteDropdownOpen(false);
       }
@@ -39,27 +22,18 @@ export default function Header({ title, subtitle, backLink, backLabel, action, s
     };
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await logout();
-      navigate('/login');
-    } catch (error) {
-      console.error('Logout error:', error);
-    }
-  };
-
   return (
     <div className="border-b border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
-      <div className="px-6 py-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-dark dark:text-white">
+      <div className="px-6 h-20 flex items-center">
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-bold text-dark dark:text-white">
               {title}
             </h1>
             {subtitle && (
-              <p className="mt-2 text-body-color">
+              <span className="text-sm text-body-color">
                 {subtitle}
-              </p>
+              </span>
             )}
           </div>
           <div className="flex items-center gap-3">
@@ -142,72 +116,6 @@ export default function Header({ title, subtitle, backLink, backLabel, action, s
               </Link>
             )}
             {action}
-
-            {/* ユーザードロップダウン */}
-            <div className="relative" ref={dropdownRef}>
-              <button
-                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                className="flex items-center gap-3 rounded-lg px-4 py-2.5 transition hover:bg-gray-2 dark:hover:bg-dark-3"
-              >
-                {currentUser?.photoURL ? (
-                  <img 
-                    src={currentUser.photoURL} 
-                    alt="Profile" 
-                    className="h-8 w-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white text-xs font-semibold">
-                    {userInitial}
-                  </div>
-                )}
-                <div className="text-left">
-                  <p className="text-sm font-medium text-dark dark:text-white">
-                    {getUserName()}
-                  </p>
-                  <p className="text-xs text-body-color">
-                    {currentUser?.email}
-                  </p>
-                </div>
-                <svg
-                  className={`h-4 w-4 text-body-color transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-
-              {/* ドロップダウンメニュー */}
-              {isDropdownOpen && (
-                <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border border-stroke bg-white shadow-lg dark:border-dark-3 dark:bg-dark-2">
-                  <div className="p-2">
-                    <Link
-                      to="/account/settings"
-                      onClick={() => setIsDropdownOpen(false)}
-                      className="flex items-center gap-3 rounded-md px-4 py-2.5 text-sm text-dark transition hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
-                    >
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                      アカウント設定
-                    </Link>
-                    <button
-                      onClick={() => {
-                        setIsDropdownOpen(false);
-                        handleLogout();
-                      }}
-                      className="flex w-full items-center gap-3 rounded-md px-4 py-2.5 text-sm text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                    >
-                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      ログアウト
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
           </div>
         </div>
       </div>

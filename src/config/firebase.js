@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 import { getFunctions } from 'firebase/functions';
@@ -23,6 +23,7 @@ let db = null;
 let storage = null;
 let functions = null;
 let googleProvider = null;
+let microsoftProvider = null;
 
 if (isFirebaseConfigured) {
   // Firebaseアプリの初期化
@@ -39,11 +40,17 @@ if (isFirebaseConfigured) {
   googleProvider.setCustomParameters({
     prompt: 'select_account', // 常にアカウント選択画面を表示
   });
+
+  // Microsoft認証プロバイダー（Firebase Console で Microsoft を有効化した場合に使用）
+  microsoftProvider = new OAuthProvider('microsoft.com');
+  microsoftProvider.setCustomParameters({
+    prompt: 'login', // アカウント選択を促す
+  });
 } else {
   console.warn('⚠️ Firebase configuration is missing. Please create a .env file with Firebase credentials.');
   console.warn('📝 See FIREBASE_SETUP.md for setup instructions.');
 }
 
-export { auth, db, storage, functions, googleProvider };
+export { auth, db, storage, functions, googleProvider, microsoftProvider };
 export default app;
 

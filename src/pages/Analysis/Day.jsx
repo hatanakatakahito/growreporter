@@ -13,6 +13,11 @@ import { PAGE_TYPES } from '../../constants/plans';
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
+import PageNoteSection from '../../components/Analysis/PageNoteSection';
+import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
+import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
+import PlanLimitModal from '../../components/common/PlanLimitModal';
+import { useAuth } from '../../contexts/AuthContext';
 import {
   ResponsiveContainer,
   LineChart,
@@ -26,12 +31,28 @@ import {
 
 /**
  * 日別分析画面
- * 日別のセッションとコンバージョンの推移を表示
+ * 日別の訪問者とコンバージョンの推移を表示
  */
 export default function Day() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { currentUser } = useAuth();
   const [hiddenLines, setHiddenLines] = useState({});
   const [activeTab, setActiveTab] = useState('chart');
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  // AI分析タブへスクロールする関数
+  const scrollToAIAnalysis = () => {
+    // AI分析タブに切り替え
+    window.dispatchEvent(new Event('switchToAITab'));
+    
+    // スクロール
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -162,11 +183,11 @@ export default function Day() {
 
       {/* コンテンツ */}
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
-        <div className="mx-auto max-w-7xl px-6 py-10">
+        <div className="mx-auto max-w-content px-6 py-10">
           <div className="mb-6">
             <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">分析する - 日別分析</h2>
             <p className="text-body-color">
-              日別のセッションとコンバージョンの推移を確認できます
+              日別の訪問者とコンバージョンの推移を確認できます
             </p>
           </div>
 
@@ -213,7 +234,7 @@ export default function Day() {
                       <XAxis dataKey="date" tickFormatter={formatDateLabel} />
                       <YAxis
                         yAxisId="left"
-                        label={{ value: 'セッション', angle: -90, position: 'insideLeft' }}
+                        label={{ value: '訪問者', angle: -90, position: 'insideLeft' }}
                       />
                       <YAxis
                         yAxisId="right"
@@ -226,7 +247,7 @@ export default function Day() {
                         yAxisId="left"
                         type="monotone"
                         dataKey="sessions"
-                        name="セッション"
+                        name="訪問者"
                         stroke="#3b82f6"
                         strokeWidth={2}
                         dot={{ r: 3 }}
@@ -256,7 +277,7 @@ export default function Day() {
                     },
                     {
                       key: 'sessions',
-                      label: 'セッション',
+                      label: '訪問者',
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
@@ -277,17 +298,55 @@ export default function Day() {
               )}
             </>
           )}
+
+        {/* メモ & AI分析タブ */}
+        {selectedSiteId && currentUser && (
+          <div className="mt-6">
+            <TabbedNoteAndAI
+              pageType="analysis/day"
+              noteContent={
+                <PageNoteSection
+                  userId={currentUser.uid}
+                  siteId={selectedSiteId}
+                  pageType="analysis/day"
+                  dateRange={dateRange}
+                />
+              }
+              aiContent={
+                !isLoading && dailyData ? (
+                  <AIAnalysisSection
+                    pageType={PAGE_TYPES.DAY}
+                    rawData={dailyData}
+                    period={{
+                      startDate: dateRange?.from || new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+                      endDate: dateRange?.to || new Date(),
+                    }}
+                    onLimitExceeded={() => setIsLimitModalOpen(true)}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    データを読み込み中...
+                  </div>
+                )
+              }
+            />
+          </div>
+        )}
         </div>
 
         {/* AI分析フローティングボタン */}
         {selectedSiteId && !isLoading && dailyData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.DAY}
-            rawData={dailyData}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
+            onScrollToAI={scrollToAIAnalysis}
+          />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal 
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
           />
         )}
       </main>

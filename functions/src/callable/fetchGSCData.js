@@ -3,6 +3,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { google } from 'googleapis';
 import { getAndRefreshToken } from '../utils/tokenManager.js';
 import { getCache, setCache, generateCacheKey } from '../utils/cacheManager.js';
+import { canAccessSite } from '../utils/permissionHelper.js';
 
 /**
  * GSCデータ取得 Callable Function
@@ -43,7 +44,9 @@ export async function fetchGSCDataCallable(request) {
 
     const siteData = siteDoc.data();
     
-    if (siteData.userId !== userId) {
+    // サイトへのアクセス権限をチェック
+    const hasAccess = await canAccessSite(userId, siteId);
+    if (!hasAccess) {
       throw new HttpsError(
         'permission-denied',
         'このサイトにアクセスする権限がありません'
@@ -67,8 +70,9 @@ export async function fetchGSCDataCallable(request) {
       return cachedData;
     }
 
-    // 3. OAuthトークン取得・更新
-    const { oauth2Client } = await getAndRefreshToken(siteData.gscOauthTokenId);
+    // 3. OAuthトークン取得・更新（users/{ownerId}/oauth_tokens/{tokenId}）
+    const tokenOwnerId = siteData.gscTokenOwner || siteData.userId;
+    const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, siteData.gscOauthTokenId);
 
     // 4. Search Console API 呼び出し
     const searchConsole = google.searchconsole('v1');

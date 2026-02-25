@@ -1,26 +1,37 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import { db } from '../config/firebase';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
-import { subDays, format } from 'date-fns';
+import { collection, query, where, getDocs, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 const SiteContext = createContext();
 
-// デフォルトの日付範囲（過去30日）
+// デフォルトの日付範囲（前月の1日～末日）
 const getDefaultDateRange = () => {
   const today = new Date();
-  const thirtyDaysAgo = subDays(today, 30);
+  
+  // 前月の1日を取得
+  const firstDayOfLastMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+  
+  // 前月の末日を取得（今月の0日 = 前月の末日）
+  const lastDayOfLastMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+  
   return {
-    from: format(thirtyDaysAgo, 'yyyy-MM-dd'),
-    to: format(today, 'yyyy-MM-dd'),
+    from: format(firstDayOfLastMonth, 'yyyy-MM-dd'),
+    to: format(lastDayOfLastMonth, 'yyyy-MM-dd'),
   };
 };
 
 export function SiteProvider({ children }) {
   const { currentUser } = useAuth();
+  const location = useLocation();
   const [sites, setSites] = useState([]);
   const [selectedSiteId, setSelectedSiteId] = useState(null);
+  const [selectedSiteLive, setSelectedSiteLive] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isAdminViewing, setIsAdminViewing] = useState(false); // 管理者として他のサイトを閲覧中かどうか
+  const [adminRole, setAdminRole] = useState(null); // admin/editor/viewer
   const [dateRange, setDateRange] = useState(() => {
     try {
       // LocalStorageから復元
@@ -42,7 +53,87 @@ export function SiteProvider({ children }) {
     return getDefaultDateRange();
   });
 
-  // ユーザーのサイト一覧を取得
+  // 管理者権限をチェック
+  useEffect(() => {
+    const checkAdminRole = async () => {
+      if (!currentUser) {
+        setAdminRole(null);
+        return;
+      }
+
+      try {
+        const adminDoc = await getDoc(doc(db, 'adminUsers', currentUser.uid));
+        if (adminDoc.exists()) {
+          const role = adminDoc.data().role;
+          if (['admin', 'editor', 'viewer'].includes(role)) {
+            setAdminRole(role);
+            console.log('[SiteContext] 管理者権限:', role);
+          }
+        }
+      } catch (error) {
+        console.error('[SiteContext] 管理者権限チェックエラー:', error);
+      }
+    };
+
+    checkAdminRole();
+  }, [currentUser]);
+
+  // URLパラメータから siteId を読み取り、特定のサイトを取得（管理者用）
+  useEffect(() => {
+    const checkUrlParams = async () => {
+      if (!currentUser) return;
+
+      const params = new URLSearchParams(location.search);
+      const urlSiteId = params.get('siteId');
+
+      if (!urlSiteId) return;
+
+      console.log('[SiteContext] URLパラメータから siteId を検出:', urlSiteId);
+      setIsLoading(true);
+      
+      try {
+        // まず管理者権限をチェック
+        const adminDoc = await getDoc(doc(db, 'adminUsers', currentUser.uid));
+        const hasAdminRole = adminDoc.exists() && ['admin', 'editor', 'viewer'].includes(adminDoc.data()?.role);
+        
+        // サイト情報を取得
+        const siteDoc = await getDoc(doc(db, 'sites', urlSiteId));
+        if (!siteDoc.exists()) {
+          console.error('[SiteContext] 指定されたサイトが見つかりません:', urlSiteId);
+          setIsLoading(false);
+          return;
+        }
+
+        const siteData = { id: siteDoc.id, ...siteDoc.data() };
+        
+        // 自分のサイトでない場合は管理者権限が必要
+        if (siteData.userId !== currentUser.uid) {
+          if (!hasAdminRole) {
+            console.error('[SiteContext] 管理者権限がないため、他ユーザーのサイトにアクセスできません');
+            setIsLoading(false);
+            return;
+          }
+          console.log('[SiteContext] 管理者として他ユーザーのサイトを閲覧');
+          setIsAdminViewing(true);
+          setSites([siteData]); // 一時的にこのサイトのみを表示
+          setSelectedSiteId(urlSiteId);
+        } else {
+          // 自分のサイトの場合は通常通り
+          console.log('[SiteContext] 自分のサイトを表示');
+          setIsAdminViewing(false);
+          setSelectedSiteId(urlSiteId);
+        }
+      } catch (error) {
+        console.error('[SiteContext] URLパラメータからのサイト取得エラー:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUrlParams();
+  }, [location.search, currentUser]);
+
+  // ユーザーのサイト一覧を取得（アカウント全体のサイトを取得）
   useEffect(() => {
     const fetchSites = async () => {
       if (!currentUser) {
@@ -52,13 +143,43 @@ export function SiteProvider({ children }) {
         return;
       }
 
+      // URLパラメータに siteId が指定されている場合はスキップ
+      const params = new URLSearchParams(location.search);
+      const urlSiteId = params.get('siteId');
+      if (urlSiteId) {
+        console.log('[SiteContext] URLパラメータによるサイト指定があるため、通常のサイト取得をスキップ');
+        return;
+      }
+
       setIsLoading(true);
       try {
         console.log('[SiteContext] ユーザーID:', currentUser.uid);
         
+        // 自分のユーザー情報を取得
+        const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        const userData = userDoc.data();
+        
+        // memberships から accountOwnerId を取得（複数ある場合は最初の1つ）
+        const memberships = userData?.memberships || {};
+        const accountOwnerIds = Object.keys(memberships);
+        
+        let accountOwnerId;
+        if (accountOwnerIds.length > 0) {
+          // memberships がある場合、最初のアカウントを使用
+          accountOwnerId = accountOwnerIds[0];
+          console.log('[SiteContext] Memberships から取得したアカウントオーナーID:', accountOwnerId);
+        } else {
+          // memberships がない場合、自分自身をオーナーとする（後方互換性）
+          accountOwnerId = userData?.accountOwnerId || currentUser.uid;
+          console.log('[SiteContext] 従来方式でアカウントオーナーID取得:', accountOwnerId);
+        }
+        
+        console.log('[SiteContext] 使用するアカウントオーナーID:', accountOwnerId);
+        
+        // accountOwnerIdが一致するサイトを全て取得
         const q = query(
           collection(db, 'sites'),
-          where('userId', '==', currentUser.uid)
+          where('userId', '==', accountOwnerId)
         );
         
         const querySnapshot = await getDocs(q);
@@ -77,6 +198,7 @@ export function SiteProvider({ children }) {
         });
         
         setSites(sitesData);
+        setIsAdminViewing(false); // 通常モードに戻す
 
         // 最後に選択したサイトをLocalStorageから復元
         const lastSelectedSiteId = localStorage.getItem('lastSelectedSiteId');
@@ -94,7 +216,27 @@ export function SiteProvider({ children }) {
     };
 
     fetchSites();
-  }, [currentUser]);
+  }, [currentUser, location.search]);
+
+  // 選択中サイトをリアルタイム購読（メタデータ・スクショは登録後にトリガーで入るため、更新を即反映）
+  useEffect(() => {
+    if (!selectedSiteId) {
+      setSelectedSiteLive(null);
+      return;
+    }
+    const ref = doc(db, 'sites', selectedSiteId);
+    const unsubscribe = onSnapshot(ref, (snapshot) => {
+      if (snapshot.exists()) {
+        setSelectedSiteLive({ id: snapshot.id, ...snapshot.data() });
+      } else {
+        setSelectedSiteLive(null);
+      }
+    }, (err) => {
+      console.error('[SiteContext] 選択中サイトの購読エラー:', err);
+      setSelectedSiteLive(null);
+    });
+    return () => unsubscribe();
+  }, [selectedSiteId]);
 
   // 日付範囲をLocalStorageに保存
   useEffect(() => {
@@ -105,8 +247,11 @@ export function SiteProvider({ children }) {
     }
   }, [dateRange]);
 
-  // 選択中のサイト情報
-  const selectedSite = sites.find(site => site.id === selectedSiteId);
+  // 選択中のサイト情報（リアルタイムデータがあればそれを優先＝カバー表示がトリガー完了後に更新される）
+  const selectedSite = useMemo(() => {
+    if (selectedSiteLive) return selectedSiteLive;
+    return sites.find(site => site.id === selectedSiteId) || null;
+  }, [sites, selectedSiteId, selectedSiteLive]);
 
   // サイトを選択
   const selectSite = (siteId) => {
@@ -167,6 +312,8 @@ export function SiteProvider({ children }) {
     isLoading,
     dateRange,
     updateDateRange,
+    isAdminViewing, // 管理者として他のサイトを閲覧中かどうか
+    adminRole, // admin/editor/viewer
   };
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;

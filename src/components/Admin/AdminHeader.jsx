@@ -1,11 +1,14 @@
 import { useAuth } from '../../contexts/AuthContext';
-import { Bell } from 'lucide-react';
+import { useAdmin } from '../../hooks/useAdmin';
+import { getAdminRoleLabel } from '../../constants/adminRoles';
+import { Shield } from 'lucide-react';
 
 /**
  * アドミン画面のヘッダー
  */
 export default function AdminHeader() {
   const { currentUser, userProfile } = useAuth();
+  const { adminRole } = useAdmin();
 
   // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
   const getUserName = () => {
@@ -17,53 +20,63 @@ export default function AdminHeader() {
 
   const userInitial = getUserName().charAt(0);
 
+  // ロールバッジの色
+  const getRoleBadgeColor = (role) => {
+    switch (role) {
+      case 'admin':
+        return 'bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400';
+      case 'editor':
+        return 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400';
+      case 'viewer':
+        return 'bg-gray-100 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400';
+      default:
+        return 'bg-gray-100 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400';
+    }
+  };
+
   return (
-    <header className="sticky top-0 z-40 border-b border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
-      <div className="flex h-20 items-center justify-between px-6">
-        {/* タイトル */}
-        <div>
-          <h1 className="text-2xl font-bold text-dark dark:text-white">
-            管理画面
-          </h1>
-          <p className="text-sm text-body-color dark:text-dark-6">
-            システム全体の管理と監視
-          </p>
-        </div>
+    <div className="bg-white border-b border-gray-200 h-20 dark:bg-dark-2 dark:border-dark-3">
+      <div className="mx-auto max-w-content px-6 h-full flex items-center">
+        <div className="flex items-center justify-between w-full">
+          {/* タイトル */}
+          <div>
+            <h1 className="text-2xl font-bold text-dark dark:text-white">
+              管理画面
+            </h1>
+          </div>
 
-        {/* 右側メニュー */}
-        <div className="flex items-center gap-4">
-          {/* 通知アイコン */}
-          <button className="relative rounded-full p-2 text-body-color transition hover:bg-gray-2 dark:hover:bg-dark-3">
-            <Bell className="h-5 w-5" />
-            {/* 通知バッジ（将来実装） */}
-            {/* <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-red-500"></span> */}
-          </button>
-
-          {/* ユーザー情報 */}
-          <div className="flex items-center gap-3">
-            {currentUser?.photoURL ? (
-              <img 
-                src={currentUser.photoURL} 
-                alt="Profile" 
-                className="h-10 w-10 rounded-full object-cover"
-              />
-            ) : (
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold">
-                {userInitial}
+          {/* 右側メニュー */}
+          <div className="flex items-center gap-4">
+            {/* ユーザー情報 */}
+            <div className="flex items-center gap-3">
+              {currentUser?.photoURL ? (
+                <img
+                  src={currentUser.photoURL}
+                  alt="Profile"
+                  className="h-10 w-10 rounded-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold">
+                  {userInitial}
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-medium text-dark dark:text-white">
+                  {getUserName()}
+                </p>
+                {adminRole && (
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${getRoleBadgeColor(adminRole)}`}>
+                    <Shield className="h-2.5 w-2.5" />
+                    {getAdminRoleLabel(adminRole)}
+                  </span>
+                )}
               </div>
-            )}
-            <div>
-              <p className="text-sm font-medium text-dark dark:text-white">
-                {getUserName()}
-              </p>
-              <p className="text-xs text-body-color">
-                Administrator
-              </p>
             </div>
           </div>
         </div>
       </div>
-    </header>
+    </div>
   );
 }
 

@@ -38,7 +38,7 @@ export async function appendRows(rows) {
     
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'シート1!A:N', // A列からN列まで
+      range: 'シート1!A:O', // A列からO列（業界・業種・サイトの目的追加）
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       resource: {
@@ -68,7 +68,7 @@ export async function getAllRows() {
     
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'シート1!A:N', // A列からN列まで
+      range: 'シート1!A:O', // A列からO列（業界・業種・サイトの目的追加）
     });
 
     return response.data.values || [];
@@ -92,9 +92,9 @@ export async function updateRowIfExists(siteUrl, targetMonth, newRowData) {
     // ヘッダー行をスキップ（1行目）
     const dataRows = allRows.slice(1);
     
-    // 既存データを検索（C列:URL、F列:対象年月）
+    // 既存データを検索（C列:URL、G列:対象年月）
     const existingRowIndex = dataRows.findIndex(row => {
-      return row[2] === siteUrl && row[5] === targetMonth; // C列とF列
+      return row[2] === siteUrl && row[6] === targetMonth; // C列とG列
     });
 
     if (existingRowIndex === -1) {
@@ -108,7 +108,7 @@ export async function updateRowIfExists(siteUrl, targetMonth, newRowData) {
     
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `シート1!A${actualRowIndex}:N${actualRowIndex}`,
+      range: `シート1!A${actualRowIndex}:O${actualRowIndex}`,
       valueInputOption: 'USER_ENTERED',
       resource: {
         values: [newRowData],
@@ -172,12 +172,22 @@ export async function appendOrUpdateRows(rows) {
  * @param {object} monthlyData - 月次データ
  * @returns {Array<any>} - スプレッドシートの行データ
  */
+/**
+ * スプレッドシートのセル用にスカラー値に正規化（配列はカンマ区切り文字列に）
+ */
+function toCellValue(value, defaultStr = 'その他') {
+  if (value == null || value === '') return defaultStr;
+  if (Array.isArray(value)) return value.length ? value.join(', ') : defaultStr;
+  return typeof value === 'string' ? value : String(value);
+}
+
 export function createRowData(siteInfo, monthlyData) {
   const {
     siteName,
     siteUrl,
-    siteType = 'その他',
-    businessType = 'その他',
+    industry = [],
+    siteType = [],
+    sitePurpose = [],
   } = siteInfo;
 
   const {
@@ -198,19 +208,20 @@ export function createRowData(siteInfo, monthlyData) {
 
   return [
     new Date().toISOString(), // A: 登録日時
-    siteName,                 // B: サイト名
-    siteUrl,                  // C: URL
-    siteType,                 // D: サイト種別
-    businessType,             // E: ビジネス形態
-    yearMonth,                // F: 対象年月
-    sessions,                 // G: 訪問者数
-    newUsers,                 // H: 新規ユーザー
-    users,                    // I: ユーザー数
-    pageViews,                // J: PV数
-    avgPageViews,             // K: 平均PV
-    (engagementRate * 100).toFixed(2), // L: ENG率（%）
-    conversions,              // M: CV数
-    cvr,                      // N: CVR（%）
+    toCellValue(siteName, ''),      // B: サイト名
+    toCellValue(siteUrl, ''),      // C: URL
+    toCellValue(industry),         // D: 業界・業種（配列の場合は結合）
+    toCellValue(siteType),         // E: サイト種別
+    toCellValue(sitePurpose),      // F: サイトの目的
+    yearMonth,                // G: 対象年月
+    sessions,                 // H: 訪問者数
+    newUsers,                 // I: 新規ユーザー
+    users,                    // J: ユーザー数
+    pageViews,                // K: PV数
+    avgPageViews,             // L: 平均PV
+    (engagementRate * 100).toFixed(2), // M: ENG率（%）
+    conversions,              // N: CV数
+    cvr,                      // O: CVR（%）
   ];
 }
 

@@ -4,7 +4,7 @@ import { ADMIN_ROLES, getAdminRoleLabel, getAdminRoleDescription } from '../../c
 import LoadingSpinner from '../common/LoadingSpinner';
 
 /**
- * 管理者ロール変更モーダル
+ * 管理者権限変更モーダル
  */
 export default function AdminRoleModal({ admin, onClose, onSave }) {
   const [newRole, setNewRole] = useState(admin.role);
@@ -22,14 +22,9 @@ export default function AdminRoleModal({ admin, onClose, onSave }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!reason.trim()) {
-      setError('変更理由を入力してください');
-      return;
-    }
 
     if (newRole === admin.role) {
-      setError('変更するロールを選択してください');
+      setError('変更する権限を選択してください');
       return;
     }
 
@@ -40,7 +35,7 @@ export default function AdminRoleModal({ admin, onClose, onSave }) {
       await onSave(admin.uid, newRole, reason);
       onClose();
     } catch (err) {
-      setError(err.message || 'ロールの変更に失敗しました');
+      setError(err.message || '権限の変更に失敗しました');
     } finally {
       setLoading(false);
     }
@@ -52,7 +47,7 @@ export default function AdminRoleModal({ admin, onClose, onSave }) {
         {/* ヘッダー */}
         <div className="mb-6 flex items-center justify-between">
           <h3 className="text-xl font-bold text-dark dark:text-white">
-            管理者ロール変更
+            管理者権限変更
           </h3>
           <button
             onClick={onClose}
@@ -76,7 +71,7 @@ export default function AdminRoleModal({ admin, onClose, onSave }) {
           <div className="font-medium text-dark dark:text-white">{getAdminName()}</div>
           <div className="text-sm text-body-color dark:text-dark-6">{admin.email}</div>
           <div className="mt-2 text-sm">
-            <span className="text-body-color dark:text-dark-6">現在のロール: </span>
+            <span className="text-body-color dark:text-dark-6">現在の権限: </span>
             <span className="font-semibold text-dark dark:text-white">{getAdminRoleLabel(admin.role)}</span>
           </div>
         </div>
@@ -84,10 +79,10 @@ export default function AdminRoleModal({ admin, onClose, onSave }) {
         {/* フォーム */}
         <form onSubmit={handleSubmit}>
           <div className="space-y-4">
-            {/* ロール選択 */}
+            {/* 権限選択 */}
             <div>
               <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-                新しいロール <span className="text-red-500">*</span>
+                新しい権限 <span className="text-red-500">*</span>
               </label>
               <div className="space-y-2">
                 {Object.values(ADMIN_ROLES).map((role) => (
@@ -126,14 +121,13 @@ export default function AdminRoleModal({ admin, onClose, onSave }) {
             {/* 変更理由 */}
             <div>
               <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-                変更理由 <span className="text-red-500">*</span>
+                変更理由
               </label>
               <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                required
                 rows={3}
-                placeholder="ロールを変更する理由を入力してください"
+                placeholder="権限を変更する理由を入力してください（任意）"
                 className="w-full rounded-lg border border-stroke bg-white px-4 py-2 text-dark focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
               />
             </div>

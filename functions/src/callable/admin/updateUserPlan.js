@@ -79,8 +79,8 @@ export const updateUserPlanCallable = async (request) => {
         updatedAt: FieldValue.serverTimestamp(),
       });
 
-      // 2. プラン変更履歴を記録
-      const historyRef = db.collection('planChangeHistory').doc();
+      // 2. プラン変更履歴を記録（users/{uid}/planChangeHistory）
+      const historyRef = db.collection('users').doc(targetUserId).collection('planChangeHistory').doc();
       transaction.set(historyRef, {
         userId: targetUserId,
         oldPlan,

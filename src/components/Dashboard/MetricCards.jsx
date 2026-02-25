@@ -5,7 +5,7 @@ import { getTooltip } from '../../constants/tooltips';
 export default function MetricCards({ ga4Data, gscData, isLoading }) {
   const metrics = [
     {
-      title: 'セッション数',
+      title: '訪問者数',
       value: ga4Data?.metrics?.sessions || 0,
       change: null, // TODO: 前期間比の計算
       format: 'number',

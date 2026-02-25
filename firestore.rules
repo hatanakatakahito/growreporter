@@ -1,45 +1,198 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // ヘルパー関数: 編集者または管理者かチェック
+    function isEditorOrAdmin() {
+      let adminDoc = get(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+      return exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+             (adminDoc.data.role == 'editor' || adminDoc.data.role == 'admin');
+    }
+    
+    // ヘルパー関数: 管理者ユーザー（admin/editor/viewer）かチェック
+    function isAdminUser() {
+      let adminDoc = get(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+      return exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+             (adminDoc.data.role == 'admin' || adminDoc.data.role == 'editor' || adminDoc.data.role == 'viewer');
+    }
+    
+    // ヘルパー関数: 同じアカウントのメンバーかチェック
+    function isAccountMember(accountOwnerId) {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             (userDoc.data.accountOwnerId == accountOwnerId ||
+              (userDoc.data.keys().hasAny(['memberships']) && 
+               accountOwnerId in userDoc.data.memberships));
+    }
+    
+    // ヘルパー関数: メンバーの権限を取得
+    function getMemberRole() {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             'memberRole' in userDoc.data ? userDoc.data.memberRole : 'owner';
+    }
+    
+    // ヘルパー関数: オーナーまたは編集者かチェック
+    function isOwnerOrEditor(accountOwnerId) {
+      return isAccountMember(accountOwnerId) && getMemberRole() in ['owner', 'editor'];
+    }
+    
     // ユーザーコレクション
     match /users/{userId} {
-      // 自分のユーザー情報のみ読み書き可能
-      allow read: if request.auth != null && request.auth.uid == userId;
+      // 自分のユーザー情報、同じアカウントのメンバー、または管理者権限があれば読み取り可能
+      allow read: if request.auth != null && 
+        (request.auth.uid == userId || 
+         isAccountMember(userId) ||
+         isAdminUser());
       allow write: if request.auth != null && request.auth.uid == userId;
+
+      // OAuthトークン（本人・同一アカウントメンバー・管理者が読める。編集者がサイト設定でオーナーのトークン参照のため）
+      match /oauth_tokens/{tokenId} {
+        allow read: if request.auth != null && (request.auth.uid == userId || isAccountMember(userId) || isAdminUser());
+        allow create: if request.auth != null && request.auth.uid == userId;
+        allow update, delete: if request.auth != null && (request.auth.uid == userId || isAdminUser());
+      }
+      // プラン変更履歴（管理者のみ読取。書込は Functions）
+      match /planChangeHistory/{historyId} {
+        allow read: if request.auth != null && isAdminUser();
+        allow write: if false;
+      }
+      // メモ既読状態（本人のみ）
+      match /memoReadStatus/{statusId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      // アラート既読状態（本人のみ）
+      match /userAlertReads/{readId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      // レポート（本人のみ）
+      match /reports/{reportId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+      // 個別制限（管理者のみ読取。書込は Functions）
+      match /customLimits/{limitId} {
+        allow read: if request.auth != null && isAdminUser();
+        allow write: if false;
+      }
     }
     
     // サイトコレクション
     match /sites/{siteId} {
-      // 自分が登録したサイトのみ読み書き可能
+      // 自分のサイト、同じアカウントのメンバー、または管理者権限があれば閲覧可能
       allow read: if request.auth != null && 
-        (resource.data.userId == request.auth.uid || !('userId' in resource.data));
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+        (resource.data.userId == request.auth.uid || 
+         !('userId' in resource.data) || 
+         isAccountMember(resource.data.userId) ||
+         isAdminUser());
+      
+      // 自分のサイト作成、またはオーナー・編集者が作成可能
+      allow create: if request.auth != null && 
+        (request.resource.data.userId == request.auth.uid ||
+         isOwnerOrEditor(request.resource.data.userId));
+      
+      // 自分のサイト、オーナー・編集者、または管理者権限があれば更新可能
       allow update: if request.auth != null && 
         (
           // 既存ドキュメントの所有者チェック
           (resource.data.userId == request.auth.uid || !('userId' in resource.data)) &&
           // 更新後のuserIdが自分のuidと一致することを確認
           request.resource.data.userId == request.auth.uid
-        );
+        ) ||
+        // オーナー・編集者権限（アカウントメンバー）
+        isOwnerOrEditor(resource.data.userId) ||
+        // 編集者・管理者権限（システム管理者）
+        isEditorOrAdmin();
+      
+      // オーナー・編集者が削除可能
       allow delete: if request.auth != null && 
-        (resource.data.userId == request.auth.uid || !('userId' in resource.data));
+        (resource.data.userId == request.auth.uid || 
+         !('userId' in resource.data) ||
+         isOwnerOrEditor(resource.data.userId));
+
+      // アラートサブコレクション（そのサイトにアクセスできるユーザーのみ読み取り可。作成・更新は Cloud Functions のみ）
+      match /alerts/{alertId} {
+        allow read: if request.auth != null && (
+          isAdminUser() ||
+          get(/databases/$(database)/documents/sites/$(siteId)).data.userId == request.auth.uid ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow write: if false;
+      }
+      // 改善課題（読み取りは全メンバー可、書き込みはオーナー・編集者のみ）
+      match /improvements/{improvementId} {
+        allow read: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow create, update, delete: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isOwnerOrEditor(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+      }
+      // ページメモ（読み取りは全メンバー可、書き込みはオーナー・編集者のみ）
+      match /pageNotes/{noteId} {
+        allow read: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow write: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isOwnerOrEditor(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+      }
+      // スクレイピングデータ・メタ・進捗・エラー（読取は全メンバー可。書込は Functions）
+      match /pageScrapingData/{dataId} {
+        allow read: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow write: if false;
+      }
+      match /pageScrapingMeta/{metaId} {
+        allow read: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow write: if false;
+      }
+      match /scrapingProgress/{progressId} {
+        allow read: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow write: if false;
+      }
+      match /scrapingErrors/{errorId} {
+        allow read: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow write: if false;
+      }
+      // AI分析キャッシュ・要約（読取は全メンバー可、書込は Functions）
+      match /aiAnalysisCache/{cacheId} {
+        allow read: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow write: if false;
+      }
+      match /aiSummaries/{summaryId} {
+        allow read: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow write: if false;
+      }
     }
     
-    // レポートコレクション
+    // レポート（移行済み: users/{uid}/reports。ルートは廃止）
     match /reports/{reportId} {
-      // 自分のサイトのレポートのみ読み書き可能
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, write: if false;
     }
-    
-    // OAuthトークンコレクション
+
+    // OAuthトークン（移行済み: users/{uid}/oauth_tokens。ルートは廃止）
     match /oauth_tokens/{tokenId} {
-      // 自分が作成したトークンのみ読み書き可能
-      allow read: if request.auth != null && resource.data.user_uid == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.user_uid == request.auth.uid;
-      allow update: if request.auth != null && resource.data.user_uid == request.auth.uid;
-      allow delete: if request.auth != null && resource.data.user_uid == request.auth.uid;
+      allow read, write: if false;
     }
     
     // AI要約コレクション（旧システム、互換性のため保持）
@@ -52,20 +205,28 @@ service cloud.firestore {
     
     // AI分析キャッシュコレクション（新システム）
     match /aiAnalysisCache/{cacheId} {
-      // 自分が作成したキャッシュのみ読み込み可能
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      // 自分が作成したキャッシュまたは管理者権限があれば読み込み可能
+      allow read: if request.auth != null && 
+        (resource.data.userId == request.auth.uid || isAdminUser());
       // 書き込みはCloud Functionsのみ
       allow write: if false;
     }
     
     // 改善課題コレクション
     match /improvements/{improvementId} {
-      // 認証済みユーザーが自分のサイトに関連する改善課題のみ読み書き可能
+      // 認証済みユーザーが自分のサイトまたは同じアカウントのサイトに関連する改善課題を読み取り可能
       allow read: if request.auth != null;
+      
+      // オーナー・編集者が作成可能（閲覧者は不可）
       allow create: if request.auth != null && 
-        request.resource.data.createdBy == request.auth.token.email;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+        request.resource.data.createdBy == request.auth.token.email &&
+        getMemberRole() in ['owner', 'editor'];
+      
+      // オーナー・編集者が更新可能（閲覧者は不可）
+      allow update: if request.auth != null && getMemberRole() in ['owner', 'editor'];
+      
+      // オーナー・編集者が削除可能（閲覧者は不可）
+      allow delete: if request.auth != null && getMemberRole() in ['owner', 'editor'];
     }
     
     // ユーザープロフィールコレクション（現在はusersコレクションを使用）
@@ -83,13 +244,9 @@ service cloud.firestore {
       allow write: if false;
     }
     
-    // プラン変更履歴コレクション
+    // プラン変更履歴（移行済み: users/{uid}/planChangeHistory。ルートは廃止）
     match /planChangeHistory/{historyId} {
-      // 管理者のみ読み取り可能（Cloud Functionsで権限チェック済み）
-      allow read: if request.auth != null && 
-        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
-      // 書き込みはCloud Functionsのみ
-      allow write: if false;
+      allow read, write: if false;
     }
     
     // 管理者アクティビティログコレクション
@@ -109,14 +266,9 @@ service cloud.firestore {
       allow read: if false;
     }
     
-    // 個別制限コレクション
+    // 個別制限（移行済み: users/{uid}/customLimits/{uid}。ルートは廃止）
     match /customLimits/{userId} {
-      // 管理者のみ読み取り可能
-      allow read: if request.auth != null && 
-        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.role in ['admin', 'editor', 'viewer'];
-      // 書き込みはCloud Functionsのみ（管理者権限チェックは関数内で実施）
-      allow write: if false;
+      allow read, write: if false;
     }
     
     // プラン設定コレクション
@@ -135,6 +287,176 @@ service cloud.firestore {
       // 管理者のみ書き込み可能
       allow write: if request.auth != null && 
         exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid));
+    }
+    
+    // ページメモコレクション
+    match /pageNotes/{noteId} {
+      // 同じサイトにアクセス権があるユーザーは全メモ閲覧可能
+      allow read: if request.auth != null && (
+        resource == null ||
+        // 自分のメモ
+        resource.data.userId == request.auth.uid ||
+        // 編集者・管理者（システム管理者）
+        isEditorOrAdmin() ||
+        // 同じサイトの所有者、アカウントメンバー、または管理者権限でアクセス可能
+        (exists(/databases/$(database)/documents/sites/$(resource.data.siteId)) &&
+         (get(/databases/$(database)/documents/sites/$(resource.data.siteId)).data.userId == request.auth.uid ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(resource.data.siteId)).data.userId) ||
+          isAdminUser()))
+      );
+      
+      // オーナー・編集者・システム管理者が作成可能（閲覧者は不可）
+      allow create: if request.auth != null && 
+        (request.resource.data.userId == request.auth.uid || isEditorOrAdmin()) &&
+        getMemberRole() in ['owner', 'editor'];
+      
+      // 自分のメモ、オーナー・編集者、またはシステム管理者が更新可能
+      allow update: if request.auth != null && 
+        ((resource.data.userId == request.auth.uid && getMemberRole() in ['owner', 'editor']) || 
+         isEditorOrAdmin());
+      
+      // 自分のメモ、オーナー・編集者、またはシステム管理者が削除可能
+      allow delete: if request.auth != null && 
+        ((resource.data.userId == request.auth.uid && getMemberRole() in ['owner', 'editor']) || 
+         isEditorOrAdmin());
+    }
+    
+    // メモ既読状態（移行済み: users/{uid}/memoReadStatus。ルートは廃止）
+    match /memoReadStatus/{statusId} {
+      allow read, write: if false;
+    }
+    
+    // システム設定コレクション（メール通知設定など）
+    match /systemSettings/{docId} {
+      // 管理者のみ読み書き可能
+      // usersコレクションとadminUsersコレクションの両方をチェック
+      allow read: if request.auth != null && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid))
+      );
+      allow write: if request.auth != null && (
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+        (exists(/databases/$(database)/documents/adminUsers/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/adminUsers/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+    
+    // ヘルパー: サイトの所有者か（userId / user_uid の両方に対応）
+    function isSiteOwner(siteId) {
+      let site = get(/databases/$(database)/documents/sites/$(siteId));
+      return exists(/databases/$(database)/documents/sites/$(siteId)) &&
+             (site.data.userId == request.auth.uid || site.data.user_uid == request.auth.uid);
+    }
+    
+    // ページスクレイピングデータコレクション（オーナー・同一アカウントの編集者・管理者が閲覧可）
+    match /pageScrapingData/{dataId} {
+      allow read: if request.auth != null && (
+        isAdminUser() || isSiteOwner(resource.data.siteId) ||
+        (exists(/databases/$(database)/documents/sites/$(resource.data.siteId)) &&
+         isOwnerOrEditor(get(/databases/$(database)/documents/sites/$(resource.data.siteId)).data.userId))
+      );
+      allow write: if false;
+    }
+    
+    // ページスクレイピングメタデータコレクション
+    match /pageScrapingMeta/{siteId} {
+      allow read: if request.auth != null && (
+        isAdminUser() || isSiteOwner(siteId) ||
+        (exists(/databases/$(database)/documents/sites/$(siteId)) &&
+         isOwnerOrEditor(get(/databases/$(database)/documents/sites/$(siteId)).data.userId))
+      );
+      allow write: if false;
+    }
+    
+    // スクレイピング進捗状況コレクション
+    match /scrapingProgress/{siteId} {
+      allow read: if request.auth != null && (
+        isAdminUser() || isSiteOwner(siteId) ||
+        (exists(/databases/$(database)/documents/sites/$(siteId)) &&
+         isOwnerOrEditor(get(/databases/$(database)/documents/sites/$(siteId)).data.userId))
+      );
+      allow write: if false;
+    }
+    
+    // スクレイピングエラーログコレクション
+    match /scrapingErrors/{errorId} {
+      allow read: if request.auth != null && (
+        isAdminUser() || isSiteOwner(resource.data.siteId) ||
+        (exists(/databases/$(database)/documents/sites/$(resource.data.siteId)) &&
+         isOwnerOrEditor(get(/databases/$(database)/documents/sites/$(resource.data.siteId)).data.userId))
+      );
+      allow write: if false;
+    }
+    
+    // アカウントメンバーコレクション（廃止：メンバー情報は users に一元化。参照・書き込みは禁止）
+    match /accountMembers/{memberId} {
+      allow read, write: if false;
+    }
+    
+    // スクレイピングキュー（Cloud Functions 専用。クライアントはアクセス不可）
+    match /scrapingJobs/{jobId} {
+      allow read, write: if false;
+    }
+    
+    // エラーログ（Cloud Functions が書き込み。誰も読まない）
+    match /error_logs/{logId} {
+      allow read, write: if false;
+    }
+    
+    // ユーザー操作ログ（Cloud Functions が書き込み。管理者のみ読み取り可）
+    match /activityLogs/{logId} {
+      allow read: if request.auth != null && isAdminUser();
+      allow write: if false;
+    }
+    
+    // アラート既読状態（移行済み: users/{uid}/userAlertReads。ルートは廃止）
+    match /userAlertReads/{readId} {
+      allow read, write: if false;
+    }
+
+    // 招待コレクション
+    match /invitations/{invitationId} {
+      // 招待されたユーザー、アカウントオーナー、同じアカウントのメンバー、または管理者が読み取り可能
+      allow read: if request.auth != null && (
+        request.auth.token.email == resource.data.email ||
+        resource.data.accountOwnerId == request.auth.uid ||
+        isAccountMember(resource.data.accountOwnerId) ||
+        isAdminUser()
+      );
+      
+      // オーナーのみ作成可能
+      allow create: if request.auth != null && 
+        request.resource.data.accountOwnerId == request.auth.uid &&
+        getMemberRole() == 'owner';
+      
+      // 招待されたユーザーが承認する場合、またはオーナーが更新する場合
+      allow update: if request.auth != null && (
+        request.auth.token.email == resource.data.email ||
+        resource.data.accountOwnerId == request.auth.uid
+      );
+      
+      // 削除は不要（自動期限切れのみ）
+      allow delete: if false;
+    }
+    
+    // collectionGroup: 管理者の全サイト横断クエリ用
+    match /{path=**}/improvements/{improvementId} {
+      allow read: if request.auth != null && isAdminUser();
+      allow write: if false;
+    }
+    match /{path=**}/pageNotes/{noteId} {
+      allow read: if request.auth != null && isAdminUser();
+      allow write: if false;
+    }
+    match /{path=**}/aiAnalysisCache/{cacheId} {
+      allow read: if request.auth != null && isAdminUser();
+      allow write: if false;
+    }
+    match /{path=**}/aiSummaries/{summaryId} {
+      allow read: if request.auth != null && isAdminUser();
+      allow write: if false;
     }
   }
 }

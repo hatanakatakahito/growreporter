@@ -2,7 +2,6 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { logger } from 'firebase-functions/v2';
-import { logActivity } from '../../utils/activityLogger.js';
 
 /**
  * ユーザーを完全に削除
@@ -66,70 +65,118 @@ export const deleteUserCallable = async (request) => {
       targetName,
     });
 
-    // 1. ユーザーのサイトを削除
+    // 1. ユーザーのサイト一覧を取得
     const sitesSnapshot = await db.collection('sites')
       .where('userId', '==', targetUserId)
       .get();
     
-    const siteIds = [];
-    const deleteSitesPromises = sitesSnapshot.docs.map(doc => {
-      siteIds.push(doc.id);
-      return doc.ref.delete();
-    });
+    const siteIds = sitesSnapshot.docs.map(doc => doc.id);
+
+    // 1a. 各サイトに紐づくスクレイピング関連データを削除（再登録時のクリーンな状態のため）
+    let scrapingDataDeleted = 0;
+    let scrapingProgressDeleted = 0;
+    let scrapingJobsDeleted = 0;
+    let scrapingErrorsDeleted = 0;
+    for (const siteId of siteIds) {
+      const pageScrapingSnap = await db.collection('sites').doc(siteId).collection('pageScrapingData').get();
+      for (let i = 0; i < pageScrapingSnap.docs.length; i += 500) {
+        const batch = db.batch();
+        pageScrapingSnap.docs.slice(i, i + 500).forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+      scrapingDataDeleted += pageScrapingSnap.size;
+
+      const progressRef = db.collection('scrapingProgress').doc(siteId);
+      if ((await progressRef.get()).exists) {
+        await progressRef.delete();
+        scrapingProgressDeleted += 1;
+      }
+
+      const jobsSnap = await db.collection('scrapingJobs').where('siteId', '==', siteId).get();
+      for (let i = 0; i < jobsSnap.docs.length; i += 500) {
+        const batch = db.batch();
+        jobsSnap.docs.slice(i, i + 500).forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+      scrapingJobsDeleted += jobsSnap.size;
+
+      const errorsSnap = await db.collection('sites').doc(siteId).collection('scrapingErrors').get();
+      for (let i = 0; i < errorsSnap.docs.length; i += 500) {
+        const batch = db.batch();
+        errorsSnap.docs.slice(i, i + 500).forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
+      scrapingErrorsDeleted += errorsSnap.size;
+    }
+    if (siteIds.length > 0) {
+      logger.info('スクレイピング関連データ削除完了', {
+        pageScrapingData: scrapingDataDeleted,
+        scrapingProgress: scrapingProgressDeleted,
+        scrapingJobs: scrapingJobsDeleted,
+        scrapingErrors: scrapingErrorsDeleted,
+      });
+    }
+
+    // 1c. 各サイトの pageNotes / aiAnalysisCache を削除（collection group を避けサブコレで削除）
+    let notesDeleted = 0;
+    let aiCacheDeleted = 0;
+    for (const siteId of siteIds) {
+      const notesSnap = await db.collection('sites').doc(siteId).collection('pageNotes')
+        .where('userId', '==', targetUserId)
+        .get();
+      for (const d of notesSnap.docs) await d.ref.delete();
+      notesDeleted += notesSnap.size;
+
+      const cacheSnap = await db.collection('sites').doc(siteId).collection('aiAnalysisCache')
+        .where('userId', '==', targetUserId)
+        .get();
+      for (const d of cacheSnap.docs) await d.ref.delete();
+      aiCacheDeleted += cacheSnap.size;
+    }
+    if (notesDeleted > 0 || aiCacheDeleted > 0) {
+      logger.info('メモ・AIキャッシュ削除完了', { notes: notesDeleted, aiCache: aiCacheDeleted });
+    }
+
+    // 1b. サイトドキュメントを削除
+    const deleteSitesPromises = sitesSnapshot.docs.map(doc => doc.ref.delete());
     await Promise.all(deleteSitesPromises);
     logger.info('サイト削除完了', { count: sitesSnapshot.size });
 
-    // 2. ページメモを削除
-    const notesSnapshot = await db.collection('pageNotes')
-      .where('userId', '==', targetUserId)
-      .get();
-    
-    const deleteNotesPromises = notesSnapshot.docs.map(doc => doc.ref.delete());
-    await Promise.all(deleteNotesPromises);
-    logger.info('メモ削除完了', { count: notesSnapshot.size });
+    // 2. （他サイトに紐づくページメモは collection group で削除しないためスキップ済み）
 
-    // 3. OAuthトークンを削除
-    const tokensSnapshot = await db.collection('oauth_tokens')
-      .where('user_uid', '==', targetUserId)
-      .get();
-    
+    // 3. OAuthトークンを削除（users/{uid}/oauth_tokens）
+    const tokensSnapshot = await db.collection('users').doc(targetUserId).collection('oauth_tokens').get();
     const deleteTokensPromises = tokensSnapshot.docs.map(doc => doc.ref.delete());
     await Promise.all(deleteTokensPromises);
     logger.info('OAuthトークン削除完了', { count: tokensSnapshot.size });
 
-    // 4. AI分析キャッシュを削除
-    const aiCacheSnapshot = await db.collection('aiAnalysisCache')
-      .where('userId', '==', targetUserId)
-      .get();
-    
-    const deleteAICachePromises = aiCacheSnapshot.docs.map(doc => doc.ref.delete());
-    await Promise.all(deleteAICachePromises);
-    logger.info('AI分析キャッシュ削除完了', { count: aiCacheSnapshot.size });
+    // 4. （aiAnalysisCache は 1c で各サイトごとに削除済み）
 
-    // 5. レポートを削除
-    const reportsSnapshot = await db.collection('reports')
-      .where('userId', '==', targetUserId)
-      .get();
-    
+    // 5. レポートを削除（users/{uid}/reports）
+    const reportsSnapshot = await db.collection('users').doc(targetUserId).collection('reports').get();
     const deleteReportsPromises = reportsSnapshot.docs.map(doc => doc.ref.delete());
     await Promise.all(deleteReportsPromises);
     logger.info('レポート削除完了', { count: reportsSnapshot.size });
 
-    // 6. 個別制限を削除
-    const customLimitsDoc = await db.collection('customLimits').doc(targetUserId).get();
+    // 6. 個別制限を削除（users/{uid}/customLimits/{uid}）
+    const customLimitsDoc = await db.collection('users').doc(targetUserId).collection('customLimits').doc(targetUserId).get();
     if (customLimitsDoc.exists) {
       await customLimitsDoc.ref.delete();
       logger.info('個別制限削除完了');
     }
 
-    // 7. プラン変更履歴を削除
-    const planHistorySnapshot = await db.collection('planChangeHistory')
-      .where('userId', '==', targetUserId)
-      .get();
-    
+    // 7. プラン変更履歴を削除（users/{uid}/planChangeHistory）
+    const planHistorySnapshot = await db.collection('users').doc(targetUserId).collection('planChangeHistory').get();
     const deletePlanHistoryPromises = planHistorySnapshot.docs.map(doc => doc.ref.delete());
     await Promise.all(deletePlanHistoryPromises);
     logger.info('プラン変更履歴削除完了', { count: planHistorySnapshot.size });
+
+    // 7b. メモ既読・アラート既読を削除（users/{uid}/memoReadStatus, userAlertReads）
+    const memoReadSnap = await db.collection('users').doc(targetUserId).collection('memoReadStatus').get();
+    await Promise.all(memoReadSnap.docs.map(doc => doc.ref.delete()));
+    const alertReadSnap = await db.collection('users').doc(targetUserId).collection('userAlertReads').get();
+    await Promise.all(alertReadSnap.docs.map(doc => doc.ref.delete()));
+    logger.info('memoReadStatus/userAlertReads削除完了', { memo: memoReadSnap.size, alert: alertReadSnap.size });
 
     // 8. 管理者ロールを削除（該当する場合）
     const adminUserDoc = await db.collection('adminUsers').doc(targetUserId).get();
@@ -152,27 +199,11 @@ export const deleteUserCallable = async (request) => {
       });
     }
 
-    // アクティビティログに記録
-    await logActivity(db, {
-      adminId: uid,
-      adminName: executorName,
-      action: 'user_deleted',
-      targetType: 'user',
-      targetId: targetUserId,
-      details: {
-        targetName,
-        email: userData.email,
-        plan: userData.plan,
-        sitesDeleted: sitesSnapshot.size,
-        reason,
-      },
-    });
-
     logger.info('ユーザー削除完了', { 
       executorId: uid,
       targetUserId,
       sitesDeleted: sitesSnapshot.size,
-      notesDeleted: notesSnapshot.size,
+      notesDeleted,
     });
 
     return {
@@ -180,10 +211,14 @@ export const deleteUserCallable = async (request) => {
       message: `${targetName}さんを削除しました`,
       deletedData: {
         sites: sitesSnapshot.size,
-        notes: notesSnapshot.size,
+        notes: notesDeleted,
         tokens: tokensSnapshot.size,
-        aiCache: aiCacheSnapshot.size,
+        aiCache: aiCacheDeleted,
         reports: reportsSnapshot.size,
+        pageScrapingData: scrapingDataDeleted,
+        scrapingProgress: scrapingProgressDeleted,
+        scrapingJobs: scrapingJobsDeleted,
+        scrapingErrors: scrapingErrorsDeleted,
       },
     };
 

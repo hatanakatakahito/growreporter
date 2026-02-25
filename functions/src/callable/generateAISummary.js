@@ -4,6 +4,8 @@ import { logger } from 'firebase-functions/v2';
 import { checkCanGenerate, incrementGenerationCount } from '../utils/planManager.js';
 import { getCachedAnalysis, saveCachedAnalysis } from '../utils/aiCacheManager.js';
 import { getPromptTemplate } from '../prompts/templates.js';
+import { SITE_TYPE_LABELS, SITE_PURPOSE_LABELS, IMPROVEMENT_FOCUS_LABELS } from '../constants/siteOptions.js';
+import { canAccessSite, canEditSite } from '../utils/permissionHelper.js';
 
 /**
  * AI要約生成 Callable Function
@@ -17,7 +19,7 @@ export async function generateAISummaryCallable(request) {
   const db = getFirestore();
   // 【重要】legacyMetrics は後方互換性のためのみ残している
   // 実際には rawData → finalMetrics → metrics という流れで使用する
-  const { siteId, pageType, startDate, endDate, metrics: legacyMetrics, rawData, forceRegenerate = false } = request.data;
+  const { siteId, pageType, startDate, endDate, metrics: legacyMetrics, rawData, forceRegenerate = false, improvementFocus: improvementFocusValue = 'balance', existingImprovements = [] } = request.data;
 
   // 入力バリデーション
   if (!siteId || !pageType || !startDate || !endDate) {
@@ -48,20 +50,40 @@ export async function generateAISummaryCallable(request) {
   console.log('[generateAISummary] Start:', { userId, siteId, pageType, startDate, endDate, forceRegenerate });
 
   try {
-    // 1. usage typeを先に決定（制限チェックで使用）
-    const usageType = pageType === 'comprehensive_improvement' ? 'improvement' : 'summary';
+    // 1. サイトの所有権確認
+    const siteDoc = await db.collection('sites').doc(siteId).get();
+    if (!siteDoc.exists) {
+      throw new HttpsError('not-found', 'サイトが見つかりません');
+    }
 
-    // 2. キャッシュチェック（強制再生成でない場合）
+    const siteData = siteDoc.data();
+    
+    // AI生成は編集権限が必要（閲覧者は不可）
+    const canEdit = await canEditSite(userId, siteId);
+    if (!canEdit) {
+      throw new HttpsError(
+        'permission-denied',
+        'AI分析を生成する権限がありません（編集者以上の権限が必要です）'
+      );
+    }
+
+    // 2. usage typeを決定（制限チェックで使用）
+    const usageType = pageType === 'comprehensive_improvement' ? 'improvement' : 'summary';
+    
+    // サイト所有者のuserIdを使用（管理者がアクセスしている場合でもキャッシュは所有者ベース）
+    const siteOwnerId = siteData.userId;
+
+    // 3. キャッシュチェック（強制再生成でない場合）
     if (!forceRegenerate) {
-      const cachedAnalysis = await getCachedAnalysis(userId, siteId, pageType, startDate, endDate);
+      const cachedAnalysis = await getCachedAnalysis(siteOwnerId, siteId, pageType, startDate, endDate);
       if (cachedAnalysis) {
         console.log('[generateAISummary] Cache hit (aiAnalysisCache):', cachedAnalysis.cacheId);
         
         // キャッシュがある場合でも、現在の制限を確認
         // （プラン変更等で制限が変わっている可能性があるため）
-        const canGenerate = await checkCanGenerate(userId, usageType);
+        const canGenerate = await checkCanGenerate(siteOwnerId, usageType);
         if (!canGenerate) {
-          console.log('[generateAISummary] キャッシュはあるが制限超過:', userId, usageType);
+          console.log('[generateAISummary] キャッシュはあるが制限超過:', siteOwnerId, usageType);
           const limitTypeName = usageType === 'improvement' ? 'AI改善提案' : 'AI分析サマリー';
           throw new HttpsError(
             'resource-exhausted',
@@ -78,14 +100,14 @@ export async function generateAISummaryCallable(request) {
       }
       
       // 旧キャッシュもチェック（互換性のため）
-    const cachedSummary = await getCachedSummary(db, userId, siteId, pageType, startDate, endDate);
+    const cachedSummary = await getCachedSummary(db, siteOwnerId, siteId, pageType, startDate, endDate);
     if (cachedSummary) {
         console.log('[generateAISummary] Cache hit (legacy aiSummaries):', cachedSummary.id);
         
         // キャッシュがある場合でも、現在の制限を確認
-        const canGenerate = await checkCanGenerate(userId, usageType);
+        const canGenerate = await checkCanGenerate(siteOwnerId, usageType);
         if (!canGenerate) {
-          console.log('[generateAISummary] 旧キャッシュはあるが制限超過:', userId, usageType);
+          console.log('[generateAISummary] 旧キャッシュはあるが制限超過:', siteOwnerId, usageType);
           const limitTypeName = usageType === 'improvement' ? 'AI改善提案' : 'AI分析サマリー';
           throw new HttpsError(
             'resource-exhausted',
@@ -102,10 +124,10 @@ export async function generateAISummaryCallable(request) {
       }
     }
 
-    // 3. プラン制限チェック（新規生成時）
-    const canGenerate = await checkCanGenerate(userId, usageType);
+    // 4. プラン制限チェック（新規生成時）
+    const canGenerate = await checkCanGenerate(siteOwnerId, usageType);
     if (!canGenerate) {
-      console.log('[generateAISummary] プラン制限超過（新規生成）:', userId, usageType);
+      console.log('[generateAISummary] プラン制限超過（新規生成）:', siteOwnerId, usageType);
       const limitTypeName = usageType === 'improvement' ? 'AI改善提案' : 'AI分析サマリー';
       throw new HttpsError(
         'resource-exhausted',
@@ -113,7 +135,7 @@ export async function generateAISummaryCallable(request) {
       );
     }
 
-    // 4. Gemini APIキーの確認
+    // 5. Gemini APIキーの確認
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
       console.error('[generateAISummary] GEMINI_API_KEY not configured');
@@ -123,7 +145,7 @@ export async function generateAISummaryCallable(request) {
       );
     }
 
-    // 5. メトリクスの準備（新方式・旧方式の両対応）
+    // 6. メトリクスの準備（新方式・旧方式の両対応）
     // 【重要】ここで metrics 変数を定義し、以降はこれのみを使用
     let metrics;
     
@@ -146,12 +168,37 @@ export async function generateAISummaryCallable(request) {
       );
     }
     
-    // 6. プロンプト生成
-    console.log('[generateAISummary] メトリクスデータ:', JSON.stringify(metrics, null, 2));
-    const prompt = await generatePrompt(db, pageType, startDate, endDate, metrics);
+    // 7. プロンプト生成（スクレイピングデータの反映をログで確認可能に）
+    if (metrics.scrapingData?.pages?.length > 0) {
+      logger.info('[generateAISummary] スクレイピングデータをサイト改善に反映', {
+        pageType,
+        scrapingPages: metrics.scrapingData.pages.length,
+        totalPagesInPrompt: Math.min(30, metrics.scrapingData.pages.length),
+      });
+    } else {
+      logger.warn('[generateAISummary] スクレイピングデータなし（プロンプトには「未取得」と記載）', { pageType });
+    }
+    const options = {};
+    if (pageType === 'comprehensive_improvement') {
+      const industryArr = Array.isArray(siteData.industry) ? siteData.industry : (siteData.industry ? [siteData.industry] : []);
+      const siteTypeArr = Array.isArray(siteData.siteType) ? siteData.siteType : (siteData.siteType ? [siteData.siteType] : []);
+      const sitePurposeArr = Array.isArray(siteData.sitePurpose) ? siteData.sitePurpose : (siteData.sitePurpose ? [siteData.sitePurpose] : []);
+      options.siteContext = {
+        industryText: industryArr.length ? industryArr.join('、') : '未設定',
+        siteTypeText: siteTypeArr.map((v) => SITE_TYPE_LABELS[v] || v).join('、') || '未設定',
+        sitePurposeText: sitePurposeArr.map((v) => SITE_PURPOSE_LABELS[v] || v).join('、') || '未設定',
+      };
+      options.improvementFocus = IMPROVEMENT_FOCUS_LABELS[improvementFocusValue] || IMPROVEMENT_FOCUS_LABELS.balance;
+      options.existingImprovements = existingImprovements || [];
+      
+      // コンバージョン設定とKPI設定を追加
+      options.conversionGoals = siteData.conversionGoals || [];
+      options.kpiSettings = siteData.kpiSettings || [];
+    }
+    const prompt = await generatePrompt(db, pageType, startDate, endDate, metrics, options);
     console.log('[generateAISummary] 生成されたプロンプト (先頭500文字):', prompt.substring(0, 500));
 
-    // 7. Gemini API呼び出し
+    // 8. Gemini API呼び出し
     console.log('[generateAISummary] Calling Gemini API...');
     const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
     console.log('[generateAISummary] Using model:', geminiModel);
@@ -225,7 +272,7 @@ export async function generateAISummaryCallable(request) {
 
     // 7. 新しいキャッシュシステムに保存
     const now = new Date();
-    await saveCachedAnalysis(userId, siteId, pageType, summary, recommendations, startDate, endDate);
+    await saveCachedAnalysis(siteOwnerId, siteId, pageType, summary, recommendations, startDate, endDate);
     
     // 8. 旧システムにも保存（互換性のため、将来的に削除予定）
     const summaryDoc = {
@@ -240,12 +287,12 @@ export async function generateAISummaryCallable(request) {
       generatedAt: Timestamp.fromDate(now),
       createdAt: Timestamp.fromDate(now),
     };
-    const docRef = await db.collection('aiSummaries').add(summaryDoc);
+    const docRef = await db.collection('sites').doc(siteId).collection('aiSummaries').add(summaryDoc);
     console.log('[generateAISummary] Saved to Firestore (legacy):', docRef.id);
 
     // 9. 生成回数をインクリメント
     // usageTypeは前で定義済み
-    await incrementGenerationCount(userId, usageType);
+    await incrementGenerationCount(siteOwnerId, usageType);
     console.log('[generateAISummary] Generation count incremented:', usageType);
 
     // 10. 古いキャッシュをクリーンアップ（非同期）
@@ -322,7 +369,7 @@ async function cleanupOldSummaries(db, userId) {
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const snapshot = await db
-      .collection('aiSummaries')
+      .collectionGroup('aiSummaries')
       .where('userId', '==', userId)
       .where('createdAt', '<', Timestamp.fromDate(thirtyDaysAgo))
       .get();
@@ -344,8 +391,45 @@ async function cleanupOldSummaries(db, userId) {
 }
 
 /**
+ * 行がラベル行（キー: または キー：）で始まるか（全角コロン対応）
+ */
+function isLabelLine(line, label) {
+  const n = (line || '').trim().replace(/\uFF1A/g, ':');
+  return n.startsWith(label);
+}
+
+function valueAfterLabel(trimmedLine, label) {
+  const n = trimmedLine.replace(/\uFF1A/g, ':');
+  if (!n.startsWith(label)) return '';
+  // ラベル長で切り出し（説明文内のコロンで分割されないように）。全角コロンも1文字として同じ長さ
+  const skip = label.length;
+  return trimmedLine.substring(skip).trim();
+}
+
+/**
+ * タイトルまたは説明文から対象ページパス（例: /contacts/）を抽出
+ * @param {string} title
+ * @param {string} description
+ * @returns {string|null} 抽出したパス（見つからなければ null）
+ */
+function extractPathFromTitleOrDescription(title, description) {
+  const text = [title, description].filter(Boolean).join(' ');
+  if (!text || typeof text !== 'string') return null;
+  // 括弧内のパス: (/path/) または （/path/）
+  const parenMatch = text.match(/[（(](\/[^）)]*\/?)[）)]/);
+  if (parenMatch && parenMatch[1]) {
+    const p = parenMatch[1].trim();
+    return p || '/';
+  }
+  // スラッシュで始まるパス: /path/ または /path
+  const pathMatch = text.match(/(\/[a-zA-Z0-9/_.-]+)/);
+  if (pathMatch && pathMatch[1]) return pathMatch[1];
+  return null;
+}
+
+/**
  * comprehensive_improvement用の改善施策抽出
- * 形式: タイトル:、説明:、カテゴリー:、優先度:、期待効果: を解析
+ * 形式: タイトル:、説明:、カテゴリー:、優先度:、期待効果:、対象ページ: 等を解析（全角コロン・対象ページURL: 対応）
  */
 function extractImprovementRecommendations(summary) {
   console.log('[extractImprovementRecommendations] 開始 - 入力テキスト長:', summary.length);
@@ -355,42 +439,81 @@ function extractImprovementRecommendations(summary) {
   const blocks = summary.split(/---+/);
   console.log('[extractImprovementRecommendations] ブロック数:', blocks.length);
   
+  const labelPrefixes = [
+    'タイトル:', '説明:', '重複判定用ラベル:', 'カテゴリー:', '優先度:', '期待効果:',
+    '実装者:', '難易度:', '費用感:', '対象ページ:', '対象ページURL:', '対象箇所:', '想定工数（時間）:', '想定工数(時間):'
+  ];
+  
   blocks.forEach((block, blockIndex) => {
     const lines = block.trim().split('\n');
     let currentRec = {};
     
     lines.forEach((line) => {
       const trimmedLine = line.trim();
+      const normalizedLine = trimmedLine.replace(/\uFF1A/g, ':');
       
-      // 各フィールドを抽出
-      if (trimmedLine.startsWith('タイトル:')) {
-        currentRec.title = trimmedLine.substring('タイトル:'.length).trim();
-      } else if (trimmedLine.startsWith('説明:')) {
-        currentRec.description = trimmedLine.substring('説明:'.length).trim();
-      } else if (trimmedLine.startsWith('カテゴリー:')) {
-        const category = trimmedLine.substring('カテゴリー:'.length).trim().toLowerCase();
-        currentRec.category = category;
-      } else if (trimmedLine.startsWith('優先度:')) {
-        const priority = trimmedLine.substring('優先度:'.length).trim().toLowerCase();
-        currentRec.priority = priority;
-      } else if (trimmedLine.startsWith('期待効果:')) {
-        currentRec.expectedImpact = trimmedLine.substring('期待効果:'.length).trim();
-      } else if (currentRec.description && trimmedLine && !trimmedLine.startsWith('タイトル:') && !trimmedLine.startsWith('説明:') && !trimmedLine.startsWith('カテゴリー:') && !trimmedLine.startsWith('優先度:') && !trimmedLine.startsWith('期待効果:')) {
-        // 説明文が複数行にわたる場合は追加
-        currentRec.description += ' ' + trimmedLine;
+      // 各フィールドを抽出（全角コロン対応。対象ページURL: も対象ページ: と同様に扱う）
+      if (isLabelLine(trimmedLine, 'タイトル:')) {
+        currentRec.title = valueAfterLabel(trimmedLine, 'タイトル:');
+      } else if (isLabelLine(trimmedLine, '説明:')) {
+        currentRec.description = valueAfterLabel(trimmedLine, '説明:');
+      } else if (isLabelLine(trimmedLine, '重複判定用ラベル:')) {
+        const label = valueAfterLabel(trimmedLine, '重複判定用ラベル:');
+        if (label) currentRec.dedupKey = label;
+      } else if (isLabelLine(trimmedLine, 'カテゴリー:')) {
+        currentRec.category = valueAfterLabel(trimmedLine, 'カテゴリー:').toLowerCase();
+      } else if (isLabelLine(trimmedLine, '優先度:')) {
+        currentRec.priority = valueAfterLabel(trimmedLine, '優先度:').toLowerCase();
+      } else if (isLabelLine(trimmedLine, '期待効果:')) {
+        currentRec.expectedImpact = valueAfterLabel(trimmedLine, '期待効果:');
+      } else if (isLabelLine(trimmedLine, '実装者:')) {
+        currentRec.implementationType = valueAfterLabel(trimmedLine, '実装者:').toLowerCase();
+      } else if (isLabelLine(trimmedLine, '難易度:')) {
+        currentRec.difficulty = valueAfterLabel(trimmedLine, '難易度:').toLowerCase();
+      } else if (isLabelLine(trimmedLine, '費用感:')) {
+        currentRec.estimatedCost = valueAfterLabel(trimmedLine, '費用感:').toLowerCase();
+      } else if (isLabelLine(trimmedLine, '対象ページ:') || isLabelLine(trimmedLine, '対象ページURL:')) {
+        const isUrlKey = normalizedLine.startsWith('対象ページURL:');
+        const prefixLen = isUrlKey
+          ? (trimmedLine.startsWith('対象ページURL：') ? '対象ページURL：'.length : '対象ページURL:'.length)
+          : (trimmedLine.startsWith('対象ページ：') ? '対象ページ：'.length : '対象ページ:'.length);
+        const val = trimmedLine.substring(prefixLen).trim();
+        if (val && val !== '/' && val.toLowerCase() !== 'トップページ') {
+          currentRec.targetPagePath = val;
+        } else {
+          currentRec.targetPagePath = '/';
+        }
+      } else if (isLabelLine(trimmedLine, '対象箇所:')) {
+        currentRec.targetArea = valueAfterLabel(trimmedLine, '対象箇所:');
+      } else if (normalizedLine.startsWith('想定工数（時間）:') || normalizedLine.startsWith('想定工数(時間):')) {
+        const val = trimmedLine.replace(/^想定工数[（(]時間[）)][：:]\s*/, '').trim();
+        const num = parseFloat(val, 10);
+        if (!Number.isNaN(num) && num >= 0) {
+          currentRec.estimatedLaborHours = num;
+        }
+      } else if (currentRec.description && trimmedLine) {
+        const isLabel = labelPrefixes.some(prefix => normalizedLine.startsWith(prefix) || normalizedLine.startsWith(prefix.replace(':', '：')));
+        if (!isLabel && !/^想定工数[（(]/.test(normalizedLine)) {
+          currentRec.description += ' ' + trimmedLine;
+        }
       }
     });
     
-    // 必須フィールドがすべて揃っている場合のみ追加
-    if (currentRec.title && currentRec.description && currentRec.category && currentRec.priority) {
+    // タイトルと説明があれば追加。カテゴリ・優先度が無い場合はデフォルトで補う（任意項目を落とさない）
+    if (currentRec.title && currentRec.description) {
+      if (!currentRec.category) currentRec.category = 'other';
+      if (!currentRec.priority) currentRec.priority = 'medium';
+      // 「対象ページ:」行が無くても、タイトル・説明内のパス（例: (/contacts/)）から対象URLを補う
+      if (!currentRec.targetPagePath || currentRec.targetPagePath === '/') {
+        const extracted = extractPathFromTitleOrDescription(currentRec.title, currentRec.description);
+        if (extracted && extracted !== '/') currentRec.targetPagePath = extracted;
+      }
       console.log(`[extractImprovementRecommendations] ブロック${blockIndex}をパース成功:`, currentRec.title);
       recommendations.push(currentRec);
     } else {
-      console.log(`[extractImprovementRecommendations] ブロック${blockIndex}をスキップ - 不足フィールド:`, {
+      console.log(`[extractImprovementRecommendations] ブロック${blockIndex}をスキップ - 不足:`, {
         hasTitle: !!currentRec.title,
         hasDescription: !!currentRec.description,
-        hasCategory: !!currentRec.category,
-        hasPriority: !!currentRec.priority,
       });
     }
   });
@@ -402,7 +525,6 @@ function extractImprovementRecommendations(summary) {
     console.warn('[extractImprovementRecommendations] 「タイトル:」形式で抽出できませんでした。番号付きリスト形式を試します。');
     console.warn('[extractImprovementRecommendations] AIの生テキスト (先頭1000文字):', summary.substring(0, 1000));
     
-    // 一般的な抽出関数（番号付きリスト対応）にフォールバック
     const fallbackRecommendations = extractRecommendationsFromNumberedList(summary);
     console.log('[extractImprovementRecommendations] フォールバック抽出完了:', fallbackRecommendations.length, '件');
     return fallbackRecommendations;
@@ -412,7 +534,28 @@ function extractImprovementRecommendations(summary) {
 }
 
 /**
- * 番号付きリストから改善施策を抽出（フォールバック用）
+ * テキストから任意項目（期待効果・対象ページ・想定工数）を正規表現で抽出
+ */
+function extractOptionalFieldsFromText(text) {
+  const o = {};
+  if (!text || typeof text !== 'string') return o;
+  const expectMatch = text.match(/期待効果[：:]\s*([^\n]+)/);
+  if (expectMatch) o.expectedImpact = expectMatch[1].trim();
+  const targetMatch = text.match(/対象ページ(?:URL)?[：:]\s*([^\n]+)/);
+  if (targetMatch) {
+    const val = targetMatch[1].trim();
+    if (val && val !== '/' && val.toLowerCase() !== 'トップページ') o.targetPagePath = val;
+  }
+  const hoursMatch = text.match(/想定工数[（(]時間[）)][：:]\s*([0-9.]+)/);
+  if (hoursMatch) {
+    const num = parseFloat(hoursMatch[1], 10);
+    if (!Number.isNaN(num) && num >= 0) o.estimatedLaborHours = num;
+  }
+  return o;
+}
+
+/**
+ * 番号付きリストから改善施策を抽出（フォールバック用）。説明文から期待効果・対象ページ・想定工数も抽出
  */
 function extractRecommendationsFromNumberedList(summary) {
   const recommendations = [];
@@ -432,8 +575,12 @@ function extractRecommendationsFromNumberedList(summary) {
     const match = trimmedLine.match(/^([0-9]+)\.\s*\*?\*?(.+)\*?\*?$/);
     
     if (match) {
-      // 前の推奨アクションを保存
+      // 前の推奨アクションを保存（任意項目を説明文から抽出してから追加）
       if (currentRecommendation) {
+        const extracted = extractOptionalFieldsFromText(currentRecommendation.description);
+        if (extracted.expectedImpact) currentRecommendation.expectedImpact = extracted.expectedImpact;
+        if (extracted.targetPagePath) currentRecommendation.targetPagePath = extracted.targetPagePath;
+        if (extracted.estimatedLaborHours != null) currentRecommendation.estimatedLaborHours = extracted.estimatedLaborHours;
         recommendations.push(currentRecommendation);
       }
       
@@ -467,14 +614,34 @@ function extractRecommendationsFromNumberedList(summary) {
       };
       itemIndex++;
     } else if (currentRecommendation && trimmedLine && !trimmedLine.startsWith('-')) {
+      // 期待効果・対象ページ・想定工数らしき行ならフィールドに設定、それ以外は説明に追加
+      const n = trimmedLine.replace(/\uFF1A/g, ':');
+      if (n.startsWith('期待効果:')) {
+        currentRecommendation.expectedImpact = trimmedLine.replace(/^期待効果[：:]\s*/, '').trim();
+        return;
+      }
+      if (n.startsWith('対象ページ:') || n.startsWith('対象ページURL:')) {
+        const val = trimmedLine.replace(/^対象ページ(?:URL)?[：:]\s*/, '').trim();
+        if (val && val !== '/' && val.toLowerCase() !== 'トップページ') currentRecommendation.targetPagePath = val;
+        return;
+      }
+      if (n.startsWith('想定工数（時間）:') || n.startsWith('想定工数(時間):')) {
+        const val = trimmedLine.replace(/^想定工数[（(]時間[）)][：:]\s*/, '').trim();
+        const num = parseFloat(val, 10);
+        if (!Number.isNaN(num) && num >= 0) currentRecommendation.estimatedLaborHours = num;
+        return;
+      }
       // 現在の推奨アクションの説明文を追加
-      // ただし、箇条書き（-で始まる）は除外
       currentRecommendation.description += (currentRecommendation.description ? ' ' : '') + trimmedLine.replace(/\*\*/g, '');
     }
   });
   
   // 最後の推奨アクションを保存
   if (currentRecommendation) {
+    const extracted = extractOptionalFieldsFromText(currentRecommendation.description);
+    if (extracted.expectedImpact) currentRecommendation.expectedImpact = extracted.expectedImpact;
+    if (extracted.targetPagePath) currentRecommendation.targetPagePath = extracted.targetPagePath;
+    if (extracted.estimatedLaborHours != null) currentRecommendation.estimatedLaborHours = extracted.estimatedLaborHours;
     recommendations.push(currentRecommendation);
   }
   
@@ -1160,6 +1327,7 @@ function formatRawDataToMetrics(rawData, pageType) {
         pageCategories: rawData.pageCategories || [],
         monthlyConversions: rawData.monthlyConversions || {},
         improvementKnowledge: rawData.improvementKnowledge || [],
+        scrapingData: rawData.scrapingData || { pages: [], meta: null, totalPages: 0 },
       };
 
     default:
@@ -1173,12 +1341,11 @@ function formatRawDataToMetrics(rawData, pageType) {
  * ページタイプに応じたプロンプトを生成
  * プロンプトは functions/src/prompts/templates.js で一元管理されています
  */
-async function generatePrompt(db, pageType, startDate, endDate, metrics) {
+async function generatePrompt(db, pageType, startDate, endDate, metrics, options = {}) {
   const period = `${startDate}から${endDate}までの期間`;
   console.log(`[generatePrompt] ページタイプ「${pageType}」のプロンプトを取得`);
 
-  // プロンプトテンプレートファイルから取得（comprehensive_improvement用にstartDate/endDateも渡す）
-  const prompt = getPromptTemplate(pageType, period, metrics, startDate, endDate);
+  const prompt = getPromptTemplate(pageType, period, metrics, startDate, endDate, options);
   console.log(`[generatePrompt] プロンプト取得完了 (${prompt.length}文字)`);
   
   return prompt;

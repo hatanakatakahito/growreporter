@@ -32,7 +32,7 @@ export const getCustomLimitsCallable = async (request) => {
     }
 
     // customLimits ドキュメントを取得
-    const customLimitDoc = await db.collection('customLimits').doc(targetUserId).get();
+    const customLimitDoc = await db.collection('users').doc(targetUserId).collection('customLimits').doc(targetUserId).get();
 
     if (!customLimitDoc.exists) {
       return {

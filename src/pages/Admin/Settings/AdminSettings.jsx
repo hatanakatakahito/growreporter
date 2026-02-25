@@ -8,7 +8,7 @@ import AdminRoleModal from '../../../components/Admin/AdminRoleModal';
 import AddAdminModal from '../../../components/Admin/AddAdminModal';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
-import { Settings, UserPlus, Shield, Edit2, Trash2, AlertCircle } from 'lucide-react';
+import { Settings, UserPlus, Shield, Edit2, Trash2, AlertCircle, X, CheckCircle, XCircle } from 'lucide-react';
 
 /**
  * 管理者一覧・管理画面
@@ -19,6 +19,7 @@ export default function AdminSettings() {
   const { admins, loading, error, refetch, updateRole, deleteAdmin } = useAdminManagement();
   const [showRoleModal, setShowRoleModal] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
 
@@ -31,16 +32,17 @@ export default function AdminSettings() {
   const canEditRole = hasPermission(adminRole, 'EDIT_ADMIN_ROLE');
   const canDeleteAdmin = hasPermission(adminRole, 'DELETE_ADMIN');
 
-  // ロール変更
+  // 権限変更
   const handleRoleChange = async (adminId, newRole, reason) => {
     try {
       await updateRole(adminId, newRole, reason);
-      setSuccessMessage('管理者のロールを変更しました');
+      setSuccessMessage('管理者の権限を変更しました');
       setTimeout(() => setSuccessMessage(''), 5000);
       setShowRoleModal(false);
-      refetch();
+      await refetch();
     } catch (err) {
-      console.error('ロール変更エラー:', err);
+      console.error('権限変更エラー:', err);
+      alert(`権限変更エラー: ${err.message || '権限の変更に失敗しました'}`);
     }
   };
 
@@ -109,7 +111,10 @@ export default function AdminSettings() {
         <div>
           <h2 className="text-2xl font-bold text-dark dark:text-white">管理者設定</h2>
           <p className="mt-1 text-sm text-body-color dark:text-dark-6">
-            管理者の追加・削除・権限管理
+            管理者の追加・削除・権限管理（<button
+              onClick={() => setShowPermissionsModal(true)}
+              className="text-primary underline hover:text-primary/80"
+            >権限一覧はこちら</button>）
           </p>
         </div>
         {canAddAdmin && (
@@ -134,7 +139,7 @@ export default function AdminSettings() {
       {!canAddAdmin && (
         <div className="mb-4 flex items-center gap-2 rounded-lg bg-orange-50 p-4 text-sm text-orange-600 dark:bg-orange-900/20">
           <AlertCircle className="h-5 w-5" />
-          <span>管理者の追加・削除・権限変更は「管理者」ロールのみ可能です。</span>
+          <span>管理者の追加・削除・権限変更は「管理者」権限のみ可能です。</span>
         </div>
       )}
 
@@ -181,6 +186,7 @@ export default function AdminSettings() {
                             src={admin.photoURL}
                             alt={getAdminName(admin)}
                             className="h-10 w-10 rounded-full object-cover"
+                            referrerPolicy="no-referrer"
                           />
                         ) : (
                           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
@@ -219,7 +225,7 @@ export default function AdminSettings() {
                                 setShowRoleModal(true);
                               }}
                               className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
-                              title="ロール変更"
+                              title="権限変更"
                             >
                               <Edit2 className="h-4 w-4" />
                             </button>
@@ -246,7 +252,7 @@ export default function AdminSettings() {
         )}
       </div>
 
-      {/* ロール変更モーダル */}
+      {/* 権限変更モーダル */}
       {showRoleModal && selectedAdmin && (
         <AdminRoleModal
           admin={selectedAdmin}
@@ -264,6 +270,107 @@ export default function AdminSettings() {
           onClose={() => setShowAddModal(false)}
           onSuccess={handleAddSuccess}
         />
+      )}
+
+      {/* 権限一覧モーダル */}
+      {showPermissionsModal && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowPermissionsModal(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-lg border border-stroke bg-white shadow-xl dark:border-dark-3 dark:bg-dark-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between border-b border-stroke p-6 dark:border-dark-3">
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-bold text-dark dark:text-white">権限一覧</h3>
+              </div>
+              <button
+                onClick={() => setShowPermissionsModal(false)}
+                className="rounded-lg p-1 text-body-color transition hover:bg-gray-2 dark:hover:bg-dark-3"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {/* 比較表 */}
+            <div className="max-h-[70vh] overflow-y-auto p-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-stroke dark:border-dark-3">
+                    <th className="py-3 pr-4 text-left font-semibold text-dark dark:text-white">権限</th>
+                    <th className="px-4 py-3 text-center font-semibold text-red-600">管理者</th>
+                    <th className="px-4 py-3 text-center font-semibold text-blue-600">編集者</th>
+                    <th className="px-4 py-3 text-center font-semibold text-gray-600">閲覧者</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { category: 'ユーザー管理' },
+                    { label: 'ユーザー一覧閲覧', admin: true, editor: true, viewer: true },
+                    { label: 'プラン変更', admin: true, editor: true, viewer: false },
+                    { label: 'カスタム制限設定', admin: true, editor: true, viewer: false },
+                    { category: 'サイト管理' },
+                    { label: 'サイト一覧閲覧', admin: true, editor: true, viewer: true },
+                    { label: 'サイト編集', admin: true, editor: true, viewer: false },
+                    { label: 'サイト削除', admin: true, editor: false, viewer: false },
+                    { category: '管理者管理' },
+                    { label: '管理者一覧閲覧', admin: true, editor: true, viewer: true },
+                    { label: '管理者追加', admin: true, editor: false, viewer: false },
+                    { label: '管理者権限変更', admin: true, editor: false, viewer: false },
+                    { label: '管理者削除', admin: true, editor: false, viewer: false },
+                    { category: 'ログ・統計' },
+                    { label: 'ログ閲覧', admin: true, editor: true, viewer: true },
+                    { label: '統計閲覧', admin: true, editor: true, viewer: true },
+                    { category: '設定' },
+                    { label: 'プラン設定閲覧', admin: true, editor: true, viewer: true },
+                    { label: 'プラン設定変更', admin: true, editor: false, viewer: false },
+                  ].map((row, idx) => {
+                    if (row.category) {
+                      return (
+                        <tr key={idx}>
+                          <td
+                            colSpan={4}
+                            className="pt-4 pb-2 text-xs font-bold uppercase tracking-wider text-body-color dark:text-dark-6"
+                          >
+                            {row.category}
+                          </td>
+                        </tr>
+                      );
+                    }
+                    const PermIcon = ({ allowed }) =>
+                      allowed ? (
+                        <CheckCircle className="mx-auto h-4 w-4 text-green-500" />
+                      ) : (
+                        <XCircle className="mx-auto h-4 w-4 text-red-400" />
+                      );
+                    return (
+                      <tr key={idx} className="border-b border-stroke/50 dark:border-dark-3/50">
+                        <td className="py-2.5 pr-4 text-dark dark:text-white">{row.label}</td>
+                        <td className="px-4 py-2.5 text-center"><PermIcon allowed={row.admin} /></td>
+                        <td className="px-4 py-2.5 text-center"><PermIcon allowed={row.editor} /></td>
+                        <td className="px-4 py-2.5 text-center"><PermIcon allowed={row.viewer} /></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* フッター */}
+            <div className="border-t border-stroke p-4 text-center dark:border-dark-3">
+              <button
+                onClick={() => setShowPermissionsModal(false)}
+                className="rounded-lg border border-stroke bg-white px-6 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

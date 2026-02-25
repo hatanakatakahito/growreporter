@@ -1,17 +1,22 @@
-import React, { useState, useEffect } from 'react';
-import { SITE_TYPES } from '../../../constants/siteOptions';
+import React, { useState, useEffect, useRef } from 'react';
+import { SITE_TYPES, SITE_PURPOSES } from '../../../constants/siteOptions';
+import { INDUSTRIES } from '../../../constants/industries';
 import { storage, functions } from '../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { Upload, X, Loader2 } from 'lucide-react';
-import BusinessTypeSelector from './BusinessTypeSelector';
+import MultiSelectField from './MultiSelectField';
+import { SCREENSHOT_DISPLAY_HEIGHT_PX } from '../../../constants/screenshotDisplay';
 
-export default function Step1BasicInfo({ siteData, setSiteData }) {
+const INDUSTRY_OPTIONS = INDUSTRIES.map((s) => ({ value: s, label: s }));
+
+export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, mode = 'new' }) {
   const [formData, setFormData] = useState({
     siteName: siteData.siteName || '',
     siteUrl: siteData.siteUrl || '',
+    industry: Array.isArray(siteData.industry) ? siteData.industry : (siteData.industry ? [siteData.industry] : []),
     siteType: siteData.siteType || [],
-    businessType: siteData.businessType || '',
+    sitePurpose: siteData.sitePurpose || [],
     metaTitle: siteData.metaTitle || '',
     metaDescription: siteData.metaDescription || '',
   });
@@ -24,15 +29,40 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
   const [isScreenshotFetching, setIsScreenshotFetching] = useState(false); // スクリーンショット取得中
   const [screenshotProgress, setScreenshotProgress] = useState(''); // スクリーンショット進行状況
 
-  // フォームデータが変更されたら親コンポーネントに通知
+  // 編集モードで親が非同期取得した siteData をフォームに反映（サイト管理の編集から遷移時など）
+  const lastSyncedSiteUrl = useRef(null);
   useEffect(() => {
-    setSiteData(prev => ({
-      ...prev,
+    if (mode !== 'edit') return;
+    const url = siteData.siteUrl || '';
+    if (!url) {
+      lastSyncedSiteUrl.current = null;
+      return;
+    }
+    if (lastSyncedSiteUrl.current === url) return;
+    lastSyncedSiteUrl.current = url;
+    setFormData({
+      siteName: siteData.siteName || '',
+      siteUrl: siteData.siteUrl || '',
+      industry: Array.isArray(siteData.industry) ? siteData.industry : (siteData.industry ? [siteData.industry] : []),
+      siteType: Array.isArray(siteData.siteType) ? siteData.siteType : (siteData.siteType ? [siteData.siteType] : []),
+      sitePurpose: Array.isArray(siteData.sitePurpose) ? siteData.sitePurpose : (siteData.sitePurpose ? [siteData.sitePurpose] : []),
+      metaTitle: siteData.metaTitle || '',
+      metaDescription: siteData.metaDescription || '',
+    });
+    setPcScreenshot(siteData.pcScreenshotUrl || null);
+    setMobileScreenshot(siteData.mobileScreenshotUrl || null);
+  }, [mode, siteData.siteName, siteData.siteUrl, siteData.industry, siteData.siteType, siteData.sitePurpose, siteData.metaTitle, siteData.metaDescription, siteData.pcScreenshotUrl, siteData.mobileScreenshotUrl]);
+
+  // フォームデータが変更されたら親に通知＋保存時に確実に使うよう ref にも保持
+  useEffect(() => {
+    const payload = {
       ...formData,
-      pcScreenshotUrl: pcScreenshot,
-      mobileScreenshotUrl: mobileScreenshot,
-    }));
-  }, [formData, pcScreenshot, mobileScreenshot, setSiteData]);
+      pcScreenshotUrl: pcScreenshot || null,
+      mobileScreenshotUrl: mobileScreenshot || null,
+    };
+    if (step1LatestRef) step1LatestRef.current = payload;
+    setSiteData(prev => ({ ...prev, ...payload }));
+  }, [formData, pcScreenshot, mobileScreenshot, setSiteData, step1LatestRef]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -59,15 +89,36 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
     }
   };
 
-  // URL入力時のバリデーション
-  const handleUrlBlur = () => {
+  // URL入力時のバリデーション＋自動取得
+  const handleUrlBlur = async () => {
     const url = formData.siteUrl?.trim();
     
-    if (url && !validateUrl(url)) {
+    if (!url) return;
+    
+    if (!validateUrl(url)) {
       setErrors(prev => ({
         ...prev,
         siteUrl: '正しいURL形式で入力してください（例: https://example.com）',
       }));
+      return;
+    }
+    
+    // URLが有効な場合、メタデータとスクショがまだ無ければ自動取得
+    if (!formData.metaTitle && !pcScreenshot) {
+      console.log('[Step1] URL入力完了 - メタデータとスクショを自動取得開始');
+      try {
+        await handleAutoFetchMetadata();
+        console.log('[Step1] メタデータ取得完了');
+      } catch (error) {
+        console.error('[Step1] メタデータ取得失敗:', error);
+      }
+      
+      try {
+        await handleAutoFetchScreenshots();
+        console.log('[Step1] スクショ取得完了');
+      } catch (error) {
+        console.error('[Step1] スクショ取得失敗:', error);
+      }
     }
   };
 
@@ -108,13 +159,14 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       
     } catch (error) {
       console.error('Auto fetch metadata error:', error);
-      alert(`メタ情報の取得に失敗しました: ${error.message}\n手動で入力してください。`);
       // 失敗したら空欄に戻す（手動入力可能）
       setFormData(prev => ({
         ...prev,
         metaTitle: '',
         metaDescription: '',
       }));
+      // 自動取得時はアラートを出さない（ユーザー体験を損なわないため）
+      console.warn('[Step1] メタ情報の自動取得に失敗しました。手動で入力してください。');
     } finally {
       setIsMetadataFetching(false);
     }
@@ -192,19 +244,19 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       
       console.log('[handleAutoFetchScreenshots] Starting screenshot capture...');
       
-      // モバイル版を取得
-      setScreenshotProgress('スマホ版のスクリーンショットを取得中... (1/2)');
-      console.log('[handleAutoFetchScreenshots] Capturing mobile screenshot...');
-      const mobileResult = await captureScreenshot({ siteUrl: url, deviceType: 'mobile' });
-      setMobileScreenshot(mobileResult.data.imageUrl);
-      console.log('[handleAutoFetchScreenshots] Mobile screenshot captured');
-      
-      // PC版を取得
-      setScreenshotProgress('PC版のスクリーンショットを取得中... (2/2)');
+      // 当初のStep1と同じ: PC版を先に取得
+      setScreenshotProgress('PC版のスクリーンショットを取得中... (1/2)');
       console.log('[handleAutoFetchScreenshots] Capturing PC screenshot...');
       const pcResult = await captureScreenshot({ siteUrl: url, deviceType: 'pc' });
       setPcScreenshot(pcResult.data.imageUrl);
       console.log('[handleAutoFetchScreenshots] PC screenshot captured');
+      
+      // スマホ版を取得
+      setScreenshotProgress('スマホ版のスクリーンショットを取得中... (2/2)');
+      console.log('[handleAutoFetchScreenshots] Capturing mobile screenshot...');
+      const mobileResult = await captureScreenshot({ siteUrl: url, deviceType: 'mobile' });
+      setMobileScreenshot(mobileResult.data.imageUrl);
+      console.log('[handleAutoFetchScreenshots] Mobile screenshot captured');
       
       setScreenshotProgress('');
       console.log('[handleAutoFetchScreenshots] Screenshots captured successfully');
@@ -212,7 +264,8 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
     } catch (error) {
       console.error('Screenshot error:', error);
       setScreenshotProgress('');
-      alert(`スクリーンショットの取得に失敗しました: ${error.message}\n手動でアップロードしてください。`);
+      // 自動取得時はアラートを出さない（ユーザー体験を損なわないため）
+      console.warn('[Step1] スクリーンショットの自動取得に失敗しました。手動でアップロードしてください。');
     } finally {
       setIsScreenshotFetching(false);
       setScreenshotProgress('');
@@ -225,7 +278,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       <div>
         <label htmlFor="siteName" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
           サイト名
-          <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+          <span className="text-red-500">*</span>
         </label>
         <input
           type="text"
@@ -245,7 +298,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
       <div>
         <label htmlFor="siteUrl" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
           サイトURL
-          <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
+          <span className="text-red-500">*</span>
         </label>
         <input
           type="url"
@@ -262,131 +315,126 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
         )}
       </div>
 
-      {/* サイト種別（複数選択） */}
-      <div>
-        <label className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-          サイト種別
-          <span className="rounded bg-red-500 px-1.5 py-0.5 text-xs text-white">必須</span>
-        </label>
-        <div className="rounded-md border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark">
-          <div className="grid grid-cols-2 gap-3">
-            {SITE_TYPES.map((type) => (
-              <label
-                key={type.value}
-                className="flex items-center gap-2 cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={Array.isArray(formData.siteType) && formData.siteType.includes(type.value)}
-                  onChange={(e) => {
-                    const currentTypes = Array.isArray(formData.siteType) ? formData.siteType : [];
-                    const newTypes = e.target.checked
-                      ? [...currentTypes, type.value]
-                      : currentTypes.filter(t => t !== type.value);
-                    setFormData(prev => ({ ...prev, siteType: newTypes }));
-                    // エラーをクリア
-                    if (errors.siteType) {
-                      setErrors(prev => ({ ...prev, siteType: '' }));
-                    }
-                  }}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-2 focus:ring-primary-mid/20"
-                />
-                <span className="text-sm text-dark dark:text-white">{type.label}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-        {errors.siteType && (
-          <p className="mt-1 text-sm text-red-500">{errors.siteType}</p>
-        )}
-      </div>
-
-      {/* ビジネス形態 */}
-      <BusinessTypeSelector
-        value={formData.businessType}
-        onChange={(value) => {
-          setFormData(prev => ({ ...prev, businessType: value }));
-          // エラーをクリア
-          if (errors.businessType) {
-            setErrors(prev => ({ ...prev, businessType: '' }));
-          }
+      {/* 業界・業種（複数選択・必須） */}
+      <MultiSelectField
+        label="業界・業種"
+        required
+        options={INDUSTRY_OPTIONS}
+        value={formData.industry}
+        onChange={(next) => {
+          setFormData(prev => ({ ...prev, industry: next }));
+          if (errors.industry) setErrors(prev => ({ ...prev, industry: '' }));
         }}
-        error={errors.businessType}
+        error={errors.industry}
+        placeholder="業界・業種を選択"
       />
 
-      {/* サイトタイトル */}
-      <div>
-        <div className="mb-2.5 flex items-center justify-between">
-          <label htmlFor="metaTitle" className="flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-            サイトタイトル
+      {/* サイト種別（複数選択・必須） */}
+      <MultiSelectField
+        label="サイト種別"
+        required
+        options={SITE_TYPES}
+        value={formData.siteType}
+        onChange={(next) => {
+          setFormData(prev => ({ ...prev, siteType: next }));
+          if (errors.siteType) setErrors(prev => ({ ...prev, siteType: '' }));
+        }}
+        error={errors.siteType}
+        placeholder="サイト種別を選択"
+      />
+
+      {/* サイトの目的（複数選択） */}
+      <MultiSelectField
+        label="サイトの目的"
+        required
+        options={SITE_PURPOSES}
+        value={formData.sitePurpose}
+        onChange={(next) => {
+          setFormData(prev => ({ ...prev, sitePurpose: next }));
+          if (errors.sitePurpose) setErrors(prev => ({ ...prev, sitePurpose: '' }));
+        }}
+        error={errors.sitePurpose}
+        placeholder="サイトの目的を選択"
+      />
+
+      {/* サイトタイトル（編集モード時のみ表示） */}
+      {mode === 'edit' && (
+        <div>
+          <div className="mb-2.5 flex items-center justify-between">
+            <label htmlFor="metaTitle" className="flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
+              サイトタイトル
+              <span className="rounded bg-gray-400 px-1.5 py-0.5 text-xs text-white">任意</span>
+            </label>
+            <button
+              type="button"
+              onClick={handleAutoFetchMetadata}
+              disabled={isMetadataFetching || !formData.siteUrl}
+              className="flex items-center gap-1 rounded bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isMetadataFetching ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              )}
+              {isMetadataFetching ? '取得中...' : '自動取得'}
+            </button>
+          </div>
+          <div className="relative">
+            <input
+              type="text"
+              id="metaTitle"
+              value={formData.metaTitle}
+              onChange={handleChange}
+              disabled={isMetadataFetching}
+              placeholder="サイトのタイトルを入力してください"
+              className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white dark:focus:border-primary"
+            />
+            {isMetadataFetching && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-md bg-primary/10 backdrop-blur-sm dark:bg-primary/20">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>メタ情報を取得中...</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* サイト説明文（編集モード時のみ表示） */}
+      {mode === 'edit' && (
+        <div>
+          <label htmlFor="metaDescription" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
+            サイト説明文
             <span className="rounded bg-gray-400 px-1.5 py-0.5 text-xs text-white">任意</span>
           </label>
-          <button
-            type="button"
-            onClick={handleAutoFetchMetadata}
-            disabled={isMetadataFetching || !formData.siteUrl}
-            className="flex items-center gap-1 rounded bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isMetadataFetching ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+          <div className="relative">
+            <textarea
+              id="metaDescription"
+              value={formData.metaDescription}
+              onChange={handleChange}
+              disabled={isMetadataFetching}
+              placeholder="サイトの説明文を入力してください"
+              rows={3}
+              className="w-full rounded-md border border-stroke bg-white px-5 py-3 text-dark outline-none transition placeholder:text-gray-400 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:bg-dark dark:text-white dark:focus:border-primary-mid"
+            />
+            {isMetadataFetching && (
+              <div className="absolute inset-0 flex items-center justify-center rounded-md bg-primary/10 backdrop-blur-sm dark:bg-primary/20">
+                <div className="flex items-center gap-2 text-sm font-medium text-primary">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>メタ情報を取得中...</span>
+                </div>
+              </div>
             )}
-            {isMetadataFetching ? '取得中...' : '自動取得'}
-          </button>
+          </div>
         </div>
-        <div className="relative">
-          <input
-            type="text"
-            id="metaTitle"
-            value={formData.metaTitle}
-            onChange={handleChange}
-            disabled={isMetadataFetching}
-            placeholder="サイトのタイトルを入力してください"
-            className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white dark:focus:border-primary"
-          />
-          {isMetadataFetching && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-md bg-primary/10 backdrop-blur-sm dark:bg-primary/20">
-              <div className="flex items-center gap-2 text-sm font-medium text-primary">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>メタ情報を取得中...</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      )}
 
-      {/* サイト説明文 */}
-      <div>
-        <label htmlFor="metaDescription" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-          サイト説明文
-          <span className="rounded bg-gray-400 px-1.5 py-0.5 text-xs text-white">任意</span>
-        </label>
-        <div className="relative">
-          <textarea
-            id="metaDescription"
-            value={formData.metaDescription}
-            onChange={handleChange}
-            disabled={isMetadataFetching}
-            placeholder="サイトの説明文を入力してください"
-            rows={3}
-            className="w-full rounded-md border border-stroke bg-white px-5 py-3 text-dark outline-none transition placeholder:text-gray-400 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20 disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:bg-dark dark:text-white dark:focus:border-primary-mid"
-          />
-          {isMetadataFetching && (
-            <div className="absolute inset-0 flex items-center justify-center rounded-md bg-primary/10 backdrop-blur-sm dark:bg-primary/20">
-              <div className="flex items-center gap-2 text-sm font-medium text-primary">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>メタ情報を取得中...</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* スクリーンショット */}
-      <div>
+      {/* スクリーンショット（編集モード時のみ表示） */}
+      {mode === 'edit' && (
+        <div>
         <div className="mb-2.5 flex items-center justify-between">
           <label className="flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
             スクリーンショット
@@ -430,7 +478,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
                   src={pcScreenshot}
                   alt="PCスクリーンショット"
                   className="w-full rounded-md border border-stroke object-contain dark:border-dark-3"
-                  style={{ height: '250px', objectFit: 'contain' }}
+                  style={{ height: `${SCREENSHOT_DISPLAY_HEIGHT_PX}px`, objectFit: 'contain' }}
                 />
                 <button
                   type="button"
@@ -441,7 +489,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
                 </button>
               </div>
             ) : (
-              <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isManualUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: '250px' }}>
+              <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isManualUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: `${SCREENSHOT_DISPLAY_HEIGHT_PX}px` }}>
                 {isManualUploading ? (
                   <>
                     <Loader2 className="mb-2 h-8 w-8 animate-spin text-primary" />
@@ -474,7 +522,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
                   src={mobileScreenshot}
                   alt="スマホスクリーンショット"
                   className="w-full rounded-md border border-stroke object-contain dark:border-dark-3"
-                  style={{ height: '250px', objectFit: 'contain' }}
+                  style={{ height: `${SCREENSHOT_DISPLAY_HEIGHT_PX}px`, objectFit: 'contain' }}
                 />
                 <button
                   type="button"
@@ -485,7 +533,7 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
                 </button>
               </div>
             ) : (
-              <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isManualUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: '250px' }}>
+              <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isManualUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: `${SCREENSHOT_DISPLAY_HEIGHT_PX}px` }}>
                 {isManualUploading ? (
                   <>
                     <Loader2 className="mb-2 h-8 w-8 animate-spin text-primary" />
@@ -509,7 +557,8 @@ export default function Step1BasicInfo({ siteData, setSiteData }) {
             )}
           </div>
         </div>
-      </div>
+        </div>
+      )}
 
     </div>
   );

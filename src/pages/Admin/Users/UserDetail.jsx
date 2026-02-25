@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { setPageTitle } from '../../../utils/pageTitle';
 import { useAdminUserDetail } from '../../../hooks/useAdminUserDetail';
 import { useCustomLimits } from '../../../hooks/useCustomLimits';
-import { getPlanDisplayName } from '../../../constants/plans';
+import { getPlanDisplayName, getPlanBadgeColor } from '../../../constants/plans';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
@@ -18,8 +18,14 @@ import {
   BarChart3,
   Sparkles,
   Edit2,
-  Clock
+  Clock,
+  Trash2,
+  Building2
 } from 'lucide-react';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../../../config/firebase';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../../config/firebase';
 
 /**
  * ユーザー詳細画面
@@ -33,6 +39,7 @@ export default function UserDetail() {
   const [showCustomLimitsModal, setShowCustomLimitsModal] = useState(false);
   const [customLimits, setCustomLimitsData] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     setPageTitle('ユーザー詳細');
@@ -85,26 +92,51 @@ export default function UserDetail() {
     }
   };
 
+  // ユーザー削除
+  const handleDeleteUser = async () => {
+    const userName = getUserName();
+    
+    // 確認ダイアログ1回目
+    if (!confirm(`【警告】${userName}さんを完全に削除しますか？\n\nこのユーザーに関連するすべてのデータ（サイト、メモ、AI分析キャッシュなど）が削除されます。\n\nこの操作は取り消せません。`)) {
+      return;
+    }
+    
+    // 確認ダイアログ2回目（二重確認）
+    if (!confirm(`本当に削除してもよろしいですか？\n\nユーザー: ${userName}\nメールアドレス: ${userDetail?.email}\n\n削除後は復元できません。`)) {
+      return;
+    }
+
+    try {
+      setIsDeleting(true);
+      const deleteUser = httpsCallable(functions, 'deleteUser');
+      const result = await deleteUser({
+        targetUserId: uid,
+        reason: '管理者による削除',
+      });
+      
+      const d = result.data.deletedData || {};
+      const scrapingLine = (d.pageScrapingData || d.scrapingProgress || d.scrapingJobs || d.scrapingErrors)
+        ? `\n- スクレイピング: ページデータ${d.pageScrapingData || 0}件, 進捗${d.scrapingProgress || 0}件, ジョブ${d.scrapingJobs || 0}件, エラー${d.scrapingErrors || 0}件`
+        : '';
+      alert(`削除が完了しました。\n\n${result.data.message}\n\n削除されたデータ：\n- サイト: ${d.sites || 0}件\n- メモ: ${d.notes || 0}件\n- トークン: ${d.tokens || 0}件\n- AI分析キャッシュ: ${d.aiCache || 0}件\n- レポート: ${d.reports || 0}件${scrapingLine}`);
+      
+      // ユーザー一覧に戻る
+      navigate('/admin/users');
+    } catch (err) {
+      console.error('ユーザー削除エラー:', err);
+      alert(`削除に失敗しました: ${err.message}`);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+
   // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
   const getUserName = () => {
     if (userDetail?.lastName && userDetail?.firstName) {
       return `${userDetail.lastName} ${userDetail.firstName}`;
     }
     return userDetail?.displayName || userDetail?.email || 'Unknown';
-  };
-
-  // プランバッジの色
-  const getPlanBadgeColor = (plan) => {
-    switch (plan) {
-      case 'free':
-        return 'bg-gradient-to-r from-blue-400 to-blue-600 text-white shadow-md';
-      case 'standard':
-        return 'bg-gradient-to-r from-red-400 to-pink-600 text-white shadow-md';
-      case 'premium':
-        return 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md';
-      default:
-        return 'bg-gray-200 text-gray-700';
-    }
   };
 
   if (loading) {
@@ -147,13 +179,24 @@ export default function UserDetail() {
             </p>
           </div>
         </div>
-        <button
-          onClick={() => setShowPlanModal(true)}
-          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-        >
-          <Edit2 className="h-4 w-4" />
-          プラン変更
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowPlanModal(true)}
+            disabled={isDeleting}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50"
+          >
+            <Edit2 className="h-4 w-4" />
+            プラン変更
+          </button>
+          <button
+            onClick={handleDeleteUser}
+            disabled={isDeleting}
+            className="flex items-center gap-2 rounded-lg border-2 border-red-500 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:bg-dark-2 dark:hover:bg-red-900/20"
+          >
+            <Trash2 className="h-4 w-4" />
+            {isDeleting ? '削除中...' : 'ユーザーを削除'}
+          </button>
+        </div>
       </div>
 
       {/* 成功メッセージ */}
@@ -173,6 +216,7 @@ export default function UserDetail() {
                 src={userDetail.photoURL}
                 alt={getUserName()}
                 className="h-16 w-16 rounded-full object-cover"
+                referrerPolicy="no-referrer"
               />
             ) : (
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-2xl font-semibold text-primary">
@@ -194,6 +238,12 @@ export default function UserDetail() {
               <Mail className="h-4 w-4" />
               <span>{userDetail.email}</span>
             </div>
+            {(userDetail.company != null && userDetail.company !== '') && (
+              <div className="flex items-center gap-2 text-sm text-body-color dark:text-dark-6">
+                <Building2 className="h-4 w-4" />
+                <span>組織名: {userDetail.company}</span>
+              </div>
+            )}
             <div className="flex items-center gap-2 text-sm text-body-color dark:text-dark-6">
               <Calendar className="h-4 w-4" />
               <span>
@@ -313,9 +363,11 @@ export default function UserDetail() {
         {userDetail.sites && userDetail.sites.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {userDetail.sites.map((site) => (
-              <div
+              <button
                 key={site.id}
-                className="rounded-lg border border-stroke bg-gray-50 p-4 transition hover:shadow-md dark:border-dark-3 dark:bg-dark-3"
+                type="button"
+                onClick={() => navigate(`/admin/sites/${site.id}`)}
+                className="w-full rounded-lg border border-stroke bg-gray-50 p-4 text-left transition hover:shadow-md hover:border-primary/30 dark:border-dark-3 dark:bg-dark-3 dark:hover:border-primary/30"
               >
                 <div className="mb-2 flex items-center gap-2">
                   <Globe className="h-5 w-5 text-primary" />
@@ -328,7 +380,7 @@ export default function UserDetail() {
                     {site.setupCompleted ? '完了' : '設定中'}
                   </span>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         ) : (
@@ -506,6 +558,7 @@ export default function UserDetail() {
           onSave={handleSaveCustomLimits}
         />
       )}
+
     </div>
   );
 }

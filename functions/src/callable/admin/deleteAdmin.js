@@ -1,7 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
-import { logActivity } from '../../utils/activityLogger.js';
 
 /**
  * 管理者を削除
@@ -63,21 +62,6 @@ export const deleteAdminCallable = async (request) => {
     logger.info('管理者削除完了', { 
       executorId: uid,
       deletedAdminId: adminId,
-    });
-
-    // アクティビティログに記録
-    await logActivity(db, {
-      adminId: uid,
-      adminName: executorName,
-      action: 'admin_deleted',
-      targetType: 'admin',
-      targetId: adminId,
-      details: {
-        targetName,
-        email: targetData.email,
-        role: targetData.role,
-        reason,
-      },
     });
 
     return {
