@@ -18,12 +18,15 @@ export const PLANS = {
     features: {
       maxSites: 1,
       maxMembers: 1,
-      aiSummaryMonthly: 10,
-      aiImprovementMonthly: 2,
+      aiSummaryMonthly: 999999, // 無制限（再分析はcanRegenerateで制限）
+      aiImprovementMonthly: 1,
       dataRetention: '無制限',
       reportEvaluation: true,
-      exportEnabled: false,
-      support: '基本（メールのみ）',
+      diagnosisMonthly: 1,
+      excelExportMonthly: 1,
+      pptxExportMonthly: 1,
+      support: 'なし',
+      heatmapEnabled: false,
     },
     description: '個人ブロガー、スタートアップ、試用ユーザー向け',
   },
@@ -40,9 +43,12 @@ export const PLANS = {
       aiImprovementMonthly: 10,
       dataRetention: '無制限',
       reportEvaluation: true,
-      exportEnabled: true,
-      exportFormats: ['CSV', 'PDF'],
-      support: '優先対応（メール）',
+      diagnosisMonthly: 5,
+      excelExportMonthly: 999999,
+      pptxExportMonthly: 999999,
+      support: 'メール',
+      heatmapEnabled: true,
+      heatmapPvMonthly: 10000,
     },
     description: '中小企業、複数サイト運営者、Web制作会社向け',
     popular: true, // 人気プランフラグ
@@ -51,8 +57,8 @@ export const PLANS = {
     id: PLAN_TYPES.PREMIUM,
     name: 'プレミアムプラン',
     displayName: 'プレミアムプラン',
-    price: 19800,
-    priceWithTax: 21780,
+    price: 29800,
+    priceWithTax: 32780,
     features: {
       maxSites: 10,
       maxMembers: 5,
@@ -60,9 +66,12 @@ export const PLANS = {
       aiImprovementMonthly: 999999,
       dataRetention: '無制限',
       reportEvaluation: true,
-      exportEnabled: true,
-      exportFormats: ['CSV', 'PDF', 'Excel'],
-      support: '最優先対応（メール + チャット）',
+      diagnosisMonthly: 999999,
+      excelExportMonthly: 999999,
+      pptxExportMonthly: 999999,
+      support: '最優先（メール・Web会議）',
+      heatmapEnabled: true,
+      heatmapPvMonthly: 10000,
       consultation: '月1回の無料コンサルティング（30分）',
       customImprovements: 'カスタム改善施策の追加依頼可能',
     },
@@ -120,6 +129,16 @@ export const isUnlimited = (limit) => {
 };
 
 /**
+ * 再分析（forceRegenerate）が可能なプランかチェック
+ * 無料プランでは再分析不可
+ * @param {string} planId - プランID ('free', 'standard', 'premium')
+ * @returns {boolean} 再分析可能かどうか
+ */
+export const canRegenerate = (planId) => {
+  return planId !== PLAN_TYPES.FREE;
+};
+
+/**
  * プラン一覧を配列で取得
  * @returns {Array} プラン情報の配列
  */
@@ -153,5 +172,8 @@ export const PAGE_TYPES = {
   PAGE_FLOW: 'pageFlow',
   CONVERSIONS: 'conversions',
   REVERSE_FLOW: 'reverseFlow',
+  SITE_DIAGNOSIS: 'siteDiagnosis',
+  MONTHLY: 'analysis/month',
+  HEATMAP: 'heatmap',
 };
 

@@ -46,7 +46,7 @@ const priorityColors = {
 export default function Improve() {
   const { selectedSite, selectedSiteId } = useSite();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { getRemainingByType } = usePlan();
+  const { getRemainingByType, checkCanGenerate } = usePlan();
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
   
@@ -371,29 +371,33 @@ export default function Improve() {
           setDateRange={null}
           showDateRange={false}
           showSiteInfo={false}
+          showExport={false}
           improveActions={
             !isViewer && (
               <>
-                <button
-                  onClick={() => {
-                    if (!selectedSiteId) return;
-                    setIsFocusModalOpen(true);
-                  }}
-                  className="relative inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-purple-600 hover:to-pink-600"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  AI改善案生成
-                  {/* 残り回数バッジ */}
-                  {(() => {
-                    const remaining = getRemainingByType('improvement');
-                    if (remaining === null) return null;
-                    return (
-                      <span className={`absolute -top-2 -right-2 flex h-5 ${remaining === -1 ? 'w-6' : 'w-5'} items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-md`}>
-                        {remaining === -1 ? '∞' : remaining}
-                      </span>
-                    );
-                  })()}
-                </button>
+                {(() => {
+                  const remaining = getRemainingByType('improvement');
+                  const isDisabled = remaining === 0;
+                  return (
+                    <button
+                      onClick={() => {
+                        if (!selectedSiteId || isDisabled) return;
+                        setIsFocusModalOpen(true);
+                      }}
+                      disabled={isDisabled}
+                      className={`relative inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-purple-600 hover:to-pink-600 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      AI改善案生成
+                      {/* 残り回数バッジ */}
+                      {remaining !== null && (
+                        <span className={`absolute -top-2 -right-2 flex h-5 ${remaining === -1 ? 'w-6' : 'w-5'} items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-md`}>
+                          {remaining === -1 ? '∞' : remaining}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })()}
                 <button
                   onClick={() => {
                     setEditingItem(null);
@@ -435,22 +439,32 @@ export default function Improve() {
               )}
             </div>
             <div className="flex flex-wrap items-center gap-3">
-              {improvements.length > 0 && (
-                <button
-                  onClick={async () => {
-                    try {
-                      await downloadImprovementsExcel(improvements, selectedSite?.siteName);
-                      toast.success('ダウンロードしました');
-                    } catch (e) {
-                      toast.error(e?.message || 'ダウンロードに失敗しました');
-                    }
-                  }}
-                  className="inline-flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-                >
-                  <Download className="h-4 w-4" />
-                  改善内容をダウンロード
-                </button>
-              )}
+              {improvements.length > 0 && (() => {
+                const canExport = checkCanGenerate('excelExport');
+                return (
+                  <button
+                    onClick={async () => {
+                      if (!canExport) {
+                        toast.error('今月のExcelエクスポート上限に達しました。');
+                        return;
+                      }
+                      try {
+                        await downloadImprovementsExcel(improvements, selectedSite?.siteName);
+                        const incrementExportUsageFn = (await import('firebase/functions')).httpsCallable(functions, 'incrementExportUsage');
+                        await incrementExportUsageFn({ type: 'excel' }).catch(() => {});
+                        toast.success('ダウンロードしました');
+                      } catch (e) {
+                        toast.error(e?.message || 'ダウンロードに失敗しました');
+                      }
+                    }}
+                    disabled={!canExport}
+                    className={`inline-flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium transition dark:border-dark-3 dark:bg-dark-2 ${!canExport ? 'text-gray-400 opacity-50 cursor-not-allowed' : 'text-dark hover:bg-gray-50 dark:text-white dark:hover:bg-dark-3'}`}
+                  >
+                    <Download className="h-4 w-4" />
+                    改善内容をダウンロード
+                  </button>
+                );
+              })()}
             </div>
           </div>
 

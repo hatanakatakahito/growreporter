@@ -1,12 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  Users, 
-  Globe, 
-  FileText, 
+import {
+  LayoutDashboard,
+  Users,
+  Globe,
+  FileText,
   Settings,
-  CreditCard,
-  Mail
+  Mail,
+  CreditCard
 } from 'lucide-react';
 import logoImg from '../../assets/img/logo.svg';
 
@@ -33,14 +33,14 @@ export default function AdminSidebar() {
       path: '/admin/sites',
     },
     {
+      icon: CreditCard,
+      label: 'プラン一覧',
+      path: '/admin/plans',
+    },
+    {
       icon: FileText,
       label: 'ログ',
       path: '/admin/logs',
-    },
-    {
-      icon: CreditCard,
-      label: 'プラン設定',
-      path: '/admin/settings/plans',
     },
     {
       icon: Mail,
@@ -58,11 +58,6 @@ export default function AdminSidebar() {
     // 完全一致をチェック
     if (location.pathname === path) {
       return true;
-    }
-    
-    // /admin/settings は完全一致のみアクティブ（子パス /admin/settings/plans を除外）
-    if (path === '/admin/settings') {
-      return false;
     }
     
     // その他のパスは子パスもアクティブ

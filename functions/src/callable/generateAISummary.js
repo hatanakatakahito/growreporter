@@ -73,6 +73,19 @@ export async function generateAISummaryCallable(request) {
     // サイト所有者のuserIdを使用（管理者がアクセスしている場合でもキャッシュは所有者ベース）
     const siteOwnerId = siteData.userId;
 
+    // 2.5. 無料プランの再分析制限チェック（サマリーのみ）
+    if (forceRegenerate && usageType === 'summary') {
+      const ownerDoc = await db.collection('users').doc(siteOwnerId).get();
+      const ownerPlan = ownerDoc.data()?.plan || 'free';
+      if (ownerPlan === 'free') {
+        logger.info('[generateAISummary] 無料プラン: サマリー再分析をブロック', { siteOwnerId });
+        throw new HttpsError(
+          'permission-denied',
+          '無料プランでは再分析はご利用いただけません。有料プランにアップグレードしてください。'
+        );
+      }
+    }
+
     // 3. キャッシュチェック（強制再生成でない場合）
     if (!forceRegenerate) {
       const cachedAnalysis = await getCachedAnalysis(siteOwnerId, siteId, pageType, startDate, endDate);
@@ -190,7 +203,9 @@ export async function generateAISummaryCallable(request) {
       };
       options.improvementFocus = IMPROVEMENT_FOCUS_LABELS[improvementFocusValue] || IMPROVEMENT_FOCUS_LABELS.balance;
       options.existingImprovements = existingImprovements || [];
-      
+      options.diagnosisData = metrics.diagnosisData || null;
+      options.heatmapData = metrics.heatmapData || null;
+
       // コンバージョン設定とKPI設定を追加
       options.conversionGoals = siteData.conversionGoals || [];
       options.kpiSettings = siteData.kpiSettings || [];
@@ -967,20 +982,39 @@ function formatRawDataToMetrics(rawData, pageType) {
         hasKpiSettings: rawData.hasKpiSettings || false,
       };
 
+    case 'analysis/month':
+      // 月別分析：monthlyTrend を受け取る
+      const monthlyTrendData = rawData.monthlyTrend || [];
+      const monthlyTotalSessions = monthlyTrendData.reduce((sum, m) => sum + (m.sessions || 0), 0);
+      const monthlyTotalConversions = monthlyTrendData.reduce((sum, m) => sum + (m.conversions || 0), 0);
+      return {
+        sessions: monthlyTotalSessions,
+        conversions: monthlyTotalConversions,
+        monthlyData: monthlyTrendData,
+        monthCount: monthlyTrendData.length,
+      };
+
     case 'summary':
       // サマリー（全体サマリー）：current, previousMonth, yearAgo, monthlyTrend を受け取る
+      // current.metrics にネストされた新形式と、フラットな旧形式の両方に対応
       const summCurrent = rawData.current || {};
       const summPrev = rawData.previousMonth || null;
       const summYearAgo = rawData.yearAgo || null;
-      
+
+      // metrics がネストされている場合（新形式）とフラットな場合（旧形式）の両方に対応
+      const summMetrics = summCurrent.metrics || summCurrent;
+      const summPrevMetrics = summPrev?.metrics || summPrev;
+
+      // conversions: totalConversions がある場合はそれを使用（新形式）、なければ metrics.conversions（旧形式）
+      const currentTotalConv = summCurrent.totalConversions ?? summMetrics.conversions ?? 0;
+      const prevTotalConv = summPrev?.totalConversions ?? summPrevMetrics?.conversions ?? 0;
+
       // 前月比を計算
       let summMonthOverMonth = null;
-      if (summPrev) {
-        const currentUsers = summCurrent.users || summCurrent.totalUsers || 0;
-        const prevUsers = summPrev.users || summPrev.totalUsers || 0;
-        const currentConversions = summCurrent.conversions || 0;
-        const prevConversions = summPrev.conversions || 0;
-        
+      if (summPrev && summPrevMetrics) {
+        const currentUsers = summMetrics.users || summMetrics.totalUsers || 0;
+        const prevUsers = summPrevMetrics.users || summPrevMetrics.totalUsers || 0;
+
         summMonthOverMonth = {
           users: {
             current: currentUsers,
@@ -988,39 +1022,42 @@ function formatRawDataToMetrics(rawData, pageType) {
             change: prevUsers > 0 ? ((currentUsers - prevUsers) / prevUsers) * 100 : 0,
           },
           sessions: {
-            current: summCurrent.sessions || 0,
-            previous: summPrev.sessions || 0,
-            change: summPrev.sessions > 0 
-              ? ((summCurrent.sessions || 0) - summPrev.sessions) / summPrev.sessions * 100 
+            current: summMetrics.sessions || 0,
+            previous: summPrevMetrics.sessions || 0,
+            change: summPrevMetrics.sessions > 0
+              ? ((summMetrics.sessions || 0) - summPrevMetrics.sessions) / summPrevMetrics.sessions * 100
               : 0,
           },
           conversions: {
-            current: currentConversions,
-            previous: prevConversions,
-            change: prevConversions > 0 ? ((currentConversions - prevConversions) / prevConversions) * 100 : 0,
+            current: currentTotalConv,
+            previous: prevTotalConv,
+            change: prevTotalConv > 0 ? ((currentTotalConv - prevTotalConv) / prevTotalConv) * 100 : 0,
           },
           engagementRate: {
-            current: summCurrent.engagementRate || 0,
-            previous: summPrev.engagementRate || 0,
-            change: summPrev.engagementRate > 0 
-              ? ((summCurrent.engagementRate || 0) - summPrev.engagementRate) / summPrev.engagementRate * 100 
+            current: summMetrics.engagementRate || 0,
+            previous: summPrevMetrics.engagementRate || 0,
+            change: summPrevMetrics.engagementRate > 0
+              ? ((summMetrics.engagementRate || 0) - summPrevMetrics.engagementRate) / summPrevMetrics.engagementRate * 100
               : 0,
           },
         };
       }
-      
+
       return {
-        users: summCurrent.users || summCurrent.totalUsers || 0,
-        sessions: summCurrent.sessions || 0,
-        pageViews: summCurrent.pageViews || summCurrent.screenPageViews || 0,
-        conversions: summCurrent.conversions || 0,
-        engagementRate: summCurrent.engagementRate || 0,
-        conversionRate: summCurrent.sessions > 0 ? (summCurrent.conversions || 0) / summCurrent.sessions : 0,
+        users: summMetrics.users || summMetrics.totalUsers || 0,
+        sessions: summMetrics.sessions || 0,
+        pageViews: summMetrics.pageViews || summMetrics.screenPageViews || 0,
+        conversions: currentTotalConv,
+        engagementRate: summMetrics.engagementRate || 0,
+        conversionRate: summMetrics.sessions > 0 ? currentTotalConv / summMetrics.sessions : 0,
         monthOverMonth: summMonthOverMonth,
-        yearAgoData: summYearAgo,
+        yearAgoData: summYearAgo?.metrics || summYearAgo,
         monthlyData: rawData.monthlyTrend || [],
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
+        conversionBreakdown: summCurrent.conversionBreakdown || null,
+        kpiData: rawData.kpiData || null,
+        hasKpiSettings: rawData.hasKpiSettings || false,
       };
 
     case 'users':
@@ -1328,6 +1365,7 @@ function formatRawDataToMetrics(rawData, pageType) {
         monthlyConversions: rawData.monthlyConversions || {},
         improvementKnowledge: rawData.improvementKnowledge || [],
         scrapingData: rawData.scrapingData || { pages: [], meta: null, totalPages: 0 },
+        diagnosisData: rawData.diagnosisData || null,
       };
 
     default:

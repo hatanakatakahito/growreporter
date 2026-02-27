@@ -33,8 +33,12 @@ import ExternalLinks from './pages/Analysis/ExternalLinks';
 import PageFlow from './pages/Analysis/PageFlow';
 import ConversionList from './pages/Analysis/ConversionList';
 import ReverseFlow from './pages/Analysis/ReverseFlow';
+import SiteDiagnosis from './pages/Analysis/SiteDiagnosis';
+import Heatmap from './pages/Analysis/Heatmap';
+import Month from './pages/Analysis/Month';
 import Improve from './pages/Improve';
 import ImproveConsultationThanks from './pages/ImproveConsultationThanks';
+import UpgradeThanks from './pages/UpgradeThanks';
 import Reports from './pages/Reports';
 import AccountSettings from './pages/AccountSettings';
 import ProfileEdit from './pages/ProfileEdit';
@@ -53,8 +57,8 @@ import AdminSiteList from './pages/Admin/Sites/SiteList';
 import AdminSiteDetail from './pages/Admin/Sites/SiteDetail';
 import ActivityLogs from './pages/Admin/Logs/ActivityLogs';
 import AdminSettings from './pages/Admin/Settings/AdminSettings';
-import PlanSettings from './pages/Admin/Settings/PlanSettings';
 import EmailNotifications from './pages/Admin/Settings/EmailNotifications';
+import PlanList from './pages/Admin/PlanList';
 
 
 function App() {
@@ -146,6 +150,7 @@ function App() {
               <Route path="/analysis" element={<AnalysisNavigation />} />
               <Route path="/analysis/summary" element={<AnalysisSummary />} />
               <Route path="/analysis/users" element={<Users />} />
+              <Route path="/analysis/month" element={<Month />} />
               <Route path="/analysis/day" element={<Day />} />
               <Route path="/analysis/week" element={<Week />} />
               <Route path="/analysis/hour" element={<Hour />} />
@@ -160,7 +165,9 @@ function App() {
               <Route path="/analysis/page-flow" element={<PageFlow />} />
               <Route path="/analysis/conversions" element={<ConversionList />} />
               <Route path="/analysis/reverse-flow" element={<ReverseFlow />} />
-              
+              <Route path="/analysis/site-diagnosis" element={<SiteDiagnosis />} />
+              <Route path="/analysis/heatmap" element={<Heatmap />} />
+
               {/* 改善する */}
               <Route path="/improve" element={<Improve />} />
               
@@ -177,15 +184,23 @@ function App() {
             </Route>
             
             {/* サイト改善相談サンクスページ（コンバージョン測定用） */}
-            <Route 
-              path="/improve/consultation/thanks" 
+            <Route
+              path="/improve/consultation/thanks"
               element={
                 <ProtectedRoute>
                   <ImproveConsultationThanks />
                 </ProtectedRoute>
-              } 
+              }
             />
-            
+            <Route
+              path="/thanks"
+              element={
+                <ProtectedRoute>
+                  <UpgradeThanks />
+                </ProtectedRoute>
+              }
+            />
+
             {/* 管理画面 */}
             <Route 
               path="/admin" 
@@ -203,9 +218,9 @@ function App() {
               <Route path="users/:uid" element={<UserDetail />} />
               <Route path="sites" element={<AdminSiteList />} />
               <Route path="sites/:siteId" element={<AdminSiteDetail />} />
+              <Route path="plans" element={<PlanList />} />
               <Route path="logs" element={<ActivityLogs />} />
               <Route path="settings" element={<AdminSettings />} />
-              <Route path="settings/plans" element={<PlanSettings />} />
               <Route path="settings/notifications" element={<EmailNotifications />} />
             </Route>
 

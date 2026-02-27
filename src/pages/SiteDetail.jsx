@@ -8,7 +8,7 @@ import ErrorAlert from '../components/common/ErrorAlert';
 import { functions } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, getDoc, getDocFromServer } from 'firebase/firestore';
-import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw } from 'lucide-react';
+import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, MousePointerClick, Copy, Check } from 'lucide-react';
 import { SITE_TYPES, SITE_PURPOSES } from '../constants/siteOptions';
 
 /**
@@ -18,6 +18,7 @@ import { SITE_TYPES, SITE_PURPOSES } from '../constants/siteOptions';
 export default function SiteDetail() {
   const { siteId } = useParams();
   const { siteDetail, loading, error, refetch } = useSiteDetail(siteId);
+  const [tagCopied, setTagCopied] = useState(false);
   const [scrapingStatus, setScrapingStatus] = useState(null);
   const [isScrapingLoading, setIsScrapingLoading] = useState(false);
   const [scrapingError, setScrapingError] = useState(null);
@@ -392,6 +393,44 @@ export default function SiteDetail() {
             </div>
           </div>
         </div>
+        </div>
+
+        {/* ヒートマップ設定 */}
+        <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm lg:col-span-2 dark:border-dark-3 dark:bg-dark-2">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-dark dark:text-white">
+            <MousePointerClick className="h-5 w-5" />
+            ヒートマップ設定
+          </h3>
+          <p className="mb-4 text-sm text-body-color">
+            以下のトラッキングタグをサイトの &lt;head&gt; タグ内に設置すると、クリック・スクロールデータの収集が始まります。
+          </p>
+          <div className="relative rounded-lg border border-stroke bg-gray-50 p-4 dark:border-dark-3 dark:bg-dark-3">
+            <pre className="overflow-x-auto text-sm text-dark dark:text-white">
+              <code>{`<script src="https://grow-reporter.com/gr-heatmap.js" data-site-id="${siteId}" async></script>`}</code>
+            </pre>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(
+                  `<script src="https://grow-reporter.com/gr-heatmap.js" data-site-id="${siteId}" async></script>`
+                ).then(() => {
+                  setTagCopied(true);
+                  setTimeout(() => setTagCopied(false), 2000);
+                });
+              }}
+              className="absolute right-3 top-3 rounded-md border border-stroke bg-white p-2 text-body-color hover:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark"
+            >
+              {tagCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+          <div className="mt-4">
+            <Link
+              to="/analysis/heatmap"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+            >
+              <MousePointerClick className="h-4 w-4" />
+              ヒートマップを見る
+            </Link>
+          </div>
         </div>
 
         </div>

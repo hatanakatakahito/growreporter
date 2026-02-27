@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSite } from '../../contexts/SiteContext';
-import { Calendar, Settings, ChevronDown, LogOut, User as UserIcon, Globe, Bell } from 'lucide-react';
+import { Calendar, Settings, ChevronDown, LogOut, User as UserIcon, Globe, Bell, Download, Loader2, FileSpreadsheet, Presentation } from 'lucide-react';
 import { format } from 'date-fns';
 import { SCREENSHOT_PC_DISPLAY, SCREENSHOT_MOBILE_DISPLAY } from '../../constants/screenshotDisplay';
+import toast from 'react-hot-toast';
 import { useGlobalMemoNotifications } from '../../hooks/useGlobalMemoNotifications';
+import { useAnalysisExport } from '../../hooks/useAnalysisExport';
 import GlobalMemoNotificationModal from '../Layout/GlobalMemoNotificationModal';
 
 /**
@@ -17,6 +19,7 @@ export default function AnalysisHeader({
   setDateRange,
   showDateRange = true,
   showSiteInfo = true,
+  showExport = true,
   title = '',
   subtitle = '',
   improveActions = null,
@@ -37,6 +40,46 @@ export default function AnalysisHeader({
     sites,
     isAdminViewing
   );
+
+  // エクスポート
+  const { isExporting, handleExportExcel, handleExportPptx, canExportExcel, canExportPptx } = useAnalysisExport();
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
+  const downloadMenuRef = useRef(null);
+
+  // ダウンロードメニュー外クリックで閉じる
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target)) {
+        setIsDownloadMenuOpen(false);
+      }
+    };
+    if (isDownloadMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDownloadMenuOpen]);
+
+  const onExportExcel = async () => {
+    setIsDownloadMenuOpen(false);
+    try {
+      await handleExportExcel();
+      toast.success('Excelダウンロードが完了しました');
+    } catch (e) {
+      console.error('[AnalysisHeader] Excel export error:', e);
+      toast.error('ダウンロードに失敗しました');
+    }
+  };
+
+  const onExportPptx = async () => {
+    setIsDownloadMenuOpen(false);
+    try {
+      await handleExportPptx();
+      toast.success('PowerPointダウンロードが完了しました');
+    } catch (e) {
+      console.error('[AnalysisHeader] PPTX export error:', e);
+      toast.error('ダウンロードに失敗しました');
+    }
+  };
 
   // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
   const getUserName = () => {
@@ -100,6 +143,48 @@ export default function AnalysisHeader({
             <div className="flex items-center gap-3">
               {/* 改善画面専用アクション */}
               {improveActions && improveActions}
+
+              {/* ダウンロードメニュー（ダッシュボード・分析画面のみ） */}
+              {showExport && (
+                <div className="relative" ref={downloadMenuRef}>
+                  <button
+                    onClick={() => !isExporting && selectedSiteId && setIsDownloadMenuOpen(!isDownloadMenuOpen)}
+                    disabled={isExporting || !selectedSiteId}
+                    className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title="レポートダウンロード"
+                  >
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    <span>ダウンロード</span>
+                  </button>
+
+                  {isDownloadMenuOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                      <button
+                        onClick={onExportExcel}
+                        disabled={!canExportExcel}
+                        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${!canExportExcel ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        <FileSpreadsheet className={`h-4 w-4 ${!canExportExcel ? 'text-gray-400' : 'text-green-600'}`} />
+                        Excel
+                        {!canExportExcel && <span className="ml-auto text-xs text-gray-400">上限</span>}
+                      </button>
+                      <button
+                        onClick={onExportPptx}
+                        disabled={!canExportPptx}
+                        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${!canExportPptx ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        <Presentation className={`h-4 w-4 ${!canExportPptx ? 'text-gray-400' : 'text-orange-500'}`} />
+                        PowerPoint
+                        {!canExportPptx && <span className="ml-auto text-xs text-gray-400">上限</span>}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* メモ通知ベル */}
               <button
@@ -255,7 +340,7 @@ export default function AnalysisHeader({
       {showSiteInfo && currentSite && (
         <div
           style={{
-            background: 'linear-gradient(to right, #E0E7FF, #F3E8FF)',
+            background: 'linear-gradient(to right, rgb(224, 242, 254), rgb(254, 249, 195))',
           }}
         >
           <div className="mx-auto max-w-content px-6 py-10">

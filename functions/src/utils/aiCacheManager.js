@@ -115,3 +115,59 @@ export async function saveCachedAnalysis(userId, siteId, pageType, summary, reco
   }
 }
 
+/**
+ * 全サイトのAI分析キャッシュを一括削除（月次リセット用）
+ * sites/{siteId}/aiAnalysisCache のすべてのドキュメントを削除
+ * @returns {Promise<number>} 削除したドキュメント数
+ */
+export async function clearAllAIAnalysisCache() {
+  const db = getFirestore();
+  let totalDeleted = 0;
+
+  try {
+    const sitesSnapshot = await db.collection('sites').get();
+
+    if (sitesSnapshot.empty) {
+      logger.info('[CacheManager] キャッシュクリア対象サイトなし');
+      return 0;
+    }
+
+    for (const siteDoc of sitesSnapshot.docs) {
+      const siteId = siteDoc.id;
+
+      const cacheSnapshot = await db
+        .collection('sites')
+        .doc(siteId)
+        .collection('aiAnalysisCache')
+        .get();
+
+      if (cacheSnapshot.empty) continue;
+
+      let batch = db.batch();
+      let batchCount = 0;
+
+      for (const cacheDoc of cacheSnapshot.docs) {
+        batch.delete(cacheDoc.ref);
+        batchCount++;
+        totalDeleted++;
+
+        if (batchCount >= 500) {
+          await batch.commit();
+          batch = db.batch();
+          batchCount = 0;
+        }
+      }
+
+      if (batchCount > 0) {
+        await batch.commit();
+      }
+    }
+
+    logger.info(`[CacheManager] AI分析キャッシュ一括削除完了: ${totalDeleted}件`);
+    return totalDeleted;
+  } catch (error) {
+    logger.error('[CacheManager] AI分析キャッシュ一括削除エラー:', error);
+    throw error;
+  }
+}
+

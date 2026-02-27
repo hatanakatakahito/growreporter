@@ -9,6 +9,7 @@ import { functions, db } from '../../config/firebase';
 import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import LoadingSpinner from './LoadingSpinner';
+import UpgradeModal from './UpgradeModal';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
@@ -23,7 +24,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
  */
 export default function AIAnalysisModal({ pageType, rawData, metrics, period, onClose, onLimitExceeded }) {
   const { selectedSiteId, selectedSite } = useSite();
-  const { checkCanGenerate } = usePlan();
+  const { checkCanGenerate, planId } = usePlan();
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
@@ -34,6 +35,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [addedTaskIds, setAddedTaskIds] = useState(new Set());
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   // 既存のタスクを取得（重複チェック用）
   const { data: existingTasks = [] } = useQuery({
@@ -476,7 +478,13 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
                   {generatedAt && `最終生成: ${format(generatedAt, 'yyyy/MM/dd HH:mm')}`}
                 </span>
                 <button
-                  onClick={() => loadAnalysis(true)}
+                  onClick={() => {
+                    if (planId === 'free') {
+                      setIsUpgradeModalOpen(true);
+                    } else {
+                      loadAnalysis(true);
+                    }
+                  }}
                   disabled={isLoading}
                   className="inline-flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
                 >
@@ -488,6 +496,12 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
           )}
         </div>
       </div>
+
+      {/* アップグレードモーダル */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+      />
     </>
   );
 }

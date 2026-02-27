@@ -84,6 +84,9 @@ export const getUserDetailCallable = async (request) => {
       createdAt: userData.createdAt?.toDate?.().toISOString() || null,
       lastLoginAt: userData.lastLoginAt?.toDate?.().toISOString() || null,
       
+      // 有効サイトID（ダウングレード時の選択結果）
+      activeSiteIds: userData.activeSiteIds || null,
+
       // 使用状況
       usage: {
         sites: sites.length,

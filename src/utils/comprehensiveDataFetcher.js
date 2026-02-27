@@ -1,7 +1,7 @@
 import { functions, db } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { format, subDays, subMonths } from 'date-fns';
-import { doc, getDoc, collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
 
 /**
  * 改善案生成のための包括的データを取得
@@ -43,36 +43,44 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
       pageCategoriesResult,
       monthlyConversionResult,
       scrapingDataResult,
+      diagnosisDataResult,
+      heatmapDataResult,
     ] = await Promise.allSettled([
       // 直近30日のサマリーデータ
       fetchGA4Summary(siteId, recentPeriod.startDate, recentPeriod.endDate),
-      
+
       // 過去13ヶ月の月次トレンドデータ
       fetchGA4MonthlyTrend(siteId),
-      
+
       // 直近30日のユーザー属性
       fetchGA4UserDemographics(siteId, recentPeriod.startDate, recentPeriod.endDate),
-      
+
       // 直近30日の集客チャネル
       fetchGA4Channels(siteId, recentPeriod.startDate, recentPeriod.endDate),
-      
+
       // 直近30日のキーワード（GSC）
       fetchGSCKeywords(siteId, recentPeriod.startDate, recentPeriod.endDate),
-      
+
       // 直近30日のページ別データ
       fetchGA4Pages(siteId, recentPeriod.startDate, recentPeriod.endDate),
-      
+
       // 直近30日のランディングページ
       fetchGA4LandingPages(siteId, recentPeriod.startDate, recentPeriod.endDate),
-      
+
       // 直近30日のページ分類別データ
       fetchGA4PageCategories(siteId, recentPeriod.startDate, recentPeriod.endDate),
-      
+
       // 過去13ヶ月のコンバージョンデータ
       fetchGA4MonthlyConversions(siteId),
-      
+
       // スクレイピングデータ（上位50ページ）
       fetchScrapingData(siteId),
+
+      // サイト診断キャッシュ
+      fetchDiagnosisCache(siteId),
+
+      // ヒートマップデータ
+      fetchHeatmapData(siteId),
     ]);
 
     // 結果を整形
@@ -102,7 +110,13 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
       
       // スクレイピングデータ
       scrapingData: scrapingDataResult.status === 'fulfilled' ? scrapingDataResult.value : null,
-      
+
+      // サイト診断データ
+      diagnosisData: diagnosisDataResult.status === 'fulfilled' ? diagnosisDataResult.value : null,
+
+      // ヒートマップデータ
+      heatmapData: heatmapDataResult.status === 'fulfilled' ? heatmapDataResult.value : null,
+
       // エラー情報
       errors: {
         summary: summaryResult.status === 'rejected' ? summaryResult.reason : null,
@@ -115,6 +129,8 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
         pageCategories: pageCategoriesResult.status === 'rejected' ? pageCategoriesResult.reason : null,
         monthlyConversions: monthlyConversionResult.status === 'rejected' ? monthlyConversionResult.reason : null,
         scrapingData: scrapingDataResult.status === 'rejected' ? scrapingDataResult.reason : null,
+        diagnosisData: diagnosisDataResult.status === 'rejected' ? diagnosisDataResult.reason : null,
+        heatmapData: heatmapDataResult.status === 'rejected' ? heatmapDataResult.reason : null,
       },
     };
 
@@ -281,6 +297,66 @@ async function fetchGA4MonthlyConversions(siteId) {
     endDate: format(new Date(), 'yyyy-MM-dd'),
   });
   return result.data;
+}
+
+/**
+ * サイト診断キャッシュ取得
+ */
+async function fetchDiagnosisCache(siteId) {
+  try {
+    const cacheDoc = await getDoc(doc(db, 'sites', siteId, 'diagnosisCache', 'latest'));
+    if (!cacheDoc.exists()) return null;
+    const data = cacheDoc.data();
+    // 24h以内のキャッシュのみ有効
+    const timestamp = data.timestamp?.toMillis?.() || data.timestamp?.seconds * 1000 || 0;
+    const age = Date.now() - timestamp;
+    if (age > 24 * 60 * 60 * 1000) return null;
+    return data.result || null;
+  } catch (error) {
+    console.warn('[fetchDiagnosisCache] エラー:', error.message);
+    return null;
+  }
+}
+
+/**
+ * ヒートマップデータ取得（クリック数上位ページのサマリー）
+ */
+async function fetchHeatmapData(siteId) {
+  try {
+    const heatmapSnap = await getDocs(
+      collection(db, 'sites', siteId, 'heatmapPages')
+    );
+
+    if (heatmapSnap.empty) return null;
+
+    const pages = [];
+    heatmapSnap.forEach(doc => {
+      const data = doc.data();
+      pages.push({
+        pageUrl: data.pageUrl || '',
+        device: data.device || '',
+        totalClicks: data.totalClicks || 0,
+        totalSessions: data.totalSessions || 0,
+        clickGrid: data.clickGrid || {},
+        scrollReach: data.scrollReach || {},
+        sections: data.sections || {},
+        sectionClicks: data.sectionClicks || {},
+        avgPageHeight: data.avgPageHeight || 0,
+      });
+    });
+
+    // クリック数 + セッション数の合計で降順ソートし、上位20ページに制限
+    pages.sort((a, b) => (b.totalClicks + b.totalSessions) - (a.totalClicks + a.totalSessions));
+
+    console.log('[fetchHeatmapData] 取得:', pages.length, 'ページ');
+    return {
+      pages: pages.slice(0, 20),
+      totalPages: pages.length,
+    };
+  } catch (error) {
+    console.warn('[fetchHeatmapData] エラー:', error.message);
+    return null;
+  }
 }
 
 /**

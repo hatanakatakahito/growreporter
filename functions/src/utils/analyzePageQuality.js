@@ -105,7 +105,7 @@ export function analyzePageQuality({ ga4PageData = [], sitemapPages = [], landin
  * コンテンツ品質スコアを計算（0-100）
  * 高いほど品質が良い
  */
-function calculateContentQualityScore(page) {
+export function calculateContentQualityScore(page) {
   let score = 0;
 
   // テキスト長（最大30点）
@@ -125,24 +125,32 @@ function calculateContentQualityScore(page) {
   const h1Count = headingStructure.h1 || 0;
   const h2Count = headingStructure.h2 || 0;
   const h3Count = headingStructure.h3 || 0;
+  const h4Count = headingStructure.h4 || 0;
+  const totalHeadingsForScore = h1Count + h2Count + h3Count + h4Count;
 
-  // h1が1つ（理想）: +10点
-  if (h1Count === 1) {
-    score += 10;
-  } else if (h1Count > 1) {
-    score += 5; // 複数あっても多少加点
-  }
+  if (totalHeadingsForScore > 0) {
+    // 見出しが検出されている場合のみ個別評価
+    // h1が1つ（理想）: +10点
+    if (h1Count === 1) {
+      score += 10;
+    } else if (h1Count > 1) {
+      score += 5; // 複数あっても多少加点
+    }
 
-  // h2が2個以上: +10点
-  if (h2Count >= 2) {
-    score += 10;
-  } else if (h2Count === 1) {
-    score += 5;
-  }
+    // h2が2個以上: +10点
+    if (h2Count >= 2) {
+      score += 10;
+    } else if (h2Count === 1) {
+      score += 5;
+    }
 
-  // h3があれば: +10点
-  if (h3Count > 0) {
-    score += 10;
+    // h3があれば: +10点
+    if (h3Count > 0) {
+      score += 10;
+    }
+  } else {
+    // 見出しが全く検出されなかった場合は中立スコア（スクレイピング精度の問題の可能性）
+    score += 15;
   }
 
   // 画像alt属性（最大20点）
@@ -178,7 +186,7 @@ function calculateContentQualityScore(page) {
  * ページの問題点を特定
  * @returns {Array<string>} - 問題の配列
  */
-function identifyPageIssues(page, contentScore) {
+export function identifyPageIssues(page, contentScore) {
   const issues = [];
   const ga4Data = page.ga4;
   const landingData = page.landing;
@@ -214,18 +222,26 @@ function identifyPageIssues(page, contentScore) {
     issues.push('本文テキストが少ない（500文字未満）');
   }
 
-  // h1がない、または複数ある
-  const h1Count = page.headingStructure?.h1 || 0;
-  if (h1Count === 0) {
-    issues.push('h1タグがない');
-  } else if (h1Count > 1) {
-    issues.push('h1タグが複数ある');
-  }
+  // 見出し構造チェック
+  // ※ 全見出しが0の場合はスクレイピングで見出しを検出できなかった可能性があるためスキップ
+  const headingStructure = page.headingStructure || {};
+  const h1Count = headingStructure.h1 || 0;
+  const h2Count = headingStructure.h2 || 0;
+  const h3Count = headingStructure.h3 || 0;
+  const h4Count = headingStructure.h4 || 0;
+  const totalHeadings = h1Count + h2Count + h3Count + h4Count;
 
-  // h2がない
-  const h2Count = page.headingStructure?.h2 || 0;
-  if (h2Count === 0) {
-    issues.push('h2タグがない');
+  if (totalHeadings > 0) {
+    // 見出しが1つ以上検出されている場合のみチェック
+    if (h1Count === 0) {
+      issues.push('h1タグが検出されない');
+    } else if (h1Count > 1) {
+      issues.push('h1タグが複数検出された');
+    }
+
+    if (h2Count === 0) {
+      issues.push('h2タグが検出されない');
+    }
   }
 
   // alt属性のない画像が多い（50%以上）

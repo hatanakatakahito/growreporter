@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useAuth } from './AuthContext';
+import { usePlan } from '../hooks/usePlan';
 import { db } from '../config/firebase';
-import { collection, query, where, getDocs, doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 
 const SiteContext = createContext();
@@ -26,12 +27,15 @@ const getDefaultDateRange = () => {
 export function SiteProvider({ children }) {
   const { currentUser } = useAuth();
   const location = useLocation();
-  const [sites, setSites] = useState([]);
+  const { plan: currentPlan, isLoading: isPlanLoading } = usePlan();
+  const maxSites = currentPlan?.features?.maxSites || 1;
+  const [rawSites, setRawSites] = useState([]);
   const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [selectedSiteLive, setSelectedSiteLive] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isAdminViewing, setIsAdminViewing] = useState(false); // 管理者として他のサイトを閲覧中かどうか
   const [adminRole, setAdminRole] = useState(null); // admin/editor/viewer
+  const [activeSiteIds, setActiveSiteIds] = useState(null);
   const [dateRange, setDateRange] = useState(() => {
     try {
       // LocalStorageから復元
@@ -78,6 +82,25 @@ export function SiteProvider({ children }) {
     checkAdminRole();
   }, [currentUser]);
 
+  // activeSiteIds をリアルタイム購読（管理者が変更した際に即反映）
+  useEffect(() => {
+    if (!currentUser) {
+      setActiveSiteIds(null);
+      return;
+    }
+    const userRef = doc(db, 'users', currentUser.uid);
+    const unsubscribe = onSnapshot(userRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.data();
+        const ids = data.activeSiteIds || null;
+        setActiveSiteIds(ids);
+      }
+    }, (err) => {
+      console.error('[SiteContext] activeSiteIds購読エラー:', err);
+    });
+    return () => unsubscribe();
+  }, [currentUser]);
+
   // URLパラメータから siteId を読み取り、特定のサイトを取得（管理者用）
   useEffect(() => {
     const checkUrlParams = async () => {
@@ -115,7 +138,7 @@ export function SiteProvider({ children }) {
           }
           console.log('[SiteContext] 管理者として他ユーザーのサイトを閲覧');
           setIsAdminViewing(true);
-          setSites([siteData]); // 一時的にこのサイトのみを表示
+          setRawSites([siteData]); // 一時的にこのサイトのみを表示
           setSelectedSiteId(urlSiteId);
         } else {
           // 自分のサイトの場合は通常通り
@@ -137,7 +160,7 @@ export function SiteProvider({ children }) {
   useEffect(() => {
     const fetchSites = async () => {
       if (!currentUser) {
-        setSites([]);
+        setRawSites([]);
         setSelectedSiteId(null);
         setIsLoading(false);
         return;
@@ -197,7 +220,7 @@ export function SiteProvider({ children }) {
           return bTime - aTime;
         });
         
-        setSites(sitesData);
+        setRawSites(sitesData);
         setIsAdminViewing(false); // 通常モードに戻す
 
         // 最後に選択したサイトをLocalStorageから復元
@@ -247,6 +270,58 @@ export function SiteProvider({ children }) {
     }
   }, [dateRange]);
 
+  // プラン制限に基づくサイトフィルタリング
+  const needsSiteSelection = useMemo(() => {
+    if (isLoading || isPlanLoading) return false;
+    if (isAdminViewing) return false;
+    if (rawSites.length <= maxSites) return false;
+    // activeSiteIdsが保存されていて有効なら選択不要
+    if (activeSiteIds && activeSiteIds.length > 0) {
+      const validIds = activeSiteIds.filter(id => rawSites.some(s => s.id === id));
+      if (validIds.length > 0 && validIds.length <= maxSites) return false;
+    }
+    return true;
+  }, [rawSites, maxSites, activeSiteIds, isLoading, isPlanLoading, isAdminViewing, currentPlan]);
+
+  // フィルタ済みサイト一覧（プラン制限適用後）
+  const sites = useMemo(() => {
+    if (isPlanLoading) return rawSites;
+    if (isAdminViewing) return rawSites;
+    if (rawSites.length <= maxSites) return rawSites;
+    if (activeSiteIds && activeSiteIds.length > 0) {
+      const filtered = rawSites.filter(s => activeSiteIds.includes(s.id));
+      if (filtered.length > 0 && filtered.length <= maxSites) return filtered;
+    }
+    return rawSites;
+  }, [rawSites, maxSites, activeSiteIds, isAdminViewing, isPlanLoading]);
+
+  // サイト選択確定（ダウングレード時のサイト選択モーダル用）
+  const confirmSiteSelection = useCallback(async (selectedIds) => {
+    setActiveSiteIds(selectedIds);
+    if (selectedIds.length > 0) {
+      setSelectedSiteId(selectedIds[0]);
+      localStorage.setItem('lastSelectedSiteId', selectedIds[0]);
+    }
+    // Firestoreに保存（onSnapshotで他端末・管理者にも即反映）
+    if (currentUser) {
+      try {
+        await updateDoc(doc(db, 'users', currentUser.uid), { activeSiteIds: selectedIds });
+      } catch (error) {
+        console.error('[SiteContext] activeSiteIds保存エラー:', error);
+      }
+    }
+  }, [currentUser]);
+
+  // selectedSiteIdがフィルタ済みサイトに含まれない場合は補正
+  useEffect(() => {
+    if (isPlanLoading || isLoading || needsSiteSelection) return;
+    if (sites.length > 0 && selectedSiteId && !sites.some(s => s.id === selectedSiteId)) {
+      const newId = sites[0].id;
+      setSelectedSiteId(newId);
+      localStorage.setItem('lastSelectedSiteId', newId);
+    }
+  }, [sites, selectedSiteId, isPlanLoading, isLoading, needsSiteSelection]);
+
   // 選択中のサイト情報（リアルタイムデータがあればそれを優先＝カバー表示がトリガー完了後に更新される）
   const selectedSite = useMemo(() => {
     if (selectedSiteLive) return selectedSiteLive;
@@ -288,7 +363,7 @@ export function SiteProvider({ children }) {
         return bTime - aTime;
       });
       
-      setSites(sitesData);
+      setRawSites(sitesData);
 
       // 選択中のサイトが削除されていたら、最初のサイトを選択
       if (selectedSiteId && !sitesData.some(site => site.id === selectedSiteId)) {
@@ -305,6 +380,7 @@ export function SiteProvider({ children }) {
 
   const value = {
     sites,
+    allSites: rawSites, // フィルタ前の全サイト（サイト選択モーダル用）
     selectedSite,
     selectedSiteId,
     selectSite,
@@ -314,6 +390,9 @@ export function SiteProvider({ children }) {
     updateDateRange,
     isAdminViewing, // 管理者として他のサイトを閲覧中かどうか
     adminRole, // admin/editor/viewer
+    needsSiteSelection, // ダウングレード時のサイト選択が必要かどうか
+    confirmSiteSelection, // サイト選択を確定
+    maxSites, // プランの最大サイト数
   };
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;

@@ -96,6 +96,9 @@ export const getSiteDetailCallable = async (request) => {
       updatedAt: siteData.updatedAt?.toDate?.().toISOString() || null,
       // AI使用状況
       aiUsage,
+      // ヒートマップ利用状況
+      heatmapPvUsage: siteData.heatmapPvUsage || 0,
+      heatmapSamplingRate: siteData.heatmapSamplingRate ?? 1.0,
       // ステータス
       hasGA4: !!siteData.ga4PropertyId,
       hasGSC: !!siteData.gscSiteUrl,

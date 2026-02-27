@@ -111,6 +111,7 @@ export default function Reports() {
           setDateRange={null}
           showDateRange={false}
           showSiteInfo={false}
+          showExport={false}
         />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         {/* コンテンツ */}

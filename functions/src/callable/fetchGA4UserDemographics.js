@@ -90,7 +90,7 @@ async function fetchDimension(propertyId, startDate, endDate, accessToken, dimen
     dateRanges: [{ startDate, endDate }],
     dimensions: [{ name: dimension }],
     metrics: [{ name: 'activeUsers' }],
-    limit: dimension.includes('country') || dimension.includes('region') || dimension.includes('city') ? 10 : 100,
+    limit: dimension.includes('country') || dimension.includes('region') || dimension.includes('city') ? 20 : 100,
     orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
   };
 
@@ -238,15 +238,15 @@ function formatDevice(data) {
 }
 
 /**
- * 地域データのフォーマット（上位10件）
+ * 地域データのフォーマット（上位20件）
  */
 function formatLocation(data) {
   if (!data.rows) return [];
-  
+
   const total = data.rows.reduce((sum, row) => sum + parseInt(row.metricValues[0].value), 0);
-  
+
   return data.rows
-    .slice(0, 10) // 上位10件
+    .slice(0, 20) // 上位20件
     .map(row => {
       const value = parseInt(row.metricValues[0].value);
       const name = row.dimensionValues[0].value;

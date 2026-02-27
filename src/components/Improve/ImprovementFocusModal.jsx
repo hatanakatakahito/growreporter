@@ -7,6 +7,7 @@ const FOCUS_OPTIONS = [
   { value: 'conversion', label: 'コンバージョン（成果）の向上' },
   { value: 'branding', label: 'ブランディングの向上' },
   { value: 'usability', label: 'ユーザービリティの向上' },
+  { value: 'performance', label: 'パフォーマンスの向上' },
 ];
 
 /**

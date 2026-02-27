@@ -3,88 +3,44 @@ import { logger } from 'firebase-functions/v2';
 
 // デフォルトのプラン設定（フォールバック用）
 const DEFAULT_PLANS = {
-  free: { 
+  free: {
     maxSites: 1,
-    aiSummaryLimit: 10,
-    aiImprovementLimit: 2,
+    aiSummaryLimit: -1, // 無制限（再分析はgenerateAISummary.js内で制限）
+    aiImprovementLimit: 1,
+    diagnosisLimit: 1,
+    excelExportLimit: 1,
+    pptxExportLimit: 1,
+    heatmapPvLimit: 0, // ヒートマップ無効
   },
-  standard: { 
+  standard: {
     maxSites: 3,
     aiSummaryLimit: 50,
     aiImprovementLimit: 10,
+    diagnosisLimit: 5,
+    excelExportLimit: -1,
+    pptxExportLimit: -1,
+    heatmapPvLimit: 10000, // サイト単位 10,000 PV/月
   },
-  premium: { 
+  premium: {
     maxSites: 10,
     aiSummaryLimit: -1, // 無制限
     aiImprovementLimit: -1, // 無制限
+    diagnosisLimit: -1, // 無制限
+    excelExportLimit: -1,
+    pptxExportLimit: -1,
+    heatmapPvLimit: 10000, // サイト単位 10,000 PV/月
   },
   // 旧システム互換
-  paid: { 
+  paid: {
     maxSites: 999999,
     aiSummaryLimit: -1,
     aiImprovementLimit: -1,
+    diagnosisLimit: -1,
+    excelExportLimit: -1,
+    pptxExportLimit: -1,
+    heatmapPvLimit: -1, // 無制限
   },
 };
-
-// プラン設定のキャッシュ（メモリキャッシュ、1時間有効）
-let planConfigCache = null;
-let planConfigCacheTime = 0;
-const CACHE_DURATION = 60 * 60 * 1000; // 1時間
-
-/**
- * Firestoreからプラン設定を取得（キャッシュ付き）
- * @param {Object} db - Firestore instance
- * @returns {Promise<Object>}
- */
-async function getPlanConfig(db) {
-  const now = Date.now();
-  
-  // キャッシュが有効ならそれを返す
-  if (planConfigCache && (now - planConfigCacheTime) < CACHE_DURATION) {
-    return planConfigCache;
-  }
-
-  try {
-    const configDoc = await db.collection('planConfig').doc('default').get();
-    
-    if (configDoc.exists) {
-      const config = configDoc.data();
-      
-      // キャッシュに保存
-      planConfigCache = {
-        free: {
-          maxSites: config.free?.maxSites ?? DEFAULT_PLANS.free.maxSites,
-          aiSummaryLimit: config.free?.aiSummaryLimit ?? DEFAULT_PLANS.free.aiSummaryLimit,
-          aiImprovementLimit: config.free?.aiImprovementLimit ?? DEFAULT_PLANS.free.aiImprovementLimit,
-        },
-        standard: {
-          maxSites: config.standard?.maxSites ?? DEFAULT_PLANS.standard.maxSites,
-          aiSummaryLimit: config.standard?.aiSummaryLimit ?? DEFAULT_PLANS.standard.aiSummaryLimit,
-          aiImprovementLimit: config.standard?.aiImprovementLimit ?? DEFAULT_PLANS.standard.aiImprovementLimit,
-        },
-        premium: {
-          maxSites: config.premium?.maxSites ?? DEFAULT_PLANS.premium.maxSites,
-          aiSummaryLimit: config.premium?.aiSummaryLimit ?? DEFAULT_PLANS.premium.aiSummaryLimit,
-          aiImprovementLimit: config.premium?.aiImprovementLimit ?? DEFAULT_PLANS.premium.aiImprovementLimit,
-        },
-        paid: DEFAULT_PLANS.paid, // 旧システム互換
-      };
-      
-      planConfigCacheTime = now;
-      logger.info('[PlanManager] プラン設定をFirestoreから取得してキャッシュ');
-      
-      return planConfigCache;
-    }
-  } catch (error) {
-    logger.error('[PlanManager] プラン設定取得エラー:', error);
-  }
-
-  // エラーまたは設定が存在しない場合はデフォルト値を使用
-  logger.info('[PlanManager] デフォルトプラン設定を使用');
-  planConfigCache = DEFAULT_PLANS;
-  planConfigCacheTime = now;
-  return DEFAULT_PLANS;
-}
 
 /**
  * 個別制限を取得
@@ -123,27 +79,32 @@ async function getCustomLimits(db, userId) {
 /**
  * 有効な制限値を取得（個別制限 > プラン制限）
  * @param {string} userId 
- * @param {string} type - 'summary' or 'improvement'
+ * @param {string} type - 'summary', 'improvement', 'diagnosis', 'excelExport', or 'pptxExport'
  * @returns {Promise<number>} 制限値（-1 = 無制限）
  */
 export async function getEffectiveLimit(userId, type = 'summary') {
   const db = getFirestore();
-  
+
   try {
     // 1. 個別制限をチェック（最優先）
     const customLimits = await getCustomLimits(db, userId);
     if (customLimits) {
-      const customLimit = type === 'summary' 
-        ? customLimits.aiSummaryMonthly 
-        : customLimits.aiImprovementMonthly;
-      
+      const customLimitMap = {
+        summary: customLimits.aiSummaryMonthly,
+        improvement: customLimits.aiImprovementMonthly,
+        diagnosis: customLimits.diagnosisMonthly,
+        excelExport: customLimits.excelExportMonthly,
+        pptxExport: customLimits.pptxExportMonthly,
+      };
+      const customLimit = customLimitMap[type];
+
       if (customLimit !== null && customLimit !== undefined) {
         logger.info(`[PlanManager] 個別制限適用: ${userId}, タイプ: ${type}, 制限: ${customLimit}`);
         return customLimit;
       }
     }
 
-    // 2. プラン制限を使用（Firestoreから動的に取得）
+    // 2. プラン制限を使用（コード定義のDEFAULT_PLANSから取得）
     const userDoc = await db.collection('users').doc(userId).get();
     const userData = userDoc.data();
 
@@ -152,14 +113,16 @@ export async function getEffectiveLimit(userId, type = 'summary') {
     }
 
     const plan = userData.plan || 'free';
-    
-    // Firestoreからプラン設定を取得
-    const allPlanConfigs = await getPlanConfig(db);
-    const planConfig = allPlanConfigs[plan] || allPlanConfigs.free;
-    
-    const limit = type === 'summary' 
-      ? planConfig.aiSummaryLimit 
-      : planConfig.aiImprovementLimit;
+    const planConfig = DEFAULT_PLANS[plan] || DEFAULT_PLANS.free;
+
+    const limitMap = {
+      summary: planConfig.aiSummaryLimit,
+      improvement: planConfig.aiImprovementLimit,
+      diagnosis: planConfig.diagnosisLimit,
+      excelExport: planConfig.excelExportLimit,
+      pptxExport: planConfig.pptxExportLimit,
+    };
+    const limit = limitMap[type] ?? planConfig.diagnosisLimit;
     
     logger.info(`[PlanManager] プラン制限適用: ${userId}, プラン: ${plan}, タイプ: ${type}, 制限: ${limit}`);
     
@@ -173,16 +136,16 @@ export async function getEffectiveLimit(userId, type = 'summary') {
 /**
  * ユーザーがAI生成可能かチェック
  * @param {string} userId 
- * @param {string} type - 'summary' or 'improvement'
+ * @param {string} type - 'summary', 'improvement', or 'diagnosis'
  * @returns {Promise<boolean>}
  */
 export async function checkCanGenerate(userId, type = 'summary') {
   const db = getFirestore();
-  
+
   try {
     // 有効な制限値を取得（個別制限 > プラン制限）
     const limit = await getEffectiveLimit(userId, type);
-    
+
     // 無制限チェック
     if (limit === -1 || limit >= 999999) {
       return true;
@@ -197,9 +160,14 @@ export async function checkCanGenerate(userId, type = 'summary') {
       return false;
     }
 
-    const used = type === 'summary' 
-      ? (userData.aiSummaryUsage || 0)
-      : (userData.aiImprovementUsage || 0);
+    const usageMap = {
+      summary: userData.aiSummaryUsage || 0,
+      improvement: userData.aiImprovementUsage || 0,
+      diagnosis: userData.diagnosisUsage || 0,
+      excelExport: userData.excelExportUsage || 0,
+      pptxExport: userData.pptxExportUsage || 0,
+    };
+    const used = usageMap[type] ?? 0;
     
     const canGenerate = used < limit;
     
@@ -215,14 +183,21 @@ export async function checkCanGenerate(userId, type = 'summary') {
 /**
  * AI生成回数をインクリメント
  * @param {string} userId 
- * @param {string} type - 'summary' or 'improvement'
+ * @param {string} type - 'summary', 'improvement', or 'diagnosis'
  */
 export async function incrementGenerationCount(userId, type = 'summary') {
   const db = getFirestore();
   const userRef = db.collection('users').doc(userId);
 
   try {
-    const fieldName = type === 'summary' ? 'aiSummaryUsage' : 'aiImprovementUsage';
+    const fieldMap = {
+      summary: 'aiSummaryUsage',
+      improvement: 'aiImprovementUsage',
+      diagnosis: 'diagnosisUsage',
+      excelExport: 'excelExportUsage',
+      pptxExport: 'pptxExportUsage',
+    };
+    const fieldName = fieldMap[type] || 'diagnosisUsage';
     await userRef.update({
       [fieldName]: FieldValue.increment(1),
     });
@@ -258,6 +233,9 @@ export async function resetMonthlyLimits() {
       batch.update(doc.ref, {
         aiSummaryUsage: 0,
         aiImprovementUsage: 0,
+        diagnosisUsage: 0,
+        excelExportUsage: 0,
+        pptxExportUsage: 0,
         updatedAt: FieldValue.serverTimestamp(),
       });
       count++;
@@ -277,6 +255,37 @@ export async function resetMonthlyLimits() {
     }
     
     logger.info(`[PlanManager] ${count}件のユーザーの月次制限をリセット完了`);
+
+    // サイト単位のヒートマップPV使用量もリセット
+    const sitesSnapshot = await db.collection('sites').get();
+    let siteBatch = db.batch();
+    let siteCount = 0;
+    let siteBatchCount = 0;
+
+    for (const doc of sitesSnapshot.docs) {
+      const data = doc.data();
+      // heatmapPvUsage フィールドがあるサイトのみリセット
+      if (data.heatmapPvUsage && data.heatmapPvUsage > 0) {
+        siteBatch.update(doc.ref, {
+          heatmapPvUsage: 0,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+        siteCount++;
+        siteBatchCount++;
+
+        if (siteBatchCount >= 500) {
+          await siteBatch.commit();
+          siteBatch = db.batch();
+          siteBatchCount = 0;
+        }
+      }
+    }
+
+    if (siteBatchCount > 0) {
+      await siteBatch.commit();
+    }
+
+    logger.info(`[PlanManager] ${siteCount}件のサイトのヒートマップPV使用量をリセット完了`);
   } catch (error) {
     logger.error('[PlanManager] 月次制限リセットエラー:', error);
     throw error;

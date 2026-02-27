@@ -326,8 +326,6 @@ export default function AdminSettings() {
                     { label: 'ログ閲覧', admin: true, editor: true, viewer: true },
                     { label: '統計閲覧', admin: true, editor: true, viewer: true },
                     { category: '設定' },
-                    { label: 'プラン設定閲覧', admin: true, editor: true, viewer: true },
-                    { label: 'プラン設定変更', admin: true, editor: false, viewer: false },
                   ].map((row, idx) => {
                     if (row.category) {
                       return (

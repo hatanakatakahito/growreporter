@@ -43,7 +43,10 @@ service cloud.firestore {
         (request.auth.uid == userId || 
          isAccountMember(userId) ||
          isAdminUser());
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && (
+        request.auth.uid == userId ||
+        isEditorOrAdmin()
+      );
 
       // OAuthトークン（本人・同一アカウントメンバー・管理者が読める。編集者がサイト設定でオーナーのトークン参照のため）
       match /oauth_tokens/{tokenId} {
@@ -182,6 +185,35 @@ service cloud.firestore {
           isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
         );
         allow write: if false;
+      }
+      // サイト診断キャッシュ（読取は全メンバー可、書込は Functions）
+      match /diagnosisCache/{docId} {
+        allow read: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow write: if false;
+      }
+      // ヒートマップデータ（サイトオーナー・メンバー・管理者が読み取り可。書き込みは Functions のみ）
+      match /heatmapPages/{pageId} {
+        allow read: if request.auth != null && (
+          isSiteOwner(siteId) ||
+          (exists(/databases/$(database)/documents/sites/$(siteId)) &&
+           isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)) ||
+          isAdminUser()
+        );
+        allow write: if false;
+
+        // 日別ヒートマップデータ（期間フィルタリング用）
+        match /daily/{dateId} {
+          allow read: if request.auth != null && (
+            isSiteOwner(siteId) ||
+            (exists(/databases/$(database)/documents/sites/$(siteId)) &&
+             isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)) ||
+            isAdminUser()
+          );
+          allow write: if false;
+        }
       }
     }
     
@@ -414,6 +446,13 @@ service cloud.firestore {
     // アラート既読状態（移行済み: users/{uid}/userAlertReads。ルートは廃止）
     match /userAlertReads/{readId} {
       allow read, write: if false;
+    }
+
+    // アップグレードお問い合わせ（認証済みユーザーが作成可。読み取りは管理者のみ）
+    match /upgradeInquiries/{inquiryId} {
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
+      allow read: if request.auth != null && isAdminUser();
+      allow update, delete: if false;
     }
 
     // 招待コレクション
