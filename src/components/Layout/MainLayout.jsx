@@ -2,6 +2,7 @@ import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useSidebar } from '../../contexts/SidebarContext';
+import SiteSelectionModal from '../common/SiteSelectionModal';
 
 /**
  * メインレイアウトコンポーネント
@@ -23,6 +24,9 @@ export default function MainLayout() {
         {/* 各ページのコンテンツ */}
         <Outlet />
       </div>
+
+      {/* ダウングレード時のサイト選択モーダル */}
+      <SiteSelectionModal />
     </div>
   );
 }

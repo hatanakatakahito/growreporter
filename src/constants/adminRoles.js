@@ -58,9 +58,6 @@ export const PERMISSIONS = {
   VIEW_LOGS: ['admin', 'editor', 'viewer'],
   VIEW_STATS: ['admin', 'editor', 'viewer'],
   
-  // 設定
-  EDIT_PLAN_CONFIG: ['admin'],
-  VIEW_PLAN_CONFIG: ['admin', 'editor', 'viewer'],
 };
 
 /**

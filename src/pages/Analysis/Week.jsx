@@ -58,9 +58,10 @@ export default function Week() {
     setPageTitle('曜日別分析');
   }, []);
 
-  // 初回のみコンバージョン未設定アラートを表示
+  // 初回のみコンバージョン未設定アラートを表示（サイトデータ読込完了後に判定）
   useEffect(() => {
-    const conversionEvents = selectedSite?.conversionEvents || [];
+    if (!selectedSite || !selectedSiteId) return;
+    const conversionEvents = selectedSite.conversionEvents || [];
     if (conversionEvents.length === 0) {
       const hasSeenAlert = sessionStorage.getItem('conversionAlertSeen');
       if (!hasSeenAlert) {
@@ -68,7 +69,7 @@ export default function Week() {
         sessionStorage.setItem('conversionAlertSeen', 'true');
       }
     }
-  }, [selectedSite]);
+  }, [selectedSite, selectedSiteId]);
 
   // URLパラメータのsiteIdがあれば選択
   useEffect(() => {

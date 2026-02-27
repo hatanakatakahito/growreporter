@@ -6,7 +6,7 @@ import { useAdminSiteDetail } from '../../../hooks/useAdminSiteDetail';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import { functions } from '../../../config/firebase';
-import { ArrowLeft, Globe, User, BarChart3, AlertTriangle, CheckCircle, XCircle, Search, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Globe, User, BarChart3, AlertTriangle, CheckCircle, XCircle, Search, RefreshCw, MousePointerClick } from 'lucide-react';
 import { SITE_TYPES, SITE_PURPOSES } from '../../../constants/siteOptions';
 
 /**
@@ -399,6 +399,53 @@ export default function AdminSiteDetail() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* ヒートマップ利用状況 */}
+        <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-dark dark:text-white">
+            <MousePointerClick className="h-5 w-5" />
+            ヒートマップ利用状況（今月）
+          </h3>
+          {(() => {
+            const pvUsage = siteDetail.heatmapPvUsage || 0;
+            const pvLimit = 10000;
+            const samplingRate = siteDetail.heatmapSamplingRate ?? 1.0;
+            const percentage = Math.min((pvUsage / pvLimit) * 100, 100);
+            const isNearLimit = percentage >= 80;
+            const isExceeded = percentage >= 100;
+
+            return (
+              <div className="space-y-4">
+                <div>
+                  <div className="mb-1 flex justify-between text-sm">
+                    <span className="text-body-color dark:text-dark-6">PV使用量</span>
+                    <span className="font-semibold text-dark dark:text-white">
+                      {pvUsage.toLocaleString()} / {pvLimit.toLocaleString()} PV
+                    </span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
+                    <div
+                      className={`h-full transition-all ${isExceeded ? 'bg-red-500' : isNearLimit ? 'bg-yellow-500' : 'bg-primary'}`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                  {isExceeded && (
+                    <p className="mt-1 text-xs text-red-600 dark:text-red-400">月間上限に達しています</p>
+                  )}
+                  {isNearLimit && !isExceeded && (
+                    <p className="mt-1 text-xs text-yellow-700 dark:text-yellow-400">上限の{Math.round(percentage)}%に到達</p>
+                  )}
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-body-color dark:text-dark-6">サンプリングレート</span>
+                  <span className="font-semibold text-dark dark:text-white">
+                    {Math.round(samplingRate * 100)}%
+                  </span>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
 

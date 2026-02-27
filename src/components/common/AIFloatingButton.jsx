@@ -12,7 +12,7 @@ import { useAuth } from '../../contexts/AuthContext';
  */
 export default function AIFloatingButton({ pageType, onScrollToAI }) {
   const [shouldAnimate, setShouldAnimate] = useState(false);
-  const { plan, getRemainingByType } = usePlan();
+  const { plan, planId, getRemainingByType } = usePlan();
   const { userProfile } = useAuth();
 
   // pageTypeに応じて適切な残り回数を取得
@@ -73,8 +73,8 @@ export default function AIFloatingButton({ pageType, onScrollToAI }) {
           <span className="mt-1 text-[11px] font-medium">AI分析</span>
         </div>
 
-        {/* 残り回数バッジ */}
-        {remaining !== null && (
+        {/* 残り回数バッジ — 無料プランのsummaryは1回限りのためバッジ非表示 */}
+        {remaining !== null && !(planId === 'free' && type === 'summary') && (
           <span className={`absolute -top-2 -right-2 flex h-6 ${remaining === -1 ? 'w-7' : 'w-6'} items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-md`}>
             {remaining === -1 ? '∞' : remaining}
           </span>

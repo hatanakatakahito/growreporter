@@ -8,11 +8,11 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
 import CustomLimitsModal from '../../../components/Admin/CustomLimitsModal';
-import { 
-  ArrowLeft, 
-  User, 
-  Mail, 
-  Calendar, 
+import {
+  ArrowLeft,
+  User,
+  Mail,
+  Calendar,
   TrendingUp,
   Globe,
   BarChart3,
@@ -20,12 +20,16 @@ import {
   Edit2,
   Clock,
   Trash2,
-  Building2
+  Building2,
+  CheckCircle,
+  XCircle,
+  Save
 } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../../config/firebase';
+import { PLANS } from '../../../constants/plans';
 
 /**
  * ユーザー詳細画面
@@ -40,10 +44,25 @@ export default function UserDetail() {
   const [customLimits, setCustomLimitsData] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [editingActiveSites, setEditingActiveSites] = useState(false);
+  const [editActiveSiteIds, setEditActiveSiteIds] = useState([]);
+  const [isSavingActiveSites, setIsSavingActiveSites] = useState(false);
+  const [liveActiveSiteIds, setLiveActiveSiteIds] = useState(null);
 
   useEffect(() => {
     setPageTitle('ユーザー詳細');
   }, []);
+
+  // Firestoreからリアルタイムで activeSiteIds を取得
+  useEffect(() => {
+    if (!uid) return;
+    const unsubscribe = onSnapshot(doc(db, 'users', uid), (snapshot) => {
+      if (snapshot.exists()) {
+        setLiveActiveSiteIds(snapshot.data().activeSiteIds || null);
+      }
+    });
+    return () => unsubscribe();
+  }, [uid]);
 
   // 個別制限を読み込む
   useEffect(() => {
@@ -130,6 +149,39 @@ export default function UserDetail() {
     }
   };
 
+
+  // 有効サイト編集を開始
+  const handleStartEditActiveSites = () => {
+    setEditActiveSiteIds(liveActiveSiteIds || []);
+    setEditingActiveSites(true);
+  };
+
+  // 有効サイト編集でトグル
+  const handleToggleActiveSite = (siteId) => {
+    setEditActiveSiteIds(prev =>
+      prev.includes(siteId) ? prev.filter(id => id !== siteId) : [...prev, siteId]
+    );
+  };
+
+  // 有効サイト保存（Firestoreに直接書き込み）
+  const handleSaveActiveSites = async () => {
+    try {
+      setIsSavingActiveSites(true);
+      const userRef = doc(db, 'users', uid);
+      await updateDoc(userRef, {
+        activeSiteIds: editActiveSiteIds.length > 0 ? editActiveSiteIds : deleteField(),
+      });
+      setSuccessMessage('有効サイトを更新しました');
+      setTimeout(() => setSuccessMessage(''), 5000);
+      setEditingActiveSites(false);
+      refetch();
+    } catch (err) {
+      console.error('有効サイト保存エラー:', err);
+      alert(`保存に失敗しました: ${err.message}`);
+    } finally {
+      setIsSavingActiveSites(false);
+    }
+  };
 
   // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
   const getUserName = () => {
@@ -358,30 +410,119 @@ export default function UserDetail() {
 
       {/* サイト一覧 */}
       <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">登録サイト一覧</h3>
-        
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-dark dark:text-white">登録サイト一覧</h3>
+          {userDetail.sites && userDetail.sites.length > 1 && (
+            editingActiveSites ? (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setEditingActiveSites(false)}
+                  disabled={isSavingActiveSites}
+                  className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-body-color transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:hover:bg-dark-3"
+                >
+                  キャンセル
+                </button>
+                <button
+                  onClick={handleSaveActiveSites}
+                  disabled={isSavingActiveSites || editActiveSiteIds.length === 0}
+                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50"
+                >
+                  <Save className="h-4 w-4" />
+                  {isSavingActiveSites ? '保存中...' : '保存'}
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={handleStartEditActiveSites}
+                className="flex items-center gap-2 rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
+              >
+                <Edit2 className="h-4 w-4" />
+                有効サイト管理
+              </button>
+            )
+          )}
+        </div>
+
+        {/* 編集モード時の説明 */}
+        {editingActiveSites && (
+          <div className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+            有効にするサイトを選択してください。プラン上限（{PLANS[userDetail.plan]?.features?.maxSites || 1}サイト）を超えるサイトがある場合、選択されたサイトのみがユーザーに表示されます。
+            チェックを全て外すとフィルタが解除されます。
+          </div>
+        )}
+
+        {/* 現在のactiveSiteIds表示（編集モード外） */}
+        {!editingActiveSites && liveActiveSiteIds && liveActiveSiteIds.length > 0 && (
+          <div className="mb-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400">
+            有効サイト制限が適用されています（{liveActiveSiteIds.length}サイトが有効）
+          </div>
+        )}
+
         {userDetail.sites && userDetail.sites.length > 0 ? (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {userDetail.sites.map((site) => (
-              <button
-                key={site.id}
-                type="button"
-                onClick={() => navigate(`/admin/sites/${site.id}`)}
-                className="w-full rounded-lg border border-stroke bg-gray-50 p-4 text-left transition hover:shadow-md hover:border-primary/30 dark:border-dark-3 dark:bg-dark-3 dark:hover:border-primary/30"
-              >
-                <div className="mb-2 flex items-center gap-2">
-                  <Globe className="h-5 w-5 text-primary" />
-                  <h4 className="font-medium text-dark dark:text-white">{site.siteName || site.url}</h4>
+            {userDetail.sites.map((site) => {
+              const isActive = !liveActiveSiteIds || liveActiveSiteIds.length === 0 || liveActiveSiteIds.includes(site.id);
+              const isEditActive = editActiveSiteIds.includes(site.id);
+
+              return (
+                <div
+                  key={site.id}
+                  className={`relative rounded-lg border p-4 text-left transition ${
+                    editingActiveSites
+                      ? isEditActive
+                        ? 'border-primary bg-blue-50 dark:bg-blue-900/20'
+                        : 'border-stroke bg-gray-100 opacity-60 dark:border-dark-3 dark:bg-dark-3'
+                      : isActive
+                        ? 'border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3'
+                        : 'border-stroke bg-gray-100 opacity-50 dark:border-dark-3 dark:bg-dark-3'
+                  }`}
+                >
+                  {/* 編集モード: チェックボックス */}
+                  {editingActiveSites && (
+                    <button
+                      type="button"
+                      onClick={() => handleToggleActiveSite(site.id)}
+                      className="absolute right-3 top-3 z-10"
+                    >
+                      {isEditActive ? (
+                        <CheckCircle className="h-6 w-6 text-primary" />
+                      ) : (
+                        <XCircle className="h-6 w-6 text-gray-300 dark:text-dark-4" />
+                      )}
+                    </button>
+                  )}
+
+                  {/* 非編集モード: 状態バッジ */}
+                  {!editingActiveSites && liveActiveSiteIds && liveActiveSiteIds.length > 0 && (
+                    <span className={`absolute right-3 top-3 rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                      isActive
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+                    }`}>
+                      {isActive ? '有効' : '無効'}
+                    </span>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => editingActiveSites ? handleToggleActiveSite(site.id) : navigate(`/admin/sites/${site.id}`)}
+                    className="w-full text-left"
+                  >
+                    <div className="mb-2 flex items-center gap-2">
+                      <Globe className="h-5 w-5 text-primary" />
+                      <h4 className="font-medium text-dark dark:text-white">{site.siteName || site.url}</h4>
+                    </div>
+                    <p className="mb-2 text-sm text-body-color dark:text-dark-6">{site.url}</p>
+                    <div className="flex items-center justify-between text-xs text-body-color dark:text-dark-6">
+                      <span>登録: {site.createdAt ? new Date(site.createdAt).toLocaleDateString('ja-JP') : '-'}</span>
+                      <span className={`rounded-full px-2 py-1 ${site.setupCompleted ? 'bg-green-100 text-green-600 dark:bg-green-900/20' : 'bg-orange-100 text-orange-600 dark:bg-orange-900/20'}`}>
+                        {site.setupCompleted ? '完了' : '設定中'}
+                      </span>
+                    </div>
+                  </button>
                 </div>
-                <p className="mb-2 text-sm text-body-color dark:text-dark-6">{site.url}</p>
-                <div className="flex items-center justify-between text-xs text-body-color dark:text-dark-6">
-                  <span>登録: {site.createdAt ? new Date(site.createdAt).toLocaleDateString('ja-JP') : '-'}</span>
-                  <span className={`rounded-full px-2 py-1 ${site.setupCompleted ? 'bg-green-100 text-green-600 dark:bg-green-900/20' : 'bg-orange-100 text-orange-600 dark:bg-orange-900/20'}`}>
-                    {site.setupCompleted ? '完了' : '設定中'}
-                  </span>
-                </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <p className="text-center text-body-color dark:text-dark-6">登録されているサイトがありません</p>

@@ -1,5 +1,5 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
-import { onCall } from 'firebase-functions/v2/https';
+import { onCall, onRequest } from 'firebase-functions/v2/https';
 import { onDocumentWritten, onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { initializeApp } from 'firebase-admin/app';
 
@@ -105,6 +105,17 @@ export const captureScreenshot = lazyCallable('./callable/captureScreenshot.js',
  * Gemini APIを使用してGA4データの要約を生成
  */
 export const generateAISummary = lazyCallable('./callable/generateAISummary.js', 'generateAISummaryCallable', { memory: '512MiB', timeoutSeconds: 60, secrets: ['GEMINI_API_KEY'] });
+
+/**
+ * サイト診断 Callable Function
+ * PageSpeed Insights API + 独自データでサイト健全度を診断
+ */
+export const runSiteDiagnosis = lazyCallable('./callable/runSiteDiagnosis.js', 'runSiteDiagnosisCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] });
+
+/**
+ * エクスポート使用回数インクリメント Callable Function
+ */
+export const incrementExportUsage = lazyCallable('./callable/incrementExportUsage.js', 'incrementExportUsageCallable');
 
 /**
  * メタデータ取得 Callable Function（遅延読み込み）
@@ -224,13 +235,31 @@ export const onScrapingJobCreated = onDocumentCreated(
 );
 
 /**
+ * アップグレードお問い合わせ作成トリガー（遅延読み込み）
+ * upgradeInquiries に追加されたらメール送信
+ */
+export const onUpgradeInquiryCreated = onDocumentCreated(
+  {
+    document: 'upgradeInquiries/{inquiryId}',
+    region: 'asia-northeast1',
+    memory: '256MiB',
+    timeoutSeconds: 30,
+  },
+  async (event) => {
+    const { onUpgradeInquiryCreatedHandler } = await import('./triggers/onUpgradeInquiryCreated.js');
+    return onUpgradeInquiryCreatedHandler(event);
+  }
+);
+
+/**
  * 月次制限リセット Scheduled Function（遅延読み込み）
  */
 export const resetMonthlyLimits = onSchedule({
   schedule: '0 0 1 * *',
   timeZone: 'Asia/Tokyo',
   region: 'asia-northeast1',
-  memory: '256MiB',
+  memory: '512MiB',
+  timeoutSeconds: 300,
 }, async (event) => {
   const m = await import('./scheduled/resetMonthlyLimits.js');
   return m.resetMonthlyLimitsScheduled(event);
@@ -326,6 +355,12 @@ export const getCustomLimits = lazyCallable('./callable/admin/getCustomLimits.js
 export const removeCustomLimits = lazyCallable('./callable/admin/removeCustomLimits.js', 'removeCustomLimitsCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
+ * 管理者用ユーザー有効サイト設定 Callable Function
+ * ダウングレード時の有効サイトを管理者が変更
+ */
+export const setUserActiveSites = lazyCallable('./callable/admin/setUserActiveSites.js', 'setUserActiveSitesCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
  * 管理者一覧取得 Callable Function
  * すべての管理者情報を取得
  */
@@ -356,18 +391,6 @@ export const deleteAdmin = lazyCallable('./callable/admin/deleteAdmin.js', 'dele
 export const deleteUser = lazyCallable('./callable/admin/deleteUser.js', 'deleteUserCallable', { memory: '512MiB', timeoutSeconds: 120 });
 
 /**
- * プラン設定取得 Callable Function
- * 現在のプラン設定を取得
- */
-export const getPlanConfig = lazyCallable('./callable/admin/getPlanConfig.js', 'getPlanConfigCallable', { memory: '256MiB', timeoutSeconds: 30 });
-
-/**
- * プラン設定更新 Callable Function
- * プラン設定を更新
- */
-export const updatePlanConfig = lazyCallable('./callable/admin/updatePlanConfig.js', 'updatePlanConfigCallable', { memory: '256MiB', timeoutSeconds: 30 });
-
-/**
  * GA4上位100ページスクレイピング Callable Function（遅延読み込み）
  */
 export const scrapeTop100Pages = onCall({
@@ -391,6 +414,18 @@ export const sendTestReportEmail = lazyCallable('./callable/sendTestReportEmail.
  * 宛先: info@grow-reporter.com
  */
 export const submitImprovementConsultation = lazyCallable('./callable/submitImprovementConsultation.js', 'submitImprovementConsultationCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * プランアップグレードお問い合わせ送信
+ * 宛先: info@grow-reporter.com
+ */
+export const submitUpgradeInquiry = lazyCallable('./callable/submitUpgradeInquiry.js', 'submitUpgradeInquiryCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * 管理者用：全サイト一括AI分析生成
+ * GA4データ取得 → Gemini AI → キャッシュ保存
+ */
+export const batchGenerateAISummaries = lazyCallable('./callable/admin/batchGenerateAISummaries.js', 'batchGenerateAISummariesCallable', { memory: '1GiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY'] });
 
 /**
  * ページスクレイピングデータ定期更新 Scheduled Function
@@ -497,3 +532,37 @@ export const migrateData = lazyCallable('./callable/migrateData.js', 'migrateDat
  * アカウントメンバー一覧取得
  */
 export const getAccountMembers = lazyCallable('./callable/getAccountMembers.js', 'getAccountMembersCallable', { memory: '256MiB', timeoutSeconds: 60 });
+
+/**
+ * ヒートマップ設定取得 HTTP エンドポイント
+ * トラッキングスクリプト（gr-heatmap.js）がサンプリングレートと有効状態を取得
+ */
+export const heatmapConfig = onRequest(
+  { region: 'asia-northeast1', cors: true, memory: '128MiB', timeoutSeconds: 5 },
+  async (req, res) => {
+    const m = await import('./http/heatmapConfig.js');
+    return m.heatmapConfigHandler(req, res);
+  }
+);
+
+/**
+ * ヒートマップデータ収集 HTTP エンドポイント
+ * 外部サイトのトラッキングスクリプトからクリック・スクロールデータを受信
+ */
+export const collectHeatmapData = onRequest(
+  { region: 'asia-northeast1', cors: true, memory: '256MiB', timeoutSeconds: 10 },
+  async (req, res) => {
+    const m = await import('./http/collectHeatmapData.js');
+    return m.collectHeatmapDataHandler(req, res);
+  }
+);
+
+/**
+ * ヒートマップ用フルページスクリーンショット取得
+ * ヒートマップの背景画像としてページ全体をキャプチャ
+ */
+export const captureHeatmapScreenshot = lazyCallable(
+  './callable/captureHeatmapScreenshot.js',
+  'captureHeatmapScreenshotCallable',
+  { memory: '2GiB', timeoutSeconds: 300 }
+);

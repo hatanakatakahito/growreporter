@@ -37,4 +37,5 @@ export const IMPROVEMENT_FOCUS_LABELS = {
   conversion: 'コンバージョン（成果）の向上',
   branding: 'ブランディングの向上',
   usability: 'ユーザービリティの向上',
+  performance: 'パフォーマンスの向上',
 };

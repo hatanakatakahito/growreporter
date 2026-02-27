@@ -1,5 +1,7 @@
 import { X, Info } from 'lucide-react';
+import { useState } from 'react';
 import { usePlan } from '../../hooks/usePlan';
+import UpgradeModal from './UpgradeModal';
 
 /**
  * AI生成回数制限超過時のモーダル
@@ -8,7 +10,8 @@ import { usePlan } from '../../hooks/usePlan';
  * @param {string} props.type - 'summary' または 'improvement'
  */
 export default function PlanLimitModal({ onClose, type = 'summary' }) {
-  const { plan, getUsedByType, getRemainingByType } = usePlan();
+  const { plan, planId, getUsedByType, getRemainingByType } = usePlan();
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const used = getUsedByType(type);
   const limit = type === 'summary' 
     ? plan.features?.aiSummaryMonthly || 0
@@ -89,9 +92,19 @@ export default function PlanLimitModal({ onClose, type = 'summary' }) {
             <p className="mt-1 text-sm text-body-color">{plan.description}</p>
           </div>
 
-          {/* 注記 */}
-          <p className="mt-4 text-xs text-body-color">
-            ※ 現在は手動でFirestoreからプランを変更できます。将来的に有料プランへのアップグレード機能を実装予定です。
+          {/* アップグレード案内 */}
+          {planId === 'free' && (
+            <div className="mt-4">
+              <button
+                onClick={() => setIsUpgradeModalOpen(true)}
+                className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-4 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
+              >
+                有料プランを確認する
+              </button>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-body-color">
+            ※ プラン変更をご希望の場合は、運営までお問い合わせください。
           </p>
         </div>
 
@@ -105,6 +118,12 @@ export default function PlanLimitModal({ onClose, type = 'summary' }) {
           </button>
         </div>
       </div>
+
+      {/* アップグレードモーダル */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+      />
     </div>
   );
 }

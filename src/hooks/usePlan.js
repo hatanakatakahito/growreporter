@@ -11,7 +11,7 @@ import { db } from '../config/firebase';
 export function usePlan() {
   const { currentUser, userProfile } = useAuth();
   const [planId, setPlanId] = useState('free');
-  const [accountUsage, setAccountUsage] = useState({ aiSummaryUsage: 0, aiImprovementUsage: 0 });
+  const [accountUsage, setAccountUsage] = useState({ aiSummaryUsage: 0, aiImprovementUsage: 0, diagnosisUsage: 0, excelExportUsage: 0, pptxExportUsage: 0 });
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const plan = PLANS[planId] || PLANS.free;
 
@@ -48,6 +48,9 @@ export function usePlan() {
             setAccountUsage({
               aiSummaryUsage: ownerData.aiSummaryUsage || 0,
               aiImprovementUsage: ownerData.aiImprovementUsage || 0,
+              diagnosisUsage: ownerData.diagnosisUsage || 0,
+              excelExportUsage: ownerData.excelExportUsage || 0,
+              pptxExportUsage: ownerData.pptxExportUsage || 0,
             });
           } else {
             // オーナーのドキュメントが見つからない場合は自分のプランを使用
@@ -55,6 +58,9 @@ export function usePlan() {
             setAccountUsage({
               aiSummaryUsage: userProfile.aiSummaryUsage || 0,
               aiImprovementUsage: userProfile.aiImprovementUsage || 0,
+              diagnosisUsage: userProfile.diagnosisUsage || 0,
+              excelExportUsage: userProfile.excelExportUsage || 0,
+              pptxExportUsage: userProfile.pptxExportUsage || 0,
             });
           }
           setIsLoadingPlan(false);
@@ -65,6 +71,9 @@ export function usePlan() {
           setAccountUsage({
             aiSummaryUsage: userProfile.aiSummaryUsage || 0,
             aiImprovementUsage: userProfile.aiImprovementUsage || 0,
+            diagnosisUsage: userProfile.diagnosisUsage || 0,
+            excelExportUsage: userProfile.excelExportUsage || 0,
+            pptxExportUsage: userProfile.pptxExportUsage || 0,
           });
           setIsLoadingPlan(false);
         }
@@ -77,6 +86,9 @@ export function usePlan() {
       setAccountUsage({
         aiSummaryUsage: userProfile.aiSummaryUsage || 0,
         aiImprovementUsage: userProfile.aiImprovementUsage || 0,
+        diagnosisUsage: userProfile.diagnosisUsage || 0,
+        excelExportUsage: userProfile.excelExportUsage || 0,
+        pptxExportUsage: userProfile.pptxExportUsage || 0,
       });
       setIsLoadingPlan(false);
     }
@@ -88,16 +100,26 @@ export function usePlan() {
    * @returns {boolean} 生成可能ならtrue
    */
   const checkCanGenerate = (type = 'summary') => {
-    const limit = type === 'summary'
-      ? plan.features?.aiSummaryMonthly || 0
-      : plan.features?.aiImprovementMonthly || 0;
+    const limitMap = {
+      summary: plan.features?.aiSummaryMonthly || 0,
+      improvement: plan.features?.aiImprovementMonthly || 0,
+      diagnosis: plan.features?.diagnosisMonthly || 0,
+      excelExport: plan.features?.excelExportMonthly || 0,
+      pptxExport: plan.features?.pptxExportMonthly || 0,
+    };
+    const limit = limitMap[type] ?? 0;
 
     // 無制限チェック
     if (isUnlimited(limit)) return true;
 
-    const used = type === 'summary'
-      ? accountUsage.aiSummaryUsage
-      : accountUsage.aiImprovementUsage;
+    const usageMap = {
+      summary: accountUsage.aiSummaryUsage,
+      improvement: accountUsage.aiImprovementUsage,
+      diagnosis: accountUsage.diagnosisUsage,
+      excelExport: accountUsage.excelExportUsage,
+      pptxExport: accountUsage.pptxExportUsage,
+    };
+    const used = usageMap[type] ?? 0;
 
     return used < limit;
   };
@@ -108,17 +130,25 @@ export function usePlan() {
    * @returns {number} 残り回数（無制限の場合は-1）
    */
   const getRemainingByType = (type) => {
-    if (type === 'summary') {
-      const limit = plan.features?.aiSummaryMonthly || 0;
-      if (isUnlimited(limit)) return -1;
-      return Math.max(0, limit - accountUsage.aiSummaryUsage);
-    } else if (type === 'improvement') {
-      const limit = plan.features?.aiImprovementMonthly || 0;
-      if (isUnlimited(limit)) return -1;
-      return Math.max(0, limit - accountUsage.aiImprovementUsage);
-    }
+    const limitMap = {
+      summary: plan.features?.aiSummaryMonthly || 0,
+      improvement: plan.features?.aiImprovementMonthly || 0,
+      diagnosis: plan.features?.diagnosisMonthly || 0,
+      excelExport: plan.features?.excelExportMonthly || 0,
+      pptxExport: plan.features?.pptxExportMonthly || 0,
+    };
+    const usageMap = {
+      summary: accountUsage.aiSummaryUsage,
+      improvement: accountUsage.aiImprovementUsage,
+      diagnosis: accountUsage.diagnosisUsage,
+      excelExport: accountUsage.excelExportUsage,
+      pptxExport: accountUsage.pptxExportUsage,
+    };
 
-    return 0;
+    const limit = limitMap[type];
+    if (limit === undefined) return 0;
+    if (isUnlimited(limit)) return -1;
+    return Math.max(0, limit - (usageMap[type] ?? 0));
   };
 
   /**
@@ -127,9 +157,14 @@ export function usePlan() {
    * @returns {number} 使用回数
    */
   const getUsedByType = (type = 'summary') => {
-    return type === 'summary'
-      ? accountUsage.aiSummaryUsage
-      : accountUsage.aiImprovementUsage;
+    const usageMap = {
+      summary: accountUsage.aiSummaryUsage,
+      improvement: accountUsage.aiImprovementUsage,
+      diagnosis: accountUsage.diagnosisUsage,
+      excelExport: accountUsage.excelExportUsage,
+      pptxExport: accountUsage.pptxExportUsage,
+    };
+    return usageMap[type] ?? 0;
   };
 
   /**
@@ -166,6 +201,7 @@ export function usePlan() {
 
   return {
     plan,
+    planId,
     checkCanGenerate,
     getRemainingByType,
     getUsedByType,

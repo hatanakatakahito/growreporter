@@ -46,9 +46,10 @@ export default function LandingPages() {
     setPageTitle('ランディングページ');
   }, []);
 
-  // 初回のみコンバージョン未設定アラートを表示
+  // 初回のみコンバージョン未設定アラートを表示（サイトデータ読込完了後に判定）
   useEffect(() => {
-    const conversionEvents = selectedSite?.conversionEvents || [];
+    if (!selectedSite || !selectedSiteId) return;
+    const conversionEvents = selectedSite.conversionEvents || [];
     if (conversionEvents.length === 0) {
       const hasSeenAlert = sessionStorage.getItem('conversionAlertSeen');
       if (!hasSeenAlert) {
@@ -56,7 +57,7 @@ export default function LandingPages() {
         sessionStorage.setItem('conversionAlertSeen', 'true');
       }
     }
-  }, [selectedSite]);
+  }, [selectedSite, selectedSiteId]);
 
   // ✅ GA4ランディングページ別コンバージョンデータ取得（サイト設定で定義したコンバージョンイベントのみ）
   const {

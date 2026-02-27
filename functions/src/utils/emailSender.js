@@ -171,3 +171,36 @@ ${message ? `\n■ メッセージ：\n${message.trim()}\n` : ''}
     return { success: false, error: error.message };
   }
 }
+
+/**
+ * プランアップグレードお問い合わせメールを送信（SMTP 直接送信・宛先: info@grow-reporter.com）
+ */
+export async function sendUpgradeInquiryEmail({ selectedPlan, companyName = '', userName = '', userEmail = '', message = '' }) {
+  try {
+    const planNames = { standard: 'スタンダードプラン', premium: 'プレミアムプラン' };
+    const planName = planNames[selectedPlan] || selectedPlan;
+    const subject = `【グローレポータ】プランアップグレードのお問い合わせ（${planName}）`;
+    const body = `
+このメールはグローレポータ（https://grow-reporter.com/）の「プランアップグレード」フォームから送信されました。
+
+■ 希望プラン：${planName}
+■ 組織名：${(companyName || '').trim() || '（未入力）'}
+■ 氏名：${(userName || '').trim() || '（未入力）'}
+■ メールアドレス：${(userEmail || '').trim() || '（未入力）'}
+${message ? `\n■ メッセージ：\n${message.trim()}\n` : ''}
+送信日時：${new Date().toLocaleString('ja-JP')}
+`;
+
+    await sendEmailDirect({
+      to: CONSULTATION_TO_EMAIL,
+      subject,
+      text: body,
+      html: body.replace(/\n/g, '<br>'),
+    });
+    logger.info('プランアップグレードお問い合わせメール送信', { selectedPlan, companyName, userName, userEmail });
+    return { success: true };
+  } catch (error) {
+    logger.error('プランアップグレードお問い合わせメール送信エラー', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}

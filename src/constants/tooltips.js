@@ -69,6 +69,27 @@ export const TOOLTIPS = {
   // レポート
   reportPeriod: 'レポート対象期間。',
   reportType: 'レポートの種類（週次、月次、カスタム）。',
+
+  // サイト診断 - 総合スコア
+  siteHealthScore: 'パフォーマンス（30%）・SEO（30%）・コンテンツ品質（20%）・エンゲージメント（20%）の加重平均で算出されるサイト全体の健全度スコア。',
+
+  // サイト診断 - カテゴリスコア
+  diagPerformance: 'PageSpeed Insightsが測定するページの表示速度スコア。モバイルとデスクトップの平均値。90以上で良好。',
+  diagSeo: 'PSIのSEOスコア・メタタグの最適度・Search Consoleの指標を総合したSEO評価。',
+  diagContentQuality: 'スクレイピングデータをもとに、見出し構造・画像alt属性・テキスト量・メタ情報の充実度を評価したスコア。',
+  diagEngagement: 'GA4データから算出。エンゲージメント率（10秒以上滞在または2ページ以上閲覧した訪問の割合）をもとに評価。',
+
+  // サイト診断 - SEO詳細
+  psiSeoMobile: 'PageSpeed Insightsがモバイル端末で測定したSEOスコア。メタタグ・クロール可能性・モバイルフレンドリーなどを評価。',
+  psiSeoDesktop: 'PageSpeed Insightsがデスクトップ端末で測定したSEOスコア。メタタグ・クロール可能性・構造化データなどを評価。',
+
+  // サイト診断 - Core Web Vitals
+  lcp: 'LCP（Largest Contentful Paint）。ページ内で最も大きな画像やテキストが表示されるまでの時間。2.5秒以内が良好。',
+  cls: 'CLS（Cumulative Layout Shift）。ページ読み込み中にレイアウトがどれくらいズレるかの指標。0.1以下が良好。',
+  tbt: 'TBT（Total Blocking Time）。ページ操作がブロックされる合計時間。200ms以内が良好。',
+  fcp: 'FCP（First Contentful Paint）。ページで最初のテキストや画像が表示されるまでの時間。1.8秒以内が良好。',
+  ttfb: 'TTFB（Time to First Byte）。ブラウザがサーバーから最初のデータを受け取るまでの時間。800ms以内が良好。',
+  si: 'SI（Speed Index）。ページの表示内容が目に見える速度を数値化した指標。3.4秒以内が良好。',
 };
 
 /**

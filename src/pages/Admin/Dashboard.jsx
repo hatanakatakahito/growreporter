@@ -4,7 +4,10 @@ import { useAdminStats } from '../../hooks/useAdminStats';
 import StatsCard from '../../components/Admin/StatsCard';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
-import { BarChart3, Sparkles } from 'lucide-react';
+import { BarChart3, Sparkles, Zap } from 'lucide-react';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../config/firebase';
+import toast from 'react-hot-toast';
 
 /**
  * アドミンダッシュボード
@@ -12,9 +15,32 @@ import { BarChart3, Sparkles } from 'lucide-react';
  */
 export default function AdminDashboard() {
   const { stats, loading, error, refetch } = useAdminStats();
+  const [batchRunning, setBatchRunning] = useState(false);
+  const [batchResult, setBatchResult] = useState(null);
+
   useEffect(() => {
     setPageTitle('管理ダッシュボード');
   }, []);
+
+  const handleBatchGenerateAI = async () => {
+    if (batchRunning) return;
+    if (!window.confirm('全サイトのAI分析を一括生成します。\nGA4データの取得とAI分析の生成を行います。\nサイト数によっては数分かかります。\n\n実行しますか？')) return;
+
+    setBatchRunning(true);
+    setBatchResult(null);
+    const toastId = toast.loading('全サイトのAI分析を一括生成中...');
+    try {
+      const batchFn = httpsCallable(functions, 'batchGenerateAISummaries');
+      const result = await batchFn({ pageTypes: ['summary'], skipCached: false });
+      setBatchResult(result.data);
+      toast.success(`一括生成完了: ${result.data.summary.generated}件生成, ${result.data.summary.cached}件キャッシュ済み, ${result.data.summary.errors}件エラー`, { id: toastId, duration: 8000 });
+    } catch (err) {
+      console.error('[AdminDashboard] batchGenerateAI error:', err);
+      toast.error(err?.message || '一括生成に失敗しました', { id: toastId });
+    } finally {
+      setBatchRunning(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -257,6 +283,61 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* AI一括生成 */}
+      <div className="mb-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-dark dark:text-white">
+              AI分析一括生成
+            </h3>
+            <p className="mt-1 text-sm text-body-color dark:text-dark-6">
+              全サイトのGA4データを取得し、サマリーページのAI分析を一括生成します
+            </p>
+          </div>
+          <button
+            onClick={handleBatchGenerateAI}
+            disabled={batchRunning}
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 text-sm font-medium text-white transition hover:from-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Zap className={`h-4 w-4 ${batchRunning ? 'animate-pulse' : ''}`} />
+            {batchRunning ? '生成中...' : '一括生成'}
+          </button>
+        </div>
+
+        {batchResult && (
+          <div className="mt-4 rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
+            <div className="mb-2 grid grid-cols-4 gap-3 text-center text-sm">
+              <div>
+                <div className="text-lg font-bold text-dark dark:text-white">{batchResult.summary.total}</div>
+                <div className="text-xs text-body-color">合計</div>
+              </div>
+              <div>
+                <div className="text-lg font-bold text-green-600">{batchResult.summary.generated}</div>
+                <div className="text-xs text-body-color">生成成功</div>
+              </div>
+              <div>
+                <div className="text-lg font-bold text-blue-600">{batchResult.summary.cached}</div>
+                <div className="text-xs text-body-color">キャッシュ済み</div>
+              </div>
+              <div>
+                <div className="text-lg font-bold text-red-600">{batchResult.summary.errors}</div>
+                <div className="text-xs text-body-color">エラー</div>
+              </div>
+            </div>
+            {batchResult.results?.filter(r => r.status === 'error' || r.status === 'ai_error' || r.status === 'no_data').length > 0 && (
+              <div className="mt-3 space-y-1">
+                <p className="text-xs font-medium text-red-600">エラー詳細:</p>
+                {batchResult.results.filter(r => r.status === 'error' || r.status === 'ai_error' || r.status === 'no_data').map((r, i) => (
+                  <p key={i} className="text-xs text-red-500">
+                    {r.siteName}: {r.error}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ユーザー数推移 */}

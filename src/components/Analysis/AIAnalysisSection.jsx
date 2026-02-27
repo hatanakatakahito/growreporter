@@ -9,6 +9,7 @@ import { functions, db } from '../../config/firebase';
 import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import LoadingSpinner from '../common/LoadingSpinner';
+import UpgradeModal from '../common/UpgradeModal';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { generateAndAddImprovements } from '../../utils/generateAndAddImprovements';
@@ -24,7 +25,7 @@ import AIGenerationModal from '../Improve/AIGenerationModal';
  */
 export default function AIAnalysisSection({ pageType, rawData, metrics, period, onLimitExceeded }) {
   const { selectedSiteId, selectedSite } = useSite();
-  const { checkCanGenerate } = usePlan();
+  const { checkCanGenerate, planId } = usePlan();
   const { user, currentUser } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -42,6 +43,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   const [generationStatus, setGenerationStatus] = useState('loading'); // 'loading' | 'success' | 'error'
   const [generationCount, setGenerationCount] = useState(0);
   const [generationError, setGenerationError] = useState('');
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   // 必要なデータがない場合は早期リターン
   if (!selectedSiteId || !pageType) {
@@ -185,7 +187,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
             <h3 className="text-sm font-medium text-red-800 dark:text-red-200">エラーが発生しました</h3>
             <p className="mt-1 text-sm text-red-700 dark:text-red-300">{error}</p>
             <button
-              onClick={() => loadAnalysis(true)}
+              onClick={() => loadAnalysis(false)}
               className="mt-3 inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700"
             >
               <RefreshCw className="h-4 w-4" />
@@ -217,7 +219,13 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
         </div>
         
         <button
-          onClick={() => loadAnalysis(true)}
+          onClick={() => {
+            if (planId === 'free') {
+              setIsUpgradeModalOpen(true);
+            } else {
+              loadAnalysis(true);
+            }
+          }}
           disabled={isLoading}
           className="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-3 disabled:opacity-50"
         >
@@ -346,6 +354,12 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
           // 改善案のデータを再取得
           queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
         }}
+      />
+
+      {/* アップグレードモーダル */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
       />
     </div>
   );
