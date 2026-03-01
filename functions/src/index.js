@@ -407,7 +407,7 @@ export const scrapeTop100Pages = onCall({
  * テストメール送信 Callable Function（2nd Gen）
  * ※ 既存が 1st Gen の場合は一度 npm run deploy:functions で削除→デプロイすること
  */
-export const sendTestReportEmail = lazyCallable('./callable/sendTestReportEmail.js', 'sendTestReportEmailHandler', { memory: '256MiB', timeoutSeconds: 30 });
+export const sendTestReportEmail = lazyCallable('./callable/sendTestReportEmail.js', 'sendTestReportEmailHandler', { memory: '256MiB', timeoutSeconds: 60 });
 
 /**
  * サイト改善相談フォーム送信 Callable Function

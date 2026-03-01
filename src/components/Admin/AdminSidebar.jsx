@@ -45,7 +45,7 @@ export default function AdminSidebar() {
     {
       icon: Mail,
       label: 'メール通知設定',
-      path: '/admin/settings/notifications',
+      path: '/admin/mail',
     },
     {
       icon: Settings,

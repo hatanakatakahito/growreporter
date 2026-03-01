@@ -38,22 +38,27 @@ export function SiteProvider({ children }) {
   const [activeSiteIds, setActiveSiteIds] = useState(null);
   const [dateRange, setDateRange] = useState(() => {
     try {
-      // LocalStorageから復元
       const saved = localStorage.getItem('dateRange');
       if (saved) {
         const parsed = JSON.parse(saved);
-        // 形式チェック
         if (parsed && typeof parsed === 'object' && parsed.from && parsed.to) {
+          // 月が変わったらデフォルト（前月）にリセット
+          const savedMonth = localStorage.getItem('dateRange_month');
+          const currentMonth = format(new Date(), 'yyyy-MM');
+          if (savedMonth && savedMonth !== currentMonth) {
+            localStorage.removeItem('dateRange');
+            localStorage.removeItem('dateRange_month');
+            return getDefaultDateRange();
+          }
           return parsed;
         }
       }
     } catch (error) {
       console.error('[SiteContext] dateRange復元エラー:', error);
-      // エラー時は古いデータを削除
       localStorage.removeItem('dateRange');
       localStorage.removeItem('dateRange_v1');
+      localStorage.removeItem('dateRange_month');
     }
-    // デフォルト値を返す
     return getDefaultDateRange();
   });
 
@@ -261,10 +266,11 @@ export function SiteProvider({ children }) {
     return () => unsubscribe();
   }, [selectedSiteId]);
 
-  // 日付範囲をLocalStorageに保存
+  // 日付範囲をLocalStorageに保存（月情報も一緒に保存）
   useEffect(() => {
     try {
       localStorage.setItem('dateRange', JSON.stringify(dateRange));
+      localStorage.setItem('dateRange_month', format(new Date(), 'yyyy-MM'));
     } catch (error) {
       console.error('[SiteContext] dateRange保存エラー:', error);
     }

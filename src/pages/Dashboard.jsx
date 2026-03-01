@@ -8,16 +8,14 @@ import { useGA4MonthlyData } from '../hooks/useGA4MonthlyData';
 import { useGA4Data } from '../hooks/useGA4Data';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import AlertCards from '../components/Dashboard/AlertCards';
-import MetricCards from '../components/Dashboard/MetricCards';
+import MetricTabSection from '../components/Analysis/MetricTabSection';
 import TrendChart from '../components/Dashboard/TrendChart';
-import KPIProgress from '../components/Dashboard/KPIProgress';
-import ConversionBreakdown from '../components/Dashboard/ConversionBreakdown';
 import ImprovementSummary from '../components/Dashboard/ImprovementSummary';
 import QuickActions from '../components/Dashboard/QuickActions';
 import { setPageTitle } from '../utils/pageTitle';
 import { SCREENSHOT_PC_DISPLAY, SCREENSHOT_MOBILE_DISPLAY } from '../constants/screenshotDisplay';
 import { Globe } from 'lucide-react';
-import { format, subDays, subMonths, startOfMonth } from 'date-fns';
+import { format, sub, subDays, subMonths, startOfMonth } from 'date-fns';
 
 /**
  * ダッシュボード画面
@@ -50,6 +48,18 @@ export default function Dashboard() {
   // 前期間のデータ
   const { data: previousData } = useSiteMetrics(
     selectedSiteId, previousRange.from, previousRange.to, hasGSCConnection
+  );
+
+  // 前年同月の日付範囲計算
+  const yearAgoRange = useMemo(() => {
+    const from = dateRange.from ? sub(new Date(dateRange.from), { years: 1 }) : sub(new Date(), { years: 1 });
+    const to = dateRange.to ? sub(new Date(dateRange.to), { years: 1 }) : sub(new Date(), { years: 1 });
+    return { from: format(from, 'yyyy-MM-dd'), to: format(to, 'yyyy-MM-dd') };
+  }, [dateRange]);
+
+  // 前年同月のデータ
+  const { data: yearAgoData } = useSiteMetrics(
+    selectedSiteId, yearAgoRange.from, yearAgoRange.to, hasGSCConnection
   );
 
   // 月次トレンド（13ヶ月）
@@ -184,19 +194,24 @@ export default function Dashboard() {
             <h2 className="text-2xl font-bold text-dark dark:text-white">ダッシュボード</h2>
           </div>
 
-          <div className="space-y-6">
-            {/* セクション1: アラート通知 */}
+          <div className="space-y-8">
+            {/* クイックアクション */}
+            <QuickActions />
+
+            {/* アラート通知 */}
             <AlertCards siteId={selectedSiteId} />
 
-            {/* セクション2: 主要指標サマリー */}
-            <MetricCards
-              currentMetrics={currentData?.metrics}
-              previousMetrics={previousData?.metrics}
+            {/* 主要指標（3タブ：サマリ / CV内訳 / KPI予実） */}
+            <MetricTabSection
+              data={currentData}
+              previousMonthData={previousData}
+              yearAgoData={yearAgoData}
               isLoading={isLoading}
-              hasGSCConnection={hasGSCConnection}
+              selectedSite={selectedSite}
+              selectedSiteId={selectedSiteId}
             />
 
-            {/* セクション3: トレンドチャート */}
+            {/* トレンドチャート */}
             <TrendChart
               monthlyData={monthlyData}
               dailyData={dailyData}
@@ -205,26 +220,8 @@ export default function Dashboard() {
               isDailyLoading={isDailyLoading}
             />
 
-            {/* セクション4+5: KPI達成状況 & コンバージョン内訳 */}
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <KPIProgress
-                kpiSettings={selectedSite?.kpiSettings}
-                metricsData={currentData?.metrics}
-                conversionsData={currentData?.conversions}
-                isLoading={isLoading}
-              />
-              <ConversionBreakdown
-                conversionEvents={selectedSite?.conversionEvents}
-                conversionsData={currentData?.conversions}
-                isLoading={isLoading}
-              />
-            </div>
-
-            {/* セクション6: 改善タスク進捗 */}
+            {/* 改善タスク進捗 */}
             <ImprovementSummary siteId={selectedSiteId} />
-
-            {/* セクション7: クイックアクション */}
-            <QuickActions />
           </div>
         </div>
       </main>

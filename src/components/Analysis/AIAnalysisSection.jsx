@@ -99,8 +99,8 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
         pageType,
         rawData: rawData || null,
         metrics: metrics || null,
-        startDate: period?.startDate || new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-        endDate: period?.endDate || new Date(),
+        startDate: period?.startDate || new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
+        endDate: period?.endDate || new Date(new Date().getFullYear(), new Date().getMonth(), 0),
         forceRegenerate,
       });
 
