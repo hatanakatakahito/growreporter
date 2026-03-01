@@ -538,8 +538,8 @@ export default function Heatmap() {
                       sectionClicks: pageData?.sectionClicks || {},
                     }}
                     period={{
-                      startDate: dateRange?.from || new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-                      endDate: dateRange?.to || new Date(),
+                      startDate: dateRange?.from || new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
+                      endDate: dateRange?.to || new Date(new Date().getFullYear(), new Date().getMonth(), 0),
                     }}
                     onLimitExceeded={() => setIsLimitModalOpen(true)}
                   />

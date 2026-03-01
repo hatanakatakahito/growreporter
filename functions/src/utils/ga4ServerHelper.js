@@ -84,9 +84,19 @@ async function getGA4MetricsForSite(db, siteId, startDate, endDate) {
   const engagementRate = parseFloat(row[4]?.value || 0);
 
   let totalConversions = 0;
+  const conversionDetails = [];
   if (results.length > 1 && results[1].status === 'fulfilled' && results[1].value?.data?.rows) {
+    const convEvents = siteData.conversionEvents || [];
     results[1].value.data.rows.forEach((r) => {
-      totalConversions += parseInt(r.metricValues[0]?.value || 0);
+      const eventName = r.dimensionValues?.[0]?.value || '';
+      const count = parseInt(r.metricValues[0]?.value || 0);
+      totalConversions += count;
+      const eventConfig = convEvents.find((e) => e.eventName === eventName);
+      conversionDetails.push({
+        eventName,
+        displayName: eventConfig?.displayName || eventName,
+        count,
+      });
     });
   }
   const conversionRate = sessions > 0 ? totalConversions / sessions : 0;
@@ -106,6 +116,7 @@ async function getGA4MetricsForSite(db, siteId, startDate, endDate) {
     totalConversions,
     conversionRate: conversionRate * 100,
     bounceRate,
+    conversionDetails,
   };
 }
 

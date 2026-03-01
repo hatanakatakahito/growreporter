@@ -11,12 +11,20 @@ import { ja } from 'date-fns/locale';
  * @returns {Object} { subject, html, text }
  */
 export function generateEmailTemplate(reportType, siteData, dateRange) {
-  const { siteName, siteUrl, metrics, previousMetrics } = siteData;
+  const { siteName, siteUrl, siteId, metrics, previousMetrics } = siteData;
+  const conversionDetails = siteData.conversionDetails || [];
+  const previousConversionDetails = siteData.previousConversionDetails || [];
+  const kpiSettings = siteData.kpiSettings || null;
+
   const displaySiteName = (siteName != null && siteName !== '') ? String(siteName) : '（サイト名なし）';
   const displaySiteUrl = (siteUrl != null && siteUrl !== '') ? String(siteUrl) : '';
   const isWeekly = reportType === 'weekly';
   const reportTitle = isWeekly ? '週次レポート' : '月次レポート';
   const periodLabel = isWeekly ? '先週' : '先月';
+  const prevPeriodLabel = isWeekly ? '週' : '月';
+
+  const appBaseUrl = 'https://grow-reporter.com';
+  const dashboardUrl = siteId ? `${appBaseUrl}/dashboard?siteId=${siteId}` : `${appBaseUrl}/dashboard`;
 
   // 増減率を計算
   const calculateChange = (current, previous) => {
@@ -24,23 +32,99 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
     return ((current - previous) / previous) * 100;
   };
 
-  // 増減表示用のHTML
-  const renderChange = (current, previous, metricName) => {
+  // 数値フォーマット
+  const fmt = (v, decimals = 0) => {
+    if (v == null || isNaN(v)) return '0';
+    return decimals > 0 ? Number(v).toFixed(decimals) : Number(v).toLocaleString();
+  };
+
+  // 増減表示用のHTML行
+  const renderRow = (current, previous, metricName, decimals = 0, suffix = '') => {
     const change = calculateChange(current, previous);
     const isPositive = change >= 0;
     const color = isPositive ? '#10b981' : '#ef4444';
     const arrow = isPositive ? '▲' : '▼';
-    
+
     return `
       <tr>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">${metricName}</td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600;">
-          ${current.toLocaleString()}
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px;">${metricName}</td>
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; font-size: 14px;">
+          ${fmt(current, decimals)}${suffix}
         </td>
-        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; color: ${color}; font-weight: 600;">
+        <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; color: ${color}; font-weight: 600; font-size: 14px;">
           ${arrow} ${Math.abs(change).toFixed(1)}%
         </td>
       </tr>
+    `;
+  };
+
+  // CV内訳行を生成
+  const renderConversionRows = () => {
+    if (conversionDetails.length === 0) return '';
+    return conversionDetails.map((cv) => {
+      const prevCv = previousConversionDetails.find((p) => p.eventName === cv.eventName);
+      const prevCount = prevCv ? prevCv.count : 0;
+      return renderRow(cv.count, prevCount, `　└ ${cv.displayName || cv.eventName}`);
+    }).join('');
+  };
+
+  // KPIセクションHTML（月次レポートのみ）
+  const renderKpiSection = () => {
+    if (!kpiSettings || !kpiSettings.kpiList || kpiSettings.kpiList.length === 0) return '';
+    const activeKpis = kpiSettings.kpiList.filter((k) => k.isActive);
+    if (activeKpis.length === 0) return '';
+
+    // KPIメトリクスの実績値をマッピング
+    const getActualValue = (kpi) => {
+      const key = kpi.metric;
+      if (key === 'sessions' || key === 'target_sessions') return metrics.sessions;
+      if (key === 'users' || key === 'target_users') return metrics.users;
+      if (key === 'pageviews') return metrics.pageviews;
+      if (key === 'engagement_rate') return metrics.engagementRate;
+      if (key === 'target_conversions') return metrics.conversions;
+      if (key === 'target_conversion_rate') return metrics.conversionRate;
+      if (kpi.isConversion && kpi.eventName) {
+        const cv = conversionDetails.find((c) => c.eventName === kpi.eventName);
+        return cv ? cv.count : 0;
+      }
+      return 0;
+    };
+
+    const rows = activeKpis.map((kpi) => {
+      const actual = getActualValue(kpi);
+      const target = kpi.target || 0;
+      const progress = target > 0 ? Math.min((actual / target) * 100, 100) : 0;
+      const progressColor = progress >= 100 ? '#10b981' : progress >= 70 ? '#f59e0b' : '#ef4444';
+
+      return `
+        <tr>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 13px;">${kpi.label}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 13px; font-weight: 600;">${fmt(actual)}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 13px;">${fmt(target)}</td>
+          <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 13px; font-weight: 600; color: ${progressColor};">${progress.toFixed(0)}%</td>
+        </tr>
+      `;
+    }).join('');
+
+    return `
+          <tr>
+            <td style="padding: 0 30px 30px 30px;">
+              <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 16px; font-weight: 700;">KPI達成状況</h3>
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                <thead>
+                  <tr style="background-color: #f9fafb;">
+                    <th style="padding: 10px 12px; text-align: left; font-size: 13px; color: #6b7280;">KPI</th>
+                    <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #6b7280;">実績</th>
+                    <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #6b7280;">目標</th>
+                    <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #6b7280;">達成率</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${rows}
+                </tbody>
+              </table>
+            </td>
+          </tr>
     `;
   };
 
@@ -61,31 +145,23 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
     <tr>
       <td align="center">
         <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
-          
+
           <!-- ヘッダー -->
           <tr>
             <td style="background-color: #3758F9; padding: 30px; text-align: center;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">
-                グローレポータ
-              </h1>
-              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">
-                ${reportTitle}
-              </p>
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">グローレポータ</h1>
+              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">${reportTitle}</p>
             </td>
           </tr>
 
           <!-- サイト情報 -->
           <tr>
             <td style="padding: 30px;">
-              <h2 style="margin: 0 0 5px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
-                ${displaySiteName}
-              </h2>
+              <h2 style="margin: 0 0 5px 0; color: #1f2937; font-size: 20px; font-weight: 700;">${displaySiteName}</h2>
               <p style="margin: 0; color: #6b7280; font-size: 14px;">
                 ${displaySiteUrl ? `<a href="${displaySiteUrl}" style="color: #3758F9; text-decoration: none;">${displaySiteUrl}</a>` : '（URLなし）'}
               </p>
-              <p style="margin: 15px 0 0 0; color: #6b7280; font-size: 14px;">
-                📊 対象期間: ${dateRange.startDate} 〜 ${dateRange.endDate}
-              </p>
+              <p style="margin: 15px 0 0 0; color: #6b7280; font-size: 14px;">対象期間: ${dateRange.startDate} 〜 ${dateRange.endDate}</p>
             </td>
           </tr>
 
@@ -97,42 +173,38 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
                   <tr style="background-color: #f9fafb;">
                     <th style="padding: 12px; text-align: left; font-size: 14px; color: #6b7280; font-weight: 600;">指標</th>
                     <th style="padding: 12px; text-align: right; font-size: 14px; color: #6b7280; font-weight: 600;">${periodLabel}</th>
-                    <th style="padding: 12px; text-align: right; font-size: 14px; color: #6b7280; font-weight: 600;">前${isWeekly ? '週' : '月'}比</th>
+                    <th style="padding: 12px; text-align: right; font-size: 14px; color: #6b7280; font-weight: 600;">前${prevPeriodLabel}比</th>
                   </tr>
                 </thead>
                 <tbody>
-                  ${renderChange(metrics.sessions, previousMetrics.sessions, '訪問者数')}
-                  ${renderChange(metrics.users, previousMetrics.users, 'ユーザー数')}
-                  ${renderChange(metrics.pageviews, previousMetrics.pageviews, '表示回数')}
-                  ${renderChange(metrics.averagePageviews, previousMetrics.averagePageviews, '平均PV')}
-                  ${renderChange(metrics.engagementRate, previousMetrics.engagementRate, 'ENG率（%）')}
-                  ${renderChange(metrics.conversions, previousMetrics.conversions, 'CV数')}
-                  ${renderChange(metrics.conversionRate, previousMetrics.conversionRate, 'CVR（%）')}
-                  ${renderChange(metrics.bounceRate, previousMetrics.bounceRate, '直帰率（%）')}
+                  ${renderRow(metrics.sessions, previousMetrics.sessions, '訪問者数')}
+                  ${renderRow(metrics.users, previousMetrics.users, 'ユーザー数')}
+                  ${renderRow(metrics.pageviews, previousMetrics.pageviews, '表示回数')}
+                  ${renderRow(metrics.averagePageviews, previousMetrics.averagePageviews, '平均PV', 2)}
+                  ${renderRow(metrics.engagementRate, previousMetrics.engagementRate, 'ENG率', 1, '%')}
+                  ${renderRow(metrics.conversions, previousMetrics.conversions, 'CV数')}
+                  ${renderConversionRows()}
+                  ${renderRow(metrics.conversionRate, previousMetrics.conversionRate, 'CVR', 3, '%')}
+                  ${renderRow(metrics.bounceRate, previousMetrics.bounceRate, '直帰率', 1, '%')}
                 </tbody>
               </table>
             </td>
           </tr>
 
+          ${renderKpiSection()}
+
           <!-- アクションボタン -->
           <tr>
             <td style="padding: 0 30px 30px 30px; text-align: center;">
-              <a href="https://grow-reporter.com/dashboard" 
-                 style="display: inline-block; background-color: #3758F9; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(55, 88, 249, 0.3);">
-                詳細を確認する
-              </a>
+              <a href="${dashboardUrl}" style="display: inline-block; background-color: #3758F9; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(55, 88, 249, 0.3);">詳細を確認する</a>
             </td>
           </tr>
 
           <!-- フッター -->
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 12px;">
-                このメールは グローレポータ から自動送信されています
-              </p>
-              <p style="margin: 0; color: #9ca3af; font-size: 11px;">
-                メール通知の設定は<a href="https://grow-reporter.com/account/settings" style="color: #3758F9; text-decoration: none;">アカウント設定</a>から変更できます
-              </p>
+              <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 12px;">このメールは グローレポータ から自動送信されています</p>
+              <p style="margin: 0; color: #9ca3af; font-size: 11px;">メール通知の設定は<a href="${appBaseUrl}/account/settings" style="color: #3758F9; text-decoration: none;">アカウント設定</a>から変更できます</p>
             </td>
           </tr>
 
@@ -144,7 +216,39 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
 </html>
   `;
 
-  // テキスト版（HTMLメールが表示できない環境用）
+  // CV内訳テキスト
+  const cvDetailText = conversionDetails.length > 0
+    ? conversionDetails.map((cv) => {
+        const prevCv = previousConversionDetails.find((p) => p.eventName === cv.eventName);
+        const prevCount = prevCv ? prevCv.count : 0;
+        return `  └ ${cv.displayName || cv.eventName}: ${fmt(cv.count)} (前${prevPeriodLabel}比 ${calculateChange(cv.count, prevCount).toFixed(1)}%)`;
+      }).join('\n')
+    : '';
+
+  // KPIテキスト
+  const kpiText = (() => {
+    if (!kpiSettings?.kpiList?.length) return '';
+    const lines = kpiSettings.kpiList.filter((k) => k.isActive).map((kpi) => {
+      const key = kpi.metric;
+      let actual = 0;
+      if (key === 'sessions' || key === 'target_sessions') actual = metrics.sessions;
+      else if (key === 'users' || key === 'target_users') actual = metrics.users;
+      else if (key === 'pageviews') actual = metrics.pageviews;
+      else if (key === 'engagement_rate') actual = metrics.engagementRate;
+      else if (key === 'target_conversions') actual = metrics.conversions;
+      else if (key === 'target_conversion_rate') actual = metrics.conversionRate;
+      else if (kpi.isConversion && kpi.eventName) {
+        const cv = conversionDetails.find((c) => c.eventName === kpi.eventName);
+        actual = cv ? cv.count : 0;
+      }
+      const target = kpi.target || 0;
+      const progress = target > 0 ? Math.min((actual / target) * 100, 100) : 0;
+      return `- ${kpi.label}: ${fmt(actual)} / ${fmt(target)}（${progress.toFixed(0)}%）`;
+    });
+    return lines.length ? `\n■KPI達成状況\n${lines.join('\n')}` : '';
+  })();
+
+  // テキスト版
   const text = `
 ${reportTitle} - ${displaySiteName}
 
@@ -152,20 +256,21 @@ ${reportTitle} - ${displaySiteName}
 サイトURL: ${displaySiteUrl || '（URLなし）'}
 
 ■主要指標
-- 訪問者数: ${metrics.sessions.toLocaleString()} (前${isWeekly ? '週' : '月'}比 ${calculateChange(metrics.sessions, previousMetrics.sessions).toFixed(1)}%)
-- ユーザー数: ${metrics.users.toLocaleString()} (前${isWeekly ? '週' : '月'}比 ${calculateChange(metrics.users, previousMetrics.users).toFixed(1)}%)
-- 表示回数: ${metrics.pageviews.toLocaleString()} (前${isWeekly ? '週' : '月'}比 ${calculateChange(metrics.pageviews, previousMetrics.pageviews).toFixed(1)}%)
-- 平均PV: ${metrics.averagePageviews.toFixed(2)} (前${isWeekly ? '週' : '月'}比 ${calculateChange(metrics.averagePageviews, previousMetrics.averagePageviews).toFixed(1)}%)
-- ENG率: ${metrics.engagementRate.toFixed(1)}% (前${isWeekly ? '週' : '月'}比 ${calculateChange(metrics.engagementRate, previousMetrics.engagementRate).toFixed(1)}%)
-- CV数: ${metrics.conversions.toLocaleString()} (前${isWeekly ? '週' : '月'}比 ${calculateChange(metrics.conversions, previousMetrics.conversions).toFixed(1)}%)
-- CVR: ${metrics.conversionRate.toFixed(2)}% (前${isWeekly ? '週' : '月'}比 ${calculateChange(metrics.conversionRate, previousMetrics.conversionRate).toFixed(1)}%)
-- 直帰率: ${metrics.bounceRate.toFixed(1)}% (前${isWeekly ? '週' : '月'}比 ${calculateChange(metrics.bounceRate, previousMetrics.bounceRate).toFixed(1)}%)
+- 訪問者数: ${fmt(metrics.sessions)} (前${prevPeriodLabel}比 ${calculateChange(metrics.sessions, previousMetrics.sessions).toFixed(1)}%)
+- ユーザー数: ${fmt(metrics.users)} (前${prevPeriodLabel}比 ${calculateChange(metrics.users, previousMetrics.users).toFixed(1)}%)
+- 表示回数: ${fmt(metrics.pageviews)} (前${prevPeriodLabel}比 ${calculateChange(metrics.pageviews, previousMetrics.pageviews).toFixed(1)}%)
+- 平均PV: ${fmt(metrics.averagePageviews, 2)} (前${prevPeriodLabel}比 ${calculateChange(metrics.averagePageviews, previousMetrics.averagePageviews).toFixed(1)}%)
+- ENG率: ${fmt(metrics.engagementRate, 1)}% (前${prevPeriodLabel}比 ${calculateChange(metrics.engagementRate, previousMetrics.engagementRate).toFixed(1)}%)
+- CV数: ${fmt(metrics.conversions)} (前${prevPeriodLabel}比 ${calculateChange(metrics.conversions, previousMetrics.conversions).toFixed(1)}%)
+${cvDetailText ? cvDetailText + '\n' : ''}- CVR: ${fmt(metrics.conversionRate, 3)}% (前${prevPeriodLabel}比 ${calculateChange(metrics.conversionRate, previousMetrics.conversionRate).toFixed(1)}%)
+- 直帰率: ${fmt(metrics.bounceRate, 1)}% (前${prevPeriodLabel}比 ${calculateChange(metrics.bounceRate, previousMetrics.bounceRate).toFixed(1)}%)
+${kpiText}
 
-詳細はこちら: https://grow-reporter.com/dashboard
+詳細はこちら: ${dashboardUrl}
 
 ---
 このメールは グローレポータ から自動送信されています。
-メール通知の設定変更: https://grow-reporter.com/account/settings
+メール通知の設定変更: ${appBaseUrl}/account/settings
   `.trim();
 
   return { subject, html, text };

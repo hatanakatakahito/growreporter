@@ -221,7 +221,7 @@ function App() {
               <Route path="plans" element={<PlanList />} />
               <Route path="logs" element={<ActivityLogs />} />
               <Route path="settings" element={<AdminSettings />} />
-              <Route path="settings/notifications" element={<EmailNotifications />} />
+              <Route path="mail" element={<EmailNotifications />} />
             </Route>
 
                 </Routes>
