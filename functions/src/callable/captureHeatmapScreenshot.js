@@ -15,10 +15,10 @@ const HEATMAP_VIEWPORT = {
   mobile: { width: 375, height: 800, isMobile: true, hasTouch: true, deviceScaleFactor: 1 },
 };
 
-const NAV_TIMEOUT_MS = 30000;
-const IMAGE_LOAD_TIMEOUT_MS = 8000;
-const POST_RENDER_DELAY_MS = 2000;
-const IMAGE_SINGLE_TIMEOUT_MS = 3000;
+const NAV_TIMEOUT_MS = 20000;
+const IMAGE_LOAD_TIMEOUT_MS = 4000;
+const POST_RENDER_DELAY_MS = 800;
+const IMAGE_SINGLE_TIMEOUT_MS = 1500;
 
 /**
  * ページ URL → ドキュメント ID を生成（collectHeatmapData と同じロジック）
@@ -133,7 +133,6 @@ export async function captureHeatmapScreenshotCallable(request) {
       document.head?.appendChild(style) || setTimeout(() => document.head.appendChild(style), 0);
 
       // IntersectionObserver を即時「表示済み」で発火させる（遅延読み込み画像対応）
-      const OriginalIO = window.IntersectionObserver;
       window.IntersectionObserver = class {
         constructor(callback, options) {
           this._callback = callback;
@@ -158,7 +157,7 @@ export async function captureHeatmapScreenshotCallable(request) {
       };
     });
 
-    // 不要リソースブロック（フォントは日本語表示に必要なので許可）
+    // 不要リソースブロック（フォント・メディア・トラッキング系をブロック）
     await page.setRequestInterception(true);
     page.on('request', (request) => {
       const resourceType = request.resourceType();
@@ -167,6 +166,7 @@ export async function captureHeatmapScreenshotCallable(request) {
         resourceType === 'media' ||
         resourceType === 'websocket' ||
         resourceType === 'manifest' ||
+        resourceType === 'font' ||
         url.includes('google-analytics') ||
         url.includes('googletagmanager') ||
         url.includes('facebook.com') ||
@@ -176,7 +176,9 @@ export async function captureHeatmapScreenshotCallable(request) {
         url.includes('hotjar') ||
         url.includes('clarity.ms') ||
         url.includes('criteo') ||
-        url.includes('adservice')
+        url.includes('adservice') ||
+        url.includes('fonts.googleapis.com') ||
+        url.includes('fonts.gstatic.com')
       ) {
         request.abort();
       } else {
@@ -188,24 +190,20 @@ export async function captureHeatmapScreenshotCallable(request) {
 
     try {
       await page.goto(fullUrl, {
-        waitUntil: 'networkidle2',
+        waitUntil: 'domcontentloaded',
         timeout: NAV_TIMEOUT_MS,
       });
     } catch (navErr) {
-      // networkidle2 タイムアウトでも DOM は読み込み済みなので続行
       if (navErr?.name === 'TimeoutError' || navErr?.message?.includes('timeout')) {
-        console.log(`[captureHeatmapScreenshot] Navigation timeout (networkidle2), continuing with loaded content...`);
+        console.log(`[captureHeatmapScreenshot] Navigation timeout, continuing with loaded content...`);
       } else {
         throw navErr;
       }
     }
 
-    // 日本語フォント注入（ページ読み込み後に確実に適用）
+    // system-uiフォールバックで日本語表示（外部フォント読み込み不要）
     await page.addStyleTag({
-      url: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap',
-    });
-    await page.addStyleTag({
-      content: 'body, html { font-family: "Noto Sans JP", sans-serif !important; }',
+      content: 'body, html { font-family: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic", "Meiryo", system-ui, sans-serif !important; }',
     });
 
     // loading="lazy" を eager に書き換えて即時読み込み
@@ -235,13 +233,13 @@ export async function captureHeatmapScreenshotCallable(request) {
       });
     }, IMAGE_LOAD_TIMEOUT_MS, IMAGE_SINGLE_TIMEOUT_MS);
 
-    // 遅延読み込み画像をトリガーするため、ページ全体をスクロール
+    // 遅延読み込み画像をトリガーするため、ページ全体をスクロール（高速化）
     await page.evaluate(async () => {
       const totalHeight = document.documentElement.scrollHeight;
       const step = window.innerHeight;
       for (let y = 0; y < totalHeight; y += step) {
         window.scrollTo(0, y);
-        await new Promise(r => setTimeout(r, 100));
+        await new Promise(r => setTimeout(r, 50));
       }
       window.scrollTo(0, 0);
     });

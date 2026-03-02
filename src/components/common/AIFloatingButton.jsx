@@ -48,24 +48,9 @@ export default function AIFloatingButton({ pageType, onScrollToAI }) {
 
   return (
     <div className="fixed bottom-6 right-6 z-30">
-      <style>
-        {`
-          @keyframes pulse-scale {
-            0%, 100% {
-              transform: scale(1);
-            }
-            50% {
-              transform: scale(1.1);
-            }
-          }
-          .animate {
-            animation: pulse-scale 0.6s ease-in-out;
-          }
-        `}
-      </style>
       <button
         onClick={handleClick}
-        className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl ${shouldAnimate ? 'animate' : ''}`}
+        className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl ${shouldAnimate ? 'animate-bounce-once' : ''}`}
         aria-label="AI分析を見る"
       >
         <div className="flex flex-col items-center">
