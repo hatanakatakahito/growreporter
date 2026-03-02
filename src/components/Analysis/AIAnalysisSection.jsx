@@ -127,11 +127,13 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
 
   useEffect(() => {
     // 必要なデータが揃っている場合のみ実行
+    // rawData/metricsはオブジェクト参照が毎回変わるためdepsに含めない
+    // （再分析は手動の forceRegenerate で行う）
     if (selectedSiteId && pageType && (rawData || metrics)) {
       loadAnalysis(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSiteId, pageType, rawData, metrics]);
+  }, [selectedSiteId, pageType]);
 
   // タスク追加
   const addTaskMutation = useMutation({
