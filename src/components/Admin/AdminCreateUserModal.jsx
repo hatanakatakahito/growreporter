@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
-import { getPlanDisplayName, getPlanInfo, getPlanBadgeColor } from '../../constants/plans';
+import { getPlanDisplayName, getPlanInfo, getPlanBadgeColor, isUnlimited } from '../../constants/plans';
 import { X, AlertCircle, CheckCircle, Globe } from 'lucide-react';
 
 /**
@@ -343,8 +343,8 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
                     </p>
                     <ul className="space-y-1 text-xs text-body-color dark:text-dark-6">
                       <li>サイト: {planInfo.features.maxSites}個</li>
-                      <li>AI分析: {planInfo.features.aiSummaryMonthly}/月</li>
-                      <li>AI改善: {planInfo.features.aiImprovementMonthly}/月</li>
+                      <li>AI分析: {isUnlimited(planInfo.features.aiSummaryMonthly) ? '無制限' : `${planInfo.features.aiSummaryMonthly}回/月`}</li>
+                      <li>AI改善: {isUnlimited(planInfo.features.aiImprovementMonthly) ? '無制限' : `${planInfo.features.aiImprovementMonthly}回/月`}</li>
                     </ul>
                   </button>
                 );
