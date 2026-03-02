@@ -181,6 +181,45 @@ function toCellValue(value, defaultStr = 'その他') {
   return typeof value === 'string' ? value : String(value);
 }
 
+// サイト種別の value → 日本語ラベル マッピング
+const SITE_TYPE_LABELS = {
+  corporate: 'コーポレートサイト',
+  service: 'サービスサイト',
+  product: '製品サイト',
+  recruit: '採用サイト',
+  ir: 'IRサイト',
+  lp: 'LPサイト',
+  ec: 'ECサイト',
+  owned_media: 'オウンドメディアサイト',
+  intranet: '社内ポータルサイト',
+  global: 'グローバルサイト',
+  business_system: '業務系システムサイト',
+  member: '会員サイト',
+  other: 'その他',
+};
+
+// サイトの目的の value → 日本語ラベル マッピング
+const SITE_PURPOSE_LABELS = {
+  branding: '認知・ブランディング',
+  lead: 'リード・問い合わせ獲得',
+  sales: '販売',
+  recruit: '採用',
+  media: '情報発信',
+  ir: '投資家向け（IR）',
+  internal: '社内・業務利用',
+  member: '会員獲得',
+  other: 'その他',
+};
+
+/**
+ * value コード配列を日本語ラベル配列に変換してセル値にする
+ */
+function toLabeledCellValue(values, labelMap, defaultStr = 'その他') {
+  if (!Array.isArray(values) || values.length === 0) return defaultStr;
+  const labels = values.map(v => labelMap[v] || v);
+  return labels.join(', ');
+}
+
 export function createRowData(siteInfo, monthlyData) {
   const {
     siteName,
@@ -211,8 +250,8 @@ export function createRowData(siteInfo, monthlyData) {
     toCellValue(siteName, ''),      // B: サイト名
     toCellValue(siteUrl, ''),      // C: URL
     toCellValue(industry),         // D: 業界・業種（配列の場合は結合）
-    toCellValue(siteType),         // E: サイト種別
-    toCellValue(sitePurpose),      // F: サイトの目的
+    toLabeledCellValue(siteType, SITE_TYPE_LABELS),     // E: サイト種別
+    toLabeledCellValue(sitePurpose, SITE_PURPOSE_LABELS), // F: サイトの目的
     yearMonth,                // G: 対象年月
     sessions,                 // H: 訪問者数
     newUsers,                 // I: 新規ユーザー

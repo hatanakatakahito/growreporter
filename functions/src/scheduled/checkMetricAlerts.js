@@ -6,7 +6,7 @@ import { generateAlertEmailTemplate } from '../utils/emailTemplates.js';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { generateAlertHypotheses } from '../utils/alertHypotheses.js';
 
-const ALERT_THRESHOLD_PERCENT = 30;
+const ALERT_THRESHOLD_PERCENT = 40;
 const METRIC_KEYS = [
   'sessions',
   'totalUsers',

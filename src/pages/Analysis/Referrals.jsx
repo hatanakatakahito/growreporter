@@ -43,6 +43,16 @@ export default function Referrals() {
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  // AI分析タブへスクロールする関数
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -419,14 +429,36 @@ export default function Referrals() {
             </>
           )}
 
-        {/* メモセクション */}
+        {/* メモ & AI分析タブ */}
         {selectedSiteId && currentUser && (
           <div className="mt-6">
-            <PageNoteSection
-              userId={currentUser.uid}
-              siteId={selectedSiteId}
+            <TabbedNoteAndAI
               pageType="referrals"
-              dateRange={dateRange}
+              noteContent={
+                <PageNoteSection
+                  userId={currentUser.uid}
+                  siteId={selectedSiteId}
+                  pageType="referrals"
+                  dateRange={dateRange}
+                />
+              }
+              aiContent={
+                !isLoading && referralData ? (
+                  <AIAnalysisSection
+                    pageType={PAGE_TYPES.REFERRALS}
+                    rawData={referralData}
+                    period={{
+                      startDate: dateRange?.from,
+                      endDate: dateRange?.to,
+                    }}
+                    onLimitExceeded={() => setIsLimitModalOpen(true)}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    データを読み込み中...
+                  </div>
+                )
+              }
             />
           </div>
         )}
@@ -436,11 +468,15 @@ export default function Referrals() {
         {selectedSiteId && !isLoading && referralData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.REFERRALS}
-            rawData={referralData}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
+            onScrollToAI={scrollToAIAnalysis}
+          />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
           />
         )}
       </main>

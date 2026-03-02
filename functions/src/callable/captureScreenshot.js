@@ -1,5 +1,8 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getStorage } from 'firebase-admin/storage';
+import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
+import sharp from 'sharp';
 
 /**
  * スクショの統一設定（STEP1・サイト登録時・refresh・onSiteChanged すべて同じ）
@@ -30,75 +33,84 @@ const IMAGE_SINGLE_TIMEOUT_MS = 2000;
  */
 export async function captureScreenshotCallable(request) {
   const { siteUrl, deviceType } = request.data; // 'pc' or 'mobile'
-  
+
   // 認証チェック
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
-  
+
   // 入力バリデーション
   if (!siteUrl || !deviceType) {
     throw new HttpsError('invalid-argument', 'siteUrl and deviceType are required');
   }
-  
+
   if (!['pc', 'mobile'].includes(deviceType)) {
     throw new HttpsError('invalid-argument', 'deviceType must be "pc" or "mobile"');
   }
-  
+
   const userId = request.auth.uid;
   let browser = null;
   const startTime = Date.now();
-  
-  try {
-    // 重いモジュールは実行時のみ読み込み（デプロイ時のタイムアウト回避）
-    const [{ default: puppeteer }, chromium, { default: sharp }] = await Promise.all([
-      import('puppeteer-core'),
-      import('@sparticuz/chromium'),
-      import('sharp'),
-    ]);
 
+  try {
     console.log(`[captureScreenshot] Start: ${siteUrl}, device: ${deviceType}, user: ${userId}`);
 
-    chromium.setGraphicsMode = false;
-
-    let executablePath;
-    try {
-      executablePath = await chromium.executablePath();
-    } catch (pathErr) {
-      console.error('[captureScreenshot] executablePath failed:', pathErr?.message || pathErr);
-      throw new HttpsError('internal', `Chromium の準備に失敗しました: ${pathErr?.message || 'unknown'}`);
-    }
+    // Chromiumの実行パスを取得
+    const executablePath = await chromium.executablePath();
     console.log(`[captureScreenshot] Chromium path: ${executablePath}`);
 
-    const launchArgs = typeof puppeteer.defaultArgs === 'function'
-      ? puppeteer.defaultArgs({ args: chromium.args, headless: 'shell' })
-      : [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process', '--headless=shell'];
-
+    // Puppeteer起動（v5.0.0と同じアプローチ）
     browser = await puppeteer.launch({
-      args: launchArgs,
-      defaultViewport: null,
+      args: [
+        ...chromium.args,
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-gpu',
+        '--single-process',
+        '--disable-web-security',
+        '--disable-features=IsolateOrigins,site-per-process',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-extensions',
+        '--disable-background-networking',
+        '--disable-background-timer-throttling',
+        '--disable-backgrounding-occluded-windows',
+        '--disable-renderer-backgrounding',
+        '--disable-features=TranslateUI',
+        '--disable-ipc-flooding-protection',
+        '--disable-default-apps',
+        '--no-first-run',
+        '--disable-hang-monitor',
+        '--disable-prompt-on-repost',
+        '--disable-sync',
+        '--metrics-recording-only',
+        '--no-default-browser-check',
+        '--disable-component-extensions-with-background-pages',
+        '--disable-software-rasterizer',
+        '--disable-features=Vulkan',
+      ],
+      defaultViewport: chromium.defaultViewport,
       executablePath,
       headless: 'shell',
       ignoreHTTPSErrors: true,
-      dumpio: true,
     });
-    
+
     console.log(`[captureScreenshot] Browser launched in ${Date.now() - startTime}ms`);
     const pageStartTime = Date.now();
-    
+
     const page = await browser.newPage();
-    
-    // 🔥 最適化: キャッシュ無効化
+
+    // キャッシュ無効化
     await page.setCacheEnabled(false);
-    
+
     // デバイス設定（STEP1・トリガー共通の統一サイズ）
     const viewport = deviceType === 'mobile'
       ? SCREENSHOT_VIEWPORT.mobile
       : SCREENSHOT_VIEWPORT.pc;
     await page.setViewport(viewport);
     console.log(`[captureScreenshot] Viewport: ${viewport.width}x${viewport.height} (${deviceType})`);
-    
-    // 🔥 最適化2: アニメーション完全停止（強化版）
+
+    // アニメーション完全停止（強化版）
     await page.evaluateOnNewDocument(() => {
       // CSS アニメーション完全停止
       const style = document.createElement('style');
@@ -113,11 +125,11 @@ export async function captureScreenshotCallable(request) {
         }
       `;
       document.head?.appendChild(style) || setTimeout(() => document.head.appendChild(style), 0);
-      
+
       // JavaScript アニメーション最適化
       const originalRAF = window.requestAnimationFrame;
       window.requestAnimationFrame = (cb) => setTimeout(cb, 0);
-      
+
       // IntersectionObserver無効化（遅延読み込み対策）
       window.IntersectionObserver = class {
         constructor() {}
@@ -126,14 +138,14 @@ export async function captureScreenshotCallable(request) {
         disconnect() {}
       };
     });
-    
-    // 🔥 最適化: 不要なリソースをブロック（50-70%高速化）
+
+    // 不要なリソースをブロック（50-70%高速化）
     await page.setRequestInterception(true);
-    
+
     page.on('request', (request) => {
       const resourceType = request.resourceType();
       const url = request.url();
-      
+
       // スクリーンショットに不要なリソースをブロック
       if (
         resourceType === 'font' ||           // フォント
@@ -158,19 +170,19 @@ export async function captureScreenshotCallable(request) {
         request.continue();  // 通す
       }
     });
-    
+
     console.log(`[captureScreenshot] Navigating to ${siteUrl}...`);
     const navStartTime = Date.now();
-    
-    // 🔥 最適化: domcontentloaded（networkidle2より10-30秒早い）
+
+    // domcontentloaded（networkidle2より10-30秒早い）
     await page.goto(siteUrl, {
       waitUntil: 'domcontentloaded',
       timeout: NAV_TIMEOUT_MS,
     });
-    
+
     console.log(`[captureScreenshot] Navigation completed in ${Date.now() - navStartTime}ms`);
-    
-    // ファーストビューの画像読み込みを待つ（evaluate 内では定数を参照できないので引数で渡す）
+
+    // ファーストビューの画像読み込みを待つ
     await page.evaluate((imageLoadTimeoutMs, imageSingleTimeoutMs) => {
       return new Promise((resolve) => {
         const viewportHeight = window.innerHeight;
@@ -196,18 +208,18 @@ export async function captureScreenshotCallable(request) {
         ]).then(resolve);
       });
     }, IMAGE_LOAD_TIMEOUT_MS, IMAGE_SINGLE_TIMEOUT_MS);
-    
+
     await new Promise(resolve => setTimeout(resolve, POST_RENDER_DELAY_MS));
-    
-    // スクショ直前にビューポートを再適用（環境によってリセットされる場合の対策）
+
+    // スクショ直前にビューポートを再適用
     await page.setViewport(viewport);
 
     console.log(`[captureScreenshot] Page rendered, taking screenshot...`);
     const screenshotStartTime = Date.now();
-    
+
     const targetWidth = deviceType === 'mobile' ? SCREENSHOT_OUTPUT_WIDTH.mobile : SCREENSHOT_OUTPUT_WIDTH.pc;
 
-    // ビューポート＝保存サイズでキャプチャ（extract なし）
+    // ビューポート＝保存サイズでキャプチャ
     const screenshot = await page.screenshot({
       type: 'jpeg',
       quality: 75,
@@ -230,12 +242,12 @@ export async function captureScreenshotCallable(request) {
     const { data: resizedImage, info } = await resizedPipeline.toBuffer({ resolveWithObject: true });
     console.log(`[captureScreenshot] Image size: ${info.width}x${info.height} (target width: ${targetWidth}), uploading...`);
     const uploadStartTime = Date.now();
-    
+
     // Firebase Storageにアップロード
     const bucket = getStorage().bucket();
     const fileName = `screenshots/${userId}/${deviceType}_${Date.now()}.jpg`;
     const file = bucket.file(fileName);
-    
+
     await file.save(resizedImage, {
       metadata: {
         contentType: 'image/jpeg',
@@ -243,21 +255,21 @@ export async function captureScreenshotCallable(request) {
       },
       resumable: false,
     });
-    
+
     // ファイルを公開設定にする
     await file.makePublic();
-    
+
     // 公開URLを取得
     const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
-    
+
     const totalTime = Date.now() - startTime;
     const uploadTime = Date.now() - uploadStartTime;
-    
+
     console.log(`[captureScreenshot] Success: ${publicUrl}`);
     console.log(`[captureScreenshot] Total time: ${totalTime}ms (Upload: ${uploadTime}ms)`);
-    
+
     return { imageUrl: publicUrl };
-    
+
   } catch (error) {
     const errMsg = error?.message || String(error);
     const errName = error?.name || 'Error';
@@ -281,5 +293,3 @@ export async function captureScreenshotCallable(request) {
     }
   }
 }
-
-

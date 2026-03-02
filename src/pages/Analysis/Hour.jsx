@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
@@ -339,67 +339,6 @@ export default function Hour() {
           />
         )}
 
-        {/* コンバージョン未設定アラートモーダル */}
-        {isConversionAlertOpen && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            onClick={() => setIsConversionAlertOpen(false)}
-          >
-            <div 
-              className="w-full max-w-md rounded-lg border border-stroke bg-white shadow-xl dark:border-dark-3 dark:bg-dark-2"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* ヘッダー */}
-              <div className="flex items-center justify-between border-b border-stroke p-4 dark:border-dark-3">
-                <h3 className="text-lg font-semibold text-dark dark:text-white">
-                  コンバージョン定義が未設定です
-                </h3>
-                <button
-                  onClick={() => setIsConversionAlertOpen(false)}
-                  className="rounded-lg p-1 text-body-color transition hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-
-              {/* コンテンツ */}
-              <div className="p-4">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20">
-                    <svg className="h-6 w-6 text-red-600 dark:text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-body-color">
-                      正確なコンバージョン分析を行うには、サイト設定でコンバージョンイベントを定義してください。
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* フッター */}
-              <div className="border-t border-stroke p-4 dark:border-dark-3">
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setIsConversionAlertOpen(false)}
-                    className="flex-1 rounded-md border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-                  >
-                    閉じる
-                  </button>
-                  <button
-                    onClick={() => navigate(`/sites/${selectedSiteId}/edit?step=4`)}
-                    className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-                  >
-                    設定する
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
       </main>
     </div>
   );

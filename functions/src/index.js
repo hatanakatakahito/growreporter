@@ -252,6 +252,23 @@ export const onUpgradeInquiryCreated = onDocumentCreated(
 );
 
 /**
+ * ユーザー新規登録トリガー（遅延読み込み）
+ * users ドキュメント作成時にウェルカムメールを送信
+ */
+export const onUserCreated = onDocumentCreated(
+  {
+    document: 'users/{uid}',
+    region: 'asia-northeast1',
+    memory: '256MiB',
+    timeoutSeconds: 30,
+  },
+  async (event) => {
+    const { onUserCreatedHandler } = await import('./triggers/onUserCreated.js');
+    return onUserCreatedHandler(event);
+  }
+);
+
+/**
  * 月次制限リセット Scheduled Function（遅延読み込み）
  */
 export const resetMonthlyLimits = onSchedule({
@@ -318,6 +335,8 @@ export const logSiteCreated = lazyCallable('./callable/logSiteCreated.js', 'logS
  * サイト削除時のアクティビティログを記録
  */
 export const logSiteDeleted = lazyCallable('./callable/logSiteDeleted.js', 'logSiteDeletedCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const deleteSite = lazyCallable('./callable/deleteSite.js', 'deleteSiteCallable', { memory: '512MiB', timeoutSeconds: 120 });
+export const deleteAccount = lazyCallable('./callable/deleteAccount.js', 'deleteAccountCallable', { memory: '512MiB', timeoutSeconds: 120 });
 
 /**
  * 管理者用サイト一覧取得 Callable Function
@@ -389,6 +408,19 @@ export const deleteAdmin = lazyCallable('./callable/admin/deleteAdmin.js', 'dele
  * ユーザーとすべての関連データを削除
  */
 export const deleteUser = lazyCallable('./callable/admin/deleteUser.js', 'deleteUserCallable', { memory: '512MiB', timeoutSeconds: 120 });
+
+/**
+ * 管理者ユーザー作成 Callable Function
+ * Firebase Auth + Firestoreにユーザーを作成
+ */
+export const adminCreateUser = lazyCallable('./callable/admin/adminCreateUser.js', 'adminCreateUserCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * 管理者サイト作成 Callable Function
+ * 対象ユーザーに代わってサイトを登録
+ */
+export const adminCreateSite = lazyCallable('./callable/admin/adminCreateSite.js', 'adminCreateSiteCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const adminDeleteSite = lazyCallable('./callable/admin/adminDeleteSite.js', 'adminDeleteSiteCallable', { memory: '512MiB', timeoutSeconds: 120 });
 
 /**
  * GA4上位100ページスクレイピング Callable Function（遅延読み込み）

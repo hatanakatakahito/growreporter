@@ -39,6 +39,16 @@ export default function PageCategories() {
   const [activeTab, setActiveTab] = useState('sitemap');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [expandedPaths, setExpandedPaths] = useState(new Set(['/']));
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  // AI分析タブへスクロールする関数
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -537,14 +547,36 @@ export default function PageCategories() {
             </>
           )}
 
-          {/* メモセクション */}
+          {/* メモ & AI分析タブ */}
           {currentUser && selectedSiteId && (
-            <div className="mt-8">
-              <PageNoteSection
-                userId={currentUser.uid}
-                siteId={selectedSiteId}
+            <div className="mt-6">
+              <TabbedNoteAndAI
                 pageType="page-categories"
-                dateRange={dateRange}
+                noteContent={
+                  <PageNoteSection
+                    userId={currentUser.uid}
+                    siteId={selectedSiteId}
+                    pageType="page-categories"
+                    dateRange={dateRange}
+                  />
+                }
+                aiContent={
+                  !isLoading && categoryData && categoryData.length > 0 ? (
+                    <AIAnalysisSection
+                      pageType={PAGE_TYPES.PAGE_CATEGORIES}
+                      rawData={{ rows: categoryData }}
+                      period={{
+                        startDate: dateRange?.from,
+                        endDate: dateRange?.to,
+                      }}
+                      onLimitExceeded={() => setIsLimitModalOpen(true)}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      データを読み込み中...
+                    </div>
+                  )
+                }
               />
             </div>
           )}
@@ -554,11 +586,15 @@ export default function PageCategories() {
         {selectedSiteId && !isLoading && categoryData && categoryData.length > 0 && (
           <AIFloatingButton
             pageType={PAGE_TYPES.PAGE_CATEGORIES}
-            rawData={{ rows: categoryData }}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
+            onScrollToAI={scrollToAIAnalysis}
+          />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
           />
         )}
       </main>

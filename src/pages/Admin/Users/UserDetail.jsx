@@ -8,6 +8,7 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
 import CustomLimitsModal from '../../../components/Admin/CustomLimitsModal';
+import AdminCreateSiteModal from '../../../components/Admin/AdminCreateSiteModal';
 import {
   ArrowLeft,
   User,
@@ -23,7 +24,8 @@ import {
   Building2,
   CheckCircle,
   XCircle,
-  Save
+  Save,
+  Plus
 } from 'lucide-react';
 import { doc, getDoc, updateDoc, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
@@ -41,6 +43,7 @@ export default function UserDetail() {
   const { getCustomLimits, setCustomLimits, removeCustomLimits } = useCustomLimits();
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showCustomLimitsModal, setShowCustomLimitsModal] = useState(false);
+  const [showCreateSiteModal, setShowCreateSiteModal] = useState(false);
   const [customLimits, setCustomLimitsData] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -412,35 +415,46 @@ export default function UserDetail() {
       <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="text-lg font-semibold text-dark dark:text-white">登録サイト一覧</h3>
-          {userDetail.sites && userDetail.sites.length > 1 && (
-            editingActiveSites ? (
-              <div className="flex gap-2">
+          <div className="flex gap-2">
+            {/* サイト登録ボタン */}
+            <button
+              onClick={() => setShowCreateSiteModal(true)}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
+            >
+              <Plus className="h-4 w-4" />
+              サイト登録
+            </button>
+            {/* 有効サイト管理 */}
+            {userDetail.sites && userDetail.sites.length > 1 && (
+              editingActiveSites ? (
+                <>
+                  <button
+                    onClick={() => setEditingActiveSites(false)}
+                    disabled={isSavingActiveSites}
+                    className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-body-color transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:hover:bg-dark-3"
+                  >
+                    キャンセル
+                  </button>
+                  <button
+                    onClick={handleSaveActiveSites}
+                    disabled={isSavingActiveSites || editActiveSiteIds.length === 0}
+                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50"
+                  >
+                    <Save className="h-4 w-4" />
+                    {isSavingActiveSites ? '保存中...' : '保存'}
+                  </button>
+                </>
+              ) : (
                 <button
-                  onClick={() => setEditingActiveSites(false)}
-                  disabled={isSavingActiveSites}
-                  className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-body-color transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:hover:bg-dark-3"
+                  onClick={handleStartEditActiveSites}
+                  className="flex items-center gap-2 rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
                 >
-                  キャンセル
+                  <Edit2 className="h-4 w-4" />
+                  有効サイト管理
                 </button>
-                <button
-                  onClick={handleSaveActiveSites}
-                  disabled={isSavingActiveSites || editActiveSiteIds.length === 0}
-                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50"
-                >
-                  <Save className="h-4 w-4" />
-                  {isSavingActiveSites ? '保存中...' : '保存'}
-                </button>
-              </div>
-            ) : (
-              <button
-                onClick={handleStartEditActiveSites}
-                className="flex items-center gap-2 rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
-              >
-                <Edit2 className="h-4 w-4" />
-                有効サイト管理
-              </button>
-            )
-          )}
+              )
+            )}
+          </div>
         </div>
 
         {/* 編集モード時の説明 */}
@@ -697,6 +711,20 @@ export default function UserDetail() {
           currentLimits={customLimits}
           onClose={() => setShowCustomLimitsModal(false)}
           onSave={handleSaveCustomLimits}
+        />
+      )}
+
+      {/* サイト登録モーダル */}
+      {showCreateSiteModal && (
+        <AdminCreateSiteModal
+          targetUserId={uid}
+          targetUserName={getUserName()}
+          onClose={() => setShowCreateSiteModal(false)}
+          onSuccess={(message) => {
+            setSuccessMessage(message);
+            setTimeout(() => setSuccessMessage(''), 5000);
+            refetch();
+          }}
         />
       )}
 

@@ -1,14 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { SITE_TYPES, SITE_PURPOSES } from '../../../constants/siteOptions';
-import { INDUSTRIES } from '../../../constants/industries';
+import { INDUSTRY_GROUPS } from '../../../constants/industries';
 import { storage, functions } from '../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
 import { Upload, X, Loader2 } from 'lucide-react';
 import MultiSelectField from './MultiSelectField';
 import { SCREENSHOT_DISPLAY_HEIGHT_PX } from '../../../constants/screenshotDisplay';
-
-const INDUSTRY_OPTIONS = INDUSTRIES.map((s) => ({ value: s, label: s }));
 
 export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, mode = 'new' }) {
   const [formData, setFormData] = useState({
@@ -319,7 +317,7 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
       <MultiSelectField
         label="業界・業種"
         required
-        options={INDUSTRY_OPTIONS}
+        groups={INDUSTRY_GROUPS}
         value={formData.industry}
         onChange={(next) => {
           setFormData(prev => ({ ...prev, industry: next }));

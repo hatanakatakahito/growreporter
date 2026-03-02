@@ -30,6 +30,7 @@ export default function SiteRegistration({ mode = 'new' }) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState('');
   const [isAdminEditingOtherSite, setIsAdminEditingOtherSite] = useState(false);
+  const [siteOwnerUserId, setSiteOwnerUserId] = useState(null);
   /** Step1の最新値（保存タイミングのずれで industry/siteType/sitePurpose が抜けないようにする） */
   const step1LatestRef = useRef({});
 
@@ -112,6 +113,7 @@ export default function SiteRegistration({ mode = 'new' }) {
               
               if (isAdmin) {
                 setIsAdminEditingOtherSite(true);
+                setSiteOwnerUserId(data.userId);
                 console.log('[SiteRegistration] 管理者による他ユーザーサイトの代理設定');
               } else {
                 console.log('[SiteRegistration] メンバーによるサイト編集');
@@ -224,12 +226,21 @@ export default function SiteRegistration({ mode = 'new' }) {
       });
 
       if (siteId) {
-        // 既存サイトの更新（userIdも含める）
+        // 既存サイトの更新（管理者代理編集時はuserIdを上書きしない）
         console.log('[SiteRegistration] 既存サイト更新:', siteId);
-        await updateDoc(doc(db, 'sites', siteId), {
-          ...dataToSave,
-          userId: currentUser.uid, // 既存ドキュメントにもuserIdを追加
-        });
+        const updatePayload = { ...dataToSave };
+        if (isAdminEditingOtherSite) {
+          // 管理者がOAuth連携した場合、トークンオーナーを管理者に設定
+          if (updatePayload.ga4OauthTokenId) {
+            updatePayload.ga4TokenOwner = currentUser.uid;
+          }
+          if (updatePayload.gscOauthTokenId) {
+            updatePayload.gscTokenOwner = currentUser.uid;
+          }
+        } else {
+          updatePayload.userId = currentUser.uid;
+        }
+        await updateDoc(doc(db, 'sites', siteId), updatePayload);
         console.log('[SiteRegistration] 更新完了:', siteId);
       } else {
         // 新規サイトの作成
@@ -295,13 +306,25 @@ export default function SiteRegistration({ mode = 'new' }) {
       };
 
       if (siteId) {
-        await updateDoc(doc(db, 'sites', siteId), {
-          ...dataToSave,
-          userId: currentUser.uid,
-        });
+        const updatePayload = { ...dataToSave };
+        if (isAdminEditingOtherSite) {
+          if (updatePayload.ga4OauthTokenId) {
+            updatePayload.ga4TokenOwner = currentUser.uid;
+          }
+          if (updatePayload.gscOauthTokenId) {
+            updatePayload.gscTokenOwner = currentUser.uid;
+          }
+        } else {
+          updatePayload.userId = currentUser.uid;
+        }
+        await updateDoc(doc(db, 'sites', siteId), updatePayload);
 
-        // ダッシュボードへ戻る
-        navigate(`/dashboard?siteId=${siteId}`);
+        // 管理者代理編集時は管理者画面へ、それ以外はダッシュボードへ
+        if (isAdminEditingOtherSite) {
+          window.location.href = siteOwnerUserId ? `/admin/users/${siteOwnerUserId}` : '/admin/users';
+        } else {
+          navigate(`/dashboard?siteId=${siteId}`);
+        }
       }
     } catch (err) {
       console.error('Error saving and exiting:', err);
@@ -327,6 +350,16 @@ export default function SiteRegistration({ mode = 'new' }) {
 
       let completedSiteId = siteId;
       let isNewSite = !siteId;
+
+      // 管理者代理編集時はトークンオーナーを管理者に設定
+      if (isAdminEditingOtherSite) {
+        if (finalData.ga4OauthTokenId) {
+          finalData.ga4TokenOwner = currentUser.uid;
+        }
+        if (finalData.gscOauthTokenId) {
+          finalData.gscTokenOwner = currentUser.uid;
+        }
+      }
 
       if (siteId) {
         await updateDoc(doc(db, 'sites', siteId), finalData);
@@ -361,10 +394,10 @@ export default function SiteRegistration({ mode = 'new' }) {
         }
       }
 
-      // 管理者が他ユーザーのサイトを設定している場合はダッシュボードへ、それ以外は完了画面へ
+      // 管理者が他ユーザーのサイトを設定している場合は管理者ユーザー詳細へ、それ以外は完了画面へ
       if (isAdminEditingOtherSite) {
-        console.log('[SiteRegistration] 管理者による設定完了 - ダッシュボードへ遷移');
-        window.location.href = `/dashboard?siteId=${completedSiteId}`;
+        console.log('[SiteRegistration] 管理者による設定完了 - 管理者画面へ遷移');
+        window.location.href = siteOwnerUserId ? `/admin/users/${siteOwnerUserId}` : '/admin/users';
       } else {
         console.log('[SiteRegistration] 通常の設定完了 - 完了画面へ遷移');
         window.location.href = `/sites/complete?siteId=${completedSiteId}`;
