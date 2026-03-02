@@ -4,7 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { logger } from 'firebase-functions/v2';
 import { logUserActivity, ACTIVITY_ACTIONS } from '../../utils/userActivityLogger.js';
 import { sendEmailDirect } from '../../utils/emailSender.js';
-import { generateWelcomeEmail } from '../../utils/emailTemplates.js';
+import { generateAdminCreatedAccountEmail } from '../../utils/emailTemplates.js';
 
 /**
  * 管理者がユーザーを新規作成
@@ -128,42 +128,19 @@ export const adminCreateUserCallable = async (request) => {
       sendWelcomeEmail,
     });
 
-    // パスワード未指定の場合のみパスワード設定メール送信
-    if (!password) {
+    // アカウント発行通知メール送信（パスワード付き）
+    if (sendWelcomeEmail && password) {
       try {
-        const resetLink = await auth.generatePasswordResetLink(email);
-        await sendEmailDirect({
-          to: email,
-          subject: '【グローレポータ】アカウントが作成されました',
-          html: `
-            <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <h2 style="color: #3758F9;">グローレポータへようこそ</h2>
-              <p>${displayName} 様</p>
-              <p>管理者によりアカウントが作成されました。</p>
-              <p>以下のリンクからパスワードを設定してログインしてください。</p>
-              <div style="margin: 24px 0;">
-                <a href="${resetLink}" style="display: inline-block; padding: 12px 24px; background-color: #3758F9; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold;">パスワードを設定する</a>
-              </div>
-              <p style="color: #666; font-size: 12px;">このリンクの有効期限は限られています。期限切れの場合はログイン画面の「パスワードを忘れた方」からリセットしてください。</p>
-            </div>
-          `,
-          text: `${displayName} 様\n\n管理者によりアカウントが作成されました。\n以下のリンクからパスワードを設定してログインしてください。\n\n${resetLink}\n\nこのリンクの有効期限は限られています。`,
+        const { subject, html, text } = generateAdminCreatedAccountEmail({
+          userName: displayName,
+          email,
+          password,
         });
-        logger.info('パスワード設定メール送信完了', { newUserId: newUid, email });
-      } catch (emailError) {
-        logger.error('パスワード設定メール送信エラー', { newUserId: newUid, error: emailError.message });
-      }
-    }
-
-    // ウェルカムメール送信（オプション）
-    if (sendWelcomeEmail) {
-      try {
-        const { subject, html, text } = generateWelcomeEmail({ userName: displayName });
         await sendEmailDirect({ to: email, subject, html, text });
         await db.collection('users').doc(newUid).update({ _welcomeEmailSent: true });
-        logger.info('ウェルカムメール送信完了', { newUserId: newUid, email });
-      } catch (welcomeError) {
-        logger.error('ウェルカムメール送信エラー', { newUserId: newUid, error: welcomeError.message });
+        logger.info('アカウント発行通知メール送信完了', { newUserId: newUid, email });
+      } catch (emailError) {
+        logger.error('アカウント発行通知メール送信エラー', { newUserId: newUid, error: emailError.message });
       }
     }
 

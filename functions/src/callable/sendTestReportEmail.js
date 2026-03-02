@@ -2,7 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { format, subDays, startOfWeek, endOfWeek, subWeeks, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { generateEmailTemplate, generateAlertEmailTemplate } from '../utils/emailTemplates.js';
+import { generateEmailTemplate, generateAlertEmailTemplate, generateAdminCreatedAccountEmail } from '../utils/emailTemplates.js';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { getGA4MetricsForSite } from '../utils/ga4ServerHelper.js';
 
@@ -37,6 +37,17 @@ export async function sendTestReportEmailHandler(req) {
     // アラート通知の場合は別処理
     if (reportType === 'alert') {
       return await sendTestAlert(db, recipientEmail, siteId);
+    }
+
+    // アカウント発行メールのテスト送信
+    if (reportType === 'account') {
+      const { subject, html, text } = generateAdminCreatedAccountEmail({
+        userName: data.userName || '和波 悠生',
+        email: data.testEmail || 'ads@grow-group.jp',
+        password: data.testPassword || '00001724',
+      });
+      await sendEmailDirect({ to: recipientEmail, subject, html, text });
+      return { success: true, message: `アカウント発行テストメールを ${recipientEmail} に送信しました` };
     }
 
     const now = new Date();

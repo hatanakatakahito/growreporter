@@ -662,6 +662,126 @@ GA4・サーチコンソールのデータをAIで分析し、サイト改善に
 }
 
 /**
+ * 管理者がユーザーを代理作成した際のアカウント発行通知メール
+ * ログイン情報（メール・パスワード）を記載
+ */
+export function generateAdminCreatedAccountEmail(data) {
+  const { userName, email, password } = data;
+  const displayName = userName || 'ユーザー';
+  const loginUrl = 'https://grow-reporter.com/login';
+
+  const subject = '【グローレポータ】アカウント発行のお知らせ';
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+          <tr>
+            <td style="background-color: #3758F9; padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">グローレポータ</h1>
+              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">アカウント発行のお知らせ</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
+                ${displayName} 様
+              </h2>
+
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                ユーザーアカウントおよびサイト登録の発行が完了しました。<br>
+                以下の情報でログインいただけます。
+              </p>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f9fafb; border-radius: 8px; margin: 24px 0;">
+                <tr>
+                  <td style="padding: 24px;">
+                    <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                      <tr>
+                        <td style="padding: 8px 0; color: #6b7280; font-size: 13px; width: 140px; vertical-align: top;">ログインURL</td>
+                        <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 600;">
+                          <a href="${loginUrl}" style="color: #3758F9; text-decoration: none;">${loginUrl}</a>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 13px; vertical-align: top;">メールアドレス</td>
+                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; color: #1f2937; font-size: 14px; font-weight: 600;">${email}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 13px; vertical-align: top;">パスワード</td>
+                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; color: #1f2937; font-size: 14px; font-weight: 600; letter-spacing: 1px;">${password}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+              </table>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${loginUrl}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                      ログインする
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
+                セキュリティのため、初回ログイン後にパスワードの変更をお勧めします。<br>
+                ご不明点がございましたら、お気軽にお問い合わせください。
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                &copy; 2026 グローレポータ by Grow Group
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  const text = `
+${displayName} 様
+
+ユーザーアカウントおよびサイト登録の発行が完了しました。
+以下の情報でログインいただけます。
+
+■ ログイン情報
+ログインURL: ${loginUrl}
+メールアドレス: ${email}
+パスワード: ${password}
+
+セキュリティのため、初回ログイン後にパスワードの変更をお勧めします。
+ご不明点がございましたら、お気軽にお問い合わせください。
+
+────────────────────────
+グローレポータ運営チーム
+────────────────────────
+  `;
+
+  return { subject, html, text };
+}
+
+/**
  * メール送信（Amazon SES使用）
  * 注意: SES SMTP認証情報は環境変数に設定してください
  * firebase functions:config:set ses.smtp_host="email-smtp.ap-northeast-1.amazonaws.com"
