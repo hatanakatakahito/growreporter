@@ -6,7 +6,7 @@ const DEFAULT_PLANS = {
   free: {
     maxSites: 1,
     aiSummaryLimit: -1, // 無制限（再分析はgenerateAISummary.js内で制限）
-    aiImprovementLimit: 2,
+    aiImprovementLimit: 1,
     diagnosisLimit: 1,
     excelExportLimit: 1,
     pptxExportLimit: 1,
@@ -14,8 +14,8 @@ const DEFAULT_PLANS = {
   },
   standard: {
     maxSites: 3,
-    aiSummaryLimit: 50,
-    aiImprovementLimit: 10,
+    aiSummaryLimit: 4, // 再分析4回/月（週1回相当）
+    aiImprovementLimit: 4, // AI改善4回/月（週1回相当）
     diagnosisLimit: 5,
     excelExportLimit: -1,
     pptxExportLimit: -1,
