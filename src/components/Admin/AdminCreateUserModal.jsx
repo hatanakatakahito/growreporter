@@ -363,9 +363,6 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
               />
               <div>
                 <span className="text-sm font-medium text-dark dark:text-white">ウェルカムメールを送信する</span>
-                <p className="text-xs text-body-color dark:text-dark-6">
-                  パスワード設定メールは必ず送信されます
-                </p>
               </div>
             </label>
           </div>
