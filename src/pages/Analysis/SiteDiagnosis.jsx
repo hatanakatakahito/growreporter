@@ -4,14 +4,8 @@ import { useSite } from '../../contexts/SiteContext';
 import { useSiteDiagnosis } from '../../hooks/useSiteDiagnosis';
 import { usePlan } from '../../hooks/usePlan';
 import { useGA4Data } from '../../hooks/useGA4Data';
-import { isUnlimited, PAGE_TYPES } from '../../constants/plans';
+import { isUnlimited } from '../../constants/plans';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
-import AIFloatingButton from '../../components/common/AIFloatingButton';
-import PageNoteSection from '../../components/Analysis/PageNoteSection';
-import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
-import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
-import PlanLimitModal from '../../components/common/PlanLimitModal';
-import { useAuth } from '../../contexts/AuthContext';
 import {
   Shield, Zap, Search, FileText, Users, Monitor, Smartphone,
   AlertTriangle, CheckCircle2, XCircle, Loader2, RefreshCw, Info, ExternalLink,
@@ -163,21 +157,10 @@ function CategoryScoreCard({ title, score, icon: Icon, available = true, tooltip
 
 export default function SiteDiagnosis() {
   const { selectedSiteId, dateRange } = useSite();
-  const { currentUser } = useAuth();
   const { data, isLoading, runDiagnosis, isRunning, runError } = useSiteDiagnosis(selectedSiteId);
   const { plan, checkCanGenerate, getRemainingByType, getUsedByType } = usePlan();
   const [deviceTab, setDeviceTab] = useState('mobile');
   const [expandedIssues, setExpandedIssues] = useState({});
-  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
-
-  // AI分析タブへスクロールする関数
-  const scrollToAIAnalysis = () => {
-    window.dispatchEvent(new Event('switchToAITab'));
-    setTimeout(() => {
-      const element = document.getElementById('ai-analysis-section');
-      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-  };
 
   // ダッシュボード/全体サマリーと同じ方法でエンゲージメント率を取得
   const { data: ga4EngData } = useGA4Data(
@@ -699,56 +682,7 @@ export default function SiteDiagnosis() {
           </div>
         )}
 
-        {/* メモ & AI分析タブ */}
-        {selectedSiteId && currentUser && (
-          <div className="mt-6">
-            <TabbedNoteAndAI
-              pageType="site-diagnosis"
-              noteContent={
-                <PageNoteSection
-                  userId={currentUser.uid}
-                  siteId={selectedSiteId}
-                  pageType="site-diagnosis"
-                  dateRange={dateRange}
-                />
-              }
-              aiContent={
-                !isLoading && !isRunning && data ? (
-                  <AIAnalysisSection
-                    pageType={PAGE_TYPES.SITE_DIAGNOSIS}
-                    rawData={data}
-                    period={{
-                      startDate: dateRange?.from,
-                      endDate: dateRange?.to,
-                    }}
-                    onLimitExceeded={() => setIsLimitModalOpen(true)}
-                  />
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    データを読み込み中...
-                  </div>
-                )
-              }
-            />
-          </div>
-        )}
         </div>
-
-        {/* AI分析フローティングボタン */}
-        {selectedSiteId && !isLoading && !isRunning && data && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.SITE_DIAGNOSIS}
-            onScrollToAI={scrollToAIAnalysis}
-          />
-        )}
-
-        {/* 制限超過モーダル */}
-        {isLimitModalOpen && (
-          <PlanLimitModal
-            onClose={() => setIsLimitModalOpen(false)}
-            type="summary"
-          />
-        )}
       </main>
     </div>
   );

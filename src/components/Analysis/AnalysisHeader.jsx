@@ -7,8 +7,9 @@ import { format } from 'date-fns';
 import { SCREENSHOT_PC_DISPLAY, SCREENSHOT_MOBILE_DISPLAY } from '../../constants/screenshotDisplay';
 import toast from 'react-hot-toast';
 import { useGlobalMemoNotifications } from '../../hooks/useGlobalMemoNotifications';
+import { useGlobalAlertNotifications } from '../../hooks/useGlobalAlertNotifications';
 import { useAnalysisExport } from '../../hooks/useAnalysisExport';
-import GlobalMemoNotificationModal from '../Layout/GlobalMemoNotificationModal';
+import GlobalNotificationModal from '../Layout/GlobalMemoNotificationModal';
 
 /**
  * 分析画面共通ヘッダーコンポーネント
@@ -35,11 +36,21 @@ export default function AnalysisHeader({
   const [tempDateRange, setTempDateRange] = useState({ from: '', to: '' });
 
   // グローバルメモ通知
-  const { unreadMemos, unreadCount, markAllAsRead } = useGlobalMemoNotifications(
+  const { unreadMemos, unreadCount: memoUnreadCount, markAllAsRead } = useGlobalMemoNotifications(
     currentUser?.uid,
     sites,
     isAdminViewing
   );
+
+  // グローバルアラート通知
+  const { unreadAlerts, unreadAlertCount, markAllAlertsAsRead } = useGlobalAlertNotifications(
+    currentUser?.uid,
+    sites,
+    isAdminViewing
+  );
+
+  // 合計未読数
+  const totalUnreadCount = memoUnreadCount + unreadAlertCount;
 
   // エクスポート
   const { isExporting, handleExportExcel, handleExportPptx, canExportExcel, canExportPptx } = useAnalysisExport();
@@ -186,16 +197,16 @@ export default function AnalysisHeader({
                 </div>
               )}
 
-              {/* メモ通知ベル */}
+              {/* 通知ベル（メモ＋アラート） */}
               <button
                 onClick={() => setIsNotificationOpen(true)}
                 className="relative flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-                title="メモ通知"
+                title="通知"
               >
                 <Bell className="h-5 w-5" />
-                {unreadCount > 0 && (
+                {totalUnreadCount > 0 && (
                   <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                    {unreadCount > 99 ? '99+' : unreadCount}
+                    {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
                   </span>
                 )}
               </button>
@@ -328,12 +339,14 @@ export default function AnalysisHeader({
         </div>
       </div>
 
-      {/* メモ通知モーダル */}
-      <GlobalMemoNotificationModal
+      {/* 通知モーダル（メモ＋アラート） */}
+      <GlobalNotificationModal
         isOpen={isNotificationOpen}
         onClose={() => setIsNotificationOpen(false)}
         unreadMemos={unreadMemos}
         onMarkAllAsRead={markAllAsRead}
+        unreadAlerts={unreadAlerts}
+        onMarkAllAlertsAsRead={markAllAlertsAsRead}
       />
 
       {/* サイト情報セクション - ブルー＆パープルグラデーション */}

@@ -492,6 +492,20 @@ export default function Heatmap() {
                         />
                       </div>
                     </div>
+                  ) : captureScreenshot.isError ? (
+                    <div className="flex flex-col items-center justify-center py-20">
+                      <ImageIcon className="mb-4 h-12 w-12 text-body-color/40" />
+                      <p className="mb-2 text-body-color">スクリーンショットの取得に失敗しました</p>
+                      <p className="mb-4 text-xs text-body-color/60">サイトにアクセスできないか、タイムアウトした可能性があります</p>
+                      <button
+                        onClick={handleCaptureScreenshot}
+                        disabled={captureScreenshot.isPending}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        再試行する
+                      </button>
+                    </div>
                   ) : (
                     <div className="flex flex-col items-center justify-center py-20">
                       <Loader2 className="mb-4 h-12 w-12 animate-spin text-primary" />

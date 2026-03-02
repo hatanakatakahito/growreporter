@@ -1,17 +1,29 @@
-import React from 'react';
-import { X, FileText, Globe } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, FileText, Globe, Bell, AlertTriangle } from 'lucide-react';
 import { getPageTypeLabel } from '../../constants/pageTypes';
 
 /**
- * グローバルメモ通知モーダル
- * 全サイトの未読メモを表示し、サイト名付きで一覧表示
+ * グローバル通知モーダル
+ * メモ通知とアラート通知をタブ切り替えで表示
  */
-export default function GlobalMemoNotificationModal({ isOpen, onClose, unreadMemos, onMarkAllAsRead }) {
+export default function GlobalMemoNotificationModal({
+  isOpen,
+  onClose,
+  unreadMemos = [],
+  onMarkAllAsRead,
+  unreadAlerts = [],
+  onMarkAllAlertsAsRead,
+}) {
+  const [activeTab, setActiveTab] = useState('all');
+
   if (!isOpen) return null;
 
   const handleMarkAllAsRead = async () => {
     try {
-      await onMarkAllAsRead();
+      const promises = [];
+      if (onMarkAllAsRead && unreadMemos.length > 0) promises.push(onMarkAllAsRead());
+      if (onMarkAllAlertsAsRead && unreadAlerts.length > 0) promises.push(onMarkAllAlertsAsRead());
+      await Promise.all(promises);
       onClose();
     } catch (error) {
       console.error('既読マーク失敗:', error);
@@ -47,6 +59,12 @@ export default function GlobalMemoNotificationModal({ isOpen, onClose, unreadMem
     return content.substring(0, maxLength) + '...';
   };
 
+  // フィルタリング
+  const displayMemos = activeTab === 'all' || activeTab === 'memo' ? unreadMemos : [];
+  const displayAlerts = activeTab === 'all' || activeTab === 'alert' ? unreadAlerts : [];
+  const totalCount = unreadMemos.length + unreadAlerts.length;
+  const hasItems = displayMemos.length > 0 || displayAlerts.length > 0;
+
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
@@ -59,7 +77,7 @@ export default function GlobalMemoNotificationModal({ isOpen, onClose, unreadMem
         {/* ヘッダー */}
         <div className="flex items-center justify-between border-b border-stroke p-4 dark:border-dark-3">
           <h3 className="text-lg font-semibold text-dark dark:text-white">
-            メモ通知
+            通知
           </h3>
           <button
             onClick={onClose}
@@ -69,18 +87,92 @@ export default function GlobalMemoNotificationModal({ isOpen, onClose, unreadMem
           </button>
         </div>
 
+        {/* タブ */}
+        <div className="flex border-b border-stroke dark:border-dark-3">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`flex-1 px-4 py-2.5 text-xs font-medium transition ${
+              activeTab === 'all'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-body-color hover:text-dark dark:hover:text-white'
+            }`}
+          >
+            すべて ({totalCount})
+          </button>
+          <button
+            onClick={() => setActiveTab('alert')}
+            className={`flex-1 px-4 py-2.5 text-xs font-medium transition ${
+              activeTab === 'alert'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-body-color hover:text-dark dark:hover:text-white'
+            }`}
+          >
+            アラート ({unreadAlerts.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('memo')}
+            className={`flex-1 px-4 py-2.5 text-xs font-medium transition ${
+              activeTab === 'memo'
+                ? 'border-b-2 border-primary text-primary'
+                : 'text-body-color hover:text-dark dark:hover:text-white'
+            }`}
+          >
+            メモ ({unreadMemos.length})
+          </button>
+        </div>
+
         {/* コンテンツ */}
         <div className="max-h-[500px] overflow-y-auto p-4">
-          {unreadMemos.length === 0 ? (
+          {!hasItems ? (
             <div className="py-8 text-center">
-              <FileText className="mx-auto mb-2 h-12 w-12 text-body-color/30" />
+              <Bell className="mx-auto mb-2 h-12 w-12 text-body-color/30" />
               <p className="text-sm text-body-color">新しい通知はありません</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {unreadMemos.map((memo) => (
+              {/* アラート通知 */}
+              {displayAlerts.map((alert) => (
                 <div
-                  key={memo.id}
+                  key={`alert-${alert.id}`}
+                  className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/30 dark:bg-amber-900/10"
+                >
+                  {/* サイト名 + アラートバッジ */}
+                  <div className="mb-2 flex items-center gap-1.5">
+                    <Globe className="h-3 w-3 text-primary" />
+                    <span className="text-xs font-medium text-primary">
+                      {alert.siteName}
+                    </span>
+                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                      アラート
+                    </span>
+                  </div>
+
+                  {/* アラートタイトル */}
+                  <div className="mb-1 flex items-center gap-1.5">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                    <span className="text-sm font-medium text-dark dark:text-white">
+                      {alert.title || alert.type || 'アラート'}
+                    </span>
+                  </div>
+
+                  {/* アラート内容 */}
+                  {alert.message && (
+                    <p className="text-xs leading-relaxed text-body-color">
+                      {truncateContent(alert.message, 100)}
+                    </p>
+                  )}
+
+                  {/* 日時 */}
+                  <p className="mt-1 text-[10px] text-body-color/60">
+                    {formatDate(alert.createdAt)}
+                  </p>
+                </div>
+              ))}
+
+              {/* メモ通知 */}
+              {displayMemos.map((memo) => (
+                <div
+                  key={`memo-${memo.id}`}
                   className="rounded-lg border border-stroke bg-white p-3 dark:border-dark-3 dark:bg-dark"
                 >
                   {/* サイト名 */}
@@ -88,6 +180,9 @@ export default function GlobalMemoNotificationModal({ isOpen, onClose, unreadMem
                     <Globe className="h-3 w-3 text-primary" />
                     <span className="text-xs font-medium text-primary">
                       {memo.siteName}
+                    </span>
+                    <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                      メモ
                     </span>
                   </div>
 
@@ -139,9 +234,9 @@ export default function GlobalMemoNotificationModal({ isOpen, onClose, unreadMem
 
         {/* フッター */}
         <div className="border-t border-stroke p-4 dark:border-dark-3">
-          {unreadMemos.length > 0 && (
+          {totalCount > 0 && (
             <div className="mb-3 text-center text-xs text-body-color">
-              {unreadMemos.length}件の未読メモ
+              {totalCount}件の未読通知
             </div>
           )}
           <div className="flex gap-3">
@@ -151,7 +246,7 @@ export default function GlobalMemoNotificationModal({ isOpen, onClose, unreadMem
             >
               閉じる
             </button>
-            {unreadMemos.length > 0 && (
+            {totalCount > 0 && (
               <button
                 onClick={handleMarkAllAsRead}
                 className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
