@@ -5,7 +5,7 @@ import { logger } from 'firebase-functions/v2';
 const DEFAULT_PLANS = {
   free: {
     maxSites: 1,
-    aiSummaryLimit: 10,
+    aiSummaryLimit: -1, // 無制限（再分析はgenerateAISummary.js内で制限）
     aiImprovementLimit: 2,
     diagnosisLimit: 1,
     excelExportLimit: 1,
