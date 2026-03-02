@@ -91,10 +91,21 @@ export async function captureHeatmapScreenshotCallable(request) {
       throw new HttpsError('internal', `Chromium の準備に失敗しました: ${pathErr?.message || 'unknown'}`);
     }
 
-    const extraArgs = ['--lang=ja-JP'];
-    const launchArgs = typeof puppeteer.defaultArgs === 'function'
-      ? puppeteer.defaultArgs({ args: [...chromium.args, ...extraArgs], headless: 'shell' })
-      : [...chromium.args, ...extraArgs, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--single-process', '--headless=shell'];
+    console.log(`[captureHeatmapScreenshot] executablePath: ${executablePath}`);
+
+    // Cloud Functions 環境用の安全なフラグ
+    const launchArgs = [
+      ...chromium.args,
+      '--lang=ja-JP',
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu',
+      '--disable-software-rasterizer',
+      '--single-process',
+      '--no-zygote',
+      '--headless=shell',
+    ];
 
     browser = await puppeteer.launch({
       args: launchArgs,
@@ -102,7 +113,8 @@ export async function captureHeatmapScreenshotCallable(request) {
       executablePath,
       headless: 'shell',
       ignoreHTTPSErrors: true,
-      dumpio: true,
+      dumpio: false,
+      protocolTimeout: 60_000,
     });
 
     console.log(`[captureHeatmapScreenshot] Browser launched in ${Date.now() - startTime}ms`);
@@ -158,45 +170,51 @@ export async function captureHeatmapScreenshotCallable(request) {
     });
 
     // 不要リソースブロック（フォント・メディア・トラッキング系をブロック）
-    await page.setRequestInterception(true);
-    page.on('request', (request) => {
-      const resourceType = request.resourceType();
-      const url = request.url();
-      if (
-        resourceType === 'media' ||
-        resourceType === 'websocket' ||
-        resourceType === 'manifest' ||
-        resourceType === 'font' ||
-        url.includes('google-analytics') ||
-        url.includes('googletagmanager') ||
-        url.includes('facebook.com') ||
-        url.includes('doubleclick.net') ||
-        url.includes('analytics') ||
-        url.includes('tracking') ||
-        url.includes('hotjar') ||
-        url.includes('clarity.ms') ||
-        url.includes('criteo') ||
-        url.includes('adservice') ||
-        url.includes('fonts.googleapis.com') ||
-        url.includes('fonts.gstatic.com')
-      ) {
-        request.abort();
-      } else {
-        request.continue();
-      }
-    });
+    try {
+      await page.setRequestInterception(true);
+      page.on('request', (request) => {
+        const resourceType = request.resourceType();
+        const url = request.url();
+        if (
+          resourceType === 'media' ||
+          resourceType === 'websocket' ||
+          resourceType === 'manifest' ||
+          resourceType === 'font' ||
+          url.includes('google-analytics') ||
+          url.includes('googletagmanager') ||
+          url.includes('facebook.com') ||
+          url.includes('doubleclick.net') ||
+          url.includes('analytics') ||
+          url.includes('tracking') ||
+          url.includes('hotjar') ||
+          url.includes('clarity.ms') ||
+          url.includes('criteo') ||
+          url.includes('adservice') ||
+          url.includes('fonts.googleapis.com') ||
+          url.includes('fonts.gstatic.com')
+        ) {
+          request.abort();
+        } else {
+          request.continue();
+        }
+      });
+    } catch (interceptErr) {
+      console.warn(`[captureHeatmapScreenshot] Request interception failed, continuing without: ${interceptErr?.message}`);
+    }
 
-    console.log(`[captureHeatmapScreenshot] Navigating to ${fullUrl}...`);
+    console.log(`[captureHeatmapScreenshot] Navigating to ${fullUrl} (timeout: ${NAV_TIMEOUT_MS}ms)...`);
 
     try {
-      await page.goto(fullUrl, {
+      const response = await page.goto(fullUrl, {
         waitUntil: 'domcontentloaded',
         timeout: NAV_TIMEOUT_MS,
       });
+      console.log(`[captureHeatmapScreenshot] Navigation done: status=${response?.status()} in ${Date.now() - startTime}ms`);
     } catch (navErr) {
       if (navErr?.name === 'TimeoutError' || navErr?.message?.includes('timeout')) {
-        console.log(`[captureHeatmapScreenshot] Navigation timeout, continuing with loaded content...`);
+        console.log(`[captureHeatmapScreenshot] Navigation timeout at ${Date.now() - startTime}ms, continuing with loaded content...`);
       } else {
+        console.error(`[captureHeatmapScreenshot] Navigation error: ${navErr?.message}`);
         throw navErr;
       }
     }

@@ -172,7 +172,7 @@ export function useCaptureHeatmapScreenshot() {
 
   return useMutation({
     mutationFn: async ({ siteId, pageUrl, deviceType }) => {
-      const capture = httpsCallable(functions, 'captureHeatmapScreenshot');
+      const capture = httpsCallable(functions, 'captureHeatmapScreenshot', { timeout: 60_000 });
       const result = await capture({ siteId, pageUrl, deviceType });
       return result.data;
     },
