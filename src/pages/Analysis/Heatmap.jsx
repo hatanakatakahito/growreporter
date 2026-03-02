@@ -95,17 +95,26 @@ export default function Heatmap() {
 
   // スクリーンショットキャプチャ
   const captureScreenshot = useCaptureHeatmapScreenshot();
+  const [captureElapsed, setCaptureElapsed] = useState(0);
 
   const handleCaptureScreenshot = useCallback(() => {
     if (!pageData?.pageUrl || !siteId) return;
+    setCaptureElapsed(0);
     captureScreenshot.mutate(
       { siteId, pageUrl: pageData.pageUrl, deviceType: device },
       {
-        onSuccess: () => toast.success('スクリーンショットを更新しました'),
-        onError: (err) => toast.error(err.message || 'スクリーンショットの取得に失敗しました'),
+        onSuccess: () => { setCaptureElapsed(0); toast.success('スクリーンショットを更新しました'); },
+        onError: (err) => { setCaptureElapsed(0); toast.error(err.message || 'スクリーンショットの取得に失敗しました'); },
       }
     );
   }, [captureScreenshot, pageData, siteId, device]);
+
+  // キャプチャ中の経過時間カウンター
+  useEffect(() => {
+    if (!captureScreenshot.isPending) { setCaptureElapsed(0); return; }
+    const timer = setInterval(() => setCaptureElapsed((v) => v + 1), 1000);
+    return () => clearInterval(timer);
+  }, [captureScreenshot.isPending]);
 
   // スクリーンショット未取得時に自動キャプチャ
   useEffect(() => {
@@ -113,12 +122,13 @@ export default function Heatmap() {
       pageData &&
       !pageData.screenshotUrl &&
       !captureScreenshot.isPending &&
+      !captureScreenshot.isError &&
       autoCaptureTriggered.current !== selectedPageId
     ) {
       autoCaptureTriggered.current = selectedPageId;
       handleCaptureScreenshot();
     }
-  }, [pageData, selectedPageId, captureScreenshot.isPending, handleCaptureScreenshot]);
+  }, [pageData, selectedPageId, captureScreenshot.isPending, captureScreenshot.isError, handleCaptureScreenshot]);
 
   // ページ選択
   const filteredPages = pages.filter((p) =>
@@ -510,7 +520,24 @@ export default function Heatmap() {
                     <div className="flex flex-col items-center justify-center py-20">
                       <Loader2 className="mb-4 h-12 w-12 animate-spin text-primary" />
                       <p className="mb-2 text-body-color">スクリーンショットを自動取得中...</p>
-                      <p className="text-xs text-body-color/60">初回のみ時間がかかる場合があります</p>
+                      {captureElapsed > 0 && (
+                        <p className="mb-2 text-xs tabular-nums text-body-color/60">
+                          経過: {captureElapsed}秒
+                        </p>
+                      )}
+                      {captureElapsed < 15 ? (
+                        <p className="text-xs text-body-color/60">初回のみ時間がかかる場合があります</p>
+                      ) : (
+                        <div className="mt-2 flex flex-col items-center gap-2">
+                          <p className="text-xs text-amber-600">通常より時間がかかっています</p>
+                          <button
+                            onClick={() => captureScreenshot.reset()}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-stroke px-4 py-2 text-xs text-body-color hover:bg-gray-50 dark:border-dark-3 dark:hover:bg-dark-3"
+                          >
+                            キャンセル
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

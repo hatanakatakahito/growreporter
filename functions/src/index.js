@@ -596,5 +596,5 @@ export const collectHeatmapData = onRequest(
 export const captureHeatmapScreenshot = lazyCallable(
   './callable/captureHeatmapScreenshot.js',
   'captureHeatmapScreenshotCallable',
-  { memory: '2GiB', timeoutSeconds: 300 }
+  { memory: '2GiB', timeoutSeconds: 120 }
 );
