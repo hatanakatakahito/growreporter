@@ -19,7 +19,7 @@ export const PLANS = {
       maxSites: 1,
       maxMembers: 1,
       aiSummaryMonthly: 999999, // 無制限（再分析はcanRegenerateで制限）
-      aiImprovementMonthly: 2,
+      aiImprovementMonthly: 1,
       dataRetention: '無制限',
       reportEvaluation: true,
       diagnosisMonthly: 1,
@@ -39,8 +39,8 @@ export const PLANS = {
     features: {
       maxSites: 3,
       maxMembers: 3,
-      aiSummaryMonthly: 50,
-      aiImprovementMonthly: 10,
+      aiSummaryMonthly: 4, // 再分析4回/月（週1回相当）
+      aiImprovementMonthly: 4, // AI改善4回/月（週1回相当）
       dataRetention: '無制限',
       reportEvaluation: true,
       diagnosisMonthly: 5,
