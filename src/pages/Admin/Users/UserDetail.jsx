@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { setPageTitle } from '../../../utils/pageTitle';
 import { useAdminUserDetail } from '../../../hooks/useAdminUserDetail';
 import { useCustomLimits } from '../../../hooks/useCustomLimits';
-import { getPlanDisplayName, getPlanBadgeColor } from '../../../constants/plans';
+import { getPlanDisplayName, getPlanBadgeColor, PLANS, isUnlimited } from '../../../constants/plans';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
@@ -31,7 +31,6 @@ import { doc, getDoc, updateDoc, deleteField, onSnapshot } from 'firebase/firest
 import { db } from '../../../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../../config/firebase';
-import { PLANS } from '../../../constants/plans';
 
 /**
  * ユーザー詳細画面
@@ -302,13 +301,13 @@ export default function UserDetail() {
             <div className="flex items-center gap-2 text-sm text-body-color dark:text-dark-6">
               <Calendar className="h-4 w-4" />
               <span>
-                登録日: {userDetail.createdAt ? new Date(userDetail.createdAt).toLocaleDateString('ja-JP') : '-'}
+                登録日: {userDetail.createdAt ? new Date(userDetail.createdAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
               </span>
             </div>
             <div className="flex items-center gap-2 text-sm text-body-color dark:text-dark-6">
               <Clock className="h-4 w-4" />
               <span>
-                最終ログイン: {userDetail.lastLoginAt ? new Date(userDetail.lastLoginAt).toLocaleDateString('ja-JP') : '-'}
+                最終ログイン: {userDetail.lastLoginAt ? new Date(userDetail.lastLoginAt).toLocaleString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) : '-'}
               </span>
             </div>
           </div>
@@ -333,43 +332,54 @@ export default function UserDetail() {
               </div>
             </div>
 
-            <div>
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="text-body-color dark:text-dark-6">AI分析使用</span>
-                <span className="font-semibold text-dark dark:text-white">
-                  {userDetail.usage.aiSummaryUsage} / {userDetail.usage.aiSummaryLimit || '無制限'}
-                </span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
-                <div
-                  className="h-full rounded-full bg-purple-500"
-                  style={{
-                    width: userDetail.usage.aiSummaryLimit > 0
-                      ? `${Math.min((userDetail.usage.aiSummaryUsage / userDetail.usage.aiSummaryLimit) * 100, 100)}%`
-                      : '0%'
-                  }}
-                />
-              </div>
-            </div>
+            {(() => {
+              const planConfig = PLANS[userDetail.plan] || PLANS.free;
+              const summaryLimit = planConfig.features.aiSummaryMonthly;
+              const improvementLimit = planConfig.features.aiImprovementMonthly;
+              const summaryUnlimited = isUnlimited(summaryLimit);
+              const improvementUnlimited = isUnlimited(improvementLimit);
+              return (
+                <>
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span className="text-body-color dark:text-dark-6">AI分析使用</span>
+                      <span className="font-semibold text-dark dark:text-white">
+                        {userDetail.usage.aiSummaryUsage} / {summaryUnlimited ? '無制限' : `${summaryLimit}回`}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
+                      <div
+                        className="h-full rounded-full bg-purple-500"
+                        style={{
+                          width: !summaryUnlimited && summaryLimit > 0
+                            ? `${Math.min((userDetail.usage.aiSummaryUsage / summaryLimit) * 100, 100)}%`
+                            : '0%'
+                        }}
+                      />
+                    </div>
+                  </div>
 
-            <div>
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="text-body-color dark:text-dark-6">AI改善使用</span>
-                <span className="font-semibold text-dark dark:text-white">
-                  {userDetail.usage.aiImprovementUsage} / {userDetail.usage.aiImprovementLimit || '無制限'}
-                </span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
-                <div
-                  className="h-full rounded-full bg-orange-500"
-                  style={{
-                    width: userDetail.usage.aiImprovementLimit > 0
-                      ? `${Math.min((userDetail.usage.aiImprovementUsage / userDetail.usage.aiImprovementLimit) * 100, 100)}%`
-                      : '0%'
-                  }}
-                />
-              </div>
-            </div>
+                  <div>
+                    <div className="mb-1 flex items-center justify-between text-sm">
+                      <span className="text-body-color dark:text-dark-6">AI改善使用</span>
+                      <span className="font-semibold text-dark dark:text-white">
+                        {userDetail.usage.aiImprovementUsage} / {improvementUnlimited ? '無制限' : `${improvementLimit}回`}
+                      </span>
+                    </div>
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
+                      <div
+                        className="h-full rounded-full bg-orange-500"
+                        style={{
+                          width: !improvementUnlimited && improvementLimit > 0
+                            ? `${Math.min((userDetail.usage.aiImprovementUsage / improvementLimit) * 100, 100)}%`
+                            : '0%'
+                        }}
+                      />
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
