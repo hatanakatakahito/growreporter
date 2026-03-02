@@ -85,8 +85,8 @@ export default function Heatmap() {
   const { data: dailyData, isLoading: dailyDataLoading } = useHeatmapDailyData(
     siteId,
     selectedPageId,
-    dateRange?.startDate,
-    dateRange?.endDate
+    dateRange?.from,
+    dateRange?.to
   );
 
   // 表示用データ: 日別データがあればそちらを優先、なければ累積データ
@@ -431,7 +431,7 @@ export default function Heatmap() {
                           <>最終キャプチャ: {new Date(pageData.screenshotCapturedAt.seconds * 1000).toLocaleString('ja-JP')}</>
                         )}
                       </p>
-                      {!isUsingDailyData && dateRange?.startDate && (
+                      {!isUsingDailyData && dateRange?.from && (
                         <span className="rounded bg-yellow-100 px-2 py-0.5 text-xs text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400">
                           全期間のデータを表示中
                         </span>

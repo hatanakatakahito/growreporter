@@ -34,6 +34,15 @@ module.exports = {
       backgroundImage: {
         'gradient-primary': 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
       },
+      animation: {
+        'bounce-once': 'pulse-scale 0.6s ease-in-out',
+      },
+      keyframes: {
+        'pulse-scale': {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.1)' },
+        },
+      },
     },
   },
   plugins: [],
