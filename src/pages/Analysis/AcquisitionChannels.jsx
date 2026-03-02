@@ -42,6 +42,16 @@ export default function AcquisitionChannels() {
   const [activeTab, setActiveTab] = useState('chart');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  // AI分析タブへスクロールする関数
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -400,14 +410,36 @@ export default function AcquisitionChannels() {
           )}
 
 
-        {/* メモセクション */}
+        {/* メモ & AI分析タブ */}
         {selectedSiteId && currentUser && (
           <div className="mt-6">
-            <PageNoteSection
-              userId={currentUser.uid}
-              siteId={selectedSiteId}
+            <TabbedNoteAndAI
               pageType="channels"
-              dateRange={dateRange}
+              noteContent={
+                <PageNoteSection
+                  userId={currentUser.uid}
+                  siteId={selectedSiteId}
+                  pageType="channels"
+                  dateRange={dateRange}
+                />
+              }
+              aiContent={
+                !isLoading && channelData ? (
+                  <AIAnalysisSection
+                    pageType={PAGE_TYPES.CHANNELS}
+                    rawData={channelData}
+                    period={{
+                      startDate: dateRange?.from,
+                      endDate: dateRange?.to,
+                    }}
+                    onLimitExceeded={() => setIsLimitModalOpen(true)}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    データを読み込み中...
+                  </div>
+                )
+              }
             />
           </div>
         )}
@@ -417,11 +449,15 @@ export default function AcquisitionChannels() {
         {selectedSiteId && !isLoading && channelData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.CHANNELS}
-            rawData={channelData}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
+            onScrollToAI={scrollToAIAnalysis}
+          />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
           />
         )}
       </main>

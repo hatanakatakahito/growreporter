@@ -16,7 +16,6 @@ import MainLayout from './components/Layout/MainLayout';
 import SiteList from './pages/SiteList';
 import SiteDetail from './pages/SiteDetail';
 import Dashboard from './pages/Dashboard';
-import AnalysisNavigation from './pages/Analysis/AnalysisNavigation';
 import AnalysisSummary from './pages/Analysis/AnalysisSummary';
 import Day from './pages/Analysis/Day';
 import Week from './pages/Analysis/Week';
@@ -147,7 +146,6 @@ function App() {
               <Route path="/dashboard" element={<Dashboard />} />
               
               {/* 分析 */}
-              <Route path="/analysis" element={<AnalysisNavigation />} />
               <Route path="/analysis/summary" element={<AnalysisSummary />} />
               <Route path="/analysis/users" element={<Users />} />
               <Route path="/analysis/month" element={<Month />} />

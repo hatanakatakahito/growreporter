@@ -6,7 +6,9 @@ import { getPlanDisplayName, getPlanBadgeColor } from '../../../constants/plans'
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
-import { Search, Download, ChevronLeft, ChevronRight, Edit2 } from 'lucide-react';
+import AdminCreateUserModal from '../../../components/Admin/AdminCreateUserModal';
+import AdminCreateSiteModal from '../../../components/Admin/AdminCreateSiteModal';
+import { Search, Download, ChevronLeft, ChevronRight, Edit2, UserPlus } from 'lucide-react';
 
 /**
  * ユーザー一覧
@@ -17,6 +19,8 @@ export default function UserList() {
   const [searchInput, setSearchInput] = useState('');
   const [selectedUser, setSelectedUser] = useState(null);
   const [showPlanModal, setShowPlanModal] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [siteRegistrationTarget, setSiteRegistrationTarget] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
@@ -156,15 +160,25 @@ export default function UserList() {
             ))}
           </div>
 
-          {/* CSVエクスポート */}
-          <button
-            onClick={handleExportCSV}
-            disabled={!users || users.length === 0}
-            className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-          >
-            <Download className="h-4 w-4" />
-            CSVエクスポート
-          </button>
+          <div className="flex gap-2">
+            {/* ユーザー作成 */}
+            <button
+              onClick={() => setShowCreateUserModal(true)}
+              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
+            >
+              <UserPlus className="h-4 w-4" />
+              ユーザー作成
+            </button>
+            {/* CSVエクスポート */}
+            <button
+              onClick={handleExportCSV}
+              disabled={!users || users.length === 0}
+              className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+            >
+              <Download className="h-4 w-4" />
+              CSVエクスポート
+            </button>
+          </div>
         </div>
       </div>
 
@@ -356,6 +370,36 @@ export default function UserList() {
             setSelectedUser(null);
           }}
           onSuccess={handlePlanChangeSuccess}
+        />
+      )}
+
+      {/* ユーザー作成モーダル */}
+      {showCreateUserModal && (
+        <AdminCreateUserModal
+          onClose={() => setShowCreateUserModal(false)}
+          onSuccess={(message) => {
+            setSuccessMessage(message);
+            setTimeout(() => setSuccessMessage(''), 5000);
+            refetch();
+          }}
+          onProceedToSiteRegistration={(newUser) => {
+            setShowCreateUserModal(false);
+            setSiteRegistrationTarget(newUser);
+          }}
+        />
+      )}
+
+      {/* サイト登録モーダル（ユーザー作成後の遷移用） */}
+      {siteRegistrationTarget && (
+        <AdminCreateSiteModal
+          targetUserId={siteRegistrationTarget.uid}
+          targetUserName={siteRegistrationTarget.name}
+          onClose={() => setSiteRegistrationTarget(null)}
+          onSuccess={(message) => {
+            setSuccessMessage(message);
+            setTimeout(() => setSuccessMessage(''), 5000);
+            refetch();
+          }}
         />
       )}
     </div>

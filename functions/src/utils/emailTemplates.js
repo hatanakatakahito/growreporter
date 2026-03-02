@@ -554,6 +554,114 @@ export function generateAlertEmailTemplate(alert, siteName, siteUrl, dashboardUr
 }
 
 /**
+ * 新規ユーザー登録 ウェルカムメールテンプレート
+ * @param {Object} data - ユーザー情報
+ * @param {string} data.userName - ユーザー名
+ * @returns {Object} { subject, html, text }
+ */
+export function generateWelcomeEmail(data) {
+  const { userName } = data;
+  const displayName = userName || 'ユーザー';
+  const appUrl = 'https://grow-reporter.com';
+
+  const subject = '【グローレポータ】ご登録ありがとうございます';
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+          <tr>
+            <td style="background-color: #3758F9; padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">グローレポータ</h1>
+              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">ご登録ありがとうございます</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
+                ${displayName} さん、ようこそ！
+              </h2>
+
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                グローレポータへのご登録ありがとうございます。<br>
+                GA4・サーチコンソールのデータをAIで分析し、サイト改善に役立つインサイトをお届けします。
+              </p>
+
+              <div style="background-color: #f9fafb; border-left: 4px solid #3758F9; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0 0 10px 0; color: #374151; font-size: 14px; font-weight: 600;">ご利用開始の流れ</p>
+                <p style="margin: 0; color: #4b5563; font-size: 14px; line-height: 1.8;">
+                  1. サイトを登録する<br>
+                  2. Google アカウントを連携する<br>
+                  3. ダッシュボードでデータを確認する
+                </p>
+              </div>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${appUrl}/site-registration" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                      サイトを登録する
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
+                ご不明点がございましたら、お気軽にお問い合わせください。
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                &copy; 2026 グローレポータ by Grow Group
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  const text = `
+${displayName} さん、ようこそ！
+
+グローレポータへのご登録ありがとうございます。
+GA4・サーチコンソールのデータをAIで分析し、サイト改善に役立つインサイトをお届けします。
+
+■ ご利用開始の流れ
+1. サイトを登録する
+2. Google アカウントを連携する
+3. ダッシュボードでデータを確認する
+
+サイト登録: ${appUrl}/site-registration
+
+ご不明点がございましたら、お気軽にお問い合わせください。
+
+────────────────────────
+グローレポータ運営チーム
+────────────────────────
+  `;
+
+  return { subject, html, text };
+}
+
+/**
  * メール送信（Amazon SES使用）
  * 注意: SES SMTP認証情報は環境変数に設定してください
  * firebase functions:config:set ses.smtp_host="email-smtp.ap-northeast-1.amazonaws.com"

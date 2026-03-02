@@ -40,6 +40,16 @@ export default function ConversionList() {
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenLines, setHiddenLines] = useState({});
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  // AI分析タブへスクロールする関数
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -358,28 +368,54 @@ export default function ConversionList() {
             </>
           )}
 
-          {/* メモセクション */}
-          {currentUser && selectedSiteId && (
-            <div className="mt-8">
-              <PageNoteSection
-                userId={currentUser.uid}
-                siteId={selectedSiteId}
+          {/* メモ & AI分析タブ */}
+          {currentUser && selectedSiteId && conversionEvents.length > 0 && (
+            <div className="mt-6">
+              <TabbedNoteAndAI
                 pageType="conversion-list"
-                dateRange={dateRange}
+                noteContent={
+                  <PageNoteSection
+                    userId={currentUser.uid}
+                    siteId={selectedSiteId}
+                    pageType="conversion-list"
+                    dateRange={dateRange}
+                  />
+                }
+                aiContent={
+                  !isLoading && conversionData ? (
+                    <AIAnalysisSection
+                      pageType={PAGE_TYPES.CONVERSIONS}
+                      rawData={conversionData}
+                      period={{
+                        startDate: monthlyDateRange.start,
+                        endDate: monthlyDateRange.end,
+                      }}
+                      onLimitExceeded={() => setIsLimitModalOpen(true)}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      データを読み込み中...
+                    </div>
+                  )
+                }
               />
             </div>
           )}
         </div>
 
         {/* AI分析フローティングボタン */}
-        {selectedSiteId && !isLoading && conversionData && (
+        {selectedSiteId && conversionEvents.length > 0 && !isLoading && conversionData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.CONVERSIONS}
-            rawData={conversionData}
-            period={{
-              startDate: monthlyDateRange.start,
-              endDate: monthlyDateRange.end,
-            }}
+            onScrollToAI={scrollToAIAnalysis}
+          />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
           />
         )}
       </main>

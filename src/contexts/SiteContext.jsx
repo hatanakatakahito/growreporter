@@ -45,7 +45,7 @@ export function SiteProvider({ children }) {
           // 月が変わったらデフォルト（前月）にリセット
           const savedMonth = localStorage.getItem('dateRange_month');
           const currentMonth = format(new Date(), 'yyyy-MM');
-          if (savedMonth && savedMonth !== currentMonth) {
+          if (!savedMonth || savedMonth !== currentMonth) {
             localStorage.removeItem('dateRange');
             localStorage.removeItem('dateRange_month');
             return getDefaultDateRange();

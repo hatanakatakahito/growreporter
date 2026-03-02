@@ -35,6 +35,16 @@ export default function Pages() {
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  // AI分析タブへスクロールする関数
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -296,14 +306,36 @@ export default function Pages() {
             </>
           )}
 
-        {/* メモセクション */}
+        {/* メモ & AI分析タブ */}
         {selectedSiteId && currentUser && (
           <div className="mt-6">
-            <PageNoteSection
-              userId={currentUser.uid}
-              siteId={selectedSiteId}
+            <TabbedNoteAndAI
               pageType="pages"
-              dateRange={dateRange}
+              noteContent={
+                <PageNoteSection
+                  userId={currentUser.uid}
+                  siteId={selectedSiteId}
+                  pageType="pages"
+                  dateRange={dateRange}
+                />
+              }
+              aiContent={
+                !isLoading && pageData ? (
+                  <AIAnalysisSection
+                    pageType={PAGE_TYPES.PAGES}
+                    rawData={pageData}
+                    period={{
+                      startDate: dateRange?.from,
+                      endDate: dateRange?.to,
+                    }}
+                    onLimitExceeded={() => setIsLimitModalOpen(true)}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    データを読み込み中...
+                  </div>
+                )
+              }
             />
           </div>
         )}
@@ -313,11 +345,15 @@ export default function Pages() {
         {selectedSiteId && !isLoading && pageData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.PAGES}
-            rawData={pageData}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
+            onScrollToAI={scrollToAIAnalysis}
+          />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
           />
         )}
       </main>

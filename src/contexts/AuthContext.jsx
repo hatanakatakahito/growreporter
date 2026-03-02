@@ -278,27 +278,28 @@ export const AuthProvider = ({ children }) => {
         try {
           // まずユーザープロファイルを取得
           const currentProfile = await fetchUserProfile(user.uid);
-          
-          // 更新データを準備
-          const updateData = {
-            lastLoginAt: serverTimestamp(),
-          };
-          
-          // AI使用カウントフィールドがない場合のみ初期化
+
+          // 既存ユーザーのみ更新（新規ユーザーは signup/loginWithGoogle 等で作成されるため、
+          // ここでスケルトンドキュメントを作らない）
           if (currentProfile) {
+            const updateData = {
+              lastLoginAt: serverTimestamp(),
+            };
+
+            // AI使用カウントフィールドがない場合のみ初期化
             if (currentProfile.aiSummaryUsage === undefined) {
               updateData.aiSummaryUsage = 0;
             }
             if (currentProfile.aiImprovementUsage === undefined) {
               updateData.aiImprovementUsage = 0;
             }
+
+            await setDoc(
+              doc(db, 'users', user.uid),
+              updateData,
+              { merge: true }
+            );
           }
-          
-          await setDoc(
-            doc(db, 'users', user.uid),
-            updateData,
-            { merge: true }
-          );
         } catch (error) {
           console.error('Error updating user data:', error);
         }

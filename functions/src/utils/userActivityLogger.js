@@ -61,4 +61,9 @@ export const ACTIVITY_ACTIONS = {
   // サイト管理
   SITE_CREATED: 'site_created',
   SITE_DELETED: 'site_deleted',
+
+  // 管理者操作
+  ADMIN_USER_CREATED: 'admin_user_created',
+  ADMIN_SITE_CREATED: 'admin_site_created',
+  ADMIN_SITE_DELETED: 'admin_site_deleted',
 };

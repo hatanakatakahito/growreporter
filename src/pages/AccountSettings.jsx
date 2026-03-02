@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { httpsCallable } from 'firebase/functions';
 import { useAuth } from '../contexts/AuthContext';
 import { useSite } from '../contexts/SiteContext';
 import { usePlan } from '../hooks/usePlan';
 import { useAccountMembers } from '../hooks/useAccountMembers';
 import { getPlanBadgeColor } from '../constants/plans';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { db, functions } from '../config/firebase';
 
 /**
  * アカウント設定画面
@@ -21,6 +22,9 @@ export default function AccountSettings() {
   const [monthlyReportEmail, setMonthlyReportEmail] = useState(false);
   const [alertEmail, setAlertEmail] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   // 通知設定を初期化（従来の emailNotifications があればそれでフォールバック）
   useEffect(() => {
@@ -104,6 +108,24 @@ export default function AccountSettings() {
   const maxSites = plan?.features?.maxSites ?? 1;
   const maxMembers = plan?.features?.maxMembers ?? 1;
   const aiSummaryMonthly = plan?.features?.aiSummaryMonthly ?? 0;
+
+  const handleDeleteAccount = async () => {
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      const deleteAccountFn = httpsCallable(functions, 'deleteAccount');
+      const result = await deleteAccountFn();
+      if (result.data.success) {
+        // Auth削除済みなのでログイン画面へ
+        window.location.href = '/login';
+      }
+    } catch (err) {
+      console.error('アカウント削除エラー:', err);
+      setDeleteError(err.message || 'アカウントの削除に失敗しました');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -355,8 +377,81 @@ export default function AccountSettings() {
             </div>
           </div>
         </div>
+
+        {/* アカウント削除 */}
+        <div className="mt-8 border-t border-gray-200 pt-6 lg:col-span-2">
+          <button
+            onClick={() => setShowDeleteAccount(true)}
+            className="text-sm text-gray-400 hover:text-red-500 transition"
+          >
+            アカウントを削除する
+          </button>
+        </div>
       </div>
       </div>
+
+      {/* アカウント削除確認モーダル */}
+      {showDeleteAccount && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-dark-2">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
+                <svg className="h-6 w-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.27 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                </svg>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                  アカウント削除の確認
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-dark-6">
+                  この操作は取り消せません
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-4 rounded-lg bg-red-50 p-4 text-sm text-red-600 dark:bg-red-900/20">
+              <p className="font-medium mb-1">以下のデータがすべて削除されます：</p>
+              <ul className="list-disc pl-4 space-y-1">
+                <li>アカウント情報</li>
+                <li>登録している全サイト（{sites?.length || 0}件）</li>
+                <li>分析データ、メモ、改善提案</li>
+                <li>OAuth連携情報</li>
+              </ul>
+            </div>
+
+            {deleteError && (
+              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteAccount(false); setDeleteError(null); }}
+                disabled={deleteLoading}
+                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDeleteAccount}
+                disabled={deleteLoading}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+              >
+                {deleteLoading ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                    削除中...
+                  </>
+                ) : (
+                  'アカウントを削除する'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

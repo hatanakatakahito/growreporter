@@ -14,6 +14,9 @@ import { httpsCallable } from 'firebase/functions';
 import { functions, db } from '../../config/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import PageNoteSection from '../../components/Analysis/PageNoteSection';
+import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
+import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
+import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 
 /**
@@ -43,6 +46,7 @@ export default function ReverseFlow() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [selectedFlowId, setSelectedFlowId] = useState(null);
   const [isAnimating, setIsAnimating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -54,6 +58,15 @@ export default function ReverseFlow() {
   });
 
   const queryClient = useQueryClient();
+
+  // AI分析タブへスクロールする関数
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -653,14 +666,44 @@ export default function ReverseFlow() {
             </>
           )}
 
-          {/* メモセクション */}
+          {/* メモ & AI分析タブ */}
           {currentUser && selectedSiteId && (
-            <div className="mt-8">
-              <PageNoteSection
-                userId={currentUser.uid}
-                siteId={selectedSiteId}
+            <div className="mt-6">
+              <TabbedNoteAndAI
                 pageType="reverse-flow"
-                dateRange={dateRange}
+                noteContent={
+                  <PageNoteSection
+                    userId={currentUser.uid}
+                    siteId={selectedSiteId}
+                    pageType="reverse-flow"
+                    dateRange={dateRange}
+                  />
+                }
+                aiContent={
+                  selectedFlow && !summaryLoading && summaryData ? (
+                    <AIAnalysisSection
+                      pageType={PAGE_TYPES.REVERSE_FLOW}
+                      rawData={{
+                        summary: summaryData,
+                        monthly: monthlyData || [],
+                        flow: {
+                          flowName: selectedFlow?.flow_name || '',
+                          formPagePath: selectedFlow?.form_page_path || '',
+                          targetCvEvent: selectedFlow?.target_cv_event || '',
+                        },
+                      }}
+                      period={{
+                        startDate: dateRange?.from,
+                        endDate: dateRange?.to,
+                      }}
+                      onLimitExceeded={() => setIsLimitModalOpen(true)}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      {!selectedFlow ? 'フローを選択してください。' : 'データを読み込み中...'}
+                    </div>
+                  )
+                }
               />
             </div>
           )}
@@ -670,19 +713,15 @@ export default function ReverseFlow() {
         {selectedSiteId && selectedFlow && !summaryLoading && summaryData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.REVERSE_FLOW}
-            rawData={{
-              summary: summaryData,
-              monthly: monthlyData || [],
-              flow: {
-                flowName: selectedFlow?.flow_name || '',
-                formPagePath: selectedFlow?.form_page_path || '',
-                targetCvEvent: selectedFlow?.target_cv_event || '',
-              },
-            }}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
+            onScrollToAI={scrollToAIAnalysis}
+          />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
           />
         )}
       </main>

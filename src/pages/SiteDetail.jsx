@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { setPageTitle } from '../utils/pageTitle';
 import { useSiteDetail } from '../hooks/useSiteDetail';
@@ -8,7 +8,7 @@ import ErrorAlert from '../components/common/ErrorAlert';
 import { functions } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, getDoc, getDocFromServer } from 'firebase/firestore';
-import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, MousePointerClick, Copy, Check } from 'lucide-react';
+import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, MousePointerClick, Copy, Check, AlertCircle } from 'lucide-react';
 import { SITE_TYPES, SITE_PURPOSES } from '../constants/siteOptions';
 
 /**
@@ -17,12 +17,16 @@ import { SITE_TYPES, SITE_PURPOSES } from '../constants/siteOptions';
  */
 export default function SiteDetail() {
   const { siteId } = useParams();
+  const navigate = useNavigate();
   const { siteDetail, loading, error, refetch } = useSiteDetail(siteId);
   const [tagCopied, setTagCopied] = useState(false);
   const [scrapingStatus, setScrapingStatus] = useState(null);
   const [isScrapingLoading, setIsScrapingLoading] = useState(false);
   const [scrapingError, setScrapingError] = useState(null);
   const [scrapingMessage, setScrapingMessage] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
 
   useEffect(() => {
     setPageTitle('サイト詳細');
@@ -99,6 +103,23 @@ export default function SiteDetail() {
       setScrapingError(err.message);
     } finally {
       setIsScrapingLoading(false);
+    }
+  };
+
+  const handleDeleteSite = async () => {
+    setDeleteLoading(true);
+    setDeleteError(null);
+    try {
+      const deleteSiteFn = httpsCallable(functions, 'deleteSite');
+      const result = await deleteSiteFn({ siteId });
+      if (result.data.success) {
+        navigate('/sites/list');
+      }
+    } catch (err) {
+      console.error('サイト削除エラー:', err);
+      setDeleteError(err.message || 'サイトの削除に失敗しました');
+    } finally {
+      setDeleteLoading(false);
     }
   };
 
@@ -433,8 +454,80 @@ export default function SiteDetail() {
           </div>
         </div>
 
+        {/* サイト削除 */}
+        <div className="mt-8 border-t border-gray-200 pt-6 dark:border-dark-3">
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="text-sm text-gray-400 hover:text-red-500 transition dark:text-dark-6"
+          >
+            このサイトを削除する
+          </button>
+        </div>
+
         </div>
       </div>
+
+      {/* 削除確認モーダル */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-dark-2">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                <AlertCircle className="h-6 w-6 text-red-500" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-dark dark:text-white">
+                  サイト削除の確認
+                </h3>
+                <p className="text-sm text-body-color dark:text-dark-6">
+                  この操作は取り消せません
+                </p>
+              </div>
+            </div>
+
+            <div className="mb-4 rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
+              <p className="text-sm font-medium text-dark dark:text-white">
+                {siteDetail?.siteName || '名称未設定'}
+              </p>
+              <p className="text-xs text-body-color dark:text-dark-6">{siteDetail?.siteUrl}</p>
+            </div>
+
+            <p className="mb-4 text-sm text-red-500">
+              サイトに紐づくすべてのデータが削除されます。
+            </p>
+
+            {deleteError && (
+              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20">
+                {deleteError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
+                disabled={deleteLoading}
+                className="flex-1 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleDeleteSite}
+                disabled={deleteLoading}
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+              >
+                {deleteLoading ? (
+                  <>
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                    削除中...
+                  </>
+                ) : (
+                  '削除する'
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

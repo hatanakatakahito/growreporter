@@ -1,4 +1,4 @@
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { FieldValue } from 'firebase-admin/firestore';
 
 const FALLBACK_HYPOTHESIS = { text: '仮説を取得できませんでした', source: 'ai' };
 
@@ -18,8 +18,8 @@ export async function generateAlertHypotheses(db, siteId, alertId, alert, siteNa
   }
 
   const prompt = `あなたはWebサイトのアクセス分析の専門家です。
-以下のメトリクス変化について、考えられる原因を3つ、簡潔に日本語で箇条書きで答えてください。
-各項目は1行で、30文字以内でお願いします。
+以下のメトリクス変化について、考えられる原因の仮説を3つ、日本語で答えてください。
+各仮説は具体的で、なぜその変動が起きたのかを1〜2文で説明してください。
 
 サイト名: ${siteName || '（不明）'}
 メトリクス: ${alert.metricLabel || alert.metricName}
@@ -40,7 +40,7 @@ export async function generateAlertHypotheses(db, siteId, alertId, alert, siteNa
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.5,
-            maxOutputTokens: 300,
+            maxOutputTokens: 600,
           },
         }),
       }
@@ -76,7 +76,7 @@ function parseHypotheses(rawText) {
   const lines = rawText
     .split(/\n/)
     .map((s) => s.replace(/^\s*[\d・\.]\s*/, '').trim())
-    .filter((s) => s.length > 0 && s.length <= 80);
+    .filter((s) => s.length > 0 && s.length <= 200);
   return lines.slice(0, 3);
 }
 

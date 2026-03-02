@@ -13,6 +13,9 @@ import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
 import PageNoteSection from '../../components/Analysis/PageNoteSection';
+import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
+import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
+import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 
 /**
@@ -26,6 +29,16 @@ export default function PageFlow() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPage, setSelectedPage] = useState('');
   const [selectedPageOption, setSelectedPageOption] = useState(null);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  // AI分析タブへスクロールする関数
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -362,14 +375,36 @@ export default function PageFlow() {
             </div>
           )}
 
-          {/* メモセクション */}
+          {/* メモ & AI分析タブ */}
           {currentUser && selectedSiteId && (
-            <div className="mt-8">
-              <PageNoteSection
-                userId={currentUser.uid}
-                siteId={selectedSiteId}
+            <div className="mt-6">
+              <TabbedNoteAndAI
                 pageType="page-flow"
-                dateRange={dateRange}
+                noteContent={
+                  <PageNoteSection
+                    userId={currentUser.uid}
+                    siteId={selectedSiteId}
+                    pageType="page-flow"
+                    dateRange={dateRange}
+                  />
+                }
+                aiContent={
+                  selectedPage && !transitionLoading && transitionData ? (
+                    <AIAnalysisSection
+                      pageType={PAGE_TYPES.PAGE_FLOW}
+                      rawData={transitionData}
+                      period={{
+                        startDate: dateRange?.from,
+                        endDate: dateRange?.to,
+                      }}
+                      onLimitExceeded={() => setIsLimitModalOpen(true)}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">
+                      {!selectedPage ? 'ページを選択してください。' : 'データを読み込み中...'}
+                    </div>
+                  )
+                }
               />
             </div>
           )}
@@ -379,11 +414,15 @@ export default function PageFlow() {
         {selectedSiteId && selectedPage && !transitionLoading && transitionData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.PAGE_FLOW}
-            rawData={transitionData}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
+            onScrollToAI={scrollToAIAnalysis}
+          />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
           />
         )}
       </main>
