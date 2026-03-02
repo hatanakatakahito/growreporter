@@ -18,7 +18,7 @@ export const PLANS = {
     features: {
       maxSites: 1,
       maxMembers: 1,
-      aiSummaryMonthly: 10,
+      aiSummaryMonthly: 999999, // 無制限（再分析はcanRegenerateで制限）
       aiImprovementMonthly: 2,
       dataRetention: '無制限',
       reportEvaluation: true,

@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { setPageTitle } from '../../../utils/pageTitle';
 import { useAdminUserDetail } from '../../../hooks/useAdminUserDetail';
 import { useCustomLimits } from '../../../hooks/useCustomLimits';
-import { getPlanDisplayName, getPlanBadgeColor, PLANS, isUnlimited } from '../../../constants/plans';
+import { getPlanDisplayName, getPlanBadgeColor, PLANS, isUnlimited, canRegenerate } from '../../../constants/plans';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
@@ -344,7 +344,7 @@ export default function UserDetail() {
                     <div className="mb-1 flex items-center justify-between text-sm">
                       <span className="text-body-color dark:text-dark-6">AI分析使用</span>
                       <span className="font-semibold text-dark dark:text-white">
-                        {userDetail.usage.aiSummaryUsage} / {summaryUnlimited ? '無制限' : `${summaryLimit}回`}
+                        {userDetail.usage.aiSummaryUsage} / {summaryUnlimited ? (canRegenerate(userDetail.plan) ? '無制限' : '無制限（再分析不可）') : `${summaryLimit}回`}
                       </span>
                     </div>
                     <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
