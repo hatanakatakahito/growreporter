@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAccountMembers } from '../hooks/useAccountMembers';
 import { usePlan } from '../hooks/usePlan';
@@ -7,6 +7,7 @@ import { functions } from '../config/firebase';
 import InviteMemberModal from '../components/Members/InviteMemberModal';
 import TransferOwnershipModal from '../components/Members/TransferOwnershipModal';
 import { Link } from 'react-router-dom';
+import { setPageTitle } from '../utils/pageTitle';
 
 /**
  * メンバー管理画面
@@ -23,6 +24,8 @@ export default function Members() {
   } = useAccountMembers();
   const { plan, checkCanInviteMember, getMaxMembers } = usePlan();
   
+  useEffect(() => { setPageTitle('メンバー管理'); }, []);
+
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);

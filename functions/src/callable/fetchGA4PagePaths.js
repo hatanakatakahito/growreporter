@@ -2,6 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { google } from 'googleapis';
 import { getAndRefreshToken } from '../utils/tokenManager.js';
+import { canAccessSite } from '../utils/permissionHelper.js';
 
 /**
  * GA4ページパス一覧取得 Callable Function
@@ -37,25 +38,21 @@ export async function fetchGA4PagePathsCallable(request) {
   console.log(`[fetchGA4PagePaths] Start: siteId=${siteId}, period=${startDate} to ${endDate}, userId=${userId}`);
 
   try {
-    // 1. サイトの所有権確認
+    // 1. サイトの所有権・メンバーシップ確認
+    const hasAccess = await canAccessSite(userId, siteId);
+    if (!hasAccess) {
+      throw new HttpsError(
+        'permission-denied',
+        'このサイトにアクセスする権限がありません'
+      );
+    }
+
     const siteDoc = await db.collection('sites').doc(siteId).get();
-    
     if (!siteDoc.exists) {
       throw new HttpsError('not-found', 'サイトが見つかりません');
     }
 
     const siteData = siteDoc.data();
-    
-    // サイト所有者本人、または管理者権限（admin/editor/viewer）がある場合のみアクセス許可
-    if (siteData.userId !== userId) {
-      const adminDoc = await db.collection('adminUsers').doc(userId).get();
-      if (!adminDoc.exists || !['admin', 'editor', 'viewer'].includes(adminDoc.data().role)) {
-        throw new HttpsError(
-          'permission-denied',
-          'このサイトにアクセスする権限がありません'
-        );
-      }
-    }
 
     // GA4設定の確認
     if (!siteData.ga4PropertyId || !siteData.ga4OauthTokenId) {

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
+import { setPageTitle } from '../utils/pageTitle';
 
 /**
  * 招待承認画面
@@ -18,6 +19,8 @@ export default function AcceptInvitation() {
   const [isAccepting, setIsAccepting] = useState(false);
 
   const token = searchParams.get('token');
+
+  useEffect(() => { setPageTitle('招待承認'); }, []);
 
   useEffect(() => {
     const fetchInvitation = async () => {

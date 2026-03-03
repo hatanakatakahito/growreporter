@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { setPageTitle } from '../utils/pageTitle';
 
 /**
  * プロフィール編集画面
@@ -13,16 +14,16 @@ export default function AccountProfile() {
   const [isSaving, setIsSaving] = useState(false);
   const [formData, setFormData] = useState({
     company: '',
-    lastName: '',
-    firstName: '',
+    name: '',
   });
+
+  useEffect(() => { setPageTitle('プロフィール編集'); }, []);
 
   useEffect(() => {
     if (userProfile) {
       setFormData({
         company: userProfile.company || '',
-        lastName: userProfile.lastName || '',
-        firstName: userProfile.firstName || '',
+        name: userProfile.name || (userProfile.lastName && userProfile.firstName ? `${userProfile.lastName} ${userProfile.firstName}` : userProfile.displayName || ''),
       });
     }
   }, [userProfile]);
@@ -44,8 +45,7 @@ export default function AccountProfile() {
     try {
       await updateDoc(doc(db, 'users', currentUser.uid), {
         company: formData.company,
-        lastName: formData.lastName,
-        firstName: formData.firstName,
+        name: formData.name,
         updatedAt: new Date()
       });
       
@@ -98,37 +98,20 @@ export default function AccountProfile() {
               />
             </div>
 
-            {/* 姓 */}
+            {/* 氏名 */}
             <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 mb-2">
-                姓 <span className="text-red-500">*</span>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                氏名 <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
-                id="lastName"
-                name="lastName"
-                value={formData.lastName}
+                id="name"
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="山田"
-              />
-            </div>
-
-            {/* 名 */}
-            <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 mb-2">
-                名 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="firstName"
-                name="firstName"
-                value={formData.firstName}
-                onChange={handleChange}
-                required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
-                placeholder="太郎"
+                placeholder="例: 山田 太郎"
               />
             </div>
 

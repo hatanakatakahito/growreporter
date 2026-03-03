@@ -67,17 +67,16 @@ export const getUserDetailCallable = async (request) => {
       changedAt: doc.data().changedAt?.toDate?.().toISOString() || null,
     }));
 
-    // ユーザー名を lastName + firstName で構成
-    const userName = (userData.lastName && userData.firstName) 
-      ? `${userData.lastName} ${userData.firstName}` 
-      : (userData.displayName || null);
+    // ユーザー名を name 優先、lastName + firstName フォールバック
+    const userName = userData.name || (userData.lastName && userData.firstName
+      ? `${userData.lastName} ${userData.firstName}`
+      : '') || userData.displayName || null;
 
     const userDetail = {
       uid: userDoc.id,
       email: userData.email || null,
       displayName: userName,
-      lastName: userData.lastName || null,
-      firstName: userData.firstName || null,
+      name: userData.name || userName,
       company: userData.company || null,
       photoURL: userData.photoURL || null,
       plan: userData.plan || 'free',

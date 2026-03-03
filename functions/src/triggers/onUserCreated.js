@@ -7,8 +7,8 @@ import { getFirestore } from 'firebase-admin/firestore';
  * ユーザー新規登録トリガーハンドラー
  * users/{uid} ドキュメント作成時にウェルカムメールを送信
  *
- * メールパスワード登録: lastName/firstName が既にあるため即座に送信
- * SSO登録: lastName/firstName がないためスキップ → logUserRegistration で送信
+ * メールパスワード登録: name が既にあるため即座に送信
+ * SSO登録: name がないためスキップ → logUserRegistration で送信
  */
 export async function onUserCreatedHandler(event) {
   const uid = event.params.uid;
@@ -31,13 +31,13 @@ export async function onUserCreatedHandler(event) {
     return;
   }
 
-  // lastName/firstName がなければSSO登録 → logUserRegistration で送信するためスキップ
-  if (!userData.lastName || !userData.firstName) {
+  // name がなければSSO登録 → logUserRegistration で送信するためスキップ
+  const displayName = userData.name
+    || (userData.lastName && userData.firstName ? `${userData.lastName} ${userData.firstName}` : '');
+  if (!displayName) {
     logger.info('[onUserCreated] SSO登録のためスキップ（logUserRegistrationで送信）', { uid });
     return;
   }
-
-  const displayName = `${userData.lastName} ${userData.firstName}`;
 
   try {
     const { subject, html, text } = generateWelcomeEmail({ userName: displayName });

@@ -67,7 +67,7 @@ export async function fetchGA4ChannelConversionDataCallable(request) {
     }
 
     // 2. OAuthトークン取得・更新
-    const tokenOwnerId = siteData.ga4TokenOwner || siteData.ga4OauthTokenId;
+    const tokenOwnerId = siteData.ga4TokenOwner || siteData.userId;
     const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, siteData.ga4OauthTokenId);
 
     // 3. GA4 Data API 呼び出し

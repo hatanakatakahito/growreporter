@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import { useSiteMetrics } from '../../hooks/useSiteMetrics';
 import { useGA4MonthlyData } from '../../hooks/useGA4MonthlyData';
@@ -24,10 +24,24 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function AnalysisSummary() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const { currentUser, userProfile } = useAuth();
+  const location = useLocation();
 
   const memberRole = userProfile?.memberRole || 'owner';
   const isViewer = memberRole === 'viewer';
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  // ダッシュボードの「AIで分析する」からの遷移時にAI分析セクションへスクロール
+  useEffect(() => {
+    if (location.state?.scrollToAI) {
+      // データ読み込み後にスクロールするため少し待つ
+      const timer = setTimeout(() => {
+        scrollToAIAnalysis();
+      }, 500);
+      // stateをクリアしてリロード時に再スクロールしないようにする
+      window.history.replaceState({}, '');
+      return () => clearTimeout(timer);
+    }
+  }, [location.state]);
 
   const scrollToAIAnalysis = () => {
     window.dispatchEvent(new Event('switchToAITab'));

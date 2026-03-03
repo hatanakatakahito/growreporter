@@ -14,6 +14,7 @@ export async function fetchGA4ReverseFlowDataCallable(request) {
     siteId,
     startDate, // YYYY-MM-DD
     endDate,   // YYYY-MM-DD
+    entryPagePath,  // 起点ページパス（任意、未指定なら全PV）
     formPagePath,
     targetCvEvent,
   } = request.data;
@@ -85,6 +86,31 @@ export async function fetchGA4ReverseFlowDataCallable(request) {
     });
 
     const totalSiteViews = parseInt(totalSiteViewsResponse.data.rows?.[0]?.metricValues?.[0]?.value || 0);
+
+    // 起点ページPV（任意：指定時のみ取得）
+    let entryPageViews = null;
+    if (entryPagePath) {
+      const entryPageViewsResponse = await analyticsData.properties.runReport({
+        auth: oauth2Client,
+        property: `properties/${siteData.ga4PropertyId}`,
+        requestBody: {
+          dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: 'pagePath' }],
+          metrics: [{ name: 'screenPageViews' }],
+          dimensionFilter: {
+            filter: {
+              fieldName: 'pagePath',
+              stringFilter: {
+                matchType: 'EXACT',
+                value: entryPagePath,
+              },
+            },
+          },
+        },
+      });
+      entryPageViews = parseInt(entryPageViewsResponse.data.rows?.[0]?.metricValues?.[0]?.value || 0);
+      console.log(`[fetchGA4ReverseFlowData] 起点ページPV: ${entryPageViews} (${entryPagePath})`);
+    }
 
     // フォームページPV
     const formPageViewsResponse = await analyticsData.properties.runReport({
@@ -158,10 +184,41 @@ export async function fetchGA4ReverseFlowDataCallable(request) {
       monthlyTotals[yearMonth] = {
         yearMonth,
         totalSiteViews: parseInt(row.metricValues[0].value || 0),
+        entryPageViews: null,
         formPageViews: 0,
         submissionComplete: 0,
       };
     });
+
+    // 月次起点ページPV（任意：指定時のみ取得）
+    if (entryPagePath) {
+      const monthlyEntryResponse = await analyticsData.properties.runReport({
+        auth: oauth2Client,
+        property: `properties/${siteData.ga4PropertyId}`,
+        requestBody: {
+          dateRanges: [{ startDate, endDate }],
+          dimensions: [{ name: 'yearMonth' }, { name: 'pagePath' }],
+          metrics: [{ name: 'screenPageViews' }],
+          dimensionFilter: {
+            filter: {
+              fieldName: 'pagePath',
+              stringFilter: {
+                matchType: 'EXACT',
+                value: entryPagePath,
+              },
+            },
+          },
+          orderBys: [{ dimension: { dimensionName: 'yearMonth' }, desc: false }],
+        },
+      });
+
+      monthlyEntryResponse.data.rows?.forEach(row => {
+        const yearMonth = row.dimensionValues[0].value;
+        if (monthlyTotals[yearMonth]) {
+          monthlyTotals[yearMonth].entryPageViews = parseInt(row.metricValues[0].value || 0);
+        }
+      });
+    }
 
     // 月次フォームページPV
     const monthlyFormResponse = await analyticsData.properties.runReport({
@@ -229,6 +286,7 @@ export async function fetchGA4ReverseFlowDataCallable(request) {
       success: true,
       summary: {
         totalSiteViews,
+        entryPageViews,
         formPageViews,
         submissionComplete,
       },

@@ -6,6 +6,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../../config/firebase';
 import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
+import { setPageTitle } from '../../../utils/pageTitle';
 
 /**
  * メール通知設定画面（管理者用）
@@ -17,6 +18,8 @@ export default function EmailNotifications() {
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState(null);
+
+  useEffect(() => { setPageTitle('メール通知設定'); }, []);
 
   // 週次レポート設定
   const [weeklyEnabled, setWeeklyEnabled] = useState(false);

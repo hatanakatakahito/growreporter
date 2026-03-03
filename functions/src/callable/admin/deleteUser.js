@@ -49,15 +49,15 @@ export const deleteUserCallable = async (request) => {
     }
 
     const userData = userDoc.data();
-    const targetName = (userData.lastName && userData.firstName) 
-      ? `${userData.lastName} ${userData.firstName}` 
-      : (userData.displayName || userData.email || 'Unknown');
+    const targetName = userData.name || (userData.lastName && userData.firstName
+      ? `${userData.lastName} ${userData.firstName}`
+      : '') || userData.displayName || userData.email || 'Unknown';
 
     // 実行者情報を取得
     const executorData = executorAdminDoc.data();
-    const executorName = (executorData.lastName && executorData.firstName) 
-      ? `${executorData.lastName} ${executorData.firstName}` 
-      : (executorData.displayName || executorData.email || 'Admin');
+    const executorName = executorData.name || (executorData.lastName && executorData.firstName
+      ? `${executorData.lastName} ${executorData.firstName}`
+      : '') || executorData.displayName || executorData.email || 'Admin';
 
     logger.info('ユーザー削除開始', { 
       executorId: uid,

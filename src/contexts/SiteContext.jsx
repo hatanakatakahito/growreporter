@@ -146,10 +146,13 @@ export function SiteProvider({ children }) {
           setRawSites([siteData]); // 一時的にこのサイトのみを表示
           setSelectedSiteId(urlSiteId);
         } else {
-          // 自分のサイトの場合は通常通り
+          // 自分のサイトの場合 - 即座に表示できるようrawSitesにもセット
+          // （Effect 2でフルのサイト一覧に置き換わる）
           console.log('[SiteContext] 自分のサイトを表示');
           setIsAdminViewing(false);
           setSelectedSiteId(urlSiteId);
+          localStorage.setItem('lastSelectedSiteId', urlSiteId);
+          setRawSites(prev => prev.length === 0 ? [siteData] : prev);
         }
       } catch (error) {
         console.error('[SiteContext] URLパラメータからのサイト取得エラー:', error);
@@ -171,26 +174,21 @@ export function SiteProvider({ children }) {
         return;
       }
 
-      // URLパラメータに siteId が指定されている場合はスキップ
       const params = new URLSearchParams(location.search);
       const urlSiteId = params.get('siteId');
-      if (urlSiteId) {
-        console.log('[SiteContext] URLパラメータによるサイト指定があるため、通常のサイト取得をスキップ');
-        return;
-      }
 
       setIsLoading(true);
       try {
         console.log('[SiteContext] ユーザーID:', currentUser.uid);
-        
+
         // 自分のユーザー情報を取得
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         const userData = userDoc.data();
-        
+
         // memberships から accountOwnerId を取得（複数ある場合は最初の1つ）
         const memberships = userData?.memberships || {};
         const accountOwnerIds = Object.keys(memberships);
-        
+
         let accountOwnerId;
         if (accountOwnerIds.length > 0) {
           // memberships がある場合、最初のアカウントを使用
@@ -201,40 +199,53 @@ export function SiteProvider({ children }) {
           accountOwnerId = userData?.accountOwnerId || currentUser.uid;
           console.log('[SiteContext] 従来方式でアカウントオーナーID取得:', accountOwnerId);
         }
-        
+
         console.log('[SiteContext] 使用するアカウントオーナーID:', accountOwnerId);
-        
+
         // accountOwnerIdが一致するサイトを全て取得
         const q = query(
           collection(db, 'sites'),
           where('userId', '==', accountOwnerId)
         );
-        
+
         const querySnapshot = await getDocs(q);
         console.log('[SiteContext] 取得したサイト数:', querySnapshot.size);
-        
+
         const sitesData = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
         }));
-        
+
         // クライアント側でソート
         sitesData.sort((a, b) => {
           const aTime = a.createdAt?.toDate?.() || new Date(0);
           const bTime = b.createdAt?.toDate?.() || new Date(0);
           return bTime - aTime;
         });
-        
+
+        // URLパラメータのサイトが自分のサイト一覧に含まれない場合は
+        // 管理者として他ユーザーのサイトを閲覧中のため、上書きしない
+        if (urlSiteId && !sitesData.some(site => site.id === urlSiteId)) {
+          console.log('[SiteContext] 管理者閲覧中のため、サイト一覧の上書きをスキップ');
+          return;
+        }
+
         setRawSites(sitesData);
         setIsAdminViewing(false); // 通常モードに戻す
 
-        // 最後に選択したサイトをLocalStorageから復元
-        const lastSelectedSiteId = localStorage.getItem('lastSelectedSiteId');
-        if (lastSelectedSiteId && sitesData.some(site => site.id === lastSelectedSiteId)) {
-          setSelectedSiteId(lastSelectedSiteId);
-        } else if (sitesData.length > 0) {
-          // LocalStorageにない場合は最初のサイトを選択
-          setSelectedSiteId(sitesData[0].id);
+        // URLパラメータでサイト指定がある場合はそれを選択（サイト登録後のリダイレクト等）
+        if (urlSiteId && sitesData.some(site => site.id === urlSiteId)) {
+          setSelectedSiteId(urlSiteId);
+          localStorage.setItem('lastSelectedSiteId', urlSiteId);
+        } else {
+          // 最後に選択したサイトをLocalStorageから復元
+          const lastSelectedSiteId = localStorage.getItem('lastSelectedSiteId');
+          if (lastSelectedSiteId && sitesData.some(site => site.id === lastSelectedSiteId)) {
+            setSelectedSiteId(lastSelectedSiteId);
+          } else if (sitesData.length > 0) {
+            // LocalStorageにない場合は最初のサイトを選択
+            setSelectedSiteId(sitesData[0].id);
+          }
         }
       } catch (error) {
         console.error('[SiteContext] Error fetching sites:', error);

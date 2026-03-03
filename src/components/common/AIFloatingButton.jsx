@@ -60,8 +60,11 @@ export default function AIFloatingButton({ pageType, onScrollToAI }) {
 
         {/* 残り回数バッジ — 無料プランのsummaryは1回限りのためバッジ非表示 */}
         {remaining !== null && !(planId === 'free' && type === 'summary') && (
-          <span className={`absolute -top-2 -right-2 flex h-6 ${remaining === -1 ? 'w-7' : 'w-6'} items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-md`}>
-            {remaining === -1 ? '∞' : remaining}
+          <span
+            className="absolute -top-2 -right-2 flex h-6 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-md whitespace-nowrap"
+            title={`${plan?.displayName || 'プラン'}：AI分析の今月の残り回数`}
+          >
+            {remaining === -1 ? '無制限' : `${remaining}回`}
           </span>
         )}
       </button>

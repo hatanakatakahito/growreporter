@@ -56,9 +56,9 @@ export const setCustomLimitsCallable = async (request) => {
     
     // 管理者名を取得
     const adminData = adminDoc.data();
-    const adminName = (adminData.lastName && adminData.firstName) 
-      ? `${adminData.lastName} ${adminData.firstName}` 
-      : (adminData.displayName || adminData.email || 'Admin');
+    const adminName = adminData.name || (adminData.lastName && adminData.firstName
+      ? `${adminData.lastName} ${adminData.firstName}`
+      : '') || adminData.displayName || adminData.email || 'Admin';
 
     // 有効期限のパース
     const validUntilTimestamp = validUntil 
@@ -115,9 +115,9 @@ export const setCustomLimitsCallable = async (request) => {
     });
 
     // ユーザー名を取得
-    const userName = (userData.lastName && userData.firstName) 
-      ? `${userData.lastName} ${userData.firstName}` 
-      : (userData.displayName || userData.email || 'ユーザー');
+    const userName = userData.name || (userData.lastName && userData.firstName
+      ? `${userData.lastName} ${userData.firstName}`
+      : '') || userData.displayName || userData.email || 'ユーザー';
 
     return {
       success: true,

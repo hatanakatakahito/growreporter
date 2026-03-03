@@ -304,7 +304,7 @@ export default function AcquisitionChannels() {
 
               {/* タブコンテンツ */}
               {activeTab === 'chart' ? (
-                <div className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   {/* 円グラフ */}
                   <ChartContainer title="チャネル別訪問者構成比" height={400}>
                     <ResponsiveContainer width="100%" height="100%">
@@ -315,7 +315,7 @@ export default function AcquisitionChannels() {
                           cy="50%"
                           labelLine={false}
                           label={renderLabel}
-                          outerRadius={120}
+                          outerRadius={100}
                           fill="#8884d8"
                           dataKey="value"
                         >

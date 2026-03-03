@@ -93,12 +93,12 @@ export const acceptInvitationCallable = async (request) => {
       if (ownerDoc.exists) {
         const ownerData = ownerDoc.data();
         const ownerEmail = ownerData.email;
-        const memberName = `${userData.lastName || ''} ${userData.firstName || ''}`.trim() || userData.email;
+        const memberName = userData.name || `${userData.lastName || ''} ${userData.firstName || ''}`.trim() || userData.email;
         const roleText = invitation.role === 'editor' ? '編集者' : '閲覧者';
         
         const subject = `【グローレポータ】${memberName} さんがメンバーに参加しました`;
         const html = generateMemberAddedEmailHtml({
-          ownerName: `${ownerData.lastName || ''} ${ownerData.firstName || ''}`.trim() || ownerData.email,
+          ownerName: ownerData.name || `${ownerData.lastName || ''} ${ownerData.firstName || ''}`.trim() || ownerData.email,
           memberName,
           memberEmail: userData.email,
           role: roleText,

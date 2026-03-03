@@ -6,7 +6,7 @@ import { useSite } from '../../contexts/SiteContext';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
-import { Plus, Edit, Trash2, GitMerge, Settings, Info } from 'lucide-react';
+import { Plus, Edit, Trash2, GitMerge, Settings, Info, TrendingUp, Target, BarChart3, ArrowRight } from 'lucide-react';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -53,6 +53,7 @@ export default function ReverseFlow() {
   const [editingFlow, setEditingFlow] = useState(null);
   const [flowForm, setFlowForm] = useState({
     flow_name: '',
+    entry_page_path: '',
     form_page_path: '',
     target_cv_event: '',
   });
@@ -261,7 +262,7 @@ export default function ReverseFlow() {
     isError: summaryError,
     error: summaryErrorMessage,
   } = useQuery({
-    queryKey: ['ga4-reverse-flow-summary', selectedSiteId, dateRange, selectedFlow?.form_page_path, selectedFlow?.target_cv_event],
+    queryKey: ['ga4-reverse-flow-summary', selectedSiteId, dateRange, selectedFlow?.entry_page_path, selectedFlow?.form_page_path, selectedFlow?.target_cv_event],
     queryFn: async () => {
       if (!selectedSiteId || !dateRange.from || !dateRange.to || !selectedFlow?.form_page_path || !selectedFlow?.target_cv_event) {
         return null;
@@ -280,10 +281,11 @@ export default function ReverseFlow() {
         siteId: selectedSiteId,
         startDate: formatDate(dateRange.from),
         endDate: formatDate(dateRange.to),
+        entryPagePath: selectedFlow.entry_page_path || '',
         formPagePath: selectedFlow.form_page_path,
         targetCvEvent: selectedFlow.target_cv_event,
       });
-      
+
       return result.data.summary;
     },
     enabled: !!selectedSiteId && !!dateRange.from && !!dateRange.to && !!selectedFlow?.form_page_path && !!selectedFlow?.target_cv_event,
@@ -297,7 +299,7 @@ export default function ReverseFlow() {
     isError: monthlyError,
     error: monthlyErrorMessage,
   } = useQuery({
-    queryKey: ['ga4-reverse-flow-monthly', selectedSiteId, monthlyDateRange, selectedFlow?.form_page_path, selectedFlow?.target_cv_event],
+    queryKey: ['ga4-reverse-flow-monthly', selectedSiteId, monthlyDateRange, selectedFlow?.entry_page_path, selectedFlow?.form_page_path, selectedFlow?.target_cv_event],
     queryFn: async () => {
       if (!selectedSiteId || !monthlyDateRange.start || !selectedFlow?.form_page_path || !selectedFlow?.target_cv_event) {
         return null;
@@ -308,10 +310,11 @@ export default function ReverseFlow() {
         siteId: selectedSiteId,
         startDate: monthlyDateRange.start,
         endDate: monthlyDateRange.end,
+        entryPagePath: selectedFlow.entry_page_path || '',
         formPagePath: selectedFlow.form_page_path,
         targetCvEvent: selectedFlow.target_cv_event,
       });
-      
+
       return result.data.monthlyTable;
     },
     enabled: !!selectedSiteId && !!monthlyDateRange.start && !!selectedFlow?.form_page_path && !!selectedFlow?.target_cv_event,
@@ -339,8 +342,8 @@ export default function ReverseFlow() {
       // ダイアログを閉じる
       setIsDialogOpen(false);
       setEditingFlow(null);
-      setFlowForm({ flow_name: '', form_page_path: '', target_cv_event: '' });
-      
+      setFlowForm({ flow_name: '', entry_page_path: '', form_page_path: '', target_cv_event: '' });
+
       // 削除時の処理
       if (data.isDelete) {
         console.log('[ReverseFlow] 削除時の処理開始');
@@ -384,12 +387,13 @@ export default function ReverseFlow() {
       setEditingFlow(flow);
       setFlowForm({
         flow_name: flow.flow_name,
+        entry_page_path: flow.entry_page_path || '',
         form_page_path: flow.form_page_path,
         target_cv_event: flow.target_cv_event,
       });
     } else {
       setEditingFlow(null);
-      setFlowForm({ flow_name: '', form_page_path: '', target_cv_event: '' });
+      setFlowForm({ flow_name: '', entry_page_path: '', form_page_path: '', target_cv_event: '' });
     }
     setIsDialogOpen(true);
     
@@ -484,6 +488,97 @@ export default function ReverseFlow() {
             </p>
           </div>
 
+          {/* コンバージョン未設定時のガイド */}
+          {(!conversionEvents || conversionEvents.length === 0) && (
+            <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+              <div className="border-b border-stroke p-6 dark:border-dark-3">
+                <h3 className="text-lg font-semibold text-dark dark:text-white">逆算フローとは？</h3>
+              </div>
+              <div className="p-6">
+                <p className="mb-6 text-sm leading-relaxed text-body-color">
+                  「起点ページ → フォームページ → 送信完了（CV）」の各ステップを数値で可視化し、
+                  どこでユーザーが離脱しているかを特定できるコンバージョン分析機能です。
+                </p>
+
+                {/* サンプルフロー図 */}
+                <div className="mb-6 rounded-lg bg-gray-50 p-5 dark:bg-dark-3">
+                  <p className="mb-3 text-xs font-semibold text-body-color">分析イメージ</p>
+                  <div className="flex items-center justify-center gap-2 text-center">
+                    <div className="flex-1 rounded-lg bg-primary/10 px-3 py-4">
+                      <div className="text-xs text-body-color">サービスページ</div>
+                      <div className="mt-1 text-xl font-bold text-dark dark:text-white">5,000 <span className="text-xs font-normal">PV</span></div>
+                    </div>
+                    <div className="flex flex-col items-center text-xs text-body-color">
+                      <span>遷移率</span>
+                      <span className="font-bold text-dark dark:text-white">8.0%</span>
+                      <ArrowRight className="h-5 w-5 text-gray-300" />
+                    </div>
+                    <div className="flex-1 rounded-lg bg-primary/10 px-3 py-4">
+                      <div className="text-xs text-body-color">お問い合わせフォーム</div>
+                      <div className="mt-1 text-xl font-bold text-dark dark:text-white">400 <span className="text-xs font-normal">PV</span></div>
+                    </div>
+                    <div className="flex flex-col items-center text-xs text-body-color">
+                      <span>遷移率</span>
+                      <span className="font-bold text-dark dark:text-white">25.0%</span>
+                      <ArrowRight className="h-5 w-5 text-gray-300" />
+                    </div>
+                    <div className="flex-1 rounded-lg bg-primary/10 px-3 py-4">
+                      <div className="text-xs text-body-color">送信完了</div>
+                      <div className="mt-1 text-xl font-bold text-primary">100 <span className="text-xs font-normal">件</span></div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 活用シーン */}
+                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/10">
+                    <Target className="mb-2 h-6 w-6 text-primary" />
+                    <h4 className="mb-1 text-sm font-semibold text-dark dark:text-white">離脱ポイントの特定</h4>
+                    <p className="text-xs leading-relaxed text-body-color">
+                      フォームへの遷移率が低いのか、フォーム入力の完了率が低いのか、ボトルネックを数値で特定できます。
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-green-50 p-4 dark:bg-green-900/10">
+                    <TrendingUp className="mb-2 h-6 w-6 text-secondary" />
+                    <h4 className="mb-1 text-sm font-semibold text-dark dark:text-white">月次推移の追跡</h4>
+                    <p className="text-xs leading-relaxed text-body-color">
+                      各ステップの遷移率を月ごとに追跡し、改善施策の効果をCVR（コンバージョン率）で確認できます。
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-purple-50 p-4 dark:bg-purple-900/10">
+                    <BarChart3 className="mb-2 h-6 w-6 text-purple-500" />
+                    <h4 className="mb-1 text-sm font-semibold text-dark dark:text-white">複数フローの比較</h4>
+                    <p className="text-xs leading-relaxed text-body-color">
+                      お問い合わせ・資料請求・会員登録など、複数のコンバージョンフローを登録して比較分析できます。
+                    </p>
+                  </div>
+                </div>
+
+                {/* 設定への導線 */}
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-900/20">
+                  <div className="flex items-start gap-3">
+                    <Settings className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600 dark:text-amber-400" />
+                    <div>
+                      <p className="mb-1 text-sm font-semibold text-amber-800 dark:text-amber-200">
+                        利用するにはコンバージョン設定が必要です
+                      </p>
+                      <p className="mb-3 text-xs leading-relaxed text-amber-700 dark:text-amber-300">
+                        サイト設定の「コンバージョン定義」でGA4のコンバージョンイベント（お問い合わせ送信、資料請求完了など）を登録してください。
+                      </p>
+                      <button
+                        onClick={() => navigate(`/sites/${selectedSiteId}/edit?step=4`)}
+                        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
+                      >
+                        <Settings className="h-4 w-4" />
+                        コンバージョンを設定する
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {conversionEvents && conversionEvents.length > 0 && (
             <>
               {/* フロー設定カード */}
@@ -498,15 +593,40 @@ export default function ReverseFlow() {
                     新規フロー追加
                   </button>
                 </div>
-                
+
                 <div className="p-6">
                   {flowSettings.length === 0 ? (
-                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-900/20">
-                      <div className="flex items-start gap-3">
-                        <Info className="h-5 w-5 flex-shrink-0 text-blue-600" />
-                        <p className="text-sm text-blue-800 dark:text-blue-200">
-                          フロー設定が登録されていません。「新規フロー追加」ボタンから設定を開始してください。
-                        </p>
+                    <div className="space-y-4">
+                      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-900/20">
+                        <div className="flex items-start gap-3">
+                          <Info className="h-5 w-5 flex-shrink-0 text-blue-600" />
+                          <div>
+                            <p className="mb-1 text-sm font-semibold text-blue-800 dark:text-blue-200">
+                              フロー設定が登録されていません
+                            </p>
+                            <p className="text-xs leading-relaxed text-blue-700 dark:text-blue-300">
+                              「新規フロー追加」ボタンから、分析したいコンバージョンフローを設定してください。
+                              起点ページ・フォームページ・CVイベントを指定するだけで分析を開始できます。
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
+                        <h4 className="mb-2 text-sm font-semibold text-dark dark:text-white">設定例</h4>
+                        <ul className="space-y-2 text-xs leading-relaxed text-body-color">
+                          <li className="flex items-start gap-2">
+                            <span className="mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />
+                            <span><strong>お問い合わせフロー:</strong> サービスページ → /contact → 送信完了イベント</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />
+                            <span><strong>資料請求フロー:</strong> 全ページ → /download → ダウンロード完了イベント</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />
+                            <span><strong>会員登録フロー:</strong> LP → /register → 登録完了イベント</span>
+                          </li>
+                        </ul>
                       </div>
                     </div>
                   ) : (
@@ -555,7 +675,11 @@ export default function ReverseFlow() {
                               </button>
                             </div>
                           </div>
-                          <div className="mt-4 grid grid-cols-2 gap-4">
+                          <div className="mt-4 grid grid-cols-3 gap-4">
+                            <div>
+                              <p className="text-sm text-body-color">起点ページパス</p>
+                              <p className="font-semibold text-dark dark:text-white">{selectedFlow.entry_page_path || '全ページ'}</p>
+                            </div>
                             <div>
                               <p className="text-sm text-body-color">フォームページパス</p>
                               <p className="font-semibold text-dark dark:text-white">{selectedFlow.form_page_path}</p>
@@ -585,19 +709,28 @@ export default function ReverseFlow() {
                   ) : summaryData ? (
                     <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
                       <h3 className="mb-6 text-lg font-semibold text-dark dark:text-white">コンバージョンフロー</h3>
-                      <div className="flex items-stretch justify-center">
-                        <FlowCard title="全PV" value={summaryData.totalSiteViews} />
-                        <Arrow rate={summaryData.totalSiteViews > 0 ? (summaryData.formPageViews / summaryData.totalSiteViews) * 100 : 0} />
-                        <FlowCard title="フォームPV" value={summaryData.formPageViews} />
-                        <Arrow rate={summaryData.formPageViews > 0 ? (summaryData.submissionComplete / summaryData.formPageViews) * 100 : 0} />
-                        <FlowCard title="送信完了" value={summaryData.submissionComplete} isFinal={true} />
-                      </div>
-                      <div className="mt-6 text-center">
-                        <div className="text-sm text-body-color">全体CVR</div>
-                        <div className="text-3xl font-bold text-primary">
-                          {(summaryData.totalSiteViews > 0 ? (summaryData.submissionComplete / summaryData.totalSiteViews) * 100 : 0).toFixed(2)}%
-                        </div>
-                      </div>
+                      {(() => {
+                        const hasEntry = selectedFlow.entry_page_path && summaryData.entryPageViews != null;
+                        const startViews = hasEntry ? summaryData.entryPageViews : summaryData.totalSiteViews;
+                        const startLabel = hasEntry ? '起点PV' : '全PV';
+                        return (
+                          <>
+                            <div className="flex items-stretch justify-center">
+                              <FlowCard title={startLabel} value={startViews} />
+                              <Arrow rate={startViews > 0 ? (summaryData.formPageViews / startViews) * 100 : 0} />
+                              <FlowCard title="フォームPV" value={summaryData.formPageViews} />
+                              <Arrow rate={summaryData.formPageViews > 0 ? (summaryData.submissionComplete / summaryData.formPageViews) * 100 : 0} />
+                              <FlowCard title="送信完了" value={summaryData.submissionComplete} isFinal={true} />
+                            </div>
+                            <div className="mt-6 text-center">
+                              <div className="text-sm text-body-color">全体CVR</div>
+                              <div className="text-3xl font-bold text-primary">
+                                {(startViews > 0 ? (summaryData.submissionComplete / startViews) * 100 : 0).toFixed(2)}%
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()}
                     </div>
                   ) : null}
 
@@ -613,10 +746,15 @@ export default function ReverseFlow() {
                       </div>
                       <div className="overflow-x-auto">
                         <table className="w-full">
+                          {(() => {
+                            const hasEntry = selectedFlow.entry_page_path && monthlyData.some(r => r.entryPageViews != null);
+                            const startLabel = hasEntry ? '起点PV' : '全PV';
+                            return (
+                          <>
                           <thead className="border-b border-stroke dark:border-dark-3">
                             <tr>
                               <th className="px-4 py-3 text-left text-sm font-semibold text-dark dark:text-white">年月</th>
-                              <th className="px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">全PV</th>
+                              <th className="px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">{startLabel}</th>
                               <th className="px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">遷移率①</th>
                               <th className="px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">フォームPV</th>
                               <th className="px-4 py-3 text-right text-sm font-semibold text-dark dark:text-white">遷移率②</th>
@@ -626,17 +764,18 @@ export default function ReverseFlow() {
                           </thead>
                           <tbody>
                             {[...monthlyData].reverse().map((row) => {
-                              const rate1 = row.totalSiteViews > 0 ? (row.formPageViews / row.totalSiteViews) * 100 : 0;
+                              const startViews = hasEntry ? (row.entryPageViews ?? 0) : row.totalSiteViews;
+                              const rate1 = startViews > 0 ? (row.formPageViews / startViews) * 100 : 0;
                               const rate2 = row.formPageViews > 0 ? (row.submissionComplete / row.formPageViews) * 100 : 0;
-                              const overall = row.totalSiteViews > 0 ? (row.submissionComplete / row.totalSiteViews) * 100 : 0;
-                              
+                              const overall = startViews > 0 ? (row.submissionComplete / startViews) * 100 : 0;
+
                               return (
                                 <tr key={row.yearMonth} className="border-b border-stroke last:border-0 dark:border-dark-3">
                                   <td className="px-4 py-3 text-sm font-medium text-dark dark:text-white">
                                     {`${row.yearMonth.slice(0, 4)}年${row.yearMonth.slice(4)}月`}
                                   </td>
                                   <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
-                                    {row.totalSiteViews.toLocaleString()}
+                                    {startViews.toLocaleString()}
                                   </td>
                                   <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">
                                     {rate1.toFixed(2)}%
@@ -657,6 +796,9 @@ export default function ReverseFlow() {
                               );
                             })}
                           </tbody>
+                          </>
+                            );
+                          })()}
                         </table>
                       </div>
                     </div>
@@ -666,8 +808,8 @@ export default function ReverseFlow() {
             </>
           )}
 
-          {/* メモ & AI分析タブ */}
-          {currentUser && selectedSiteId && (
+          {/* メモ & AI分析タブ（フロー設定済みの場合のみ表示） */}
+          {currentUser && selectedSiteId && flowSettings.length > 0 && (
             <div className="mt-6">
               <TabbedNoteAndAI
                 pageType="reverse-flow"
@@ -688,6 +830,7 @@ export default function ReverseFlow() {
                         monthly: monthlyData || [],
                         flow: {
                           flowName: selectedFlow?.flow_name || '',
+                          entryPagePath: selectedFlow?.entry_page_path || '',
                           formPagePath: selectedFlow?.form_page_path || '',
                           targetCvEvent: selectedFlow?.target_cv_event || '',
                         },
@@ -734,7 +877,7 @@ export default function ReverseFlow() {
               {editingFlow ? 'フロー設定を編集' : '新規フロー追加'}
             </h3>
             <p className="mb-6 text-sm text-body-color">
-              フロー名、フォームページパス、ターゲットCVイベントを入力してください。
+              フロー名、起点ページ（任意）、フォームページパス、CVイベントを設定してください。
             </p>
             
             <div className="space-y-4">
@@ -751,6 +894,57 @@ export default function ReverseFlow() {
                 />
               </div>
               
+              <div>
+                <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
+                  起点ページパス <span className="text-xs text-body-color font-normal">（任意）</span>
+                </label>
+                <CreatableSelect
+                  value={flowForm.entry_page_path ? { value: flowForm.entry_page_path, label: flowForm.entry_page_path } : null}
+                  onChange={(option) => setFlowForm({...flowForm, entry_page_path: option?.value || ''})}
+                  options={pagePathOptions}
+                  isLoading={pagePathsLoading}
+                  isSearchable={true}
+                  isClearable={true}
+                  placeholder="未入力の場合は全PVが起点になります"
+                  noOptionsMessage={() => 'ページパスが見つかりません'}
+                  loadingMessage={() => '読み込み中...'}
+                  formatCreateLabel={(inputValue) => `"${inputValue}" を使用`}
+                  formatOptionLabel={(option) => (
+                    <div className="py-1">
+                      <div className="font-medium text-dark dark:text-white">{option.label}</div>
+                      {option.title && option.title !== option.label && (
+                        <div className="text-xs text-body-color mt-0.5">{option.title}</div>
+                      )}
+                    </div>
+                  )}
+                  classNames={{
+                    control: () => 'w-full rounded-md border border-stroke bg-transparent px-2 py-1 text-dark dark:border-dark-3 dark:text-white',
+                    menu: () => 'mt-2 rounded-md border border-stroke bg-white shadow-lg dark:border-dark-3 dark:bg-dark-2',
+                    option: ({ isFocused, isSelected }) =>
+                      `px-4 py-2 cursor-pointer ${
+                        isSelected ? 'bg-primary text-white' :
+                        isFocused ? 'bg-gray-100 dark:bg-dark-3' : ''
+                      }`,
+                    placeholder: () => 'text-body-color',
+                    input: () => 'text-dark dark:text-white',
+                    singleValue: () => 'text-dark dark:text-white',
+                  }}
+                  styles={{
+                    control: (base, state) => ({
+                      ...base,
+                      minHeight: '48px',
+                      borderColor: state.isFocused ? '#3C50E0' : '#E5E7EB',
+                      boxShadow: 'none',
+                      '&:hover': { borderColor: '#3C50E0' },
+                    }),
+                    menu: (base) => ({ ...base, zIndex: 9999 }),
+                  }}
+                />
+                <p className="mt-1 text-xs text-body-color">
+                  LP・メルマガ等の起点ページパスを指定すると、より具体的なフロー分析が可能です
+                </p>
+              </div>
+
               <div>
                 <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
                   フォームページパス
@@ -774,23 +968,27 @@ export default function ReverseFlow() {
                       )}
                     </div>
                   )}
+                  classNames={{
+                    control: () => 'w-full rounded-md border border-stroke bg-transparent px-2 py-1 text-dark dark:border-dark-3 dark:text-white',
+                    menu: () => 'mt-2 rounded-md border border-stroke bg-white shadow-lg dark:border-dark-3 dark:bg-dark-2',
+                    option: ({ isFocused, isSelected }) =>
+                      `px-4 py-2 cursor-pointer ${
+                        isSelected ? 'bg-primary text-white' :
+                        isFocused ? 'bg-gray-100 dark:bg-dark-3' : ''
+                      }`,
+                    placeholder: () => 'text-body-color',
+                    input: () => 'text-dark dark:text-white',
+                    singleValue: () => 'text-dark dark:text-white',
+                  }}
                   styles={{
-                    control: (base) => ({
+                    control: (base, state) => ({
                       ...base,
                       minHeight: '48px',
-                      borderColor: '#e5e7eb',
-                      '&:hover': {
-                        borderColor: '#3b82f6',
-                      },
+                      borderColor: state.isFocused ? '#3C50E0' : '#E5E7EB',
+                      boxShadow: 'none',
+                      '&:hover': { borderColor: '#3C50E0' },
                     }),
-                    menu: (base) => ({
-                      ...base,
-                      zIndex: 9999,
-                    }),
-                    option: (base) => ({
-                      ...base,
-                      padding: '8px 12px',
-                    }),
+                    menu: (base) => ({ ...base, zIndex: 9999 }),
                   }}
                 />
                 <p className="mt-1 text-xs text-body-color">

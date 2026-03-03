@@ -6,7 +6,7 @@ import { useSite } from '../../contexts/SiteContext';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
-import { TrendingUp, TrendingDown, ExternalLink, ArrowRight } from 'lucide-react';
+import { TrendingUp, TrendingDown, ExternalLink, ArrowRight, MousePointerClick, Search, BarChart3, Lightbulb } from 'lucide-react';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
 import { useQuery } from '@tanstack/react-query';
@@ -62,13 +62,10 @@ export default function PageFlow() {
   } = useQuery({
     queryKey: ['ga4-page-paths', selectedSiteId, dateRange],
     queryFn: async () => {
-      console.log('[PageFlow] queryFn実行開始', { selectedSiteId, dateRange });
-      
       if (!selectedSiteId || !dateRange.from || !dateRange.to) {
-        console.log('[PageFlow] 条件不足で空配列を返す');
         return [];
       }
-      
+
       const formatDate = (date) => {
         if (typeof date === 'string') return date;
         const year = date.getFullYear();
@@ -76,28 +73,15 @@ export default function PageFlow() {
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
       };
-      
-      try {
-        console.log('[PageFlow] API呼び出し開始');
-        const fetchPagePaths = httpsCallable(functions, 'fetchGA4PagePaths');
-        const result = await fetchPagePaths({
-          siteId: selectedSiteId,
-          startDate: formatDate(dateRange.from),
-          endDate: formatDate(dateRange.to),
-        });
-        
-        console.log('[PageFlow] ページパス取得結果:', result.data);
-        console.log('[PageFlow] パース済みページパス数:', result.data.data?.length);
-        return result.data.data || [];
-      } catch (error) {
-        console.error('[PageFlow] ページパス取得エラー:', error);
-        console.error('[PageFlow] エラー詳細:', {
-          message: error.message,
-          code: error.code,
-          details: error.details,
-        });
-        throw error;
-      }
+
+      const fetchPagePaths = httpsCallable(functions, 'fetchGA4PagePaths');
+      const result = await fetchPagePaths({
+        siteId: selectedSiteId,
+        startDate: formatDate(dateRange.from),
+        endDate: formatDate(dateRange.to),
+      });
+
+      return result.data.data || [];
     },
     enabled: !!selectedSiteId && !!dateRange?.from && !!dateRange?.to,
     retry: false,
@@ -105,8 +89,6 @@ export default function PageFlow() {
 
   // React Select用のオプション
   const pagePathOptions = useMemo(() => {
-    console.log('[PageFlow] pagePathsData:', pagePathsData);
-    console.log('[PageFlow] pagePathsData length:', pagePathsData?.length);
     if (!pagePathsData || pagePathsData.length === 0) {
       return [];
     }
@@ -126,18 +108,6 @@ export default function PageFlow() {
       };
     });
   }, [pagePathsData]);
-
-  // デバッグログ
-  useEffect(() => {
-    console.log('[PageFlow] 状態確認:', {
-      selectedSiteId,
-      dateRange,
-      pagePathsLoading,
-      pagePathsError,
-      pagePathsDataLength: pagePathsData?.length,
-      pagePathOptionsLength: pagePathOptions?.length,
-    });
-  }, [selectedSiteId, dateRange, pagePathsLoading, pagePathsError, pagePathsData, pagePathOptions]);
 
   // ページフローデータ取得
   const {
@@ -242,28 +212,44 @@ export default function PageFlow() {
                       )}
                     </div>
                   )}
+                  classNames={{
+                    control: () => 'w-full rounded-md border border-stroke bg-transparent px-2 py-1 text-dark dark:border-dark-3 dark:text-white',
+                    menu: () => 'mt-2 rounded-md border border-stroke bg-white shadow-lg dark:border-dark-3 dark:bg-dark-2',
+                    option: ({ isFocused, isSelected }) =>
+                      `px-4 py-2 cursor-pointer ${
+                        isSelected ? 'bg-primary text-white' :
+                        isFocused ? 'bg-gray-100 dark:bg-dark-3' : ''
+                      }`,
+                    placeholder: () => 'text-body-color',
+                    input: () => 'text-dark dark:text-white',
+                    singleValue: () => 'text-dark dark:text-white',
+                  }}
                   styles={{
-                    control: (base) => ({
+                    control: (base, state) => ({
                       ...base,
                       minHeight: '48px',
-                      borderColor: '#e5e7eb',
+                      borderColor: state.isFocused ? '#3C50E0' : '#E5E7EB',
+                      boxShadow: 'none',
                       '&:hover': {
-                        borderColor: '#3b82f6',
+                        borderColor: '#3C50E0',
                       },
                     }),
                     menu: (base) => ({
                       ...base,
                       zIndex: 9999,
                     }),
-                    option: (base) => ({
-                      ...base,
-                      padding: '8px 12px',
-                    }),
                   }}
                 />
-                <p className="mt-1 text-xs text-body-color">
-                  候補から選択するか、カスタムパスを入力できます
-                </p>
+                {!pagePathsLoading && pagePathOptions.length > 0 && (
+                  <p className="mt-1 text-xs text-body-color">
+                    {pagePathOptions.length} 件のページパスが見つかりました
+                  </p>
+                )}
+                {!pagePathsLoading && pagePathOptions.length === 0 && !pagePathsError && (
+                  <p className="mt-1 text-xs text-body-color">
+                    候補から選択するか、カスタムパスを入力できます
+                  </p>
+                )}
                 {pagePathsError && (
                   <div className="mt-2 rounded-lg bg-red-50 p-3 dark:bg-red-900/20">
                     <p className="text-xs text-red-800 dark:text-red-300">
@@ -274,6 +260,65 @@ export default function PageFlow() {
               </div>
             </div>
           </div>
+
+          {/* 未選択時のガイド */}
+          {!selectedPage && (
+            <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+              <div className="border-b border-stroke p-6 dark:border-dark-3">
+                <h3 className="text-lg font-semibold text-dark dark:text-white">ページフローとは？</h3>
+              </div>
+              <div className="p-6">
+                <p className="mb-6 text-sm leading-relaxed text-body-color">
+                  ユーザーが特定のページにたどり着く前に、サイト内のどのページを見ていたかを可視化する機能です。
+                  上のセレクトボックスから分析したいページを選択してください。
+                </p>
+
+                {/* 活用シーン */}
+                <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+                  <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/10">
+                    <MousePointerClick className="mb-2 h-6 w-6 text-primary" />
+                    <h4 className="mb-1 text-sm font-semibold text-dark dark:text-white">CVページの流入元を把握</h4>
+                    <p className="text-xs leading-relaxed text-body-color">
+                      お問い合わせや資料請求ページの直前にどのページが見られているかを分析し、コンバージョンに貢献するコンテンツを特定できます。
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-green-50 p-4 dark:bg-green-900/10">
+                    <Search className="mb-2 h-6 w-6 text-secondary" />
+                    <h4 className="mb-1 text-sm font-semibold text-dark dark:text-white">導線のボトルネック発見</h4>
+                    <p className="text-xs leading-relaxed text-body-color">
+                      想定している導線と実際のユーザー行動を比較して、サイト内導線の改善ポイントを見つけることができます。
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-purple-50 p-4 dark:bg-purple-900/10">
+                    <Lightbulb className="mb-2 h-6 w-6 text-purple-500" />
+                    <h4 className="mb-1 text-sm font-semibold text-dark dark:text-white">コンテンツ改善のヒント</h4>
+                    <p className="text-xs leading-relaxed text-body-color">
+                      ユーザーがどのような情報を経てから特定のページに到達しているかを知り、コンテンツの改善に活かせます。
+                    </p>
+                  </div>
+                </div>
+
+                {/* 使い方の例 */}
+                <div className="rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
+                  <h4 className="mb-2 text-sm font-semibold text-dark dark:text-white">使い方の例</h4>
+                  <ul className="space-y-2 text-xs leading-relaxed text-body-color">
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />
+                      <span>お問い合わせページ（/contact）を選択 → 直前にどのサービスページが見られているか確認</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />
+                      <span>料金ページ（/pricing）を選択 → ユーザーが料金を見る前に何に興味を持ったか分析</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary" />
+                      <span>離脱率の高いページを選択 → そのページへの導線に問題がないか検証</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* データ表示 */}
           {selectedPage && (
@@ -375,8 +420,8 @@ export default function PageFlow() {
             </div>
           )}
 
-          {/* メモ & AI分析タブ */}
-          {currentUser && selectedSiteId && (
+          {/* メモ & AI分析タブ（ページ選択済みの場合のみ表示） */}
+          {currentUser && selectedSiteId && selectedPage && (
             <div className="mt-6">
               <TabbedNoteAndAI
                 pageType="page-flow"

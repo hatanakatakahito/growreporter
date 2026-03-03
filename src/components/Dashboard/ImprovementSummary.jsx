@@ -35,11 +35,10 @@ export default function ImprovementSummary({ siteId }) {
         });
         setCounts(c);
 
-        // 最新3件（下書き・対応中優先）
+        // 下書き・対応中のタスク一覧（新しい順）
         const active = items
           .filter((i) => i.status !== 'completed')
-          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))
-          .slice(0, 3);
+          .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
         setRecentItems(active);
       } catch (err) {
         console.error('[ImprovementSummary] Error:', err);

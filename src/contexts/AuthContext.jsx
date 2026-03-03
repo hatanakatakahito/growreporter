@@ -74,9 +74,8 @@ export const AuthProvider = ({ children }) => {
       await setDoc(doc(db, 'users', user.uid), {
         uid: user.uid,
         email: user.email,
-        displayName: additionalData.displayName || '',
-        lastName: additionalData.lastName || '',
-        firstName: additionalData.firstName || '',
+        displayName: additionalData.displayName || additionalData.name || '',
+        name: additionalData.name || additionalData.displayName || '',
         company: additionalData.company || '',
         phoneNumber: additionalData.phoneNumber || '',
         industry: additionalData.industry || '',

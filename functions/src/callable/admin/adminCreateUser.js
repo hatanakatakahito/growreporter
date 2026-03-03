@@ -11,8 +11,7 @@ import { generateAdminCreatedAccountEmail } from '../../utils/emailTemplates.js'
  * Firebase Auth + Firestore usersドキュメントを作成
  *
  * @param {Object} data.email - メールアドレス（必須）
- * @param {string} data.lastName - 姓（必須）
- * @param {string} data.firstName - 名（必須）
+ * @param {string} data.name - 氏名（必須）
  * @param {string} data.company - 組織名（必須）
  * @param {string} data.phoneNumber - 電話番号（必須）
  * @param {string} data.plan - プラン（任意、デフォルト 'free'）
@@ -28,8 +27,7 @@ export const adminCreateUserCallable = async (request) => {
 
   const {
     email,
-    lastName,
-    firstName,
+    name,
     company,
     phoneNumber,
     plan = 'free',
@@ -38,8 +36,8 @@ export const adminCreateUserCallable = async (request) => {
   } = request.data || {};
 
   // バリデーション
-  if (!email || !lastName || !firstName || !company || !phoneNumber) {
-    throw new HttpsError('invalid-argument', 'メール、姓、名、組織名、電話番号は必須です');
+  if (!email || !name || !company || !phoneNumber) {
+    throw new HttpsError('invalid-argument', 'メール、氏名、組織名、電話番号は必須です');
   }
 
   if (password && password.length < 6) {
@@ -60,7 +58,7 @@ export const adminCreateUserCallable = async (request) => {
       throw new HttpsError('permission-denied', 'この操作は管理者または編集者ロールが必要です');
     }
 
-    const displayName = `${lastName} ${firstName}`;
+    const displayName = name;
 
     // Firebase Authでユーザー作成
     const createParams = { email, displayName };
@@ -86,8 +84,7 @@ export const adminCreateUserCallable = async (request) => {
       uid: newUid,
       email,
       displayName,
-      lastName,
-      firstName,
+      name,
       company,
       phoneNumber,
       industry: '',

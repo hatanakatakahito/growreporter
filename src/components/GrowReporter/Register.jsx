@@ -14,10 +14,10 @@ export default function Register() {
   
   // 新規登録用の追加フィールド
   const [companyName, setCompanyName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [firstName, setFirstName] = useState('');
+  const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isFromInvitation, setIsFromInvitation] = useState(false);
   const [isLoadingInvitation, setIsLoadingInvitation] = useState(false);
   
@@ -78,7 +78,7 @@ export default function Register() {
     setIsSubmitting(true);
 
     // バリデーション
-    if (!companyName || !lastName || !firstName || !phoneNumber) {
+    if (!companyName || !name || !phoneNumber) {
       setError('すべての必須項目を入力してください');
       setIsSubmitting(false);
       return;
@@ -90,12 +90,16 @@ export default function Register() {
       return;
     }
 
+    if (!agreedToTerms) {
+      setError('利用規約とプライバシーポリシーに同意してください');
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      const displayName = `${lastName} ${firstName}`;
       await signup(email, password, {
-        displayName,
-        lastName,
-        firstName,
+        displayName: name,
+        name,
         company: companyName,
         phoneNumber,
       });
@@ -215,8 +219,7 @@ export default function Register() {
         <div className="mx-auto max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-lg dark:bg-dark-2">
           {/* ロゴエリア（青紫グラデーション） */}
           <div className="bg-gradient-primary px-8 py-6 text-center">
-            <p className="text-sm text-white/90">AI搭載のアクセス解析ツール</p>
-            <div className="mt-2 flex items-center justify-center">
+            <div className="flex items-center justify-center">
               <img src={logoImg} alt="グローレポータ" className="h-10 w-auto brightness-0 invert" />
             </div>
             {isFromInvitation && (
@@ -341,35 +344,19 @@ export default function Register() {
                     }`}
                   />
                 </div>
-                <div className="mb-4 grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-                      姓
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={lastName}
-                      onChange={(e) => setLastName(e.target.value)}
-                      placeholder="姓を入力"
-                      required
-                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-                      名
-                      <span className="text-red-500">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      value={firstName}
-                      onChange={(e) => setFirstName(e.target.value)}
-                      placeholder="名を入力"
-                      required
-                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
-                    />
-                  </div>
+                <div className="mb-4">
+                  <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
+                    氏名
+                    <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="例: 山田 太郎"
+                    required
+                    className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none focus:border-primary focus-visible:shadow-none dark:border-dark-3 dark:text-white"
+                  />
                 </div>
                 <div className="mb-6">
                   <label className="mb-2 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
@@ -493,6 +480,24 @@ export default function Register() {
                       )}
                     </button>
                   </div>
+                </div>
+
+                {/* 利用規約・プライバシーポリシー同意 */}
+                <div className="mb-4">
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={agreedToTerms}
+                      onChange={(e) => setAgreedToTerms(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    />
+                    <span className="text-sm text-body-color dark:text-dark-6">
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">利用規約</a>
+                      と
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">プライバシーポリシー</a>
+                      に同意します
+                    </span>
+                  </label>
                 </div>
 
                 {/* 送信ボタン */}

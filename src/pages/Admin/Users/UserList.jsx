@@ -27,11 +27,10 @@ export default function UserList() {
     setPageTitle('ユーザー管理');
   }, []);
 
-  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  // ユーザー名を取得（name優先、後方互換でlastName+firstName、なければdisplayName）
   const getUserName = (user) => {
-    if (user.lastName && user.firstName) {
-      return `${user.lastName} ${user.firstName}`;
-    }
+    if (user.name) return user.name;
+    if (user.lastName && user.firstName) return `${user.lastName} ${user.firstName}`;
     return user.displayName || 'Unknown';
   };
 

@@ -12,8 +12,6 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import UpgradeModal from '../common/UpgradeModal';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
-import { generateAndAddImprovements } from '../../utils/generateAndAddImprovements';
-import AIGenerationModal from '../Improve/AIGenerationModal';
 
 /**
  * AI分析セクション（タブ内に表示）
@@ -26,7 +24,7 @@ import AIGenerationModal from '../Improve/AIGenerationModal';
 export default function AIAnalysisSection({ pageType, rawData, metrics, period, onLimitExceeded }) {
   const { selectedSiteId, selectedSite } = useSite();
   const { checkCanGenerate, planId } = usePlan();
-  const { user, currentUser } = useAuth();
+  const { user } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -38,11 +36,6 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   const [error, setError] = useState(null);
   const [addedTaskIds, setAddedTaskIds] = useState(new Set());
   
-  // AI生成モーダルの状態
-  const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
-  const [generationStatus, setGenerationStatus] = useState('loading'); // 'loading' | 'success' | 'error'
-  const [generationCount, setGenerationCount] = useState(0);
-  const [generationError, setGenerationError] = useState('');
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   // 必要なデータがない場合は早期リターン
@@ -214,7 +207,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
             {generatedAt && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {format(new Date(generatedAt), 'yyyy/MM/dd HH:mm')} 生成
-                {fromCache && ' (キャッシュ)'}
+                {fromCache && ' (前回の分析結果)'}
               </p>
             )}
           </div>
@@ -308,31 +301,10 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
       {/* サイト改善画面へのリンク */}
       <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 flex flex-col items-center">
         <button
-          onClick={async () => {
+          onClick={() => {
             if (!selectedSiteId) return;
-            
-            // モーダルを開く
-            setIsGenerationModalOpen(true);
-            setGenerationStatus('loading');
-            
-            // /improveページに遷移
+            // /improveページに遷移（改善案0件なら自動で方針選択モーダルが表示される）
             navigate('/improve');
-            
-            // AI生成・追加を実行
-            await generateAndAddImprovements(
-              selectedSiteId, 
-              currentUser?.email,
-              (status, count, error) => {
-                setGenerationStatus(status);
-                if (status === 'success') {
-                  setGenerationCount(count);
-                  // 改善案のデータを再取得
-                  queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
-                } else if (status === 'error') {
-                  setGenerationError(error);
-                }
-              }
-            );
           }}
           className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-medium text-white hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
         >
@@ -344,19 +316,6 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
           過去365日分のデータを分析し、最適な改善提案を生成します
         </p>
       </div>
-
-      {/* AI生成モーダル */}
-      <AIGenerationModal
-        isOpen={isGenerationModalOpen}
-        status={generationStatus}
-        count={generationCount}
-        error={generationError}
-        onClose={() => {
-          setIsGenerationModalOpen(false);
-          // 改善案のデータを再取得
-          queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
-        }}
-      />
 
       {/* アップグレードモーダル */}
       <UpgradeModal

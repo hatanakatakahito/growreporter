@@ -1080,17 +1080,24 @@ function formatRawDataToMetrics(rawData, pageType) {
       const summary = rawData.summary || {};
       const monthly = rawData.monthly || [];
       const flow = rawData.flow || {};
+      const hasEntryPage = !!flow.entryPagePath;
+      const entryPageViews = summary.entryPageViews ?? null;
       const totalSiteViews = summary.totalSiteViews || 0;
+      const startViews = hasEntryPage && entryPageViews != null ? entryPageViews : totalSiteViews;
       const formPageViews = summary.formPageViews || 0;
       const submissionComplete = summary.submissionComplete || 0;
-      const achievementRate1 = totalSiteViews > 0 ? (formPageViews / totalSiteViews) * 100 : 0;
+      const achievementRate1 = startViews > 0 ? (formPageViews / startViews) * 100 : 0;
       const achievementRate2 = formPageViews > 0 ? (submissionComplete / formPageViews) * 100 : 0;
-      const overallCVR = totalSiteViews > 0 ? (submissionComplete / totalSiteViews) * 100 : 0;
+      const overallCVR = startViews > 0 ? (submissionComplete / startViews) * 100 : 0;
       return {
         flowName: flow.flowName || 'フロー名未設定',
+        entryPagePath: flow.entryPagePath || '',
         formPagePath: flow.formPagePath || '未設定',
         targetCvEvent: flow.targetCvEvent || '未設定',
+        hasEntryPage,
+        entryPageViews,
         totalSiteViews,
+        startViews,
         formPageViews,
         submissionComplete,
         achievementRate1: achievementRate1.toFixed(2),

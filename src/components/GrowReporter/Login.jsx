@@ -12,7 +12,6 @@ export default function Login() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
   const { login, loginWithGoogle, loginWithMicrosoft, fetchUserProfile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -275,7 +274,7 @@ export default function Login() {
                 </div>
 
                 {/* パスワード */}
-                <div className="mb-5">
+                <div className="mb-2">
                   <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
                     パスワード
                   </label>
@@ -327,6 +326,16 @@ export default function Login() {
                       )}
                     </button>
                   </div>
+                </div>
+
+                {/* パスワードを忘れた方 */}
+                <div className="mb-4 text-right">
+                  <Link
+                    to="/reset-password"
+                    className="text-xs text-primary hover:underline"
+                  >
+                    パスワードをお忘れの方
+                  </Link>
                 </div>
 
                 {/* 送信ボタン */}

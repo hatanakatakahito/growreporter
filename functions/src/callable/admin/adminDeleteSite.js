@@ -50,9 +50,9 @@ export const adminDeleteSiteCallable = async (request) => {
       const userDoc = await db.collection('users').doc(siteUserId).get();
       if (userDoc.exists) {
         const userData = userDoc.data();
-        ownerName = (userData.lastName && userData.firstName)
+        ownerName = userData.name || (userData.lastName && userData.firstName
           ? `${userData.lastName} ${userData.firstName}`
-          : (userData.displayName || userData.email || 'Unknown');
+          : '') || userData.displayName || userData.email || 'Unknown';
       }
     }
 

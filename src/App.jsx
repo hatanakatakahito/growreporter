@@ -45,6 +45,9 @@ import PlanInfo from './pages/PlanInfo';
 import Members from './pages/Members';
 import AcceptInvitation from './pages/AcceptInvitation';
 import OAuthCallback from './components/OAuthCallback';
+import TermsOfService from './pages/TermsOfService';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import ForgotPassword from './pages/ForgotPassword';
 
 // Admin
 import AdminRoute from './components/Admin/AdminRoute';
@@ -92,6 +95,9 @@ function App() {
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/terms" element={<TermsOfService />} />
+            <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/reset-password" element={<ForgotPassword />} />
             
             {/* 招待承認（認証不要でもアクセス可能） */}
             <Route path="/accept-invitation" element={<AcceptInvitation />} />

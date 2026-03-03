@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, X } from 'lucide-react';
+import { setPageTitle } from '../utils/pageTitle';
 
 /**
  * サイト改善相談送信完了（サンクスモーダル）
@@ -8,6 +9,8 @@ import { CheckCircle, X } from 'lucide-react';
  */
 export default function ImproveConsultationThanks() {
   const navigate = useNavigate();
+
+  useEffect(() => { setPageTitle('送信完了'); }, []);
 
   // 3秒後に自動で改善ページへ戻る
   useEffect(() => {

@@ -185,11 +185,10 @@ export default function UserDetail() {
     }
   };
 
-  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  // ユーザー名を取得（name優先、後方互換でlastName+firstName、なければdisplayName）
   const getUserName = () => {
-    if (userDetail?.lastName && userDetail?.firstName) {
-      return `${userDetail.lastName} ${userDetail.firstName}`;
-    }
+    if (userDetail?.name) return userDetail.name;
+    if (userDetail?.lastName && userDetail?.firstName) return `${userDetail.lastName} ${userDetail.firstName}`;
     return userDetail?.displayName || userDetail?.email || 'Unknown';
   };
 

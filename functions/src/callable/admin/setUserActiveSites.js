@@ -52,13 +52,13 @@ export const setUserActiveSitesCallable = async (request) => {
 
     // 管理者名を取得
     const adminData = adminDoc.data();
-    const adminName = (adminData.lastName && adminData.firstName)
+    const adminName = adminData.name || (adminData.lastName && adminData.firstName
       ? `${adminData.lastName} ${adminData.firstName}`
-      : (adminData.displayName || adminData.email || 'Admin');
+      : '') || adminData.displayName || adminData.email || 'Admin';
 
-    const userName = (userData.lastName && userData.firstName)
+    const userName = userData.name || (userData.lastName && userData.firstName
       ? `${userData.lastName} ${userData.firstName}`
-      : (userData.displayName || userData.email || 'ユーザー');
+      : '') || userData.displayName || userData.email || 'ユーザー';
 
     logger.info('有効サイト設定完了', {
       adminId: uid,
