@@ -54,7 +54,7 @@ export default function PageFlow() {
     }
   }, [searchParams]);
 
-  // ページパス一覧を取得
+  // ページパス一覧を取得（ReverseFlowと同じ実装）
   const {
     data: pagePathsData,
     isLoading: pagePathsLoading,
@@ -62,10 +62,6 @@ export default function PageFlow() {
   } = useQuery({
     queryKey: ['ga4-page-paths', selectedSiteId, dateRange],
     queryFn: async () => {
-      if (!selectedSiteId || !dateRange.from || !dateRange.to) {
-        return [];
-      }
-
       const formatDate = (date) => {
         if (typeof date === 'string') return date;
         const year = date.getFullYear();
@@ -81,10 +77,11 @@ export default function PageFlow() {
         endDate: formatDate(dateRange.to),
       });
 
-      return result.data.data || [];
+      return result.data?.data || [];
     },
     enabled: !!selectedSiteId && !!dateRange?.from && !!dateRange?.to,
-    retry: false,
+    retry: 1,
+    staleTime: 5 * 60 * 1000,
   });
 
   // React Select用のオプション
