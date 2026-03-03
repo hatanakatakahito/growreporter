@@ -141,8 +141,8 @@ function addAIAndMemoFooter(slide, aiData, memos, y, maxH) {
     const aiText = cleanMarkdown(aiData.summary);
     if (aiText) {
       slide.addText([
-        { text: 'AI分析: ', options: { bold: true, color: COLORS.accent, fontSize: 7, fontFace: FONT_FACE } },
-        { text: aiText, options: { color: COLORS.subText, fontSize: 7, fontFace: FONT_FACE } },
+        { text: 'AI分析: ', options: { bold: true, color: COLORS.accent, fontSize: 10, fontFace: FONT_FACE } },
+        { text: aiText, options: { color: COLORS.subText, fontSize: 10, fontFace: FONT_FACE } },
       ], {
         x: MARGIN_X, y: currentY, w: CONTENT_W, h: Math.max(maxH * 0.6, 0.3),
         valign: 'top', wrap: true, shrinkText: true,
@@ -162,8 +162,8 @@ function addAIAndMemoFooter(slide, aiData, memos, y, maxH) {
     });
 
     const memoContent = [
-      { text: 'メモ: ', options: { bold: true, color: COLORS.memoLabel, fontSize: 7, fontFace: FONT_FACE } },
-      { text: memoTexts.join('\n'), options: { color: COLORS.subText, fontSize: 7, fontFace: FONT_FACE } },
+      { text: 'メモ: ', options: { bold: true, color: COLORS.memoLabel, fontSize: 9, fontFace: FONT_FACE } },
+      { text: memoTexts.join('\n'), options: { color: COLORS.subText, fontSize: 9, fontFace: FONT_FACE } },
     ];
 
     const remainH = Math.max(maxH - (currentY - y), 0.2);
@@ -180,11 +180,12 @@ function headerCellOpts(align = 'center') {
     fill: { color: COLORS.primary },
     color: COLORS.white,
     bold: true,
-    fontSize: 8,
+    fontSize: 10,
     fontFace: FONT_FACE,
     align,
     valign: 'middle',
     border: { type: 'solid', pt: 0.5, color: COLORS.border },
+    margin: [4, 6, 4, 6],
   };
 }
 
@@ -193,11 +194,12 @@ function dataCellOpts(rowIdx, align = 'left') {
   return {
     fill: { color: rowIdx % 2 === 0 ? COLORS.altRow : COLORS.white },
     color: COLORS.dark,
-    fontSize: 8,
+    fontSize: 10,
     fontFace: FONT_FACE,
     align,
     valign: 'middle',
     border: { type: 'solid', pt: 0.5, color: COLORS.border },
+    margin: [4, 6, 4, 6],
   };
 }
 
@@ -250,22 +252,22 @@ function formatSeconds(sec) {
 function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64) {
   const slide = pptx.addSlide();
 
-  // ロゴ画像
+  // ロゴ画像（一回り小さく中央配置）
   if (logoBase64) {
     slide.addImage({
       data: logoBase64,
-      x: 3.5, y: 0.8, w: 4, h: 0.96,
+      x: 4.0, y: 0.8, w: 3, h: 0.72,
     });
   }
 
   // タイトル
   slide.addText('分析レポート', {
-    x: MARGIN_X, y: logoBase64 ? 2.0 : 1.5, w: CONTENT_W, h: 0.8,
-    fontSize: 36, fontFace: FONT_FACE, bold: true,
+    x: MARGIN_X, y: logoBase64 ? 1.8 : 1.5, w: CONTENT_W, h: 0.7,
+    fontSize: 28, fontFace: FONT_FACE, bold: true,
     color: COLORS.primary, align: 'center', valign: 'middle',
   });
 
-  // 情報テーブル
+  // 情報テーブル（左揃え）
   const infoRows = [
     ['サイト名', siteName || ''],
     ['URL', siteUrl || ''],
@@ -274,12 +276,12 @@ function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64) {
   ];
 
   const tableRows = infoRows.map(([label, val]) => [
-    { text: label, options: { bold: true, color: COLORS.subText, fontSize: 12, fontFace: FONT_FACE, align: 'right', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
+    { text: label, options: { bold: true, color: COLORS.subText, fontSize: 12, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
     { text: val, options: { color: COLORS.dark, fontSize: 12, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
   ]);
 
   slide.addTable(tableRows, {
-    x: 2.5, y: logoBase64 ? 3.3 : 3.5, w: 6, colW: [1.8, 4.2],
+    x: 2.5, y: logoBase64 ? 3.0 : 3.2, w: 6, colW: [1.8, 4.2],
     rowH: 0.5,
     border: { type: 'solid', pt: 0.5, color: COLORS.border },
   });
@@ -317,19 +319,22 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos) {
     }
 
     // 2列×N行のカード風テーブル
+    const labelCellOpts = { bold: true, color: COLORS.subText, fontSize: 12, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border }, margin: [1, 8, 1, 8] };
+    const valueCellOpts = { bold: true, color: COLORS.primary, fontSize: 14, fontFace: FONT_FACE, align: 'right', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border }, margin: [1, 8, 1, 8] };
+
     const tableRows = [];
     for (let i = 0; i < metricsData.length; i += 2) {
       const row = [];
       // 左カード
       row.push(
-        { text: metricsData[i][0], options: { bold: true, color: COLORS.subText, fontSize: 9, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
-        { text: metricsData[i][1], options: { bold: true, color: COLORS.primary, fontSize: 14, fontFace: FONT_FACE, align: 'right', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
+        { text: metricsData[i][0], options: { ...labelCellOpts } },
+        { text: metricsData[i][1], options: { ...valueCellOpts } },
       );
       // 右カード
       if (i + 1 < metricsData.length) {
         row.push(
-          { text: metricsData[i + 1][0], options: { bold: true, color: COLORS.subText, fontSize: 9, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
-          { text: metricsData[i + 1][1], options: { bold: true, color: COLORS.primary, fontSize: 14, fontFace: FONT_FACE, align: 'right', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
+          { text: metricsData[i + 1][0], options: { ...labelCellOpts } },
+          { text: metricsData[i + 1][1], options: { ...valueCellOpts } },
         );
       } else {
         row.push(
@@ -343,11 +348,11 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos) {
     slide.addTable(tableRows, {
       x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W,
       colW: [2.2, 2.85, 2.2, 2.85],
-      rowH: 0.5,
+      rowH: 0.55,
     });
 
     // KPI達成状況
-    let kpiEndY = CONTENT_Y + tableRows.length * 0.5 + 0.2;
+    let kpiEndY = CONTENT_Y + tableRows.length * 0.55 + 0.2;
     if (kpiSettings?.kpiList && kpiSettings.kpiList.length > 0) {
       const activeKpis = kpiSettings.kpiList.filter(k => k.isActive);
       if (activeKpis.length > 0) {
@@ -378,9 +383,10 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos) {
         slide.addTable([kpiHeaders, ...kpiRows], {
           x: MARGIN_X, y: kpiEndY, w: CONTENT_W,
           colW: [3.5, 2.2, 2.2, 2.2],
-          fontSize: 8, fontFace: FONT_FACE,
+          rowH: 0.4,
+          fontSize: 10, fontFace: FONT_FACE,
         });
-        kpiEndY += (kpiRows.length + 1) * 0.3 + 0.1;
+        kpiEndY += (kpiRows.length + 1) * 0.4 + 0.1;
       }
     }
 
@@ -447,7 +453,7 @@ function createMonthlySlide(pptx, monthlyData, aiData, memos) {
     showLegend: true, legendPos: 'b', legendFontSize: 7,
     chartColors: ['3b82f6', 'f59e0b', '8b5cf6', 'ef4444'],
     lineSize: 2, lineSmooth: false,
-    catAxisLabelFontSize: 7, valAxisLabelFontSize: 7,
+    catAxisLabelFontSize: 9, valAxisLabelFontSize: 9,
     catAxisOrientation: 'minMax',
     showValue: false,
   });
@@ -510,7 +516,7 @@ function createDailySlide(pptx, dailyData, aiData, memos) {
     chartColors: ['3b82f6', 'ef4444'],
     lineSize: 2,
     catAxisLabelFontSize: dataRows.length > 31 ? 5 : 6,
-    valAxisLabelFontSize: 7,
+    valAxisLabelFontSize: 9,
     catAxisLabelRotate: dataRows.length > 15 ? 45 : 0,
     showValue: false,
   });
@@ -584,7 +590,7 @@ function createWeeklySlide(pptx, weeklyData, aiData, memos) {
     barDir: 'col', barGrouping: 'clustered',
     showLegend: true, legendPos: 'b', legendFontSize: 7,
     chartColors: ['3b82f6', 'ef4444'],
-    catAxisLabelFontSize: 8, valAxisLabelFontSize: 7,
+    catAxisLabelFontSize: 8, valAxisLabelFontSize: 9,
     showValue: false,
   });
 
@@ -632,7 +638,7 @@ function createHourlySlide(pptx, hourlyData, aiData, memos) {
     barDir: 'col', barGrouping: 'clustered',
     showLegend: true, legendPos: 'b', legendFontSize: 7,
     chartColors: ['3b82f6', 'ef4444'],
-    catAxisLabelFontSize: 6, valAxisLabelFontSize: 7,
+    catAxisLabelFontSize: 6, valAxisLabelFontSize: 9,
     showValue: false,
   });
 
@@ -730,7 +736,7 @@ function createUsersDonutSlide(pptx, demographics) {
       chartColors: CHART_PALETTE,
       dataLabelPosition: 'outEnd',
       showPercent: true, showValue: false, showLabel: false,
-      dataLabelFontSize: 7,
+      dataLabelFontSize: 9,
     });
   });
 
@@ -805,7 +811,7 @@ function createChannelsSlide(pptx, channels, aiData, memos) {
     showLegend: true, legendPos: 'r', legendFontSize: 7,
     chartColors: CHART_PALETTE,
     showPercent: true, showValue: false, showLabel: false,
-    dataLabelFontSize: 7,
+    dataLabelFontSize: 9,
   });
 
   // テーブル
@@ -898,10 +904,10 @@ function createReferralsSlide(pptx, referrals, aiData, memos) {
 
   slide.addChart(pptx.charts.PIE, [{ name: 'セッション', labels: pieLabels, values: pieValues }], {
     x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
-    showLegend: true, legendPos: 'r', legendFontSize: 7,
+    showLegend: true, legendPos: 'r', legendFontSize: 9,
     chartColors: CHART_PALETTE,
     showPercent: true, showValue: false, showLabel: false,
-    dataLabelFontSize: 7,
+    dataLabelFontSize: 9,
   });
 
   const headers = [
@@ -951,7 +957,7 @@ function createPagesSlide(pptx, pages, aiData, memos) {
     barDir: 'col', barGrouping: 'clustered',
     showLegend: true, legendPos: 'b', legendFontSize: 7,
     chartColors: ['3b82f6', '10b981'],
-    catAxisLabelFontSize: 5, valAxisLabelFontSize: 7,
+    catAxisLabelFontSize: 5, valAxisLabelFontSize: 9,
     catAxisLabelRotate: 45,
     showValue: false,
   });
@@ -1022,7 +1028,7 @@ function createPageCategoriesSlide(pptx, pageCategories, aiData, memos) {
     showLegend: true, legendPos: 'r', legendFontSize: 7,
     chartColors: CHART_PALETTE,
     showPercent: true, showValue: false, showLabel: false,
-    dataLabelFontSize: 7,
+    dataLabelFontSize: 9,
   });
 
   const headers = [
@@ -1070,7 +1076,7 @@ function createLandingPagesSlide(pptx, landingPages, aiData, memos) {
     barDir: 'col', barGrouping: 'clustered',
     showLegend: true, legendPos: 'b', legendFontSize: 7,
     chartColors: ['3b82f6', 'ef4444'],
-    catAxisLabelFontSize: 5, valAxisLabelFontSize: 7,
+    catAxisLabelFontSize: 5, valAxisLabelFontSize: 9,
     catAxisLabelRotate: 45,
     showValue: false,
   });
@@ -1122,7 +1128,7 @@ function createFileDownloadsSlide(pptx, fileDownloads, aiData, memos) {
     barDir: 'col', barGrouping: 'clustered',
     showLegend: true, legendPos: 'b', legendFontSize: 7,
     chartColors: ['3b82f6', '10b981'],
-    catAxisLabelFontSize: 5, valAxisLabelFontSize: 7,
+    catAxisLabelFontSize: 5, valAxisLabelFontSize: 9,
     catAxisLabelRotate: 45,
     showValue: false,
   });
@@ -1217,7 +1223,7 @@ function createConversionsSlide(pptx, conversions, aiData, memos) {
       showLegend: true, legendPos: 'b', legendFontSize: 7,
       chartColors: colors.slice(0, chartData.length),
       lineSize: 2,
-      catAxisLabelFontSize: 7, valAxisLabelFontSize: 7,
+      catAxisLabelFontSize: 9, valAxisLabelFontSize: 9,
       showValue: false,
     });
   }
@@ -1293,7 +1299,7 @@ function createReverseFlowSlide(pptx, reverseFlows, aiData, memos) {
 
   const tbl = buildTable(headers, rows, [2.5, 1.3, 1.2, 1.3, 1.2, 1.3, 1.3]);
   tbl.options.y = layout.tableY;
-  tbl.options.h = layout.tableH;
+  tbl.options.rowH = 0.4;
   slide.addTable(tbl.rows, tbl.options);
 
   addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
