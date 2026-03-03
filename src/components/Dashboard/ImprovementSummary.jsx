@@ -5,7 +5,7 @@ import { db } from '../../config/firebase';
 import { Zap, FileEdit, PlayCircle, CheckCircle2 } from 'lucide-react';
 
 const STATUS_CONFIG = {
-  draft: { label: '下書き', icon: FileEdit, color: 'text-body-color', bg: 'bg-gray-100 dark:bg-dark-3' },
+  draft: { label: '起案', icon: FileEdit, color: 'text-body-color', bg: 'bg-gray-100 dark:bg-dark-3' },
   in_progress: { label: '対応中', icon: PlayCircle, color: 'text-primary', bg: 'bg-primary/10 dark:bg-primary/20' },
   completed: { label: '完了', icon: CheckCircle2, color: 'text-primary', bg: 'bg-primary/10 dark:bg-primary/20' },
 };

@@ -6,7 +6,7 @@ import { useAdminSiteDetail } from '../../../hooks/useAdminSiteDetail';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import { functions } from '../../../config/firebase';
-import { ArrowLeft, Globe, User, BarChart3, AlertTriangle, CheckCircle, XCircle, Search, RefreshCw, MousePointerClick } from 'lucide-react';
+import { ArrowLeft, Globe, User, BarChart3, AlertTriangle, CheckCircle, XCircle, Search, RefreshCw, MousePointerClick, Camera, Monitor, Smartphone } from 'lucide-react';
 import { SITE_TYPES, SITE_PURPOSES } from '../../../constants/siteOptions';
 
 /**
@@ -20,6 +20,9 @@ export default function AdminSiteDetail() {
   const [isScrapingLoading, setIsScrapingLoading] = useState(false);
   const [scrapingError, setScrapingError] = useState(null);
   const [scrapingMessage, setScrapingMessage] = useState(null);
+  const [isScreenshotLoading, setIsScreenshotLoading] = useState(false);
+  const [screenshotMessage, setScreenshotMessage] = useState(null);
+  const [screenshotError, setScreenshotError] = useState(null);
 
   useEffect(() => {
     setPageTitle('サイト詳細');
@@ -121,6 +124,32 @@ export default function AdminSiteDetail() {
       setScrapingError(err.message);
     } finally {
       setIsScrapingLoading(false);
+    }
+  };
+
+  const handleRefreshScreenshots = async () => {
+    setIsScreenshotLoading(true);
+    setScreenshotError(null);
+    setScreenshotMessage(null);
+    try {
+      const refresh = httpsCallable(functions, 'refreshSiteMetadataAndScreenshots', { timeout: 120_000 });
+      const result = await refresh({ siteId });
+      if (result.data?.success) {
+        const fields = result.data.updatedFields || [];
+        const updated = [];
+        if (fields.includes('pcScreenshotUrl')) updated.push('PC');
+        if (fields.includes('mobileScreenshotUrl')) updated.push('モバイル');
+        setScreenshotMessage(updated.length > 0
+          ? `${updated.join('・')}のスクリーンショットを更新しました`
+          : 'メタデータを更新しました（スクリーンショットの変更なし）');
+        refetch();
+        setTimeout(() => setScreenshotMessage(null), 10000);
+      }
+    } catch (err) {
+      console.error('[handleRefreshScreenshots] エラー:', err);
+      setScreenshotError(err.message || 'スクリーンショットの再取得に失敗しました');
+    } finally {
+      setIsScreenshotLoading(false);
     }
   };
 
@@ -446,6 +475,88 @@ export default function AdminSiteDetail() {
               </div>
             );
           })()}
+        </div>
+      </div>
+
+      {/* スクリーンショット */}
+      <div className="mt-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-4 flex items-center justify-between">
+          <h3 className="flex items-center gap-2 text-lg font-semibold text-dark dark:text-white">
+            <Camera className="h-5 w-5" />
+            サイトスクリーンショット
+          </h3>
+          <button
+            onClick={handleRefreshScreenshots}
+            disabled={isScreenshotLoading}
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isScreenshotLoading ? (
+              <>
+                <RefreshCw className="h-4 w-4 animate-spin" />
+                再取得中...
+              </>
+            ) : (
+              <>
+                <RefreshCw className="h-4 w-4" />
+                スクリーンショット再取得
+              </>
+            )}
+          </button>
+        </div>
+
+        {screenshotMessage && (
+          <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
+            {screenshotMessage}
+          </div>
+        )}
+        {screenshotError && (
+          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
+            {screenshotError}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          {/* PC */}
+          <div>
+            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-body-color dark:text-dark-6">
+              <Monitor className="h-4 w-4" />
+              PC
+            </div>
+            {siteDetail.pcScreenshotUrl ? (
+              <div className="overflow-hidden rounded-lg border border-stroke dark:border-dark-3">
+                <img
+                  src={siteDetail.pcScreenshotUrl}
+                  alt="PC screenshot"
+                  className="w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
+                <span className="text-sm text-body-color">未取得</span>
+              </div>
+            )}
+          </div>
+
+          {/* モバイル */}
+          <div>
+            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-body-color dark:text-dark-6">
+              <Smartphone className="h-4 w-4" />
+              モバイル
+            </div>
+            {siteDetail.mobileScreenshotUrl ? (
+              <div className="mx-auto max-w-[200px] overflow-hidden rounded-lg border border-stroke dark:border-dark-3">
+                <img
+                  src={siteDetail.mobileScreenshotUrl}
+                  alt="Mobile screenshot"
+                  className="w-full object-cover"
+                />
+              </div>
+            ) : (
+              <div className="mx-auto flex h-40 max-w-[200px] items-center justify-center rounded-lg border border-dashed border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
+                <span className="text-sm text-body-color">未取得</span>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

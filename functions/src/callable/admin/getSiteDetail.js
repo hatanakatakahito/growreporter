@@ -99,6 +99,9 @@ export const getSiteDetailCallable = async (request) => {
       // ヒートマップ利用状況
       heatmapPvUsage: siteData.heatmapPvUsage || 0,
       heatmapSamplingRate: siteData.heatmapSamplingRate ?? 1.0,
+      // スクリーンショット
+      pcScreenshotUrl: siteData.pcScreenshotUrl || '',
+      mobileScreenshotUrl: siteData.mobileScreenshotUrl || '',
       // ステータス
       hasGA4: !!siteData.ga4PropertyId,
       hasGSC: !!siteData.gscSiteUrl,

@@ -38,26 +38,23 @@ const ACTIONS = [
  */
 export default function QuickActions() {
   return (
-    <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-      <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">クイックアクション</h3>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {ACTIONS.map((action) => {
-          const Icon = action.icon;
-          return (
-            <Link
-              key={action.path}
-              to={action.path}
-              className="group flex flex-col items-center gap-2 rounded-lg border border-stroke p-4 text-center transition-all hover:border-primary hover:shadow-md dark:border-dark-3 dark:hover:border-primary"
-            >
-              <div className={`flex h-10 w-10 items-center justify-center rounded-full ${action.color} transition-transform group-hover:scale-110`}>
-                <Icon className="h-5 w-5" />
-              </div>
-              <span className="text-sm font-medium text-dark dark:text-white">{action.title}</span>
-              <span className="text-xs text-body-color">{action.description}</span>
-            </Link>
-          );
-        })}
-      </div>
+    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {ACTIONS.map((action) => {
+        const Icon = action.icon;
+        return (
+          <Link
+            key={action.path}
+            to={action.path}
+            className="group flex flex-col items-center gap-2 rounded-lg border border-stroke bg-white p-4 text-center shadow-sm transition-all hover:shadow-md dark:border-dark-3 dark:bg-dark-2"
+          >
+            <div className={`flex h-10 w-10 items-center justify-center rounded-full ${action.color} transition-transform group-hover:scale-110`}>
+              <Icon className="h-5 w-5" />
+            </div>
+            <span className="text-sm font-medium text-dark dark:text-white">{action.title}</span>
+            <span className="text-xs text-body-color">{action.description}</span>
+          </Link>
+        );
+      })}
     </div>
   );
 }

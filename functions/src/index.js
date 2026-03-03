@@ -125,9 +125,9 @@ export const fetchMetadata = onCall({
   timeoutSeconds: 60,
   region: 'asia-northeast1',
   cors: true,
-}, async (data, context) => {
+}, async (request) => {
   const { fetchMetadataCallable } = await import('./callable/fetchMetadata.js');
-  return fetchMetadataCallable({ data, auth: context?.auth });
+  return fetchMetadataCallable(request);
 });
 
 /**
@@ -138,9 +138,9 @@ export const refreshSiteMetadataAndScreenshots = onCall({
   timeoutSeconds: 300,
   region: 'asia-northeast1',
   cors: true,
-}, async (data, context) => {
+}, async (request) => {
   const { refreshSiteMetadataAndScreenshotsCallableWithCatch } = await import('./callable/refreshSiteMetadataAndScreenshots.js');
-  return refreshSiteMetadataAndScreenshotsCallableWithCatch({ data, auth: context?.auth });
+  return refreshSiteMetadataAndScreenshotsCallableWithCatch(request);
 });
 
 /**
