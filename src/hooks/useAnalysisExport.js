@@ -205,7 +205,7 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
       siteId: selectedSiteId, startDate, endDate,
       metrics: ['eventCount', 'activeUsers'],
       dimensions: ['eventName', 'linkUrl'],
-      dimensionFilter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'file_download' } },
+      dimensionFilter: { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'file_download' } } },
     }).then(r => r.data).catch(e => { console.error('[Export] fileDownloads:', e.message); return null; }),
 
     // 外部リンク
@@ -213,7 +213,7 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
       siteId: selectedSiteId, startDate, endDate,
       metrics: ['eventCount', 'activeUsers'],
       dimensions: ['eventName', 'linkUrl'],
-      dimensionFilter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'click' } },
+      dimensionFilter: { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'click' } } },
     }).then(r => r.data).catch(e => { console.error('[Export] externalLinks:', e.message); return null; }),
 
     // コンバージョン一覧（13ヶ月）
@@ -304,34 +304,57 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
 }
 
 // ─── AI分析キャッシュ取得 ──────────────────────────────────
+// Firestore pageType → エクスポートキーのマッピング
+const PAGETYPE_TO_EXPORT_KEY = {
+  'summary': 'analysis/summary',
+  'analysis/month': 'analysis/month',
+  'day': 'analysis/day',
+  'week': 'analysis/week',
+  'hour': 'analysis/hour',
+  'users': 'analysis/users',
+  'channels': 'analysis/channels',
+  'keywords': 'analysis/keywords',
+  'referrals': 'analysis/referrals',
+  'pages': 'analysis/pages',
+  'pageCategories': 'analysis/page-categories',
+  'landingPages': 'analysis/landing-pages',
+  'fileDownloads': 'analysis/file-downloads',
+  'externalLinks': 'analysis/external-links',
+  'conversions': 'analysis/conversions',
+  'reverseFlow': 'analysis/reverse-flow',
+};
+
 async function fetchAllAIAnalysis(siteId, userId, pageTypes, startDate, endDate) {
   const result = {};
-  if (!siteId || !userId) return result;
+  if (!siteId) return result;
 
   try {
-    // 全pageTypeを並列クエリ
-    const queries = pageTypes.map(async (pageType) => {
-      try {
-        const q = query(
-          collection(db, 'sites', siteId, 'aiAnalysisCache'),
-          where('userId', '==', userId),
-          where('pageType', '==', pageType),
-          where('period.startDate', '==', startDate),
-          where('period.endDate', '==', endDate),
-          orderBy('generatedAt', 'desc'),
-          firestoreLimit(1)
-        );
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-          result[pageType] = snapshot.docs[0].data();
-        }
-      } catch (e) {
-        // インデックスが無い場合等はスキップ
-        console.warn(`[Export] AI analysis for ${pageType}:`, e.message);
-      }
-    });
+    // 一括取得してコード側でフィルタリング（複合インデックス不要）
+    const snapshot = await getDocs(collection(db, 'sites', siteId, 'aiAnalysisCache'));
 
-    await Promise.all(queries);
+    if (snapshot.empty) return result;
+
+    // pageTypeごとに最新のキャッシュを選択
+    const candidates = {};
+    for (const doc of snapshot.docs) {
+      const data = doc.data();
+      const pt = data.pageType;
+      if (!pt) continue;
+      // Firestore pageType をエクスポートキーに変換（直接一致 or マッピング）
+      const exportKey = pageTypes.includes(pt) ? pt : PAGETYPE_TO_EXPORT_KEY[pt];
+      if (!exportKey || !pageTypes.includes(exportKey)) continue;
+      if (data.period?.startDate !== startDate || data.period?.endDate !== endDate) continue;
+
+      const genAt = data.generatedAt?.toMillis?.() || data.generatedAt?.seconds * 1000 || 0;
+      if (!candidates[exportKey] || genAt > candidates[exportKey]._genAt) {
+        candidates[exportKey] = { ...data, _genAt: genAt };
+      }
+    }
+
+    for (const [key, data] of Object.entries(candidates)) {
+      const { _genAt, ...rest } = data;
+      result[key] = rest;
+    }
   } catch (e) {
     console.error('[Export] fetchAllAIAnalysis:', e.message);
   }

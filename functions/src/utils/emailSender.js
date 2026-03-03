@@ -135,36 +135,43 @@ const CONSULTATION_TO_EMAIL = 'info@grow-reporter.com';
 /**
  * サイト改善相談メールを送信（SMTP 直接送信・宛先: info@grow-reporter.com）
  */
-export async function sendImprovementConsultationEmail({ siteName, siteUrl, userEmail, userName = '', message = '', excelBase64 = '', excelFileName = '' }) {
+export async function sendImprovementConsultationEmail({ siteName, siteUrl, userEmail, userName = '', message = '', excelDownloadUrl = '', excelFileName = '' }) {
   try {
     const subject = `【グローレポータ】${(siteName || 'サイト').trim()}のサイト改善のご相談依頼`;
-    const body = `
-このメールはグローレポータ（https://grow-reporter.com/）の「制作会社へ相談する」フォームから送信されました。
+
+    const excelSection = excelDownloadUrl
+      ? `\n■ 改善内容Excel：\n${excelFileName ? `ファイル名: ${excelFileName}\n` : ''}ダウンロード: ${excelDownloadUrl}\n`
+      : '';
+
+    const textBody = `このメールはグローレポータ（https://grow-reporter.com/）の「制作会社へ相談する」フォームから送信されました。
 
 ■ サイト名：${(siteName || '').trim() || '（未入力）'}
 ■ サイトURL：${(siteUrl || '').trim() || '（未入力）'}
 ■ 送信者：${(userName || '').trim() || '（未入力）'}（${(userEmail || '').trim() || '（未入力）'}）
-${message ? `\n■ メッセージ：\n${message.trim()}\n` : ''}
+${message ? `\n■ メッセージ：\n${message.trim()}\n` : ''}${excelSection}
 送信日時：${new Date().toLocaleString('ja-JP')}
 `;
 
-    const attachments = [];
-    if (excelBase64) {
-      attachments.push({
-        filename: excelFileName || 'サイト改善案.xlsx',
-        content: Buffer.from(excelBase64, 'base64'),
-        contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-      });
-    }
+    const htmlExcelSection = excelDownloadUrl
+      ? `<br><strong>■ 改善内容Excel：</strong><br>${excelFileName ? `ファイル名: ${excelFileName}<br>` : ''}ダウンロード: <a href="${excelDownloadUrl}">${excelFileName || 'Excelをダウンロード'}</a><br>`
+      : '';
+
+    const htmlBody = `このメールはグローレポータ（<a href="https://grow-reporter.com/">https://grow-reporter.com/</a>）の「制作会社へ相談する」フォームから送信されました。<br>
+<br>
+<strong>■ サイト名：</strong>${(siteName || '').trim() || '（未入力）'}<br>
+<strong>■ サイトURL：</strong>${(siteUrl || '').trim() || '（未入力）'}<br>
+<strong>■ 送信者：</strong>${(userName || '').trim() || '（未入力）'}（${(userEmail || '').trim() || '（未入力）'}）<br>
+${message ? `<br><strong>■ メッセージ：</strong><br>${message.trim().replace(/\n/g, '<br>')}<br>` : ''}${htmlExcelSection}<br>
+送信日時：${new Date().toLocaleString('ja-JP')}
+`;
 
     await sendEmailDirect({
       to: CONSULTATION_TO_EMAIL,
       subject,
-      text: body,
-      html: body.replace(/\n/g, '<br>'),
-      attachments,
+      text: textBody,
+      html: htmlBody,
     });
-    logger.info('サイト改善相談メール送信', { siteName, userEmail, userName, hasExcel: !!excelBase64 });
+    logger.info('サイト改善相談メール送信', { siteName, userEmail, userName, hasExcelLink: !!excelDownloadUrl });
     return { success: true };
   } catch (error) {
     logger.error('サイト改善相談メール送信エラー', { error: error.message });

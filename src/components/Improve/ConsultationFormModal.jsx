@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { X, Download, Send } from 'lucide-react';
 import { httpsCallable } from 'firebase/functions';
-import { functions } from '../../config/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { functions, storage } from '../../config/firebase';
 import { downloadImprovementsExcel, exportImprovementsToExcel } from '../../utils/exportImprovementsToExcel';
 import { useAuth } from '../../contexts/AuthContext';
 import toast from 'react-hot-toast';
@@ -38,19 +39,22 @@ export default function ConsultationFormModal({ isOpen, onClose, siteName, siteU
     }
   };
 
-  // Excel を base64 に変換
-  const generateExcelBase64 = async () => {
-    if (!improvements || improvements.length === 0) return null;
+  // Excel を Storage にアップロードしてダウンロードURLを取得
+  const uploadExcelToStorage = async () => {
+    if (!improvements || improvements.length === 0) return { url: '', fileName: '' };
     try {
       const blob = await exportImprovementsToExcel(improvements, siteName);
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result.split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
-    } catch {
-      return null;
+      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+      const safeName = (siteName || 'サイト').replace(/[/\\:*?"<>|]/g, '_').trim() || 'サイト';
+      const excelFileName = `${safeName}_サイト改善案_${dateStr}.xlsx`;
+      const storagePath = `consultation_excels/${dateStr}_${Date.now()}_${excelFileName}`;
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, blob, { contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const downloadUrl = await getDownloadURL(storageRef);
+      return { url: downloadUrl, fileName: excelFileName };
+    } catch (e) {
+      console.error('[ConsultationFormModal] Excelアップロードエラー:', e);
+      return { url: '', fileName: '' };
     }
   };
 
@@ -58,10 +62,7 @@ export default function ConsultationFormModal({ isOpen, onClose, siteName, siteU
     e.preventDefault();
     setIsSending(true);
     try {
-      const excelBase64 = await generateExcelBase64();
-      const dateStr = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      const safeName = (siteName || 'サイト').replace(/[/\\:*?"<>|]/g, '_').trim() || 'サイト';
-      const excelFileName = `${safeName}_サイト改善案_${dateStr}.xlsx`;
+      const { url: excelDownloadUrl, fileName: excelFileName } = await uploadExcelToStorage();
 
       const submitConsultation = httpsCallable(functions, 'submitImprovementConsultation');
       await submitConsultation({
@@ -69,7 +70,7 @@ export default function ConsultationFormModal({ isOpen, onClose, siteName, siteU
         siteUrl: siteUrl || '',
         message: message.trim(),
         userName: getUserName(),
-        excelBase64: excelBase64 || '',
+        excelDownloadUrl,
         excelFileName,
       });
       toast.success('送信しました');

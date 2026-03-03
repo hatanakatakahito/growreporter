@@ -20,7 +20,7 @@ export const submitImprovementConsultationCallable = async (request) => {
     siteUrl = '',
     message = '',
     userName = '',
-    excelBase64 = '',
+    excelDownloadUrl = '',
     excelFileName = '',
   } = request.data || {};
   const userEmail = request.auth.token.email || '';
@@ -31,7 +31,7 @@ export const submitImprovementConsultationCallable = async (request) => {
     userEmail,
     userName: String(userName).trim(),
     message: String(message).trim(),
-    excelBase64: String(excelBase64),
+    excelDownloadUrl: String(excelDownloadUrl).trim(),
     excelFileName: String(excelFileName).trim(),
   });
 

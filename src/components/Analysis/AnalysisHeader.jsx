@@ -39,6 +39,7 @@ export default function AnalysisHeader({
   title = '',
   subtitle = '',
   improveActions = null,
+  customDownload = null,
 }) {
   const { currentUser, userProfile, logout } = useAuth();
   const { sites, selectedSite: currentSite, selectedSiteId, selectSite, isAdminViewing } = useSite();
@@ -169,6 +170,9 @@ export default function AnalysisHeader({
             <div className="flex items-center gap-3">
               {/* 改善画面専用アクション */}
               {improveActions && improveActions}
+
+              {/* カスタムダウンロード（改善画面など） */}
+              {customDownload}
 
               {/* ダウンロードメニュー（ダッシュボード・分析画面のみ） */}
               {showExport && (

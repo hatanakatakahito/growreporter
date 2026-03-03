@@ -3,7 +3,7 @@ import { useSite } from '../contexts/SiteContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit } from 'lucide-react';
+import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, Loader2 } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
 import { db, functions } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -37,6 +37,14 @@ const categoryColors = {
   other: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300',
 };
 const priorityLabels = { high: '高', medium: '中', low: '低' };
+
+const ExcelIcon = ({ className, disabled }) => (
+  <svg className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1" y="1" width="14" height="14" rx="2" fill={disabled ? '#9CA3AF' : '#217346'} />
+    <path d="M5.5 4.5L8 8L5.5 11.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M10.5 4.5L8 8L10.5 11.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 const statusLabels = { draft: '起案', in_progress: '対応中', completed: '完了' };
 const priorityColors = {
   high: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300',
@@ -69,6 +77,11 @@ export default function Improve() {
   const [generationError, setGenerationError] = useState('');
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
+  // ダウンロードメニュー
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const downloadMenuRef = useRef(null);
+
   // スクレイピング状況
   const [scrapingStatus, setScrapingStatus] = useState(null);
   
@@ -89,6 +102,19 @@ export default function Improve() {
   useEffect(() => {
     setPageTitle('改善する');
   }, []);
+
+  // ダウンロードメニューの外側クリックで閉じる
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (downloadMenuRef.current && !downloadMenuRef.current.contains(e.target)) {
+        setIsDownloadMenuOpen(false);
+      }
+    };
+    if (isDownloadMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isDownloadMenuOpen]);
 
   // スクレイピング状況を取得
   useEffect(() => {
@@ -403,7 +429,6 @@ export default function Improve() {
                     >
                       <Sparkles className="h-4 w-4" />
                       AI改善案生成
-                      {/* 残り回数バッジ */}
                       {remaining !== null && (
                         <span
                           className="absolute -top-2 -right-2 flex h-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-md whitespace-nowrap"
@@ -426,6 +451,58 @@ export default function Improve() {
                 </button>
               </>
             )
+          }
+          customDownload={
+            improvements.length > 0 ? (() => {
+              const canExport = checkCanGenerate('excelExport');
+              return (
+                <div className="relative" ref={downloadMenuRef}>
+                  <button
+                    onClick={() => !isExporting && setIsDownloadMenuOpen(!isDownloadMenuOpen)}
+                    disabled={isExporting}
+                    className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title="改善内容ダウンロード"
+                  >
+                    {isExporting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                    <span>ダウンロード</span>
+                  </button>
+                  {isDownloadMenuOpen && (
+                    <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
+                      <button
+                        onClick={async () => {
+                          setIsDownloadMenuOpen(false);
+                          if (!canExport) {
+                            toast.error('今月のExcelエクスポート上限に達しました。');
+                            return;
+                          }
+                          setIsExporting(true);
+                          try {
+                            await downloadImprovementsExcel(improvements, selectedSite?.siteName);
+                            const incrementExportUsageFn = httpsCallable(functions, 'incrementExportUsage');
+                            await incrementExportUsageFn({ type: 'excel' }).catch(() => {});
+                            toast.success('Excelダウンロードが完了しました');
+                          } catch (e) {
+                            toast.error(e?.message || 'ダウンロードに失敗しました');
+                          } finally {
+                            setIsExporting(false);
+                          }
+                        }}
+                        disabled={!canExport}
+                        className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${!canExport ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}`}
+                      >
+                        <ExcelIcon className="h-4 w-4" disabled={!canExport} />
+                        Excel
+                        {!canExport && <span className="ml-auto text-xs text-gray-400">上限</span>}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })() : null
           }
         />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
@@ -469,32 +546,6 @@ export default function Improve() {
                   <option value="completed">{statusLabels.completed}</option>
                 </select>
               )}
-              {improvements.length > 0 && (() => {
-                const canExport = checkCanGenerate('excelExport');
-                return (
-                  <button
-                    onClick={async () => {
-                      if (!canExport) {
-                        toast.error('今月のExcelエクスポート上限に達しました。');
-                        return;
-                      }
-                      try {
-                        await downloadImprovementsExcel(improvements, selectedSite?.siteName);
-                        const incrementExportUsageFn = (await import('firebase/functions')).httpsCallable(functions, 'incrementExportUsage');
-                        await incrementExportUsageFn({ type: 'excel' }).catch(() => {});
-                        toast.success('ダウンロードしました');
-                      } catch (e) {
-                        toast.error(e?.message || 'ダウンロードに失敗しました');
-                      }
-                    }}
-                    disabled={!canExport}
-                    className={`inline-flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium transition dark:border-dark-3 dark:bg-dark-2 ${!canExport ? 'text-gray-400 opacity-50 cursor-not-allowed' : 'text-dark hover:bg-gray-50 dark:text-white dark:hover:bg-dark-3'}`}
-                  >
-                    <Download className="h-4 w-4" />
-                    改善内容をダウンロード
-                  </button>
-                );
-              })()}
             </div>
           </div>
 
@@ -648,7 +699,7 @@ export default function Improve() {
                     <thead>
                       <tr>
                         {!isViewer && (
-                          <th className="w-[40px] py-3 px-2 bg-gray-50 dark:bg-dark-3 border-b border-stroke dark:border-dark-3 text-center">
+                          <th className="w-[48px] py-3 pl-4 pr-2 bg-gray-50 dark:bg-dark-3 border-b border-stroke dark:border-dark-3 text-center">
                             {sortedImprovements.length > 0 && (
                               <input
                                 type="checkbox"
@@ -703,7 +754,7 @@ export default function Improve() {
                               className={`border-b border-gray-100 dark:border-dark-3 ${isSelected ? 'bg-blue-50 dark:bg-blue-900/10' : ''}`}
                             >
                               {!isViewer && (
-                                <td className="py-3 px-2 align-middle text-center" onClick={(e) => e.stopPropagation()}>
+                                <td className="py-3 pl-4 pr-2 align-middle text-center" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
