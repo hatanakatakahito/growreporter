@@ -79,7 +79,7 @@ ${userName} 様
 ${reason || '（記載なし）'}
 
 ■ 変更日時
-${new Date().toLocaleString('ja-JP')}
+${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 
 今後ともグローレポータをよろしくお願いいたします。
 
@@ -149,7 +149,7 @@ export async function sendImprovementConsultationEmail({ siteName, siteUrl, user
 ■ サイトURL：${(siteUrl || '').trim() || '（未入力）'}
 ■ 送信者：${(userName || '').trim() || '（未入力）'}（${(userEmail || '').trim() || '（未入力）'}）
 ${message ? `\n■ メッセージ：\n${message.trim()}\n` : ''}${excelSection}
-送信日時：${new Date().toLocaleString('ja-JP')}
+送信日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 `;
 
     const htmlExcelSection = excelDownloadUrl
@@ -162,7 +162,7 @@ ${message ? `\n■ メッセージ：\n${message.trim()}\n` : ''}${excelSection}
 <strong>■ サイトURL：</strong>${(siteUrl || '').trim() || '（未入力）'}<br>
 <strong>■ 送信者：</strong>${(userName || '').trim() || '（未入力）'}（${(userEmail || '').trim() || '（未入力）'}）<br>
 ${message ? `<br><strong>■ メッセージ：</strong><br>${message.trim().replace(/\n/g, '<br>')}<br>` : ''}${htmlExcelSection}<br>
-送信日時：${new Date().toLocaleString('ja-JP')}
+送信日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 `;
 
     await sendEmailDirect({
@@ -195,7 +195,7 @@ export async function sendUpgradeInquiryEmail({ selectedPlan, companyName = '', 
 ■ 氏名：${(userName || '').trim() || '（未入力）'}
 ■ メールアドレス：${(userEmail || '').trim() || '（未入力）'}
 ${message ? `\n■ メッセージ：\n${message.trim()}\n` : ''}
-送信日時：${new Date().toLocaleString('ja-JP')}
+送信日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 `;
 
     await sendEmailDirect({
