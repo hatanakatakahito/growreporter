@@ -2,7 +2,22 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSite } from '../../contexts/SiteContext';
-import { Calendar, Settings, ChevronDown, LogOut, User as UserIcon, Globe, Bell, Download, Loader2, FileSpreadsheet, Presentation } from 'lucide-react';
+import { Calendar, Settings, ChevronDown, LogOut, User as UserIcon, Globe, Bell, Download, Loader2 } from 'lucide-react';
+
+const ExcelIcon = ({ className, disabled }) => (
+  <svg className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1" y="1" width="14" height="14" rx="2" fill={disabled ? '#9CA3AF' : '#217346'} />
+    <path d="M5.5 4.5L8 8L5.5 11.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M10.5 4.5L8 8L10.5 11.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const PowerPointIcon = ({ className, disabled }) => (
+  <svg className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="1" y="1" width="14" height="14" rx="2" fill={disabled ? '#9CA3AF' : '#D24726'} />
+    <path d="M6 11.5V4.5H9C10.1046 4.5 11 5.3954 11 6.5C11 7.6046 10.1046 8.5 9 8.5H6" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 import { format } from 'date-fns';
 import { SCREENSHOT_PC_DISPLAY, SCREENSHOT_MOBILE_DISPLAY } from '../../constants/screenshotDisplay';
 import toast from 'react-hot-toast';
@@ -179,7 +194,7 @@ export default function AnalysisHeader({
                         disabled={!canExportExcel}
                         className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${!canExportExcel ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}`}
                       >
-                        <FileSpreadsheet className={`h-4 w-4 ${!canExportExcel ? 'text-gray-400' : 'text-green-600'}`} />
+                        <ExcelIcon className="h-4 w-4" disabled={!canExportExcel} />
                         Excel
                         {!canExportExcel && <span className="ml-auto text-xs text-gray-400">上限</span>}
                       </button>
@@ -188,7 +203,7 @@ export default function AnalysisHeader({
                         disabled={!canExportPptx}
                         className={`flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${!canExportPptx ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-50'}`}
                       >
-                        <Presentation className={`h-4 w-4 ${!canExportPptx ? 'text-gray-400' : 'text-orange-500'}`} />
+                        <PowerPointIcon className="h-4 w-4" disabled={!canExportPptx} />
                         PowerPoint
                         {!canExportPptx && <span className="ml-auto text-xs text-gray-400">上限</span>}
                       </button>
