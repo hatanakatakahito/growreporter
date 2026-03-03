@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { getPlanBadgeColor } from '../../constants/plans';
 import logoImg from '../../assets/img/logo.svg';
 
 export default function Sidebar() {
@@ -28,6 +29,10 @@ export default function Sidebar() {
   };
 
   const userInitial = getUserName().charAt(0);
+
+  const userPlan = userProfile?.plan || 'free';
+  const planBadgeColor = getPlanBadgeColor(userPlan);
+  const planLabel = userPlan === 'premium' ? 'プレミアム' : userPlan === 'standard' ? 'スタンダード' : '無料';
 
   // 現在のパスに基づいてメニューを開く
   useEffect(() => {
@@ -384,9 +389,9 @@ export default function Sidebar() {
             {isSidebarOpen ? (
               <div className="flex items-center gap-3 p-2">
                 {currentUser?.photoURL ? (
-                  <img 
-                    src={currentUser.photoURL} 
-                    alt="Profile" 
+                  <img
+                    src={currentUser.photoURL}
+                    alt="Profile"
                     className="h-10 w-10 rounded-full object-cover"
                     referrerPolicy="no-referrer"
                   />
@@ -402,14 +407,17 @@ export default function Sidebar() {
                   <p className="truncate text-xs text-body-color">
                     {currentUser?.email}
                   </p>
+                  <span className={`mt-1 inline-block rounded px-2 py-0.5 text-[10px] font-bold leading-none ${planBadgeColor}`}>
+                    {planLabel}
+                  </span>
                 </div>
               </div>
             ) : (
-              <div className="flex justify-center p-1">
+              <div className="flex flex-col items-center gap-1 p-1">
                 {currentUser?.photoURL ? (
-                  <img 
-                    src={currentUser.photoURL} 
-                    alt="Profile" 
+                  <img
+                    src={currentUser.photoURL}
+                    alt="Profile"
                     className="h-8 w-8 rounded-full object-cover"
                     title={getUserName()}
                     referrerPolicy="no-referrer"
@@ -419,6 +427,9 @@ export default function Sidebar() {
                     {userInitial}
                   </div>
                 )}
+                <span className={`rounded px-1.5 py-0.5 text-[8px] font-bold leading-none ${planBadgeColor}`}>
+                  {planLabel}
+                </span>
               </div>
             )}
           </button>

@@ -609,7 +609,7 @@ export function generateWelcomeEmail(data) {
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${appUrl}/site-registration" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                    <a href="${appUrl}/sites/new" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
                       サイトを登録する
                     </a>
                   </td>
@@ -649,7 +649,7 @@ GA4・サーチコンソールのデータをAIで分析し、サイト改善に
 2. Google アカウントを連携する
 3. ダッシュボードでデータを確認する
 
-サイト登録: ${appUrl}/site-registration
+サイト登録: ${appUrl}/sites/new
 
 ご不明点がございましたら、お気軽にお問い合わせください。
 

@@ -254,7 +254,7 @@ export default function SiteDiagnosis() {
               {unlimited ? '無制限' : `今月の残り回数: ${remaining}回 (${used}/${limit}回使用済み)`}
             </p>
             <button
-              onClick={handleRunDiagnosis}
+              onClick={() => handleRunDiagnosis()}
               disabled={!checkCanGenerate('diagnosis')}
               className="inline-flex items-center gap-2 rounded-md bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >

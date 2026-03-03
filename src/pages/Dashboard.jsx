@@ -189,11 +189,6 @@ export default function Dashboard() {
         )}
 
         <div className="mx-auto max-w-content px-6 py-10">
-          {/* ページタイトル */}
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-dark dark:text-white">ダッシュボード</h2>
-          </div>
-
           <div className="space-y-8">
             {/* クイックアクション */}
             <QuickActions />

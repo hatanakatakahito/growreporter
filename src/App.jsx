@@ -105,13 +105,14 @@ function App() {
             />
             
             {/* サイト登録・完了（ワンカラムレイアウト） */}
-            <Route 
-              path="/sites/new" 
+            <Route path="/site-registration" element={<Navigate to="/sites/new" replace />} />
+            <Route
+              path="/sites/new"
               element={
                 <ProtectedRoute>
                   <SiteRegistration mode="new" />
                 </ProtectedRoute>
-              } 
+              }
             />
             <Route 
               path="/sites/:siteId/edit" 
