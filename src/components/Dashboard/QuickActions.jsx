@@ -8,6 +8,7 @@ const ACTIONS = [
     title: 'AIで分析する',
     description: 'GA4データをAIが自動分析',
     path: '/analysis/summary',
+    state: { scrollToAI: true },
     color: 'bg-primary/10 text-primary',
   },
   {
@@ -45,6 +46,7 @@ export default function QuickActions() {
           <Link
             key={action.path}
             to={action.path}
+            state={action.state}
             className="group flex flex-col items-center gap-2 rounded-lg border border-stroke bg-white p-4 text-center shadow-sm transition-all hover:shadow-md dark:border-dark-3 dark:bg-dark-2"
           >
             <div className={`flex h-10 w-10 items-center justify-center rounded-full ${action.color} transition-transform group-hover:scale-110`}>

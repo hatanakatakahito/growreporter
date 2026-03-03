@@ -59,7 +59,7 @@ export async function fetchGA4PageTransitionCallable(request) {
       throw new HttpsError('failed-precondition', 'GA4 not configured');
     }
 
-    const tokenOwnerId = siteData.ga4TokenOwner || siteData.ga4OauthTokenId;
+    const tokenOwnerId = siteData.ga4TokenOwner || siteData.userId;
     const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, siteData.ga4OauthTokenId);
     const analyticsData = google.analyticsdata('v1beta');
 

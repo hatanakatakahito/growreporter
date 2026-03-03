@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, X } from 'lucide-react';
+import { setPageTitle } from '../utils/pageTitle';
 
 /**
  * プランアップグレードお問い合わせ送信完了（サンクスページ）
@@ -8,6 +9,8 @@ import { CheckCircle, X } from 'lucide-react';
  */
 export default function UpgradeThanks() {
   const navigate = useNavigate();
+
+  useEffect(() => { setPageTitle('送信完了'); }, []);
 
   // 5秒後に自動でダッシュボードへ戻る
   useEffect(() => {

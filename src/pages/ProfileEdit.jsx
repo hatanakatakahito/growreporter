@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { setPageTitle } from '../utils/pageTitle';
 
 /**
  * プロフィール編集画面（アカウント設定から遷移）
@@ -11,19 +12,19 @@ export default function ProfileEdit() {
   const [passwordResetSent, setPasswordResetSent] = useState(false);
   const [formData, setFormData] = useState({
     company: '',
-    lastName: '',
-    firstName: '',
+    name: '',
     phoneNumber: '',
   });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  useEffect(() => { setPageTitle('プロフィール編集'); }, []);
+
   useEffect(() => {
     if (userProfile) {
       setFormData({
         company: userProfile.company || '',
-        lastName: userProfile.lastName || '',
-        firstName: userProfile.firstName || '',
+        name: userProfile.name || (userProfile.lastName && userProfile.firstName ? `${userProfile.lastName} ${userProfile.firstName}` : userProfile.displayName || ''),
         phoneNumber: userProfile.phoneNumber || '',
       });
     }
@@ -38,7 +39,7 @@ export default function ProfileEdit() {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
-    if (!formData.company || !formData.lastName || !formData.firstName || !formData.phoneNumber) {
+    if (!formData.company || !formData.name || !formData.phoneNumber) {
       setError('必須項目を入力してください');
       setIsSubmitting(false);
       return;
@@ -46,8 +47,7 @@ export default function ProfileEdit() {
     try {
       await updateUserProfile(currentUser.uid, {
         company: formData.company,
-        lastName: formData.lastName,
-        firstName: formData.firstName,
+        name: formData.name,
         phoneNumber: formData.phoneNumber,
       });
       navigate('/account/settings');
@@ -101,35 +101,19 @@ export default function ProfileEdit() {
                 required
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  姓 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="lastName"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  placeholder="姓"
-                  className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  名 <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="firstName"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  placeholder="名"
-                  className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
-                  required
-                />
-              </div>
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                氏名 <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="例: 山田 太郎"
+                className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                required
+              />
             </div>
             <div>
               <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

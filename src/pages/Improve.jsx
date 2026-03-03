@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useSite } from '../contexts/SiteContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
@@ -14,6 +14,7 @@ import EvaluationModal from '../components/Improve/EvaluationModal';
 import AIGenerationModal from '../components/Improve/AIGenerationModal';
 import ImprovementFocusModal from '../components/Improve/ImprovementFocusModal';
 import ConsultationFormModal from '../components/Improve/ConsultationFormModal';
+import UpgradeModal from '../components/common/UpgradeModal';
 import { usePlan } from '../hooks/usePlan';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAndAddImprovements } from '../utils/generateAndAddImprovements';
@@ -46,10 +47,10 @@ const priorityColors = {
 export default function Improve() {
   const { selectedSite, selectedSiteId } = useSite();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { getRemainingByType, checkCanGenerate } = usePlan();
+  const { plan, getRemainingByType, checkCanGenerate } = usePlan();
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
-  
+
   const memberRole = userProfile?.memberRole || 'owner';
   const isViewer = memberRole === 'viewer';
   const [editingItem, setEditingItem] = useState(null);
@@ -60,12 +61,14 @@ export default function Improve() {
   
   // 方針選択モーダル（AI生成の前に表示）
   const [isFocusModalOpen, setIsFocusModalOpen] = useState(false);
+  const hasAutoOpenedFocusRef = useRef(false);
   // AI生成モーダルの状態
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
   const [generationStatus, setGenerationStatus] = useState('loading');
   const [generationCount, setGenerationCount] = useState(0);
   const [generationError, setGenerationError] = useState('');
-  
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
   // スクレイピング状況
   const [scrapingStatus, setScrapingStatus] = useState(null);
   
@@ -175,6 +178,14 @@ export default function Improve() {
     enabled: !!selectedSiteId,
   });
 
+  // 改善案が0件の場合、方針選択モーダルを自動表示（初回のみ）
+  useEffect(() => {
+    if (!improvementsLoading && improvements.length === 0 && !isViewer && !isGenerationModalOpen && !hasAutoOpenedFocusRef.current) {
+      hasAutoOpenedFocusRef.current = true;
+      setIsFocusModalOpen(true);
+    }
+  }, [improvementsLoading, improvements.length, isViewer, isGenerationModalOpen]);
+
   // 更新mutation
   const updateMutation = useMutation({
     mutationFn: async ({ id, data }) => {
@@ -265,7 +276,12 @@ export default function Improve() {
     }
   };
 
-  const filteredImprovements = useMemo(() => improvements, [improvements]);
+  // ステータス絞り込み
+  const [statusFilter, setStatusFilter] = useState('all');
+  const filteredImprovements = useMemo(() => {
+    if (statusFilter === 'all') return improvements;
+    return improvements.filter(item => (item.status || 'draft') === statusFilter);
+  }, [improvements, statusFilter]);
 
   const categoryOrder = ['acquisition', 'content', 'design', 'feature', 'other'];
   const priorityOrder = ['high', 'medium', 'low'];
@@ -377,22 +393,23 @@ export default function Improve() {
               <>
                 {(() => {
                   const remaining = getRemainingByType('improvement');
-                  const isDisabled = remaining === 0;
                   return (
                     <button
                       onClick={() => {
-                        if (!selectedSiteId || isDisabled) return;
+                        if (!selectedSiteId) return;
                         setIsFocusModalOpen(true);
                       }}
-                      disabled={isDisabled}
-                      className={`relative inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-purple-600 hover:to-pink-600 ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className="relative inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-purple-600 hover:to-pink-600"
                     >
                       <Sparkles className="h-4 w-4" />
                       AI改善案生成
                       {/* 残り回数バッジ */}
                       {remaining !== null && (
-                        <span className={`absolute -top-2 -right-2 flex h-5 ${remaining === -1 ? 'w-6' : 'w-5'} items-center justify-center rounded-full bg-red-500 text-xs font-bold text-white shadow-md`}>
-                          {remaining === -1 ? '∞' : remaining}
+                        <span
+                          className="absolute -top-2 -right-2 flex h-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-md whitespace-nowrap"
+                          title={`${plan?.displayName || 'プラン'}：AI改善案生成の今月の残り回数`}
+                        >
+                          {remaining === -1 ? '無制限' : `${remaining}回`}
                         </span>
                       )}
                     </button>
@@ -439,6 +456,19 @@ export default function Improve() {
               )}
             </div>
             <div className="flex flex-wrap items-center gap-3">
+              {/* ステータス絞り込み */}
+              {improvements.length > 0 && (
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="rounded-lg border border-stroke bg-white px-3 py-2 text-sm text-dark dark:border-dark-3 dark:bg-dark-2 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
+                >
+                  <option value="all">すべてのステータス</option>
+                  <option value="draft">{statusLabels.draft}</option>
+                  <option value="in_progress">{statusLabels.in_progress}</option>
+                  <option value="completed">{statusLabels.completed}</option>
+                </select>
+              )}
               {improvements.length > 0 && (() => {
                 const canExport = checkCanGenerate('excelExport');
                 return (
@@ -472,6 +502,13 @@ export default function Improve() {
             isOpen={isFocusModalOpen}
             onClose={() => setIsFocusModalOpen(false)}
             onConfirm={async (improvementFocus) => {
+              // プラン上限チェック（生成前）
+              const remaining = getRemainingByType('improvement');
+              if (remaining === 0) {
+                setIsFocusModalOpen(false);
+                setIsUpgradeModalOpen(true);
+                return;
+              }
               setIsGenerationModalOpen(true);
               setGenerationStatus('loading');
               setGenerationError('');
@@ -509,14 +546,26 @@ export default function Improve() {
                         queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
                       }
                     } else if (status === 'error') {
-                      setGenerationError(error);
+                      // プラン上限エラーの場合はアップグレードモーダルを表示
+                      if (error && error.includes('上限に達しました')) {
+                        setIsGenerationModalOpen(false);
+                        setIsUpgradeModalOpen(true);
+                      } else {
+                        setGenerationError(error);
+                      }
                     }
                   },
                   { improvementFocus }
                 );
               } catch (err) {
-                setGenerationStatus('error');
-                setGenerationError(err?.message || '生成に失敗しました');
+                const msg = err?.message || '生成に失敗しました';
+                if (msg.includes('上限に達しました')) {
+                  setIsGenerationModalOpen(false);
+                  setIsUpgradeModalOpen(true);
+                } else {
+                  setGenerationStatus('error');
+                  setGenerationError(msg);
+                }
               }
             }}
           />
@@ -641,7 +690,9 @@ export default function Improve() {
                     </thead>
                     <tbody>
                       {sortedImprovements.length === 0 ? (
-                        <tr><td colSpan={isViewer ? 6 : 7} className="py-6 px-4 text-body-color text-sm text-center">改善案がありません</td></tr>
+                        <tr><td colSpan={isViewer ? 6 : 7} className="py-6 px-4 text-body-color text-sm text-center">
+                          改善案がありません
+                        </td></tr>
                       ) : (
                         sortedImprovements.map((item) => {
                           const isSelected = selectedForIframe === item.id;
@@ -756,6 +807,20 @@ export default function Improve() {
                     </tbody>
                   </table>
                 </div>
+
+                {/* 修正内容を制作会社に相談するボタン */}
+                {improvements.length > 0 && !isViewer && (
+                  <div className="mt-6 flex justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsConsultationModalOpen(true)}
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-3 text-sm font-medium text-white shadow-md transition-all hover:from-blue-600 hover:to-purple-600 hover:shadow-lg"
+                    >
+                      <Mail className="h-5 w-5" />
+                      修正内容を制作会社に相談する
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* オーバーレイ: ドロワー表示時 */}
@@ -871,27 +936,7 @@ export default function Improve() {
         }}
       />
 
-      {/* 修正を相談する（右下フロート・円形・分析画面と同様のサイズ・グラデーション） */}
-      <div className="fixed bottom-6 right-6 z-30">
-        <button
-          type="button"
-          onClick={() => {
-            if (improvements.length === 0) {
-              toast.error('改善案がありません');
-              return;
-            }
-            setIsConsultationModalOpen(true);
-          }}
-          className="relative flex h-28 w-28 flex-col items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl"
-          aria-label="修正を相談する"
-          title="修正を相談する"
-        >
-          <div className="flex flex-col items-center">
-            <Mail className="h-9 w-9" aria-hidden="true" />
-            <span className="mt-1 text-center text-sm font-medium leading-tight">修正を<br />相談する</span>
-          </div>
-        </button>
-      </div>
+      {/* 修正を相談するボタン（テーブル下・中央配置） */}
 
       {/* 相談フォームモーダル */}
       <ConsultationFormModal
@@ -904,6 +949,12 @@ export default function Improve() {
           setIsConsultationModalOpen(false);
           navigate('/improve/consultation/thanks');
         }}
+      />
+
+      {/* プランアップグレードモーダル（上限超過時） */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
       />
     </div>
   );

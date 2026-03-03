@@ -73,10 +73,10 @@ export const getAdminUsersCallable = async (request) => {
     
     snapshot.forEach((doc) => {
       const data = doc.data();
-      // ユーザー名を lastName + firstName で構成
-      const userName = (data.lastName && data.firstName) 
-        ? `${data.lastName} ${data.firstName}` 
-        : (data.displayName || '');
+      // ユーザー名を name 優先、lastName + firstName フォールバック
+      const userName = data.name || (data.lastName && data.firstName
+        ? `${data.lastName} ${data.firstName}`
+        : '') || data.displayName || '';
       
       // メンバーシップをチェック（招待ユーザー = 自分以外のアカウントのメンバー）
       const memberships = data.memberships || {};
@@ -87,8 +87,7 @@ export const getAdminUsersCallable = async (request) => {
       users.push({
         uid: doc.id,
         displayName: userName,
-        lastName: data.lastName || '',
-        firstName: data.firstName || '',
+        name: data.name || userName,
         email: data.email || '',
         company: data.company || '',
         photoURL: data.photoURL || null,

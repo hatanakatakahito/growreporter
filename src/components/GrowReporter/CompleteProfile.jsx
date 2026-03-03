@@ -19,8 +19,7 @@ function getInitials(displayName, email) {
 export default function CompleteProfile() {
   const [formData, setFormData] = useState({
     company: '',
-    lastName: '',
-    firstName: '',
+    name: '',
     phoneNumber: '',
   });
   const [error, setError] = useState('');
@@ -40,30 +39,14 @@ export default function CompleteProfile() {
       navigate('/sites/new');
     }
 
-    // SSOで取得したdisplayNameを姓名に分割して初期値として設定
-    if (currentUser?.displayName && !formData.lastName && !formData.firstName) {
-      const displayName = currentUser.displayName.trim();
-      
-      // スペースで分割（全角・半角両対応）
-      const nameParts = displayName.split(/[\s　]+/);
-      
-      if (nameParts.length >= 2) {
-        // 2つ以上の部分がある場合: 最初を姓、残りを名として結合
-        setFormData(prev => ({
-          ...prev,
-          lastName: nameParts[0],
-          firstName: nameParts.slice(1).join(' ')
-        }));
-      } else {
-        // スペースがない場合: 全体を姓として設定
-        setFormData(prev => ({
-          ...prev,
-          lastName: displayName,
-          firstName: ''
-        }));
-      }
+    // SSOで取得したdisplayNameをそのまま氏名にセット
+    if (currentUser?.displayName && !formData.name) {
+      setFormData(prev => ({
+        ...prev,
+        name: currentUser.displayName.trim()
+      }));
     }
-  }, [userProfile, navigate, currentUser, formData.lastName, formData.firstName]);
+  }, [userProfile, navigate, currentUser, formData.name]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -79,7 +62,7 @@ export default function CompleteProfile() {
     setIsSubmitting(true);
 
     // バリデーション
-    if (!formData.company || !formData.lastName || !formData.firstName || !formData.phoneNumber) {
+    if (!formData.company || !formData.name || !formData.phoneNumber) {
       setError('必須項目を入力してください');
       setIsSubmitting(false);
       return;
@@ -88,16 +71,15 @@ export default function CompleteProfile() {
     try {
       await updateUserProfile(currentUser.uid, {
         company: formData.company,
-        lastName: formData.lastName,
-        firstName: formData.firstName,
+        name: formData.name,
         phoneNumber: formData.phoneNumber,
       });
-      
+
       // ユーザー登録ログを記録（非同期で、エラーは無視）
       try {
         const logUserRegistration = httpsCallable(functions, 'logUserRegistration');
         await logUserRegistration({
-          displayName: `${formData.lastName} ${formData.firstName}`,
+          displayName: formData.name,
           plan: userProfile?.plan || 'free',
         });
       } catch (logError) {
@@ -201,38 +183,21 @@ export default function CompleteProfile() {
                 />
               </div>
 
-              {/* 姓・名 */}
-              <div className="mb-5 grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="lastName" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-                    姓
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    placeholder="姓を入力"
-                    className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="firstName" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-                    名
-                    <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    placeholder="名を入力"
-                    className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
-                    required
-                  />
-                </div>
+              {/* 氏名 */}
+              <div className="mb-5">
+                <label htmlFor="name" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
+                  氏名
+                  <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  placeholder="例: 山田 太郎"
+                  className="w-full rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition placeholder:text-dark-6 focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
+                  required
+                />
               </div>
 
               {/* 電話番号 */}

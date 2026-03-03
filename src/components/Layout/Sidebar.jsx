@@ -20,11 +20,10 @@ export default function Sidebar() {
   const [isEngagementOpen, setIsEngagementOpen] = useState(false);
   const [isConversionOpen, setIsConversionOpen] = useState(false);
 
-  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
+  // ユーザー名を取得（name優先、後方互換でlastName+firstName、なければdisplayName）
   const getUserName = () => {
-    if (userProfile?.lastName && userProfile?.firstName) {
-      return `${userProfile.lastName} ${userProfile.firstName}`;
-    }
+    if (userProfile?.name) return userProfile.name;
+    if (userProfile?.lastName && userProfile?.firstName) return `${userProfile.lastName} ${userProfile.firstName}`;
     return currentUser?.displayName || 'ユーザー';
   };
 

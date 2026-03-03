@@ -1,10 +1,14 @@
+import React, { useEffect } from 'react';
 import { PLANS, PLAN_TYPES, getPlanBadgeColor, isUnlimited, canRegenerate } from '../../constants/plans';
+import { setPageTitle } from '../../utils/pageTitle';
 
 /**
  * 管理者画面 — プラン一覧（読み取り専用）
  * 各プランの制限値をテーブル表示する
  */
 export default function PlanList() {
+  useEffect(() => { setPageTitle('プラン一覧'); }, []);
+
   const plans = [
     PLANS[PLAN_TYPES.FREE],
     PLANS[PLAN_TYPES.STANDARD],

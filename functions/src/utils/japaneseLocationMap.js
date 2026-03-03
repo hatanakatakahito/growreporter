@@ -1,0 +1,293 @@
+/**
+ * GA4の英語地名 → 日本語変換マッピング
+ */
+
+// 国名マッピング
+const COUNTRY_MAP = {
+  'Japan': '日本',
+  'United States': 'アメリカ',
+  'China': '中国',
+  'South Korea': '韓国',
+  'Taiwan': '台湾',
+  'Hong Kong': '香港',
+  'Thailand': 'タイ',
+  'Singapore': 'シンガポール',
+  'Vietnam': 'ベトナム',
+  'Philippines': 'フィリピン',
+  'Indonesia': 'インドネシア',
+  'Malaysia': 'マレーシア',
+  'India': 'インド',
+  'Australia': 'オーストラリア',
+  'New Zealand': 'ニュージーランド',
+  'United Kingdom': 'イギリス',
+  'Germany': 'ドイツ',
+  'France': 'フランス',
+  'Italy': 'イタリア',
+  'Spain': 'スペイン',
+  'Netherlands': 'オランダ',
+  'Sweden': 'スウェーデン',
+  'Switzerland': 'スイス',
+  'Canada': 'カナダ',
+  'Brazil': 'ブラジル',
+  'Mexico': 'メキシコ',
+  'Russia': 'ロシア',
+  'Turkey': 'トルコ',
+  'Saudi Arabia': 'サウジアラビア',
+  'United Arab Emirates': 'アラブ首長国連邦',
+  'Israel': 'イスラエル',
+  'Egypt': 'エジプト',
+  'South Africa': '南アフリカ',
+  'Myanmar (Burma)': 'ミャンマー',
+  'Cambodia': 'カンボジア',
+  'Nepal': 'ネパール',
+  'Bangladesh': 'バングラデシュ',
+  'Sri Lanka': 'スリランカ',
+  'Pakistan': 'パキスタン',
+  'Mongolia': 'モンゴル',
+};
+
+// 都道府県マッピング（GA4 region → 日本語）
+const PREFECTURE_MAP = {
+  'Hokkaido': '北海道',
+  'Aomori': '青森県',
+  'Iwate': '岩手県',
+  'Miyagi': '宮城県',
+  'Akita': '秋田県',
+  'Yamagata': '山形県',
+  'Fukushima': '福島県',
+  'Ibaraki': '茨城県',
+  'Tochigi': '栃木県',
+  'Gunma': '群馬県',
+  'Saitama': '埼玉県',
+  'Chiba': '千葉県',
+  'Tokyo': '東京都',
+  'Kanagawa': '神奈川県',
+  'Niigata': '新潟県',
+  'Toyama': '富山県',
+  'Ishikawa': '石川県',
+  'Fukui': '福井県',
+  'Yamanashi': '山梨県',
+  'Nagano': '長野県',
+  'Gifu': '岐阜県',
+  'Shizuoka': '静岡県',
+  'Aichi': '愛知県',
+  'Mie': '三重県',
+  'Shiga': '滋賀県',
+  'Kyoto': '京都府',
+  'Osaka': '大阪府',
+  'Hyogo': '兵庫県',
+  'Nara': '奈良県',
+  'Wakayama': '和歌山県',
+  'Tottori': '鳥取県',
+  'Shimane': '島根県',
+  'Okayama': '岡山県',
+  'Hiroshima': '広島県',
+  'Yamaguchi': '山口県',
+  'Tokushima': '徳島県',
+  'Kagawa': '香川県',
+  'Ehime': '愛媛県',
+  'Kochi': '高知県',
+  'Fukuoka': '福岡県',
+  'Saga': '佐賀県',
+  'Nagasaki': '長崎県',
+  'Kumamoto': '熊本県',
+  'Oita': '大分県',
+  'Miyazaki': '宮崎県',
+  'Kagoshima': '鹿児島県',
+  'Okinawa': '沖縄県',
+};
+
+// 市区町村マッピング（GA4 city → 日本語）
+const CITY_MAP = {
+  // 東京23区
+  'Chiyoda': '千代田区',
+  'Chuo': '中央区',
+  'Minato': '港区',
+  'Shinjuku': '新宿区',
+  'Bunkyo': '文京区',
+  'Taito': '台東区',
+  'Sumida': '墨田区',
+  'Koto': '江東区',
+  'Shinagawa': '品川区',
+  'Meguro': '目黒区',
+  'Ota': '大田区',
+  'Setagaya': '世田谷区',
+  'Shibuya': '渋谷区',
+  'Nakano': '中野区',
+  'Suginami': '杉並区',
+  'Toshima': '豊島区',
+  'Kita': '北区',
+  'Arakawa': '荒川区',
+  'Itabashi': '板橋区',
+  'Nerima': '練馬区',
+  'Adachi': '足立区',
+  'Katsushika': '葛飾区',
+  'Edogawa': '江戸川区',
+  // 東京市部
+  'Hachioji': '八王子市',
+  'Tachikawa': '立川市',
+  'Musashino': '武蔵野市',
+  'Mitaka': '三鷹市',
+  'Fuchu': '府中市',
+  'Chofu': '調布市',
+  'Machida': '町田市',
+  'Kodaira': '小平市',
+  'Hino': '日野市',
+  'Tama': '多摩市',
+  'Nishitokyo': '西東京市',
+  // 北海道・東北
+  'Sapporo': '札幌市',
+  'Asahikawa': '旭川市',
+  'Hakodate': '函館市',
+  'Obihiro': '帯広市',
+  'Kushiro': '釧路市',
+  'Aomori': '青森市',
+  'Hirosaki': '弘前市',
+  'Morioka': '盛岡市',
+  'Sendai': '仙台市',
+  'Ishinomaki': '石巻市',
+  'Akita': '秋田市',
+  'Yamagata': '山形市',
+  'Fukushima': '福島市',
+  'Koriyama': '郡山市',
+  'Iwaki': 'いわき市',
+  // 関東（東京以外）
+  'Yokohama': '横浜市',
+  'Kawasaki': '川崎市',
+  'Sagamihara': '相模原市',
+  'Fujisawa': '藤沢市',
+  'Yokosuka': '横須賀市',
+  'Kamakura': '鎌倉市',
+  'Atsugi': '厚木市',
+  'Chiba': '千葉市',
+  'Funabashi': '船橋市',
+  'Kashiwa': '柏市',
+  'Ichikawa': '市川市',
+  'Matsudo': '松戸市',
+  'Urayasu': '浦安市',
+  'Ichihara': '市原市',
+  'Saitama': 'さいたま市',
+  'Kawaguchi': '川口市',
+  'Kawagoe': '川越市',
+  'Tokorozawa': '所沢市',
+  'Koshigaya': '越谷市',
+  'Kasukabe': '春日部市',
+  'Kumagaya': '熊谷市',
+  'Mito': '水戸市',
+  'Tsukuba': 'つくば市',
+  'Hitachi': '日立市',
+  'Utsunomiya': '宇都宮市',
+  'Maebashi': '前橋市',
+  'Takasaki': '高崎市',
+  // 中部
+  'Niigata': '新潟市',
+  'Nagaoka': '長岡市',
+  'Toyama': '富山市',
+  'Kanazawa': '金沢市',
+  'Fukui': '福井市',
+  'Kofu': '甲府市',
+  'Nagano': '長野市',
+  'Matsumoto': '松本市',
+  'Gifu': '岐阜市',
+  'Shizuoka': '静岡市',
+  'Hamamatsu': '浜松市',
+  'Numazu': '沼津市',
+  'Nagoya': '名古屋市',
+  'Okazaki': '岡崎市',
+  'Toyota': '豊田市',
+  'Toyohashi': '豊橋市',
+  'Kasugai': '春日井市',
+  'Ichinomiya': '一宮市',
+  // 近畿
+  'Tsu': '津市',
+  'Yokkaichi': '四日市市',
+  'Otsu': '大津市',
+  'Kusatsu': '草津市',
+  'Kyoto': '京都市',
+  'Osaka': '大阪市',
+  'Sakai': '堺市',
+  'Higashiosaka': '東大阪市',
+  'Toyonaka': '豊中市',
+  'Suita': '吹田市',
+  'Takatsuki': '高槻市',
+  'Hirakata': '枚方市',
+  'Ibaraki': '茨木市',
+  'Yao': '八尾市',
+  'Neyagawa': '寝屋川市',
+  'Kobe': '神戸市',
+  'Himeji': '姫路市',
+  'Amagasaki': '尼崎市',
+  'Nishinomiya': '西宮市',
+  'Akashi': '明石市',
+  'Kakogawa': '加古川市',
+  'Takarazuka': '宝塚市',
+  'Nara': '奈良市',
+  'Kashihara': '橿原市',
+  'Wakayama': '和歌山市',
+  // 中国・四国
+  'Tottori': '鳥取市',
+  'Matsue': '松江市',
+  'Izumo': '出雲市',
+  'Okayama': '岡山市',
+  'Kurashiki': '倉敷市',
+  'Hiroshima': '広島市',
+  'Fukuyama': '福山市',
+  'Kure': '呉市',
+  'Shimonoseki': '下関市',
+  'Yamaguchi': '山口市',
+  'Tokushima': '徳島市',
+  'Takamatsu': '高松市',
+  'Matsuyama': '松山市',
+  'Imabari': '今治市',
+  'Kochi': '高知市',
+  // 九州・沖縄
+  'Fukuoka': '福岡市',
+  'Kitakyushu': '北九州市',
+  'Kurume': '久留米市',
+  'Saga': '佐賀市',
+  'Nagasaki': '長崎市',
+  'Sasebo': '佐世保市',
+  'Kumamoto': '熊本市',
+  'Oita': '大分市',
+  'Beppu': '別府市',
+  'Miyazaki': '宮崎市',
+  'Kagoshima': '鹿児島市',
+  'Naha': '那覇市',
+  'Okinawa': '沖縄市',
+  'Urasoe': '浦添市',
+  'Ginowan': '宜野湾市',
+};
+
+/**
+ * GA4の地名を日本語に変換
+ * @param {string} name - GA4から返される英語地名
+ * @param {'country'|'region'|'city'} type - 地名の種類
+ * @returns {string} 日本語地名（マッチしない場合は元の値）
+ */
+export function translateLocationName(name, type) {
+  if (!name || name === '(not set)' || name === '不明') return name;
+
+  switch (type) {
+    case 'country':
+      return COUNTRY_MAP[name] || name;
+
+    case 'region': {
+      if (PREFECTURE_MAP[name]) return PREFECTURE_MAP[name];
+      // "Prefecture" サフィックス付きの場合
+      const withoutPrefecture = name.replace(/ Prefecture$/, '');
+      if (PREFECTURE_MAP[withoutPrefecture]) return PREFECTURE_MAP[withoutPrefecture];
+      return name;
+    }
+
+    case 'city': {
+      if (CITY_MAP[name]) return CITY_MAP[name];
+      // "City" サフィックス付きの場合（例: "Shinjuku City"）
+      const withoutCity = name.replace(/ City$/, '');
+      if (CITY_MAP[withoutCity]) return CITY_MAP[withoutCity];
+      return name;
+    }
+
+    default:
+      return name;
+  }
+}

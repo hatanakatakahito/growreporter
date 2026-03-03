@@ -60,11 +60,11 @@ export const updateUserPlanCallable = async (request) => {
       throw new HttpsError('invalid-argument', 'すでに同じプランです');
     }
 
-    // 管理者名を lastName + firstName で構成
+    // 管理者名を name 優先、lastName + firstName フォールバック
     const adminData = adminDoc.data();
-    const adminName = (adminData.lastName && adminData.firstName) 
-      ? `${adminData.lastName} ${adminData.firstName}` 
-      : (adminData.displayName || adminData.email || 'Admin');
+    const adminName = adminData.name || (adminData.lastName && adminData.firstName
+      ? `${adminData.lastName} ${adminData.firstName}`
+      : '') || adminData.displayName || adminData.email || 'Admin';
 
     // トランザクションでプラン変更と履歴記録を実行
     await db.runTransaction(async (transaction) => {
@@ -115,10 +115,10 @@ export const updateUserPlanCallable = async (request) => {
       newPlan,
     });
 
-    // ユーザー名を lastName + firstName で構成
-    const userName = (userData.lastName && userData.firstName) 
-      ? `${userData.lastName} ${userData.firstName}` 
-      : (userData.displayName || userData.email || 'ユーザー');
+    // ユーザー名を name 優先、lastName + firstName フォールバック
+    const userName = userData.name || (userData.lastName && userData.firstName
+      ? `${userData.lastName} ${userData.firstName}`
+      : '') || userData.displayName || userData.email || 'ユーザー';
 
     // メール通知を送信（非同期・エラーでも続行）
     sendPlanChangeEmail({

@@ -113,7 +113,7 @@ export const inviteMemberCallable = async (request) => {
       status: 'pending',
       expiresAt: Timestamp.fromDate(expiresAt),
       invitedBy: uid,
-      invitedByName: `${userData.lastName || ''} ${userData.firstName || ''}`.trim() || userData.email,
+      invitedByName: userData.name || `${userData.lastName || ''} ${userData.firstName || ''}`.trim() || userData.email,
       accountOwnerName: userData.company || 'グローレポータ',
       createdAt: FieldValue.serverTimestamp()
     });
@@ -123,7 +123,7 @@ export const inviteMemberCallable = async (request) => {
     const invitationUrl = `${appUrl}/accept-invitation?token=${token}`;
     const subject = `【グローレポータ】${userData.company || 'グローレポータ'} への招待`;
     const html = generateInvitationEmailHtml({
-      inviterName: `${userData.lastName || ''} ${userData.firstName || ''}`.trim() || userData.email,
+      inviterName: userData.name || `${userData.lastName || ''} ${userData.firstName || ''}`.trim() || userData.email,
       companyName: userData.company || 'グローレポータ',
       role: role === 'editor' ? '編集者' : '閲覧者',
       invitationUrl,

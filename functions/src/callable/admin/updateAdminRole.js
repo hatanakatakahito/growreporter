@@ -55,14 +55,14 @@ export const updateAdminRoleCallable = async (request) => {
 
     // 管理者情報を取得
     const executorData = executorAdminDoc.data();
-    const executorName = (executorData.lastName && executorData.firstName) 
-      ? `${executorData.lastName} ${executorData.firstName}` 
-      : (executorData.displayName || executorData.email || 'Admin');
+    const executorName = executorData.name || (executorData.lastName && executorData.firstName
+      ? `${executorData.lastName} ${executorData.firstName}`
+      : '') || executorData.displayName || executorData.email || 'Admin';
 
     const targetData = targetAdminDoc.data();
-    const targetName = (targetData.lastName && targetData.firstName) 
-      ? `${targetData.lastName} ${targetData.firstName}` 
-      : (targetData.displayName || targetData.email || 'Admin');
+    const targetName = targetData.name || (targetData.lastName && targetData.firstName
+      ? `${targetData.lastName} ${targetData.firstName}`
+      : '') || targetData.displayName || targetData.email || 'Admin';
 
     // ロールを更新
     await db.collection('adminUsers').doc(adminId).update({

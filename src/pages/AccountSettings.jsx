@@ -8,11 +8,13 @@ import { useAccountMembers } from '../hooks/useAccountMembers';
 import { getPlanBadgeColor } from '../constants/plans';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, functions } from '../config/firebase';
+import { setPageTitle } from '../utils/pageTitle';
 
 /**
  * アカウント設定画面
  */
 export default function AccountSettings() {
+  useEffect(() => { setPageTitle('アカウント設定'); }, []);
   const navigate = useNavigate();
   const { userProfile, currentUser, logout } = useAuth();
   const { sites } = useSite();
@@ -173,9 +175,7 @@ export default function AccountSettings() {
               <div>
                 <dt className="text-gray-500">担当者名</dt>
                 <dd className="text-gray-900">
-                  {userProfile.lastName && userProfile.firstName
-                    ? `${userProfile.lastName} ${userProfile.firstName}`
-                    : '未設定'}
+                  {userProfile.name || (userProfile.lastName && userProfile.firstName ? `${userProfile.lastName} ${userProfile.firstName}` : '未設定')}
                 </dd>
               </div>
               <div>

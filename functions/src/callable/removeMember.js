@@ -77,7 +77,7 @@ export const removeMemberCallable = async (request) => {
     
     // 7. メンバー削除通知メールを送信
     const companyName = ownerData.company || 'アカウント';
-    const displayName = memberData.displayName || `${memberData.lastName} ${memberData.firstName}`;
+    const displayName = memberData.name || memberData.displayName || `${memberData.lastName} ${memberData.firstName}`;
     const subject = `【グローレポータ】${companyName} のメンバーから削除されました`;
     const html = `
 <!DOCTYPE html>

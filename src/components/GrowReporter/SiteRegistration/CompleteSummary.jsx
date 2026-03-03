@@ -28,24 +28,24 @@ export default function CompleteSummary({ siteData }) {
         <div>
           <div className="mb-2 text-sm font-medium text-body-color">基本情報</div>
           <div className="space-y-2 rounded-md bg-gray-50 p-4 dark:bg-dark-3">
-            <div className="flex justify-between">
-              <span className="text-body-color">サイト名:</span>
+            <div className="flex gap-2">
+              <span className="shrink-0 text-body-color">サイト名:</span>
               <span className="font-medium text-dark dark:text-white">{siteData.siteName}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-body-color">URL:</span>
-              <span className="font-medium text-dark dark:text-white">{siteData.siteUrl}</span>
+            <div className="flex gap-2">
+              <span className="shrink-0 text-body-color">URL:</span>
+              <span className="font-medium text-dark dark:text-white break-all">{siteData.siteUrl}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-body-color">業界・業種:</span>
+            <div className="flex gap-2">
+              <span className="shrink-0 text-body-color">業界・業種:</span>
               <span className="font-medium text-dark dark:text-white">{getIndustryLabel(siteData.industry)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-body-color">サイト種別:</span>
+            <div className="flex gap-2">
+              <span className="shrink-0 text-body-color">サイト種別:</span>
               <span className="font-medium text-dark dark:text-white">{getSiteTypeLabel(siteData.siteType)}</span>
             </div>
-            <div className="flex justify-between">
-              <span className="text-body-color">サイトの目的:</span>
+            <div className="flex gap-2">
+              <span className="shrink-0 text-body-color">サイトの目的:</span>
               <span className="font-medium text-dark dark:text-white">{getSitePurposeLabel(siteData.sitePurpose)}</span>
             </div>
           </div>
@@ -61,12 +61,12 @@ export default function CompleteSummary({ siteData }) {
               GA4連携: 完了
             </div>
             <div className="space-y-2 rounded-md bg-gray-50 p-4 dark:bg-dark-3">
-              <div className="flex justify-between">
-                <span className="text-body-color">プロパティ:</span>
+              <div className="flex gap-2">
+                <span className="shrink-0 text-body-color">プロパティ:</span>
                 <span className="font-medium text-dark dark:text-white">{siteData.ga4PropertyName}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-body-color">アカウント:</span>
+              <div className="flex gap-2">
+                <span className="shrink-0 text-body-color">アカウント:</span>
                 <span className="font-medium text-dark dark:text-white">{siteData.ga4GoogleAccount}</span>
               </div>
             </div>
@@ -83,12 +83,12 @@ export default function CompleteSummary({ siteData }) {
               Search Console連携: 完了
             </div>
             <div className="space-y-2 rounded-md bg-gray-50 p-4 dark:bg-dark-3">
-              <div className="flex justify-between">
-                <span className="text-body-color">サイト:</span>
-                <span className="font-medium text-dark dark:text-white">{siteData.gscSiteUrl}</span>
+              <div className="flex gap-2">
+                <span className="shrink-0 text-body-color">サイト:</span>
+                <span className="font-medium text-dark dark:text-white break-all">{siteData.gscSiteUrl}</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-body-color">アカウント:</span>
+              <div className="flex gap-2">
+                <span className="shrink-0 text-body-color">アカウント:</span>
                 <span className="font-medium text-dark dark:text-white">{siteData.gscGoogleAccount}</span>
               </div>
             </div>
@@ -125,8 +125,8 @@ export default function CompleteSummary({ siteData }) {
             </div>
             <div className="space-y-1 rounded-md bg-gray-50 p-4 dark:bg-dark-3">
               {siteData.kpiSettings.kpiList.slice(0, 5).map((kpi, index) => (
-                <div key={index} className="flex justify-between text-sm">
-                  <span className="text-body-color">- {kpi.label}:</span>
+                <div key={index} className="flex gap-2 text-sm">
+                  <span className="shrink-0 text-body-color">- {kpi.label}:</span>
                   <span className="font-medium text-dark dark:text-white">{kpi.target.toLocaleString()}/月</span>
                 </div>
               ))}

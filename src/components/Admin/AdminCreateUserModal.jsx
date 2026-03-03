@@ -9,8 +9,7 @@ import { X, AlertCircle, CheckCircle, Globe } from 'lucide-react';
  */
 export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSiteRegistration }) {
   const [formData, setFormData] = useState({
-    lastName: '',
-    firstName: '',
+    name: '',
     email: '',
     company: '',
     phoneNumber: '',
@@ -30,7 +29,7 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
   };
 
   // バリデーション
-  const isValid = formData.lastName && formData.firstName && formData.email && formData.company && formData.phoneNumber
+  const isValid = formData.name && formData.email && formData.company && formData.phoneNumber
     && (!formData.password || formData.password.length >= 6);
 
   // ユーザー作成実行
@@ -43,10 +42,9 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
       const result = await adminCreateUser(formData);
 
       if (result.data.success) {
-        const displayName = `${formData.lastName} ${formData.firstName}`;
         setCreatedUser({
           uid: result.data.uid,
-          name: displayName,
+          name: formData.name,
           message: result.data.message,
         });
         onSuccess(result.data.message);
@@ -113,7 +111,7 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
 
   // 確認ダイアログ
   if (showConfirm) {
-    const displayName = `${formData.lastName} ${formData.firstName}`;
+    const displayName = formData.name;
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
         <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-dark-2">
@@ -242,31 +240,17 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
           </div>
 
           {/* 氏名 */}
-          <div className="mb-5 grid gap-4 md:grid-cols-2">
-            <div>
-              <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-                姓 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.lastName}
-                onChange={(e) => handleChange('lastName', e.target.value)}
-                placeholder="山田"
-                className="w-full rounded-lg border border-stroke bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
-              />
-            </div>
-            <div>
-              <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-                名 <span className="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={formData.firstName}
-                onChange={(e) => handleChange('firstName', e.target.value)}
-                placeholder="太郎"
-                className="w-full rounded-lg border border-stroke bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
-              />
-            </div>
+          <div className="mb-5">
+            <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
+              氏名 <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => handleChange('name', e.target.value)}
+              placeholder="例: 山田 太郎"
+              className="w-full rounded-lg border border-stroke bg-white px-4 py-3 text-sm focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
+            />
           </div>
 
           {/* メールアドレス */}

@@ -58,14 +58,14 @@ export const transferOwnershipCallable = async (request) => {
       throw new HttpsError('invalid-argument', '既にオーナーです');
     }
     
-    const newOwnerName = newOwnerUserData.lastName && newOwnerUserData.firstName
+    const newOwnerName = newOwnerUserData.name || (newOwnerUserData.lastName && newOwnerUserData.firstName
       ? `${newOwnerUserData.lastName} ${newOwnerUserData.firstName}`
-      : newOwnerUserData.displayName || newOwnerUserData.email;
+      : '') || newOwnerUserData.displayName || newOwnerUserData.email;
     
     // 4. 現在のオーナーの情報
-    const previousOwnerName = currentUserData.lastName && currentUserData.firstName
+    const previousOwnerName = currentUserData.name || (currentUserData.lastName && currentUserData.firstName
       ? `${currentUserData.lastName} ${currentUserData.firstName}`
-      : currentUserData.email;
+      : '') || currentUserData.displayName || currentUserData.email;
     const companyName = currentUserData.company || 'グローレポータ';
     
     // 5. トランザクションで更新

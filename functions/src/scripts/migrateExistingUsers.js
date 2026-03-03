@@ -52,9 +52,9 @@ async function migrateExistingUsers() {
           .get();
         
         if (existingMember.empty) {
-          const displayName = userData.lastName && userData.firstName
+          const displayName = userData.name || (userData.lastName && userData.firstName
             ? `${userData.lastName} ${userData.firstName}`
-            : userData.email;
+            : '') || userData.displayName || userData.email;
           
           await db.collection('accountMembers').add({
             accountOwnerId: userId,

@@ -392,8 +392,8 @@ export default function Keywords() {
             </>
           )}
 
-        {/* メモ & AI分析タブ */}
-        {selectedSiteId && currentUser && (
+        {/* メモ & AI分析タブ（GSC連携済みの場合のみ表示） */}
+        {selectedSiteId && currentUser && hasGSCConnection && (
           <div className="mt-6">
             <TabbedNoteAndAI
               pageType="keywords"

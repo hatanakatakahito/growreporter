@@ -5,6 +5,7 @@ import { usePlan } from '../hooks/usePlan';
 import { PLANS, PLAN_TYPES, getPlanBadgeColor, isUnlimited } from '../constants/plans';
 import { Check, ArrowLeft } from 'lucide-react';
 import UpgradeModal from '../components/common/UpgradeModal';
+import { setPageTitle } from '../utils/pageTitle';
 
 /**
  * プラン情報・プラン変更案内ページ（オーナーのみアクセス可）
@@ -14,6 +15,8 @@ export default function PlanInfo() {
   const { userProfile } = useAuth();
   const { plan, planId } = usePlan();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+
+  useEffect(() => { setPageTitle('プラン情報'); }, []);
 
   // 編集者・閲覧者はプラン変更不可のためアカウント設定へリダイレクト
   useEffect(() => {

@@ -122,14 +122,25 @@ export default function Users() {
     return null;
   };
 
+  // 性別・年齢データの空状態ヒント
+  const demographicEmptyHint = (
+    <div className="max-w-[340px] rounded-lg bg-blue-50 p-4 text-left text-xs leading-relaxed text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+      <p className="mb-1.5 font-semibold">データを表示するにはGA4の設定が必要です</p>
+      <p>GA4管理画面 →「管理」→「データの収集と修正」→「データの収集」→ Googleシグナルのデータ収集をオンにしてください。</p>
+      <p className="mt-1.5 text-blue-500 dark:text-blue-400">※ 有効化後、反映に24〜48時間程度かかります。</p>
+    </div>
+  );
+
   // ドーナツチャートコンポーネント
-  const DonutChartCard = ({ title, data, isGender = false }) => {
+  const DonutChartCard = ({ title, data, isGender = false, emptyHint = null }) => {
     if (!data || data.length === 0) {
       return (
         <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
           <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">{title}</h3>
-          <div className="flex h-[350px] items-center justify-center text-body-color">
-            データがありません
+          <div className="flex h-[350px] flex-col items-center justify-center gap-3 text-body-color">
+            <Info className="h-8 w-8 text-body-color/40" />
+            <p className="text-sm">データがありません</p>
+            {emptyHint}
           </div>
         </div>
       );
@@ -168,13 +179,15 @@ export default function Users() {
   };
 
   // 横棒グラフコンポーネント
-  const HorizontalBarChartCard = ({ title, data }) => {
+  const HorizontalBarChartCard = ({ title, data, emptyHint = null }) => {
     if (!data || data.length === 0) {
       return (
         <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
           <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">{title}</h3>
-          <div className="flex h-[350px] items-center justify-center text-body-color">
-            データがありません
+          <div className="flex h-[350px] flex-col items-center justify-center gap-3 text-body-color">
+            <Info className="h-8 w-8 text-body-color/40" />
+            <p className="text-sm">データがありません</p>
+            {emptyHint}
           </div>
         </div>
       );
@@ -243,18 +256,20 @@ export default function Users() {
                   title="新規ユーザー/リピーター比率" 
                   data={chartData.newReturning}
                 />
-                <DonutChartCard 
-                  title="性別比率" 
+                <DonutChartCard
+                  title="性別比率"
                   data={chartData.gender}
                   isGender={true}
+                  emptyHint={demographicEmptyHint}
                 />
               </div>
 
               {/* 年齢 & デバイス */}
               <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <HorizontalBarChartCard 
-                  title="年齢比率" 
+                <HorizontalBarChartCard
+                  title="年齢比率"
                   data={chartData.age}
+                  emptyHint={demographicEmptyHint}
                 />
                 <DonutChartCard 
                   title="デバイス比率" 

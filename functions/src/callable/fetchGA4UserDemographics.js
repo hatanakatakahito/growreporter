@@ -2,6 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAndRefreshToken } from '../utils/tokenManager.js';
+import { translateLocationName } from '../utils/japaneseLocationMap.js';
 
 /**
  * GA4ユーザー属性データを取得
@@ -68,9 +69,9 @@ export const fetchGA4UserDemographicsCallable = async (request) => {
         age: formatAge(age),
         device: formatDevice(device),
         location: {
-          country: formatLocation(country),
-          region: formatLocation(region),
-          city: formatLocation(city),
+          country: formatLocation(country, 'country'),
+          region: formatLocation(region, 'region'),
+          city: formatLocation(city, 'city'),
         },
       },
     };
@@ -239,8 +240,10 @@ function formatDevice(data) {
 
 /**
  * 地域データのフォーマット（上位20件）
+ * @param {object} data - GA4 APIレスポンス
+ * @param {'country'|'region'|'city'} type - 地域タイプ
  */
-function formatLocation(data) {
+function formatLocation(data, type) {
   if (!data.rows) return [];
 
   const total = data.rows.reduce((sum, row) => sum + parseInt(row.metricValues[0].value), 0);
@@ -249,10 +252,11 @@ function formatLocation(data) {
     .slice(0, 20) // 上位20件
     .map(row => {
       const value = parseInt(row.metricValues[0].value);
-      const name = row.dimensionValues[0].value;
-      
+      const rawName = row.dimensionValues[0].value;
+      const name = rawName === '(not set)' ? '不明' : translateLocationName(rawName, type);
+
       return {
-        name: name === '(not set)' ? '不明' : name,
+        name,
         value,
         percentage: (value / total) * 100,
       };

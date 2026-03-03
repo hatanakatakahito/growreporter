@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
