@@ -1,6 +1,30 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, FileText, Globe, Bell, AlertTriangle } from 'lucide-react';
 import { getPageTypeLabel } from '../../constants/pageTypes';
+import { useSite } from '../../contexts/SiteContext';
+
+// アラートタイプの日本語表示マッピング
+const ALERT_TYPE_LABELS = {
+  sessions_drop: 'セッション数の減少',
+  sessions_surge: 'セッション数の急増',
+  totalUsers_drop: 'ユーザー数の減少',
+  totalUsers_surge: 'ユーザー数の急増',
+  screenPageViews_drop: '表示回数の減少',
+  screenPageViews_surge: '表示回数の急増',
+  averagePageviews_drop: '平均PVの減少',
+  averagePageviews_surge: '平均PVの急増',
+  engagementRate_drop: 'エンゲージメント率の低下',
+  engagementRate_surge: 'エンゲージメント率の上昇',
+  totalConversions_drop: 'コンバージョン数の減少',
+  totalConversions_surge: 'コンバージョン数の急増',
+  conversionRate_drop: 'コンバージョン率の低下',
+  conversionRate_surge: 'コンバージョン率の上昇',
+  bounceRate_drop: '直帰率の低下',
+  bounceRate_surge: '直帰率の上昇',
+};
+
+const getAlertTypeLabel = (type) => ALERT_TYPE_LABELS[type] || type || 'アラート';
 
 /**
  * グローバル通知モーダル
@@ -14,6 +38,8 @@ export default function GlobalMemoNotificationModal({
   unreadAlerts = [],
   onMarkAllAlertsAsRead,
 }) {
+  const navigate = useNavigate();
+  const { selectSite } = useSite();
   const [activeTab, setActiveTab] = useState('all');
 
   if (!isOpen) return null;
@@ -57,6 +83,25 @@ export default function GlobalMemoNotificationModal({
     if (!content) return '';
     if (content.length <= maxLength) return content;
     return content.substring(0, maxLength) + '...';
+  };
+
+  // アラートクリック → 該当サイトのダッシュボードへ遷移
+  const handleAlertClick = (alert) => {
+    if (alert.siteId) {
+      selectSite(alert.siteId);
+    }
+    onClose();
+    navigate('/dashboard');
+  };
+
+  // メモクリック → 該当サイトの該当ページへ遷移
+  const handleMemoClick = (memo) => {
+    if (memo.siteId) {
+      selectSite(memo.siteId);
+    }
+    onClose();
+    const path = memo.pageType ? `/${memo.pageType}` : '/dashboard';
+    navigate(path);
   };
 
   // フィルタリング
@@ -134,7 +179,8 @@ export default function GlobalMemoNotificationModal({
               {displayAlerts.map((alert) => (
                 <div
                   key={`alert-${alert.id}`}
-                  className="rounded-lg border border-amber-200 bg-amber-50/50 p-3 dark:border-amber-900/30 dark:bg-amber-900/10"
+                  onClick={() => handleAlertClick(alert)}
+                  className="cursor-pointer rounded-lg border border-amber-200 bg-amber-50/50 p-3 transition hover:border-amber-300 hover:bg-amber-50 dark:border-amber-900/30 dark:bg-amber-900/10 dark:hover:border-amber-800/50 dark:hover:bg-amber-900/20"
                 >
                   {/* サイト名 + アラートバッジ */}
                   <div className="mb-2 flex items-center gap-1.5">
@@ -147,11 +193,11 @@ export default function GlobalMemoNotificationModal({
                     </span>
                   </div>
 
-                  {/* アラートタイトル */}
+                  {/* アラートタイトル（日本語化） */}
                   <div className="mb-1 flex items-center gap-1.5">
                     <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
                     <span className="text-sm font-medium text-dark dark:text-white">
-                      {alert.title || alert.type || 'アラート'}
+                      {getAlertTypeLabel(alert.type)}
                     </span>
                   </div>
 
@@ -173,7 +219,8 @@ export default function GlobalMemoNotificationModal({
               {displayMemos.map((memo) => (
                 <div
                   key={`memo-${memo.id}`}
-                  className="rounded-lg border border-stroke bg-white p-3 dark:border-dark-3 dark:bg-dark"
+                  onClick={() => handleMemoClick(memo)}
+                  className="cursor-pointer rounded-lg border border-stroke bg-white p-3 transition hover:border-primary/30 hover:bg-gray-50 dark:border-dark-3 dark:bg-dark dark:hover:border-primary/30 dark:hover:bg-dark-3"
                 >
                   {/* サイト名 */}
                   <div className="mb-2 flex items-center gap-1.5">
