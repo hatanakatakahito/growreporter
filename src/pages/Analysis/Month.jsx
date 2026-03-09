@@ -124,7 +124,7 @@ export default function Month() {
   if (isLoading && !monthlyData.length) {
     return (
       <div className="flex h-full flex-col">
-        <AnalysisHeader showDateRange={false} showSiteInfo={false} />
+        <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
         <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
           <div className="flex min-h-[60vh] items-center justify-center">
             <LoadingSpinner message="月次データを読み込んでいます..." />
