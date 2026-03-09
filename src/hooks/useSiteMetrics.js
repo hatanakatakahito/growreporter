@@ -52,8 +52,8 @@ export function useSiteMetrics(siteId, startDate, endDate, hasGSCConnection = tr
     isGA4Loading: ga4Query.isLoading,
     isGSCLoading: gscQuery.isLoading,
     
-    // エラー状態
-    isError: ga4Query.isError || gscQuery.isError,
+    // エラー状態（GA4エラーのみ致命的。GSCエラーは個別に確認可能）
+    isError: ga4Query.isError,
     isGA4Error: ga4Query.isError,
     isGSCError: gscQuery.isError,
     error: ga4Query.error || gscQuery.error,
