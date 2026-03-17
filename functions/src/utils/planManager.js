@@ -10,7 +10,6 @@ const DEFAULT_PLANS = {
     diagnosisLimit: 1,
     excelExportLimit: 1,
     pptxExportLimit: 1,
-    heatmapPvLimit: 0, // ヒートマップ無効
   },
   standard: {
     maxSites: 3,
@@ -19,7 +18,6 @@ const DEFAULT_PLANS = {
     diagnosisLimit: 5,
     excelExportLimit: -1,
     pptxExportLimit: -1,
-    heatmapPvLimit: 10000, // サイト単位 10,000 PV/月
   },
   premium: {
     maxSites: 10,
@@ -28,7 +26,6 @@ const DEFAULT_PLANS = {
     diagnosisLimit: -1, // 無制限
     excelExportLimit: -1,
     pptxExportLimit: -1,
-    heatmapPvLimit: 10000, // サイト単位 10,000 PV/月
   },
   // 旧システム互換
   paid: {
@@ -38,7 +35,6 @@ const DEFAULT_PLANS = {
     diagnosisLimit: -1,
     excelExportLimit: -1,
     pptxExportLimit: -1,
-    heatmapPvLimit: -1, // 無制限
   },
 };
 
@@ -256,36 +252,6 @@ export async function resetMonthlyLimits() {
     
     logger.info(`[PlanManager] ${count}件のユーザーの月次制限をリセット完了`);
 
-    // サイト単位のヒートマップPV使用量もリセット
-    const sitesSnapshot = await db.collection('sites').get();
-    let siteBatch = db.batch();
-    let siteCount = 0;
-    let siteBatchCount = 0;
-
-    for (const doc of sitesSnapshot.docs) {
-      const data = doc.data();
-      // heatmapPvUsage フィールドがあるサイトのみリセット
-      if (data.heatmapPvUsage && data.heatmapPvUsage > 0) {
-        siteBatch.update(doc.ref, {
-          heatmapPvUsage: 0,
-          updatedAt: FieldValue.serverTimestamp(),
-        });
-        siteCount++;
-        siteBatchCount++;
-
-        if (siteBatchCount >= 500) {
-          await siteBatch.commit();
-          siteBatch = db.batch();
-          siteBatchCount = 0;
-        }
-      }
-    }
-
-    if (siteBatchCount > 0) {
-      await siteBatch.commit();
-    }
-
-    logger.info(`[PlanManager] ${siteCount}件のサイトのヒートマップPV使用量をリセット完了`);
   } catch (error) {
     logger.error('[PlanManager] 月次制限リセットエラー:', error);
     throw error;

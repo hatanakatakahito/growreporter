@@ -565,36 +565,3 @@ export const migrateData = lazyCallable('./callable/migrateData.js', 'migrateDat
  */
 export const getAccountMembers = lazyCallable('./callable/getAccountMembers.js', 'getAccountMembersCallable', { memory: '256MiB', timeoutSeconds: 60 });
 
-/**
- * ヒートマップ設定取得 HTTP エンドポイント
- * トラッキングスクリプト（gr-heatmap.js）がサンプリングレートと有効状態を取得
- */
-export const heatmapConfig = onRequest(
-  { region: 'asia-northeast1', cors: true, memory: '128MiB', timeoutSeconds: 5 },
-  async (req, res) => {
-    const m = await import('./http/heatmapConfig.js');
-    return m.heatmapConfigHandler(req, res);
-  }
-);
-
-/**
- * ヒートマップデータ収集 HTTP エンドポイント
- * 外部サイトのトラッキングスクリプトからクリック・スクロールデータを受信
- */
-export const collectHeatmapData = onRequest(
-  { region: 'asia-northeast1', cors: true, memory: '256MiB', timeoutSeconds: 10 },
-  async (req, res) => {
-    const m = await import('./http/collectHeatmapData.js');
-    return m.collectHeatmapDataHandler(req, res);
-  }
-);
-
-/**
- * ヒートマップ用フルページスクリーンショット取得
- * ヒートマップの背景画像としてページ全体をキャプチャ
- */
-export const captureHeatmapScreenshot = lazyCallable(
-  './callable/captureHeatmapScreenshot.js',
-  'captureHeatmapScreenshotCallable',
-  { memory: '2GiB', timeoutSeconds: 120 }
-);

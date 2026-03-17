@@ -180,21 +180,6 @@ export default function AnalysisNavigation() {
       ],
     },
     {
-      groupTitle: 'ヒートマップ',
-      groupDescription: '独自トラッキングタグでクリック・スクロールの行動データを収集し、ページ上に可視化します。',
-      categories: [
-        {
-          items: [
-            {
-              icon: <MousePointerClick className="h-6 w-6" />,
-              title: 'ヒートマップ',
-              description: 'クリック・スクロールの行動を可視化し、ページの改善ポイントを発見します。',
-              path: '/analysis/heatmap',
-            },
-          ],
-        },
-      ],
-    },
   ];
 
   return (
