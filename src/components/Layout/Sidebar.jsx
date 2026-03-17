@@ -43,7 +43,7 @@ export default function Sidebar() {
     }
 
     // アクセス解析サブメニュー（サイト診断・ヒートマップ以外の分析ページ）
-    if (path.startsWith('/analysis/') && !path.startsWith('/analysis/site-diagnosis') && !path.startsWith('/analysis/heatmap')) {
+    if (path.startsWith('/analysis/') && !path.startsWith('/analysis/site-diagnosis')) {
       setIsAccessAnalysisOpen(true);
     }
     
@@ -150,7 +150,6 @@ export default function Sidebar() {
           ],
         },
         { label: 'サイト診断', path: '/analysis/site-diagnosis', highlight: true },
-        { label: 'ヒートマップ', path: '/analysis/heatmap', highlight: true },
       ],
     },
     {

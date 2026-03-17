@@ -44,7 +44,6 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
       monthlyConversionResult,
       scrapingDataResult,
       diagnosisDataResult,
-      heatmapDataResult,
     ] = await Promise.allSettled([
       // 直近30日のサマリーデータ
       fetchGA4Summary(siteId, recentPeriod.startDate, recentPeriod.endDate),
@@ -78,9 +77,6 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
 
       // サイト診断キャッシュ
       fetchDiagnosisCache(siteId),
-
-      // ヒートマップデータ
-      fetchHeatmapData(siteId),
     ]);
 
     // 結果を整形
@@ -114,9 +110,6 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
       // サイト診断データ
       diagnosisData: diagnosisDataResult.status === 'fulfilled' ? diagnosisDataResult.value : null,
 
-      // ヒートマップデータ
-      heatmapData: heatmapDataResult.status === 'fulfilled' ? heatmapDataResult.value : null,
-
       // エラー情報
       errors: {
         summary: summaryResult.status === 'rejected' ? summaryResult.reason : null,
@@ -130,7 +123,6 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
         monthlyConversions: monthlyConversionResult.status === 'rejected' ? monthlyConversionResult.reason : null,
         scrapingData: scrapingDataResult.status === 'rejected' ? scrapingDataResult.reason : null,
         diagnosisData: diagnosisDataResult.status === 'rejected' ? diagnosisDataResult.reason : null,
-        heatmapData: heatmapDataResult.status === 'rejected' ? heatmapDataResult.reason : null,
       },
     };
 
@@ -314,47 +306,6 @@ async function fetchDiagnosisCache(siteId) {
     return data.result || null;
   } catch (error) {
     console.warn('[fetchDiagnosisCache] エラー:', error.message);
-    return null;
-  }
-}
-
-/**
- * ヒートマップデータ取得（クリック数上位ページのサマリー）
- */
-async function fetchHeatmapData(siteId) {
-  try {
-    const heatmapSnap = await getDocs(
-      collection(db, 'sites', siteId, 'heatmapPages')
-    );
-
-    if (heatmapSnap.empty) return null;
-
-    const pages = [];
-    heatmapSnap.forEach(doc => {
-      const data = doc.data();
-      pages.push({
-        pageUrl: data.pageUrl || '',
-        device: data.device || '',
-        totalClicks: data.totalClicks || 0,
-        totalSessions: data.totalSessions || 0,
-        clickGrid: data.clickGrid || {},
-        scrollReach: data.scrollReach || {},
-        sections: data.sections || {},
-        sectionClicks: data.sectionClicks || {},
-        avgPageHeight: data.avgPageHeight || 0,
-      });
-    });
-
-    // クリック数 + セッション数の合計で降順ソートし、上位20ページに制限
-    pages.sort((a, b) => (b.totalClicks + b.totalSessions) - (a.totalClicks + a.totalSessions));
-
-    console.log('[fetchHeatmapData] 取得:', pages.length, 'ページ');
-    return {
-      pages: pages.slice(0, 20),
-      totalPages: pages.length,
-    };
-  } catch (error) {
-    console.warn('[fetchHeatmapData] エラー:', error.message);
     return null;
   }
 }

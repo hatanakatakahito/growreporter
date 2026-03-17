@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, Zap, Shield, MousePointerClick } from 'lucide-react';
+import { BarChart3, Zap, Shield } from 'lucide-react';
 
 const ACTIONS = [
   {
@@ -23,13 +23,6 @@ const ACTIONS = [
     title: 'サイト診断',
     description: 'パフォーマンスを総合診断',
     path: '/analysis/site-diagnosis',
-    color: 'bg-primary/10 text-primary',
-  },
-  {
-    icon: MousePointerClick,
-    title: 'ヒートマップ',
-    description: 'クリック・スクロールを可視化',
-    path: '/analysis/heatmap',
     color: 'bg-primary/10 text-primary',
   },
 ];

@@ -26,7 +26,6 @@ export const PLANS = {
       excelExportMonthly: 1,
       pptxExportMonthly: 1,
       support: 'なし',
-      heatmapEnabled: false,
     },
     description: '個人ブロガー、スタートアップ、試用ユーザー向け',
   },
@@ -47,8 +46,6 @@ export const PLANS = {
       excelExportMonthly: 999999,
       pptxExportMonthly: 999999,
       support: 'メール',
-      heatmapEnabled: true,
-      heatmapPvMonthly: 10000,
     },
     description: '中小企業、複数サイト運営者、Web制作会社向け',
     popular: true, // 人気プランフラグ
@@ -70,8 +67,6 @@ export const PLANS = {
       excelExportMonthly: 999999,
       pptxExportMonthly: 999999,
       support: '最優先（メール・Web会議）',
-      heatmapEnabled: true,
-      heatmapPvMonthly: 10000,
       consultation: '月1回の無料コンサルティング（30分）',
       customImprovements: 'カスタム改善施策の追加依頼可能',
     },
@@ -174,6 +169,5 @@ export const PAGE_TYPES = {
   REVERSE_FLOW: 'reverseFlow',
   SITE_DIAGNOSIS: 'siteDiagnosis',
   MONTHLY: 'analysis/month',
-  HEATMAP: 'heatmap',
 };
 

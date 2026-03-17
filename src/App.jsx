@@ -33,7 +33,6 @@ import PageFlow from './pages/Analysis/PageFlow';
 import ConversionList from './pages/Analysis/ConversionList';
 import ReverseFlow from './pages/Analysis/ReverseFlow';
 import SiteDiagnosis from './pages/Analysis/SiteDiagnosis';
-import Heatmap from './pages/Analysis/Heatmap';
 import Month from './pages/Analysis/Month';
 import Improve from './pages/Improve';
 import ImproveConsultationThanks from './pages/ImproveConsultationThanks';
@@ -171,8 +170,6 @@ function App() {
               <Route path="/analysis/conversions" element={<ConversionList />} />
               <Route path="/analysis/reverse-flow" element={<ReverseFlow />} />
               <Route path="/analysis/site-diagnosis" element={<SiteDiagnosis />} />
-              <Route path="/analysis/heatmap" element={<Heatmap />} />
-
               {/* 改善する */}
               <Route path="/improve" element={<Improve />} />
               

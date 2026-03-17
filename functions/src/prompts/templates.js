@@ -35,7 +35,6 @@ export function getPromptTemplate(pageType, period, metrics, startDate, endDate,
     fileDownloads: getFileDownloadsPrompt,
     externalLinks: getExternalLinksPrompt,
     'analysis/month': getMonthlyPrompt,
-    heatmap: getHeatmapPrompt,
   };
 
   const templateFunc = templates[pageType];
@@ -516,7 +515,7 @@ function getPageTypeLabel(pageType) {
 function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, options = {}) {
   const sd = startDate || '';
   const ed = endDate || '';
-  const { siteContext, improvementFocus, conversionGoals = [], kpiSettings = [], diagnosisData, heatmapData } = options;
+  const { siteContext, improvementFocus, conversionGoals = [], kpiSettings = [], diagnosisData } = options;
 
   let monthlyTrendText = '';
   if (metrics.monthlyTrend && metrics.monthlyTrend.monthlyData && Array.isArray(metrics.monthlyTrend.monthlyData)) {
@@ -667,107 +666,6 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, 
 ■ 主要な問題Audit:
 ${(d.psi?.mobile?.topAudits || []).slice(0, 5).map(a => `  - ${a.title}: ${a.displayValue || ''}`).join('\n')}
 `;
-  }
-
-  // ヒートマップデータ（クリック・スクロール行動データ）
-  let heatmapText = '';
-  if (heatmapData && heatmapData.pages && heatmapData.pages.length > 0) {
-    heatmapText = '\n\n【ヒートマップ分析結果（ユーザー行動データ）】\n';
-    heatmapText += `計測ページ数: ${heatmapData.totalPages}ページ\n\n`;
-
-    for (const page of heatmapData.pages.slice(0, 10)) {
-      heatmapText += `■ ${page.pageUrl} (${page.device})\n`;
-      if (page.totalClicks > 0) {
-        heatmapText += `  クリック数: ${page.totalClicks.toLocaleString()}回\n`;
-      }
-      if (page.totalSessions > 0) {
-        heatmapText += `  計測セッション: ${page.totalSessions.toLocaleString()}回\n`;
-      }
-
-      // セクション別クリック数
-      if (page.sectionClicks && Object.keys(page.sectionClicks).length > 0) {
-        const sortedSections = Object.entries(page.sectionClicks)
-          .sort(([, a], [, b]) => b - a);
-        heatmapText += '  セクション別クリック:\n';
-        for (const [section, clicks] of sortedSections.slice(0, 5)) {
-          heatmapText += `    - 「${section}」: ${clicks}回\n`;
-        }
-      }
-
-      // スクロール到達率
-      if (page.scrollReach && Object.keys(page.scrollReach).length > 0) {
-        const reachEntries = Object.entries(page.scrollReach)
-          .map(([pct, count]) => [parseInt(pct), count])
-          .sort(([a], [b]) => a - b);
-        if (reachEntries.length > 0 && page.totalSessions > 0) {
-          heatmapText += '  スクロール到達率:\n';
-          for (const [pct, count] of reachEntries) {
-            const rate = ((count / page.totalSessions) * 100).toFixed(0);
-            heatmapText += `    ${pct}%地点: ${rate}%が到達\n`;
-          }
-          // 最大離脱ポイントを特定
-          let maxDrop = 0, maxDropPct = 0;
-          for (let i = 1; i < reachEntries.length; i++) {
-            const drop = reachEntries[i - 1][1] - reachEntries[i][1];
-            if (drop > maxDrop) {
-              maxDrop = drop;
-              maxDropPct = reachEntries[i][0];
-            }
-          }
-          if (maxDropPct > 0) {
-            // セクション名をマッピング
-            let dropSection = '';
-            if (page.sections && Object.keys(page.sections).length > 0) {
-              const sectionEntries = Object.entries(page.sections)
-                .map(([yKey, info]) => [parseInt(yKey), info])
-                .sort(([a], [b]) => a - b);
-              const dropY = (maxDropPct / 100) * (page.avgPageHeight || 3000);
-              for (const [y, info] of sectionEntries) {
-                if (y <= dropY) dropSection = info.text || '';
-              }
-            }
-            heatmapText += `  ⚠️ 最大離脱ポイント: ${maxDropPct}%付近`;
-            if (dropSection) heatmapText += `（「${dropSection}」セクション付近）`;
-            heatmapText += '\n';
-          }
-        }
-      }
-
-      // クリックが集中するエリア（clickGrid から上位を特定）
-      if (page.clickGrid && Object.keys(page.clickGrid).length > 0) {
-        const gridEntries = Object.entries(page.clickGrid)
-          .map(([key, count]) => {
-            const match = key.match(/^x(\d+)_y(\d+)$/);
-            if (!match) return null;
-            return { x: parseInt(match[1]), y: parseInt(match[2]), count };
-          })
-          .filter(Boolean)
-          .sort((a, b) => b.count - a.count);
-
-        if (gridEntries.length > 0) {
-          const top3 = gridEntries.slice(0, 3);
-          heatmapText += '  クリック集中エリア（上位3箇所）:\n';
-          for (const g of top3) {
-            const xPos = g.x <= 30 ? '左側' : g.x >= 70 ? '右側' : '中央';
-            // セクション名をマッピング
-            let areaSection = '';
-            if (page.sections && Object.keys(page.sections).length > 0) {
-              const sectionEntries = Object.entries(page.sections)
-                .map(([yKey, info]) => [parseInt(yKey), info])
-                .sort(([a], [b]) => a - b);
-              for (const [y, info] of sectionEntries) {
-                if (y <= g.y) areaSection = info.text || '';
-              }
-            }
-            let label = `y=${g.y}px ${xPos}`;
-            if (areaSection) label = `「${areaSection}」付近 ${xPos}`;
-            heatmapText += `    - ${label}: ${g.count}回\n`;
-          }
-        }
-      }
-
-      heatmapText += '\n';
-    }
   }
 
   // 未使用のプレースホルダ（将来の拡張用）。未定義エラー防止のため空文字で定義
@@ -940,7 +838,6 @@ ${monthlyConversionsText}
 ${siteContextBlock}${conversionSettingsText}
 ${scrapingDataText}
 ${diagnosisText}
-${heatmapText}
 ${sitemapText}${pageQualityText}
 
 【改善施策の生成ルール】
@@ -1377,154 +1274,6 @@ function getExternalLinksPrompt(period, metrics) {
 
 【記述例】
 ${period}はSNSへのリンクが最も多くクリックされており、全体の40%を占めています。関連サイトへのリンクは15%程度で、パートナーサイトへは25%です。全体のクリック数は前月比8%増加しています。`;
-}
-
-/**
- * ヒートマップ分析用プロンプト
- */
-function getHeatmapPrompt(period, metrics) {
-  const clickGrid = metrics.clickGrid || {};
-  const totalClicks = metrics.totalClicks || 0;
-  const totalSessions = metrics.totalSessions || 1;
-  const pageHeight = metrics.avgPageHeight || 0;
-  const sections = metrics.sections || {};    // { "0": { text, tag, y }, "500": {...}, ... }
-  const sectionClicks = metrics.sectionClicks || {}; // { "セクション名": クリック数 }
-
-  // セクション一覧をy座標順に並べる
-  const sectionList = Object.values(sections)
-    .sort((a, b) => (a.y || 0) - (b.y || 0));
-
-  // clickGrid エントリを展開
-  const clickEntries = Object.entries(clickGrid)
-    .map(([key, count]) => {
-      const match = key.match(/x(\d+)_y(\d+)/);
-      if (!match) return null;
-      return { x: parseInt(match[1]), y: parseInt(match[2]), count };
-    })
-    .filter(Boolean)
-    .sort((a, b) => b.count - a.count);
-
-  // ── セクション別クリック集計（sections マップから算出） ──
-  // sectionClicks がある場合はそれを使用、なければ clickGrid + sections から推定
-  let sectionClickSummary = '';
-  if (Object.keys(sectionClicks).length > 0) {
-    const sorted = Object.entries(sectionClicks).sort((a, b) => b[1] - a[1]);
-    sectionClickSummary = sorted
-      .map(([name, count]) => `「${name}」${count}回（${totalClicks > 0 ? Math.round((count / totalClicks) * 100) : 0}%）`)
-      .join('、');
-  } else if (sectionList.length > 0 && clickEntries.length > 0) {
-    // clickGrid の y 座標からセクションを推定
-    const sectionBuckets = {};
-    for (const click of clickEntries) {
-      let belongsTo = sectionList[0]?.text || 'ページ上部';
-      for (const sec of sectionList) {
-        if (click.y >= (sec.y || 0)) belongsTo = sec.text;
-        else break;
-      }
-      sectionBuckets[belongsTo] = (sectionBuckets[belongsTo] || 0) + click.count;
-    }
-    const sorted = Object.entries(sectionBuckets).sort((a, b) => b[1] - a[1]);
-    sectionClickSummary = sorted
-      .map(([name, count]) => `「${name}」${count}回（${totalClicks > 0 ? Math.round((count / totalClicks) * 100) : 0}%）`)
-      .join('、');
-  }
-
-  // セクション構成（見出し一覧）
-  const sectionStructure = sectionList.length > 0
-    ? sectionList.map(s => `y=${s.y}px: ${s.tag} "${s.text}"`).join('\n  ')
-    : 'セクション情報なし';
-
-  // スクロール到達率 + セクションとの対応
-  const scrollReach = metrics.scrollReach || {};
-  const scrollEntries = Object.entries(scrollReach)
-    .sort(([a], [b]) => Number(a) - Number(b));
-
-  // スクロール地点にセクション名をマッピング
-  const scrollData = scrollEntries
-    .map(([pct, sessions]) => {
-      const rate = Math.round((sessions / totalSessions) * 100);
-      const yAtPct = Math.round((Number(pct) / 100) * pageHeight);
-      // この地点に最も近いセクションを探す
-      let nearestSection = '';
-      for (const sec of sectionList) {
-        if ((sec.y || 0) <= yAtPct) nearestSection = sec.text;
-        else break;
-      }
-      const sectionNote = nearestSection ? `（「${nearestSection}」付近）` : '';
-      return `${pct}%地点${sectionNote}: ${rate}%到達`;
-    })
-    .join(', ');
-
-  // 最大離脱区間
-  let maxDrop = '';
-  let maxDropValue = 0;
-  for (let i = 1; i < scrollEntries.length; i++) {
-    const prevRate = Math.round((scrollEntries[i - 1][1] / totalSessions) * 100);
-    const currRate = Math.round((scrollEntries[i][1] / totalSessions) * 100);
-    const drop = prevRate - currRate;
-    if (drop > maxDropValue) {
-      maxDropValue = drop;
-      const yAtDrop = Math.round((Number(scrollEntries[i][0]) / 100) * pageHeight);
-      let dropSection = '';
-      for (const sec of sectionList) {
-        if ((sec.y || 0) <= yAtDrop) dropSection = sec.text;
-        else break;
-      }
-      const dropNote = dropSection ? `（「${dropSection}」付近）` : '';
-      maxDrop = `${scrollEntries[i - 1][0]}%→${scrollEntries[i][0]}%区間${dropNote}で${drop}%低下`;
-    }
-  }
-
-  const hasSections = sectionList.length > 0;
-
-  return `
-あなたはヒートマップ分析の専門家です。${period}のクリックヒートマップ・スクロールヒートマップのデータのみを用いて、ユーザー行動パターンを分析してください。
-GA4やSearch Consoleなど他のデータは一切参照せず、ヒートマップデータだけに基づいて分析してください。
-
-【対象ページ情報】
-- URL: ${metrics.pageUrl || '不明'}
-- デバイス: ${metrics.device === 'mobile' ? 'モバイル' : 'PC'}
-- ページ高さ: ${pageHeight.toLocaleString()}px
-
-【ページのセクション構成（見出し一覧）】
-  ${sectionStructure}
-
-【セクション別クリック数】
-${sectionClickSummary || 'セクション別データなし'}
-- 総クリック数: ${totalClicks.toLocaleString()}回
-
-【スクロール到達率】
-- 総PV数: ${totalSessions.toLocaleString()}
-- ${scrollData || 'データなし'}
-- 最大離脱区間: ${maxDrop || 'データ不足'}
-
-【重要な指示】
-${hasSections
-    ? '- 分析では「ページ上部」「ページ中部」などの抽象的な表現ではなく、必ず実際のセクション名（見出し名）を使って言及すること。例:「"サービス紹介"セクション」「"お客様の声"付近」'
-    : '- セクション情報がないため、ページの位置（上部・中部・下部）で分析すること'}
-- ユーザーがどのセクションに興味を持ち、どのセクションに興味を持っていないかを具体的に説明する
-- ユーザーの意図や心理を推測する（「〜を探している」「〜に関心がある」「〜は読み飛ばされている」など）
-
-【出力構成 ※この順番を必ず守ること】
-1. 結論 → どのセクションに興味があり、どのセクションに興味がないかを端的に述べる
-2. 仮説 → ユーザーの意図や心理を推測する
-3. 根拠 → ヒートマップの具体的な数値で裏付ける
-
-【出力ルール】
-- 全体で250文字以内
-- 段落形式の自然な文章で書く（見出しや記号は使わない）
-- 結論→仮説→根拠の流れを文章の中で自然につなげる
-- Web初心者でも理解できるやさしい言葉で書く
-- 前置きや挨拶は一切不要、分析内容から直接始める
-
-【禁止】
-- 「承知しました」「分析します」などの前置き
-- 箇条書き記号（•、-、1.など）や見出し（■、【】など）
-- 「結論：」「仮説：」「根拠：」などのラベル表記
-- GA4やSearch Console等、ヒートマップ以外のデータへの言及
-
-【記述例】
-このページでは「サービス紹介」セクションにクリックが最も集中しており、訪問者はサービス内容を詳しく知りたいと考えているようです。一方で「会社概要」以降はほとんどクリックされておらず、読み飛ばされています。実際に「サービス紹介」へのクリックは全体の45%を占める一方、スクロール到達率は「お客様の声」付近の60%地点で急落し、最後まで読んだ人は15%でした。`;
 }
 
 /**
