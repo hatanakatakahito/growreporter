@@ -44,6 +44,7 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
       monthlyConversionResult,
       scrapingDataResult,
       diagnosisDataResult,
+      siteStructureDataResult,
     ] = await Promise.allSettled([
       // 直近30日のサマリーデータ
       fetchGA4Summary(siteId, recentPeriod.startDate, recentPeriod.endDate),
@@ -77,6 +78,9 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
 
       // サイト診断キャッシュ
       fetchDiagnosisCache(siteId),
+
+      // サイト構造データ（コレクタースクリプト収集分）
+      fetchSiteStructureData(siteId),
     ]);
 
     // 結果を整形
@@ -110,6 +114,9 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
       // サイト診断データ
       diagnosisData: diagnosisDataResult.status === 'fulfilled' ? diagnosisDataResult.value : null,
 
+      // サイト構造データ（コレクタースクリプト収集分）
+      siteStructureData: siteStructureDataResult.status === 'fulfilled' ? siteStructureDataResult.value : null,
+
       // エラー情報
       errors: {
         summary: summaryResult.status === 'rejected' ? summaryResult.reason : null,
@@ -123,6 +130,7 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
         monthlyConversions: monthlyConversionResult.status === 'rejected' ? monthlyConversionResult.reason : null,
         scrapingData: scrapingDataResult.status === 'rejected' ? scrapingDataResult.reason : null,
         diagnosisData: diagnosisDataResult.status === 'rejected' ? diagnosisDataResult.reason : null,
+        siteStructureData: siteStructureDataResult.status === 'rejected' ? siteStructureDataResult.reason : null,
       },
     };
 
@@ -349,6 +357,40 @@ async function fetchScrapingData(siteId) {
       meta: null,
       totalPages: 0,
     };
+  }
+}
+
+/**
+ * サイト構造データ取得（コレクタースクリプト収集分）
+ */
+async function fetchSiteStructureData(siteId) {
+  try {
+    const structureQuery = await getDocs(
+      query(
+        collection(db, 'sites', siteId, 'siteStructureData'),
+        orderBy('collectedAt', 'desc'),
+        limit(20)
+      )
+    );
+
+    if (structureQuery.empty) return null;
+
+    const pages = [];
+    structureQuery.forEach(doc => {
+      pages.push({
+        id: doc.id,
+        ...doc.data(),
+      });
+    });
+
+    console.log('[fetchSiteStructureData] 取得:', pages.length, 'ページ');
+    return {
+      pages,
+      totalPages: pages.length,
+    };
+  } catch (error) {
+    console.warn('[fetchSiteStructureData] エラー:', error.message);
+    return null;
   }
 }
 

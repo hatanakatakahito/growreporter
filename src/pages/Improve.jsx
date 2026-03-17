@@ -3,7 +3,7 @@ import { useSite } from '../contexts/SiteContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, Loader2 } from 'lucide-react';
+import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, Loader2, X, Code } from 'lucide-react';
 import { setPageTitle } from '../utils/pageTitle';
 import { db, functions } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -84,6 +84,9 @@ export default function Improve() {
 
   // スクレイピング状況
   const [scrapingStatus, setScrapingStatus] = useState(null);
+  const [collectorBannerDismissed, setCollectorBannerDismissed] = useState(
+    () => sessionStorage.getItem('gr_collector_banner_dismissed') === '1'
+  );
   
   const [selectedForIframe, setSelectedForIframe] = useState(null);
   // 表のソート
@@ -506,6 +509,32 @@ export default function Improve() {
           }
         />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
+        {/* コレクタータグ設置促進バナー */}
+        {!collectorBannerDismissed && selectedSiteId && (
+          <div className="mx-auto max-w-content px-6 pt-6">
+            <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 dark:border-blue-800 dark:bg-blue-900/20">
+              <Code className="h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
+              <p className="flex-1 text-sm text-blue-700 dark:text-blue-300">
+                サイトにコンテンツ収集タグを設置すると、AI改善提案の精度がさらに向上します。
+                <button
+                  onClick={() => navigate(`/sites/${selectedSiteId}`)}
+                  className="ml-1 font-medium underline hover:no-underline"
+                >
+                  サイト設定で確認
+                </button>
+              </p>
+              <button
+                onClick={() => {
+                  setCollectorBannerDismissed(true);
+                  sessionStorage.setItem('gr_collector_banner_dismissed', '1');
+                }}
+                className="shrink-0 text-blue-400 hover:text-blue-600 dark:text-blue-500 dark:hover:text-blue-300"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        )}
         {/* コンテンツ */}
         <div className="mx-auto max-w-content px-6 py-10">
           <div className="mb-6 flex items-center justify-between">

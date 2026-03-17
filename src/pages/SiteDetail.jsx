@@ -8,7 +8,7 @@ import ErrorAlert from '../components/common/ErrorAlert';
 import { functions } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, getDoc, getDocFromServer } from 'firebase/firestore';
-import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, Copy, Check, AlertCircle } from 'lucide-react';
+import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, Copy, Check, AlertCircle, Code } from 'lucide-react';
 import { SITE_TYPES, SITE_PURPOSES } from '../constants/siteOptions';
 
 /**
@@ -26,6 +26,7 @@ export default function SiteDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [collectorTagCopied, setCollectorTagCopied] = useState(false);
 
   useEffect(() => {
     setPageTitle('サイト詳細');
@@ -413,6 +414,37 @@ export default function SiteDetail() {
             </div>
           </div>
         </div>
+        </div>
+
+        {/* サイトコンテンツコレクター設定 */}
+        <div className="mt-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-dark dark:text-white">
+            <Code className="h-5 w-5" />
+            サイトコンテンツ収集タグ
+          </h3>
+          <p className="mb-4 text-xs text-body-color dark:text-dark-6">
+            以下のスクリプトタグをサイトの{'<head>'}または{'<body>'}の閉じタグ前に設置してください。
+            サイト固有のコンテンツ・デザインデータを自動収集し、AI改善提案の精度が向上します。
+          </p>
+          <div className="relative rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
+            <code className="block whitespace-pre-wrap break-all text-xs text-dark dark:text-white">
+              {`<script src="https://grow-reporter.com/gr-collector.js" data-site-id="${siteId}" async></script>`}
+            </code>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(`<script src="https://grow-reporter.com/gr-collector.js" data-site-id="${siteId}" async></script>`);
+                setCollectorTagCopied(true);
+                setTimeout(() => setCollectorTagCopied(false), 2000);
+              }}
+              className="absolute right-2 top-2 rounded bg-white p-1.5 text-body-color shadow-sm transition hover:text-primary dark:bg-dark-2 dark:text-dark-6"
+            >
+              {collectorTagCopied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            </button>
+          </div>
+          <p className="mt-3 text-xs text-body-color dark:text-dark-6">
+            ※ タグ設置は任意です。未設置でもGA4・GSCデータに基づくAI改善提案は利用できます。
+            タグを設置するとサイト固有のコンテンツ・デザイン情報も加味した、より精度の高い改善提案が可能になります。
+          </p>
         </div>
 
         {/* サイト削除 */}

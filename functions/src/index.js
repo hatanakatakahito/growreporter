@@ -448,6 +448,32 @@ export const sendTestReportEmail = lazyCallable('./callable/sendTestReportEmail.
 export const submitImprovementConsultation = lazyCallable('./callable/submitImprovementConsultation.js', 'submitImprovementConsultationCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
+ * サイトコンテンツコレクター 設定エンドポイント（onRequest）
+ * クライアントスクリプトから呼び出され、データ収集要否を判定
+ */
+export const collectorConfig = onRequest({
+  region: 'asia-northeast1',
+  memory: '128MiB',
+  timeoutSeconds: 5,
+}, async (req, res) => {
+  const { collectorConfigHandler } = await import('./http/collectorConfig.js');
+  return collectorConfigHandler(req, res);
+});
+
+/**
+ * サイトコンテンツコレクター データ受信エンドポイント（onRequest）
+ * クライアントスクリプトから送信された構造化データを保存
+ */
+export const collectSiteData = onRequest({
+  region: 'asia-northeast1',
+  memory: '256MiB',
+  timeoutSeconds: 10,
+}, async (req, res) => {
+  const { collectSiteDataHandler } = await import('./http/collectSiteData.js');
+  return collectSiteDataHandler(req, res);
+});
+
+/**
  * プランアップグレードお問い合わせ送信
  * 宛先: info@grow-reporter.com
  */

@@ -194,6 +194,14 @@ service cloud.firestore {
         );
         allow write: if false;
       }
+      // サイト構造データ（読取は全メンバー可、書込は Functions / onRequest のみ）
+      match /siteStructureData/{docId} {
+        allow read: if request.auth != null && (
+          isAdminUser() || isSiteOwner(siteId) ||
+          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+        );
+        allow write: if false;
+      }
     }
     
     // レポート（移行済み: users/{uid}/reports。ルートは廃止）
