@@ -204,6 +204,7 @@ export async function generateAISummaryCallable(request) {
       options.improvementFocus = IMPROVEMENT_FOCUS_LABELS[improvementFocusValue] || IMPROVEMENT_FOCUS_LABELS.balance;
       options.existingImprovements = existingImprovements || [];
       options.diagnosisData = metrics.diagnosisData || null;
+      options.siteStructureData = metrics.siteStructureData || null;
       // コンバージョン設定とKPI設定を追加
       options.conversionGoals = siteData.conversionGoals || [];
       options.kpiSettings = siteData.kpiSettings || [];

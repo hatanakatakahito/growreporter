@@ -515,7 +515,7 @@ function getPageTypeLabel(pageType) {
 function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, options = {}) {
   const sd = startDate || '';
   const ed = endDate || '';
-  const { siteContext, improvementFocus, conversionGoals = [], kpiSettings = [], diagnosisData } = options;
+  const { siteContext, improvementFocus, conversionGoals = [], kpiSettings = [], diagnosisData, siteStructureData } = options;
 
   let monthlyTrendText = '';
   if (metrics.monthlyTrend && metrics.monthlyTrend.monthlyData && Array.isArray(metrics.monthlyTrend.monthlyData)) {
@@ -671,6 +671,73 @@ ${(d.psi?.mobile?.topAudits || []).slice(0, 5).map(a => `  - ${a.title}: ${a.dis
   // 未使用のプレースホルダ（将来の拡張用）。未定義エラー防止のため空文字で定義
   const sitemapText = '';
   const pageQualityText = '';
+
+  // サイト構造データ（コレクタースクリプト収集分）
+  let siteStructureText = '';
+  if (siteStructureData && siteStructureData.pages && siteStructureData.pages.length > 0) {
+    siteStructureText = '\n\n【サイトコンテンツ・デザイン構造データ（スクリプトタグ収集）】\n';
+    siteStructureText += `収集ページ数: ${siteStructureData.totalPages}ページ\n\n`;
+
+    for (const page of siteStructureData.pages.slice(0, 10)) {
+      siteStructureText += `■ ${page.pageUrl} (${page.device})\n`;
+
+      // メタ情報
+      if (page.meta) {
+        if (page.meta.title) siteStructureText += `  タイトル: ${page.meta.title}\n`;
+        if (page.meta.description) siteStructureText += `  ディスクリプション: ${page.meta.description}\n`;
+      }
+
+      // ファーストビュー
+      if (page.firstView) {
+        if (page.firstView.headline) siteStructureText += `  ファーストビュー見出し: ${page.firstView.headline}\n`;
+        if (page.firstView.subheadline) siteStructureText += `  サブ見出し: ${page.firstView.subheadline}\n`;
+        if (page.firstView.cta) siteStructureText += `  メインCTA: 「${page.firstView.cta.text}」→ ${page.firstView.cta.href}\n`;
+      }
+
+      // ナビゲーション
+      if (page.navigation && page.navigation.length > 0) {
+        siteStructureText += `  ナビゲーション: ${page.navigation.map(n => n.text).join('、')}\n`;
+      }
+
+      // セクション構成
+      if (page.sections && page.sections.length > 0) {
+        siteStructureText += '  セクション構成:\n';
+        for (const sec of page.sections.slice(0, 8)) {
+          siteStructureText += `    - ${sec.tag || 'h2'}: 「${sec.heading}」`;
+          if (sec.imageCount) siteStructureText += ` (画像${sec.imageCount}枚)`;
+          if (sec.ctas && sec.ctas.length > 0) siteStructureText += ` [CTA: ${sec.ctas.map(c => c.text).join('、')}]`;
+          siteStructureText += '\n';
+        }
+      }
+
+      // フォーム
+      if (page.forms && page.forms.length > 0) {
+        for (const form of page.forms) {
+          siteStructureText += `  フォーム（${form.purpose}）: フィールド=[${form.fields.join('、')}], 送信ボタン=「${form.submitText}」\n`;
+        }
+      }
+
+      // デザイントークン
+      if (page.designTokens) {
+        const dt = page.designTokens;
+        const tokenParts = [];
+        if (dt.primaryColor) tokenParts.push(`メインカラー: ${dt.primaryColor}`);
+        if (dt.fonts && dt.fonts.length > 0) tokenParts.push(`フォント: ${dt.fonts.join(', ')}`);
+        if (dt.bodyFontSize) tokenParts.push(`本文サイズ: ${dt.bodyFontSize}`);
+        if (tokenParts.length > 0) siteStructureText += `  デザイン: ${tokenParts.join(' / ')}\n`;
+      }
+
+      // フッター
+      if (page.footer) {
+        const footerParts = [];
+        if (page.footer.companyInfo) footerParts.push(page.footer.companyInfo);
+        if (page.footer.contactMethods) footerParts.push(`連絡方法: ${page.footer.contactMethods.join('、')}`);
+        if (footerParts.length > 0) siteStructureText += `  フッター: ${footerParts.join(' / ')}\n`;
+      }
+
+      siteStructureText += '\n';
+    }
+  }
 
   // サイト前提情報（業界・種別・目的）をタスク2の前に挿入
   let siteContextBlock = '';
@@ -838,6 +905,7 @@ ${monthlyConversionsText}
 ${siteContextBlock}${conversionSettingsText}
 ${scrapingDataText}
 ${diagnosisText}
+${siteStructureText}
 ${sitemapText}${pageQualityText}
 
 【改善施策の生成ルール】
