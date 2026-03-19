@@ -239,22 +239,35 @@ export default function DataTable({
                 return pr;
               })() : null;
 
+              // 日付列から曜日を判定（土曜=blue, 日曜=red）
+              const firstColValue = String(row[displayColumns[0]?.key] || '');
+              const isSaturday = firstColValue.includes('（土）') || firstColValue.includes('(土)');
+              const isSunday = firstColValue.includes('（日）') || firstColValue.includes('(日)') || firstColValue.includes('（祝）') || firstColValue.includes('(祝)');
+              const dayRowClass = isSunday ? 'bg-red-50/60' : isSaturday ? 'bg-blue-50/60' : '';
+
               return (
                 <React.Fragment key={rowIndex}>
                   {/* メイン行 */}
-                  <tr className={`hover:bg-gray-1 ${isComparing ? '' : 'border-b border-stroke last:border-b-0'}`}>
-                    {displayColumns.map((column) => (
+                  <tr className={`hover:bg-gray-1 ${dayRowClass} ${isComparing ? '' : 'border-b border-stroke last:border-b-0'}`}>
+                    {displayColumns.map((column) => {
+                      // 日付セルの曜日部分に色を付ける
+                      const cellValue = column.render
+                        ? column.render(row[column.key], row)
+                        : formatValue(row[column.key], column.format);
+                      const isFirstCol = column.key === displayColumns[0]?.key;
+                      const textColorClass = isFirstCol && isSunday ? 'text-red-500' : isFirstCol && isSaturday ? 'text-blue-500' : 'text-dark';
+
+                      return (
                       <td
                         key={column.key}
-                        className={`whitespace-nowrap px-4 py-3 text-sm text-dark ${
+                        className={`whitespace-nowrap px-4 py-3 text-sm ${textColorClass} ${
                           column.align === 'right' ? 'text-right' : 'text-left'
                         }`}
                       >
-                        {column.render
-                          ? column.render(row[column.key], row)
-                          : formatValue(row[column.key], column.format)}
+                        {cellValue}
                       </td>
-                    ))}
+                      );
+                    })}
                   </tr>
                   {/* 比較サブ行 */}
                   {isComparing && (

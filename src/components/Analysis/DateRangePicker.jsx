@@ -228,25 +228,23 @@ export default function DateRangePicker({ dateRange, onDateRangeChange }) {
           setIsOpen(!isOpen);
           setShowCustomCalendar(false);
         }}
-        className="flex flex-col items-start rounded-lg bg-gray-100 px-3 py-1.5 transition-all duration-200 hover:bg-gray-200 focus:outline-none"
+        className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-3.5 py-2 shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:outline-none"
       >
-        <div className="flex items-center gap-1.5">
-          <Calendar className="h-4 w-4 text-gray-500 shrink-0" />
+        <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
+        <div className="flex flex-col items-start">
           {dateRange?.from && dateRange?.to ? (
-            <span className="text-[13px] font-medium text-gray-700">
+            <span className="text-sm font-medium text-dark leading-tight">
               {format(new Date(dateRange.from), 'yyyy-MM-dd')} - {format(new Date(dateRange.to), 'yyyy-MM-dd')}
             </span>
           ) : (
-            <span className="text-[13px] font-medium text-gray-700">期間を選択</span>
+            <span className="text-sm font-medium text-dark">期間を選択</span>
           )}
-        </div>
-        {comparisonMode !== 'none' && comparisonDateRange && (
-          <div className="mt-0.5">
-            <span className="text-[13px] text-blue-500">
+          {comparisonMode !== 'none' && comparisonDateRange && (
+            <span className="text-xs leading-tight text-blue-500">
               比較:{comparisonDateRange.from} ~ {comparisonDateRange.to}
             </span>
-          </div>
-        )}
+          )}
+        </div>
       </button>
 
       {/* メインカレンダードロップダウン */}

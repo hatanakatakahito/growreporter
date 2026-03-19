@@ -1,8 +1,10 @@
 /* AI Gradient Theme */
 @import './styles/gradient.css' layer(base);
-@import './styles/datepicker.css' layer(base);
 
 @import 'tailwindcss';
+
+/* DatePicker — Tailwind importの後に読み込むことでDayPickerデフォルトを確実に上書き */
+@import './styles/datepicker.css';
 
 @custom-variant dark (&:is(.dark *));
 
@@ -97,6 +99,143 @@ html {
   overflow-y: scroll;
 }
 
+/* ============================================================
+   グローバルUI改善 — フォント・カード・ガラス効果・余白
+   ============================================================ */
+
+/* セクション間の余白バランス最適化 */
+.main-content .mx-auto.max-w-content {
+  padding-top: 2.75rem;
+  padding-bottom: 3rem;
+}
+/* カード系セクション間に少しゆとりを追加（grid内は除外） */
+.main-content .rounded-lg.border + .rounded-lg.border:not(:is(.grid > *)) {
+  margin-top: 0.25rem;
+}
+/* ページ見出し下のマージンを少し広げる */
+.main-content h2 + div,
+.main-content h2 + p {
+  margin-top: 0.25rem;
+}
+
+/* テーブル行ホバー — 全テーブル共通 */
+.main-content table tbody tr:hover {
+  background-color: rgba(55, 88, 249, 0.04) !important;
+  transition: background-color 0.15s ease;
+}
+
+/* フォント */
+body {
+  font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* グラスカード — bg-white + border + rounded-lg のカードを自動的にガラス風に */
+/* メインコンテンツエリア内のカード要素 */
+.glass-card {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.6) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.glass-card:hover {
+  background: rgba(255, 255, 255, 0.85) !important;
+  box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* グラスヘッダー */
+.glass-header {
+  background: rgba(255, 255, 255, 0.72) !important;
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.5) !important;
+}
+
+/*
+ * メインコンテンツ内の全カード（bg-white + border + rounded-lg）を
+ * 自動的にガラスカード化。個別ファイルの変更不要。
+ * .main-content は MainLayout の content wrapper
+ * :not(:is(...)) で fixed overlay / z-50 popup / dialog 内を完全除外
+ */
+.main-content .rounded-lg.border.bg-white:not(:is(.fixed *, .z-50, .z-50 *, [role="dialog"] *, [data-headlessui-state] *)) {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.06);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.main-content .rounded-lg.border.bg-white:not(:is(.fixed *, .z-50, .z-50 *, [role="dialog"] *, [data-headlessui-state] *)):hover {
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 12px 40px -8px rgba(0, 0, 0, 0.08);
+  transform: translateY(-1px);
+}
+
+/* ヘッダー（bg-white + border-b）をガラスヘッダーに */
+.main-content > .border-b.bg-white,
+.main-content > div > .border-b.bg-white {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* ページ背景のbg-gray-50を半透明に（アンビエントblobがほんのり透ける程度） */
+/* fixed/z-50内（モーダル・ポップアップ）は除外 */
+.main-content .bg-gray-50:not(:is(.fixed *, .z-50 *)) {
+  background: rgba(240, 242, 248, 0.65) !important;
+}
+
+/* rounded-lgをrounded-xlにアップグレード（より丸みのある角） — モーダル・ポップアップ除外 */
+.main-content .rounded-lg.border:not(:is(.fixed *, .z-50, .z-50 *, [role="dialog"] *, [data-headlessui-state] *)) {
+  border-radius: 0.75rem;
+}
+
+/* モーダルオーバーレイを最上位レイヤー + 背景を暗く統一 */
+div[class*="fixed"][class*="inset-0"][class*="bg-black"],
+div[class*="fixed"][class*="inset-0"][class*="bg-zinc"],
+div[class*="fixed"][class*="inset-0"][class*="z-50"] {
+  z-index: 9999 !important;
+  background-color: rgba(0, 0, 0, 0.6) !important;
+}
+
+/* モーダル・ダイアログ・ポップアップ内は通常のbg-whiteを強制復元 */
+.fixed .bg-white,
+.fixed.z-50 .bg-white,
+[class*="z-50"].bg-white,
+[class*="z-50"] .bg-white,
+[role="dialog"] .bg-white,
+[data-headlessui-state] .bg-white {
+  background: #fff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  border-color: inherit !important;
+}
+/* z-50ポップアップ自体のガラス効果を完全除去 */
+[class*="z-50"].rounded-lg.border.bg-white {
+  background: #fff !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+  border-color: #e5e7eb !important;
+  border-radius: 0.5rem !important;
+}
+/* fixed overlay内の角丸・影もリセット */
+.fixed .rounded-lg.border,
+[class*="z-50"].rounded-lg.border {
+  border-radius: 0.5rem;
+  box-shadow: none;
+}
+
+/* スクロールバーを美しく */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
+
 /* AI分析ボタンのアニメーション */
 @keyframes ai-pulse {
   0%, 100% {
@@ -185,4 +324,31 @@ html {
 
 .ai-icon-sparkle {
   animation: ai-sparkle 1.5s ease-in-out;
+}
+
+/* ============================================================
+   サイドバーテーマ
+   ============================================================ */
+
+/* アクティブインジケーター（ダークテーマ） — 背景色のみ、左バーなし */
+.sidebar-active-dark {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* アクティブインジケーター（ホワイトテーマ） — 背景色のみ、左バーなし */
+.sidebar-active-white {
+  background: rgba(55, 88, 249, 0.08);
+}
+
+/* ダークサイドバー時のロゴ明るさ調整 */
+.sidebar-logo-dark {
+  filter: brightness(1.6) saturate(0.8);
+}
+
+/* アンビエント背景blob */
+.ambient-blob {
+  position: fixed;
+  border-radius: 9999px;
+  pointer-events: none;
+  z-index: -10;
 }

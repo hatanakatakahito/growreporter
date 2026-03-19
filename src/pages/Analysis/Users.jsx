@@ -171,7 +171,7 @@ export default function Users() {
   const DonutChartCard = ({ title, data, isGender = false, emptyHint = null, comparisonData = null }) => {
     if (!data || data.length === 0) {
       return (
-        <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+        <div className="h-full rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
           <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">{title}</h3>
           <div className="flex h-[350px] flex-col items-center justify-center gap-3 text-body-color">
             <Info className="h-8 w-8 text-body-color/40" />
@@ -183,33 +183,35 @@ export default function Users() {
     }
 
     return (
-      <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+      <div className="flex h-full flex-col rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
         <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">{title}</h3>
-        <ResponsiveContainer width="100%" height={350}>
-          <PieChart>
-            <Pie
-              data={data}
-              cx="50%"
-              cy="50%"
-              innerRadius={80}
-              outerRadius={110}
-              paddingAngle={5}
-              dataKey="value"
-              nameKey="name"
-              label={renderCustomizedLabel}
-              labelLine={{ stroke: '#d1d5db', strokeWidth: 1 }}
-            >
-              {data.map((entry, index) => {
-                const fillColor = isGender
-                  ? (GENDER_COLORS[entry.name] || COLORS.gray)
-                  : Object.values(COLORS)[index % Object.values(COLORS).length];
-                return <Cell key={`cell-${index}`} fill={fillColor} />;
-              })}
-            </Pie>
-            <RechartsTooltip content={<CustomTooltip />} />
-            <Legend />
-          </PieChart>
-        </ResponsiveContainer>
+        <div className="flex-1" style={{ minHeight: 350 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={data}
+                cx="50%"
+                cy="50%"
+                innerRadius={80}
+                outerRadius={110}
+                paddingAngle={5}
+                dataKey="value"
+                nameKey="name"
+                label={renderCustomizedLabel}
+                labelLine={{ stroke: '#d1d5db', strokeWidth: 1 }}
+              >
+                {data.map((entry, index) => {
+                  const fillColor = isGender
+                    ? (GENDER_COLORS[entry.name] || COLORS.gray)
+                    : Object.values(COLORS)[index % Object.values(COLORS).length];
+                  return <Cell key={`cell-${index}`} fill={fillColor} />;
+                })}
+              </Pie>
+              <RechartsTooltip content={<CustomTooltip />} />
+              <Legend />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
         {comparisonData && <ComparisonTable data={comparisonData} />}
       </div>
     );
@@ -219,7 +221,7 @@ export default function Users() {
   const HorizontalBarChartCard = ({ title, data, emptyHint = null, comparisonData = null }) => {
     if (!data || data.length === 0) {
       return (
-        <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+        <div className="h-full rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
           <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">{title}</h3>
           <div className="flex h-[350px] flex-col items-center justify-center gap-3 text-body-color">
             <Info className="h-8 w-8 text-body-color/40" />
@@ -231,7 +233,7 @@ export default function Users() {
     }
 
     return (
-      <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+      <div className="h-full rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
         <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">{title}</h3>
         <ResponsiveContainer width="100%" height={350}>
           <BarChart data={data} layout="vertical" margin={{ top: 5, right: 50, left: 5, bottom: 5 }}>
@@ -321,7 +323,7 @@ export default function Users() {
           ) : (
             <>
               {/* 新規/リピーター & 性別 */}
-              <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="mb-6 grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
                 <DonutChartCard
                   title="新規ユーザー/リピーター比率"
                   data={chartData.newReturning}
@@ -337,7 +339,7 @@ export default function Users() {
               </div>
 
               {/* 年齢 & デバイス */}
-              <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="mb-6 grid grid-cols-1 items-stretch gap-6 lg:grid-cols-2">
                 <HorizontalBarChartCard
                   title="年齢比率"
                   data={chartData.age}

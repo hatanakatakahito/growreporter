@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カバーセクション デザイン案</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Inter', 'Noto Sans JP', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'] },
+      colors: {
+        primary: { DEFAULT: '#3758F9', blue: '#3b82f6', purple: '#8b5cf6', mid: '#6366f1' },
+        secondary: '#13C296',
+        stroke: '#DFE4EA',
+        'body-color': '#637381',
+        dark: { DEFAULT: '#111928', 2: '#1F2A37', 3: '#374151', 4: '#4B5563', 5: '#6B7280', 6: '#9CA3AF', 7: '#D1D5DB', 8: '#E5E7EB' },
+      },
+      maxWidth: { content: '1400px' },
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif; background: #f0f2f8; }
+  .glass-card {
+    background: rgba(255,255,255,0.65);
+    backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.8);
+  }
+  .ambient-blob { position: fixed; border-radius: 9999px; pointer-events: none; z-index: -1; }
+</style>
+</head>
+<body class="relative">
+<!-- アンビエント背景 -->
+<div class="ambient-blob fixed -top-40 right-20 h-[500px] w-[500px] bg-indigo-200/40 blur-[100px]"></div>
+<div class="ambient-blob fixed bottom-20 left-1/4 h-[400px] w-[400px] bg-violet-200/30 blur-[100px]"></div>
+
+<div class="mx-auto max-w-content px-6 py-12 space-y-16">
+
+  <h2 class="text-center text-2xl font-bold text-gray-900 mb-2">カバーセクション デザイン案</h2>
+  <p class="text-center text-sm text-body-color mb-12">全案グラスモーフィズムUIに統一。クリックで拡大して比較してください。</p>
+
+  <!-- ========== 案A: ミニマルフラット ========== -->
+  <section>
+    <h3 class="mb-4 text-lg font-bold text-gray-800">案A — ミニマルフラット</h3>
+    <p class="mb-4 text-sm text-body-color">背景グラデーションなし。白ガラスカードの中にサイト情報をまとめる。スクリーンショットは右寄せ。余白が多くクリーンな印象。</p>
+    <div class="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/80 shadow-sm">
+      <div class="px-8 py-8">
+        <div class="flex items-center justify-between gap-8">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2.5 mb-1">
+              <svg class="h-5 w-5 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <h1 class="text-2xl font-bold text-gray-900 truncate">工藤建設株式会社_コーポレートサイト</h1>
+            </div>
+            <p class="pl-[30px] text-xs text-gray-400 mb-4">https://www.kudo.co.jp/</p>
+            <p class="pl-[30px] text-sm font-semibold text-gray-800 mb-1.5">工藤建設株式会社【東証上場】｜神奈川の総合建設・不動産・リフォーム</p>
+            <p class="pl-[30px] text-[13px] leading-relaxed text-gray-500 max-w-2xl">工藤建設株式会社（東証スタンダード上場）は神奈川県の総合建設会社です。建築・不動産開発・注文住宅・リフォームで地域に貢献し、高品質な施工を提供します。</p>
+          </div>
+          <div class="flex shrink-0 items-center gap-3">
+            <div class="flex items-center justify-center overflow-hidden rounded-xl border border-gray-200/60 bg-white shadow-md" style="width:280px;height:170px;">
+              <div class="text-center">
+                <svg class="mx-auto h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <span class="mt-1 block text-[11px] text-slate-400">PC</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-center overflow-hidden rounded-xl border border-gray-200/60 bg-white shadow-md" style="width:80px;height:170px;">
+              <div class="text-center">
+                <svg class="mx-auto h-6 w-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <span class="mt-0.5 block text-[9px] text-slate-400">SP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 案B: グラデーション＋ガラスカード ========== -->
+  <section>
+    <h3 class="mb-4 text-lg font-bold text-gray-800">案B — グラデーション背景＋ガラスカード内スクショ</h3>
+    <p class="mb-4 text-sm text-body-color">淡いグラデーション背景にテキストを直接配置。スクリーンショットはガラスカード内に。現行デザインの洗練版。</p>
+    <div class="relative overflow-hidden rounded-2xl border border-slate-200/40">
+      <div class="absolute inset-0" style="background: linear-gradient(135deg, rgba(224, 242, 254, 0.7), rgba(237, 233, 254, 0.5), rgba(254, 249, 195, 0.4));"></div>
+      <div class="absolute inset-0 backdrop-blur-sm"></div>
+      <div class="relative px-8 py-8">
+        <div class="flex items-center justify-between gap-8">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2.5 mb-1">
+              <svg class="h-5 w-5 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <h1 class="text-2xl font-bold text-gray-900 truncate">工藤建設株式会社_コーポレートサイト</h1>
+            </div>
+            <p class="pl-[30px] text-xs text-gray-500 mb-4">https://www.kudo.co.jp/</p>
+            <p class="pl-[30px] text-sm font-semibold text-gray-800 mb-1.5">工藤建設株式会社【東証上場】｜神奈川の総合建設・不動産・リフォーム</p>
+            <p class="pl-[30px] text-[13px] leading-relaxed text-gray-500 max-w-2xl">工藤建設株式会社（東証スタンダード上場）は神奈川県の総合建設会社です。建築・不動産開発・注文住宅・リフォームで地域に貢献し、高品質な施工を提供します。</p>
+          </div>
+          <div class="flex shrink-0 items-center gap-3">
+            <div class="flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm" style="width:280px;height:170px;">
+              <div class="text-center">
+                <svg class="mx-auto h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <span class="mt-1 block text-[11px] text-slate-400">PC</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm" style="width:80px;height:170px;">
+              <div class="text-center">
+                <svg class="mx-auto h-6 w-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <span class="mt-0.5 block text-[9px] text-slate-400">SP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 案C: コンパクト1行 ========== -->
+  <section>
+    <h3 class="mb-4 text-lg font-bold text-gray-800">案C — コンパクト1行ヘッダー</h3>
+    <p class="mb-4 text-sm text-body-color">サイト名・URLを1行にまとめ、メタ情報はツールチップに。スクリーンショットを右端に小さく配置。省スペースでデータ領域を最大化。</p>
+    <div class="rounded-2xl bg-white/60 backdrop-blur-xl border border-white/80 shadow-sm">
+      <div class="px-8 py-5">
+        <div class="flex items-center justify-between gap-6">
+          <div class="flex items-center gap-4 min-w-0 flex-1">
+            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 shadow-lg shadow-blue-200/50">
+              <svg class="h-6 w-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            </div>
+            <div class="min-w-0">
+              <div class="flex items-baseline gap-3">
+                <h1 class="text-xl font-bold text-gray-900 truncate">工藤建設株式会社_コーポレートサイト</h1>
+                <span class="shrink-0 text-xs text-gray-400">https://www.kudo.co.jp/</span>
+              </div>
+              <p class="mt-0.5 text-sm text-gray-500 truncate">工藤建設株式会社【東証上場】｜神奈川の総合建設・不動産・リフォーム</p>
+            </div>
+          </div>
+          <div class="flex shrink-0 items-center gap-2">
+            <div class="flex items-center justify-center overflow-hidden rounded-lg border border-gray-200/60 bg-white shadow-sm" style="width:120px;height:72px;">
+              <div class="text-center">
+                <svg class="mx-auto h-5 w-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <span class="block text-[9px] text-slate-400">PC</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-center overflow-hidden rounded-lg border border-gray-200/60 bg-white shadow-sm" style="width:36px;height:72px;">
+              <div class="text-center">
+                <svg class="mx-auto h-4 w-4 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <span class="block text-[8px] text-slate-400">SP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 案D: 左アクセント＋テキスト中心 ========== -->
+  <section>
+    <h3 class="mb-4 text-lg font-bold text-gray-800">案D — 左アクセントバー＋テキスト中心</h3>
+    <p class="mb-4 text-sm text-body-color">左端にブランドカラーのグラデーションバーを配置。テキストを左、スクリーンショットを右に。洗練されたビジネス感。</p>
+    <div class="flex overflow-hidden rounded-2xl bg-white/60 backdrop-blur-xl border border-white/80 shadow-sm">
+      <div class="w-1.5 shrink-0 bg-gradient-to-b from-blue-500 via-indigo-500 to-purple-500"></div>
+      <div class="flex-1 px-8 py-7">
+        <div class="flex items-center justify-between gap-8">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2.5 mb-1">
+              <svg class="h-5 w-5 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <h1 class="text-2xl font-bold text-gray-900 truncate">工藤建設株式会社_コーポレートサイト</h1>
+            </div>
+            <p class="pl-[30px] text-xs text-gray-400 mb-4">https://www.kudo.co.jp/</p>
+            <p class="pl-[30px] text-sm font-semibold text-gray-800 mb-1.5">工藤建設株式会社【東証上場】｜神奈川の総合建設・不動産・リフォーム</p>
+            <p class="pl-[30px] text-[13px] leading-relaxed text-gray-500 max-w-2xl">工藤建設株式会社（東証スタンダード上場）は神奈川県の総合建設会社です。建築・不動産開発・注文住宅・リフォームで地域に貢献し、高品質な施工を提供します。</p>
+          </div>
+          <div class="flex shrink-0 items-center gap-3">
+            <div class="flex items-center justify-center overflow-hidden rounded-xl border border-gray-200/60 bg-white shadow-md" style="width:280px;height:170px;">
+              <div class="text-center">
+                <svg class="mx-auto h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <span class="mt-1 block text-[11px] text-slate-400">PC</span>
+              </div>
+            </div>
+            <div class="flex items-center justify-center overflow-hidden rounded-xl border border-gray-200/60 bg-white shadow-md" style="width:80px;height:170px;">
+              <div class="text-center">
+                <svg class="mx-auto h-6 w-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <span class="mt-0.5 block text-[9px] text-slate-400">SP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 案E: スクリーンショット重ね ========== -->
+  <section>
+    <h3 class="mb-4 text-lg font-bold text-gray-800">案E — スクリーンショット重ね配置</h3>
+    <p class="mb-4 text-sm text-body-color">PCスクリーンショットの上にスマホを重ねて配置。ヒーロー的な見栄え。グラデーション背景。</p>
+    <div class="relative overflow-hidden rounded-2xl border border-slate-200/40">
+      <div class="absolute inset-0" style="background: linear-gradient(135deg, rgba(224, 242, 254, 0.7), rgba(237, 233, 254, 0.5), rgba(254, 249, 195, 0.4));"></div>
+      <div class="absolute inset-0 backdrop-blur-sm"></div>
+      <div class="relative px-8 py-8">
+        <div class="flex items-center justify-between gap-10">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2.5 mb-1">
+              <svg class="h-5 w-5 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+              <h1 class="text-2xl font-bold text-gray-900 truncate">工藤建設株式会社_コーポレートサイト</h1>
+            </div>
+            <p class="pl-[30px] text-xs text-gray-500 mb-4">https://www.kudo.co.jp/</p>
+            <p class="pl-[30px] text-sm font-semibold text-gray-800 mb-1.5">工藤建設株式会社【東証上場】｜神奈川の総合建設・不動産・リフォーム</p>
+            <p class="pl-[30px] text-[13px] leading-relaxed text-gray-500 max-w-2xl">工藤建設株式会社（東証スタンダード上場）は神奈川県の総合建設会社です。建築・不動産開発・注文住宅・リフォームで地域に貢献し、高品質な施工を提供します。</p>
+          </div>
+          <!-- スクリーンショット重ね配置 -->
+          <div class="relative shrink-0" style="width:320px; height:190px;">
+            <!-- PC -->
+            <div class="absolute left-0 top-0 flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm" style="width:280px;height:170px;">
+              <div class="text-center">
+                <svg class="mx-auto h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                <span class="mt-1 block text-[11px] text-slate-400">PC</span>
+              </div>
+            </div>
+            <!-- SP（右下に重ねる） -->
+            <div class="absolute right-0 bottom-0 flex items-center justify-center overflow-hidden rounded-2xl border-2 border-white bg-white/70 shadow-2xl backdrop-blur-sm" style="width:70px;height:130px; z-index:2;">
+              <div class="text-center">
+                <svg class="mx-auto h-5 w-5 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                <span class="mt-0.5 block text-[8px] text-slate-400">SP</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ========== 案F: 背景なし・ボーダーのみ ========== -->
+  <section>
+    <h3 class="mb-4 text-lg font-bold text-gray-800">案F — ボーダーレス・背景なし</h3>
+    <p class="mb-4 text-sm text-body-color">カード枠なし。ページ背景をそのまま活かし、下線のみで区切る。最も軽い印象。アンビエント背景が透けて美しい。</p>
+    <div class="border-b border-gray-200/50 pb-8">
+      <div class="flex items-center justify-between gap-8">
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center gap-2.5 mb-1">
+            <svg class="h-5 w-5 text-primary shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <h1 class="text-2xl font-bold text-gray-900 truncate">工藤建設株式会社_コーポレートサイト</h1>
+          </div>
+          <p class="pl-[30px] text-xs text-gray-400 mb-4">https://www.kudo.co.jp/</p>
+          <p class="pl-[30px] text-sm font-semibold text-gray-800 mb-1.5">工藤建設株式会社【東証上場】｜神奈川の総合建設・不動産・リフォーム</p>
+          <p class="pl-[30px] text-[13px] leading-relaxed text-gray-500 max-w-2xl">工藤建設株式会社（東証スタンダード上場）は神奈川県の総合建設会社です。建築・不動産開発・注文住宅・リフォームで地域に貢献し、高品質な施工を提供します。</p>
+        </div>
+        <div class="flex shrink-0 items-center gap-3">
+          <div class="flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-lg shadow-slate-200/30 backdrop-blur-sm" style="width:280px;height:170px;">
+            <div class="text-center">
+              <svg class="mx-auto h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              <span class="mt-1 block text-[11px] text-slate-400">PC</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-lg shadow-slate-200/30 backdrop-blur-sm" style="width:80px;height:170px;">
+            <div class="text-center">
+              <svg class="mx-auto h-6 w-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+              <span class="mt-0.5 block text-[9px] text-slate-400">SP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>
