@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 
 /**
  * 個別制限設定モーダル
@@ -62,21 +64,10 @@ export default function CustomLimitsModal({ user, currentLimits, onClose, onSave
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="mx-4 w-full max-w-2xl rounded-lg border border-stroke bg-white p-6 shadow-xl dark:border-dark-3 dark:bg-dark-2">
-        {/* ヘッダー */}
-        <div className="mb-6 flex items-center justify-between">
-          <h3 className="text-xl font-bold text-dark dark:text-white">
-            個別制限の設定
-          </h3>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-body-color transition hover:bg-gray-2 dark:text-dark-6 dark:hover:bg-dark-3"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={true} onClose={onClose} size="2xl">
+      <DialogTitle>個別制限の設定</DialogTitle>
 
+      <DialogBody>
         {/* エラー表示 */}
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-lg bg-red-50 p-3 text-red-600 dark:bg-red-900/20 dark:text-red-400">
@@ -93,7 +84,7 @@ export default function CustomLimitsModal({ user, currentLimits, onClose, onSave
         </div>
 
         {/* フォーム */}
-        <form onSubmit={handleSubmit}>
+        <form id="custom-limits-form" onSubmit={handleSubmit}>
           <div className="space-y-4">
             {/* サイト登録数 */}
             <div>
@@ -183,29 +174,18 @@ export default function CustomLimitsModal({ user, currentLimits, onClose, onSave
               />
             </div>
           </div>
-
-          {/* ボタン */}
-          <div className="mt-6 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={loading}
-              className="rounded-lg border border-stroke bg-white px-6 py-2 font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-            >
-              キャンセル
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2 font-medium text-white transition hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading && <LoadingSpinner />}
-              {loading ? '保存中...' : '保存'}
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+      </DialogBody>
+
+      <DialogActions>
+        <Button plain onClick={onClose} disabled={loading}>
+          キャンセル
+        </Button>
+        <Button color="blue" type="submit" form="custom-limits-form" disabled={loading}>
+          {loading && <LoadingSpinner />}
+          {loading ? '保存中...' : '保存'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
-

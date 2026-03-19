@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, FileText, Globe, Bell, AlertTriangle } from 'lucide-react';
+import { FileText, Globe, Bell, AlertTriangle } from 'lucide-react';
 import { getPageTypeLabel } from '../../constants/pageTypes';
 import { useSite } from '../../contexts/SiteContext';
+import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 
 // アラートタイプの日本語表示マッピング
 const ALERT_TYPE_LABELS = {
@@ -41,8 +43,6 @@ export default function GlobalMemoNotificationModal({
   const navigate = useNavigate();
   const { selectSite } = useSite();
   const [activeTab, setActiveTab] = useState('all');
-
-  if (!isOpen) return null;
 
   const handleMarkAllAsRead = async () => {
     try {
@@ -111,63 +111,45 @@ export default function GlobalMemoNotificationModal({
   const hasItems = displayMemos.length > 0 || displayAlerts.length > 0;
 
   return (
-    <div
-      className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md rounded-lg border border-stroke bg-white shadow-xl dark:border-dark-3 dark:bg-dark-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* ヘッダー */}
-        <div className="flex items-center justify-between border-b border-stroke p-4 dark:border-dark-3">
-          <h3 className="text-lg font-semibold text-dark dark:text-white">
-            通知
-          </h3>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1 text-body-color transition hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onClose={onClose} size="md">
+      <DialogTitle>通知</DialogTitle>
 
-        {/* タブ */}
-        <div className="flex border-b border-stroke dark:border-dark-3">
-          <button
-            onClick={() => setActiveTab('all')}
-            className={`flex-1 px-4 py-2.5 text-xs font-medium transition ${
-              activeTab === 'all'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-body-color hover:text-dark dark:hover:text-white'
-            }`}
-          >
-            すべて ({totalCount})
-          </button>
-          <button
-            onClick={() => setActiveTab('alert')}
-            className={`flex-1 px-4 py-2.5 text-xs font-medium transition ${
-              activeTab === 'alert'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-body-color hover:text-dark dark:hover:text-white'
-            }`}
-          >
-            アラート ({unreadAlerts.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('memo')}
-            className={`flex-1 px-4 py-2.5 text-xs font-medium transition ${
-              activeTab === 'memo'
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-body-color hover:text-dark dark:hover:text-white'
-            }`}
-          >
-            メモ ({unreadMemos.length})
-          </button>
-        </div>
+      {/* タブ */}
+      <div className="-mx-(--gutter) mt-4 flex border-b border-stroke dark:border-dark-3">
+        <button
+          onClick={() => setActiveTab('all')}
+          className={`flex-1 px-4 py-2.5 text-xs font-medium transition ${
+            activeTab === 'all'
+              ? 'border-b-2 border-primary text-primary'
+              : 'text-body-color hover:text-dark dark:hover:text-white'
+          }`}
+        >
+          すべて ({totalCount})
+        </button>
+        <button
+          onClick={() => setActiveTab('alert')}
+          className={`flex-1 px-4 py-2.5 text-xs font-medium transition ${
+            activeTab === 'alert'
+              ? 'border-b-2 border-primary text-primary'
+              : 'text-body-color hover:text-dark dark:hover:text-white'
+          }`}
+        >
+          アラート ({unreadAlerts.length})
+        </button>
+        <button
+          onClick={() => setActiveTab('memo')}
+          className={`flex-1 px-4 py-2.5 text-xs font-medium transition ${
+            activeTab === 'memo'
+              ? 'border-b-2 border-primary text-primary'
+              : 'text-body-color hover:text-dark dark:hover:text-white'
+          }`}
+        >
+          メモ ({unreadMemos.length})
+        </button>
+      </div>
 
-        {/* コンテンツ */}
-        <div className="max-h-[500px] overflow-y-auto p-4">
+      <DialogBody>
+        <div className="max-h-[500px] overflow-y-auto">
           {!hasItems ? (
             <div className="py-8 text-center">
               <Bell className="mx-auto mb-2 h-12 w-12 text-body-color/30" />
@@ -279,31 +261,21 @@ export default function GlobalMemoNotificationModal({
           )}
         </div>
 
-        {/* フッター */}
-        <div className="border-t border-stroke p-4 dark:border-dark-3">
-          {totalCount > 0 && (
-            <div className="mb-3 text-center text-xs text-body-color">
-              {totalCount}件の未読通知
-            </div>
-          )}
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="flex-1 rounded-md border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-            >
-              閉じる
-            </button>
-            {totalCount > 0 && (
-              <button
-                onClick={handleMarkAllAsRead}
-                className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-              >
-                すべて既読にする
-              </button>
-            )}
+        {totalCount > 0 && (
+          <div className="mt-3 text-center text-xs text-body-color">
+            {totalCount}件の未読通知
           </div>
-        </div>
-      </div>
-    </div>
+        )}
+      </DialogBody>
+
+      <DialogActions>
+        <Button plain onClick={onClose}>閉じる</Button>
+        {totalCount > 0 && (
+          <Button color="blue" onClick={handleMarkAllAsRead}>
+            すべて既読にする
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
   );
 }

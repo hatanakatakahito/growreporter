@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import logoImg from '../../assets/img/logo.svg';
 import loginIllustration from '../../assets/img/login.svg';
 import { httpsCallable } from 'firebase/functions';
@@ -339,13 +340,14 @@ export default function Login() {
                 </div>
 
                 {/* 送信ボタン */}
-                <button
+                <Button
                   type="submit"
+                  color="blue"
                   disabled={isSubmitting}
-                  className="mb-4 w-full rounded-md bg-primary px-4 py-3 text-center text-sm font-medium text-white hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mb-4 w-full"
                 >
                   {isSubmitting ? '処理中...' : 'ログイン'}
-                </button>
+                </Button>
               </form>
 
               {/* 区切り線 */}

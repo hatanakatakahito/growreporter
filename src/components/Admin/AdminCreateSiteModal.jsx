@@ -2,8 +2,10 @@ import { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
-import { X, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import Step1BasicInfo from '../GrowReporter/SiteRegistration/Step1BasicInfo';
+import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 
 /**
  * 管理者サイト登録モーダル（Step1BasicInfo再利用）
@@ -93,8 +95,8 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
   if (showConfirm) {
     const data = getLatestData();
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-dark-2">
+      <Dialog open={true} onClose={() => { setShowConfirm(false); setError(null); }} size="md">
+        <DialogBody>
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
               <AlertCircle className="h-6 w-6 text-primary" />
@@ -133,59 +135,35 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
               {error}
             </div>
           )}
+        </DialogBody>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => { setShowConfirm(false); setError(null); }}
-              disabled={loading}
-              className="flex-1 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-            >
-              戻る
-            </button>
-            <button
-              onClick={handleCreate}
-              disabled={loading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
-                  登録中...
-                </>
-              ) : (
-                'サイトを登録'
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
+        <DialogActions>
+          <Button plain onClick={() => { setShowConfirm(false); setError(null); }} disabled={loading}>
+            戻る
+          </Button>
+          <Button color="blue" onClick={handleCreate} disabled={loading}>
+            {loading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                登録中...
+              </>
+            ) : (
+              'サイトを登録'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
   }
 
   // サイト情報入力フォーム
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-lg bg-white shadow-xl dark:bg-dark-2">
-        {/* ヘッダー */}
-        <div className="flex items-center justify-between border-b border-stroke p-6 dark:border-dark-3">
-          <div>
-            <h2 className="text-xl font-semibold text-dark dark:text-white">
-              サイト登録
-            </h2>
-            <p className="mt-1 text-sm text-body-color dark:text-dark-6">
-              {targetUserName}さんのサイトを登録します
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-body-color transition hover:bg-gray-100 dark:hover:bg-dark-3"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={true} onClose={onClose} size="4xl">
+      <DialogTitle>サイト登録</DialogTitle>
+      <DialogDescription>{targetUserName}さんのサイトを登録します</DialogDescription>
 
-        {/* Step1BasicInfo 再利用 */}
-        <form onSubmit={handleSubmit} className="p-6">
+      <form id="create-site-form" onSubmit={handleSubmit}>
+        <DialogBody>
           <Step1BasicInfo
             siteData={siteData}
             setSiteData={setSiteData}
@@ -199,26 +177,17 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
               {error}
             </div>
           )}
+        </DialogBody>
+      </form>
 
-          {/* ボタン */}
-          <div className="mt-6 flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-            >
-              キャンセル
-            </button>
-            <button
-              type="submit"
-              disabled={!isValid()}
-              className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90 disabled:opacity-50"
-            >
-              確認画面へ
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <DialogActions>
+        <Button plain onClick={onClose}>
+          キャンセル
+        </Button>
+        <Button color="blue" type="submit" form="create-site-form" disabled={!isValid()}>
+          確認画面へ
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }

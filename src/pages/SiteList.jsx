@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { db, functions } from '../config/firebase';
 import { collection, query, where, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import { Button } from '@/components/ui/button';
 
 export default function SiteList() {
   const [sites, setSites] = useState([]);
@@ -288,14 +289,15 @@ export default function SiteList() {
                       </svg>
                       編集
                     </Link>
-                    <button
+                    <Button
+                      outline
                       onClick={() => setDeleteTarget(site)}
-                      className="rounded-md border border-red-200 px-3 py-2 text-red-600 transition hover:bg-red-50 dark:border-red-900/30 dark:text-red-400 dark:hover:bg-red-900/20"
+                      className="!text-red-600 !border-red-200 dark:!text-red-400 dark:!border-red-900/30"
                     >
-                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg data-slot="icon" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -317,20 +319,22 @@ export default function SiteList() {
               「{deleteTarget.siteName}」を削除します。この操作は取り消せません。
             </p>
             <div className="flex gap-3">
-              <button
+              <Button
+                outline
                 onClick={() => setDeleteTarget(null)}
                 disabled={isDeleting}
-                className="flex-1 rounded-md border border-stroke px-4 py-2.5 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+                className="flex-1"
               >
                 キャンセル
-              </button>
-              <button
+              </Button>
+              <Button
+                color="red"
                 onClick={handleDelete}
                 disabled={isDeleting}
-                className="flex-1 rounded-md bg-red-600 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex-1"
               >
                 {isDeleting ? '削除中...' : '削除'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

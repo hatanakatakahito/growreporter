@@ -10,6 +10,7 @@ import { db } from '../config/firebase';
 import { doc, getDoc, getDocFromServer } from 'firebase/firestore';
 import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, Copy, Check, AlertCircle } from 'lucide-react';
 import { SITE_TYPES, SITE_PURPOSES } from '../constants/siteOptions';
+import { Button } from '@/components/ui/button';
 
 /**
  * サイト詳細画面（ユーザー向け・オーナーまたは同一アカウントメンバー）
@@ -340,23 +341,23 @@ export default function SiteDetail() {
           <h3 className="text-lg font-semibold text-dark dark:text-white">
             ページスクレイピングデータ
           </h3>
-          <button
+          <Button
+            color="blue"
             onClick={handleStartScraping}
             disabled={isScrapingLoading}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isScrapingLoading ? (
               <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
+                <RefreshCw data-slot="icon" className="h-4 w-4 animate-spin" />
                 スクレイピング中...
               </>
             ) : (
               <>
-                <Search className="h-4 w-4" />
+                <Search data-slot="icon" className="h-4 w-4" />
                 スクレイピング開始
               </>
             )}
-          </button>
+          </Button>
         </div>
 
         <p className="mb-4 text-xs text-body-color dark:text-dark-6">
@@ -464,17 +465,19 @@ export default function SiteDetail() {
             )}
 
             <div className="flex gap-3">
-              <button
+              <Button
+                outline
                 onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
                 disabled={deleteLoading}
-                className="flex-1 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                className="flex-1"
               >
                 キャンセル
-              </button>
-              <button
+              </Button>
+              <Button
+                color="red"
                 onClick={handleDeleteSite}
                 disabled={deleteLoading}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+                className="flex-1"
               >
                 {deleteLoading ? (
                   <>
@@ -484,7 +487,7 @@ export default function SiteDetail() {
                 ) : (
                   '削除する'
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

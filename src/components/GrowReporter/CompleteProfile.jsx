@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import logoImg from '../../assets/img/logo.svg';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
@@ -222,13 +223,14 @@ export default function CompleteProfile() {
               </div>
 
               {/* 送信ボタン */}
-              <button
+              <Button
                 type="submit"
+                color="blue"
                 disabled={isSubmitting}
-                className="w-full rounded-md bg-primary px-4 py-3 text-center text-sm font-medium text-white hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full"
               >
                 {isSubmitting ? '保存中...' : 'サイト登録へ'}
-              </button>
+              </Button>
             </form>
           </div>
         </div>

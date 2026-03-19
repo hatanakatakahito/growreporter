@@ -6,6 +6,7 @@ import { PLANS, PLAN_TYPES, getPlanBadgeColor, isUnlimited } from '../constants/
 import { Check, ArrowLeft } from 'lucide-react';
 import UpgradeModal from '../components/common/UpgradeModal';
 import { setPageTitle } from '../utils/pageTitle';
+import { Button } from '@/components/ui/button';
 
 /**
  * プラン情報・プラン変更案内ページ（オーナーのみアクセス可）
@@ -61,12 +62,12 @@ export default function PlanInfo() {
       <div className="w-full max-w-[1100px] mx-auto px-6 py-10 box-border">
         {/* ヘッダー */}
         <div className="mb-8 flex items-center gap-4">
-          <button
+          <Button
+            outline
             onClick={() => navigate('/account/settings')}
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-300 bg-white transition hover:bg-gray-50 dark:border-dark-3 dark:bg-dark-2 dark:hover:bg-dark-3"
           >
-            <ArrowLeft className="h-5 w-5 text-gray-700 dark:text-white" />
-          </button>
+            <ArrowLeft data-slot="icon" className="h-5 w-5" />
+          </Button>
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">現在のプラン</h1>
             <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
@@ -143,12 +144,13 @@ export default function PlanInfo() {
                       ご利用中
                     </div>
                   ) : p.price > (plan?.price || 0) ? (
-                    <button
+                    <Button
+                      color="blue"
                       onClick={() => setIsUpgradeModalOpen(true)}
-                      className="w-full rounded-lg bg-primary py-2.5 text-sm font-medium text-white transition hover:bg-primary/90"
+                      className="w-full"
                     >
                       アップグレード
-                    </button>
+                    </Button>
                   ) : (
                     <div className="rounded-lg border border-gray-200 py-2.5 text-center text-sm text-gray-400 dark:border-dark-3">
                       —

@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { X, CheckCircle, Star } from 'lucide-react';
+import { CheckCircle, Star } from 'lucide-react';
 import { db } from '../../config/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useQueryClient } from '@tanstack/react-query';
+import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 
 export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
   const queryClient = useQueryClient();
-  
+
   const [formData, setFormData] = useState({
     actualImpact: '',
     evaluation: '',
     rating: 3,
   });
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
 
@@ -20,7 +22,7 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
     if (item) {
       const hasEvaluation = item.rating && item.evaluation;
       setIsReadOnly(hasEvaluation);
-      
+
       setFormData({
         actualImpact: item.actualImpact || '',
         evaluation: item.evaluation || '',
@@ -31,12 +33,12 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (isReadOnly) {
       onClose();
       return;
     }
-    
+
     setIsSaving(true);
 
     try {
@@ -59,7 +61,7 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
     }
   };
 
-  if (!isOpen || !item) return null;
+  if (!item) return null;
 
   const categoryColors = {
     acquisition: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300',
@@ -78,23 +80,15 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg bg-white p-6 dark:bg-dark-2">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CheckCircle className="h-6 w-6 text-green-500" />
-            <h3 className="text-xl font-semibold text-dark dark:text-white">
-              {isReadOnly ? '改善課題の評価詳細' : '改善課題の評価'}
-            </h3>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 hover:bg-gray-2 dark:hover:bg-dark-3"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onClose={onClose} size="2xl">
+      <DialogTitle>
+        <span className="flex items-center gap-3">
+          <CheckCircle className="h-6 w-6 text-green-500" />
+          {isReadOnly ? '改善課題の評価詳細' : '改善課題の評価'}
+        </span>
+      </DialogTitle>
 
+      <DialogBody>
         <div className="mb-6 space-y-3 rounded-lg border border-stroke bg-gray-2 p-4 dark:border-dark-3 dark:bg-dark-3">
           <div className="flex items-start justify-between">
             <h4 className="flex-1 font-medium text-dark dark:text-white">
@@ -104,11 +98,11 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
               {categoryLabels[item.category]}
             </span>
           </div>
-          
+
           <p className="text-sm text-body-color">
             {item.description}
           </p>
-          
+
           {item.expectedImpact && (
             <div className="border-t border-stroke pt-2 dark:border-dark-3">
               <p className="text-xs text-body-color">
@@ -119,7 +113,7 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
           )}
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form id="evaluation-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
               実際の効果
@@ -181,39 +175,25 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
               </p>
             </div>
           </div>
-
-          <div className="flex justify-end gap-3 border-t border-stroke pt-4 dark:border-dark-3">
-            {isReadOnly ? (
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
-              >
-                閉じる
-              </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-                  disabled={isSaving}
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                  disabled={isSaving}
-                >
-                  {isSaving ? '保存中...' : '評価を保存'}
-                </button>
-              </>
-            )}
-          </div>
         </form>
-      </div>
-    </div>
+      </DialogBody>
+
+      <DialogActions>
+        {isReadOnly ? (
+          <Button color="blue" onClick={onClose}>
+            閉じる
+          </Button>
+        ) : (
+          <>
+            <Button plain onClick={onClose} disabled={isSaving}>
+              キャンセル
+            </Button>
+            <Button color="blue" type="submit" form="evaluation-form" disabled={isSaving}>
+              {isSaving ? '保存中...' : '評価を保存'}
+            </Button>
+          </>
+        )}
+      </DialogActions>
+    </Dialog>
   );
 }
-

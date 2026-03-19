@@ -5,6 +5,8 @@ import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getPlanBadgeColor } from '../../constants/plans';
+import { Badge } from '../ui/badge';
+import { Avatar } from '../ui/avatar';
 import logoImg from '../../assets/img/logo.svg';
 
 export default function Sidebar() {
@@ -333,18 +335,12 @@ export default function Sidebar() {
           >
             {isSidebarOpen ? (
               <div className="flex items-center gap-3 p-2">
-                {currentUser?.photoURL ? (
-                  <img
-                    src={currentUser.photoURL}
-                    alt="Profile"
-                    className="h-10 w-10 rounded-full object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-white text-sm font-semibold">
-                    {userInitial}
-                  </div>
-                )}
+                <Avatar
+                  src={currentUser?.photoURL || null}
+                  initials={!currentUser?.photoURL ? userInitial : undefined}
+                  alt={getUserName()}
+                  className="size-10 bg-primary text-white"
+                />
                 <div className="flex-1 min-w-0 text-left">
                   <p className="truncate text-sm font-medium text-dark dark:text-white">
                     {getUserName()}
@@ -352,29 +348,22 @@ export default function Sidebar() {
                   <p className="truncate text-xs text-body-color">
                     {currentUser?.email}
                   </p>
-                  <span className={`mt-1 inline-block rounded px-2 py-0.5 text-[10px] font-bold leading-none ${planBadgeColor}`}>
+                  <Badge color={userPlan === 'premium' ? 'purple' : userPlan === 'standard' ? 'blue' : 'zinc'} className="mt-1">
                     {planLabel}
-                  </span>
+                  </Badge>
                 </div>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-1 p-1">
-                {currentUser?.photoURL ? (
-                  <img
-                    src={currentUser.photoURL}
-                    alt="Profile"
-                    className="h-8 w-8 rounded-full object-cover"
-                    title={getUserName()}
-                    referrerPolicy="no-referrer"
-                  />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-white text-xs font-semibold" title={getUserName()}>
-                    {userInitial}
-                  </div>
-                )}
-                <span className={`rounded px-1.5 py-0.5 text-[8px] font-bold leading-none ${planBadgeColor}`}>
+                <Avatar
+                  src={currentUser?.photoURL || null}
+                  initials={!currentUser?.photoURL ? userInitial : undefined}
+                  alt={getUserName()}
+                  className="size-8 bg-primary text-white"
+                />
+                <Badge color={userPlan === 'premium' ? 'purple' : userPlan === 'standard' ? 'blue' : 'zinc'} className="text-[8px]">
                   {planLabel}
-                </span>
+                </Badge>
               </div>
             )}
           </button>

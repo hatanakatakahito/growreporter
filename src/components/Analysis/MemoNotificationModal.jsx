@@ -1,13 +1,13 @@
 import React from 'react';
-import { X, FileText } from 'lucide-react';
+import { FileText } from 'lucide-react';
 import { getPageTypeLabel } from '../../constants/pageTypes';
+import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 
 /**
  * メモ通知モーダルコンポーネント
  */
 export default function MemoNotificationModal({ isOpen, onClose, unreadMemos, onMarkAsRead }) {
-  if (!isOpen) return null;
-
   const handleMarkAsRead = async () => {
     // 「既読にする」ボタンをクリックした時に既読マーク
     try {
@@ -55,30 +55,11 @@ export default function MemoNotificationModal({ isOpen, onClose, unreadMemos, on
   };
 
   return (
-    <div 
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-      onClick={handleClose}
-    >
-      {/* モーダル */}
-      <div 
-        className="w-full max-w-md rounded-lg border border-stroke bg-white shadow-xl dark:border-dark-3 dark:bg-dark-2"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* ヘッダー */}
-        <div className="flex items-center justify-between border-b border-stroke p-4 dark:border-dark-3">
-          <h3 className="text-lg font-semibold text-dark dark:text-white">
-            メモ通知
-          </h3>
-          <button
-            onClick={handleClose}
-            className="rounded-lg p-1 text-body-color transition hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={isOpen} onClose={handleClose} size="md">
+      <DialogTitle>メモ通知</DialogTitle>
 
-        {/* コンテンツ */}
-        <div className="max-h-[500px] overflow-y-auto p-4">
+      <DialogBody>
+        <div className="max-h-[500px] overflow-y-auto">
           {unreadMemos.length === 0 ? (
             <div className="py-8 text-center">
               <FileText className="mx-auto mb-2 h-12 w-12 text-body-color/30" />
@@ -133,31 +114,21 @@ export default function MemoNotificationModal({ isOpen, onClose, unreadMemos, on
           )}
         </div>
 
-        {/* フッター */}
-        <div className="border-t border-stroke p-4 dark:border-dark-3">
-          {unreadMemos.length > 0 && (
-            <div className="mb-3 text-center text-xs text-body-color">
-              {unreadMemos.length}件の未読メモ
-            </div>
-          )}
-          <div className="flex gap-3">
-            <button
-              onClick={handleClose}
-              className="flex-1 rounded-md border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-            >
-              閉じる
-            </button>
-            {unreadMemos.length > 0 && (
-              <button
-                onClick={handleMarkAsRead}
-                className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-              >
-                すべて既読にする
-              </button>
-            )}
+        {unreadMemos.length > 0 && (
+          <div className="mt-3 text-center text-xs text-body-color">
+            {unreadMemos.length}件の未読メモ
           </div>
-        </div>
-      </div>
-    </div>
+        )}
+      </DialogBody>
+
+      <DialogActions>
+        <Button plain onClick={handleClose}>閉じる</Button>
+        {unreadMemos.length > 0 && (
+          <Button color="blue" onClick={handleMarkAsRead}>
+            すべて既読にする
+          </Button>
+        )}
+      </DialogActions>
+    </Dialog>
   );
 }

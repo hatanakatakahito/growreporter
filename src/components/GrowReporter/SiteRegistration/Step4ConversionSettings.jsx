@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import { db } from '../../../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
@@ -379,12 +380,12 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
               <p className="text-sm text-body-color">
                 {selectedEvents.length}件選択中
               </p>
-              <button
+              <Button
                 onClick={() => setShowEventModal(false)}
-                className="rounded-md bg-primary px-6 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
+                color="blue"
               >
                 完了
-              </button>
+              </Button>
             </div>
           </div>
         </div>
