@@ -342,11 +342,13 @@ export default function Keywords() {
                 </div>
               ) : (
                 <DataTable
+                  tableKey="analysis-keywords"
                   columns={[
                     {
                       key: 'keyword',
                       label: 'キーワード',
                       sortable: true,
+                      required: true,
                       tooltip: 'keywords',
                     },
                     {

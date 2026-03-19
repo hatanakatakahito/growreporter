@@ -57,7 +57,7 @@ function extractPathFromTitleOrDescription(title, description) {
  * @param {string} siteId - サイトID
  * @param {string} currentUserEmail - 現在のユーザーのメールアドレス
  * @param {function} onStatusChange - ステータス変更時のコールバック
- * @param {{ improvementFocus?: string, forceRegenerate?: boolean }} [options] - improvementFocus: 'balance'|'acquisition'|'conversion'|'branding'|'usability', forceRegenerate: キャッシュを無視
+ * @param {{ improvementFocus?: string, userNote?: string, forceRegenerate?: boolean }} [options] - improvementFocus: 'balance'|'acquisition'|'conversion'|'branding'|'usability', userNote: ユーザー自由記述, forceRegenerate: キャッシュを無視
  * @returns {Promise<{success: boolean, count: number, error?: string}>} 処理結果
  */
 export async function generateAndAddImprovements(siteId, currentUserEmail, onStatusChange, options = {}) {
@@ -96,6 +96,7 @@ export async function generateAndAddImprovements(siteId, currentUserEmail, onSta
     // Step 3: AI生成（既存改善案を含める）
     const generateAISummary = httpsCallable(functions, 'generateAISummary');
     const improvementFocus = options.improvementFocus || 'balance';
+    const userNote = options.userNote || '';
     const result = await generateAISummary({
       siteId,
       pageType: 'comprehensive_improvement',
@@ -104,6 +105,7 @@ export async function generateAndAddImprovements(siteId, currentUserEmail, onSta
       metrics: comprehensiveData,
       forceRegenerate: true,
       improvementFocus,
+      userNote,
       existingImprovements,
     });
 
@@ -265,14 +267,61 @@ export async function generateAndAddImprovements(siteId, currentUserEmail, onSta
       });
     });
 
-    await Promise.all(promises);
+    const addedDocs = await Promise.all(promises);
 
     console.log('[generateAndAddImprovements] 追加完了');
-    
+
+    // ========== Phase 2: 深掘りスクレイピング＋モックアップ生成 ==========
+    // 対象URLのある改善案を抽出
+    const improvementsWithUrls = toAdd
+      .map((suggestion, index) => {
+        let targetPagePath = (suggestion.targetPagePath || suggestion.targetPageUrl || '').trim();
+        if (!targetPagePath) {
+          const extracted = extractPathFromTitleOrDescription(suggestion.title, suggestion.description);
+          if (extracted && extracted !== '/') targetPagePath = extracted;
+        }
+        const targetPageUrl = buildTargetPageUrl(targetPagePath);
+        return targetPageUrl ? { id: addedDocs[index].id, targetPageUrl } : null;
+      })
+      .filter(Boolean);
+
+    // Phase 1完了 → すぐにsuccessを返す
     if (onStatusChange) {
       onStatusChange('success', toAdd.length);
     }
-    
+
+    // ========== Phase 2: バックグラウンドで深掘り＋モックアップ生成（高速化版） ==========
+    if (improvementsWithUrls.length > 0) {
+      // fire-and-forget: deepScrapeを1回で一括実行 → mockup生成を全件並列
+      (async () => {
+        try {
+          console.log('[generateAndAddImprovements] Phase 2(BG): 開始', improvementsWithUrls.length, '件');
+          const deepScrape = httpsCallable(functions, 'deepScrapeForImprovement');
+          const generateMockup = httpsCallable(functions, 'generateImprovementMockup');
+
+          // Step 1: 全改善案を1回のdeepScrape呼び出しでまとめて処理（ブラウザ起動1回）
+          try {
+            await deepScrape({ siteId, improvements: improvementsWithUrls });
+            console.log('[Phase2] deepScrape一括完了');
+          } catch (e) {
+            console.warn('[Phase2] deepScrapeエラー:', e.message);
+          }
+
+          // Step 2: モックアップ生成を全件並列実行
+          const mockupResults = await Promise.allSettled(
+            improvementsWithUrls.map(imp =>
+              generateMockup({ siteId, improvementId: imp.id })
+                .then(() => console.log(`[Phase2] mockup完了: ${imp.id}`))
+                .catch(e => console.warn(`[Phase2] mockupエラー ${imp.id}:`, e.message))
+            )
+          );
+          console.log('[generateAndAddImprovements] Phase 2(BG): 完了');
+        } catch (phase2Error) {
+          console.warn('[generateAndAddImprovements] Phase 2(BG) エラー:', phase2Error.message);
+        }
+      })();
+    }
+
     return { success: true, count: toAdd.length };
     
   } catch (error) {

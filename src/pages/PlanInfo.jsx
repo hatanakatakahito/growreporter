@@ -52,7 +52,6 @@ export default function PlanInfo() {
     { label: 'メンバー数', getValue: (p) => `${p.features.maxMembers}人` },
     { label: 'AI分析（再分析）', getValue: (p) => p.id === 'free' ? '自動生成のみ' : '可能' },
     { label: 'AI改善案 / 月', getValue: (p) => fmt(p.features.aiImprovementMonthly) },
-    { label: 'サイト診断 / 月', getValue: (p) => fmt(p.features.diagnosisMonthly) },
     { label: 'エクスポート / 月', getValue: (p) => fmt(p.features.excelExportMonthly) },
     { label: 'サポート', getValue: (p) => p.features.support || 'なし' },
   ];

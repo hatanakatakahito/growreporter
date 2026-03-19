@@ -9,10 +9,12 @@ import DataTable from '../../components/Analysis/DataTable';
 import ChartContainer from '../../components/Analysis/ChartContainer';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { format, sub, startOfMonth } from 'date-fns';
 import {
   ResponsiveContainer,
@@ -30,11 +32,13 @@ import {
  * 13ヶ月の月別推移を表形式/グラフ形式で表示
  */
 export default function Month() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenLines, setHiddenLines] = useState({});
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   const scrollToAIAnalysis = () => {
     window.dispatchEvent(new Event('switchToAITab'));
@@ -66,9 +70,25 @@ export default function Month() {
   const {
     data: monthlyDataResponse,
     isLoading,
-  } = useGA4MonthlyData(selectedSiteId, monthlyStartDate, monthlyEndDate);
+  } = useGA4MonthlyData(selectedSiteId, monthlyStartDate, monthlyEndDate, ga4DimensionFilter);
 
   const monthlyData = monthlyDataResponse?.monthlyData || [];
+
+  // 比較期間の月別データ
+  const { data: compMonthlyDataResponse } = useGA4MonthlyData(
+    comparisonDateRange ? selectedSiteId : null,
+    comparisonDateRange ? format(sub(new Date(comparisonDateRange.from), { months: 11 }), 'yyyy-MM-dd') : null,
+    comparisonDateRange ? comparisonDateRange.to : null,
+    ga4DimensionFilter
+  );
+
+  const compMonthlyData = compMonthlyDataResponse?.monthlyData || [];
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && compMonthlyData.length > 0;
+
+  const mergedMonthlyData = useMemo(() => {
+    if (!isComparing) return monthlyData;
+    return mergeComparisonRows(monthlyData, compMonthlyData, 'label', ['users', 'newUsers', 'sessions', 'avgPageviews', 'pageViews', 'engagementRate', 'bounceRate', 'averageSessionDuration', 'conversions', 'conversionRate']);
+  }, [monthlyData, isComparing, compMonthlyData]);
 
   // グラフ用のツールチップ
   const CustomTooltip = ({ active, payload, label }) => {
@@ -147,6 +167,15 @@ export default function Month() {
             </p>
           </div>
 
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={monthlyStartDate}
+            endDate={monthlyEndDate}
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
+
           {monthlyData.length === 0 ? (
             <div className="flex min-h-[400px] items-center justify-center rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
               <p className="text-body-color">データがありません。GA4連携を確認してください。</p>
@@ -180,17 +209,22 @@ export default function Month() {
               {/* 表形式 */}
               {activeTab === 'table' ? (
                 <DataTable
+                  tableKey="analysis-month"
+                  isComparing={isComparing}
                   columns={[
-                    { key: 'label', label: '年月', sortable: true },
-                    { key: 'users', label: 'ユーザー数', format: 'number', align: 'right', tooltip: 'users' },
-                    { key: 'sessions', label: '訪問者', format: 'number', align: 'right', tooltip: 'sessions' },
-                    { key: 'avgPageviews', label: '平均PV', format: 'decimal', align: 'right', tooltip: 'avgPageviews' },
-                    { key: 'pageViews', label: '表示回数', format: 'number', align: 'right', tooltip: 'pageViews' },
-                    { key: 'engagementRate', label: 'ENG率', format: 'percent', align: 'right', tooltip: 'engagementRate' },
-                    { key: 'conversions', label: 'CV数', format: 'number', align: 'right', tooltip: 'conversions' },
-                    { key: 'conversionRate', label: 'CVR', format: 'percent', align: 'right', tooltip: 'conversionRate' },
+                    { key: 'label', label: '年月', sortable: true, required: true },
+                    { key: 'users', label: 'ユーザー数', format: 'number', align: 'right', tooltip: 'users', comparison: true },
+                    { key: 'newUsers', label: '新規ユーザー', format: 'number', align: 'right', tooltip: 'newUsers', defaultVisible: false, comparison: true },
+                    { key: 'sessions', label: '訪問者', format: 'number', align: 'right', tooltip: 'sessions', comparison: true },
+                    { key: 'avgPageviews', label: '平均PV', format: 'decimal', align: 'right', tooltip: 'avgPageviews', comparison: true },
+                    { key: 'pageViews', label: '表示回数', format: 'number', align: 'right', tooltip: 'pageViews', comparison: true },
+                    { key: 'engagementRate', label: 'ENG率', format: 'percent', align: 'right', tooltip: 'engagementRate', comparison: true },
+                    { key: 'bounceRate', label: '直帰率', align: 'right', tooltip: 'bounceRate', defaultVisible: false, comparison: true, invertColor: true, render: (value) => `${((value || 0) * 100).toFixed(1)}%` },
+                    { key: 'averageSessionDuration', label: '平均滞在時間', align: 'right', tooltip: 'avgSessionDuration', defaultVisible: false, comparison: true, render: (value) => { const v = value || 0; const m = Math.floor(v / 60); const s = Math.floor(v % 60); return `${m}:${s.toString().padStart(2, '0')}`; } },
+                    { key: 'conversions', label: 'CV数', format: 'number', align: 'right', tooltip: 'conversions', comparison: true },
+                    { key: 'conversionRate', label: 'CVR', format: 'percent', align: 'right', tooltip: 'conversionRate', comparison: true },
                   ]}
-                  data={monthlyData}
+                  data={mergedMonthlyData}
                   pageSize={13}
                   showPagination={false}
                   emptyMessage="データがありません。GA4連携を確認してください。"
@@ -199,7 +233,7 @@ export default function Month() {
                 /* グラフ形式 */
                 <ChartContainer title="月別推移グラフ" height={400}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={monthlyData}>
+                    <LineChart data={mergedMonthlyData}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="label" angle={-45} textAnchor="end" height={80} />
                       <YAxis />
@@ -209,6 +243,12 @@ export default function Month() {
                       <Line type="monotone" dataKey="sessions" name="訪問者" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.sessions} />
                       <Line type="monotone" dataKey="pageViews" name="PV数" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.pageViews} />
                       <Line type="monotone" dataKey="conversions" name="CV数" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.conversions} />
+                      {isComparing && (
+                        <Line yAxisId="left" type="monotone" dataKey="sessions_prev" name="訪問者（比較）" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
+                      )}
+                      {isComparing && (
+                        <Line yAxisId="right" type="monotone" dataKey="conversions_prev" name="CV（比較）" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 </ChartContainer>

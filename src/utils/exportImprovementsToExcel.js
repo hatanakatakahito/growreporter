@@ -92,7 +92,7 @@ export async function exportImprovementsToExcel(improvements, siteName = 'サイ
     (item.targetPageUrl || '').trim(),
     item.targetArea || '',
     item.expectedImpact || '',
-    formatEstimatedPriceLabel(item.estimatedLaborHours),
+    formatEstimatedPriceLabel(item.estimatedLaborHours) + (formatEstimatedPriceLabel(item.estimatedLaborHours) !== '要相談' ? '（税別）' : ''),
     formatEstimatedDeliveryLabel(item.estimatedLaborHours),
   ]);
 

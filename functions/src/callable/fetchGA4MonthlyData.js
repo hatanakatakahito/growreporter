@@ -12,7 +12,7 @@ import { canAccessSite } from '../utils/permissionHelper.js';
  */
 export async function fetchGA4MonthlyDataCallable(request) {
   const db = getFirestore();
-  const { siteId, startDate, endDate } = request.data;
+  const { siteId, startDate, endDate, dimensionFilter } = request.data;
 
   // 入力バリデーション
   if (!siteId || !startDate || !endDate) {
@@ -83,7 +83,10 @@ export async function fetchGA4MonthlyDataCallable(request) {
           { name: 'newUsers' },
           { name: 'screenPageViews' },
           { name: 'engagementRate' },
+          { name: 'bounceRate' },
+          { name: 'averageSessionDuration' },
         ],
+        ...(dimensionFilter ? { dimensionFilter } : {}),
         orderBys: [
           { dimension: { dimensionName: 'yearMonth' }, desc: true }
         ],
@@ -101,6 +104,8 @@ export async function fetchGA4MonthlyDataCallable(request) {
         const newUsers = parseInt(row.metricValues[2].value || 0);
         const pageViews = parseInt(row.metricValues[3].value || 0);
         const engagementRate = parseFloat(row.metricValues[4].value || 0);
+        const bounceRate = parseFloat(row.metricValues[5].value || 0);
+        const averageSessionDuration = parseFloat(row.metricValues[6].value || 0);
 
         // YYYYMM -> yyyy-MM形式に変換
         const year = yearMonth.substring(0, 4);
@@ -117,7 +122,9 @@ export async function fetchGA4MonthlyDataCallable(request) {
           pageViews,
           avgPageviews: sessions > 0 ? pageViews / sessions : 0,
           engagementRate,
-          conversions: 0, // コンバージョンは別途取得
+          bounceRate,
+          averageSessionDuration,
+          conversions: 0,
           conversionRate: 0,
         });
       }
@@ -140,14 +147,26 @@ export async function fetchGA4MonthlyDataCallable(request) {
               metrics: [
                 { name: 'eventCount' },
               ],
-              dimensionFilter: {
-                filter: {
-                  fieldName: 'eventName',
-                  stringFilter: {
-                    value: event.eventName,
+              dimensionFilter: dimensionFilter
+                ? {
+                    andGroup: {
+                      expressions: [
+                        {
+                          filter: {
+                            fieldName: 'eventName',
+                            stringFilter: { value: event.eventName },
+                          },
+                        },
+                        dimensionFilter,
+                      ],
+                    },
+                  }
+                : {
+                    filter: {
+                      fieldName: 'eventName',
+                      stringFilter: { value: event.eventName },
+                    },
                   },
-                },
-              },
               orderBys: [
                 { dimension: { dimensionName: 'yearMonth' }, desc: true }
               ],

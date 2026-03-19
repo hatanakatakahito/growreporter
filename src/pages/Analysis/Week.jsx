@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
@@ -17,7 +17,9 @@ import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { useAuth } from '../../contexts/AuthContext';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import {
   ResponsiveContainer,
   BarChart,
@@ -34,7 +36,7 @@ import {
  * 曜日ごとの訪問者とコンバージョンの推移を表示
  */
 export default function Week() {
-  const { selectedSite, selectedSiteId, selectSite, sites, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, selectSite, sites, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -42,6 +44,8 @@ export default function Week() {
   const [activeTab, setActiveTab] = useState('chart');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   const scrollToAIAnalysis = () => {
     window.dispatchEvent(new Event('switchToAITab'));
@@ -86,7 +90,7 @@ export default function Week() {
     isError,
     error,
   } = useQuery({
-    queryKey: ['ga4-weekly-conversions', selectedSiteId, dateRange.from, dateRange.to],
+    queryKey: ['ga4-weekly-conversions', selectedSiteId, dateRange.from, dateRange.to, ga4DimensionFilter],
     queryFn: async () => {
       console.log('[Week] Fetching weekly conversion data...');
       const fetchWeeklyConversionData = httpsCallable(functions, 'fetchGA4WeeklyConversionData');
@@ -94,6 +98,7 @@ export default function Week() {
         siteId: selectedSiteId,
         startDate: dateRange.from,
         endDate: dateRange.to,
+        dimensionFilter: ga4DimensionFilter,
       });
       console.log('[Week] Weekly conversion data fetched:', result.data);
       return result.data;
@@ -103,41 +108,109 @@ export default function Week() {
     staleTime: 5 * 60 * 1000, // 5分間キャッシュ
   });
 
+  // 比較期間データ取得
+  const { data: compWeeklyData } = useQuery({
+    queryKey: ['ga4-weekly-conversions-comp', selectedSiteId, comparisonDateRange?.from, comparisonDateRange?.to, ga4DimensionFilter],
+    queryFn: async () => {
+      const fn = httpsCallable(functions, 'fetchGA4WeeklyConversionData');
+      const result = await fn({ siteId: selectedSiteId, startDate: comparisonDateRange.from, endDate: comparisonDateRange.to, dimensionFilter: ga4DimensionFilter });
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!comparisonDateRange?.from && !!comparisonDateRange?.to,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compWeeklyData;
+
   // 曜日別にデータを集計
   const generateDayData = () => {
     if (!weekData?.rows) return [];
 
     // 曜日ごとに集計
     const dayMap = {};
-    
+
     weekData.rows.forEach((row) => {
       const dayOfWeek = parseInt(row.dayOfWeek); // 0=日曜, 1=月曜, ..., 6=土曜
-      const sessions = row.sessions || 0;
-      const conversions = row.conversions || 0;
 
       // GA4の曜日は0=日曜から始まるので、1=月曜から始まるように変換
       const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-      
+
       if (!dayMap[adjustedDay]) {
-        dayMap[adjustedDay] = { sessions: 0, conversions: 0 };
+        dayMap[adjustedDay] = { sessions: 0, users: 0, newUsers: 0, pageViews: 0, engagementRateSum: 0, avgDurationSum: 0, bounceRateSum: 0, conversions: 0, count: 0 };
       }
-      
-      dayMap[adjustedDay].sessions += sessions;
-      dayMap[adjustedDay].conversions += conversions;
+
+      const d = dayMap[adjustedDay];
+      d.sessions += row.sessions || 0;
+      d.users += row.users || 0;
+      d.newUsers += row.newUsers || 0;
+      d.pageViews += row.pageViews || 0;
+      d.engagementRateSum += (row.engagementRate || 0) * (row.sessions || 0);
+      d.avgDurationSum += (row.avgSessionDuration || 0) * (row.sessions || 0);
+      d.bounceRateSum += (row.bounceRate || 0) * (row.sessions || 0);
+      d.conversions += row.conversions || 0;
+      d.count += 1;
     });
 
     // 配列に変換（月曜日から日曜日の順）
     const dayNames = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
-    return dayNames.map((name, index) => ({
-      dayName: name,
-      dayIndex: index,
-      sessions: dayMap[index]?.sessions || 0,
-      conversions: dayMap[index]?.conversions || 0,
-    }));
+    return dayNames.map((name, index) => {
+      const d = dayMap[index];
+      return {
+        dayName: name,
+        dayIndex: index,
+        sessions: d?.sessions || 0,
+        users: d?.users || 0,
+        newUsers: d?.newUsers || 0,
+        pageViews: d?.pageViews || 0,
+        engagementRate: d && d.sessions > 0 ? d.engagementRateSum / d.sessions : 0,
+        avgSessionDuration: d && d.sessions > 0 ? d.avgDurationSum / d.sessions : 0,
+        bounceRate: d && d.sessions > 0 ? d.bounceRateSum / d.sessions : 0,
+        conversions: d?.conversions || 0,
+      };
+    });
   };
 
   const chartData = generateDayData();
   const dayNames = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
+
+  // 比較期間の曜日データを集計してマージ
+  const mergedTableData = useMemo(() => {
+    if (!isComparing || !compWeeklyData?.rows) return chartData;
+    // 比較データも同じ集計ロジックで曜日別に変換
+    const compDayMap = {};
+    compWeeklyData.rows.forEach((row) => {
+      const dayOfWeek = parseInt(row.dayOfWeek);
+      const adjustedDay = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      if (!compDayMap[adjustedDay]) {
+        compDayMap[adjustedDay] = { sessions: 0, users: 0, newUsers: 0, pageViews: 0, engagementRateSum: 0, avgDurationSum: 0, bounceRateSum: 0, conversions: 0, count: 0 };
+      }
+      compDayMap[adjustedDay].sessions += row.sessions || 0;
+      compDayMap[adjustedDay].users += row.users || 0;
+      compDayMap[adjustedDay].newUsers += row.newUsers || 0;
+      compDayMap[adjustedDay].pageViews += row.pageViews || 0;
+      compDayMap[adjustedDay].engagementRateSum += (row.engagementRate || 0) * (row.sessions || 0);
+      compDayMap[adjustedDay].avgDurationSum += (row.avgSessionDuration || 0) * (row.sessions || 0);
+      compDayMap[adjustedDay].bounceRateSum += (row.bounceRate || 0) * (row.sessions || 0);
+      compDayMap[adjustedDay].conversions += row.conversions || 0;
+      compDayMap[adjustedDay].count += 1;
+    });
+    const compRows = dayNames.map((name, index) => {
+      const d = compDayMap[index];
+      return {
+        dayName: name,
+        sessions: d?.sessions || 0,
+        users: d?.users || 0,
+        newUsers: d?.newUsers || 0,
+        pageViews: d?.pageViews || 0,
+        engagementRate: d && d.sessions > 0 ? d.engagementRateSum / d.sessions : 0,
+        avgSessionDuration: d && d.sessions > 0 ? d.avgDurationSum / d.sessions : 0,
+        bounceRate: d && d.sessions > 0 ? d.bounceRateSum / d.sessions : 0,
+        conversions: d?.conversions || 0,
+      };
+    });
+    return mergeComparisonRows(chartData, compRows, 'dayName', ['sessions', 'users', 'newUsers', 'pageViews', 'conversions', 'engagementRate', 'bounceRate', 'avgSessionDuration']);
+  }, [chartData, isComparing, compWeeklyData]);
 
   // 凡例クリックでグラフの表示/非表示を切り替え
   const handleLegendClick = (dataKey) => {
@@ -167,12 +240,21 @@ export default function Week() {
             </p>
           </div>
 
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
+
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
           ) : isError ? (
             <ErrorAlert message={error?.message || 'データの読み込みに失敗しました。'} />
           ) : !chartData || chartData.length === 0 ? (
-            <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
+            <div className="rounded-lg border border-stroke bg-white p-12 text-center">
               <p className="text-body-color">表示するデータがありません。</p>
             </div>
           ) : (
@@ -241,11 +323,14 @@ export default function Week() {
                 </ChartContainer>
               ) : (
                 <DataTable
+                  tableKey="analysis-week"
+                  isComparing={isComparing}
                   columns={[
                     {
                       key: 'dayName',
                       label: '曜日',
                       sortable: true,
+                      required: true,
                     },
                     {
                       key: 'sessions',
@@ -253,6 +338,67 @@ export default function Week() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
+                      comparison: true,
+                    },
+                    {
+                      key: 'users',
+                      label: 'ユーザー',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'users',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'newUsers',
+                      label: '新規ユーザー',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'newUsers',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'pageViews',
+                      label: 'PV数',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'pageViews',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'engagementRate',
+                      label: 'ENG率',
+                      align: 'right',
+                      tooltip: 'engagementRate',
+                      defaultVisible: false,
+                      comparison: true,
+                      render: (value) => `${((value || 0) * 100).toFixed(1)}%`,
+                    },
+                    {
+                      key: 'bounceRate',
+                      label: '直帰率',
+                      align: 'right',
+                      tooltip: 'bounceRate',
+                      defaultVisible: false,
+                      comparison: true,
+                      invertColor: true,
+                      render: (value) => `${((value || 0) * 100).toFixed(1)}%`,
+                    },
+                    {
+                      key: 'avgSessionDuration',
+                      label: '平均滞在',
+                      align: 'right',
+                      tooltip: 'avgSessionDuration',
+                      defaultVisible: false,
+                      comparison: true,
+                      render: (value) => {
+                        const v = value || 0;
+                        const m = Math.floor(v / 60);
+                        const s = Math.floor(v % 60);
+                        return `${m}:${s.toString().padStart(2, '0')}`;
+                      },
                     },
                     {
                       key: 'conversions',
@@ -260,9 +406,21 @@ export default function Week() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'conversions',
+                      comparison: true,
+                    },
+                    {
+                      key: 'conversionRate',
+                      label: 'CVR',
+                      align: 'right',
+                      tooltip: 'conversionRate',
+                      defaultVisible: false,
+                      render: (value, row) => {
+                        const rate = row.sessions > 0 ? ((row.conversions / row.sessions) * 100).toFixed(2) : '0.00';
+                        return `${rate}%`;
+                      },
                     },
                   ]}
-                  data={chartData}
+                  data={mergedTableData}
                   pageSize={7}
                   showPagination={false}
                   emptyMessage="表示するデータがありません。"

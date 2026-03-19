@@ -35,10 +35,6 @@ export default function PlanList() {
       label: 'AI改善案 / 月',
       render: (f) => fmt(f.aiImprovementMonthly),
     },
-    {
-      label: 'サイト診断 / 月',
-      render: (f) => fmt(f.diagnosisMonthly),
-    },
     { label: 'データ保持期間', key: 'dataRetention' },
     {
       label: 'Excel エクスポート / 月',

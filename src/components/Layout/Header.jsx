@@ -42,12 +42,12 @@ export default function Header({ title, subtitle, backLink, backLabel, action, s
               <div className="relative" ref={siteDropdownRef}>
                 <button
                   onClick={() => setIsSiteDropdownOpen(!isSiteDropdownOpen)}
-                  className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2.5 transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:hover:bg-dark-3"
+                  className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2.5 transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:hover:bg-dark-3 shrink-0"
                 >
                   <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
                   </svg>
-                  <span className="text-sm font-medium text-dark dark:text-white">
+                  <span className="text-sm font-medium text-dark dark:text-white whitespace-nowrap">
                     {selectedSite?.siteName || 'サイトを選択'}
                   </span>
                   <svg

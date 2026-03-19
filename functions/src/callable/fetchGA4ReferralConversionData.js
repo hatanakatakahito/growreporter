@@ -8,7 +8,7 @@ import { getAndRefreshToken } from '../utils/tokenManager.js';
  */
 export async function fetchGA4ReferralConversionDataCallable(request) {
   const db = getFirestore();
-  const { siteId, startDate, endDate } = request.data;
+  const { siteId, startDate, endDate, dimensionFilter } = request.data;
 
   if (!siteId || !startDate || !endDate) {
     throw new HttpsError('invalid-argument', 'siteId, startDate, endDate are required');
@@ -44,6 +44,17 @@ export async function fetchGA4ReferralConversionDataCallable(request) {
     const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, siteData.ga4OauthTokenId);
     const analyticsData = google.analyticsdata('v1beta');
 
+    // referralフィルタ
+    const referralFilter = {
+      filter: {
+        fieldName: 'sessionMedium',
+        stringFilter: { matchType: 'EXACT', value: 'referral' },
+      },
+    };
+    const sessionsDimensionFilter = dimensionFilter
+      ? { andGroup: { expressions: [referralFilter, dimensionFilter] } }
+      : referralFilter;
+
     const sessionsResponse = await analyticsData.properties.runReport({
       auth: oauth2Client,
       property: `properties/${siteData.ga4PropertyId}`,
@@ -53,18 +64,13 @@ export async function fetchGA4ReferralConversionDataCallable(request) {
         metrics: [
           { name: 'sessions' },
           { name: 'activeUsers' },
+          { name: 'newUsers' },
+          { name: 'screenPageViews' },
           { name: 'engagementRate' },
-          { name: 'averageSessionDuration' }
+          { name: 'bounceRate' },
+          { name: 'averageSessionDuration' },
         ],
-        dimensionFilter: {
-          filter: {
-            fieldName: 'sessionMedium',
-            stringFilter: {
-              matchType: 'EXACT',
-              value: 'referral',
-            },
-          },
-        },
+        dimensionFilter: sessionsDimensionFilter,
       },
     });
 
@@ -73,9 +79,12 @@ export async function fetchGA4ReferralConversionDataCallable(request) {
       const source = row.dimensionValues[0].value;
       const sessions = parseInt(row.metricValues[0].value || 0);
       const users = parseInt(row.metricValues[1].value || 0);
-      const engagementRate = parseFloat(row.metricValues[2].value || 0);
-      const averageSessionDuration = parseFloat(row.metricValues[3].value || 0);
-      referralData[source] = { source, sessions, users, engagementRate, averageSessionDuration, conversions: 0 };
+      const newUsers = parseInt(row.metricValues[2].value || 0);
+      const screenPageViews = parseInt(row.metricValues[3].value || 0);
+      const engagementRate = parseFloat(row.metricValues[4].value || 0);
+      const bounceRate = parseFloat(row.metricValues[5].value || 0);
+      const averageSessionDuration = parseFloat(row.metricValues[6].value || 0);
+      referralData[source] = { source, sessions, users, newUsers, screenPageViews, engagementRate, bounceRate, averageSessionDuration, conversions: 0 };
     });
 
     if (siteData.conversionEvents && siteData.conversionEvents.length > 0) {
@@ -103,6 +112,7 @@ export async function fetchGA4ReferralConversionDataCallable(request) {
                     },
                   },
                 },
+                ...(dimensionFilter ? [dimensionFilter] : []),
               ],
             },
           },

@@ -2,6 +2,9 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
 import { useSite } from '../../contexts/SiteContext';
 import { useGA4Data } from '../../hooks/useGA4Data';
+import { useQuery } from '@tanstack/react-query';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../../config/firebase';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
@@ -9,11 +12,13 @@ import DataTable from '../../components/Analysis/DataTable';
 import ChartContainer from '../../components/Analysis/ChartContainer';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { Folder, FileText, ChevronDown, ChevronRight } from 'lucide-react';
 import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   ResponsiveContainer,
@@ -34,12 +39,14 @@ import {
  * ページをディレクトリ別に分類して表示
  */
 export default function PageCategories() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('sitemap');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [expandedPaths, setExpandedPaths] = useState(new Set(['/']));
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   // AI分析タブへスクロールする関数
   const scrollToAIAnalysis = () => {
@@ -65,10 +72,56 @@ export default function PageCategories() {
     selectedSiteId,
     dateRange.from,
     dateRange.to,
-    ['screenPageViews'],
+    ['screenPageViews', 'sessions', 'activeUsers', 'newUsers', 'engagementRate', 'bounceRate', 'averageSessionDuration'],
     ['pagePath'],
-    null
+    ga4DimensionFilter
   );
+
+  // 比較期間のGA4データ取得
+  const { data: compPageData } = useGA4Data(
+    comparisonDateRange ? selectedSiteId : null,
+    comparisonDateRange?.from,
+    comparisonDateRange?.to,
+    ['screenPageViews', 'sessions', 'activeUsers', 'newUsers', 'engagementRate', 'bounceRate'],
+    ['pagePath'],
+    ga4DimensionFilter
+  );
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compPageData;
+
+  // ページ別コンバージョンデータ取得
+  const conversionEvents = selectedSite?.conversionEvents || [];
+  const { data: conversionData } = useQuery({
+    queryKey: ['ga4-pagecategory-conversions', selectedSiteId, dateRange.from, dateRange.to, ga4DimensionFilter],
+    queryFn: async () => {
+      if (conversionEvents.length === 0) return {};
+      const fetchGA4 = httpsCallable(functions, 'fetchGA4Data');
+      const result = await fetchGA4({
+        siteId: selectedSiteId,
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+        metrics: ['eventCount'],
+        dimensions: ['pagePath', 'eventName'],
+        dimensionFilter: ga4DimensionFilter
+          ? {
+              andGroup: {
+                expressions: [
+                  { filter: { fieldName: 'eventName', inListFilter: { values: conversionEvents.map(e => e.eventName) } } },
+                  ga4DimensionFilter,
+                ],
+              },
+            }
+          : { filter: { fieldName: 'eventName', inListFilter: { values: conversionEvents.map(e => e.eventName) } } },
+      });
+      const map = {};
+      (result.data?.rows || []).forEach(row => {
+        const path = row.pagePath;
+        map[path] = (map[path] || 0) + (row.eventCount || 0);
+      });
+      return map;
+    },
+    enabled: !!selectedSiteId && !!dateRange.from && !!dateRange.to && conversionEvents.length > 0,
+    staleTime: 5 * 60 * 1000,
+  });
 
   // ページをカテゴリ別に分類
   const categoryData = useMemo(() => {
@@ -87,16 +140,58 @@ export default function PageCategories() {
         categories[category] = {
           category,
           pageViews: 0,
+          sessions: 0,
+          users: 0,
+          newUsers: 0,
+          engagementRateSum: 0,
+          bounceRateSum: 0,
+          avgDurationSum: 0,
+          conversions: 0,
           pages: 0,
         };
       }
 
       categories[category].pageViews += row.screenPageViews || 0;
+      categories[category].sessions += row.sessions || 0;
+      categories[category].users += row.activeUsers || 0;
+      categories[category].newUsers += row.newUsers || 0;
+      categories[category].engagementRateSum += (row.engagementRate || 0) * (row.sessions || 0);
+      categories[category].bounceRateSum += (row.bounceRate || 0) * (row.sessions || 0);
+      categories[category].avgDurationSum += (row.averageSessionDuration || 0) * (row.sessions || 0);
+      // コンバージョンデータをカテゴリに集計
+      if (conversionData) {
+        categories[category].conversions += conversionData[path] || 0;
+      }
       categories[category].pages += 1;
     });
 
-    return Object.values(categories).sort((a, b) => b.pageViews - a.pageViews);
-  }, [pageData]);
+    return Object.values(categories).map(cat => ({
+      ...cat,
+      engagementRate: cat.sessions > 0 ? ((cat.engagementRateSum / cat.sessions) * 100).toFixed(1) : '0.0',
+      bounceRate: cat.sessions > 0 ? ((cat.bounceRateSum / cat.sessions) * 100).toFixed(1) : '0.0',
+      avgDuration: cat.sessions > 0 ? cat.avgDurationSum / cat.sessions : 0,
+      conversions: cat.conversions,
+      conversionRate: cat.sessions > 0 ? ((cat.conversions / cat.sessions) * 100).toFixed(2) : '0.00',
+    })).sort((a, b) => b.pageViews - a.pageViews);
+  }, [pageData, conversionData]);
+
+  // 比較期間のカテゴリ別集計データ
+  const mergedTableData = useMemo(() => {
+    if (!isComparing || !compPageData?.rows) return categoryData;
+    // Aggregate comparison data by category using the same logic
+    const compCategories = {};
+    compPageData.rows.forEach((row) => {
+      const path = row.pagePath || '/';
+      const category = path === '/' ? 'トップページ' : '/' + path.split('/').filter(Boolean)[0];
+      if (!compCategories[category]) {
+        compCategories[category] = { category, sessions: 0, pageViews: 0, conversions: 0 };
+      }
+      compCategories[category].sessions += row.sessions || 0;
+      compCategories[category].pageViews += row.screenPageViews || 0;
+    });
+    const compTable = Object.values(compCategories);
+    return mergeComparisonRows(categoryData, compTable, 'category', ['sessions', 'users', 'newUsers', 'pageViews', 'engagementRate', 'bounceRate', 'avgDuration', 'conversions', 'conversionRate']);
+  }, [categoryData, isComparing, compPageData]);
 
   // チャート用のデータ（上位10件）
   const chartData = [...categoryData].slice(0, 10);
@@ -371,6 +466,16 @@ export default function PageCategories() {
             </p>
           </div>
 
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
+
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
           ) : isError ? (
@@ -509,11 +614,14 @@ export default function PageCategories() {
                 </div>
               ) : (
                 <DataTable
+                  tableKey="analysis-page-categories"
+                  isComparing={isComparing}
                   columns={[
                     {
                       key: 'category',
                       label: 'カテゴリ',
                       sortable: true,
+                      required: true,
                     },
                     {
                       key: 'pages',
@@ -525,9 +633,10 @@ export default function PageCategories() {
                       key: 'pageViews',
                       label: 'ページビュー',
                       align: 'right',
+                      comparison: true,
                       render: (value) => {
-                        const percentage = totalPageViews > 0 
-                          ? ((value / totalPageViews) * 100).toFixed(1) 
+                        const percentage = totalPageViews > 0
+                          ? ((value / totalPageViews) * 100).toFixed(1)
                           : 0;
                         return (
                           <div className="flex items-center justify-end gap-2">
@@ -537,8 +646,86 @@ export default function PageCategories() {
                         );
                       },
                     },
+                    {
+                      key: 'sessions',
+                      label: '訪問者',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'sessions',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'users',
+                      label: 'ユーザー数',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'activeUsers',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'newUsers',
+                      label: '新規ユーザー',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'newUsers',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'engagementRate',
+                      label: 'ENG率',
+                      align: 'right',
+                      tooltip: 'engagementRate',
+                      render: (value) => `${value}%`,
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'bounceRate',
+                      label: '直帰率',
+                      align: 'right',
+                      tooltip: 'bounceRate',
+                      render: (value) => `${value}%`,
+                      defaultVisible: false,
+                      comparison: true,
+                      invertColor: true,
+                    },
+                    {
+                      key: 'avgDuration',
+                      label: '平均滞在時間',
+                      align: 'right',
+                      tooltip: 'avgSessionDuration',
+                      render: (value) => {
+                        const v = value || 0;
+                        const minutes = Math.floor(v / 60);
+                        const seconds = Math.floor(v % 60);
+                        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                      },
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'conversions',
+                      label: 'コンバージョン',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'conversions',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'conversionRate',
+                      label: 'CVR',
+                      align: 'right',
+                      tooltip: 'conversionRate',
+                      render: (value) => `${value}%`,
+                      defaultVisible: false,
+                      comparison: true,
+                    },
                   ]}
-                  data={categoryData}
+                  data={mergedTableData}
                   pageSize={25}
                   showPagination={true}
                   emptyMessage="表示するデータがありません。"

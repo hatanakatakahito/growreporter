@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { setPageTitle } from '../../utils/pageTitle';
 import { useSite } from '../../contexts/SiteContext';
@@ -6,10 +6,12 @@ import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
 import DataTable from '../../components/Analysis/DataTable';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import ChartContainer from '../../components/Analysis/ChartContainer';
 import { ExternalLink } from 'lucide-react';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
@@ -34,12 +36,14 @@ import {
  * ユーザーが最初に訪問したページを表示
  */
 export default function LandingPages() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   // ページタイトルを設定
   useEffect(() => {
@@ -66,7 +70,7 @@ export default function LandingPages() {
     isError,
     error,
   } = useQuery({
-    queryKey: ['ga4-landing-page-conversions', selectedSiteId, dateRange.from, dateRange.to],
+    queryKey: ['ga4-landing-page-conversions', selectedSiteId, dateRange.from, dateRange.to, ga4DimensionFilter],
     queryFn: async () => {
       console.log('[LandingPages] Fetching landing page conversion data...');
       const fetchLandingPageConversionData = httpsCallable(functions, 'fetchGA4LandingPageConversionData');
@@ -74,6 +78,7 @@ export default function LandingPages() {
         siteId: selectedSiteId,
         startDate: dateRange.from,
         endDate: dateRange.to,
+        dimensionFilter: ga4DimensionFilter,
       });
       console.log('[LandingPages] Landing page conversion data fetched:', result.data);
       return result.data;
@@ -82,6 +87,25 @@ export default function LandingPages() {
     retry: false,
     staleTime: 5 * 60 * 1000, // 5分間キャッシュ
   });
+
+  const { data: compLandingPageData } = useQuery({
+    queryKey: ['ga4-landing-page-conversions-comp', selectedSiteId, comparisonDateRange?.from, comparisonDateRange?.to, ga4DimensionFilter],
+    queryFn: async () => {
+      const fetchLandingPageConversionData = httpsCallable(functions, 'fetchGA4LandingPageConversionData');
+      const result = await fetchLandingPageConversionData({
+        siteId: selectedSiteId,
+        startDate: comparisonDateRange.from,
+        endDate: comparisonDateRange.to,
+        dimensionFilter: ga4DimensionFilter,
+      });
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!comparisonDateRange?.from && !!comparisonDateRange?.to,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compLandingPageData;
 
   // URLを短縮表示
   const shortenUrl = (url) => {
@@ -99,7 +123,11 @@ export default function LandingPages() {
         path: row.landingPage || '/',
         shortUrl: shortenUrl(row.landingPage),
         sessions: row.sessions || 0,
+        users: row.activeUsers || 0,
+        newUsers: row.newUsers || 0,
+        pageViews: row.screenPageViews || 0,
         engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
+        bounceRate: ((row.bounceRate || 0) * 100).toFixed(1),
         avgSessionDuration: row.averageSessionDuration || 0,
         conversions: row.conversions || 0,
         conversionRate:
@@ -108,6 +136,26 @@ export default function LandingPages() {
             : '0.00',
       }))
       .sort((a, b) => b.sessions - a.sessions) || [];
+
+  const mergedTableData = useMemo(() => {
+    if (!isComparing || !compLandingPageData?.rows) return tableData;
+    const compTable = compLandingPageData.rows.map((row) => ({
+      path: row.landingPage || '/',
+      sessions: row.sessions || 0,
+      users: row.activeUsers || 0,
+      newUsers: row.newUsers || 0,
+      pageViews: row.screenPageViews || 0,
+      engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
+      bounceRate: ((row.bounceRate || 0) * 100).toFixed(1),
+      avgSessionDuration: row.averageSessionDuration || 0,
+      conversions: row.conversions || 0,
+      conversionRate:
+        row.sessions > 0
+          ? ((row.conversions / row.sessions) * 100).toFixed(2)
+          : '0.00',
+    }));
+    return mergeComparisonRows(tableData, compTable, 'path', ['sessions', 'users', 'newUsers', 'pageViews', 'conversions', 'engagementRate', 'bounceRate', 'avgSessionDuration', 'conversionRate']);
+  }, [tableData, isComparing, compLandingPageData]);
 
   // グラフ用のデータ（上位10件）
   const chartData = [...tableData].slice(0, 10);
@@ -197,6 +245,16 @@ export default function LandingPages() {
             </p>
           </div>
 
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
+
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
           ) : isError ? (
@@ -266,13 +324,16 @@ export default function LandingPages() {
                 </ChartContainer>
               ) : (
                 <DataTable
+                  tableKey="analysis-landing-pages"
+                  isComparing={isComparing}
                   columns={[
                     {
                       key: 'path',
                       label: 'ランディングページ',
                       sortable: true,
+                      required: true,
                       render: (value) => {
-                        const fullUrl = selectedSite?.siteUrl 
+                        const fullUrl = selectedSite?.siteUrl
                           ? `${selectedSite.siteUrl.replace(/\/$/, '')}${value}`
                           : value;
                         return (
@@ -294,6 +355,34 @@ export default function LandingPages() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
+                      comparison: true,
+                    },
+                    {
+                      key: 'users',
+                      label: 'ユーザー数',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'activeUsers',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'newUsers',
+                      label: '新規ユーザー',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'newUsers',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'pageViews',
+                      label: '表示回数',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'screenPageViews',
+                      defaultVisible: false,
+                      comparison: true,
                     },
                     {
                       key: 'engagementRate',
@@ -301,6 +390,17 @@ export default function LandingPages() {
                       align: 'right',
                       render: (value) => `${value}%`,
                       tooltip: 'engagementRate',
+                      comparison: true,
+                    },
+                    {
+                      key: 'bounceRate',
+                      label: '直帰率',
+                      align: 'right',
+                      render: (value) => `${value}%`,
+                      tooltip: 'bounceRate',
+                      defaultVisible: false,
+                      comparison: true,
+                      invertColor: true,
                     },
                     {
                       key: 'avgSessionDuration',
@@ -312,6 +412,7 @@ export default function LandingPages() {
                         return `${minutes}:${seconds.toString().padStart(2, '0')}`;
                       },
                       tooltip: 'avgSessionDuration',
+                      comparison: true,
                     },
                     {
                       key: 'conversions',
@@ -319,6 +420,7 @@ export default function LandingPages() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'conversions',
+                      comparison: true,
                     },
                     {
                       key: 'conversionRate',
@@ -326,9 +428,10 @@ export default function LandingPages() {
                       align: 'right',
                       render: (value) => `${value}%`,
                       tooltip: 'conversionRate',
+                      comparison: true,
                     },
                   ]}
-                  data={tableData}
+                  data={mergedTableData}
                   pageSize={25}
                   showPagination={true}
                   emptyMessage="表示するデータがありません。"

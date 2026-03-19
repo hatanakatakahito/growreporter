@@ -48,7 +48,7 @@ export function getEstimatedDeliveryDays(estimatedLaborHours) {
 export function formatEstimatedPriceLabel(estimatedLaborHours) {
   const price = getEstimatedPrice(estimatedLaborHours);
   if (price == null) return '要相談';
-  return `${price.toLocaleString()}円（税別）～`;
+  return `${price.toLocaleString()}円～`;
 }
 
 /**

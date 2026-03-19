@@ -15,6 +15,7 @@ export async function fetchGA4ChannelConversionDataCallable(request) {
     siteId,
     startDate, // YYYY-MM-DD
     endDate,   // YYYY-MM-DD
+    dimensionFilter,
   } = request.data;
 
   // 入力バリデーション
@@ -76,19 +77,29 @@ export async function fetchGA4ChannelConversionDataCallable(request) {
     console.log(`[fetchGA4ChannelConversionData] Fetching channel data from GA4 API...`);
     
     // 訪問者とユーザーデータを取得
+    const sessionsRequestBody = {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [
+        { name: 'sessionDefaultChannelGroup' }
+      ],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'activeUsers' },
+        { name: 'newUsers' },
+        { name: 'screenPageViews' },
+        { name: 'engagementRate' },
+        { name: 'averageSessionDuration' },
+        { name: 'bounceRate' },
+      ],
+    };
+    if (dimensionFilter) {
+      sessionsRequestBody.dimensionFilter = dimensionFilter;
+    }
+
     const sessionsResponse = await analyticsData.properties.runReport({
       auth: oauth2Client,
       property: `properties/${siteData.ga4PropertyId}`,
-      requestBody: {
-        dateRanges: [{ startDate, endDate }],
-        dimensions: [
-          { name: 'sessionDefaultChannelGroup' }
-        ],
-        metrics: [
-          { name: 'sessions' },
-          { name: 'activeUsers' }
-        ],
-      },
+      requestBody: sessionsRequestBody,
     });
 
     // チャネルデータを整形
@@ -102,6 +113,11 @@ export async function fetchGA4ChannelConversionDataCallable(request) {
         sessionDefaultChannelGroup: channel,
         sessions,
         activeUsers,
+        newUsers: parseInt(row.metricValues[2].value || 0),
+        screenPageViews: parseInt(row.metricValues[3].value || 0),
+        engagementRate: parseFloat(row.metricValues[4].value || 0),
+        averageSessionDuration: parseFloat(row.metricValues[5].value || 0),
+        bounceRate: parseFloat(row.metricValues[6].value || 0),
         conversions: 0,
       };
     });
@@ -110,6 +126,18 @@ export async function fetchGA4ChannelConversionDataCallable(request) {
     if (siteData.conversionEvents && siteData.conversionEvents.length > 0) {
       console.log(`[fetchGA4ChannelConversionData] Fetching conversion data for ${siteData.conversionEvents.length} events...`);
       
+      const convEventFilter = {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: {
+            values: siteData.conversionEvents.map(e => e.eventName),
+          },
+        },
+      };
+      const convDimensionFilter = dimensionFilter
+        ? { andGroup: { expressions: [dimensionFilter, convEventFilter] } }
+        : convEventFilter;
+
       const conversionsResponse = await analyticsData.properties.runReport({
         auth: oauth2Client,
         property: `properties/${siteData.ga4PropertyId}`,
@@ -122,14 +150,7 @@ export async function fetchGA4ChannelConversionDataCallable(request) {
           metrics: [
             { name: 'eventCount' }
           ],
-          dimensionFilter: {
-            filter: {
-              fieldName: 'eventName',
-              inListFilter: {
-                values: siteData.conversionEvents.map(e => e.eventName),
-              },
-            },
-          },
+          dimensionFilter: convDimensionFilter,
         },
       });
 

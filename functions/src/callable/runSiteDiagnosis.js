@@ -139,6 +139,78 @@ export async function runSiteDiagnosisCallable(request) {
   return result;
 }
 
+/**
+ * 内部呼び出し用のサイト診断（認証・プラン制限なし）
+ * サイト登録時の自動診断など、トリガーから呼び出す用途
+ * @param {string} siteId
+ */
+export async function runSiteDiagnosisInternal(siteId) {
+  const db = getFirestore();
+
+  const siteDoc = await db.collection('sites').doc(siteId).get();
+  if (!siteDoc.exists) {
+    logger.warn(`[SiteDiagnosis:Internal] サイトが見つかりません: ${siteId}`);
+    return null;
+  }
+  const siteData = siteDoc.data();
+  const siteUrl = siteData.siteUrl || siteData.url;
+  if (!siteUrl) {
+    logger.warn(`[SiteDiagnosis:Internal] サイトURLなし: ${siteId}`);
+    return null;
+  }
+
+  logger.info(`[SiteDiagnosis:Internal] 自動診断開始: ${siteId}, URL: ${siteUrl}`);
+
+  const [psiMobileResult, psiDesktopResult, scrapingDataResult, ga4SummaryResult] =
+    await Promise.allSettled([
+      fetchPSI(siteUrl, 'mobile'),
+      fetchPSI(siteUrl, 'desktop'),
+      fetchScrapingData(db, siteId),
+      fetchGA4EngagementData(db, siteId, siteData),
+    ]);
+
+  const psiMobile = psiMobileResult.status === 'fulfilled' ? psiMobileResult.value : null;
+  const psiDesktop = psiDesktopResult.status === 'fulfilled' ? psiDesktopResult.value : null;
+  const scrapingData = scrapingDataResult.status === 'fulfilled' ? scrapingDataResult.value : null;
+  const ga4Data = ga4SummaryResult.status === 'fulfilled' ? ga4SummaryResult.value : null;
+
+  if (!psiMobile && !psiDesktop) {
+    logger.warn(`[SiteDiagnosis:Internal] PSIデータ取得失敗: ${siteId}`);
+    return null;
+  }
+
+  const contentQuality = analyzeContentQuality(scrapingData, siteUrl);
+  const seo = analyzeSEO(psiMobile, psiDesktop, siteData, ga4Data);
+  const engagement = analyzeEngagement(ga4Data, scrapingData);
+  const perfScore = calculatePerformanceScore(psiMobile, psiDesktop);
+  const overallScore = calculateOverallScore(perfScore, seo.score, contentQuality.score, engagement.score, contentQuality.available, engagement.available);
+
+  const result = {
+    overallScore,
+    diagnosedAt: new Date().toISOString(),
+    siteUrl,
+    fromCache: false,
+    psi: {
+      mobile: psiMobile ? formatPSIResult(psiMobile) : null,
+      desktop: psiDesktop ? formatPSIResult(psiDesktop) : null,
+    },
+    contentQuality,
+    seo,
+    engagement,
+  };
+
+  // キャッシュ保存（プラン消費なし）
+  const cacheRef = db.collection('sites').doc(siteId).collection('diagnosisCache').doc('latest');
+  await cacheRef.set({
+    result,
+    timestamp: Timestamp.now(),
+    siteUrl,
+  });
+
+  logger.info(`[SiteDiagnosis:Internal] 自動診断完了: ${siteId}, スコア: ${overallScore}`);
+  return result;
+}
+
 // ==================== PSI API ====================
 
 /**

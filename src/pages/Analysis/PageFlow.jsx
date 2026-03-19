@@ -9,6 +9,7 @@ import ErrorAlert from '../../components/common/ErrorAlert';
 import { TrendingUp, TrendingDown, ExternalLink, ArrowRight, MousePointerClick, Search, BarChart3, Lightbulb } from 'lucide-react';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
@@ -30,6 +31,8 @@ export default function PageFlow() {
   const [selectedPage, setSelectedPage] = useState('');
   const [selectedPageOption, setSelectedPageOption] = useState(null);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   // AI分析タブへスクロールする関数
   const scrollToAIAnalysis = () => {
@@ -113,7 +116,7 @@ export default function PageFlow() {
     isError: transitionError,
     error: transitionErrorMessage,
   } = useQuery({
-    queryKey: ['ga4-page-transition', selectedSiteId, selectedPage, dateRange.from, dateRange.to],
+    queryKey: ['ga4-page-transition', selectedSiteId, selectedPage, dateRange.from, dateRange.to, ga4DimensionFilter],
     queryFn: async () => {
       if (!selectedSiteId || !selectedPage) return null;
       
@@ -131,6 +134,7 @@ export default function PageFlow() {
         pagePath: selectedPage,
         startDate: formatDate(dateRange.from),
         endDate: formatDate(dateRange.to),
+        dimensionFilter: ga4DimensionFilter,
       });
       
       return result.data;
@@ -178,6 +182,16 @@ export default function PageFlow() {
               特定ページを閲覧する直前に、ユーザーがサイト内のどのページを見ていたかを分析
             </p>
           </div>
+
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
 
           {/* ページ選択カード */}
           <div className="mb-8 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
 import { useSite } from '../../contexts/SiteContext';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
@@ -17,7 +17,9 @@ import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { useAuth } from '../../contexts/AuthContext';
+import { mergeComparisonByIndex } from '../../utils/comparisonHelpers';
 import {
   ResponsiveContainer,
   LineChart,
@@ -34,11 +36,13 @@ import {
  * 日別の訪問者とコンバージョンの推移を表示
  */
 export default function Day() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const [hiddenLines, setHiddenLines] = useState({});
   const [activeTab, setActiveTab] = useState('chart');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   // AI分析タブへスクロールする関数
   const scrollToAIAnalysis = () => {
@@ -66,7 +70,7 @@ export default function Day() {
     isError,
     error,
   } = useQuery({
-    queryKey: ['ga4-daily-conversions', selectedSiteId, dateRange.from, dateRange.to],
+    queryKey: ['ga4-daily-conversions', selectedSiteId, dateRange.from, dateRange.to, ga4DimensionFilter],
     queryFn: async () => {
       console.log('[Day] Fetching daily conversion data...');
       const fetchDailyConversionData = httpsCallable(functions, 'fetchGA4DailyConversionData');
@@ -74,6 +78,7 @@ export default function Day() {
         siteId: selectedSiteId,
         startDate: dateRange.from,
         endDate: dateRange.to,
+        dimensionFilter: ga4DimensionFilter,
       });
       console.log('[Day] Daily conversion data fetched:', result.data);
       return result.data;
@@ -82,6 +87,26 @@ export default function Day() {
     retry: false,
     staleTime: 5 * 60 * 1000, // 5分間キャッシュ
   });
+
+  // 比較期間データ取得
+  const { data: compDailyData } = useQuery({
+    queryKey: ['ga4-daily-conversions-comp', selectedSiteId, comparisonDateRange?.from, comparisonDateRange?.to, ga4DimensionFilter],
+    queryFn: async () => {
+      const fetchDailyConversionData = httpsCallable(functions, 'fetchGA4DailyConversionData');
+      const result = await fetchDailyConversionData({
+        siteId: selectedSiteId,
+        startDate: comparisonDateRange.from,
+        endDate: comparisonDateRange.to,
+        dimensionFilter: ga4DimensionFilter,
+      });
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!comparisonDateRange?.from && !!comparisonDateRange?.to,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compDailyData;
 
   // 日付フォーマット関数
   const parseYYYYMMDD = (dateStr) => {
@@ -164,12 +189,26 @@ export default function Day() {
     );
   };
 
-  // テーブル用のデータ整形（昇順ソート：1日から末日へ）
-  // ✅ 新しいCloud Functionからのレスポンス（rows）をそのまま使用
-  const tableData = dailyData?.rows || [];
+  // テーブル用のデータ整形
+  const COMP_VALUE_FIELDS = ['sessions', 'users', 'newUsers', 'pageViews', 'conversions', 'engagementRate', 'bounceRate', 'avgSessionDuration'];
+  const rawRows = dailyData?.rows || [];
+  const tableData = useMemo(() => {
+    if (!isComparing) return rawRows;
+    return mergeComparisonByIndex(rawRows, compDailyData?.rows || [], COMP_VALUE_FIELDS);
+  }, [rawRows, isComparing, compDailyData]);
 
-  // グラフ用のデータ整形（tableDataと同じ昇順）
-  const chartData = tableData;
+  // グラフ用のデータ整形
+  const chartData = useMemo(() => {
+    if (!isComparing) return rawRows;
+    return rawRows.map((row, i) => {
+      const comp = compDailyData?.rows?.[i];
+      return {
+        ...row,
+        sessions_prev: comp?.sessions ?? null,
+        conversions_prev: comp?.conversions ?? null,
+      };
+    });
+  }, [rawRows, isComparing, compDailyData]);
 
   return (
     <div className="flex flex-col h-full">
@@ -191,12 +230,21 @@ export default function Day() {
             </p>
           </div>
 
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
+
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
           ) : isError ? (
             <ErrorAlert message={error?.message || 'データの読み込みに失敗しました。'} />
           ) : !chartData || chartData.length === 0 ? (
-            <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
+            <div className="rounded-lg border border-stroke bg-white p-12 text-center">
               <p className="text-body-color">表示するデータがありません。</p>
             </div>
           ) : (
@@ -263,16 +311,45 @@ export default function Day() {
                         dot={{ r: 3 }}
                         hide={hiddenLines.conversions}
                       />
+                      {isComparing && (
+                        <Line
+                          yAxisId="left"
+                          type="monotone"
+                          dataKey="sessions_prev"
+                          name="訪問者（比較）"
+                          stroke="#3b82f6"
+                          strokeWidth={1.5}
+                          strokeDasharray="5 5"
+                          dot={false}
+                          hide={hiddenLines.sessions_prev}
+                        />
+                      )}
+                      {isComparing && (
+                        <Line
+                          yAxisId="right"
+                          type="monotone"
+                          dataKey="conversions_prev"
+                          name="CV（比較）"
+                          stroke="#ef4444"
+                          strokeWidth={1.5}
+                          strokeDasharray="5 5"
+                          dot={false}
+                          hide={hiddenLines.conversions_prev}
+                        />
+                      )}
                     </LineChart>
                   </ResponsiveContainer>
                 </ChartContainer>
               ) : (
                 <DataTable
+                  tableKey="analysis-day"
+                  isComparing={isComparing}
                   columns={[
                     {
                       key: 'date',
                       label: '日付',
                       sortable: true,
+                      required: true,
                       render: (value) => formatDateFull(value),
                     },
                     {
@@ -281,6 +358,67 @@ export default function Day() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
+                      comparison: true,
+                    },
+                    {
+                      key: 'users',
+                      label: 'ユーザー',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'users',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'newUsers',
+                      label: '新規ユーザー',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'newUsers',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'pageViews',
+                      label: 'PV数',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'pageViews',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'engagementRate',
+                      label: 'ENG率',
+                      align: 'right',
+                      tooltip: 'engagementRate',
+                      defaultVisible: false,
+                      comparison: true,
+                      render: (value) => `${((value || 0) * 100).toFixed(1)}%`,
+                    },
+                    {
+                      key: 'bounceRate',
+                      label: '直帰率',
+                      align: 'right',
+                      tooltip: 'bounceRate',
+                      defaultVisible: false,
+                      comparison: true,
+                      invertColor: true,
+                      render: (value) => `${((value || 0) * 100).toFixed(1)}%`,
+                    },
+                    {
+                      key: 'avgSessionDuration',
+                      label: '平均滞在',
+                      align: 'right',
+                      tooltip: 'avgSessionDuration',
+                      defaultVisible: false,
+                      comparison: true,
+                      render: (value) => {
+                        const v = value || 0;
+                        const m = Math.floor(v / 60);
+                        const s = Math.floor(v % 60);
+                        return `${m}:${s.toString().padStart(2, '0')}`;
+                      },
                     },
                     {
                       key: 'conversions',
@@ -288,6 +426,18 @@ export default function Day() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'conversions',
+                      comparison: true,
+                    },
+                    {
+                      key: 'conversionRate',
+                      label: 'CVR',
+                      align: 'right',
+                      tooltip: 'conversionRate',
+                      defaultVisible: false,
+                      render: (value, row) => {
+                        const rate = row.sessions > 0 ? ((row.conversions / row.sessions) * 100).toFixed(2) : '0.00';
+                        return `${rate}%`;
+                      },
                     },
                   ]}
                   data={tableData}

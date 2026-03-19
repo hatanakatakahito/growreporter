@@ -150,7 +150,7 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
       <div className="flex h-[90vh] max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white dark:bg-dark-2">
         <div className="flex-shrink-0 border-b border-stroke px-6 py-4 dark:border-dark-3">
           <div className="flex items-center justify-between">

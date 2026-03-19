@@ -8,7 +8,7 @@ import { translateLocationName } from '../utils/japaneseLocationMap.js';
  * GA4ユーザー属性データを取得
  */
 export const fetchGA4UserDemographicsCallable = async (request) => {
-  const { siteId, startDate, endDate } = request.data;
+  const { siteId, startDate, endDate, dimensionFilter } = request.data;
   const userId = request.auth?.uid;
 
   if (!userId) {
@@ -52,13 +52,13 @@ export const fetchGA4UserDemographicsCallable = async (request) => {
 
     // 各ディメンションごとにデータを取得
     const [newReturning, gender, age, device, country, region, city] = await Promise.all([
-      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'newVsReturning'),
-      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'userGender'),
-      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'userAgeBracket'),
-      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'deviceCategory'),
-      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'country'),
-      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'region'),
-      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'city'),
+      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'newVsReturning', dimensionFilter),
+      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'userGender', dimensionFilter),
+      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'userAgeBracket', dimensionFilter),
+      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'deviceCategory', dimensionFilter),
+      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'country', dimensionFilter),
+      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'region', dimensionFilter),
+      fetchDimension(siteData.ga4PropertyId, startDate, endDate, accessToken, 'city', dimensionFilter),
     ]);
 
     return {
@@ -84,9 +84,9 @@ export const fetchGA4UserDemographicsCallable = async (request) => {
 /**
  * 指定されたディメンションでGA4データを取得
  */
-async function fetchDimension(propertyId, startDate, endDate, accessToken, dimension) {
+async function fetchDimension(propertyId, startDate, endDate, accessToken, dimension, dimensionFilter = null) {
   const url = `https://analyticsdata.googleapis.com/v1beta/properties/${propertyId}:runReport`;
-  
+
   const requestBody = {
     dateRanges: [{ startDate, endDate }],
     dimensions: [{ name: dimension }],
@@ -94,6 +94,10 @@ async function fetchDimension(propertyId, startDate, endDate, accessToken, dimen
     limit: dimension.includes('country') || dimension.includes('region') || dimension.includes('city') ? 20 : 100,
     orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }],
   };
+
+  if (dimensionFilter) {
+    requestBody.dimensionFilter = dimensionFilter;
+  }
 
   const response = await fetch(url, {
     method: 'POST',
