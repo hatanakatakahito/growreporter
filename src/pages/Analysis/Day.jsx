@@ -223,21 +223,23 @@ export default function Day() {
       {/* コンテンツ */}
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         <div className="mx-auto max-w-content px-6 py-10">
-          <div className="mb-6">
-            <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">分析する - 日別分析</h2>
-            <p className="text-body-color">
-              日別の訪問者とコンバージョンの推移を確認できます
-            </p>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-dark dark:text-white">分析する - 日別分析</h2>
+              <p className="mt-0.5 text-sm text-body-color">
+                日別の訪問者とコンバージョンの推移を確認できます
+              </p>
+            </div>
+            <div className="flex flex-shrink-0 items-center gap-2 pt-0.5">
+              <DimensionFilters
+                siteId={selectedSiteId}
+                startDate={dateRange.from}
+                endDate={dateRange.to}
+                filters={dimensionFilters}
+                onFiltersChange={setDimensionFilters}
+              />
+            </div>
           </div>
-
-          {/* ディメンションフィルタ */}
-          <DimensionFilters
-            siteId={selectedSiteId}
-            startDate={dateRange.from}
-            endDate={dateRange.to}
-            filters={dimensionFilters}
-            onFiltersChange={setDimensionFilters}
-          />
 
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
@@ -250,7 +252,7 @@ export default function Day() {
           ) : (
             <>
               {/* タブ */}
-              <div className="mb-6 flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
+              <div className="mb-6 mt-4 flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
                 <button
                   onClick={() => setActiveTab('chart')}
                   className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
