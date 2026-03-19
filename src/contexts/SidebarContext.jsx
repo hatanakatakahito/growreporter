@@ -9,18 +9,36 @@ export function SidebarProvider({ children }) {
     return saved !== null ? JSON.parse(saved) : true;
   });
 
+  // サイドバーテーマ（'white' | 'dark'）
+  const [sidebarTheme, setSidebarTheme] = useState(() => {
+    return localStorage.getItem('sidebarTheme') || 'white';
+  });
+
   // LocalStorageに保存
   useEffect(() => {
     localStorage.setItem('sidebarOpen', JSON.stringify(isSidebarOpen));
   }, [isSidebarOpen]);
 
+  useEffect(() => {
+    localStorage.setItem('sidebarTheme', sidebarTheme);
+  }, [sidebarTheme]);
+
   const toggleSidebar = () => {
     setIsSidebarOpen(prev => !prev);
   };
 
+  const toggleSidebarTheme = () => {
+    setSidebarTheme(prev => prev === 'dark' ? 'white' : 'dark');
+  };
+
+  const isDarkSidebar = sidebarTheme === 'dark';
+
   const value = {
     isSidebarOpen,
     toggleSidebar,
+    sidebarTheme,
+    toggleSidebarTheme,
+    isDarkSidebar,
   };
 
   return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;

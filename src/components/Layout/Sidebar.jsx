@@ -3,23 +3,76 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
 import { getPlanBadgeColor } from '../../constants/plans';
 import { Badge } from '../ui/badge';
 import { Avatar } from '../ui/avatar';
 import logoImg from '../../assets/img/logo.svg';
+
+// サイドバーテーマ設定
+const SIDEBAR_THEMES = {
+  dark: {
+    aside: 'bg-gradient-to-b from-[#1a1d2e] via-[#1e2235] to-[#161925]',
+    border: 'border-white/[0.06]',
+    logoFilter: 'sidebar-logo-dark',
+    menuText: 'text-slate-200',
+    menuHover: 'hover:bg-white/[0.08]',
+    activeClass: 'sidebar-active-dark text-white font-semibold',
+    subText: 'text-slate-200',
+    subBorder: 'border-white/[0.06]',
+    subActiveClass: 'sidebar-active-dark text-white',
+    subHover: 'hover:bg-white/[0.06]',
+    chevron: 'text-slate-400',
+    bottomBorder: 'border-white/[0.06]',
+    bottomBg: '',
+    userName: 'text-white',
+    userEmail: 'text-slate-500',
+    userHover: 'hover:bg-white/[0.05]',
+    logoutBtn: 'border-white/[0.06] text-slate-400 hover:bg-white/[0.05] hover:text-slate-200',
+    adminBtn: 'bg-primary text-white hover:bg-opacity-90',
+    toggleBtnBg: 'border-white/10 bg-[#1e2235] hover:bg-[#252a40]',
+    toggleBtnIcon: 'text-slate-400',
+    themeBtn: 'text-slate-400 hover:bg-white/[0.08]',
+  },
+  white: {
+    aside: 'bg-white',
+    border: 'border-stroke/60',
+    logoFilter: '',
+    menuText: 'text-slate-700',
+    menuHover: 'hover:bg-[rgba(55,88,249,0.05)]',
+    activeClass: 'sidebar-active-white text-primary font-semibold',
+    subText: 'text-slate-600',
+    subBorder: 'border-slate-200',
+    subActiveClass: 'sidebar-active-white text-primary',
+    subHover: 'hover:bg-[rgba(55,88,249,0.05)]',
+    chevron: 'text-slate-400',
+    bottomBorder: 'border-stroke/60',
+    bottomBg: 'bg-white',
+    userName: 'text-slate-800',
+    userEmail: 'text-slate-400',
+    userHover: 'hover:bg-slate-50',
+    logoutBtn: 'border-stroke/60 text-slate-400 hover:bg-slate-50 hover:text-slate-600',
+    adminBtn: 'bg-primary text-white hover:bg-opacity-90',
+    toggleBtnBg: 'border-stroke bg-gray-100 hover:bg-gray-200',
+    toggleBtnIcon: 'text-body-color',
+    themeBtn: 'text-slate-400 hover:bg-[rgba(55,88,249,0.05)]',
+  },
+};
 
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { currentUser, userProfile, logout } = useAuth();
   const { isAdmin } = useAdmin();
-  const { isSidebarOpen, toggleSidebar } = useSidebar();
+  const { isSidebarOpen, toggleSidebar, isDarkSidebar, toggleSidebarTheme } = useSidebar();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(true);
   const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
   const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
   const [isEngagementOpen, setIsEngagementOpen] = useState(false);
   const [isConversionOpen, setIsConversionOpen] = useState(false);
+
+  // テーマオブジェクト
+  const t = SIDEBAR_THEMES[isDarkSidebar ? 'dark' : 'white'];
 
   // ユーザー名を取得（name優先、後方互換でlastName+firstName、なければdisplayName）
   const getUserName = () => {
@@ -37,7 +90,7 @@ export default function Sidebar() {
   // 現在のパスに基づいてメニューを開く
   useEffect(() => {
     const path = location.pathname;
-    
+
     // 分析ページかどうか
     if (path.startsWith('/analysis/') || path === '/users' || path.startsWith('/acquisition/') || path.startsWith('/engagement/') || path.startsWith('/conversion/')) {
       setIsAnalysisOpen(true);
@@ -47,17 +100,17 @@ export default function Sidebar() {
     if (path.startsWith('/analysis/month') || path.startsWith('/analysis/day') || path.startsWith('/analysis/week') || path.startsWith('/analysis/hour')) {
       setIsTimeSeriesOpen(true);
     }
-    
+
     // 集客サブメニュー
     if (path.startsWith('/acquisition/')) {
       setIsAcquisitionOpen(true);
     }
-    
+
     // エンゲージメントサブメニュー
     if (path.startsWith('/engagement/')) {
       setIsEngagementOpen(true);
     }
-    
+
     // コンバージョンサブメニュー
     if (path.startsWith('/conversion/')) {
       setIsConversionOpen(true);
@@ -180,29 +233,29 @@ export default function Sidebar() {
 
   return (
     <>
-    <aside className={`fixed left-0 top-0 z-50 h-screen border-r border-stroke bg-white transition-all duration-300 dark:border-dark-3 dark:bg-dark-2 ${
+    <aside className={`fixed left-0 top-0 z-40 h-screen border-r ${t.border} ${t.aside} transition-all duration-300 ${
       isSidebarOpen ? 'w-64' : 'w-16'
     }`}>
       {/* ロゴ */}
-      <div className="flex h-20 items-center justify-center border-b border-stroke px-6 dark:border-dark-3">
+      <div className="flex h-20 items-center justify-center px-6">
         {isSidebarOpen ? (
           <Link to="/dashboard" className="flex items-center gap-2">
-            <img 
+            <img
               src={logoImg}
-              alt="GROW REPORTER" 
-              className="h-10 w-auto"
+              alt="GROW REPORTER"
+              className={`h-10 w-auto ${t.logoFilter}`}
             />
           </Link>
         ) : (
           <Link to="/dashboard" className="flex items-center justify-center">
-            <img src="/favicon.ico" alt="GROW REPORTER" className="h-8 w-8 object-contain" />
+            <img src="/favicon.ico" alt="GROW REPORTER" className={`h-8 w-8 object-contain ${t.logoFilter}`} />
           </Link>
         )}
       </div>
 
       {/* ナビゲーション */}
       <nav className={`overflow-y-auto py-4 scrollbar-hide ${
-        isSidebarOpen ? 'h-[calc(100vh-16rem)] px-4' : 'h-[calc(100vh-18rem)] px-2'
+        isSidebarOpen ? 'h-[calc(100vh-19rem)] px-4' : 'h-[calc(100vh-20rem)] px-2'
       }`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <ul className="space-y-2">
           {menuItems.map((item, index) => (
@@ -211,7 +264,7 @@ export default function Sidebar() {
                 <>
                   <button
                     onClick={() => isSidebarOpen && setIsAnalysisOpen(!isAnalysisOpen)}
-                    className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium text-dark transition hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3 ${
+                    className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
                       isSidebarOpen ? 'justify-between' : 'justify-center'
                     }`}
                     title={!isSidebarOpen ? item.label : ''}
@@ -222,7 +275,7 @@ export default function Sidebar() {
                     </div>
                     {isSidebarOpen && (
                       <svg
-                        className={`h-4 w-4 transition-transform ${isAnalysisOpen ? 'rotate-180' : ''}`}
+                        className={`h-4 w-4 ${t.chevron} transition-transform ${isAnalysisOpen ? 'rotate-180' : ''}`}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
@@ -232,7 +285,7 @@ export default function Sidebar() {
                     )}
                   </button>
                   {isAnalysisOpen && isSidebarOpen && (
-                    <ul className="ml-2 mt-2 space-y-1 pl-2">
+                    <ul className={`ml-2 mt-2 space-y-1 border-l ${t.subBorder} pl-2`}>
                       {item.submenu.map((subItem, subIndex) => (
                         <li key={subIndex}>
                           {subItem.hasSubmenu ? (
@@ -245,11 +298,11 @@ export default function Sidebar() {
                                   else if (subItem.label === 'ページ') setIsEngagementOpen(!isEngagementOpen);
                                   else if (subItem.label === 'コンバージョン') setIsConversionOpen(!isConversionOpen);
                                 }}
-                                className="flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm text-dark transition hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
+                                className={`flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm ${t.subText} transition ${t.subHover}`}
                               >
                                 <span>{subItem.label}</span>
                                 <svg
-                                  className={`h-3 w-3 transition-transform ${
+                                  className={`h-3 w-3 ${t.chevron} transition-transform ${
                                     (subItem.label === '時系列' && isTimeSeriesOpen) ||
                                     (subItem.label === '集客' && isAcquisitionOpen) ||
                                     (subItem.label === 'ページ' && isEngagementOpen) ||
@@ -275,8 +328,8 @@ export default function Sidebar() {
                                         to={leaf.path}
                                         className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
                                           isActive(leaf.path)
-                                            ? 'bg-primary text-white'
-                                            : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
+                                            ? t.subActiveClass
+                                            : `${t.subText} ${t.subHover}`
                                         }`}
                                       >
                                         {leaf.label}
@@ -292,8 +345,8 @@ export default function Sidebar() {
                               to={subItem.path}
                               className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
                                 isActive(subItem.path)
-                                  ? 'bg-primary text-white'
-                                  : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
+                                  ? t.subActiveClass
+                                  : `${t.subText} ${t.subHover}`
                               }`}
                             >
                               {subItem.label}
@@ -311,8 +364,8 @@ export default function Sidebar() {
                     isSidebarOpen ? 'gap-3' : 'justify-center'
                   } ${
                     isActive(item.path)
-                      ? 'bg-primary text-white'
-                      : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
+                      ? t.activeClass
+                      : `${t.menuText} ${t.menuHover}`
                   }`}
                   title={!isSidebarOpen ? item.label : ''}
                 >
@@ -322,16 +375,40 @@ export default function Sidebar() {
               )}
             </li>
           ))}
+
         </ul>
       </nav>
 
       {/* ユーザー情報 */}
-      <div className="absolute bottom-0 left-0 right-0 border-t border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+      <div className={`absolute bottom-0 left-0 right-0 ${t.bottomBg}`}>
         <div className={isSidebarOpen ? 'p-4' : 'p-2'}>
+          {/* テーマ切替トグル */}
+          <div className={`mb-3 flex justify-center pb-3 border-b ${t.bottomBorder}`}>
+            <button
+              onClick={toggleSidebarTheme}
+              className="group relative flex h-7 w-14 items-center rounded-full transition-colors duration-300"
+              style={{ backgroundColor: isDarkSidebar ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }}
+              title={isDarkSidebar ? 'ライトモードに切替' : 'ダークモードに切替'}
+            >
+              <span
+                className={`absolute flex h-5 w-5 items-center justify-center rounded-full shadow-sm transition-all duration-300 ${
+                  isDarkSidebar
+                    ? 'left-[30px] bg-slate-700'
+                    : 'left-[4px] bg-white'
+                }`}
+              >
+                {isDarkSidebar
+                  ? <Moon className="h-3 w-3 text-slate-300" />
+                  : <Sun className="h-3 w-3 text-amber-500" />
+                }
+              </span>
+            </button>
+          </div>
+
           {/* ユーザー情報（クリックでアカウント設定へ） */}
           <button
             onClick={() => navigate('/account/settings')}
-            className="w-full rounded-lg transition hover:bg-gray-100 dark:hover:bg-dark-3"
+            className={`w-full rounded-lg transition ${t.userHover}`}
           >
             {isSidebarOpen ? (
               <div className="flex items-center gap-3 p-2">
@@ -342,13 +419,10 @@ export default function Sidebar() {
                   className="size-10 bg-primary text-white"
                 />
                 <div className="flex-1 min-w-0 text-left">
-                  <p className="truncate text-sm font-medium text-dark dark:text-white">
+                  <p className={`truncate text-sm font-medium ${t.userName}`}>
                     {getUserName()}
                   </p>
-                  <p className="truncate text-xs text-body-color">
-                    {currentUser?.email}
-                  </p>
-                  <Badge color={userPlan === 'premium' ? 'purple' : userPlan === 'standard' ? 'blue' : 'zinc'} className="mt-1">
+                  <Badge color={userPlan === 'premium' ? 'purple' : userPlan === 'standard' ? 'blue' : 'zinc'} className={`mt-1 ${isDarkSidebar ? 'bg-white/10 !text-white/80' : ''}`}>
                     {planLabel}
                   </Badge>
                 </div>
@@ -368,56 +442,50 @@ export default function Sidebar() {
             )}
           </button>
 
-          {/* ログアウト */}
-          <button
-            onClick={handleLogout}
-            className={`mt-2 flex w-full items-center justify-center gap-2 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-body-color transition hover:bg-gray-100 dark:border-dark-3 dark:text-dark-6 dark:hover:bg-dark-3 ${
-              isSidebarOpen ? '' : 'p-1.5'
-            }`}
-            title={!isSidebarOpen ? 'ログアウト' : ''}
-          >
-            <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
-            {isSidebarOpen && 'ログアウト'}
-          </button>
-
-          {/* 管理者画面ボタン（管理者のみ表示） */}
-          {isAdmin && (
+          {/* ログアウト & 管理者画面 */}
+          <div className={`mt-2 flex ${isSidebarOpen ? 'gap-2' : 'flex-col gap-1.5'}`}>
             <button
-              onClick={() => navigate('/admin/dashboard')}
-              className={`mt-2 flex w-full items-center justify-center rounded-md bg-primary text-white transition hover:bg-opacity-90 ${
-                isSidebarOpen ? 'gap-2 px-3 py-2 text-xs font-medium' : 'p-1.5'
-              }`}
-              title={!isSidebarOpen ? '管理者画面' : ''}
+              onClick={handleLogout}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border bg-white px-2 py-1.5 text-xs font-medium transition ${t.logoutBtn}`}
+              title="ログアウト"
             >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+              <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
               </svg>
-              {isSidebarOpen && '管理者画面'}
+              {isSidebarOpen && 'ログアウト'}
             </button>
-          )}
+            {isAdmin && (
+              <button
+                onClick={() => navigate('/admin/dashboard')}
+                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md ${t.adminBtn} transition px-2 py-1.5 text-xs font-medium`}
+                title="管理者画面"
+              >
+                <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                {isSidebarOpen && '管理者画面'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </aside>
-    
+
     {/* サイドバー開閉ボタン（境界線の中央に円形で表示） */}
     <button
       onClick={toggleSidebar}
-      className={`fixed top-1/2 z-50 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-stroke bg-gray-100 shadow-md transition-all duration-300 hover:bg-gray-200 dark:border-dark-3 dark:bg-dark-3 dark:hover:bg-dark-3 ${
+      className={`fixed top-1/2 z-40 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border shadow-md transition-all duration-300 ${t.toggleBtnBg} ${
         isSidebarOpen ? 'left-64' : 'left-16'
       }`}
       title={isSidebarOpen ? 'サイドバーを閉じる' : 'サイドバーを開く'}
     >
       {isSidebarOpen ? (
-        <ChevronLeft className="h-4 w-4 text-body-color dark:text-dark-6" />
+        <ChevronLeft className={`h-4 w-4 ${t.toggleBtnIcon}`} />
       ) : (
-        <ChevronRight className="h-4 w-4 text-body-color dark:text-dark-6" />
+        <ChevronRight className={`h-4 w-4 ${t.toggleBtnIcon}`} />
       )}
     </button>
 
     </>
   );
 }
-
-

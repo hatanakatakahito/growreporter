@@ -219,7 +219,7 @@ export default function ConversionList() {
       <AnalysisHeader
           dateRange={dateRange}
           setDateRange={updateDateRange}
-          showDateRange={false}
+          showDateRange={true}
           showSiteInfo={false}
         />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">

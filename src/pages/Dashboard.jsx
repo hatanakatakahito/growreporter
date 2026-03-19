@@ -117,27 +117,25 @@ export default function Dashboard() {
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         {/* サイト情報カバー（スクロール領域内） */}
         {selectedSite && (
-          <div
-            style={{
-              background: 'linear-gradient(to right, rgb(224, 242, 254), rgb(254, 249, 195))',
-            }}
-          >
-            <div className="mx-auto max-w-content px-6 py-10">
-              <div className="flex items-start justify-between gap-8">
+          <div className="relative overflow-hidden border-b border-slate-200/40">
+            <div className="absolute inset-0" style={{ background: 'linear-gradient(to right, rgba(224, 242, 254, 0.8), rgba(254, 249, 195, 0.6))' }} />
+            <div className="absolute inset-0 backdrop-blur-sm" />
+            <div className="relative mx-auto px-6 py-10" style={{ maxWidth: 1400 }}>
+              <div className="flex items-center justify-between gap-8">
                 <div className="flex-1">
-                  <div className="mb-1 flex items-center gap-3">
-                    <Globe className="h-5 w-5 text-primary" />
-                    <h1 className="text-3xl font-bold text-gray-900">
+                  <div className="mb-1 flex items-center gap-2.5">
+                    <Globe className="h-5 w-5 shrink-0 text-primary" />
+                    <h1 className="text-2xl font-bold text-gray-900">
                       {selectedSite.siteName || 'サイト名'}
                     </h1>
                   </div>
-                  <p className="mb-6 text-xs text-gray-500">{selectedSite.siteUrl || ''}</p>
-                  <div className="mb-3">
-                    <p className="text-base font-semibold text-gray-900">
+                  <p className="mb-5 pl-[30px] text-xs text-gray-500">{selectedSite.siteUrl || ''}</p>
+                  <div className="mb-2 pl-[30px]">
+                    <p className="text-[15px] font-semibold text-gray-900">
                       {selectedSite.metaTitle || 'メタタイトルが設定されていません'}
                     </p>
                   </div>
-                  <div>
+                  <div className="pl-[30px]">
                     <p className="max-w-2xl text-sm leading-relaxed text-gray-600">
                       {selectedSite.metaDescription || 'メタディスクリプションが設定されていません'}
                     </p>
@@ -146,40 +144,38 @@ export default function Dashboard() {
                 <div className="flex items-end gap-4">
                   {selectedSite.pcScreenshotUrl ? (
                     <div
-                      className="flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-md"
-                      style={{ width: SCREENSHOT_PC_DISPLAY.width, height: SCREENSHOT_PC_DISPLAY.height }}
+                      className="flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm"
+                      style={{ width: 300, height: 180 }}
                     >
-                      <img
-                        src={selectedSite.pcScreenshotUrl}
-                        alt="PCキャプチャ"
-                        className="max-h-full max-w-full object-contain"
-                      />
+                      <img src={selectedSite.pcScreenshotUrl} alt="PCキャプチャ" className="max-h-full max-w-full object-contain" />
                     </div>
                   ) : (
                     <div
-                      className="flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-md"
-                      style={{ width: SCREENSHOT_PC_DISPLAY.width, height: SCREENSHOT_PC_DISPLAY.height }}
+                      className="flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm"
+                      style={{ width: 300, height: 180 }}
                     >
-                      <p className="text-sm text-gray-400">PCスクリーンショット未設定</p>
+                      <div className="text-center">
+                        <svg className="mx-auto h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                        <span className="mt-1 block text-[11px] text-slate-400">PCスクリーンショット未設定</span>
+                      </div>
                     </div>
                   )}
                   {selectedSite.mobileScreenshotUrl ? (
                     <div
-                      className="flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-md"
-                      style={{ width: SCREENSHOT_MOBILE_DISPLAY.width, height: SCREENSHOT_MOBILE_DISPLAY.height }}
+                      className="flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm"
+                      style={{ width: 85, height: 180 }}
                     >
-                      <img
-                        src={selectedSite.mobileScreenshotUrl}
-                        alt="スマホキャプチャ"
-                        className="max-h-full max-w-full object-contain"
-                      />
+                      <img src={selectedSite.mobileScreenshotUrl} alt="スマホキャプチャ" className="max-h-full max-w-full object-contain" />
                     </div>
                   ) : (
                     <div
-                      className="flex items-center justify-center overflow-hidden rounded-lg bg-white shadow-md"
-                      style={{ width: SCREENSHOT_MOBILE_DISPLAY.width, height: SCREENSHOT_MOBILE_DISPLAY.height }}
+                      className="flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm"
+                      style={{ width: 85, height: 180 }}
                     >
-                      <p className="text-center text-sm text-gray-400">スマホ<br />スクリーン<br />ショット<br />未設定</p>
+                      <div className="text-center">
+                        <svg className="mx-auto h-6 w-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+                        <span className="mt-0.5 block text-[9px] text-slate-400">SP未設定</span>
+                      </div>
                     </div>
                   )}
                 </div>

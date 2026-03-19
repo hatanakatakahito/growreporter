@@ -154,6 +154,7 @@ export default function AccountSettings() {
         <Button
           outline
           type="button"
+          className="bg-white"
           onClick={handleLogout}
         >
           <svg data-slot="icon" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
