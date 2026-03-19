@@ -19,7 +19,6 @@ import {
   FolderTree,
   Target,
   GitMerge,
-  Shield,
 } from 'lucide-react';
 
 /**
@@ -158,22 +157,6 @@ export default function AnalysisNavigation() {
               title: '逆算フロー',
               description: 'コンバージョンまでのステップを逆算し、離脱ポイントを特定します。',
               path: '/analysis/reverse-flow',
-            },
-          ],
-        },
-      ],
-    },
-    {
-      groupTitle: 'サイト診断',
-      groupDescription: 'PageSpeed InsightsとコンテンツをAIで総合診断し、技術的な改善点を発見します。',
-      categories: [
-        {
-          items: [
-            {
-              icon: <Shield className="h-6 w-6" />,
-              title: 'サイト診断',
-              description: 'パフォーマンス・SEO・コンテンツ品質・エンゲージメントを総合診断します。',
-              path: '/analysis/site-diagnosis',
             },
           ],
         },

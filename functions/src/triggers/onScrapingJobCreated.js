@@ -2,6 +2,7 @@ import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { runScrapingForSite } from '../callable/scrapeTop100Pages.js';
+import { runSiteDiagnosisInternal } from '../callable/runSiteDiagnosis.js';
 
 /** トリガー設定（index で遅延読み込み時に使用） */
 export const onScrapingJobCreatedTriggerConfig = {
@@ -58,6 +59,19 @@ export async function onScrapingJobCreatedHandler(event) {
       });
 
       logger.info('[onScrapingJobCreated] スクレイピング完了', { jobId, siteId, successCount: result.successCount });
+
+      // スクレイピング完了後にサイト診断を自動実行（プラン消費なし）
+      try {
+        logger.info('[onScrapingJobCreated] 自動サイト診断を開始', { siteId });
+        const diagResult = await runSiteDiagnosisInternal(siteId);
+        if (diagResult) {
+          logger.info('[onScrapingJobCreated] 自動サイト診断完了', { siteId, overallScore: diagResult.overallScore });
+        } else {
+          logger.warn('[onScrapingJobCreated] 自動サイト診断: データ不足でスキップ', { siteId });
+        }
+      } catch (diagError) {
+        logger.warn('[onScrapingJobCreated] 自動サイト診断エラー（スクレイピングは成功）', { siteId, error: diagError.message });
+      }
     } catch (error) {
       logger.error('[onScrapingJobCreated] エラー', { jobId, siteId, error: error.message });
 

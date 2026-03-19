@@ -19,7 +19,7 @@ export async function generateAISummaryCallable(request) {
   const db = getFirestore();
   // 【重要】legacyMetrics は後方互換性のためのみ残している
   // 実際には rawData → finalMetrics → metrics という流れで使用する
-  const { siteId, pageType, startDate, endDate, metrics: legacyMetrics, rawData, forceRegenerate = false, improvementFocus: improvementFocusValue = 'balance', existingImprovements = [] } = request.data;
+  const { siteId, pageType, startDate, endDate, metrics: legacyMetrics, rawData, forceRegenerate = false, improvementFocus: improvementFocusValue = 'balance', userNote = '', existingImprovements = [] } = request.data;
 
   // 入力バリデーション
   if (!siteId || !pageType || !startDate || !endDate) {
@@ -202,6 +202,7 @@ export async function generateAISummaryCallable(request) {
         sitePurposeText: sitePurposeArr.map((v) => SITE_PURPOSE_LABELS[v] || v).join('、') || '未設定',
       };
       options.improvementFocus = IMPROVEMENT_FOCUS_LABELS[improvementFocusValue] || IMPROVEMENT_FOCUS_LABELS.balance;
+      options.userNote = userNote || '';
       options.existingImprovements = existingImprovements || [];
       options.diagnosisData = metrics.diagnosisData || null;
       options.siteStructureData = metrics.siteStructureData || null;

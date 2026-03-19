@@ -9,7 +9,7 @@ import { getCache, setCache, generateCacheKey } from '../utils/cacheManager.js';
  */
 export async function fetchGA4DailyConversionDataCallable(request) {
   const db = getFirestore();
-  const { siteId, startDate, endDate } = request.data;
+  const { siteId, startDate, endDate, dimensionFilter } = request.data;
 
   if (!siteId || !startDate || !endDate) {
     throw new HttpsError('invalid-argument', 'siteId, startDate, endDate are required');
@@ -23,7 +23,8 @@ export async function fetchGA4DailyConversionDataCallable(request) {
 
   try {
     // キャッシュチェック（パフォーマンス最適化）
-    const cacheKey = generateCacheKey('ga4-daily-conv', siteId, startDate, endDate);
+    const filterHash = dimensionFilter ? JSON.stringify(dimensionFilter) : '';
+    const cacheKey = generateCacheKey('ga4-daily-conv', siteId, startDate, endDate, filterHash);
     const cachedData = await getCache(cacheKey);
     
     if (cachedData) {
@@ -54,20 +55,46 @@ export async function fetchGA4DailyConversionDataCallable(request) {
     const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, siteData.ga4OauthTokenId);
     const analyticsData = google.analyticsdata('v1beta');
 
-    // 🚀 パフォーマンス最適化: sessionsとconversionsを並列取得
+    // 🚀 パフォーマンス最適化: メトリクスとconversionsを並列取得
+    const sessionsRequestBody = {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'date' }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'totalUsers' },
+        { name: 'newUsers' },
+        { name: 'screenPageViews' },
+        { name: 'engagementRate' },
+        { name: 'averageSessionDuration' },
+        { name: 'bounceRate' },
+      ],
+    };
+    if (dimensionFilter) {
+      sessionsRequestBody.dimensionFilter = dimensionFilter;
+    }
+
     const promises = [
       analyticsData.properties.runReport({
         auth: oauth2Client,
         property: `properties/${siteData.ga4PropertyId}`,
-        requestBody: {
-          dateRanges: [{ startDate, endDate }],
-          dimensions: [{ name: 'date' }],
-          metrics: [{ name: 'sessions' }],
-        },
+        requestBody: sessionsRequestBody,
       }),
     ];
 
     if (siteData.conversionEvents && siteData.conversionEvents.length > 0) {
+      const convEventFilter = {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: {
+            values: siteData.conversionEvents.map(e => e.eventName),
+          },
+        },
+      };
+      // ユーザーフィルタとコンバージョンイベントフィルタをマージ
+      const convDimensionFilter = dimensionFilter
+        ? { andGroup: { expressions: [dimensionFilter, convEventFilter] } }
+        : convEventFilter;
+
       promises.push(
         analyticsData.properties.runReport({
           auth: oauth2Client,
@@ -76,14 +103,7 @@ export async function fetchGA4DailyConversionDataCallable(request) {
             dateRanges: [{ startDate, endDate }],
             dimensions: [{ name: 'date' }, { name: 'eventName' }],
             metrics: [{ name: 'eventCount' }],
-            dimensionFilter: {
-              filter: {
-                fieldName: 'eventName',
-                inListFilter: {
-                  values: siteData.conversionEvents.map(e => e.eventName),
-                },
-              },
-            },
+            dimensionFilter: convDimensionFilter,
           },
         })
       );
@@ -99,6 +119,12 @@ export async function fetchGA4DailyConversionDataCallable(request) {
       dailyData[date] = {
         date,
         sessions: parseInt(row.metricValues[0].value || 0),
+        users: parseInt(row.metricValues[1].value || 0),
+        newUsers: parseInt(row.metricValues[2].value || 0),
+        pageViews: parseInt(row.metricValues[3].value || 0),
+        engagementRate: parseFloat(row.metricValues[4].value || 0),
+        avgSessionDuration: parseFloat(row.metricValues[5].value || 0),
+        bounceRate: parseFloat(row.metricValues[6].value || 0),
         conversions: 0,
       };
     });

@@ -9,6 +9,7 @@ import DataTable from '../../components/Analysis/DataTable';
 import { ExternalLink as ExternalLinkIcon } from 'lucide-react';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
@@ -23,6 +24,8 @@ export default function ExternalLinks() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const { currentUser } = useAuth();
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   // AI分析タブへスクロールする関数
   const scrollToAIAnalysis = () => {
@@ -50,7 +53,7 @@ export default function ExternalLinks() {
     dateRange.to,
     ['eventCount', 'activeUsers'],
     ['eventName', 'linkUrl'],
-    null
+    ga4DimensionFilter
   );
 
   // テーブル用のデータ整形（イベント数降順）
@@ -89,6 +92,15 @@ export default function ExternalLinks() {
             </p>
           </div>
 
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
+
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
           ) : isError ? (
@@ -105,11 +117,13 @@ export default function ExternalLinks() {
             </div>
           ) : (
             <DataTable
+              tableKey="analysis-external-links"
               columns={[
                 {
                   key: 'linkUrl',
                   label: 'URL',
                   sortable: true,
+                  required: true,
                   tooltip: 'externalLinkUrl',
                   render: (value) =>
                     value && value !== '(不明)' ? (

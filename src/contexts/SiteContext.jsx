@@ -4,7 +4,7 @@ import { useAuth } from './AuthContext';
 import { usePlan } from '../hooks/usePlan';
 import { db } from '../config/firebase';
 import { collection, query, where, getDocs, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { format } from 'date-fns';
+import { format, sub, differenceInCalendarDays } from 'date-fns';
 
 const SiteContext = createContext();
 
@@ -287,6 +287,42 @@ export function SiteProvider({ children }) {
     }
   }, [dateRange]);
 
+  // === 期間比較機能 ===
+  const [comparisonMode, setComparisonMode] = useState(() => {
+    try {
+      return localStorage.getItem('comparisonMode') || 'none';
+    } catch { return 'none'; }
+  });
+  const [customComparisonRange, setCustomComparisonRange] = useState(null);
+
+  // comparisonModeをlocalStorageに永続化
+  useEffect(() => {
+    try { localStorage.setItem('comparisonMode', comparisonMode); } catch {}
+  }, [comparisonMode]);
+
+  // 比較期間を自動算出
+  const comparisonDateRange = useMemo(() => {
+    if (comparisonMode === 'none' || !dateRange?.from || !dateRange?.to) return null;
+    const from = new Date(dateRange.from);
+    const to = new Date(dateRange.to);
+    const days = differenceInCalendarDays(to, from);
+
+    if (comparisonMode === 'previous') {
+      const compTo = sub(from, { days: 1 });
+      const compFrom = sub(compTo, { days });
+      return { from: format(compFrom, 'yyyy-MM-dd'), to: format(compTo, 'yyyy-MM-dd') };
+    }
+    if (comparisonMode === 'yearAgo') {
+      const compFrom = sub(from, { years: 1 });
+      const compTo = sub(to, { years: 1 });
+      return { from: format(compFrom, 'yyyy-MM-dd'), to: format(compTo, 'yyyy-MM-dd') };
+    }
+    if (comparisonMode === 'custom' && customComparisonRange?.from && customComparisonRange?.to) {
+      return customComparisonRange;
+    }
+    return null;
+  }, [comparisonMode, dateRange, customComparisonRange]);
+
   // プラン制限に基づくサイトフィルタリング
   const needsSiteSelection = useMemo(() => {
     if (isLoading || isPlanLoading) return false;
@@ -405,11 +441,16 @@ export function SiteProvider({ children }) {
     isLoading,
     dateRange,
     updateDateRange,
-    isAdminViewing, // 管理者として他のサイトを閲覧中かどうか
-    adminRole, // admin/editor/viewer
-    needsSiteSelection, // ダウングレード時のサイト選択が必要かどうか
-    confirmSiteSelection, // サイト選択を確定
-    maxSites, // プランの最大サイト数
+    isAdminViewing,
+    adminRole,
+    needsSiteSelection,
+    confirmSiteSelection,
+    maxSites,
+    comparisonMode,
+    setComparisonMode,
+    comparisonDateRange,
+    customComparisonRange,
+    setCustomComparisonRange,
   };
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;

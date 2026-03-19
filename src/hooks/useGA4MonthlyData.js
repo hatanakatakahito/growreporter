@@ -9,21 +9,22 @@ import { httpsCallable } from 'firebase/functions';
  * @param {string} endDate - 終了日（YYYY-MM-DD）
  * @returns {object} - { monthlyData, isLoading, isError, error }
  */
-export function useGA4MonthlyData(siteId, startDate, endDate) {
+export function useGA4MonthlyData(siteId, startDate, endDate, dimensionFilter = null) {
   return useQuery({
-    queryKey: ['ga4MonthlyData', siteId, startDate, endDate],
+    queryKey: ['ga4MonthlyData', siteId, startDate, endDate, dimensionFilter],
     queryFn: async () => {
       if (!siteId || !startDate || !endDate) {
         throw new Error('siteId, startDate, endDate are required');
       }
 
       const fetchGA4MonthlyData = httpsCallable(functions, 'fetchGA4MonthlyData');
-      
+
       try {
         const result = await fetchGA4MonthlyData({
           siteId,
           startDate,
           endDate,
+          dimensionFilter,
         });
         
         return result.data;

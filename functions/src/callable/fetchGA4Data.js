@@ -75,7 +75,8 @@ export async function fetchGA4DataCallable(request) {
     }
 
     // 2. キャッシュチェック（パフォーマンス最適化）
-    const cacheKey = generateCacheKey('ga4', siteId, startDate, endDate, dimensionsStr, metricsStr);
+    const filterStr = dimensionFilter ? JSON.stringify(dimensionFilter) : '';
+    const cacheKey = generateCacheKey('ga4', siteId, startDate, endDate, dimensionsStr, metricsStr, filterStr);
     const cachedData = await getCache(cacheKey);
     
     if (cachedData) {

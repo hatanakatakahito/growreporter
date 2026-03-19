@@ -1,0 +1,283 @@
+/* DateRangePicker - Google Analytics風スタイル */
+
+.gr-datepicker .rdp-root {
+  --rdp-accent-color: #1a73e8;
+  --rdp-accent-background-color: transparent;
+  --rdp-range_middle-background-color: transparent;
+  --rdp-range_start-color: #fff;
+  --rdp-range_end-color: #fff;
+  --rdp-range_start-background: #1a73e8;
+  --rdp-range_end-background: #1a73e8;
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 36px;
+  --rdp-day_button-width: 36px;
+  font-size: 13px;
+}
+
+.gr-datepicker .rdp-month_caption {
+  display: none;
+}
+
+.gr-datepicker .rdp-months {
+  gap: 0;
+}
+
+/* 曜日ヘッダー */
+.gr-datepicker .rdp-weekday {
+  font-size: 12px;
+  font-weight: 500;
+  color: #70757a;
+  padding-bottom: 4px;
+  width: 36px;
+  height: 28px;
+}
+
+/* 日セル共通 */
+.gr-datepicker .rdp-day {
+  border-radius: 0;
+}
+
+.gr-datepicker .rdp-day_button {
+  font-size: 13px;
+  font-weight: 400;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: background-color 0.1s;
+  color: #3c4043;
+}
+
+/* 日曜: 赤 */
+.gr-datepicker .rdp-day--sunday .rdp-day_button {
+  color: #d93025;
+}
+
+/* 土曜: 青 */
+.gr-datepicker .rdp-day--saturday .rdp-day_button {
+  color: #1a73e8;
+}
+
+/* 祝日: 赤 */
+.gr-datepicker .rdp-day--holiday .rdp-day_button {
+  color: #d93025;
+}
+
+/* === 範囲選択: Google Analytics風 === */
+
+/* 開始日・終了日: 青丸塗りつぶし + 白文字 */
+.gr-datepicker .rdp-range_start .rdp-day_button,
+.gr-datepicker .rdp-range_end .rdp-day_button {
+  background-color: #1a73e8 !important;
+  color: #fff !important;
+  font-weight: 500;
+  border-radius: 50%;
+}
+
+/* 開始日セル: 右半分に薄い青背景 */
+.gr-datepicker .rdp-range_start:not(.rdp-range_end) {
+  background: linear-gradient(to right, transparent 50%, #e8f0fe 50%);
+}
+
+/* 終了日セル: 左半分に薄い青背景 */
+.gr-datepicker .rdp-range_end:not(.rdp-range_start) {
+  background: linear-gradient(to left, transparent 50%, #e8f0fe 50%);
+}
+
+/* 中間日: 全面薄い青背景 */
+.gr-datepicker .rdp-range_middle {
+  background-color: #e8f0fe;
+  border-radius: 0;
+}
+
+.gr-datepicker .rdp-range_middle .rdp-day_button {
+  color: #174ea6;
+  border-radius: 0;
+  font-weight: 400;
+}
+
+/* 今日マーク: 薄い枠線（範囲選択時は上書きされる） */
+.gr-datepicker .rdp-today:not(.rdp-range_start):not(.rdp-range_end) .rdp-day_button {
+  font-weight: 600;
+  border: 1.5px solid #1a73e8;
+  border-radius: 50%;
+}
+
+/* ナビゲーション非表示（カスタムナビ使用） */
+.gr-datepicker .rdp-nav {
+  display: none;
+}
+
+/* ホバー */
+.gr-datepicker .rdp-day_button:hover {
+  background-color: #f1f3f4;
+  border-radius: 50%;
+}
+
+/* 選択済みのホバーは色を維持 */
+.gr-datepicker .rdp-range_start .rdp-day_button:hover,
+.gr-datepicker .rdp-range_end .rdp-day_button:hover {
+  background-color: #1557b0 !important;
+}
+
+/* 曜日ヘッダーの日曜・土曜 */
+.gr-datepicker .rdp-weekday:nth-child(1) {
+  color: #d93025;
+}
+
+.gr-datepicker .rdp-weekday:nth-child(7) {
+  color: #1a73e8;
+}
+
+/* 祝日がrange中間にある場合も赤テキストを維持 */
+.gr-datepicker .rdp-range_middle.rdp-day--holiday .rdp-day_button {
+  color: #d93025;
+}
+
+/* 前月の日（薄く） */
+.gr-datepicker .rdp-outside .rdp-day_button {
+  color: #dadce0;
+}
+
+/* テーブルセル間隔 */
+.gr-datepicker .rdp-week {
+  gap: 0;
+}
+
+/* ============================================
+   比較期間カレンダー（アンバー/イエロー配色）
+   ============================================ */
+
+.gr-datepicker-comp .rdp-root {
+  --rdp-accent-color: #f59e0b;
+  --rdp-accent-background-color: transparent;
+  --rdp-range_middle-background-color: transparent;
+  --rdp-range_start-color: #fff;
+  --rdp-range_end-color: #fff;
+  --rdp-range_start-background: #f59e0b;
+  --rdp-range_end-background: #f59e0b;
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 36px;
+  --rdp-day_button-width: 36px;
+  font-size: 13px;
+}
+
+.gr-datepicker-comp .rdp-month_caption {
+  display: none;
+}
+
+.gr-datepicker-comp .rdp-months {
+  gap: 0;
+}
+
+.gr-datepicker-comp .rdp-weekday {
+  font-size: 12px;
+  font-weight: 500;
+  color: #70757a;
+  padding-bottom: 4px;
+  width: 36px;
+  height: 28px;
+}
+
+.gr-datepicker-comp .rdp-day {
+  border-radius: 0;
+}
+
+.gr-datepicker-comp .rdp-day_button {
+  font-size: 13px;
+  font-weight: 400;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  transition: background-color 0.1s;
+  color: #3c4043;
+}
+
+/* 日曜: 赤 */
+.gr-datepicker-comp .rdp-day--sunday .rdp-day_button {
+  color: #d93025;
+}
+
+/* 土曜: 青 */
+.gr-datepicker-comp .rdp-day--saturday .rdp-day_button {
+  color: #1a73e8;
+}
+
+/* 祝日: 赤 */
+.gr-datepicker-comp .rdp-day--holiday .rdp-day_button {
+  color: #d93025;
+}
+
+/* 開始日・終了日: アンバー丸塗りつぶし + 白文字 */
+.gr-datepicker-comp .rdp-range_start .rdp-day_button,
+.gr-datepicker-comp .rdp-range_end .rdp-day_button {
+  background-color: #f59e0b !important;
+  color: #fff !important;
+  font-weight: 500;
+  border-radius: 50%;
+}
+
+/* 開始日セル: 右半分に薄いアンバー背景 */
+.gr-datepicker-comp .rdp-range_start:not(.rdp-range_end) {
+  background: linear-gradient(to right, transparent 50%, #fef3c7 50%);
+}
+
+/* 終了日セル: 左半分に薄いアンバー背景 */
+.gr-datepicker-comp .rdp-range_end:not(.rdp-range_start) {
+  background: linear-gradient(to left, transparent 50%, #fef3c7 50%);
+}
+
+/* 中間日: 全面薄いアンバー背景 */
+.gr-datepicker-comp .rdp-range_middle {
+  background-color: #fef3c7;
+  border-radius: 0;
+}
+
+.gr-datepicker-comp .rdp-range_middle .rdp-day_button {
+  color: #92400e;
+  border-radius: 0;
+  font-weight: 400;
+}
+
+/* 今日マーク */
+.gr-datepicker-comp .rdp-today:not(.rdp-range_start):not(.rdp-range_end) .rdp-day_button {
+  font-weight: 600;
+  border: 1.5px solid #f59e0b;
+  border-radius: 50%;
+}
+
+.gr-datepicker-comp .rdp-nav {
+  display: none;
+}
+
+.gr-datepicker-comp .rdp-day_button:hover {
+  background-color: #f1f3f4;
+  border-radius: 50%;
+}
+
+.gr-datepicker-comp .rdp-range_start .rdp-day_button:hover,
+.gr-datepicker-comp .rdp-range_end .rdp-day_button:hover {
+  background-color: #d97706 !important;
+}
+
+.gr-datepicker-comp .rdp-weekday:nth-child(1) {
+  color: #d93025;
+}
+
+.gr-datepicker-comp .rdp-weekday:nth-child(7) {
+  color: #1a73e8;
+}
+
+/* 祝日がrange中間にある場合も赤テキストを維持 */
+.gr-datepicker-comp .rdp-range_middle.rdp-day--holiday .rdp-day_button {
+  color: #d93025;
+}
+
+.gr-datepicker-comp .rdp-outside .rdp-day_button {
+  color: #dadce0;
+}
+
+.gr-datepicker-comp .rdp-week {
+  gap: 0;
+}

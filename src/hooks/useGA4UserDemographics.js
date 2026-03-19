@@ -9,24 +9,25 @@ import { format } from 'date-fns';
  * @param {string|Date} from - 開始日 (YYYY-MM-DD形式の文字列またはDateオブジェクト)
  * @param {string|Date} to - 終了日 (YYYY-MM-DD形式の文字列またはDateオブジェクト)
  */
-export const useGA4UserDemographics = (siteId, from, to) => {
+export const useGA4UserDemographics = (siteId, from, to, dimensionFilter = null) => {
   // 文字列形式に統一（既に文字列の場合はそのまま、Dateオブジェクトの場合はフォーマット）
   const startDate = typeof from === 'string' ? from : format(from, 'yyyy-MM-dd');
   const endDate = typeof to === 'string' ? to : format(to, 'yyyy-MM-dd');
 
   return useQuery({
-    queryKey: ['ga4-user-demographics', siteId, startDate, endDate],
+    queryKey: ['ga4-user-demographics', siteId, startDate, endDate, dimensionFilter],
     queryFn: async () => {
       if (!siteId || !startDate || !endDate) {
         throw new Error('siteId, from, and to are required');
       }
 
       const fetchGA4UserDemographics = httpsCallable(functions, 'fetchGA4UserDemographics');
-      
+
       const result = await fetchGA4UserDemographics({
         siteId,
         startDate,
         endDate,
+        dimensionFilter,
       });
 
       if (!result.data.success) {

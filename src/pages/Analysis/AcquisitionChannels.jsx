@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
@@ -16,6 +16,8 @@ import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
 import {
   ResponsiveContainer,
@@ -36,13 +38,15 @@ import {
  * 流入チャネル別の訪問者とコンバージョンを表示
  */
 export default function AcquisitionChannels() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('chart');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   // AI分析タブへスクロールする関数
   const scrollToAIAnalysis = () => {
@@ -78,7 +82,7 @@ export default function AcquisitionChannels() {
     isError,
     error,
   } = useQuery({
-    queryKey: ['ga4-channel-conversions', selectedSiteId, dateRange.from, dateRange.to],
+    queryKey: ['ga4-channel-conversions', selectedSiteId, dateRange.from, dateRange.to, ga4DimensionFilter],
     queryFn: async () => {
       console.log('[AcquisitionChannels] Fetching channel conversion data...');
       const fetchChannelConversionData = httpsCallable(functions, 'fetchGA4ChannelConversionData');
@@ -86,6 +90,7 @@ export default function AcquisitionChannels() {
         siteId: selectedSiteId,
         startDate: dateRange.from,
         endDate: dateRange.to,
+        dimensionFilter: ga4DimensionFilter,
       });
       console.log('[AcquisitionChannels] Channel conversion data fetched:', result.data);
       return result.data;
@@ -94,6 +99,25 @@ export default function AcquisitionChannels() {
     retry: false,
     staleTime: 5 * 60 * 1000, // 5分間キャッシュ
   });
+
+  const { data: compChannelData } = useQuery({
+    queryKey: ['ga4-channel-conversions-comp', selectedSiteId, comparisonDateRange?.from, comparisonDateRange?.to, ga4DimensionFilter],
+    queryFn: async () => {
+      const fetchChannelConversionData = httpsCallable(functions, 'fetchGA4ChannelConversionData');
+      const result = await fetchChannelConversionData({
+        siteId: selectedSiteId,
+        startDate: comparisonDateRange.from,
+        endDate: comparisonDateRange.to,
+        dimensionFilter: ga4DimensionFilter,
+      });
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!comparisonDateRange?.from && !!comparisonDateRange?.to,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compChannelData;
 
   // チャネル名の日本語化
   const channelNameMap = {
@@ -144,6 +168,11 @@ export default function AcquisitionChannels() {
             ? ((row.sessions / totalSessions) * 100).toFixed(1)
             : '0.0',
         users: row.activeUsers || 0,
+        newUsers: row.newUsers || 0,
+        pageViews: row.screenPageViews || 0,
+        engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
+        avgSessionDuration: row.averageSessionDuration || 0,
+        bounceRate: ((row.bounceRate || 0) * 100).toFixed(1),
         conversions: row.conversions || 0,
         conversionRate:
           row.sessions > 0
@@ -151,6 +180,24 @@ export default function AcquisitionChannels() {
             : '0.00',
       }))
       .sort((a, b) => b.sessions - a.sessions) || [];
+
+  const mergedTableData = useMemo(() => {
+    if (!isComparing || !compChannelData?.rows) return tableData;
+    const compTotalSessions = compChannelData.rows.reduce((sum, r) => sum + (r.sessions || 0), 0);
+    const compTable = compChannelData.rows.map((row) => ({
+      channelName: getChannelName(row.sessionDefaultChannelGroup),
+      sessions: row.sessions || 0,
+      users: row.activeUsers || 0,
+      newUsers: row.newUsers || 0,
+      pageViews: row.screenPageViews || 0,
+      conversions: row.conversions || 0,
+      engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
+      bounceRate: ((row.bounceRate || 0) * 100).toFixed(1),
+      avgSessionDuration: row.averageSessionDuration || 0,
+      conversionRate: row.sessions > 0 ? ((row.conversions / row.sessions) * 100).toFixed(2) : '0.00',
+    }));
+    return mergeComparisonRows(tableData, compTable, 'channelName', ['sessions', 'users', 'newUsers', 'pageViews', 'conversions', 'engagementRate', 'bounceRate', 'avgSessionDuration', 'conversionRate']);
+  }, [tableData, isComparing, compChannelData]);
 
   // チャート用のデータ
   const chartData = tableData;
@@ -240,10 +287,28 @@ export default function AcquisitionChannels() {
     return null;
   };
 
-  // カスタムラベル（円グラフ用）
-  const renderLabel = (entry) => {
-    const percent = ((entry.value / totalSessions) * 100).toFixed(1);
-    return `${entry.name} (${percent}%)`;
+  // カスタムラベル（円グラフ用 - 外側配置で重なり防止）
+  const RADIAN = Math.PI / 180;
+  const renderLabel = ({ cx, cy, midAngle, outerRadius, name, value }) => {
+    const percent = ((value / totalSessions) * 100).toFixed(1);
+    // 小さすぎるセクターはラベル非表示
+    if (parseFloat(percent) < 2) return null;
+    const radius = outerRadius + 25;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+    return (
+      <text
+        x={x}
+        y={y}
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        fill="#374151"
+        fontSize={12}
+        fontWeight={500}
+      >
+        {name} ({percent}%)
+      </text>
+    );
   };
 
   return (
@@ -265,6 +330,15 @@ export default function AcquisitionChannels() {
               流入チャネル別の訪問者数、ユーザー数、コンバージョンを確認できます
             </p>
           </div>
+
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
 
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
@@ -313,9 +387,9 @@ export default function AcquisitionChannels() {
                           data={pieData}
                           cx="50%"
                           cy="50%"
-                          labelLine={false}
+                          labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                           label={renderLabel}
-                          outerRadius={100}
+                          outerRadius={90}
                           fill="#8884d8"
                           dataKey="value"
                         >
@@ -360,11 +434,14 @@ export default function AcquisitionChannels() {
                 </div>
               ) : (
                 <DataTable
+                  tableKey="analysis-channels"
+                  isComparing={isComparing}
                   columns={[
                     {
                       key: 'channelName',
                       label: 'チャネル',
                       sortable: true,
+                      required: true,
                     },
                     {
                       key: 'sessions',
@@ -372,6 +449,7 @@ export default function AcquisitionChannels() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
+                      comparison: true,
                     },
                     {
                       key: 'sessionRate',
@@ -385,6 +463,7 @@ export default function AcquisitionChannels() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'users',
+                      comparison: true,
                     },
                     {
                       key: 'conversions',
@@ -392,15 +471,67 @@ export default function AcquisitionChannels() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'conversions',
+                      comparison: true,
                     },
                     {
                       key: 'conversionRate',
                       label: 'CVR',
                       align: 'right',
                       render: (value) => `${value}%`,
+                      comparison: true,
+                    },
+                    {
+                      key: 'newUsers',
+                      label: '新規ユーザー',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'newUsers',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'pageViews',
+                      label: 'PV数',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'pageViews',
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'engagementRate',
+                      label: 'ENG率',
+                      align: 'right',
+                      tooltip: 'engagementRate',
+                      render: (value) => `${value}%`,
+                      defaultVisible: false,
+                      comparison: true,
+                    },
+                    {
+                      key: 'bounceRate',
+                      label: '直帰率',
+                      align: 'right',
+                      tooltip: 'bounceRate',
+                      render: (value) => `${value}%`,
+                      defaultVisible: false,
+                      comparison: true,
+                      invertColor: true,
+                    },
+                    {
+                      key: 'avgSessionDuration',
+                      label: '平均滞在',
+                      align: 'right',
+                      tooltip: 'avgSessionDuration',
+                      defaultVisible: false,
+                      comparison: true,
+                      render: (value) => {
+                        const m = Math.floor(value / 60);
+                        const s = Math.floor(value % 60);
+                        return `${m}:${s.toString().padStart(2, '0')}`;
+                      },
                     },
                   ]}
-                  data={tableData}
+                  data={mergedTableData}
                   pageSize={25}
                   showPagination={true}
                   emptyMessage="表示するデータがありません。"

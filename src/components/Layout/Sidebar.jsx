@@ -14,7 +14,6 @@ export default function Sidebar() {
   const { isAdmin } = useAdmin();
   const { isSidebarOpen, toggleSidebar } = useSidebar();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(true);
-  const [isAccessAnalysisOpen, setIsAccessAnalysisOpen] = useState(false);
   const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
   const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
   const [isEngagementOpen, setIsEngagementOpen] = useState(false);
@@ -42,11 +41,6 @@ export default function Sidebar() {
       setIsAnalysisOpen(true);
     }
 
-    // アクセス解析サブメニュー（サイト診断・ヒートマップ以外の分析ページ）
-    if (path.startsWith('/analysis/') && !path.startsWith('/analysis/site-diagnosis')) {
-      setIsAccessAnalysisOpen(true);
-    }
-    
     // 時系列サブメニュー
     if (path.startsWith('/analysis/month') || path.startsWith('/analysis/day') || path.startsWith('/analysis/week') || path.startsWith('/analysis/hour')) {
       setIsTimeSeriesOpen(true);
@@ -101,55 +95,47 @@ export default function Sidebar() {
       path: '/analysis',
       hasSubmenu: true,
       submenu: [
+        { label: '全体サマリー', path: '/analysis/summary' },
+        { label: 'ユーザー属性', path: '/analysis/users' },
         {
-          label: 'アクセス解析',
-          highlight: true,
+          label: '時系列',
           hasSubmenu: true,
           submenu: [
-            { label: '全体サマリー', path: '/analysis/summary' },
-            { label: 'ユーザー属性', path: '/analysis/users' },
-            {
-              label: '時系列',
-              hasSubmenu: true,
-              submenu: [
-                { label: '月別', path: '/analysis/month' },
-                { label: '日別', path: '/analysis/day' },
-                { label: '曜日別', path: '/analysis/week' },
-                { label: '時間帯別', path: '/analysis/hour' },
-              ]
-            },
-            {
-              label: '集客',
-              hasSubmenu: true,
-              submenu: [
-                { label: '集客チャネル', path: '/analysis/channels' },
-                { label: '流入キーワード元', path: '/analysis/keywords' },
-                { label: '被リンク元', path: '/analysis/referrals' },
-              ]
-            },
-            {
-              label: 'ページ',
-              hasSubmenu: true,
-              submenu: [
-                { label: 'ページ別', path: '/analysis/pages' },
-                { label: 'ページ分類別', path: '/analysis/page-categories' },
-                { label: 'ランディングページ', path: '/analysis/landing-pages' },
-                { label: 'ファイルダウンロード', path: '/analysis/file-downloads' },
-                { label: '外部リンククリック', path: '/analysis/external-links' },
-                { label: 'ページフロー', path: '/analysis/page-flow' },
-              ]
-            },
-            {
-              label: 'コンバージョン',
-              hasSubmenu: true,
-              submenu: [
-                { label: 'コンバージョン一覧', path: '/analysis/conversions' },
-                { label: '逆算フロー', path: '/analysis/reverse-flow' },
-              ]
-            },
-          ],
+            { label: '月別', path: '/analysis/month' },
+            { label: '日別', path: '/analysis/day' },
+            { label: '曜日別', path: '/analysis/week' },
+            { label: '時間帯別', path: '/analysis/hour' },
+          ]
         },
-        { label: 'サイト診断', path: '/analysis/site-diagnosis', highlight: true },
+        {
+          label: '集客',
+          hasSubmenu: true,
+          submenu: [
+            { label: '集客チャネル', path: '/analysis/channels' },
+            { label: '流入キーワード元', path: '/analysis/keywords' },
+            { label: '被リンク元', path: '/analysis/referrals' },
+          ]
+        },
+        {
+          label: 'ページ',
+          hasSubmenu: true,
+          submenu: [
+            { label: 'ページ別', path: '/analysis/pages' },
+            { label: 'ページ分類別', path: '/analysis/page-categories' },
+            { label: 'ランディングページ', path: '/analysis/landing-pages' },
+            { label: 'ファイルダウンロード', path: '/analysis/file-downloads' },
+            { label: '外部リンククリック', path: '/analysis/external-links' },
+            { label: 'ページフロー', path: '/analysis/page-flow' },
+          ]
+        },
+        {
+          label: 'コンバージョン',
+          hasSubmenu: true,
+          submenu: [
+            { label: 'コンバージョン一覧', path: '/analysis/conversions' },
+            { label: '逆算フロー', path: '/analysis/reverse-flow' },
+          ]
+        },
       ],
     },
     {
@@ -247,16 +233,28 @@ export default function Sidebar() {
                     <ul className="ml-2 mt-2 space-y-1 pl-2">
                       {item.submenu.map((subItem, subIndex) => (
                         <li key={subIndex}>
-                          {subItem.hasSubmenu && subItem.highlight ? (
-                            /* ハイライト付きアコーディオン（アクセス解析） */
+                          {subItem.hasSubmenu ? (
+                            /* サブアコーディオン（時系列・集客・ページ・コンバージョン） */
                             <>
                               <button
-                                onClick={() => setIsAccessAnalysisOpen(!isAccessAnalysisOpen)}
-                                className="flex w-full items-center justify-between rounded-lg bg-gray-100 px-4 py-2 text-sm text-dark transition hover:bg-gray-200 dark:bg-dark-3 dark:text-white dark:hover:bg-dark-3/80"
+                                onClick={() => {
+                                  if (subItem.label === '時系列') setIsTimeSeriesOpen(!isTimeSeriesOpen);
+                                  else if (subItem.label === '集客') setIsAcquisitionOpen(!isAcquisitionOpen);
+                                  else if (subItem.label === 'ページ') setIsEngagementOpen(!isEngagementOpen);
+                                  else if (subItem.label === 'コンバージョン') setIsConversionOpen(!isConversionOpen);
+                                }}
+                                className="flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm text-dark transition hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
                               >
                                 <span>{subItem.label}</span>
                                 <svg
-                                  className={`h-3 w-3 transition-transform ${isAccessAnalysisOpen ? 'rotate-180' : ''}`}
+                                  className={`h-3 w-3 transition-transform ${
+                                    (subItem.label === '時系列' && isTimeSeriesOpen) ||
+                                    (subItem.label === '集客' && isAcquisitionOpen) ||
+                                    (subItem.label === 'ページ' && isEngagementOpen) ||
+                                    (subItem.label === 'コンバージョン' && isConversionOpen)
+                                      ? 'rotate-180'
+                                      : ''
+                                  }`}
                                   fill="none"
                                   viewBox="0 0 24 24"
                                   stroke="currentColor"
@@ -264,87 +262,36 @@ export default function Sidebar() {
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                                 </svg>
                               </button>
-                              {isAccessAnalysisOpen && (
-                                <ul className="mt-1 space-y-1 pl-2">
-                                  {subItem.submenu.map((child, childIndex) => (
-                                    <li key={childIndex}>
-                                      {child.hasSubmenu ? (
-                                        <>
-                                          <button
-                                            onClick={() => {
-                                              if (child.label === '時系列') setIsTimeSeriesOpen(!isTimeSeriesOpen);
-                                              else if (child.label === '集客') setIsAcquisitionOpen(!isAcquisitionOpen);
-                                              else if (child.label === 'ページ') setIsEngagementOpen(!isEngagementOpen);
-                                              else if (child.label === 'コンバージョン') setIsConversionOpen(!isConversionOpen);
-                                            }}
-                                            className="flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm text-dark transition hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3"
-                                          >
-                                            <span>{child.label}</span>
-                                            <svg
-                                              className={`h-3 w-3 transition-transform ${
-                                                (child.label === '時系列' && isTimeSeriesOpen) ||
-                                                (child.label === '集客' && isAcquisitionOpen) ||
-                                                (child.label === 'ページ' && isEngagementOpen) ||
-                                                (child.label === 'コンバージョン' && isConversionOpen)
-                                                  ? 'rotate-180'
-                                                  : ''
-                                              }`}
-                                              fill="none"
-                                              viewBox="0 0 24 24"
-                                              stroke="currentColor"
-                                            >
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                            </svg>
-                                          </button>
-                                          {((child.label === '時系列' && isTimeSeriesOpen) ||
-                                            (child.label === '集客' && isAcquisitionOpen) ||
-                                            (child.label === 'ページ' && isEngagementOpen) ||
-                                            (child.label === 'コンバージョン' && isConversionOpen)) && (
-                                            <ul className="ml-2 mt-1 space-y-1 pl-2">
-                                              {child.submenu.map((leaf, leafIndex) => (
-                                                <li key={leafIndex}>
-                                                  <Link
-                                                    to={leaf.path}
-                                                    className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
-                                                      isActive(leaf.path)
-                                                        ? 'bg-primary text-white'
-                                                        : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
-                                                    }`}
-                                                  >
-                                                    {leaf.label}
-                                                  </Link>
-                                                </li>
-                                              ))}
-                                            </ul>
-                                          )}
-                                        </>
-                                      ) : (
-                                        <Link
-                                          to={child.path}
-                                          className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
-                                            isActive(child.path)
-                                              ? 'bg-primary text-white'
-                                              : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
-                                          }`}
-                                        >
-                                          {child.label}
-                                        </Link>
-                                      )}
+                              {((subItem.label === '時系列' && isTimeSeriesOpen) ||
+                                (subItem.label === '集客' && isAcquisitionOpen) ||
+                                (subItem.label === 'ページ' && isEngagementOpen) ||
+                                (subItem.label === 'コンバージョン' && isConversionOpen)) && (
+                                <ul className="ml-2 mt-1 space-y-1 pl-2">
+                                  {subItem.submenu.map((leaf, leafIndex) => (
+                                    <li key={leafIndex}>
+                                      <Link
+                                        to={leaf.path}
+                                        className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
+                                          isActive(leaf.path)
+                                            ? 'bg-primary text-white'
+                                            : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
+                                        }`}
+                                      >
+                                        {leaf.label}
+                                      </Link>
                                     </li>
                                   ))}
                                 </ul>
                               )}
                             </>
                           ) : (
-                            /* ハイライト付きリンク（サイト診断・ヒートマップ） */
+                            /* 直リンク（全体サマリー・ユーザー属性） */
                             <Link
                               to={subItem.path}
                               className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
                                 isActive(subItem.path)
                                   ? 'bg-primary text-white'
-                                  : subItem.highlight
-                                    ? 'bg-gray-100 text-dark hover:bg-gray-200 dark:bg-dark-3 dark:text-white dark:hover:bg-dark-3/80'
-                                    : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
+                                  : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
                               }`}
                             >
                               {subItem.label}

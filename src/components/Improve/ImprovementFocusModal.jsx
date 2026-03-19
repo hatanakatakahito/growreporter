@@ -15,11 +15,12 @@ const FOCUS_OPTIONS = [
  */
 export default function ImprovementFocusModal({ isOpen, onClose, onConfirm }) {
   const [focus, setFocus] = useState('balance');
+  const [userNote, setUserNote] = useState('');
 
   if (!isOpen) return null;
 
   const handleConfirm = () => {
-    onConfirm(focus);
+    onConfirm(focus, userNote.trim());
     onClose();
   };
 
@@ -60,6 +61,27 @@ export default function ImprovementFocusModal({ isOpen, onClose, onConfirm }) {
                 <span className="text-sm font-medium text-dark dark:text-white">{opt.label}</span>
               </label>
             ))}
+          </div>
+
+          {/* 備考欄 */}
+          <div className="mt-4">
+            <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">
+              備考（任意）
+            </label>
+            <p className="mb-2 text-xs text-body-color">
+              改善したい方向性や具体的な内容があれば記入してください。記入内容を最優先で反映します。
+            </p>
+            <textarea
+              value={userNote}
+              onChange={(e) => setUserNote(e.target.value)}
+              placeholder="例: お問い合わせフォームのコンバージョン率を上げたい、採用ページを新設したい など"
+              rows={3}
+              maxLength={500}
+              className="w-full rounded-lg border border-stroke px-3 py-2 text-sm text-dark placeholder:text-body-color/50 focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
+            />
+            {userNote.length > 0 && (
+              <div className="mt-1 text-right text-[11px] text-body-color">{userNote.length}/500</div>
+            )}
           </div>
         </div>
         <div className="flex gap-2 border-t border-stroke p-4 dark:border-dark-3">

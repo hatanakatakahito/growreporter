@@ -8,7 +8,7 @@ import { getAndRefreshToken } from '../utils/tokenManager.js';
  */
 export async function fetchGA4LandingPageConversionDataCallable(request) {
   const db = getFirestore();
-  const { siteId, startDate, endDate } = request.data;
+  const { siteId, startDate, endDate, dimensionFilter } = request.data;
 
   if (!siteId || !startDate || !endDate) {
     throw new HttpsError('invalid-argument', 'siteId, startDate, endDate are required');
@@ -44,31 +44,48 @@ export async function fetchGA4LandingPageConversionDataCallable(request) {
     const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, siteData.ga4OauthTokenId);
     const analyticsData = google.analyticsdata('v1beta');
 
+    const sessionsRequestBody = {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'landingPage' }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'activeUsers' },
+        { name: 'newUsers' },
+        { name: 'screenPageViews' },
+        { name: 'engagementRate' },
+        { name: 'bounceRate' },
+        { name: 'averageSessionDuration' },
+      ],
+    };
+    if (dimensionFilter) {
+      sessionsRequestBody.dimensionFilter = dimensionFilter;
+    }
+
     const sessionsResponse = await analyticsData.properties.runReport({
       auth: oauth2Client,
       property: `properties/${siteData.ga4PropertyId}`,
-      requestBody: {
-        dateRanges: [{ startDate, endDate }],
-        dimensions: [{ name: 'landingPage' }],
-        metrics: [
-          { name: 'sessions' },
-          { name: 'engagementRate' },
-          { name: 'averageSessionDuration' }
-        ],
-      },
+      requestBody: sessionsRequestBody,
     });
 
     const landingPageData = {};
     (sessionsResponse.data.rows || []).forEach(row => {
       const landingPage = row.dimensionValues[0].value;
       const sessions = parseInt(row.metricValues[0].value || 0);
-      const engagementRate = parseFloat(row.metricValues[1].value || 0);
-      const averageSessionDuration = parseFloat(row.metricValues[2].value || 0);
-      
+      const activeUsers = parseInt(row.metricValues[1].value || 0);
+      const newUsers = parseInt(row.metricValues[2].value || 0);
+      const screenPageViews = parseInt(row.metricValues[3].value || 0);
+      const engagementRate = parseFloat(row.metricValues[4].value || 0);
+      const bounceRate = parseFloat(row.metricValues[5].value || 0);
+      const averageSessionDuration = parseFloat(row.metricValues[6].value || 0);
+
       landingPageData[landingPage] = {
         landingPage,
         sessions,
+        activeUsers,
+        newUsers,
+        screenPageViews,
         engagementRate,
+        bounceRate,
         averageSessionDuration,
         conversions: 0
       };
@@ -82,14 +99,30 @@ export async function fetchGA4LandingPageConversionDataCallable(request) {
           dateRanges: [{ startDate, endDate }],
           dimensions: [{ name: 'landingPage' }, { name: 'eventName' }],
           metrics: [{ name: 'eventCount' }],
-          dimensionFilter: {
-            filter: {
-              fieldName: 'eventName',
-              inListFilter: {
-                values: siteData.conversionEvents.map(e => e.eventName),
+          dimensionFilter: dimensionFilter
+            ? {
+                andGroup: {
+                  expressions: [
+                    {
+                      filter: {
+                        fieldName: 'eventName',
+                        inListFilter: {
+                          values: siteData.conversionEvents.map(e => e.eventName),
+                        },
+                      },
+                    },
+                    dimensionFilter,
+                  ],
+                },
+              }
+            : {
+                filter: {
+                  fieldName: 'eventName',
+                  inListFilter: {
+                    values: siteData.conversionEvents.map(e => e.eventName),
+                  },
+                },
               },
-            },
-          },
         },
       });
 

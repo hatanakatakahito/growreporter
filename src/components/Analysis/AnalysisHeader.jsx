@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSite } from '../../contexts/SiteContext';
-import { Calendar, Settings, ChevronDown, LogOut, User as UserIcon, Globe, Bell, Download, Loader2 } from 'lucide-react';
+import { Settings, ChevronDown, LogOut, User as UserIcon, Globe, Bell, Download, Loader2 } from 'lucide-react';
+import DateRangePicker from './DateRangePicker';
 
 const ExcelIcon = ({ className, disabled }) => (
   <svg className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -45,11 +46,8 @@ export default function AnalysisHeader({
   const { sites, selectedSite: currentSite, selectedSiteId, selectSite, isAdminViewing } = useSite();
   const navigate = useNavigate();
   const location = useLocation();
-  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
-  // 一時的な日付範囲（適用ボタンを押すまで保持）
-  const [tempDateRange, setTempDateRange] = useState({ from: '', to: '' });
 
   // グローバルメモ通知
   const { unreadMemos, unreadCount: memoUnreadCount, markAllAsRead } = useGlobalMemoNotifications(
@@ -155,7 +153,7 @@ export default function AnalysisHeader({
               <select
                 value={selectedSiteId || ''}
                 onChange={(e) => handleSiteChange(e.target.value)}
-                className="h-10 w-64 rounded-md border border-stroke bg-white px-4 text-sm font-medium text-dark transition hover:border-primary focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+                className="h-10 w-auto min-w-[200px] max-w-[400px] rounded-md border border-stroke bg-white px-4 pr-8 text-sm font-medium text-dark transition hover:border-primary focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark-2 dark:text-white"
               >
                 <option value="">サイトを選択</option>
                 {sites.map((site) => (
@@ -232,69 +230,10 @@ export default function AnalysisHeader({
 
               {/* 期間選択 */}
               {showDateRange && dateRange && setDateRange && (
-                <div className="relative">
-                  <button
-                    onClick={() => {
-                      setTempDateRange({ from: dateRange.from, to: dateRange.to });
-                      setIsDatePickerOpen(!isDatePickerOpen);
-                    }}
-                    className="flex h-10 items-center gap-2 rounded-lg bg-gray-100 px-4 text-sm font-medium text-gray-700 transition-all duration-200 hover:bg-gray-200 focus:outline-none dark:bg-dark-2 dark:text-white"
-                  >
-                    <Calendar className="h-4 w-4 text-gray-500" />
-                    {dateRange && dateRange.from && dateRange.to ? (
-                      <span className="font-medium">
-                        {format(new Date(dateRange.from), 'yyyy-MM-dd')} - {format(new Date(dateRange.to), 'yyyy-MM-dd')}
-                      </span>
-                    ) : (
-                      <span>期間を選択</span>
-                    )}
-                  </button>
-                  
-                  {/* 簡易的な期間選択（TODO: カレンダーコンポーネントに置き換え） */}
-                  {isDatePickerOpen && (
-                    <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border border-stroke bg-white p-4 shadow-lg dark:border-dark-3 dark:bg-dark-2">
-                      <div className="space-y-3">
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-dark dark:text-white">
-                            開始日
-                          </label>
-                          <input
-                            type="date"
-                            value={tempDateRange.from || ''}
-                            onChange={(e) =>
-                              setTempDateRange({ ...tempDateRange, from: e.target.value })
-                            }
-                            className="w-full rounded-md border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-                          />
-                        </div>
-                        <div>
-                          <label className="mb-1 block text-xs font-medium text-dark dark:text-white">
-                            終了日
-                          </label>
-                          <input
-                            type="date"
-                            value={tempDateRange.to || ''}
-                            onChange={(e) =>
-                              setTempDateRange({ ...tempDateRange, to: e.target.value })
-                            }
-                            className="w-full rounded-md border border-stroke px-3 py-2 text-sm dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-                          />
-                        </div>
-                          <button
-                            onClick={() => {
-                              if (tempDateRange.from && tempDateRange.to) {
-                                setDateRange({ from: tempDateRange.from, to: tempDateRange.to });
-                                setIsDatePickerOpen(false);
-                              }
-                            }}
-                            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-                          >
-                            適用
-                          </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <DateRangePicker
+                  dateRange={dateRange}
+                  onDateRangeChange={setDateRange}
+                />
               )}
               
             </div>

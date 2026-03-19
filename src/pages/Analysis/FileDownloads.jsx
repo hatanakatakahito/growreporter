@@ -10,6 +10,7 @@ import ChartContainer from '../../components/Analysis/ChartContainer';
 import { Download } from 'lucide-react';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
@@ -36,6 +37,8 @@ export default function FileDownloads() {
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   // AI分析タブへスクロールする関数
   const scrollToAIAnalysis = () => {
@@ -63,7 +66,7 @@ export default function FileDownloads() {
     dateRange.to,
     ['eventCount', 'activeUsers'],
     ['eventName', 'linkUrl', 'fileName'],
-    null
+    ga4DimensionFilter
   );
 
   // テーブル用のデータ整形（イベント数降順）
@@ -167,6 +170,15 @@ export default function FileDownloads() {
             </p>
           </div>
 
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
+
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
           ) : isError ? (
@@ -240,11 +252,13 @@ export default function FileDownloads() {
                 </ChartContainer>
               ) : (
                 <DataTable
+                  tableKey="analysis-file-downloads"
                   columns={[
                     {
                       key: 'fileName',
                       label: 'ファイル名',
                       sortable: true,
+                      required: true,
                       tooltip: 'fileName',
                       render: (value, row) => (
                         <div className="flex flex-col gap-1">

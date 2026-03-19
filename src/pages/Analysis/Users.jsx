@@ -13,6 +13,9 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
+import ComparisonBadge from '../../components/Analysis/ComparisonBadge';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import {
   ResponsiveContainer,
   PieChart,
@@ -50,10 +53,12 @@ const GENDER_COLORS = {
  * GA4のユーザー属性（性別、年齢、デバイス、地域など）を表示
  */
 export default function Users() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const [locationType, setLocationType] = useState('city');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   const scrollToAIAnalysis = () => {
     window.dispatchEvent(new Event('switchToAITab'));
@@ -84,8 +89,18 @@ export default function Users() {
   const { data: demographicsData, isLoading, isError } = useGA4UserDemographics(
     selectedSiteId,
     dateRange.from,
-    dateRange.to
+    dateRange.to,
+    ga4DimensionFilter
   );
+
+  // 比較期間データ
+  const { data: compDemographics } = useGA4UserDemographics(
+    comparisonDateRange ? selectedSiteId : null,
+    comparisonDateRange?.from,
+    comparisonDateRange?.to,
+    ga4DimensionFilter
+  );
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compDemographics;
 
   // ドーナツチャート用のカスタムラベル
   const renderCustomizedLabel = ({ cx, cy, midAngle, outerRadius, percent }) => {
@@ -131,8 +146,29 @@ export default function Users() {
     </div>
   );
 
+  // 比較テーブルコンポーネント（チャートの下に表示）
+  const ComparisonTable = ({ data }) => {
+    if (!data || data.length === 0) return null;
+    return (
+      <div className="mt-4 border-t border-stroke pt-3 dark:border-dark-3">
+        <p className="mb-2 text-xs font-semibold text-body-color">期間比較</p>
+        <div className="space-y-1.5">
+          {data.map((item, i) => (
+            <div key={i} className="flex items-center justify-between text-sm">
+              <span className="text-dark dark:text-white">{item.name}</span>
+              <div className="flex items-center gap-3">
+                <span className="text-body-color">{item.value?.toLocaleString()}</span>
+                <ComparisonBadge value={item.value_change} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   // ドーナツチャートコンポーネント
-  const DonutChartCard = ({ title, data, isGender = false, emptyHint = null }) => {
+  const DonutChartCard = ({ title, data, isGender = false, emptyHint = null, comparisonData = null }) => {
     if (!data || data.length === 0) {
       return (
         <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
@@ -164,7 +200,7 @@ export default function Users() {
               labelLine={{ stroke: '#d1d5db', strokeWidth: 1 }}
             >
               {data.map((entry, index) => {
-                const fillColor = isGender 
+                const fillColor = isGender
                   ? (GENDER_COLORS[entry.name] || COLORS.gray)
                   : Object.values(COLORS)[index % Object.values(COLORS).length];
                 return <Cell key={`cell-${index}`} fill={fillColor} />;
@@ -174,12 +210,13 @@ export default function Users() {
             <Legend />
           </PieChart>
         </ResponsiveContainer>
+        {comparisonData && <ComparisonTable data={comparisonData} />}
       </div>
     );
   };
 
   // 横棒グラフコンポーネント
-  const HorizontalBarChartCard = ({ title, data, emptyHint = null }) => {
+  const HorizontalBarChartCard = ({ title, data, emptyHint = null, comparisonData = null }) => {
     if (!data || data.length === 0) {
       return (
         <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
@@ -205,6 +242,7 @@ export default function Users() {
             <Bar dataKey="percentage" fill={COLORS.blue} barSize={20} />
           </BarChart>
         </ResponsiveContainer>
+        {comparisonData && <ComparisonTable data={comparisonData} />}
       </div>
     );
   };
@@ -214,7 +252,7 @@ export default function Users() {
     if (!demographicsData) {
       return { newReturning: [], gender: [], age: [], device: [], location: [] };
     }
-    
+
     return {
       newReturning: demographicsData.newReturning || [],
       gender: demographicsData.gender || [],
@@ -223,6 +261,29 @@ export default function Users() {
       location: demographicsData.location?.[locationType] || [],
     };
   }, [demographicsData, locationType]);
+
+  // 比較用マージデータ
+  const compData = useMemo(() => {
+    if (!isComparing) return { newReturning: null, gender: null, age: null, device: null, location: null };
+
+    return {
+      newReturning: mergeComparisonRows(
+        chartData.newReturning, compDemographics.newReturning || [], 'name', ['value']
+      ),
+      gender: mergeComparisonRows(
+        chartData.gender, compDemographics.gender || [], 'name', ['value']
+      ),
+      age: mergeComparisonRows(
+        chartData.age, compDemographics.age || [], 'name', ['value']
+      ),
+      device: mergeComparisonRows(
+        chartData.device, compDemographics.device || [], 'name', ['value']
+      ),
+      location: mergeComparisonRows(
+        chartData.location, compDemographics.location?.[locationType] || [], 'name', ['value']
+      ),
+    };
+  }, [isComparing, chartData, compDemographics, locationType]);
 
   return (
     <div className="flex flex-col h-full">
@@ -244,6 +305,15 @@ export default function Users() {
             </p>
           </div>
 
+          {/* フィルタ設定 */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
+
           {isLoading && !demographicsData ? (
             <LoadingSpinner message="ユーザー属性データを読み込んでいます..." />
           ) : isError ? (
@@ -252,15 +322,17 @@ export default function Users() {
             <>
               {/* 新規/リピーター & 性別 */}
               <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <DonutChartCard 
-                  title="新規ユーザー/リピーター比率" 
+                <DonutChartCard
+                  title="新規ユーザー/リピーター比率"
                   data={chartData.newReturning}
+                  comparisonData={compData.newReturning}
                 />
                 <DonutChartCard
                   title="性別比率"
                   data={chartData.gender}
                   isGender={true}
                   emptyHint={demographicEmptyHint}
+                  comparisonData={compData.gender}
                 />
               </div>
 
@@ -270,10 +342,12 @@ export default function Users() {
                   title="年齢比率"
                   data={chartData.age}
                   emptyHint={demographicEmptyHint}
+                  comparisonData={compData.age}
                 />
-                <DonutChartCard 
-                  title="デバイス比率" 
+                <DonutChartCard
+                  title="デバイス比率"
                   data={chartData.device}
+                  comparisonData={compData.device}
                 />
               </div>
 
@@ -287,7 +361,7 @@ export default function Users() {
                     <select
                       value={locationType}
                       onChange={(e) => setLocationType(e.target.value)}
-                      className="w-[180px] appearance-none rounded-md border border-stroke bg-transparent py-2 px-4 pr-10 text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:text-white"
+                      className="w-[180px] appearance-none rounded-md border border-stroke bg-transparent py-2 px-4 pr-10 text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20"
                     >
                       <option value="country">国別</option>
                       <option value="region">都道府県別</option>
@@ -301,15 +375,18 @@ export default function Users() {
                   </div>
                 </div>
                 {chartData.location && chartData.location.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={400}>
-                    <BarChart data={chartData.location} layout="vertical" margin={{ top: 5, right: 50, left: 10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                      <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} />
-                      <YAxis dataKey="name" type="category" width={120} interval={0} axisLine={false} tickLine={false} />
-                      <RechartsTooltip formatter={(value) => [`${value.toFixed(1)}%`, '割合']} />
-                      <Bar dataKey="percentage" fill={COLORS.blue} barSize={20} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <>
+                    <ResponsiveContainer width="100%" height={400}>
+                      <BarChart data={chartData.location} layout="vertical" margin={{ top: 5, right: 50, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                        <XAxis type="number" axisLine={false} tickLine={false} tickFormatter={(value) => `${value}%`} />
+                        <YAxis dataKey="name" type="category" width={120} interval={0} axisLine={false} tickLine={false} />
+                        <RechartsTooltip formatter={(value) => [`${value.toFixed(1)}%`, '割合']} />
+                        <Bar dataKey="percentage" fill={COLORS.blue} barSize={20} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                    {compData.location && <ComparisonTable data={compData.location} />}
+                  </>
                 ) : (
                   <div className="flex h-[400px] items-center justify-center text-body-color">
                     データがありません

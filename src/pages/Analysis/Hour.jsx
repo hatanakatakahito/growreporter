@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
 import { useSearchParams } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
@@ -17,7 +17,9 @@ import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { useAuth } from '../../contexts/AuthContext';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import {
   ResponsiveContainer,
   BarChart,
@@ -35,12 +37,14 @@ import {
  * 時間帯別の訪問者とコンバージョンを棒グラフで表示
  */
 export default function Hour() {
-  const { selectedSite, selectedSiteId, selectSite, sites, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, selectSite, sites, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const [searchParams] = useSearchParams();
   const [hiddenBars, setHiddenBars] = useState({});
   const [activeTab, setActiveTab] = useState('chart');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   const scrollToAIAnalysis = () => {
     window.dispatchEvent(new Event('switchToAITab'));
@@ -72,7 +76,7 @@ export default function Hour() {
     isError,
     error,
   } = useQuery({
-    queryKey: ['ga4-hourly-conversions', selectedSiteId, dateRange.from, dateRange.to],
+    queryKey: ['ga4-hourly-conversions', selectedSiteId, dateRange.from, dateRange.to, ga4DimensionFilter],
     queryFn: async () => {
       console.log('[Hour] Fetching hourly conversion data...');
       const fetchHourlyConversionData = httpsCallable(functions, 'fetchGA4HourlyConversionData');
@@ -80,6 +84,7 @@ export default function Hour() {
         siteId: selectedSiteId,
         startDate: dateRange.from,
         endDate: dateRange.to,
+        dimensionFilter: ga4DimensionFilter,
       });
       console.log('[Hour] Hourly conversion data fetched:', result.data);
       return result.data;
@@ -88,6 +93,20 @@ export default function Hour() {
     retry: false,
     staleTime: 5 * 60 * 1000, // 5分間キャッシュ
   });
+
+  // 比較期間データ取得
+  const { data: compHourlyData } = useQuery({
+    queryKey: ['ga4-hourly-conversions-comp', selectedSiteId, comparisonDateRange?.from, comparisonDateRange?.to, ga4DimensionFilter],
+    queryFn: async () => {
+      const fn = httpsCallable(functions, 'fetchGA4HourlyConversionData');
+      const result = await fn({ siteId: selectedSiteId, startDate: comparisonDateRange.from, endDate: comparisonDateRange.to, dimensionFilter: ga4DimensionFilter });
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!comparisonDateRange?.from && !!comparisonDateRange?.to,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compHourlyData;
 
   // 凡例クリックでグラフの表示/非表示を切り替え
   const handleLegendClick = (dataKey) => {
@@ -151,8 +170,19 @@ export default function Hour() {
     hourData?.rows?.map((row) => ({
       hour: parseInt(row.hour),
       sessions: row.sessions || 0,
+      users: row.users || 0,
+      newUsers: row.newUsers || 0,
+      pageViews: row.pageViews || 0,
+      engagementRate: row.engagementRate || 0,
+      avgSessionDuration: row.avgSessionDuration || 0,
+      bounceRate: row.bounceRate || 0,
       conversions: row.conversions || 0,
     })).sort((a, b) => a.hour - b.hour) || [];
+
+  const mergedTableData = useMemo(() => {
+    if (!isComparing || !compHourlyData?.rows) return tableData;
+    return mergeComparisonRows(tableData, compHourlyData.rows, 'hour', ['sessions', 'users', 'newUsers', 'pageViews', 'conversions', 'engagementRate', 'bounceRate', 'avgSessionDuration']);
+  }, [tableData, isComparing, compHourlyData]);
 
   // グラフ用のデータ整形（0-23時まで全て表示）
   const chartData = Array.from({ length: 24 }, (_, hour) => {
@@ -182,12 +212,21 @@ export default function Hour() {
             </p>
           </div>
 
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
+
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
           ) : isError ? (
             <ErrorAlert message={error?.message || 'データの読み込みに失敗しました。'} />
           ) : !chartData || chartData.length === 0 ? (
-            <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
+            <div className="rounded-lg border border-stroke bg-white p-12 text-center">
               <p className="text-body-color">表示するデータがありません。</p>
             </div>
           ) : (
@@ -257,11 +296,14 @@ export default function Hour() {
               </ChartContainer>
             ) : (
               <DataTable
+                tableKey="analysis-hour"
+                isComparing={isComparing}
                 columns={[
                   {
                     key: 'hour',
                     label: '時間帯',
                     sortable: true,
+                    required: true,
                     render: (value) => `${value}時`,
                   },
                   {
@@ -270,6 +312,67 @@ export default function Hour() {
                     format: 'number',
                     align: 'right',
                     tooltip: 'sessions',
+                    comparison: true,
+                  },
+                  {
+                    key: 'users',
+                    label: 'ユーザー',
+                    format: 'number',
+                    align: 'right',
+                    tooltip: 'users',
+                    defaultVisible: false,
+                    comparison: true,
+                  },
+                  {
+                    key: 'newUsers',
+                    label: '新規ユーザー',
+                    format: 'number',
+                    align: 'right',
+                    tooltip: 'newUsers',
+                    defaultVisible: false,
+                    comparison: true,
+                  },
+                  {
+                    key: 'pageViews',
+                    label: 'PV数',
+                    format: 'number',
+                    align: 'right',
+                    tooltip: 'pageViews',
+                    defaultVisible: false,
+                    comparison: true,
+                  },
+                  {
+                    key: 'engagementRate',
+                    label: 'ENG率',
+                    align: 'right',
+                    tooltip: 'engagementRate',
+                    defaultVisible: false,
+                    comparison: true,
+                    render: (value) => `${((value || 0) * 100).toFixed(1)}%`,
+                  },
+                  {
+                    key: 'bounceRate',
+                    label: '直帰率',
+                    align: 'right',
+                    tooltip: 'bounceRate',
+                    defaultVisible: false,
+                    comparison: true,
+                    invertColor: true,
+                    render: (value) => `${((value || 0) * 100).toFixed(1)}%`,
+                  },
+                  {
+                    key: 'avgSessionDuration',
+                    label: '平均滞在',
+                    align: 'right',
+                    tooltip: 'avgSessionDuration',
+                    defaultVisible: false,
+                    comparison: true,
+                    render: (value) => {
+                      const v = value || 0;
+                      const m = Math.floor(v / 60);
+                      const s = Math.floor(v % 60);
+                      return `${m}:${s.toString().padStart(2, '0')}`;
+                    },
                   },
                   {
                     key: 'conversions',
@@ -277,9 +380,21 @@ export default function Hour() {
                     format: 'number',
                     align: 'right',
                     tooltip: 'conversions',
+                    comparison: true,
+                  },
+                  {
+                    key: 'conversionRate',
+                    label: 'CVR',
+                    align: 'right',
+                    tooltip: 'conversionRate',
+                    defaultVisible: false,
+                    render: (value, row) => {
+                      const rate = row.sessions > 0 ? ((row.conversions / row.sessions) * 100).toFixed(2) : '0.00';
+                      return `${rate}%`;
+                    },
                   },
                 ]}
-                data={tableData}
+                data={mergedTableData}
                 pageSize={24}
                 showPagination={false}
                 emptyMessage="表示するデータがありません。"

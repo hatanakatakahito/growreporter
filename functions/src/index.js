@@ -448,30 +448,16 @@ export const sendTestReportEmail = lazyCallable('./callable/sendTestReportEmail.
 export const submitImprovementConsultation = lazyCallable('./callable/submitImprovementConsultation.js', 'submitImprovementConsultationCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
- * サイトコンテンツコレクター 設定エンドポイント（onRequest）
- * クライアントスクリプトから呼び出され、データ収集要否を判定
+ * 改善案用深掘りスクレイピング Callable Function（Puppeteer）
+ * 改善生成後に対象ページのコンテンツ・デザイン構造を詳細取得
  */
-export const collectorConfig = onRequest({
-  region: 'asia-northeast1',
-  memory: '128MiB',
-  timeoutSeconds: 5,
-}, async (req, res) => {
-  const { collectorConfigHandler } = await import('./http/collectorConfig.js');
-  return collectorConfigHandler(req, res);
-});
+export const deepScrapeForImprovement = lazyCallable('./callable/deepScrapeForImprovement.js', 'deepScrapeForImprovementCallable', { memory: '2GiB', timeoutSeconds: 300 });
 
 /**
- * サイトコンテンツコレクター データ受信エンドポイント（onRequest）
- * クライアントスクリプトから送信された構造化データを保存
+ * 改善モックアップ生成 Callable Function（Claude Sonnet）
+ * 深掘りデータをもとに改善適用後のHTML/CSSを生成
  */
-export const collectSiteData = onRequest({
-  region: 'asia-northeast1',
-  memory: '256MiB',
-  timeoutSeconds: 10,
-}, async (req, res) => {
-  const { collectSiteDataHandler } = await import('./http/collectSiteData.js');
-  return collectSiteDataHandler(req, res);
-});
+export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '1GiB', timeoutSeconds: 120, secrets: ['ANTHROPIC_API_KEY'] });
 
 /**
  * プランアップグレードお問い合わせ送信
@@ -484,6 +470,11 @@ export const submitUpgradeInquiry = lazyCallable('./callable/submitUpgradeInquir
  * GA4データ取得 → Gemini AI → キャッシュ保存
  */
 export const batchGenerateAISummaries = lazyCallable('./callable/admin/batchGenerateAISummaries.js', 'batchGenerateAISummariesCallable', { memory: '1GiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY'] });
+
+/**
+ * 管理者用: 全サイトまたは指定サイトに対してサイト診断を一括実行（プラン消費なし）
+ */
+export const batchRunDiagnosis = lazyCallable('./callable/admin/batchRunDiagnosis.js', 'batchRunDiagnosisCallable', { memory: '1GiB', timeoutSeconds: 540 });
 
 /**
  * ページスクレイピングデータ定期更新 Scheduled Function

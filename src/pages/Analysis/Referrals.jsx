@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
@@ -10,9 +10,11 @@ import { ExternalLink } from 'lucide-react';
 import { setPageTitle } from '../../utils/pageTitle';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import { PAGE_TYPES } from '../../constants/plans';
+import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
@@ -37,13 +39,15 @@ import {
  * GA4の参照元データ（Referral）を表示
  */
 export default function Referrals() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [dimensionFilters, setDimensionFilters] = useState({});
+  const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
   // AI分析タブへスクロールする関数
   const scrollToAIAnalysis = () => {
@@ -79,7 +83,7 @@ export default function Referrals() {
     isError,
     error,
   } = useQuery({
-    queryKey: ['ga4-referral-conversions', selectedSiteId, dateRange.from, dateRange.to],
+    queryKey: ['ga4-referral-conversions', selectedSiteId, dateRange.from, dateRange.to, ga4DimensionFilter],
     queryFn: async () => {
       console.log('[Referrals] Fetching referral conversion data...');
       const fetchReferralConversionData = httpsCallable(functions, 'fetchGA4ReferralConversionData');
@@ -87,6 +91,7 @@ export default function Referrals() {
         siteId: selectedSiteId,
         startDate: dateRange.from,
         endDate: dateRange.to,
+        dimensionFilter: ga4DimensionFilter,
       });
       console.log('[Referrals] Referral conversion data fetched:', result.data);
       return result.data;
@@ -95,6 +100,25 @@ export default function Referrals() {
     retry: false,
     staleTime: 5 * 60 * 1000, // 5分間キャッシュ
   });
+
+  const { data: compReferralData } = useQuery({
+    queryKey: ['ga4-referral-conversions-comp', selectedSiteId, comparisonDateRange?.from, comparisonDateRange?.to, ga4DimensionFilter],
+    queryFn: async () => {
+      const fetchReferralConversionData = httpsCallable(functions, 'fetchGA4ReferralConversionData');
+      const result = await fetchReferralConversionData({
+        siteId: selectedSiteId,
+        startDate: comparisonDateRange.from,
+        endDate: comparisonDateRange.to,
+        dimensionFilter: ga4DimensionFilter,
+      });
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!comparisonDateRange?.from && !!comparisonDateRange?.to,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compReferralData;
 
   // リファラルデータの整形（バックエンドで既にreferralのみをフィルタ済み）
   const formatReferralData = () => {
@@ -106,18 +130,31 @@ export default function Referrals() {
         medium: 'referral',
         sessions: row.sessions || 0,
         users: row.users || 0,
+        newUsers: row.newUsers || 0,
+        pageViews: row.screenPageViews || 0,
         conversions: row.conversions || 0,
         conversionRate:
           row.sessions > 0
             ? ((row.conversions / row.sessions) * 100).toFixed(2)
             : '0.00',
         engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
+        bounceRate: ((row.bounceRate || 0) * 100).toFixed(1),
         avgSessionDuration: row.averageSessionDuration || 0,
       }))
       .sort((a, b) => b.sessions - a.sessions);
   };
 
   const referrals = formatReferralData();
+
+  const mergedTableData = useMemo(() => {
+    if (!isComparing || !compReferralData?.rows) return referrals;
+    const compTable = compReferralData.rows.map((row) => ({
+      source: row.sessionSource || row.source || '(direct)',
+      sessions: row.sessions || 0,
+      conversions: row.conversions || 0,
+    }));
+    return mergeComparisonRows(referrals, compTable, 'source', ['sessions', 'users', 'newUsers', 'pageViews', 'conversions', 'engagementRate', 'bounceRate', 'avgSessionDuration', 'conversionRate']);
+  }, [referrals, isComparing, compReferralData]);
 
   // チャートの色
   const COLORS = [
@@ -261,6 +298,15 @@ export default function Referrals() {
             </p>
           </div>
 
+          {/* ディメンションフィルタ */}
+          <DimensionFilters
+            siteId={selectedSiteId}
+            startDate={dateRange.from}
+            endDate={dateRange.to}
+            filters={dimensionFilters}
+            onFiltersChange={setDimensionFilters}
+          />
+
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
           ) : isError ? (
@@ -359,11 +405,14 @@ export default function Referrals() {
                 </div>
               ) : (
                 <DataTable
+                  tableKey="analysis-referrals"
+                  isComparing={isComparing}
                   columns={[
                     {
                       key: 'source',
                       label: '参照元',
                       sortable: true,
+                      required: true,
                       tooltip: 'source',
                       render: (value) => (
                         <a
@@ -383,27 +432,33 @@ export default function Referrals() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
+                      comparison: true,
                     },
                     {
                       key: 'users',
-                      label: 'ユーザー',
+                      label: 'ユーザー数',
                       format: 'number',
                       align: 'right',
-                      tooltip: 'users',
+                      tooltip: 'activeUsers',
+                      comparison: true,
                     },
                     {
-                      key: 'conversions',
-                      label: 'コンバージョン',
+                      key: 'newUsers',
+                      label: '新規ユーザー',
                       format: 'number',
                       align: 'right',
-                      tooltip: 'conversions',
+                      tooltip: 'newUsers',
+                      defaultVisible: false,
+                      comparison: true,
                     },
                     {
-                      key: 'conversionRate',
-                      label: 'CVR',
+                      key: 'pageViews',
+                      label: '表示回数',
+                      format: 'number',
                       align: 'right',
-                      tooltip: 'conversionRate',
-                      render: (value) => `${value}%`,
+                      tooltip: 'screenPageViews',
+                      defaultVisible: false,
+                      comparison: true,
                     },
                     {
                       key: 'engagementRate',
@@ -411,6 +466,17 @@ export default function Referrals() {
                       align: 'right',
                       tooltip: 'engagementRate',
                       render: (value) => `${value}%`,
+                      comparison: true,
+                    },
+                    {
+                      key: 'bounceRate',
+                      label: '直帰率',
+                      align: 'right',
+                      tooltip: 'bounceRate',
+                      render: (value) => `${value}%`,
+                      defaultVisible: false,
+                      comparison: true,
+                      invertColor: true,
                     },
                     {
                       key: 'avgSessionDuration',
@@ -418,9 +484,26 @@ export default function Referrals() {
                       align: 'right',
                       tooltip: 'avgSessionDuration',
                       render: (value) => formatDuration(value || 0),
+                      comparison: true,
+                    },
+                    {
+                      key: 'conversions',
+                      label: 'コンバージョン',
+                      format: 'number',
+                      align: 'right',
+                      tooltip: 'conversions',
+                      comparison: true,
+                    },
+                    {
+                      key: 'conversionRate',
+                      label: 'CVR',
+                      align: 'right',
+                      tooltip: 'conversionRate',
+                      render: (value) => `${value}%`,
+                      comparison: true,
                     },
                   ]}
-                  data={tableData}
+                  data={mergedTableData}
                   pageSize={25}
                   showPagination={true}
                   emptyMessage="表示するデータがありません。"

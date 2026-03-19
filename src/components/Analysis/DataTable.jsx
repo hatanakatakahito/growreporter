@@ -2,6 +2,9 @@ import React, { useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronUp, ChevronDown, Info } from 'lucide-react';
 import { getTooltip } from '../../constants/tooltips';
+import { useTableColumns } from '../../hooks/useTableColumns';
+import ColumnToggle from '../common/ColumnToggle';
+import ComparisonBadge from './ComparisonBadge';
 
 /**
  * ツールチップコンポーネント（Portal使用）
@@ -57,18 +60,29 @@ function TooltipPortal({ children, tooltipText }) {
 
 /**
  * 共通データテーブルコンポーネント
- * ソート、ページネーション機能付き
+ * ソート、ページネーション、表示項目切替機能付き
  */
 export default function DataTable({
   columns,
   data,
+  tableKey,
   pageSize = 10,
   showPagination = true,
   emptyMessage = 'データがありません',
+  isComparing = false,
 }) {
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
+
+  // 表示項目管理（tableKeyがある場合のみ有効）
+  const columnToggle = useTableColumns(tableKey || '__noop__', columns);
+  const displayColumns = useMemo(() => {
+    if (!tableKey) return columns;
+    return columnToggle.orderedVisibleColumns
+      .map(key => columns.find(c => c.key === key))
+      .filter(Boolean);
+  }, [tableKey, columns, columnToggle.orderedVisibleColumns]);
 
   // ソート処理
   const sortedData = useMemo(() => {
@@ -87,7 +101,7 @@ export default function DataTable({
 
       const aStr = String(aValue).toLowerCase();
       const bStr = String(bValue).toLowerCase();
-      
+
       if (sortDirection === 'asc') {
         return aStr.localeCompare(bStr, 'ja');
       } else {
@@ -99,7 +113,7 @@ export default function DataTable({
   // ページネーション処理
   const paginatedData = useMemo(() => {
     if (!showPagination) return sortedData;
-    
+
     const startIndex = (currentPage - 1) * pageSize;
     const endIndex = startIndex + pageSize;
     return sortedData.slice(startIndex, endIndex);
@@ -130,7 +144,6 @@ export default function DataTable({
       case 'decimal':
         return typeof value === 'number' ? value.toFixed(2) : value;
       case 'duration':
-        // 秒を mm:ss 形式に変換
         if (typeof value === 'number') {
           const minutes = Math.floor(value / 60);
           const seconds = Math.floor(value % 60);
@@ -144,33 +157,45 @@ export default function DataTable({
 
   if (!data || data.length === 0) {
     return (
-      <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-stroke bg-white p-12 dark:border-dark-3 dark:bg-dark-2">
+      <div className="flex min-h-[300px] items-center justify-center rounded-lg border border-stroke bg-white p-12">
         <p className="text-body-color">{emptyMessage}</p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
-      {/* 横スクロールヒント */}
-      <div className="border-b border-stroke px-4 py-2 dark:border-dark-3">
-        <div className="flex items-center gap-2 text-xs text-body-color">
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-          </svg>
-          <span>左右にスクロールできます</span>
+    <div className="rounded-lg border border-stroke bg-white">
+      {/* ツールバー: 横スクロールヒント + 表示項目 */}
+      <div className="border-b border-stroke px-4 py-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-xs text-body-color">
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+            <span>左右にスクロールできます</span>
+          </div>
+          {tableKey && (
+            <ColumnToggle
+              columns={columns}
+              visibleColumns={columnToggle.visibleColumns}
+              columnOrder={columnToggle.columnOrder}
+              onToggleColumn={columnToggle.toggleColumn}
+              onMoveColumn={columnToggle.moveColumn}
+              onResetColumns={columnToggle.resetToDefault}
+            />
+          )}
         </div>
       </div>
-      
+
       {/* テーブル */}
       <div className="overflow-x-auto">
         <table className="min-w-full">
           <thead>
-            <tr className="border-b-2 border-primary-mid/20 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5 dark:border-primary-mid/30 dark:from-primary-blue/10 dark:to-primary-purple/10">
-              {columns.map((column) => (
+            <tr className="border-b-2 border-primary-mid/20 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5">
+              {displayColumns.map((column) => (
                 <th
                   key={column.key}
-                  className={`whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark dark:text-white ${
+                  className={`whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark ${
                     column.sortable !== false ? 'cursor-pointer hover:bg-primary-mid/10 transition-colors duration-200' : ''
                   }`}
                   onClick={() => column.sortable !== false && handleSort(column.key)}
@@ -204,32 +229,73 @@ export default function DataTable({
             </tr>
           </thead>
           <tbody>
-            {paginatedData.map((row, rowIndex) => (
-              <tr
-                key={rowIndex}
-                className="border-b border-stroke last:border-b-0 hover:bg-gray-1 dark:border-dark-3 dark:hover:bg-dark-3"
-              >
-                {columns.map((column) => (
-                  <td
-                    key={column.key}
-                    className={`whitespace-nowrap px-4 py-3 text-sm text-dark dark:text-white ${
-                      column.align === 'right' ? 'text-right' : 'text-left'
-                    }`}
-                  >
-                    {column.render
-                      ? column.render(row[column.key], row)
-                      : formatValue(row[column.key], column.format)}
-                  </td>
-                ))}
-              </tr>
-            ))}
+            {paginatedData.map((row, rowIndex) => {
+              // 比較サブ行用: _prev フィールドを元キーにマッピングした仮想行を構築
+              const prevRow = isComparing ? (() => {
+                const pr = {};
+                displayColumns.forEach(col => {
+                  if (col.comparison) pr[col.key] = row[`${col.key}_prev`];
+                });
+                return pr;
+              })() : null;
+
+              return (
+                <React.Fragment key={rowIndex}>
+                  {/* メイン行 */}
+                  <tr className={`hover:bg-gray-1 ${isComparing ? '' : 'border-b border-stroke last:border-b-0'}`}>
+                    {displayColumns.map((column) => (
+                      <td
+                        key={column.key}
+                        className={`whitespace-nowrap px-4 py-3 text-sm text-dark ${
+                          column.align === 'right' ? 'text-right' : 'text-left'
+                        }`}
+                      >
+                        {column.render
+                          ? column.render(row[column.key], row)
+                          : formatValue(row[column.key], column.format)}
+                      </td>
+                    ))}
+                  </tr>
+                  {/* 比較サブ行 */}
+                  {isComparing && (
+                    <tr className="border-b border-stroke bg-gray-50/60">
+                      {displayColumns.map((column, colIdx) => {
+                        if (!column.comparison) {
+                          return (
+                            <td key={column.key} className="whitespace-nowrap px-4 py-1.5 text-[11px] text-gray-500">
+                              {colIdx === 0 ? '前期間' : ''}
+                            </td>
+                          );
+                        }
+                        const prevValue = prevRow[column.key];
+                        const changeValue = row[`${column.key}_change`];
+                        const formattedPrev = prevValue == null
+                          ? '—'
+                          : column.render
+                            ? column.render(prevValue, prevRow)
+                            : formatValue(prevValue, column.format);
+
+                        return (
+                          <td key={column.key} className={`whitespace-nowrap px-4 py-1.5 text-[11px] ${column.align === 'right' ? 'text-right' : 'text-left'}`}>
+                            <div className={`flex items-center gap-1.5 ${column.align === 'right' ? 'justify-end' : ''}`}>
+                              <span className="text-gray-500">{formattedPrev}</span>
+                              <ComparisonBadge value={changeValue} invertColor={column.invertColor} />
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
       {/* ページネーション */}
       {showPagination && totalPages > 1 && (
-        <div className="flex items-center justify-between border-t border-stroke px-4 py-3 dark:border-dark-3">
+        <div className="flex items-center justify-between border-t border-stroke px-4 py-3">
           <div className="text-sm text-body-color">
             {sortedData.length}件中 {(currentPage - 1) * pageSize + 1} -{' '}
             {Math.min(currentPage * pageSize, sortedData.length)}件を表示
@@ -238,7 +304,7 @@ export default function DataTable({
             <button
               onClick={() => setCurrentPage(currentPage - 1)}
               disabled={currentPage === 1}
-              className="rounded-md border border-stroke px-3 py-1 text-sm text-dark transition hover:bg-gray-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+              className="rounded-md border border-stroke px-3 py-1 text-sm text-dark transition hover:bg-gray-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               前へ
             </button>
@@ -248,7 +314,7 @@ export default function DataTable({
             <button
               onClick={() => setCurrentPage(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="rounded-md border border-stroke px-3 py-1 text-sm text-dark transition hover:bg-gray-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+              className="rounded-md border border-stroke px-3 py-1 text-sm text-dark transition hover:bg-gray-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               次へ
             </button>
@@ -258,6 +324,3 @@ export default function DataTable({
     </div>
   );
 }
-
-
-

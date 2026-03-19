@@ -15,7 +15,7 @@ import { getCache, setCache, generateCacheKey } from '../utils/cacheManager.js';
  */
 export async function fetchGA4PageTransitionCallable(request) {
   const db = getFirestore();
-  const { siteId, pagePath, startDate, endDate } = request.data;
+  const { siteId, pagePath, startDate, endDate, dimensionFilter } = request.data;
 
   if (!siteId || !pagePath || !startDate || !endDate) {
     throw new HttpsError('invalid-argument', 'siteId, pagePath, startDate, endDate are required');
@@ -31,7 +31,8 @@ export async function fetchGA4PageTransitionCallable(request) {
 
   try {
     // キャッシュチェック
-    const cacheKey = generateCacheKey('ga4-page-transition', siteId, startDate, endDate, pagePath);
+    const filterHash = dimensionFilter ? JSON.stringify(dimensionFilter) : '';
+    const cacheKey = generateCacheKey('ga4-page-transition', siteId, startDate, endDate, pagePath, filterHash);
     const cachedData = await getCache(cacheKey);
     
     if (cachedData) {
@@ -69,6 +70,17 @@ export async function fetchGA4PageTransitionCallable(request) {
     console.log(`[fetchGA4PageTransition] Site domain (raw): ${siteDomain}`);
     console.log(`[fetchGA4PageTransition] siteData.siteUrl: ${siteData.siteUrl}, siteData.domain: ${siteData.domain}, siteData.url: ${siteData.url}`);
 
+    // pagePathフィルタ（全クエリ共通）
+    const pagePathFilter = {
+      filter: {
+        fieldName: 'pagePath',
+        stringFilter: { matchType: 'EXACT', value: pagePath },
+      },
+    };
+    const combinedFilter = dimensionFilter
+      ? { andGroup: { expressions: [pagePathFilter, dimensionFilter] } }
+      : pagePathFilter;
+
     // 🚀 並列でデータ取得
     const [pageMetricsResponse, inboundResponse, exitResponse] = await Promise.all([
       // 1. 基本指標（PV、訪問者）
@@ -82,15 +94,7 @@ export async function fetchGA4PageTransitionCallable(request) {
             { name: 'screenPageViews' },
             { name: 'sessions' },
           ],
-          dimensionFilter: {
-            filter: {
-              fieldName: 'pagePath',
-              stringFilter: {
-                matchType: 'EXACT',
-                value: pagePath,
-              },
-            },
-          },
+          dimensionFilter: combinedFilter,
         },
       }),
 
@@ -102,15 +106,7 @@ export async function fetchGA4PageTransitionCallable(request) {
           dateRanges: [{ startDate, endDate }],
           dimensions: [{ name: 'pageReferrer' }],
           metrics: [{ name: 'screenPageViews' }],
-          dimensionFilter: {
-            filter: {
-              fieldName: 'pagePath',
-              stringFilter: {
-                matchType: 'EXACT',
-                value: pagePath,
-              },
-            },
-          },
+          dimensionFilter: combinedFilter,
           orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
           limit: 50, // より多くのデータを取得
         },
@@ -124,15 +120,7 @@ export async function fetchGA4PageTransitionCallable(request) {
           dateRanges: [{ startDate, endDate }],
           dimensions: [{ name: 'pagePath' }],
           metrics: [{ name: 'sessions' }],
-          dimensionFilter: {
-            filter: {
-              fieldName: 'pagePath',
-              stringFilter: {
-                matchType: 'EXACT',
-                value: pagePath,
-              },
-            },
-          },
+          dimensionFilter: combinedFilter,
         },
       }),
     ]);

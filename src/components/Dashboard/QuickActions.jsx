@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, Zap, Shield } from 'lucide-react';
+import { BarChart3, Zap, ClipboardCheck, Settings } from 'lucide-react';
 
 const ACTIONS = [
   {
@@ -19,10 +19,17 @@ const ACTIONS = [
     color: 'bg-primary/10 text-primary',
   },
   {
-    icon: Shield,
-    title: 'サイト診断',
-    description: 'パフォーマンスを総合診断',
-    path: '/analysis/site-diagnosis',
+    icon: ClipboardCheck,
+    title: '評価する',
+    description: 'レポートで成果を確認',
+    path: '/reports',
+    color: 'bg-primary/10 text-primary',
+  },
+  {
+    icon: Settings,
+    title: 'サイト管理',
+    description: 'サイト設定・連携管理',
+    path: '/sites/list',
     color: 'bg-primary/10 text-primary',
   },
 ];
@@ -40,12 +47,12 @@ export default function QuickActions() {
             key={action.path}
             to={action.path}
             state={action.state}
-            className="group flex flex-col items-center gap-2 rounded-lg border border-stroke bg-white p-4 text-center shadow-sm transition-all hover:shadow-md dark:border-dark-3 dark:bg-dark-2"
+            className="group flex flex-col items-center gap-2 rounded-lg border border-stroke bg-white p-4 text-center shadow-sm transition-all hover:shadow-md"
           >
             <div className={`flex h-10 w-10 items-center justify-center rounded-full ${action.color} transition-transform group-hover:scale-110`}>
               <Icon className="h-5 w-5" />
             </div>
-            <span className="text-sm font-medium text-dark dark:text-white">{action.title}</span>
+            <span className="text-sm font-medium text-dark">{action.title}</span>
             <span className="text-xs text-body-color">{action.description}</span>
           </Link>
         );

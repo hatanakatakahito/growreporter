@@ -40,7 +40,6 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
     { label: 'メンバー数', getValue: (p) => `${p.features.maxMembers}人` },
     { label: 'AI分析（再分析）', getValue: () => '可能' },
     { label: 'AI改善案 / 月', getValue: (p) => fmt(p.features.aiImprovementMonthly) },
-    { label: 'サイト診断 / 月', getValue: (p) => fmt(p.features.diagnosisMonthly) },
     { label: 'エクスポート / 月', getValue: (p) => fmt(p.features.excelExportMonthly) },
     { label: 'サポート', getValue: (p) => p.features.support },
   ];

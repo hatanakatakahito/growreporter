@@ -22,6 +22,8 @@ export default function AIGenerationModal({
   const isSuccess = status === 'success';
   const isError = status === 'error';
 
+  const loadingMessage = { title: 'AI改善案を生成中...', desc: 'ただいまデータを分析しサイト改善を作成しています。' };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div 
@@ -34,10 +36,10 @@ export default function AIGenerationModal({
             <div className="flex flex-col items-center justify-center p-8">
               <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-primary-mid shadow-lg"></div>
               <h3 className="mb-2 mt-4 text-xl font-semibold text-dark dark:text-white">
-                AI改善案を生成中...
+                {loadingMessage.title}
               </h3>
               <p className="text-center text-sm text-body-color">
-                ただいまデータを分析しサイト改善を作成しています。<br />
+                {loadingMessage.desc}<br />
                 少々お待ちください。
               </p>
             </div>
