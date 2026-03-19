@@ -298,23 +298,25 @@ export default function Users() {
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         {/* コンテンツ */}
         <div className="mx-auto max-w-content px-6 py-10">
-          <div className="mb-6">
-            <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">
-              ユーザー属性
-            </h2>
-            <p className="text-body-color">
-              ユーザーの性別、年齢、デバイス、地域などの属性データを確認できます
-            </p>
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-dark dark:text-white">
+                ユーザー属性
+              </h2>
+              <p className="mt-0.5 text-sm text-body-color">
+                ユーザーの性別、年齢、デバイス、地域などの属性データを確認できます
+              </p>
+            </div>
+            <div className="flex flex-shrink-0 items-center gap-2 pt-0.5">
+              <DimensionFilters
+                siteId={selectedSiteId}
+                startDate={dateRange.from}
+                endDate={dateRange.to}
+                filters={dimensionFilters}
+                onFiltersChange={setDimensionFilters}
+              />
+            </div>
           </div>
-
-          {/* フィルタ設定 */}
-          <DimensionFilters
-            siteId={selectedSiteId}
-            startDate={dateRange.from}
-            endDate={dateRange.to}
-            filters={dimensionFilters}
-            onFiltersChange={setDimensionFilters}
-          />
 
           {isLoading && !demographicsData ? (
             <LoadingSpinner message="ユーザー属性データを読み込んでいます..." />

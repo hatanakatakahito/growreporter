@@ -220,9 +220,9 @@ export default function AnalysisSummary() {
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         <div className="mx-auto max-w-content px-6 py-10">
           {/* ページタイトル */}
-          <div className="mb-8">
-            <h2 className="mb-2 text-2xl font-bold text-dark dark:text-white">分析する - 全体サマリー</h2>
-            <p className="text-sm text-body-color">
+          <div className="mb-4">
+            <h2 className="text-lg font-bold text-dark dark:text-white">分析する - 全体サマリー</h2>
+            <p className="mt-0.5 text-sm text-body-color">
               GA4データの全般指標を詳細に分析します
             </p>
           </div>

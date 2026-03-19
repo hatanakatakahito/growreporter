@@ -39,7 +39,7 @@ const ACTIONS = [
  */
 export default function QuickActions() {
   return (
-    <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+    <div className="mb-12 grid grid-cols-2 gap-3 lg:grid-cols-4">
       {ACTIONS.map((action) => {
         const Icon = action.icon;
         return (
@@ -52,8 +52,8 @@ export default function QuickActions() {
             <div className={`flex h-10 w-10 items-center justify-center rounded-full ${action.color} transition-transform group-hover:scale-110`}>
               <Icon className="h-5 w-5" />
             </div>
-            <span className="text-sm font-medium text-dark">{action.title}</span>
-            <span className="text-xs text-body-color">{action.description}</span>
+            <span className="text-base font-semibold text-dark">{action.title}</span>
+            <span className="text-sm text-body-color">{action.description}</span>
           </Link>
         );
       })}

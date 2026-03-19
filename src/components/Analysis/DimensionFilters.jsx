@@ -223,7 +223,7 @@ export default function DimensionFilters({
   };
 
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       {/* メインボタン */}
       <div ref={dropdownRef} className="relative">
         <button
