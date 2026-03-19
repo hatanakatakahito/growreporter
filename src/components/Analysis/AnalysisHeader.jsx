@@ -20,7 +20,6 @@ const PowerPointIcon = ({ className, disabled }) => (
   </svg>
 );
 import { format } from 'date-fns';
-import { SCREENSHOT_PC_DISPLAY, SCREENSHOT_MOBILE_DISPLAY } from '../../constants/screenshotDisplay';
 import toast from 'react-hot-toast';
 import { useGlobalMemoNotifications } from '../../hooks/useGlobalMemoNotifications';
 import { useGlobalAlertNotifications } from '../../hooks/useGlobalAlertNotifications';
