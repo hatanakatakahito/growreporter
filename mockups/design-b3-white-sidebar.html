@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GROW REPORTER — ダッシュボード（白サイドバー版）</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'Noto Sans JP', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+      },
+      colors: {
+        primary: { DEFAULT: '#3758F9', blue: '#3b82f6', purple: '#8b5cf6', mid: '#6366f1' },
+        secondary: '#13C296',
+        stroke: '#DFE4EA',
+        'body-color': '#637381',
+        dark: { DEFAULT: '#111928', 2: '#1F2A37', 3: '#374151', 4: '#4B5563', 5: '#6B7280', 6: '#9CA3AF', 7: '#D1D5DB', 8: '#E5E7EB' },
+      },
+      maxWidth: { content: '1400px' },
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif; }
+
+  .glass { background: rgba(255,255,255,0.72); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%); }
+  .glass-card {
+    background: rgba(255,255,255,0.65);
+    backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.8);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .glass-card:hover {
+    background: rgba(255,255,255,0.82);
+    box-shadow: 0 12px 40px -8px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+  }
+
+  .sidebar-item { transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); position: relative; }
+  .sidebar-item:hover { background: rgba(55, 88, 249, 0.05); }
+  .sidebar-item.active { background: rgba(55, 88, 249, 0.08); }
+  .sidebar-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 6px; bottom: 6px; width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: linear-gradient(180deg, #3758F9, #8b5cf6);
+  }
+
+  .sparkline-line { stroke-width: 1.5; fill: none; }
+  .sparkline-area { opacity: 0.15; }
+
+  .sub-item { transition: all 0.15s ease; }
+  .sub-item:hover { background: rgba(55, 88, 249, 0.05); }
+  .sub-item.active { color: #3758F9; }
+
+  .notification-dot {
+    position: absolute; top: -1px; right: -1px;
+    width: 8px; height: 8px; border-radius: 50%;
+    background: #ef4444; border: 2px solid white;
+  }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+</style>
+</head>
+<body class="bg-[#f0f2f8] text-slate-900 antialiased">
+
+<!-- Background ambient gradients -->
+<div class="fixed inset-0 -z-10 overflow-hidden">
+  <div class="absolute -top-40 right-20 h-[500px] w-[500px] rounded-full bg-indigo-200/40 blur-[100px]"></div>
+  <div class="absolute bottom-20 left-1/4 h-[400px] w-[400px] rounded-full bg-violet-200/30 blur-[100px]"></div>
+  <div class="absolute top-1/2 right-1/3 h-[300px] w-[300px] rounded-full bg-sky-200/20 blur-[80px]"></div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SIDEBAR (w-64: 実際のサイドバー幅と同じ) -->
+<!-- ============================================================ -->
+<aside class="fixed left-0 top-0 z-50 flex h-screen w-64 flex-col border-r border-stroke/60 bg-white">
+  <!-- Logo -->
+  <div class="flex h-20 items-center justify-center border-b border-stroke/60 px-6">
+    <a href="#" class="flex items-center gap-2">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 221.7 53.2" class="h-10 w-auto">
+        <defs>
+          <linearGradient id="logo-grad" x1="23.1" y1="36.6" x2="215" y2="36.6" gradientUnits="userSpaceOnUse">
+            <stop offset="0" stop-color="#3758f9"/>
+            <stop offset="1" stop-color="#cc52a9"/>
+          </linearGradient>
+        </defs>
+        <g>
+          <g fill="url(#logo-grad)">
+            <path d="M15.3,50.4l7.1-16.5h-8.9l-4,7.2H0l8.7-17.7h9.6l-1.2,2.7h11.8l1.6-3.2h2.7l-1.6,3.2h1.2l1.6-3.2h2.7l-1.5,3.2-10.5,24.3h-9.6Z"/>
+            <path d="M67.1,23.4l-11.9,26.9h-28c0,.1,12-26.9,12-26.9h27.9ZM49,42.5l5-11.3h-8.8l-5,11.3h8.8Z"/>
+            <path d="M61.3,41.1l3.5-7.8h27.9l-3.5,7.8h-27.9Z"/>
+            <path d="M99.1,23.4h9.6l-7.6,17.1,20.1-4-3.5,7.8-30.6,6.1,11.9-27Z"/>
+            <path d="M117.4,50.4l5.9-13.3h7.8l-5.9,13.3h-7.8ZM155.1,24.4c.6.7.7,1.5.6,2.4l-3.5,7.8h-9.1l-6.9,15.7h-9.6l6.9-15.7h-9.2l3.5-7.8h9.2l1.5-3.4h9.6l-1.5,3.4h2.2c.2-1,.7-1.8,1.5-2.4.8-.7,1.7-1,2.6-1s1.7.3,2.3,1ZM145.2,50.4h-7.8l5.9-13.3h7.8l-5.9,13.3ZM153.4,25.8c-.2-.3-.6-.4-1-.4s-.8.1-1.1.4-.5.6-.6,1h3c0-.4,0-.7-.3-1Z"/>
+            <path d="M151.3,41.1l3.5-7.8h27.9l-3.5,7.8h-27.9Z"/>
+            <path d="M200.3,41.8h-8.9l-1.3,2.6h-9.6l9.3-21h9.6l-1.2,2.7h18.4l-11.7,27.1h-9.6l5-11.4ZM193.7,35.9h8.9l1-2h-8.8l-1.1,2Z"/>
+          </g>
+          <g fill="url(#logo-grad)">
+            <path d="M214.1,26.1h7.6s-5.3.8-7.9,6.5l.3-6.5Z"/>
+            <path d="M106.1,23.4h7.6s-5.3.8-7.9,6.5l.3-6.5Z"/>
+            <path d="M64.5,23.4h7.6s-5.3.8-7.9,6.5l.3-6.5Z"/>
+          </g>
+          <!-- 上部の日本語テキスト -->
+          <g fill="#637381">
+            <path d="M18,11.8h-1.9l-.4-2.5h-4.3l-1.4,2.5h-1.9L14.2.9h1.5l2.3,11ZM15.4,7.7l-.8-4.4-2.4,4.4h3.2Z"/>
+            <path d="M24.3,11.8h-1.7l1.9-11h1.7l-1.9,11Z"/>
+            <path d="M43.2,6.3c-.5.3-.9.8-1.3,1.3-.5-.3-.9-.7-1.4-1.1l-.2.9h-4.6v-.8c-.4.3-.9.6-1.4.8,0-.2-.2-.5-.4-.8-.2,0-.5.2-.8.4l-.7,3.8c-.2.9-.8,1.3-1.8,1.3h-1c0-.7,0-1.2,0-1.6h.9c.3,0,.5-.1.6-.4l.4-2.5c-.7.3-1.2.4-1.5.5v-1.6c.3,0,.9-.3,1.7-.5l.4-2.4h-1.5l.2-1.4h1.5l.4-2.2h1.5l-.4,2.2h1l.2-1.1h1.7l.2-1.1h1.5l-.2,1.1h1.8l.2-1.1h1.5l-.2,1.1h1.7l-.2,1.3h-1.7l-.2,1.2h-1.5l.2-1.2h-1.8l-.2,1.1c.2-.2.4-.4.5-.6l1.1.3c.2.5.7,1,1.5,1.7.7.6,1.4,1,2,1.3ZM37.9,3.8h-1.4l.2-1.2h-1.5l-.2,1.2h-1.2l-.3,1.9c.6-.2,1.1-.4,1.3-.5l-.2.9c1.3-.7,2.4-1.4,3.3-2.2ZM40.6,12.2h-6.4l.7-4h6.4l-.7,4ZM39.2,11l.3-1.5h-3.2l-.3,1.5h3.2ZM40.1,6.2c-.6-.6-1.1-1.1-1.4-1.6-.5.5-1.2,1.1-2,1.6h3.4Z"/>
+            <path d="M59.2,9.8c-.4.9-.7,1.6-1.1,2.1-.2.4-.5.6-.9.6s-.6-.1-.8-.4c-.4-.5-.7-1-.9-1.6-.9.8-1.8,1.5-2.8,2.1-.2-.4-.5-.8-.8-1,.3-.1.5-.3.8-.5h-1.9l-.2,1.3h-1.4l.2-1.3h-2.9l.2-1.2h2.9v-.4c0,0-2.3,0-2.3,0l.6-3.4h2.3v-.5c0,0-2.6,0-2.6,0l.2-1.1h2.7v-.5c0,0-2.9,0-2.9,0l.2-1.3h3v-.6c.1,0-2.2,0-2.2,0l.2-1.2h2.3V.1h1.6v.8c-.1,0,2.2,0,2.2,0l-.2,1.2h-2.3v.6c-.1,0,3,0,3,0,.1-.8.3-1.7.4-2.6h1.5c-.2.9-.3,1.8-.4,2.6h1.8c-.4-.7-.7-1.2-1.1-1.6l1.2-.8c.5.5.8,1,1.2,1.5-.4.2-.8.5-1.3.9h1.5l-.2,1.3h-3.3c-.1,1.3-.2,2.4-.1,3.3.5-.8,1-1.6,1.3-2.5l1.4.5c-.7,1.5-1.5,2.8-2.4,3.9.2.6.4,1.1.6,1.5.3-.5.5-1,.6-1.4.1.1.5.3,1.2.7ZM49.7,8.6v-.5c0,0-1,0-1,0v.5c0,0,1,0,1,0ZM50,7.3v-.5c0,0-1,0-1,0v.5c0,0,1,0,1,0ZM55.1,9c-.2-1.3-.2-2.9,0-5h-3.2v.5c0,0,2.5,0,2.5,0l-.2,1.1h-2.6v.5c0,0,2.3,0,2.3,0l-.6,3.4h-2.3v.4c0,0,2.6,0,2.6,0v.6c.5-.4,1-.9,1.5-1.5ZM52.3,8.6v-.5c0,0-1,0-1,0v.5c0,0,1,0,1,0ZM52.5,7.3v-.5c0,0-1,0-1,0v.5c0,0,1,0,1,0Z"/>
+            <path d="M75.2,6.7c-.3,1.2-.9,2.3-1.8,3.1-.9.8-2.1,1.4-3.6,1.7,0-.2,0-.5-.2-.8-.1-.3-.3-.6-.4-.7,1.2-.2,2.2-.6,3-1.2.7-.6,1.2-1.3,1.4-2.2.2-1,0-1.8-.4-2.5-.5-.7-1.2-1-2-1.1-.4,1.4-.8,2.7-1.4,3.8-.7,1.3-1.4,2.4-2.2,3.1-.5.5-1,.7-1.5.7s-.5,0-.8-.2c-.5-.2-.9-.7-1.2-1.3-.2-.7-.3-1.4,0-2.2.4-1.6,1.3-3,2.7-4,1.4-1,2.9-1.5,4.6-1.4,1.4,0,2.5.6,3.2,1.6.8,1,1,2.2.7,3.7ZM69.5,3.1c-1,.2-1.8.7-2.5,1.4-.7.7-1.2,1.5-1.4,2.5-.2.8,0,1.4.4,1.8,0,0,.2.1.3.1s.2,0,.4-.2c.6-.5,1.1-1.2,1.7-2.3.5-1.1,1-2.2,1.3-3.4Z"/>
+            <path d="M86.5,4c-.6,3.7-2.4,6.3-5.2,8-.3-.5-.6-1-1-1.2,2.5-1.3,4-3.5,4.5-6.8h1.7ZM91.7,2.2c-.5.7-1.2,1.5-2.1,2.4-.9.9-1.6,1.5-2.3,2-.3-.5-.7-.8-1.1-1.1.9-.6,1.9-1.5,2.9-2.5-4,.1-6.8.2-8.5.3l.2-1.7c.4,0,1.1,0,2,0,3.9,0,6.5,0,7.8-.3l.9.8Z"/>
+            <path d="M105.3,3.1c-1,1.9-2.3,3.6-4.1,5.2-1.8,1.5-3.7,2.7-5.9,3.6-.2-.6-.4-1-.8-1.4,1.7-.6,3.4-1.5,4.8-2.6,1.5-1.1,2.7-2.4,3.6-3.8-1.5,0-2.6.1-3.2.1-1.1,1.2-2.3,2.1-3.6,3-.3-.5-.7-.9-1-1.1,1.1-.6,2.1-1.4,3.1-2.4,1-1,1.8-2,2.3-3l1.5.6c-.3.5-.6,1-1,1.5,1.8,0,2.9,0,3.3-.2l.9.6Z"/>
+            <path d="M121.3,4.1c-.4.5-1,1.1-1.7,2-.8.9-1.5,1.5-2,1.9l-1.1-1.1c.5-.3,1.2-1,2.1-1.9l-3.4.7-.6,3.2c0,.3,0,.5.1.6.1.1.4.2.7.2,1.8,0,3.3-.2,4.4-.5-.3.5-.5,1.1-.6,1.7-1.1.3-2.5.4-4.2.4s-1.5-.1-1.9-.4c-.4-.3-.5-.7-.4-1.4l.6-3.5-3.3.6v-1.6c.6,0,1.8-.2,3.6-.5l.6-3.3h1.7l-.5,3c2.8-.4,4.4-.8,4.9-.9l.9.8Z"/>
+            <path d="M136.2,9.7c-.5.3-1,.7-1.6,1.2-.6-1.1-1.5-2.3-2.7-3.5-1.8,1.6-3.7,2.9-5.7,3.8-.3-.7-.6-1.1-.8-1.4,1.5-.6,2.9-1.5,4.4-2.6,1.5-1.1,2.7-2.4,3.6-3.6-2.8.2-4.7.3-5.5.4v-1.7c.8,0,1.9,0,3.5,0,1.7,0,2.9-.2,3.4-.3l1,.7c-.6,1.2-1.5,2.4-2.6,3.6,1.4,1.3,2.5,2.5,3.1,3.5Z"/>
+            <path d="M153.3,9.6h-2.1l-.5,2.8h-1.4l.5-2.8h-2.4l.2-1.3h2.4l.2-1.2h-1.2c-.3.4-.5.7-.8,1-.2-.2-.5-.3-.9-.5l-.6,3.6c-.1.8-.7,1.1-1.6,1.1h-.9c0-.6,0-1,0-1.3h.9c.3,0,.5-.1.5-.4l.3-1.8h-2.7c-.4,1.4-1,2.6-1.9,3.6-.3-.3-.7-.5-1-.6.5-.5.9-1.1,1.2-1.7.3-.6.5-1.4.7-2.4l.6-3.2c-.4-.4-.8-.6-1.1-.8.5-.4,1.1-1,1.6-1.7.5-.7.9-1.3,1.2-1.8l1.5.3c-.1.2-.2.4-.4.6h2.2l.3.5c-.4.5-.8,1.1-1.3,1.8h1.4v.6c.9-.5,1.6-1.2,2-2.2h-1.5l.2-1.2h5.9c-.4,1.7-.7,2.8-1.1,3.3-.4.5-.9.8-1.6.8h-.9c0-.6,0-1,0-1.4h.7c.3,0,.6,0,.7-.2.2-.2.3-.6.5-1.3h-1.3c-.6,1.4-1.6,2.5-3.1,3.3-.1-.3-.4-.6-.6-.8l-.5,3.1c.6-.7,1.1-1.5,1.5-2.4l1.2.4c-.1.2-.3.5-.4.8h.6l.2-1.1h1.4l-.2,1.1h1.8l-.2,1.3h-1.8l-.2,1.2h2.1l-.2,1.3ZM144.1,7.6l.2-1h-.8l-.2,1h.8ZM144.4,5.5l.2-1h-.8l-.2,1h.8ZM145.8,2.2h-1.2c-.3.4-.5.7-.8,1h1.3c.4-.5.6-.8.7-1ZM146,7.6l.2-1h-.8l-.2,1h.8ZM146.4,5.5l.2-1h-.8l-.2,1h.8Z"/>
+            <path d="M164,7.2c-.5.3-.9.7-1.3,1.1-.2-.3-.5-.7-.8-1.2l-.9,5.4h-1.5l.9-5c-.5.8-1,1.4-1.4,1.8-.4-.3-.8-.6-1.2-.8.6-.5,1.1-1.2,1.7-2.1.6-.8,1-1.6,1.4-2.3h-1.9l.2-1.4h1.9l.4-2.5h1.5l-.4,2.5h1.6l-.2,1.4h-1.6v.8c0,.4.3.8.6,1.3.4.5.7.9.9,1.2ZM170.9,5.7h-1.8l-1.2,6.7h-1.6l1.2-6.7h-1.6c-.3,1.5-.7,2.8-1.2,3.8-.5,1.1-1.2,2-2.1,2.8-.4-.4-.8-.7-1.3-.9,1.5-1.2,2.5-3.3,3-6.1l.7-4.2c.9,0,1.8-.1,2.8-.3,1.1-.2,2-.5,2.8-.8l.7,1.4c-.7.2-1.5.5-2.5.7-.9.2-1.8.3-2.5.4l-.3,1.7h4.9l-.3,1.5Z"/>
+            <path d="M186.6,2.3c-.8,2.5-2.1,4.5-3.8,6-1.5,1.3-3.5,2.4-6,3.1-.1-.6-.4-1.2-.7-1.6,4.5-1,7.4-3.6,8.8-7.7l1.6.3ZM178.5,5.3l-1.7.6c0-.4,0-.9-.2-1.5-.1-.6-.2-1.1-.4-1.4l1.7-.6c.1.3.2.8.4,1.4.1.6.2,1.1.2,1.5ZM181.7,4.6l-1.7.5c0-.4,0-.9-.1-1.5,0-.6-.2-1.1-.3-1.4l1.7-.5c.1.3.2.8.3,1.4,0,.6.2,1.1.2,1.5Z"/>
+            <path d="M202,7.1c-.6,0-2.4,0-5.6,0s-5.1,0-5.6,0l.3-1.6c.6,0,2.4,0,5.6,0s4.5,0,5.6,0l-.3,1.6Z"/>
+            <path d="M211.2,2.4c0,.8-.1,1.5-.2,2.2-.3,1.4-.7,2.7-1.5,3.7-.8,1-1.8,1.9-3.2,2.7-.2-.5-.5-.9-.9-1.3,1.2-.6,2.2-1.3,2.8-2.1.6-.8,1-1.8,1.2-2.9.1-.6.2-1.3.2-2h1.6ZM218.4,7.5c-.7.5-1.7,1.1-3,1.7-1.3.6-2.3,1.1-3.2,1.4l-.8-.7c.1-.4.4-1.9.8-4.4.3-1.6.5-2.7.6-3.4h1.7c-.1.4-.3,1.6-.7,3.4l-.5,2.9c.9-.4,1.8-.8,2.8-1.3,1.1-.6,1.8-1.1,2.3-1.5-.1.7-.2,1.3,0,1.8Z"/>
+          </g>
+        </g>
+      </svg>
+    </a>
+  </div>
+
+  <!-- Navigation (実際のメニュー構造を完全再現) -->
+  <nav class="flex-1 overflow-y-auto px-3 py-4" style="scrollbar-width: none;">
+    <ul class="space-y-0.5">
+      <!-- ダッシュボード (active) -->
+      <li>
+        <a href="#" class="sidebar-item active flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold text-primary">
+          <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          ダッシュボード
+        </a>
+      </li>
+      <!-- 分析する (展開) -->
+      <li>
+        <button class="sidebar-item flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700">
+          <div class="flex items-center gap-3">
+            <svg class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            分析する
+          </div>
+          <svg class="h-4 w-4 rotate-180 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </button>
+        <!-- サブメニュー -->
+        <ul class="ml-3 mt-1 space-y-0.5 border-l border-slate-200 pl-3">
+          <li><a href="#" class="sub-item block rounded-lg px-3 py-1.5 text-[13px] text-slate-600">全体サマリー</a></li>
+          <li><a href="#" class="sub-item block rounded-lg px-3 py-1.5 text-[13px] text-slate-600">ユーザー属性</a></li>
+          <!-- 時系列 -->
+          <li>
+            <button class="sub-item flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[13px] text-slate-600">
+              <span>時系列</span>
+              <svg class="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+          </li>
+          <!-- 集客 -->
+          <li>
+            <button class="sub-item flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[13px] text-slate-600">
+              <span>集客</span>
+              <svg class="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+          </li>
+          <!-- ページ -->
+          <li>
+            <button class="sub-item flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[13px] text-slate-600">
+              <span>ページ</span>
+              <svg class="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+          </li>
+          <!-- コンバージョン -->
+          <li>
+            <button class="sub-item flex w-full items-center justify-between rounded-lg px-3 py-1.5 text-[13px] text-slate-600">
+              <span>コンバージョン</span>
+              <svg class="h-3 w-3 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+            </button>
+          </li>
+        </ul>
+      </li>
+      <!-- 改善する -->
+      <li>
+        <a href="#" class="sidebar-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700">
+          <svg class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          改善する
+        </a>
+      </li>
+      <!-- 評価する -->
+      <li>
+        <a href="#" class="sidebar-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700">
+          <svg class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+          評価する
+        </a>
+      </li>
+      <!-- サイト管理 -->
+      <li>
+        <a href="#" class="sidebar-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700">
+          <svg class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"/></svg>
+          サイト管理
+        </a>
+      </li>
+      <!-- アカウント設定 -->
+      <li>
+        <a href="#" class="sidebar-item flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700">
+          <svg class="h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0"/></svg>
+          アカウント設定
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- User profile (実際の構造を再現) -->
+  <div class="border-t border-stroke/60 p-3">
+    <div class="flex items-center gap-3 rounded-xl p-2.5 transition hover:bg-slate-50">
+      <div class="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-purple text-sm font-bold text-white ring-2 ring-white/20">
+        畑
+        <div class="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-emerald-400"></div>
+      </div>
+      <div class="min-w-0 flex-1">
+        <p class="truncate text-[13px] font-semibold text-slate-800">畑中 孝仁</p>
+        <p class="truncate text-[10px] text-slate-400">hatanaka@example.com</p>
+      </div>
+      <span class="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-bold text-blue-600 ring-1 ring-inset ring-blue-200">スタンダード</span>
+    </div>
+    <!-- ログアウト -->
+    <button class="mt-1 flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-[11px] text-slate-400 transition hover:bg-slate-50 hover:text-slate-600">
+      <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75"/></svg>
+      ログアウト
+    </button>
+  </div>
+</aside>
+
+<!-- ============================================================ -->
+<!-- MAIN CONTENT -->
+<!-- ============================================================ -->
+<div class="ml-64">
+  <!-- Header (実際のAnalysisHeaderを再現) -->
+  <header class="sticky top-0 z-40 border-b border-gray-200 bg-white">
+    <div class="mx-auto flex h-20 max-w-content items-center justify-between px-6">
+      <!-- サイト選択 (実際はselect要素) -->
+      <div class="relative">
+        <select class="h-10 w-auto min-w-[200px] max-w-[400px] appearance-none rounded-md border border-stroke bg-white px-4 pr-8 text-sm font-medium text-dark">
+          <option>工藤建設株式会社_コーポレートサイト</option>
+        </select>
+        <svg class="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </div>
+      <!-- 右側: ダウンロード + 通知ベル + 日付 -->
+      <div class="flex items-center gap-3">
+        <!-- ダウンロード -->
+        <button class="flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-gray-500 transition hover:bg-gray-100 hover:text-gray-700">
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3"/></svg>
+          ダウンロード
+        </button>
+        <!-- 通知ベル -->
+        <button class="relative flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-700">
+          <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/></svg>
+        </button>
+        <!-- 日付セレクター (実際のDateRangePickerを再現) -->
+        <button class="inline-flex h-10 items-center gap-2 rounded-md border border-stroke bg-white px-4 text-sm font-medium text-dark transition hover:border-primary">
+          <svg class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          2026-02-01 - 2026-02-28
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Site info cover (実際のDashboard.jsxのグラデーション背景) -->
+  <div class="relative overflow-hidden border-b border-slate-200/40">
+    <!-- 実際のグラデーション: rgb(224, 242, 254) → rgb(254, 249, 195) をグラス風にアレンジ -->
+    <div class="absolute inset-0" style="background: linear-gradient(to right, rgba(224, 242, 254, 0.8), rgba(254, 249, 195, 0.6));"></div>
+    <div class="absolute inset-0 backdrop-blur-sm"></div>
+    <div class="relative mx-auto max-w-content px-6 py-10">
+      <div class="flex items-start justify-between gap-8">
+        <div class="flex-1">
+          <div class="mb-1 flex items-center gap-3">
+            <!-- Globe icon (実際のlucide-react Globe) -->
+            <svg class="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <h1 class="text-3xl font-bold text-gray-900">株式会社サンプル</h1>
+          </div>
+          <p class="mb-6 text-xs text-gray-500">https://www.example.com</p>
+          <div class="mb-3">
+            <p class="text-base font-semibold text-gray-900">サンプル会社 — 最先端テクノロジーで社会課題を解決</p>
+          </div>
+          <div>
+            <p class="max-w-2xl text-sm leading-relaxed text-gray-600">サンプル会社は最先端のテクノロジーで社会課題を解決するIT企業です。AI・クラウド・データ分析を駆使したソリューションを提供しています。</p>
+          </div>
+        </div>
+        <!-- スクリーンショット -->
+        <div class="flex items-end gap-4">
+          <div class="flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm" style="width:240px;height:150px;">
+            <div class="text-center">
+              <svg class="mx-auto h-8 w-8 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+              <span class="mt-1 block text-[11px] text-slate-400">PCスクリーンショット未設定</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-center overflow-hidden rounded-2xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm" style="width:70px;height:150px;">
+            <div class="text-center">
+              <svg class="mx-auto h-6 w-6 text-slate-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+              <span class="mt-0.5 block text-[9px] text-slate-400">SP未設定</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main content area -->
+  <main class="mx-auto max-w-content px-6 py-10">
+    <div class="space-y-8">
+
+      <!-- クイックアクション (実際のQuickActions.jsx: 4カラム) -->
+      <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <a href="#" class="glass-card group flex flex-col items-center gap-2 rounded-2xl p-5 text-center">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
+            <!-- BarChart3 (lucide) -->
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>
+          </div>
+          <span class="text-sm font-medium text-dark">AIで分析する</span>
+          <span class="text-xs text-body-color">GA4データをAIが自動分析</span>
+        </a>
+        <a href="#" class="glass-card group flex flex-col items-center gap-2 rounded-2xl p-5 text-center">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
+            <!-- Zap (lucide) -->
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          </div>
+          <span class="text-sm font-medium text-dark">改善案を生成</span>
+          <span class="text-xs text-body-color">AIが改善施策を提案</span>
+        </a>
+        <a href="#" class="glass-card group flex flex-col items-center gap-2 rounded-2xl p-5 text-center">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
+            <!-- ClipboardCheck (lucide) -->
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/><path d="M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2"/><path d="M9 14l2 2 4-4"/></svg>
+          </div>
+          <span class="text-sm font-medium text-dark">評価する</span>
+          <span class="text-xs text-body-color">レポートで成果を確認</span>
+        </a>
+        <a href="#" class="glass-card group flex flex-col items-center gap-2 rounded-2xl p-5 text-center">
+          <div class="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary transition-transform group-hover:scale-110">
+            <!-- Settings (lucide) -->
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 00-2 2v.18a2 2 0 01-1 1.73l-.43.25a2 2 0 01-2 0l-.15-.08a2 2 0 00-2.73.73l-.22.38a2 2 0 00.73 2.73l.15.1a2 2 0 011 1.72v.51a2 2 0 01-1 1.74l-.15.09a2 2 0 00-.73 2.73l.22.38a2 2 0 002.73.73l.15-.08a2 2 0 012 0l.43.25a2 2 0 011 1.73V20a2 2 0 002 2h.44a2 2 0 002-2v-.18a2 2 0 011-1.73l.43-.25a2 2 0 012 0l.15.08a2 2 0 002.73-.73l.22-.39a2 2 0 00-.73-2.73l-.15-.08a2 2 0 01-1-1.74v-.5a2 2 0 011-1.74l.15-.09a2 2 0 00.73-2.73l-.22-.38a2 2 0 00-2.73-.73l-.15.08a2 2 0 01-2 0l-.43-.25a2 2 0 01-1-1.73V4a2 2 0 00-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+          </div>
+          <span class="text-sm font-medium text-dark">サイト管理</span>
+          <span class="text-xs text-body-color">サイト設定・連携管理</span>
+        </a>
+      </div>
+
+      <!-- 主要指標タブ (実際のMetricTabSection: 3タブ) -->
+      <div class="space-y-6">
+        <!-- タブ -->
+        <div class="flex gap-2 rounded-xl border border-slate-200/60 bg-white/60 p-1 shadow-sm backdrop-blur-sm">
+          <button class="flex-1 rounded-lg bg-primary px-8 py-2 text-sm font-medium text-white transition hover:bg-opacity-90">主要指標サマリ</button>
+          <button class="flex-1 rounded-lg px-8 py-2 text-sm font-medium text-body-color transition hover:bg-gray-100/60">コンバージョン内訳</button>
+          <button class="flex-1 rounded-lg px-8 py-2 text-sm font-medium text-body-color transition hover:bg-gray-100/60">KPI予実</button>
+        </div>
+
+        <!-- 指標カード 4列 (実際の MetricCard) -->
+        <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <!-- 訪問者 -->
+          <div class="glass-card relative overflow-hidden rounded-2xl p-6">
+            <div class="mb-3 flex items-center gap-1.5">
+              <h4 class="text-sm font-medium text-body-color">訪問者</h4>
+              <svg class="h-4 w-4 text-body-color/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div class="mb-4 text-4xl font-bold text-dark">12,458</div>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-body-color">前月</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-dark">11,092</span>
+                  <span class="inline-block w-20 text-right font-medium text-green-600">+12.3%</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-body-color">前年同月</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-dark">9,876</span>
+                  <span class="inline-block w-20 text-right font-medium text-green-600">+26.1%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- ユーザー -->
+          <div class="glass-card relative overflow-hidden rounded-2xl p-6">
+            <div class="mb-3 flex items-center gap-1.5">
+              <h4 class="text-sm font-medium text-body-color">ユーザー</h4>
+              <svg class="h-4 w-4 text-body-color/50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <div class="mb-4 text-4xl font-bold text-dark">8,234</div>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-body-color">前月</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-dark">7,574</span>
+                  <span class="inline-block w-20 text-right font-medium text-green-600">+8.7%</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-body-color">前年同月</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-dark">6,201</span>
+                  <span class="inline-block w-20 text-right font-medium text-green-600">+32.8%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 新規ユーザー -->
+          <div class="glass-card relative overflow-hidden rounded-2xl p-6">
+            <div class="mb-3 flex items-center gap-1.5">
+              <h4 class="text-sm font-medium text-body-color">新規ユーザー</h4>
+            </div>
+            <div class="mb-4 text-4xl font-bold text-dark">5,891</div>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-body-color">前月</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-dark">5,320</span>
+                  <span class="inline-block w-20 text-right font-medium text-green-600">+10.7%</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-body-color">前年同月</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-dark">4,102</span>
+                  <span class="inline-block w-20 text-right font-medium text-green-600">+43.6%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- PV数 -->
+          <div class="glass-card relative overflow-hidden rounded-2xl p-6">
+            <div class="mb-3 flex items-center gap-1.5">
+              <h4 class="text-sm font-medium text-body-color">PV数</h4>
+            </div>
+            <div class="mb-4 text-4xl font-bold text-dark">45,892</div>
+            <div class="space-y-2">
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-body-color">前月</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-dark">47,410</span>
+                  <span class="inline-block w-20 text-right font-medium text-red-600">-3.2%</span>
+                </div>
+              </div>
+              <div class="flex items-center justify-between text-sm">
+                <span class="text-body-color">前年同月</span>
+                <div class="flex items-center gap-2">
+                  <span class="text-dark">38,204</span>
+                  <span class="inline-block w-20 text-right font-medium text-green-600">+20.1%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- トレンドチャート (実際のTrendChart.jsx構造) -->
+      <div class="glass-card overflow-hidden rounded-2xl">
+        <div class="flex items-center justify-between border-b border-slate-100/60 px-6 py-4">
+          <div class="flex items-center gap-4">
+            <!-- メトリクストグル (実際のMETRIC_OPTIONS) -->
+            <div class="flex gap-1.5">
+              <button class="rounded-full bg-[#3758F9] px-3 py-1 text-[11px] font-medium text-white">セッション</button>
+              <button class="rounded-full bg-[#13C296] px-3 py-1 text-[11px] font-medium text-white">ユーザー</button>
+              <button class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-medium text-slate-500">PV</button>
+              <button class="rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-medium text-slate-500">CV数</button>
+            </div>
+          </div>
+          <!-- タブ: 月次/日次 -->
+          <div class="flex items-center rounded-xl border border-slate-200/60 bg-white/60 p-0.5">
+            <button class="rounded-lg bg-primary px-3.5 py-1.5 text-[11px] font-semibold text-white shadow-sm">月次</button>
+            <button class="rounded-lg px-3.5 py-1.5 text-[11px] font-medium text-slate-500">日次</button>
+          </div>
+        </div>
+        <div class="p-6">
+          <!-- Simulated Recharts LineChart -->
+          <div class="relative h-[280px]">
+            <div class="absolute left-0 top-0 flex h-full flex-col justify-between text-[10px] text-slate-400">
+              <span>15K</span><span>12K</span><span>9K</span><span>6K</span><span>3K</span><span>0</span>
+            </div>
+            <div class="ml-10 h-full">
+              <div class="absolute inset-x-10 top-0 flex h-full flex-col justify-between">
+                <div class="border-t border-dashed border-slate-100"></div>
+                <div class="border-t border-dashed border-slate-100"></div>
+                <div class="border-t border-dashed border-slate-100"></div>
+                <div class="border-t border-dashed border-slate-100"></div>
+                <div class="border-t border-dashed border-slate-100"></div>
+                <div class="border-t border-slate-200/60"></div>
+              </div>
+              <svg class="absolute inset-x-10 top-0 h-full" viewBox="0 0 600 280" preserveAspectRatio="none">
+                <!-- セッション (#3758F9) -->
+                <path d="M0,180 C50,170 100,155 150,145 C200,140 250,125 300,110 C350,100 400,90 450,95 C500,88 550,70 600,60" fill="none" stroke="#3758F9" stroke-width="2.5"/>
+                <path d="M0,180 C50,170 100,155 150,145 C200,140 250,125 300,110 C350,100 400,90 450,95 C500,88 550,70 600,60 L600,280 L0,280 Z" fill="#3758F9" opacity="0.06"/>
+                <!-- ユーザー (#13C296) -->
+                <path d="M0,200 C50,195 100,185 150,175 C200,170 250,155 300,140 C350,135 400,125 450,128 C500,122 550,108 600,95" fill="none" stroke="#13C296" stroke-width="2.5"/>
+                <!-- Data points -->
+                <circle cx="0" cy="180" r="3" fill="#3758F9"/>
+                <circle cx="100" cy="155" r="3" fill="#3758F9"/>
+                <circle cx="200" cy="140" r="3" fill="#3758F9"/>
+                <circle cx="300" cy="110" r="3" fill="#3758F9"/>
+                <circle cx="400" cy="90" r="3" fill="#3758F9"/>
+                <circle cx="500" cy="88" r="3" fill="#3758F9"/>
+                <circle cx="600" cy="60" r="4" fill="#3758F9" stroke="white" stroke-width="2"/>
+              </svg>
+              <div class="absolute inset-x-10 bottom-0 flex justify-between text-[10px] text-slate-400" style="transform: translateY(20px)">
+                <span>2025/03</span><span>2025/05</span><span>2025/07</span><span>2025/09</span><span>2025/11</span><span>2026/01</span><span>2026/02</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 改善タスク (実際のImprovementSummary.jsx) -->
+      <div class="glass-card overflow-hidden rounded-2xl">
+        <div class="flex items-center justify-between border-b border-slate-100/60 px-6 py-4">
+          <h3 class="text-lg font-semibold text-dark">改善タスク</h3>
+          <a href="#" class="text-xs font-medium text-primary hover:underline">すべて見る →</a>
+        </div>
+        <div class="p-6">
+          <!-- ステータスカウンター (実際の3列: 起案/対応中/完了) -->
+          <div class="mb-4 grid grid-cols-3 gap-3">
+            <div class="flex flex-col items-center rounded-xl bg-gray-100/60 p-3 backdrop-blur-sm">
+              <!-- FileEdit icon -->
+              <svg class="mb-1 h-5 w-5 text-body-color" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              <span class="text-2xl font-bold text-dark">2</span>
+              <span class="text-xs text-body-color">起案</span>
+            </div>
+            <div class="flex flex-col items-center rounded-xl bg-primary/10 p-3 backdrop-blur-sm">
+              <!-- PlayCircle icon -->
+              <svg class="mb-1 h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+              <span class="text-2xl font-bold text-dark">3</span>
+              <span class="text-xs text-body-color">対応中</span>
+            </div>
+            <div class="flex flex-col items-center rounded-xl bg-primary/10 p-3 backdrop-blur-sm">
+              <!-- CheckCircle2 icon -->
+              <svg class="mb-1 h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+              <span class="text-2xl font-bold text-dark">5</span>
+              <span class="text-xs text-body-color">完了</span>
+            </div>
+          </div>
+          <!-- タスク一覧 -->
+          <div class="space-y-2">
+            <div class="flex items-center gap-3 rounded-xl border border-slate-200/60 bg-white/40 px-3 py-2 backdrop-blur-sm">
+              <span class="text-xs font-medium text-primary">対応中</span>
+              <span class="flex-1 truncate text-sm text-dark">トップページのCTA改善 — ファーストビューのボタン配置見直し</span>
+            </div>
+            <div class="flex items-center gap-3 rounded-xl border border-slate-200/60 bg-white/40 px-3 py-2 backdrop-blur-sm">
+              <span class="text-xs font-medium text-primary">対応中</span>
+              <span class="flex-1 truncate text-sm text-dark">モバイルページ速度改善 — LCP 4.2s → 2.5s を目標</span>
+            </div>
+            <div class="flex items-center gap-3 rounded-xl border border-slate-200/60 bg-white/40 px-3 py-2 backdrop-blur-sm">
+              <span class="text-xs font-medium text-body-color">起案</span>
+              <span class="flex-1 truncate text-sm text-dark">フォームのステップ削減 — 5ステップ → 3ステップに簡略化</span>
+            </div>
+            <div class="flex items-center gap-3 rounded-xl border border-slate-200/60 bg-white/40 px-3 py-2 backdrop-blur-sm">
+              <span class="text-xs font-medium text-primary">対応中</span>
+              <span class="flex-1 truncate text-sm text-dark">FAQ構造化データ追加 — リッチスニペット表示を目指す</span>
+            </div>
+            <div class="flex items-center gap-3 rounded-xl border border-slate-200/60 bg-white/40 px-3 py-2 backdrop-blur-sm">
+              <span class="text-xs font-medium text-body-color">起案</span>
+              <span class="flex-1 truncate text-sm text-dark">ブログ記事の内部リンク最適化</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

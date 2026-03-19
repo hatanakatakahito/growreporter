@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
 import { getPlanDisplayName, getPlanInfo, getPlanBadgeColor, isUnlimited } from '../../constants/plans';
-import { X, CheckCircle, AlertCircle } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
+import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 
 /**
  * プラン変更モーダル
@@ -68,8 +70,8 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
   // 確認ダイアログ
   if (showConfirm) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-        <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl dark:bg-dark-2">
+      <Dialog open={true} onClose={() => setShowConfirm(false)} size="md">
+        <DialogBody>
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-orange-500/10">
               <AlertCircle className="h-6 w-6 text-orange-500" />
@@ -116,59 +118,35 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
               {error}
             </div>
           )}
+        </DialogBody>
 
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowConfirm(false)}
-              disabled={loading}
-              className="flex-1 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-            >
-              キャンセル
-            </button>
-            <button
-              onClick={handleChangePlan}
-              disabled={loading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? (
-                <>
-                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
-                  変更中...
-                </>
-              ) : (
-                '変更を実行'
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
+        <DialogActions>
+          <Button plain onClick={() => setShowConfirm(false)} disabled={loading}>
+            キャンセル
+          </Button>
+          <Button color="blue" onClick={handleChangePlan} disabled={loading}>
+            {loading ? (
+              <>
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                変更中...
+              </>
+            ) : (
+              '変更を実行'
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
     );
   }
 
   // プラン選択フォーム
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-2xl rounded-lg bg-white shadow-xl dark:bg-dark-2">
-        {/* ヘッダー */}
-        <div className="flex items-center justify-between border-b border-stroke p-6 dark:border-dark-3">
-          <div>
-            <h2 className="text-xl font-semibold text-dark dark:text-white">
-              プラン変更
-            </h2>
-            <p className="mt-1 text-sm text-body-color dark:text-dark-6">
-              {getUserName()} ({user.email})
-            </p>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-body-color transition hover:bg-gray-100 dark:hover:bg-dark-3"
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Dialog open={true} onClose={onClose} size="2xl">
+      <DialogTitle>プラン変更</DialogTitle>
+      <DialogDescription>{getUserName()} ({user.email})</DialogDescription>
 
-        {/* コンテンツ */}
-        <form onSubmit={handleSubmit} className="p-6">
+      <form id="plan-change-form" onSubmit={handleSubmit}>
+        <DialogBody>
           {/* プラン選択 */}
           <div className="mb-6">
             <label className="mb-3 block text-sm font-medium text-dark dark:text-white">
@@ -236,27 +214,17 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
               {error}
             </div>
           )}
+        </DialogBody>
+      </form>
 
-          {/* ボタン */}
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-            >
-              キャンセル
-            </button>
-            <button
-              type="submit"
-              disabled={selectedPlan === currentPlan}
-              className="flex-1 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90 disabled:opacity-50"
-            >
-              確認画面へ
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+      <DialogActions>
+        <Button plain onClick={onClose}>
+          キャンセル
+        </Button>
+        <Button color="blue" type="submit" form="plan-change-form" disabled={selectedPlan === currentPlan}>
+          確認画面へ
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
-

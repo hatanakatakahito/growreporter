@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { createPortal } from 'react-dom';
 import { AlertCircle, Check, ArrowUpCircle } from 'lucide-react';
 import { useSite } from '../../contexts/SiteContext';
 import UpgradeModal from './UpgradeModal';
+import { Dialog, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 
 /**
  * サイト選択モーダル（ダウングレード時）
@@ -12,8 +13,6 @@ export default function SiteSelectionModal() {
   const { needsSiteSelection, allSites, maxSites, confirmSiteSelection } = useSite();
   const [selectedIds, setSelectedIds] = useState([]);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
-
-  if (!needsSiteSelection) return null;
 
   const handleToggle = (siteId) => {
     if (maxSites === 1) {
@@ -35,11 +34,11 @@ export default function SiteSelectionModal() {
     confirmSiteSelection(selectedIds);
   };
 
-  const content = (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-dark-2">
-        {/* ヘッダー */}
-        <div className="flex-shrink-0 border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 p-6 dark:border-dark-3">
+  return (
+    <>
+      <Dialog open={needsSiteSelection} onClose={() => {}} size="lg">
+        {/* カスタムヘッダー */}
+        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 p-6 dark:border-dark-3 rounded-t-2xl">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
               <AlertCircle className="h-5 w-5 text-white" />
@@ -55,8 +54,7 @@ export default function SiteSelectionModal() {
           </div>
         </div>
 
-        {/* コンテンツ */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <DialogBody>
           <p className="mb-4 text-sm text-body-color">
             登録サイト数（{allSites.length}サイト）がプランの上限を超えています。利用するサイトを{maxSites}つ選択してください。
           </p>
@@ -110,34 +108,31 @@ export default function SiteSelectionModal() {
           <p className="mt-4 text-xs text-body-color">
             ※ 選択しなかったサイトのデータは保持されます。プランをアップグレードすると再度アクセスできます。
           </p>
-        </div>
+        </DialogBody>
 
-        {/* フッター */}
-        <div className="flex-shrink-0 border-t border-stroke p-6 dark:border-dark-3">
-          <button
-            onClick={handleConfirm}
-            disabled={selectedIds.length === 0 || selectedIds.length > maxSites}
-            className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            選択したサイトを有効にする（{selectedIds.length}/{maxSites}）
-          </button>
-          <button
+        <DialogActions>
+          <Button
+            outline
             onClick={() => setIsUpgradeModalOpen(true)}
-            className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border border-stroke px-6 py-2.5 text-sm font-medium text-body-color transition hover:bg-gray-2 dark:border-dark-3 dark:hover:bg-dark-3"
           >
             <ArrowUpCircle className="h-4 w-4" />
             プランをアップグレードする
-          </button>
-        </div>
-      </div>
+          </Button>
+          <Button
+            color="blue"
+            onClick={handleConfirm}
+            disabled={selectedIds.length === 0 || selectedIds.length > maxSites}
+          >
+            選択したサイトを有効にする（{selectedIds.length}/{maxSites}）
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* アップグレードモーダル */}
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
       />
-    </div>
+    </>
   );
-
-  return createPortal(content, document.body);
 }

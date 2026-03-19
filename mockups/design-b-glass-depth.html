@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>デザイン案B: Glass Depth — グラスモーフィズム＋奥行き</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: { DEFAULT: '#3758F9', blue: '#3b82f6', purple: '#8b5cf6', mid: '#6366f1' },
+      }
+    }
+  }
+}
+</script>
+<style>
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; }
+  .glass { background: rgba(255,255,255,0.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .glass-dark { background: rgba(255,255,255,0.55); backdrop-filter: blur(20px); }
+  .metric-card { transition: transform 0.2s, box-shadow 0.2s; }
+  .metric-card:hover { transform: translateY(-2px); box-shadow: 0 8px 25px -5px rgba(0,0,0,0.08); }
+</style>
+</head>
+<body class="bg-slate-50">
+
+<!-- 背景のグラデーション装飾 -->
+<div class="fixed inset-0 -z-10 overflow-hidden">
+  <div class="absolute -top-24 right-0 h-96 w-96 rounded-full bg-blue-100/60 blur-3xl"></div>
+  <div class="absolute bottom-0 left-1/3 h-96 w-96 rounded-full bg-violet-100/40 blur-3xl"></div>
+</div>
+
+<!-- === サイドバー === -->
+<aside class="fixed left-0 top-0 z-50 h-screen w-64 border-r border-white/60 bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800">
+  <!-- ロゴ -->
+  <div class="flex h-16 items-center px-5">
+    <div class="flex items-center gap-2.5">
+      <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-blue-400 to-violet-500 shadow-lg shadow-blue-500/25">
+        <svg class="h-4 w-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+      </div>
+      <span class="text-base font-bold tracking-tight text-white">GROW REPORTER</span>
+    </div>
+  </div>
+
+  <!-- ナビゲーション -->
+  <nav class="flex-1 overflow-y-auto px-3 py-4">
+    <div class="mb-2 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">メイン</div>
+    <ul class="space-y-1">
+      <li>
+        <a href="#" class="flex items-center gap-3 rounded-lg bg-white/10 px-3 py-2.5 text-sm font-medium text-white shadow-sm">
+          <svg class="h-[18px] w-[18px] text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+          ダッシュボード
+        </a>
+      </li>
+      <li>
+        <a href="#" class="flex items-center justify-between rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white">
+          <div class="flex items-center gap-3">
+            <svg class="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            分析する
+          </div>
+          <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+        </a>
+      </li>
+      <li>
+        <a href="#" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white">
+          <svg class="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          改善する
+        </a>
+      </li>
+      <li>
+        <a href="#" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white">
+          <svg class="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+          評価する
+        </a>
+      </li>
+    </ul>
+
+    <div class="mb-2 mt-6 px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-500">設定</div>
+    <ul class="space-y-1">
+      <li>
+        <a href="#" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white">
+          <svg class="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 17.25v1.007a3 3 0 01-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0115 18.257V17.25m6-12V15a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 15V5.25m18 0A2.25 2.25 0 0018.75 3H5.25A2.25 2.25 0 003 5.25m18 0V12a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 12V5.25"/></svg>
+          サイト管理
+        </a>
+      </li>
+      <li>
+        <a href="#" class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-white/5 hover:text-white">
+          <svg class="h-[18px] w-[18px]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0"/></svg>
+          アカウント設定
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- ユーザー情報 -->
+  <div class="border-t border-white/10 p-3">
+    <div class="flex items-center gap-3 rounded-lg p-2 transition hover:bg-white/5">
+      <div class="flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-blue-400 to-violet-500 text-sm font-semibold text-white ring-2 ring-white/20">畑</div>
+      <div class="flex-1 min-w-0">
+        <p class="truncate text-sm font-medium text-white">畑中 孝仁</p>
+        <p class="truncate text-xs text-slate-500">hatanaka@example.com</p>
+      </div>
+      <span class="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold text-blue-300 ring-1 ring-blue-400/30 ring-inset">STD</span>
+    </div>
+  </div>
+</aside>
+
+<!-- === メインコンテンツ === -->
+<div class="ml-64">
+  <!-- ヘッダー -->
+  <header class="glass sticky top-0 z-40 flex h-14 items-center justify-between border-b border-white/60 px-6">
+    <h1 class="text-base font-semibold text-slate-900">ダッシュボード</h1>
+    <div class="flex items-center gap-3">
+      <button class="glass-dark inline-flex items-center gap-2 rounded-xl border border-white/60 px-3 py-1.5 text-sm text-slate-700 shadow-sm transition hover:shadow-md">
+        <svg class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        2025/02/01 〜 2025/02/28
+      </button>
+      <button class="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-violet-600 px-3 py-1.5 text-sm font-medium text-white shadow-md shadow-blue-500/20 transition hover:shadow-lg hover:shadow-blue-500/30">
+        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3"/></svg>
+        サンプルサイト
+      </button>
+    </div>
+  </header>
+
+  <!-- サイト情報ヘッダー -->
+  <div class="border-b border-slate-200/60 bg-gradient-to-br from-blue-50/80 via-white to-violet-50/60 px-6 py-8">
+    <div class="mx-auto max-w-6xl">
+      <div class="flex items-start justify-between">
+        <div>
+          <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-500/20 ring-inset">稼働中</span>
+          <h2 class="mt-2 text-2xl font-bold text-slate-900">株式会社サンプル コーポレートサイト</h2>
+          <p class="mt-1 text-sm text-slate-500">https://www.example.com</p>
+          <p class="mt-3 max-w-xl text-sm leading-relaxed text-slate-600">サンプル会社は最先端のテクノロジーで社会課題を解決します。</p>
+        </div>
+        <div class="flex gap-3">
+          <div class="h-[120px] w-[180px] overflow-hidden rounded-2xl border border-white/80 bg-white/60 shadow-lg shadow-slate-200/50 backdrop-blur">
+            <div class="flex h-full items-center justify-center text-xs text-slate-400">PC</div>
+          </div>
+          <div class="h-[120px] w-[60px] overflow-hidden rounded-2xl border border-white/80 bg-white/60 shadow-lg shadow-slate-200/50 backdrop-blur">
+            <div class="flex h-full items-center justify-center text-xs text-slate-400">SP</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- コンテンツ -->
+  <main class="mx-auto max-w-6xl px-6 py-8">
+    <div class="space-y-8">
+
+      <!-- クイックアクション -->
+      <div class="grid grid-cols-4 gap-4">
+        <a href="#" class="group metric-card overflow-hidden rounded-2xl border border-white/80 bg-white/70 p-5 shadow-md shadow-slate-200/40 backdrop-blur-sm">
+          <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-md shadow-blue-500/25">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+          </div>
+          <h3 class="text-sm font-semibold text-slate-900">AIで分析する</h3>
+          <p class="mt-1 text-xs text-slate-500">GA4データをAIが自動分析</p>
+        </a>
+        <a href="#" class="group metric-card overflow-hidden rounded-2xl border border-white/80 bg-white/70 p-5 shadow-md shadow-slate-200/40 backdrop-blur-sm">
+          <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/25">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+          </div>
+          <h3 class="text-sm font-semibold text-slate-900">改善案を生成</h3>
+          <p class="mt-1 text-xs text-slate-500">AIが改善施策を提案</p>
+        </a>
+        <a href="#" class="group metric-card overflow-hidden rounded-2xl border border-white/80 bg-white/70 p-5 shadow-md shadow-slate-200/40 backdrop-blur-sm">
+          <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-md shadow-amber-500/25">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+          </div>
+          <h3 class="text-sm font-semibold text-slate-900">評価する</h3>
+          <p class="mt-1 text-xs text-slate-500">レポートで成果を確認</p>
+        </a>
+        <a href="#" class="group metric-card overflow-hidden rounded-2xl border border-white/80 bg-white/70 p-5 shadow-md shadow-slate-200/40 backdrop-blur-sm">
+          <div class="mb-3 flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-slate-500 to-slate-700 text-white shadow-md shadow-slate-500/25">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.75" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          </div>
+          <h3 class="text-sm font-semibold text-slate-900">サイト管理</h3>
+          <p class="mt-1 text-xs text-slate-500">サイト設定・連携管理</p>
+        </a>
+      </div>
+
+      <!-- 主要指標カード -->
+      <div>
+        <div class="mb-4 flex items-center justify-between">
+          <h2 class="text-lg font-semibold text-slate-900">主要指標</h2>
+          <div class="glass-dark flex rounded-xl border border-white/60 p-1 shadow-sm">
+            <button class="rounded-lg bg-gradient-to-r from-blue-600 to-violet-600 px-3 py-1 text-xs font-medium text-white shadow-sm">サマリ</button>
+            <button class="rounded-lg px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-700">CV内訳</button>
+            <button class="rounded-lg px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-700">KPI</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-4 gap-4">
+          <div class="metric-card rounded-2xl border border-white/80 bg-white/70 p-5 shadow-md shadow-slate-200/40 backdrop-blur-sm">
+            <p class="text-xs font-medium text-slate-500">セッション数</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">12,458</p>
+            <div class="mt-2 flex items-center gap-1.5">
+              <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">↑ 12.3%</span>
+              <span class="text-[11px] text-slate-400">vs 前期間</span>
+            </div>
+          </div>
+          <div class="metric-card rounded-2xl border border-white/80 bg-white/70 p-5 shadow-md shadow-slate-200/40 backdrop-blur-sm">
+            <p class="text-xs font-medium text-slate-500">ユーザー数</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">8,234</p>
+            <div class="mt-2 flex items-center gap-1.5">
+              <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">↑ 8.7%</span>
+              <span class="text-[11px] text-slate-400">vs 前期間</span>
+            </div>
+          </div>
+          <div class="metric-card rounded-2xl border border-white/80 bg-white/70 p-5 shadow-md shadow-slate-200/40 backdrop-blur-sm">
+            <p class="text-xs font-medium text-slate-500">PV数</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">45,892</p>
+            <div class="mt-2 flex items-center gap-1.5">
+              <span class="inline-flex items-center rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-600">↓ 3.2%</span>
+              <span class="text-[11px] text-slate-400">vs 前期間</span>
+            </div>
+          </div>
+          <div class="metric-card rounded-2xl border border-white/80 bg-white/70 p-5 shadow-md shadow-slate-200/40 backdrop-blur-sm">
+            <p class="text-xs font-medium text-slate-500">コンバージョン</p>
+            <p class="mt-1 text-2xl font-bold text-slate-900">156</p>
+            <div class="mt-2 flex items-center gap-1.5">
+              <span class="inline-flex items-center rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">↑ 24.1%</span>
+              <span class="text-[11px] text-slate-400">vs 前期間</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- チャート -->
+      <div class="rounded-2xl border border-white/80 bg-white/70 p-6 shadow-md shadow-slate-200/40 backdrop-blur-sm">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="text-base font-semibold text-slate-900">トレンド推移</h3>
+          <div class="flex rounded-xl border border-slate-200 p-0.5">
+            <button class="rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">月次</button>
+            <button class="rounded-lg px-3 py-1 text-xs font-medium text-slate-500">日次</button>
+          </div>
+        </div>
+        <div class="flex h-64 items-center justify-center rounded-xl bg-gradient-to-br from-slate-50 to-blue-50/30">
+          <p class="text-sm text-slate-400">📊 チャートエリア（Recharts）</p>
+        </div>
+      </div>
+
+      <!-- テーブル -->
+      <div class="overflow-hidden rounded-2xl border border-white/80 bg-white/70 shadow-md shadow-slate-200/40 backdrop-blur-sm">
+        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+          <h3 class="text-base font-semibold text-slate-900">改善タスク進捗</h3>
+          <button class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50">すべて表示</button>
+        </div>
+        <table class="w-full">
+          <thead>
+            <tr class="border-b border-slate-100 bg-slate-50/50">
+              <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500">タスク</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500">ステータス</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-slate-500">優先度</th>
+              <th class="px-5 py-3 text-right text-xs font-semibold text-slate-500">予想効果</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100">
+            <tr class="transition hover:bg-blue-50/30">
+              <td class="px-5 py-3.5 text-sm text-slate-900">トップページのCTA改善</td>
+              <td class="px-5 py-3.5"><span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">進行中</span></td>
+              <td class="px-5 py-3.5"><span class="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">高</span></td>
+              <td class="px-5 py-3.5 text-right text-sm font-semibold text-emerald-600">+15%</td>
+            </tr>
+            <tr class="transition hover:bg-blue-50/30">
+              <td class="px-5 py-3.5 text-sm text-slate-900">フォームのステップ削減</td>
+              <td class="px-5 py-3.5"><span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">計画中</span></td>
+              <td class="px-5 py-3.5"><span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">中</span></td>
+              <td class="px-5 py-3.5 text-right text-sm font-semibold text-emerald-600">+8%</td>
+            </tr>
+            <tr class="transition hover:bg-blue-50/30">
+              <td class="px-5 py-3.5 text-sm text-slate-900">モバイルページ速度改善</td>
+              <td class="px-5 py-3.5"><span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">完了</span></td>
+              <td class="px-5 py-3.5"><span class="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">中</span></td>
+              <td class="px-5 py-3.5 text-right text-sm font-semibold text-emerald-600">+5%</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="fixed bottom-4 right-4 rounded-2xl border border-white/60 bg-white/80 px-4 py-3 shadow-lg backdrop-blur-sm">
+  <p class="text-xs font-semibold text-slate-900">デザイン案B: Glass Depth</p>
+  <p class="mt-0.5 text-[11px] text-slate-500">ダークサイドバー・グラス効果・奥行き感</p>
+</div>
+
+</body>
+</html>

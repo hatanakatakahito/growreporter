@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Select from 'react-select';
 import { useAuth } from '../../../contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import { db, functions } from '../../../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -350,10 +351,10 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
             Googleアカウントで認証し、Search Consoleサイトにアクセスします<br />
             <span className="text-gray-500">※ この設定は任意です。スキップして次のステップに進むこともできます</span>
           </p>
-          <button
+          <Button
             onClick={handleConnect}
             disabled={isConnecting}
-            className="inline-flex items-center gap-2 rounded-md bg-primary px-8 py-3 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            color="blue"
           >
             {isConnecting ? (
               <>
@@ -366,7 +367,7 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
             ) : (
               'Googleアカウントで接続'
             )}
-          </button>
+          </Button>
         </div>
       ) : (
         // 接続済み状態
@@ -490,13 +491,14 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
           )}
 
           {/* 再接続ボタン */}
-          <button
+          <Button
             onClick={handleConnect}
             disabled={isConnecting}
-            className="w-full rounded-md border border-stroke px-4 py-3 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
+            outline
+            className="w-full"
           >
             別のGoogleアカウントで接続・再接続
-          </button>
+          </Button>
         </>
       )}
     </div>

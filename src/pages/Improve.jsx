@@ -21,6 +21,7 @@ import { generateAndAddImprovements } from '../utils/generateAndAddImprovements'
 import { downloadImprovementsExcel } from '../utils/exportImprovementsToExcel';
 import { formatEstimatedPriceLabel, formatEstimatedDeliveryLabel } from '../utils/improvementEstimate';
 import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
 
 const categoryLabels = {
   acquisition: '集客',
@@ -466,15 +467,15 @@ export default function Improve() {
                     </button>
                   );
                 })()}
-                <button
+                <Button
+                  color="blue"
                   onClick={() => {
                     setEditingItem(null);
                     setIsDialogOpen(true);
                   }}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
                 >
                   手動で追加
-                </button>
+                </Button>
               </>
             )
           }
@@ -660,7 +661,8 @@ export default function Improve() {
                     <div className="flex flex-wrap items-center gap-4">
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-body-color shrink-0">編集</span>
-                        <button
+                        <Button
+                          outline
                           type="button"
                           onClick={() => {
                             const firstId = Array.from(detailViewSelectedIds)[0];
@@ -670,30 +672,29 @@ export default function Improve() {
                               setIsDialogOpen(true);
                             }
                           }}
-                          className="inline-flex items-center gap-1.5 rounded border border-stroke bg-white px-3 py-1.5 text-sm font-medium text-dark hover:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit data-slot="icon" className="h-4 w-4" />
                           選択した1件を編集
-                        </button>
-                        <button
+                        </Button>
+                        <Button
+                          outline
                           type="button"
                           onClick={clearDetailViewSelection}
-                          className="rounded border border-stroke bg-white px-3 py-1.5 text-sm font-medium text-dark hover:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
                         >
                           選択解除
-                        </button>
+                        </Button>
                       </div>
                       <div className="h-6 w-px bg-stroke dark:bg-dark-3" aria-hidden />
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-body-color shrink-0">削除</span>
-                        <button
+                        <Button
+                          color="red"
                           type="button"
                           onClick={handleBulkDeleteDetailView}
-                          className="inline-flex items-center gap-1.5 rounded border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-red-900/50 dark:bg-dark-2 dark:text-red-400 dark:hover:bg-red-900/20"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 data-slot="icon" className="h-4 w-4" />
                           選択した{detailViewSelectedIds.size}件を削除
-                        </button>
+                        </Button>
                       </div>
                       <div className="h-6 w-px bg-stroke dark:bg-dark-3" aria-hidden />
                       <div className="flex items-center gap-2">
@@ -706,16 +707,16 @@ export default function Improve() {
                           <option value="in_progress">{statusLabels.in_progress}</option>
                           <option value="completed">{statusLabels.completed}</option>
                         </select>
-                        <button
+                        <Button
+                          color="blue"
                           type="button"
                           onClick={() => {
                             const sel = document.getElementById('bulk-status-detail');
                             if (sel) handleBulkStatusChangeDetailView(sel.value);
                           }}
-                          className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary/90"
                         >
                           変更
-                        </button>
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -1163,17 +1164,18 @@ export default function Improve() {
               {/* ドロワーフッター */}
               <div className="px-10 py-4 border-t border-gray-200 dark:border-dark-3 flex items-center justify-between shrink-0 bg-gray-50/80 dark:bg-dark-3">
                 {!isViewer ? (
-                  <button
+                  <Button
+                    color="red"
+                    outline
                     onClick={() => {
                       if (window.confirm('この改善案を削除しますか？')) {
                         deleteMutation.mutate(item.id);
                         closeDrawer();
                       }
                     }}
-                    className="text-sm text-red-600 hover:text-red-800 border border-red-300 dark:border-red-800 rounded-lg px-5 py-2 hover:bg-red-50 dark:hover:bg-red-900/20 font-medium transition"
                   >
                     削除
-                  </button>
+                  </Button>
                 ) : <div />}
                 <div className="flex items-center gap-3">
                   <button

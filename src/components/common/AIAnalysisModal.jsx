@@ -12,9 +12,11 @@ import LoadingSpinner from './LoadingSpinner';
 import UpgradeModal from './UpgradeModal';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
+import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 
 /**
- * AI分析結果を表示するサイドシート（シート型UI）
+ * AI分析結果を表示するモーダル
  * @param {string} pageType - ページタイプ
  * @param {object} rawData - フロント画面で取得したCloud Functionの生データ（推奨）
  * @param {object} metrics - AI分析用メトリクス（旧方式・後方互換性用）
@@ -42,7 +44,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
     queryKey: ['improvements', selectedSiteId],
     queryFn: async () => {
       if (!selectedSiteId) return [];
-      
+
       const q = query(collection(db, 'sites', selectedSiteId, 'improvements'));
       const snapshot = await getDocs(q);
       return snapshot.docs.map(doc => ({
@@ -69,26 +71,26 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
         setIsLoading(false);
         return;
       }
-      
+
       // データ検証
       if (!selectedSiteId) {
         throw new Error('サイトが選択されていません');
       }
-      
+
       if (!pageType) {
         throw new Error('ページタイプが指定されていません');
       }
-      
+
       // rawDataもmetricsもない場合はエラー
       if (!rawData && (!metrics || typeof metrics !== 'object')) {
         throw new Error('分析データが不正です');
       }
-      
+
       // 初回ロード時もバックエンドで制限チェックされるが、
       // キャッシュがない場合のみカウントされる
 
       const generateAISummary = httpsCallable(functions, 'generateAISummary');
-      
+
       console.log('[AIAnalysisModal] AI分析リクエスト:', {
         siteId: selectedSiteId,
         pageType,
@@ -99,7 +101,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
         startDate: period?.startDate,
         endDate: period?.endDate,
       });
-      
+
       // 新方式と旧方式の両対応
       const requestData = {
         siteId: selectedSiteId,
@@ -108,7 +110,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
         endDate: period?.endDate,
         forceRegenerate,
       };
-      
+
       // rawDataがあれば優先的に使用（新方式）
       if (rawData) {
         requestData.rawData = rawData;
@@ -118,7 +120,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
         requestData.metrics = metrics;
         console.log('[AIAnalysisModal] 旧方式: metricsを送信');
       }
-      
+
       const result = await generateAISummary(requestData);
 
       if (!result || !result.data) {
@@ -126,17 +128,17 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
       }
 
       const data = result.data;
-      
+
       if (!data.summary) {
         throw new Error('AI分析の要約が生成されませんでした');
       }
-      
+
       console.log('[AIAnalysisModal] AI分析成功:', {
         summaryLength: data.summary?.length || 0,
         recommendationsCount: data.recommendations?.length || 0,
         fromCache: data.fromCache,
       });
-      
+
       setSummary(data.summary);
       setRecommendations(data.recommendations || []);
       setGeneratedAt(data.generatedAt ? new Date(data.generatedAt) : new Date());
@@ -148,7 +150,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
         code: err.code,
         stack: err.stack,
       });
-      
+
       if (err.code === 'functions/resource-exhausted') {
         onLimitExceeded();
       } else if (err.message) {
@@ -175,7 +177,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
       console.log('[AIAnalysisModal] タスク追加開始:', task);
       console.log('[AIAnalysisModal] selectedSiteId:', selectedSiteId);
       console.log('[AIAnalysisModal] 既存タスク数:', existingTasks.length);
-      
+
       const newTask = {
         siteId: selectedSiteId,
         title: task.title || task.recommendation || 'AI提案タスク',
@@ -189,17 +191,17 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
         updatedAt: serverTimestamp(),
         createdBy: user?.email || '',
       };
-      
+
       console.log('[AIAnalysisModal] Firestoreに追加するデータ:', newTask);
-      
+
       return await addDoc(collection(db, 'sites', selectedSiteId, 'improvements'), newTask);
     },
     onSuccess: (data, variables, context) => {
       console.log('[AIAnalysisModal] タスク追加成功:', data.id, variables);
-      
+
       // キャッシュ無効化
       queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
-      
+
       // 追加済みタスクとしてマーク（チェックマーク表示用）
       const taskKey = `${variables.title}_${variables.description}`;
       setAddedTaskIds(prev => {
@@ -243,43 +245,32 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
 
   return (
     <>
-      {/* オーバーレイ */}
-      <div
-        className="fixed inset-0 bg-black bg-opacity-50 z-[9998] transition-opacity"
-        onClick={onClose}
-      />
-
-      {/* サイドシート */}
-      <div className="fixed top-0 right-0 h-full w-full max-w-2xl bg-white dark:bg-dark shadow-xl z-[9999] transform transition-transform duration-300 ease-in-out overflow-y-auto">
-        {/* ヘッダー */}
-        <div className="sticky top-0 bg-white dark:bg-dark border-b border-stroke dark:border-dark-3 px-6 py-4 z-10">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="flex items-center gap-2 text-xl font-semibold text-dark dark:text-white">
-                <Sparkles className="h-5 w-5 text-primary" />
-                AI分析
-              </h2>
-              <p className="text-sm text-body-color mt-1">
-                {getPageTypeLabel()}
-              </p>
+      <Dialog open={true} onClose={onClose} size="2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              AI分析
+            </DialogTitle>
+            <DialogDescription>
+              {getPageTypeLabel()}
               {period && (
-                <p className="text-xs text-body-color mt-1">
+                <span className="ml-2 text-xs text-body-color">
                   {format(new Date(period.startDate), 'yyyy年MM月dd日')} 〜 {format(new Date(period.endDate), 'yyyy年MM月dd日')}
-                </p>
+                </span>
               )}
-            </div>
-            <button
-              onClick={onClose}
-              className="text-dark dark:text-white hover:text-primary transition-colors"
-              aria-label="閉じる"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            </DialogDescription>
           </div>
+          <button
+            onClick={onClose}
+            className="text-dark dark:text-white hover:text-primary transition-colors"
+            aria-label="閉じる"
+          >
+            <X className="w-6 h-6" />
+          </button>
         </div>
 
-        {/* コンテンツ */}
-        <div className="px-6 py-6">
+        <DialogBody>
           {/* ローディング */}
           {isLoading && (
             <div className="flex flex-col items-center justify-center py-12">
@@ -403,17 +394,17 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
                       const taskKey = `${rec.title || rec.recommendation}_${rec.description || ''}`;
                       const taskTitle = rec.title || rec.recommendation;
                       const taskDescription = rec.description || '';
-                      
+
                       // 既にFirestoreに存在するかチェック
-                      const existsInFirestore = existingTasks.some(task => 
+                      const existsInFirestore = existingTasks.some(task =>
                         task.title === taskTitle && task.description === taskDescription
                       );
-                      
+
                       // セッション内で追加したかチェック
                       const addedInSession = addedTaskIds.has(taskKey);
-                      
+
                       const isAdded = existsInFirestore || addedInSession;
-                      
+
                       return (
                         <div key={taskKey} className="rounded-lg bg-gray-50 dark:bg-dark-2 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors overflow-hidden">
                           {/* 上段: タスク名 */}
@@ -421,7 +412,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
                             <span className="text-sm font-semibold text-gray-500 dark:text-gray-400">{index + 1}.</span>
                             <p className="flex-1 text-sm font-semibold text-dark dark:text-white">{rec.title || rec.recommendation}</p>
                           </div>
-                          
+
                           {/* 下段: 説明文とボタン */}
                           <div className="p-3 pt-2">
                             {rec.description && (
@@ -477,7 +468,8 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
                 <span className="text-xs text-body-color">
                   {generatedAt && `最終生成: ${format(generatedAt, 'yyyy/MM/dd HH:mm')}`}
                 </span>
-                <button
+                <Button
+                  outline
                   onClick={() => {
                     if (planId === 'free') {
                       setIsUpgradeModalOpen(true);
@@ -486,16 +478,15 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
                     }
                   }}
                   disabled={isLoading}
-                  className="inline-flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
                 >
                   <RefreshCw className="h-4 w-4" />
                   再分析
-                </button>
+                </Button>
               </div>
             </>
           )}
-        </div>
-      </div>
+        </DialogBody>
+      </Dialog>
 
       {/* アップグレードモーダル */}
       <UpgradeModal
@@ -505,4 +496,3 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
     </>
   );
 }
-

@@ -8,6 +8,7 @@ import InviteMemberModal from '../components/Members/InviteMemberModal';
 import TransferOwnershipModal from '../components/Members/TransferOwnershipModal';
 import { Link } from 'react-router-dom';
 import { setPageTitle } from '../utils/pageTitle';
+import { Button } from '@/components/ui/button';
 
 /**
  * メンバー管理画面
@@ -190,17 +191,13 @@ export default function Members() {
           </div>
           
           {isOwner && (
-            <button
+            <Button
+              color="blue"
               onClick={() => setShowInviteModal(true)}
               disabled={!canInvite || isProcessing}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                canInvite && !isProcessing
-                  ? 'bg-primary text-white hover:opacity-90'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-              }`}
             >
               メンバーを招待
-            </button>
+            </Button>
           )}
         </div>
 

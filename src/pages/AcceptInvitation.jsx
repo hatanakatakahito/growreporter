@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
 import { setPageTitle } from '../utils/pageTitle';
@@ -197,17 +198,14 @@ export default function AcceptInvitation() {
               >
                 キャンセル
               </Link>
-              <button
+              <Button
                 onClick={handleAccept}
                 disabled={isAccepting}
-                className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${
-                  !isAccepting
-                    ? 'bg-purple-600 text-white hover:bg-purple-700'
-                    : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
+                color="blue"
+                className="flex-1"
               >
                 {isAccepting ? '承認中...' : '招待を承認する'}
-              </button>
+              </Button>
             </div>
           )}
         </div>

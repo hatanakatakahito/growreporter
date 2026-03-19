@@ -1,15 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { X, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 import { db, functions } from '../../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { collection, addDoc, updateDoc, doc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
+import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 
 export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem, onDeleted }) {
   const { currentUser } = useAuth();
   const queryClient = useQueryClient();
-  
+
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -20,7 +22,7 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
     priority: '',
     estimatedLaborHours: '',
   });
-  
+
   const [isSaving, setIsSaving] = useState(false);
   const [isFetchingScreenshot, setIsFetchingScreenshot] = useState(false);
 
@@ -64,7 +66,7 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
           where('title', '==', formData.title.trim())
         );
         const querySnapshot = await getDocs(q);
-        
+
         if (!querySnapshot.empty) {
           alert('同じタイトルの改善課題が既に存在します。別のタイトルを入力してください。');
           setIsSaving(false);
@@ -103,7 +105,7 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
 
       // クエリを無効化して再取得
       queryClient.invalidateQueries({ queryKey: ['improvements', siteId] });
-      
+
       // フォームをリセット
       setFormData({
         title: '',
@@ -115,7 +117,7 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
         priority: '',
         estimatedLaborHours: '',
       });
-      
+
       // ダイアログを閉じる
       onClose();
     } catch (error) {
@@ -147,27 +149,14 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-      <div className="flex h-[90vh] max-h-[90vh] w-full max-w-2xl flex-col rounded-lg bg-white dark:bg-dark-2">
-        <div className="flex-shrink-0 border-b border-stroke px-6 py-4 dark:border-dark-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-dark dark:text-white">
-              {editingItem ? '改善課題を編集' : '改善課題を追加'}
-            </h3>
-            <button
-              onClick={onClose}
-              className="rounded-lg p-2 hover:bg-gray-2 dark:hover:bg-dark-3"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
+    <Dialog open={isOpen} onClose={onClose} size="2xl">
+      <DialogTitle>
+        {editingItem ? '改善課題を編集' : '改善課題を追加'}
+      </DialogTitle>
 
-        <form onSubmit={handleSubmit} className="flex flex-1 flex-col min-h-0">
-          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+      <DialogBody>
+        <form id="improvement-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
               タイトル <span className="text-red-500">*</span>
@@ -321,41 +310,22 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
               </button>
             </div>
           )}
-          </div>
-
-          <div className="flex-shrink-0 flex items-center justify-between gap-3 border-t border-stroke px-6 py-4 dark:border-dark-3">
-            <div>
-              {editingItem?.id && (
-                <button
-                  type="button"
-                  onClick={handleDelete}
-                  className="rounded-lg border border-red-500 px-4 py-2 text-sm font-medium text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
-                >
-                  削除
-                </button>
-              )}
-            </div>
-            <div className="flex gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-                disabled={isSaving}
-              >
-                キャンセル
-              </button>
-              <button
-                type="submit"
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50"
-                disabled={isSaving}
-              >
-                {isSaving ? '保存中...' : '保存'}
-              </button>
-            </div>
-          </div>
         </form>
-      </div>
-    </div>
+      </DialogBody>
+
+      <DialogActions>
+        {editingItem?.id && (
+          <Button color="red" outline onClick={handleDelete} className="sm:mr-auto">
+            削除
+          </Button>
+        )}
+        <Button plain onClick={onClose} disabled={isSaving}>
+          キャンセル
+        </Button>
+        <Button color="blue" type="submit" form="improvement-form" disabled={isSaving}>
+          {isSaving ? '保存中...' : '保存'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 }
-

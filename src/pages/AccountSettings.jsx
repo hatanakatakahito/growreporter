@@ -8,7 +8,9 @@ import { useAccountMembers } from '../hooks/useAccountMembers';
 import { getPlanBadgeColor } from '../constants/plans';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, functions } from '../config/firebase';
+import { Switch } from '../components/ui/switch';
 import { setPageTitle } from '../utils/pageTitle';
+import { Button } from '@/components/ui/button';
 
 /**
  * アカウント設定画面
@@ -149,16 +151,16 @@ export default function AccountSettings() {
             アカウント情報とメンバー管理
           </p>
         </div>
-        <button
+        <Button
+          outline
           type="button"
           onClick={handleLogout}
-          className="flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 dark:border-dark-3 dark:text-gray-300 dark:hover:bg-dark-3"
         >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg data-slot="icon" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
           ログアウト
-        </button>
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -232,66 +234,36 @@ export default function AccountSettings() {
                   <p className="text-sm font-medium text-gray-900">週次レポート</p>
                   <p className="text-xs text-gray-500 mt-0.5">毎週のレポートをメールで受け取ります</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleToggleWeeklyReport}
+                <Switch
+                  color="blue"
+                  checked={weeklyReportEmail}
+                  onChange={handleToggleWeeklyReport}
                   disabled={isSaving}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                    weeklyReportEmail ? 'bg-primary' : 'bg-gray-200'
-                  } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  role="switch"
-                  aria-checked={weeklyReportEmail}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
-                      weeklyReportEmail ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
+                />
               </div>
               <div className="flex items-center justify-between py-3 border-b border-gray-100">
                 <div>
                   <p className="text-sm font-medium text-gray-900">月次レポート</p>
                   <p className="text-xs text-gray-500 mt-0.5">毎月のレポートをメールで受け取ります</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleToggleMonthlyReport}
+                <Switch
+                  color="blue"
+                  checked={monthlyReportEmail}
+                  onChange={handleToggleMonthlyReport}
                   disabled={isSaving}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                    monthlyReportEmail ? 'bg-primary' : 'bg-gray-200'
-                  } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  role="switch"
-                  aria-checked={monthlyReportEmail}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
-                      monthlyReportEmail ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
+                />
               </div>
               <div className="flex items-center justify-between py-3">
                 <div>
                   <p className="text-sm font-medium text-gray-900">アラート通知</p>
                   <p className="text-xs text-gray-500 mt-0.5">急な数値変化があったときにメールで通知します</p>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleToggleAlertEmail}
+                <Switch
+                  color="blue"
+                  checked={alertEmail}
+                  onChange={handleToggleAlertEmail}
                   disabled={isSaving}
-                  className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                    alertEmail ? 'bg-primary' : 'bg-gray-200'
-                  } ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-                  role="switch"
-                  aria-checked={alertEmail}
-                >
-                  <span
-                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${
-                      alertEmail ? 'translate-x-5' : 'translate-x-0'
-                    }`}
-                  />
-                </button>
+                />
               </div>
             </div>
           </div>
@@ -427,17 +399,19 @@ export default function AccountSettings() {
             )}
 
             <div className="flex gap-3">
-              <button
+              <Button
+                outline
                 onClick={() => { setShowDeleteAccount(false); setDeleteError(null); }}
                 disabled={deleteLoading}
-                className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 transition hover:bg-gray-50 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                className="flex-1"
               >
                 キャンセル
-              </button>
-              <button
+              </Button>
+              <Button
+                color="red"
                 onClick={handleDeleteAccount}
                 disabled={deleteLoading}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+                className="flex-1"
               >
                 {deleteLoading ? (
                   <>
@@ -447,7 +421,7 @@ export default function AccountSettings() {
                 ) : (
                   'アカウントを削除する'
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
