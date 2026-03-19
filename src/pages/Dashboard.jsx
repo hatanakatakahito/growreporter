@@ -13,7 +13,6 @@ import TrendChart from '../components/Dashboard/TrendChart';
 import ImprovementSummary from '../components/Dashboard/ImprovementSummary';
 import QuickActions from '../components/Dashboard/QuickActions';
 import { setPageTitle } from '../utils/pageTitle';
-import { SCREENSHOT_PC_DISPLAY, SCREENSHOT_MOBILE_DISPLAY } from '../constants/screenshotDisplay';
 import { Globe } from 'lucide-react';
 import { format, sub, subDays, subMonths, startOfMonth } from 'date-fns';
 
