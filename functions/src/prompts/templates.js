@@ -35,6 +35,7 @@ export function getPromptTemplate(pageType, period, metrics, startDate, endDate,
     fileDownloads: getFileDownloadsPrompt,
     externalLinks: getExternalLinksPrompt,
     'analysis/month': getMonthlyPrompt,
+    comprehensive_analysis: getComprehensiveAnalysisPrompt,
   };
 
   const templateFunc = templates[pageType];
@@ -515,7 +516,7 @@ function getPageTypeLabel(pageType) {
 function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, options = {}) {
   const sd = startDate || '';
   const ed = endDate || '';
-  const { siteContext, improvementFocus, userNote = '', conversionGoals = [], kpiSettings = [], diagnosisData, siteStructureData } = options;
+  const { siteContext, improvementFocus, userNote = '', conversionGoals = [], kpiSettings = [], siteStructureData } = options;
 
   let monthlyTrendText = '';
   if (metrics.monthlyTrend && metrics.monthlyTrend.monthlyData && Array.isArray(metrics.monthlyTrend.monthlyData)) {
@@ -644,28 +645,6 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, 
   } else {
     scrapingDataText = '\n\n【アクセス上位ページの詳細分析】\n';
     scrapingDataText += '⚠️ スクレイピングデータが未取得です。管理画面から「上位100ページをスクレイピング」を実行してください。\n\n';
-  }
-
-  // サイト診断データ（PSI・CWV・コンテンツ品質）
-  let diagnosisText = '';
-  if (diagnosisData) {
-    const d = diagnosisData;
-    diagnosisText = `\n\n【サイト診断結果（PageSpeed Insights）】
-■ 総合スコア: ${d.overallScore ?? '-'}/100
-■ パフォーマンス: モバイル ${d.psi?.mobile?.performance ?? '-'} / デスクトップ ${d.psi?.desktop?.performance ?? '-'}
-■ SEO: モバイル ${d.psi?.mobile?.seo ?? '-'} / デスクトップ ${d.psi?.desktop?.seo ?? '-'}
-■ アクセシビリティ: モバイル ${d.psi?.mobile?.accessibility ?? '-'} / デスクトップ ${d.psi?.desktop?.accessibility ?? '-'}
-
-■ Core Web Vitals（モバイル）:
-  LCP: ${d.psi?.mobile?.cwv?.lcp?.value ?? '-'}${d.psi?.mobile?.cwv?.lcp?.unit ?? ''} (${d.psi?.mobile?.cwv?.lcp?.rating ?? '-'})
-  CLS: ${d.psi?.mobile?.cwv?.cls?.value ?? '-'} (${d.psi?.mobile?.cwv?.cls?.rating ?? '-'})
-  TBT: ${d.psi?.mobile?.cwv?.tbt?.value ?? '-'}${d.psi?.mobile?.cwv?.tbt?.unit ?? ''} (${d.psi?.mobile?.cwv?.tbt?.rating ?? '-'})
-  FCP: ${d.psi?.mobile?.cwv?.fcp?.value ?? '-'}${d.psi?.mobile?.cwv?.fcp?.unit ?? ''} (${d.psi?.mobile?.cwv?.fcp?.rating ?? '-'})
-  TTFB: ${d.psi?.mobile?.cwv?.ttfb?.value ?? '-'}${d.psi?.mobile?.cwv?.ttfb?.unit ?? ''} (${d.psi?.mobile?.cwv?.ttfb?.rating ?? '-'})
-
-■ 主要な問題Audit:
-${(d.psi?.mobile?.topAudits || []).slice(0, 5).map(a => `  - ${a.title}: ${a.displayValue || ''}`).join('\n')}
-`;
   }
 
   // 未使用のプレースホルダ（将来の拡張用）。未定義エラー防止のため空文字で定義
@@ -917,7 +896,6 @@ ${monthlyConversionsText}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${siteContextBlock}${conversionSettingsText}
 ${scrapingDataText}
-${diagnosisText}
 ${siteStructureText}
 ${sitemapText}${pageQualityText}
 
@@ -1389,5 +1367,189 @@ function getDefaultPrompt(period, metrics) {
 【必須】具体的な数値、増減の方向性、原因の推測、わかりやすい表現
 
 【禁止】見出し（##）、長文（1要点2文以内）、5個以上の箇条書き、800文字
+`;
+}
+
+/**
+ * AI総合分析用プロンプト
+ * 全データを横断してAIが総合的に分析
+ */
+function getComprehensiveAnalysisPrompt(period, metrics) {
+  // 基本指標
+  const sessions = metrics.sessions || 0;
+  const users = metrics.users || 0;
+  const pageViews = metrics.pageViews || 0;
+  const engagementRate = metrics.engagementRate || 0;
+  const conversions = metrics.conversions || 0;
+
+  // 前月比
+  let momText = '';
+  if (metrics.monthOverMonth) {
+    const mom = metrics.monthOverMonth;
+    const items = [];
+    if (mom.sessions) items.push(`セッション: 前月比${mom.sessions.change >= 0 ? '+' : ''}${mom.sessions.change.toFixed(1)}%`);
+    if (mom.users) items.push(`ユーザー: 前月比${mom.users.change >= 0 ? '+' : ''}${mom.users.change.toFixed(1)}%`);
+    if (mom.conversions) items.push(`CV: 前月比${mom.conversions.change >= 0 ? '+' : ''}${mom.conversions.change.toFixed(1)}%`);
+    if (mom.engagementRate) items.push(`ENG率: 前月比${mom.engagementRate.change >= 0 ? '+' : ''}${mom.engagementRate.change.toFixed(1)}%`);
+    if (items.length > 0) momText = `\n前月比: ${items.join(', ')}`;
+  }
+
+  // チャネルデータ
+  let channelsText = '';
+  if (metrics.channelsData && metrics.channelsData.length > 0) {
+    channelsText = '\n\n【集客チャネル上位】\n' + metrics.channelsData
+      .slice(0, 7)
+      .map(ch => `${ch.channel || ch.sessionDefaultChannelGroup}: ${ch.sessions || 0}セッション, CV ${ch.conversions || 0}件`)
+      .join('\n');
+  }
+
+  // ランディングページ
+  let lpText = '';
+  if (metrics.landingPagesData && metrics.landingPagesData.length > 0) {
+    lpText = '\n\n【ランディングページ上位】\n' + metrics.landingPagesData
+      .slice(0, 5)
+      .map(lp => `${lp.landingPage}: ${lp.sessions || 0}セッション, ENG率 ${((lp.engagementRate || 0) * 100).toFixed(1)}%`)
+      .join('\n');
+  }
+
+  // 参照元
+  let referralsText = '';
+  if (metrics.referralsData && metrics.referralsData.length > 0) {
+    referralsText = '\n\n【被リンク元上位】\n' + metrics.referralsData
+      .slice(0, 5)
+      .map(ref => `${ref.source}: ${ref.sessions || 0}セッション, CV ${ref.conversions || 0}件`)
+      .join('\n');
+  }
+
+  // ページ
+  let pagesText = '';
+  if (metrics.pagesData && metrics.pagesData.length > 0) {
+    pagesText = '\n\n【人気ページ上位】\n' + metrics.pagesData
+      .slice(0, 10)
+      .map(p => `${p.pagePath || p.pageTitle}: ${p.screenPageViews || 0}PV`)
+      .join('\n');
+  }
+
+  // ユーザー属性（unknown/不明/(not set)を除外して有効データのみ使用）
+  let demographicsText = '';
+  if (metrics.demographics) {
+    const demo = metrics.demographics;
+    // unknown/不明/undefined/null/(not set)を除外
+    const UNKNOWN_VALUES = new Set(['不明', 'unknown', '(not set)', 'undefined', 'null', '']);
+    const isKnown = (name) => {
+      if (name == null) return false;
+      return !UNKNOWN_VALUES.has(String(name).toLowerCase().trim());
+    };
+    // 安全にラベルを取得（undefinedを'不明'にフォールバックしない）
+    const getLabel = (...candidates) => {
+      for (const c of candidates) {
+        if (c != null && !UNKNOWN_VALUES.has(String(c).toLowerCase().trim())) return String(c);
+      }
+      return null;
+    };
+    const getVal = (d) => d.value || d.sessions || d.users || 0;
+
+    const parts = [];
+    if (demo.device && demo.device.length > 0) {
+      const known = demo.device.filter(d => isKnown(getLabel(d.name, d.device, d.deviceCategory)));
+      if (known.length > 0) {
+        parts.push('デバイス: ' + known.slice(0, 3).map(d => `${getLabel(d.name, d.device, d.deviceCategory)}: ${getVal(d)}人`).join(', '));
+      }
+    }
+    if (demo.gender && demo.gender.length > 0) {
+      const known = demo.gender.filter(d => isKnown(d.name));
+      if (known.length > 0) {
+        parts.push('性別: ' + known.slice(0, 3).map(g => `${g.name}: ${getVal(g)}人`).join(', '));
+      }
+    }
+    if (demo.age && demo.age.length > 0) {
+      const known = demo.age.filter(d => isKnown(getLabel(d.name, d.age, d.userAgeBracket)));
+      if (known.length > 0) {
+        parts.push('年齢層: ' + known.slice(0, 3).map(a => `${getLabel(a.name, a.age, a.userAgeBracket)}: ${getVal(a)}人`).join(', '));
+      }
+    }
+    if (demo.newReturning && demo.newReturning.length > 0) {
+      const known = demo.newReturning.filter(n => isKnown(getLabel(n.name, n.type, n.newVsReturning)));
+      if (known.length > 0) {
+        parts.push('新規/再訪: ' + known.map(n => `${getLabel(n.name, n.type, n.newVsReturning)}: ${getVal(n)}人`).join(', '));
+      }
+    }
+    if (demo.location) {
+      const regions = demo.location.region || demo.location.regions || (Array.isArray(demo.location) ? demo.location : null);
+      if (Array.isArray(regions) && regions.length > 0) {
+        const known = regions.filter(l => isKnown(getLabel(l.name, l.region, l.city)));
+        if (known.length > 0) {
+          parts.push('地域: ' + known.slice(0, 3).map(l => `${getLabel(l.name, l.region, l.city)}: ${getVal(l)}人`).join(', '));
+        }
+      }
+    }
+    if (parts.length > 0) {
+      demographicsText = '\n\n【ユーザー属性】※unknown/不明のデータは除外済み。以下は判明しているデータのみです。\n' + parts.join('\n');
+    }
+  }
+
+  // キーワード（GSC連携時のみ）
+  let keywordsText = '';
+  if (metrics.keywordsData && metrics.keywordsData.length > 0) {
+    keywordsText = '\n\n【検索キーワード上位】\n' + metrics.keywordsData
+      .slice(0, 10)
+      .map(k => `${k.query}: ${k.clicks}クリック, 表示${k.impressions}回, 平均順位${k.position?.toFixed(1) || '-'}`)
+      .join('\n');
+  }
+
+  // 月次トレンド
+  let monthlyText = '';
+  if (metrics.monthlyData && metrics.monthlyData.length > 0) {
+    monthlyText = '\n\n【月次トレンド（直近13ヶ月）】\n' + metrics.monthlyData
+      .map(m => `${m.yearMonth}: ${m.sessions || 0}セッション, CV ${m.conversions || 0}件`)
+      .join('\n');
+  }
+
+  // CV設定有無
+  const hasCV = metrics.hasConversionDefinitions !== false && conversions > 0;
+
+  return `
+あなたはWebサイト分析の専門家です。${period}の全データを横断的に分析し、サイトの現状と注目すべきポイントを初心者にも分かりやすく説明してください。
+
+【基本指標】
+- セッション: ${sessions.toLocaleString()}
+- ユーザー: ${users.toLocaleString()}
+- PV: ${pageViews.toLocaleString()}
+- エンゲージメント率: ${(engagementRate * 100).toFixed(1)}%
+- コンバージョン: ${conversions.toLocaleString()}件${momText}
+${channelsText}${lpText}${referralsText}${pagesText}${demographicsText}${keywordsText}${monthlyText}
+
+【出力形式】必ず以下の形式で出力してください。
+
+冒頭にこのサイトの全体状況を2〜3文で簡潔に要約した段落を書いてください。
+
+## 注目ポイント
+- 最も注目すべき変化: [具体的な数値と内容] ([補足説明])
+- 最大のリスク: [具体的な数値と内容] ([補足説明])
+- 最大の機会: [具体的な数値と内容] ([補足説明])
+
+## アクセス概況
+[2〜3文。セッション数/PV/エンゲージメント率の変化、月別・日別の傾向]
+
+## 訪問者の傾向
+[2〜3文。提供されたユーザー属性データ（デバイス・性別・年齢・地域・新規再訪問）のうち、判明しているデータのみで傾向を分析。データがない属性には触れない]
+
+## 集客分析
+[2〜3文。チャネル別比較、${keywordsText ? 'キーワード変化、' : ''}被リンクの質]
+
+## コンテンツ分析
+[2〜3文。高/低パフォーマンスページ、ランディングページの課題]
+${hasCV ? `
+## コンバージョン分析
+[2〜3文。CV数の推移、チャネル別CVR、改善余地のある導線]` : ''}
+
+【ルール】
+- 前置き不要、分析内容から直接開始
+- 専門用語には必ず補足を付ける。例: CVR（成果率）、直帰率（すぐ離脱する割合）
+- 数値は実データのみ使用。捏造禁止
+- 改善提案は含めない（「改善する」ページで別途生成するため）
+- 各セクション2〜3文で簡潔に。全体800〜1000文字
+- 「ポイント」という単位は使わない
+- ユーザー属性のunknown/不明/(not set)/undefinedのデータには一切言及しない。「データが含まれていない」「把握できない」「情報がない」「注視する必要がある」等のネガティブな表現は絶対に使わない。提供されたデータの中で判明している傾向のみを前向きに分析する。データが少ない属性はスキップし、豊富にあるデータの分析に注力する
 `;
 }

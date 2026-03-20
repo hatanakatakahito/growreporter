@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI総合分析 ブラッシュアップ3案</title>
+<style>
+  :root {
+    --primary: #3758F9;
+    --primary-light: rgba(55,88,249,0.08);
+    --primary-medium: rgba(55,88,249,0.12);
+    --gray-900: #111827;
+    --gray-800: #1f2937;
+    --gray-700: #374151;
+    --gray-600: #4b5563;
+    --gray-500: #6b7280;
+    --gray-400: #9ca3af;
+    --gray-200: #e5e7eb;
+    --gray-100: #f3f4f6;
+    --gray-50: #f9fafb;
+    --blue-50: #eff6ff;
+    --blue-200: #bfdbfe;
+    --blue-600: #2563eb;
+    --rose-50: #fff1f2;
+    --rose-200: #fecdd3;
+    --rose-600: #e11d48;
+    --emerald-50: #ecfdf5;
+    --emerald-200: #a7f3d0;
+    --emerald-600: #059669;
+    --glass-bg: rgba(255,255,255,0.72);
+    --glass-border: rgba(255,255,255,0.6);
+    --glass-shadow: 0 4px 24px -4px rgba(0,0,0,0.06);
+    --glass-blur: blur(16px) saturate(180%);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    background: #f0f2f5;
+    color: var(--gray-900);
+    line-height: 1.6;
+  }
+
+  .page-wrapper {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+
+  /* 案タイトル */
+  .plan-title {
+    text-align: center;
+    margin: 60px 0 12px;
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--gray-900);
+  }
+  .plan-title:first-child { margin-top: 0; }
+  .plan-subtitle {
+    text-align: center;
+    font-size: 14px;
+    color: var(--gray-600);
+    margin-bottom: 32px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .plan-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 12px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+
+  /* 共通 glass card */
+  .glass {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    -webkit-backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 12px;
+  }
+
+  /* 背景グラデーション */
+  .bg-gradient {
+    background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 40%, #fce7f3 70%, #e0f2fe 100%);
+    border-radius: 16px;
+    padding: 32px;
+  }
+
+  /* セパレータ */
+  .divider {
+    width: 100%;
+    height: 1px;
+    background: rgba(0,0,0,0.06);
+    margin: 40px 0;
+  }
+
+  /* KPIカード */
+  .kpi-card {
+    border-radius: 10px;
+    padding: 16px;
+    border: 1px solid rgba(0,0,0,0.06);
+    background: rgba(249,250,251,0.8);
+  }
+  .kpi-label { font-size: 12px; font-weight: 500; color: var(--gray-700); }
+  .kpi-sublabel { font-size: 10px; color: var(--gray-500); margin-top: 1px; }
+  .kpi-value { font-size: 22px; font-weight: 700; color: var(--gray-900); margin-top: 4px; }
+  .kpi-change { font-size: 12px; margin-top: 4px; }
+  .kpi-change.up { color: #059669; }
+  .kpi-change.down { color: #e11d48; }
+
+  /* テキストリンク */
+  .detail-link {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--primary);
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+  .detail-link:hover { text-decoration: underline; }
+  .detail-link svg { width: 14px; height: 14px; }
+
+  /* ハイライトカード */
+  .highlight-card { border-radius: 10px; padding: 16px; border: 1px solid; }
+  .highlight-card.change { background: var(--blue-50); border-color: var(--blue-200); }
+  .highlight-card.risk { background: var(--rose-50); border-color: var(--rose-200); }
+  .highlight-card.chance { background: var(--emerald-50); border-color: var(--emerald-200); }
+  .highlight-label { font-size: 12px; font-weight: 600; }
+  .highlight-label.change { color: var(--blue-600); }
+  .highlight-label.risk { color: var(--rose-600); }
+  .highlight-label.chance { color: var(--emerald-600); }
+  .highlight-value { font-size: 15px; font-weight: 600; color: var(--gray-900); margin-top: 6px; }
+  .highlight-detail { font-size: 14px; color: var(--gray-700); margin-top: 6px; line-height: 1.6; }
+
+  /* チャネルバー */
+  .channel-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .channel-name { width: 120px; text-align: right; font-size: 13px; color: var(--gray-700); flex-shrink: 0; }
+  .channel-bar-bg { flex: 1; height: 8px; background: rgba(0,0,0,0.04); border-radius: 4px; overflow: hidden; }
+  .channel-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #10b981, #34d399); }
+  .channel-val { width: 60px; font-size: 12px; color: var(--gray-700); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+  /* セクションアイコン */
+  .section-icon {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    background: var(--primary-light);
+    flex-shrink: 0;
+  }
+  .section-icon svg { width: 18px; height: 18px; color: var(--primary); stroke-width: 1.8; }
+
+  /* ボタン */
+  .btn-primary {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+    color: #fff; font-size: 14px; font-weight: 600;
+    padding: 12px 28px; border-radius: 10px; border: none; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(59,130,246,0.3);
+    transition: transform 0.15s;
+  }
+  .btn-primary:hover { transform: translateY(-1px); }
+
+  .btn-outline {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: #fff; color: var(--gray-600);
+    font-size: 14px; font-weight: 500;
+    padding: 8px 16px; border-radius: 8px;
+    border: 1px solid var(--gray-200); cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+  /* ===== A案固有 ===== */
+  .a-section-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 14px 20px;
+    cursor: pointer;
+    transition: background 0.15s;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+  .a-section-header:hover { background: rgba(255,255,255,0.4); }
+  .a-section-title { flex: 1; font-size: 16px; font-weight: 600; color: var(--gray-900); }
+  .a-section-body { padding: 20px; }
+  .a-section-body .ai-text {
+    font-size: 14px; line-height: 1.8; color: var(--gray-900);
+  }
+
+  /* ===== B案固有: ステップ型 ===== */
+  .b-step-container { position: relative; padding-left: 48px; }
+  .b-step-line {
+    position: absolute; left: 15px; top: 32px; bottom: 0;
+    width: 2px; background: linear-gradient(180deg, var(--primary), rgba(55,88,249,0.1));
+  }
+  .b-step-item { position: relative; margin-bottom: 28px; }
+  .b-step-item:last-child { margin-bottom: 0; }
+  .b-step-item:last-child .b-step-line-seg { display: none; }
+  .b-step-dot {
+    position: absolute; left: -48px; top: 0;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: #fff;
+    border: 2px solid var(--primary);
+    z-index: 1;
+  }
+  .b-step-dot svg { width: 16px; height: 16px; color: var(--primary); stroke-width: 2; }
+  .b-step-number {
+    position: absolute; left: -48px; top: 0;
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 13px; font-weight: 700;
+    z-index: 1;
+  }
+  .b-step-card {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .b-step-header {
+    padding: 16px 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(0,0,0,0.04);
+  }
+  .b-step-header:hover { background: rgba(255,255,255,0.4); }
+  .b-step-title { font-size: 16px; font-weight: 600; color: var(--gray-900); }
+  .b-step-body { padding: 20px; }
+  .b-step-body .ai-text { font-size: 14px; line-height: 1.8; color: var(--gray-900); }
+
+  /* ===== C案固有: タブ型 ===== */
+  .c-tab-nav {
+    display: flex;
+    background: rgba(255,255,255,0.6);
+    border-radius: 12px 12px 0 0;
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+    overflow-x: auto;
+  }
+  .c-tab {
+    flex: 1;
+    padding: 14px 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-500);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+  }
+  .c-tab:hover { color: var(--gray-700); background: rgba(255,255,255,0.5); }
+  .c-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+    background: rgba(255,255,255,0.8);
+  }
+  .c-tab-icon {
+    width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 8px;
+    background: var(--gray-100);
+    transition: all 0.15s;
+  }
+  .c-tab.active .c-tab-icon {
+    background: var(--primary-light);
+  }
+  .c-tab-icon svg { width: 16px; height: 16px; color: var(--gray-500); stroke-width: 1.8; }
+  .c-tab.active .c-tab-icon svg { color: var(--primary); }
+  .c-tab-label { font-size: 11px; }
+
+  .c-tab-content {
+    background: var(--glass-bg);
+    backdrop-filter: var(--glass-blur);
+    border-radius: 0 0 12px 12px;
+    border: 1px solid var(--glass-border);
+    border-top: none;
+    padding: 24px;
+  }
+  .c-tab-content .ai-text { font-size: 14px; line-height: 1.8; color: var(--gray-900); }
+
+  /* ===== 共通サマリーヘッダー ===== */
+  .analysis-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .analysis-header-left { display: flex; align-items: center; gap: 12px; }
+  .analysis-header-icon {
+    width: 40px; height: 40px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  }
+  .analysis-header-icon svg { width: 20px; height: 20px; color: #fff; }
+  .analysis-header-title { font-size: 16px; font-weight: 700; color: var(--gray-900); }
+  .analysis-header-meta { font-size: 12px; color: var(--gray-500); margin-top: 2px; }
+
+  /* サマリーボックス */
+  .summary-box {
+    border-radius: 10px;
+    padding: 20px;
+    background: linear-gradient(135deg, rgba(59,130,246,0.10), rgba(139,92,246,0.08), rgba(236,72,153,0.06));
+  }
+  .summary-text { font-size: 15px; line-height: 1.8; color: var(--gray-900); }
+
+  /* grid */
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+  /* 詳細リンク行 */
+  .links-row {
+    display: flex; flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 16px;
+    margin-top: 12px;
+  }
+  .links-row-label { font-size: 13px; color: var(--gray-500); }
+
+  /* CTAセクション */
+  .cta-section {
+    display: flex; flex-direction: column; align-items: center;
+    padding-top: 24px;
+    border-top: 1px solid rgba(0,0,0,0.06);
+    margin-top: 8px;
+  }
+  .cta-hint { font-size: 12px; color: var(--gray-500); margin-top: 8px; }
+
+  /* B案: サマリーカード内のスコアリング */
+  .score-ring {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: conic-gradient(var(--primary) 0deg, var(--primary) 252deg, var(--gray-200) 252deg);
+    flex-shrink: 0;
+  }
+  .score-ring-inner {
+    width: 52px; height: 52px;
+    border-radius: 50%;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column;
+  }
+  .score-ring-value { font-size: 18px; font-weight: 800; color: var(--primary); line-height: 1; }
+  .score-ring-label { font-size: 8px; color: var(--gray-500); margin-top: 1px; }
+
+  /* C案: ミニサマリーカード */
+  .c-mini-summary {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .c-mini-card {
+    text-align: center;
+    padding: 12px 8px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.8);
+    border: 1px solid rgba(0,0,0,0.06);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .c-mini-card:hover { border-color: var(--primary); }
+  .c-mini-card.active { border-color: var(--primary); background: var(--primary-light); }
+  .c-mini-value { font-size: 18px; font-weight: 700; color: var(--gray-900); }
+  .c-mini-label { font-size: 11px; color: var(--gray-700); margin-top: 2px; }
+  .c-mini-change { font-size: 11px; margin-top: 2px; }
+
+  /* SVGアイコン定義用 */
+  .icon-external {
+    width: 14px; height: 14px; display: inline-block; vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+
+<div class="page-wrapper">
+
+<!-- ================================================================ -->
+<!--  A案: 構造化セパレーター型                                        -->
+<!-- ================================================================ -->
+<div class="plan-badge">A案</div>
+<h2 class="plan-title">構造化セパレーター型</h2>
+<p class="plan-subtitle">現状のアコーディオンを維持しつつ、セクション間にKPIサマリーバーを追加。各セクションの要点が閉じた状態でもひと目で分かる。</p>
+
+<div class="bg-gradient">
+<div style="display:flex;flex-direction:column;gap:20px;">
+
+  <!-- ヘッダー -->
+  <div class="analysis-header">
+    <div class="analysis-header-left">
+      <div class="analysis-header-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+      </div>
+      <div>
+        <div class="analysis-header-title">AI総合分析結果</div>
+        <div class="analysis-header-meta">2026/03/20 14:30 生成</div>
+      </div>
+    </div>
+    <button class="btn-outline">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      再分析
+    </button>
+  </div>
+
+  <!-- サマリー -->
+  <div class="summary-box">
+    <p class="summary-text">2026年2月は、6,302セッションと17,336PVのアクセスがあり、エンゲージメント率57.0%を記録しました。前月比でセッション数が+5.0%増加し、サイト全体のトラフィックは安定的に成長しています。</p>
+  </div>
+
+  <!-- 注目ポイント -->
+  <div class="grid-3">
+    <div class="highlight-card change">
+      <p class="highlight-label change">注目すべき変化</p>
+      <p class="highlight-value">セッション数が前月比+5.0%増加</p>
+      <p class="highlight-detail">Google検索からの流入が増加傾向にあります</p>
+    </div>
+    <div class="highlight-card risk">
+      <p class="highlight-label risk">気をつけたいこと</p>
+      <p class="highlight-value">エンゲージメント率が-20.9%低下</p>
+      <p class="highlight-detail">直帰率の上昇が見られます。コンテンツの改善を検討してください</p>
+    </div>
+    <div class="highlight-card chance">
+      <p class="highlight-label chance">チャンス</p>
+      <p class="highlight-value">docs.google.comからのCVRが高い</p>
+      <p class="highlight-detail">21セッションで4件のCV。この流入元の拡大が効果的です</p>
+    </div>
+  </div>
+
+  <!-- セクション1: アクセスの状況 -->
+  <div class="glass" style="overflow:hidden;">
+    <!-- セクションヘッダー + インラインKPI -->
+    <div class="a-section-header">
+      <div class="section-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18"/><path stroke-linecap="round" stroke-linejoin="round" d="M18 17V9M13 17V5M8 17v-3"/></svg>
+      </div>
+      <div class="a-section-title">アクセスの状況</div>
+      <!-- インラインKPIミニ表示（A案の特徴） -->
+      <div style="display:flex; gap:20px; align-items:baseline;">
+        <span style="font-size:13px;color:var(--gray-500);">セッション</span>
+        <span style="font-size:18px;font-weight:700;color:var(--gray-900);">6,302</span>
+        <span style="font-size:12px;color:#059669;">↑ 5.0%</span>
+        <span style="font-size:13px;color:var(--gray-500);margin-left:12px;">PV</span>
+        <span style="font-size:18px;font-weight:700;color:var(--gray-900);">17,336</span>
+        <span style="font-size:12px;color:#e11d48;">↓ 7.8%</span>
+      </div>
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+    </div>
+    <div class="a-section-body">
+      <div class="grid-4" style="margin-bottom:16px;">
+        <div class="kpi-card">
+          <p class="kpi-label">訪問数</p>
+          <p class="kpi-sublabel">サイトに来た回数</p>
+          <p class="kpi-value">6,302</p>
+          <p class="kpi-change up">↑ +5.0%</p>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-label">訪問者数</p>
+          <p class="kpi-sublabel">何人がサイトを見たか</p>
+          <p class="kpi-value">5,110</p>
+          <p class="kpi-change up">↑ +5.0%</p>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-label">ページ閲覧数</p>
+          <p class="kpi-sublabel">何ページ見られたか</p>
+          <p class="kpi-value">17,336</p>
+          <p class="kpi-change down">↓ -7.8%</p>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-label">閲覧の質</p>
+          <p class="kpi-sublabel">しっかり読まれた割合</p>
+          <p class="kpi-value">57.0%</p>
+          <p class="kpi-change down">↓ -20.9%</p>
+        </div>
+      </div>
+      <p class="ai-text" style="font-size:14px;line-height:1.8;color:var(--gray-900);">2026年2月は、6,302セッションと17,336PVのアクセスがあり、エンゲージメント率57.0%を記録しました。前月比でセッション数は+5.0%と堅調に推移していますが、ページ閲覧数は-7.8%、エンゲージメント率は-20.9%と低下しています。ユーザーは訪問しているものの、サイト内での回遊や滞在時間が減少傾向にあります。</p>
+      <div class="links-row">
+        <span class="links-row-label">詳細を見る:</span>
+        <a href="#" class="detail-link">全体サマリー <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+        <a href="#" class="detail-link">月別 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+        <a href="#" class="detail-link">日別 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+        <a href="#" class="detail-link">曜日別 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+        <a href="#" class="detail-link">時間帯別 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- セクション2: どんな人が来ているか（閉じた状態） -->
+  <div class="glass" style="overflow:hidden;">
+    <div class="a-section-header">
+      <div class="section-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+      </div>
+      <div class="a-section-title">どんな人が来ているか</div>
+      <div style="display:flex; gap:20px; align-items:baseline;">
+        <span style="font-size:13px;color:var(--gray-500);">主な端末</span>
+        <span style="font-size:15px;font-weight:600;color:var(--gray-900);">スマホ 68%</span>
+        <span style="font-size:13px;color:var(--gray-500);margin-left:12px;">新規率</span>
+        <span style="font-size:15px;font-weight:600;color:var(--gray-900);">72%</span>
+      </div>
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+    </div>
+  </div>
+
+  <!-- セクション3: どこから来ているか（閉じた状態） -->
+  <div class="glass" style="overflow:hidden;">
+    <div class="a-section-header">
+      <div class="section-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+      </div>
+      <div class="a-section-title">どこから来ているか</div>
+      <div style="display:flex; gap:20px; align-items:baseline;">
+        <span style="font-size:13px;color:var(--gray-500);">Google検索</span>
+        <span style="font-size:15px;font-weight:600;color:var(--gray-900);">3,241</span>
+        <span style="font-size:13px;color:var(--gray-500);margin-left:12px;">直接</span>
+        <span style="font-size:15px;font-weight:600;color:var(--gray-900);">1,892</span>
+      </div>
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+    </div>
+  </div>
+
+  <!-- セクション4 -->
+  <div class="glass" style="overflow:hidden;">
+    <div class="a-section-header">
+      <div class="section-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+      </div>
+      <div class="a-section-title">どのページが見られているか</div>
+      <div style="display:flex; gap:20px; align-items:baseline;">
+        <span style="font-size:13px;color:var(--gray-500);">人気1位</span>
+        <span style="font-size:15px;font-weight:600;color:var(--gray-900);">トップページ</span>
+      </div>
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+    </div>
+  </div>
+
+  <!-- セクション5 -->
+  <div class="glass" style="overflow:hidden;">
+    <div class="a-section-header">
+      <div class="section-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+      </div>
+      <div class="a-section-title">成果はどれくらいか</div>
+      <div style="display:flex; gap:20px; align-items:baseline;">
+        <span style="font-size:13px;color:var(--gray-500);">CV数</span>
+        <span style="font-size:15px;font-weight:600;color:var(--gray-900);">24件</span>
+        <span style="font-size:12px;color:#059669;">↑ 12.5%</span>
+      </div>
+      <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <button class="btn-primary">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+      サイト改善案を生成する
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+    </button>
+    <p class="cta-hint">この分析結果をもとに、具体的な改善施策を生成します</p>
+  </div>
+
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================================ -->
+<!--  B案: ステップフロー型                                            -->
+<!-- ================================================================ -->
+<div class="plan-badge">B案</div>
+<h2 class="plan-title">ステップフロー型</h2>
+<p class="plan-subtitle">分析の流れをステップ（1→2→3→4→5）で視覚化。上から読み進めるだけでサイト全体の状況が理解できるストーリー型レイアウト。</p>
+
+<div class="bg-gradient">
+<div style="display:flex;flex-direction:column;gap:20px;">
+
+  <!-- ヘッダー -->
+  <div class="analysis-header">
+    <div class="analysis-header-left">
+      <div class="analysis-header-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+      </div>
+      <div>
+        <div class="analysis-header-title">AI総合分析結果</div>
+        <div class="analysis-header-meta">2026/03/20 14:30 生成</div>
+      </div>
+    </div>
+    <button class="btn-outline">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      再分析
+    </button>
+  </div>
+
+  <!-- サマリー + スコア -->
+  <div class="glass" style="padding:24px;">
+    <div style="display:flex;gap:24px;align-items:center;">
+      <div class="score-ring">
+        <div class="score-ring-inner">
+          <span class="score-ring-value">70</span>
+          <span class="score-ring-label">/ 100</span>
+        </div>
+      </div>
+      <div style="flex:1;">
+        <p style="font-size:14px;font-weight:600;color:var(--gray-700);margin-bottom:6px;">サイト健全性スコア</p>
+        <p class="summary-text" style="background:none;padding:0;">2026年2月は、6,302セッションと17,336PVのアクセスがあり、エンゲージメント率57.0%を記録しました。前月比でセッション数は堅調ですが、エンゲージメント率の低下に注意が必要です。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 注目ポイント -->
+  <div class="grid-3">
+    <div class="highlight-card change">
+      <p class="highlight-label change">注目すべき変化</p>
+      <p class="highlight-value">セッション数が前月比+5.0%増加</p>
+      <p class="highlight-detail">Google検索からの流入が増加傾向にあります</p>
+    </div>
+    <div class="highlight-card risk">
+      <p class="highlight-label risk">気をつけたいこと</p>
+      <p class="highlight-value">エンゲージメント率が-20.9%低下</p>
+      <p class="highlight-detail">直帰率の上昇が見られます</p>
+    </div>
+    <div class="highlight-card chance">
+      <p class="highlight-label chance">チャンス</p>
+      <p class="highlight-value">docs.google.comからのCVRが高い</p>
+      <p class="highlight-detail">21セッションで4件のCV</p>
+    </div>
+  </div>
+
+  <!-- ステップフロー -->
+  <div class="b-step-container">
+    <div class="b-step-line"></div>
+
+    <!-- Step 1 -->
+    <div class="b-step-item">
+      <div class="b-step-number">1</div>
+      <div class="b-step-card">
+        <div class="b-step-header">
+          <div class="b-step-title">アクセスの状況</div>
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+        <div class="b-step-body">
+          <div class="grid-4" style="margin-bottom:16px;">
+            <div class="kpi-card">
+              <p class="kpi-label">訪問数</p>
+              <p class="kpi-sublabel">サイトに来た回数</p>
+              <p class="kpi-value">6,302</p>
+              <p class="kpi-change up">↑ +5.0%</p>
+            </div>
+            <div class="kpi-card">
+              <p class="kpi-label">訪問者数</p>
+              <p class="kpi-sublabel">何人がサイトを見たか</p>
+              <p class="kpi-value">5,110</p>
+              <p class="kpi-change up">↑ +5.0%</p>
+            </div>
+            <div class="kpi-card">
+              <p class="kpi-label">ページ閲覧数</p>
+              <p class="kpi-sublabel">何ページ見られたか</p>
+              <p class="kpi-value">17,336</p>
+              <p class="kpi-change down">↓ -7.8%</p>
+            </div>
+            <div class="kpi-card">
+              <p class="kpi-label">閲覧の質</p>
+              <p class="kpi-sublabel">しっかり読まれた割合</p>
+              <p class="kpi-value">57.0%</p>
+              <p class="kpi-change down">↓ -20.9%</p>
+            </div>
+          </div>
+          <p class="ai-text">2026年2月は、6,302セッションと17,336PVのアクセスがあり、エンゲージメント率57.0%を記録しました。前月比でセッション数は+5.0%と堅調に推移していますが、ページ閲覧数は-7.8%、エンゲージメント率は-20.9%と低下しています。</p>
+          <div class="links-row">
+            <span class="links-row-label">詳細を見る:</span>
+            <a href="#" class="detail-link">全体サマリー <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+            <a href="#" class="detail-link">月別 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+            <a href="#" class="detail-link">日別 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div class="b-step-item">
+      <div class="b-step-number">2</div>
+      <div class="b-step-card">
+        <div class="b-step-header">
+          <div class="b-step-title">どんな人が来ているか</div>
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+        <div class="b-step-body">
+          <div class="grid-4" style="margin-bottom:16px;">
+            <div class="kpi-card">
+              <p class="kpi-label">主な端末</p>
+              <p class="kpi-sublabel">スマホ/PC</p>
+              <p class="kpi-value">スマホ 68%</p>
+            </div>
+            <div class="kpi-card">
+              <p class="kpi-label">初めての人の割合</p>
+              <p class="kpi-sublabel">新規/リピーター</p>
+              <p class="kpi-value">72%</p>
+            </div>
+            <div class="kpi-card">
+              <p class="kpi-label">多い年齢層</p>
+              <p class="kpi-sublabel">最も多い年代</p>
+              <p class="kpi-value">25-34歳</p>
+            </div>
+            <div class="kpi-card">
+              <p class="kpi-label">多い地域</p>
+              <p class="kpi-sublabel">最も多い都道府県</p>
+              <p class="kpi-value">東京都</p>
+            </div>
+          </div>
+          <p class="ai-text">スマートフォンからのアクセスが68%を占めており、モバイルファーストの設計が重要です。新規ユーザーが72%と多く、認知拡大は順調ですが、リピーター獲得の施策も検討しましょう。</p>
+          <div class="links-row">
+            <span class="links-row-label">詳細を見る:</span>
+            <a href="#" class="detail-link">ユーザー属性 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3 -->
+    <div class="b-step-item">
+      <div class="b-step-number">3</div>
+      <div class="b-step-card">
+        <div class="b-step-header">
+          <div class="b-step-title">どこから来ているか</div>
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        </div>
+        <div class="b-step-body">
+          <div style="margin-bottom:16px;">
+            <div class="channel-row">
+              <span class="channel-name">Google検索</span>
+              <div class="channel-bar-bg"><div class="channel-bar" style="width:100%"></div></div>
+              <span class="channel-val">3,241</span>
+            </div>
+            <div class="channel-row">
+              <span class="channel-name">直接アクセス</span>
+              <div class="channel-bar-bg"><div class="channel-bar" style="width:58%"></div></div>
+              <span class="channel-val">1,892</span>
+            </div>
+            <div class="channel-row">
+              <span class="channel-name">他サイトから</span>
+              <div class="channel-bar-bg"><div class="channel-bar" style="width:25%"></div></div>
+              <span class="channel-val">812</span>
+            </div>
+            <div class="channel-row">
+              <span class="channel-name">SNS</span>
+              <div class="channel-bar-bg"><div class="channel-bar" style="width:11%"></div></div>
+              <span class="channel-val">357</span>
+            </div>
+          </div>
+          <p class="ai-text">Google検索が全体の51%を占め、SEOが主要な集客エンジンです。被リンク元では、kudo.cybozu.comからのセッションが81件と最も多いものの、コンバージョンは0件でした。一方、docs.google.comからは21セッションで4件のコンバージョンがあり、CVRが高い流入元として注目されます。</p>
+          <div class="links-row">
+            <span class="links-row-label">詳細を見る:</span>
+            <a href="#" class="detail-link">集客チャネル <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+            <a href="#" class="detail-link">キーワード <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+            <a href="#" class="detail-link">被リンク元 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4 (折りたたみ) -->
+    <div class="b-step-item">
+      <div class="b-step-number">4</div>
+      <div class="b-step-card">
+        <div class="b-step-header">
+          <div class="b-step-title">どのページが見られているか</div>
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5 (折りたたみ) -->
+    <div class="b-step-item">
+      <div class="b-step-number">5</div>
+      <div class="b-step-card">
+        <div class="b-step-header">
+          <div class="b-step-title">成果はどれくらいか</div>
+          <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#9ca3af" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <button class="btn-primary">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+      サイト改善案を生成する
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+    </button>
+    <p class="cta-hint">この分析結果をもとに、具体的な改善施策を生成します</p>
+  </div>
+
+</div>
+</div>
+
+<div class="divider"></div>
+
+<!-- ================================================================ -->
+<!--  C案: タブ切り替え型                                              -->
+<!-- ================================================================ -->
+<div class="plan-badge">C案</div>
+<h2 class="plan-title">タブ切り替え型</h2>
+<p class="plan-subtitle">5つのセクションをタブで切り替え表示。ページスクロールなしで各分析にアクセスでき、KPIミニカードで全体像を常に把握できる。</p>
+
+<div class="bg-gradient">
+<div style="display:flex;flex-direction:column;gap:20px;">
+
+  <!-- ヘッダー -->
+  <div class="analysis-header">
+    <div class="analysis-header-left">
+      <div class="analysis-header-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+      </div>
+      <div>
+        <div class="analysis-header-title">AI総合分析結果</div>
+        <div class="analysis-header-meta">2026/03/20 14:30 生成</div>
+      </div>
+    </div>
+    <button class="btn-outline">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+      再分析
+    </button>
+  </div>
+
+  <!-- サマリー -->
+  <div class="summary-box">
+    <p class="summary-text">2026年2月は、6,302セッションと17,336PVのアクセスがあり、エンゲージメント率57.0%を記録しました。前月比でセッション数は堅調ですが、エンゲージメント率の低下に注意が必要です。</p>
+  </div>
+
+  <!-- 注目ポイント -->
+  <div class="grid-3">
+    <div class="highlight-card change">
+      <p class="highlight-label change">注目すべき変化</p>
+      <p class="highlight-value">セッション数が前月比+5.0%増加</p>
+      <p class="highlight-detail">Google検索からの流入が増加傾向にあります</p>
+    </div>
+    <div class="highlight-card risk">
+      <p class="highlight-label risk">気をつけたいこと</p>
+      <p class="highlight-value">エンゲージメント率が-20.9%低下</p>
+      <p class="highlight-detail">直帰率の上昇が見られます</p>
+    </div>
+    <div class="highlight-card chance">
+      <p class="highlight-label chance">チャンス</p>
+      <p class="highlight-value">docs.google.comからのCVRが高い</p>
+      <p class="highlight-detail">21セッションで4件のCV</p>
+    </div>
+  </div>
+
+  <!-- KPIミニサマリー（常に表示・タブ連動） -->
+  <div class="c-mini-summary">
+    <div class="c-mini-card active">
+      <div class="c-mini-value">6,302</div>
+      <div class="c-mini-label">訪問数</div>
+      <div class="c-mini-change" style="color:#059669;">↑ 5.0%</div>
+    </div>
+    <div class="c-mini-card">
+      <div class="c-mini-value">68%</div>
+      <div class="c-mini-label">スマホ率</div>
+      <div class="c-mini-change" style="color:var(--gray-500);">― 変化なし</div>
+    </div>
+    <div class="c-mini-card">
+      <div class="c-mini-value">3,241</div>
+      <div class="c-mini-label">検索流入</div>
+      <div class="c-mini-change" style="color:#059669;">↑ 8.2%</div>
+    </div>
+    <div class="c-mini-card">
+      <div class="c-mini-value">17,336</div>
+      <div class="c-mini-label">PV数</div>
+      <div class="c-mini-change" style="color:#e11d48;">↓ 7.8%</div>
+    </div>
+    <div class="c-mini-card">
+      <div class="c-mini-value">24件</div>
+      <div class="c-mini-label">CV数</div>
+      <div class="c-mini-change" style="color:#059669;">↑ 12.5%</div>
+    </div>
+  </div>
+
+  <!-- タブナビゲーション -->
+  <div class="glass" style="overflow:hidden;border-radius:12px;">
+    <div class="c-tab-nav">
+      <div class="c-tab active">
+        <div class="c-tab-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3 3v18h18"/><path stroke-linecap="round" stroke-linejoin="round" d="M18 17V9M13 17V5M8 17v-3"/></svg>
+        </div>
+        <span class="c-tab-label">アクセス</span>
+      </div>
+      <div class="c-tab">
+        <div class="c-tab-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+        </div>
+        <span class="c-tab-label">ユーザー</span>
+      </div>
+      <div class="c-tab">
+        <div class="c-tab-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+        </div>
+        <span class="c-tab-label">集客</span>
+      </div>
+      <div class="c-tab">
+        <div class="c-tab-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+        </div>
+        <span class="c-tab-label">コンテンツ</span>
+      </div>
+      <div class="c-tab">
+        <div class="c-tab-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        </div>
+        <span class="c-tab-label">成果</span>
+      </div>
+    </div>
+
+    <!-- タブコンテンツ（アクセス表示中） -->
+    <div class="c-tab-content">
+      <div class="grid-4" style="margin-bottom:16px;">
+        <div class="kpi-card">
+          <p class="kpi-label">訪問数</p>
+          <p class="kpi-sublabel">サイトに来た回数</p>
+          <p class="kpi-value">6,302</p>
+          <p class="kpi-change up">↑ +5.0%</p>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-label">訪問者数</p>
+          <p class="kpi-sublabel">何人がサイトを見たか</p>
+          <p class="kpi-value">5,110</p>
+          <p class="kpi-change up">↑ +5.0%</p>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-label">ページ閲覧数</p>
+          <p class="kpi-sublabel">何ページ見られたか</p>
+          <p class="kpi-value">17,336</p>
+          <p class="kpi-change down">↓ -7.8%</p>
+        </div>
+        <div class="kpi-card">
+          <p class="kpi-label">閲覧の質</p>
+          <p class="kpi-sublabel">しっかり読まれた割合</p>
+          <p class="kpi-value">57.0%</p>
+          <p class="kpi-change down">↓ -20.9%</p>
+        </div>
+      </div>
+      <p class="ai-text">2026年2月は、6,302セッションと17,336PVのアクセスがあり、エンゲージメント率57.0%を記録しました。前月比でセッション数は+5.0%と堅調に推移していますが、ページ閲覧数は-7.8%、エンゲージメント率は-20.9%と低下しています。ユーザーは訪問しているものの、サイト内での回遊や滞在時間が減少傾向にあります。</p>
+      <div class="links-row">
+        <span class="links-row-label">詳細を見る:</span>
+        <a href="#" class="detail-link">全体サマリー <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+        <a href="#" class="detail-link">月別 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+        <a href="#" class="detail-link">日別 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+        <a href="#" class="detail-link">曜日別 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+        <a href="#" class="detail-link">時間帯別 <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg></a>
+      </div>
+    </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta-section">
+    <button class="btn-primary">
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+      サイト改善案を生成する
+      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/></svg>
+    </button>
+    <p class="cta-hint">この分析結果をもとに、具体的な改善施策を生成します</p>
+  </div>
+
+</div>
+</div>
+
+</div>
+</body>
+</html>

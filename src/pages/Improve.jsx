@@ -1,5 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useSite } from '../contexts/SiteContext';
+import { useSidebar } from '../contexts/SidebarContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
@@ -55,6 +57,7 @@ const priorityColors = {
 
 export default function Improve() {
   const { selectedSite, selectedSiteId, isLoading: isSiteLoading } = useSite();
+  const { isSidebarOpen } = useSidebar();
   const [searchParams, setSearchParams] = useSearchParams();
   const { plan, getRemainingByType, checkCanGenerate } = usePlan();
   const { currentUser, userProfile } = useAuth();
@@ -782,7 +785,7 @@ export default function Improve() {
                               className={`border-b border-gray-100 dark:border-dark-3 cursor-pointer transition-colors ${isDrawerActive ? 'bg-primary/5' : 'hover:bg-gray-50 dark:hover:bg-dark-3'}`}
                             >
                               {!isViewer && (
-                                <td className="py-5 pl-4 pr-2 align-middle text-center" onClick={(e) => e.stopPropagation()}>
+                                <td className="py-7 pl-4 pr-2 align-middle text-center" onClick={(e) => e.stopPropagation()}>
                                   <input
                                     type="checkbox"
                                     checked={isChecked}
@@ -792,25 +795,25 @@ export default function Improve() {
                                   />
                                 </td>
                               )}
-                              <td className="py-5 px-4 align-middle">
+                              <td className="py-7 px-4 align-middle">
                                 {item.category && categoryLabels[item.category] && (
                                   <span className={`inline-block rounded px-2.5 py-0.5 text-sm font-medium whitespace-nowrap ${categoryColors[item.category] || categoryColors.other}`}>
                                     {categoryLabels[item.category]}
                                   </span>
                                 )}
                               </td>
-                              <td className="py-5 px-4 align-middle">
+                              <td className="py-7 px-4 align-middle">
                                 {item.priority && priorityLabels[item.priority] && (
                                   <span className={`inline-block rounded px-2.5 py-0.5 text-sm font-medium whitespace-nowrap ${priorityColors[item.priority] || ''}`}>
                                     {priorityLabels[item.priority]}
                                   </span>
                                 )}
                               </td>
-                              <td className="py-5 px-4 align-middle">
+                              <td className="py-7 px-4 align-middle">
                                 <div className="text-sm font-medium text-dark dark:text-white leading-snug line-clamp-1">{item.title}</div>
                                 <div className="text-sm text-body-color mt-1 line-clamp-1">{item.description || '—'}</div>
                               </td>
-                              <td className="py-5 px-2 align-middle text-center w-[100px] min-w-[100px]" onClick={(e) => e.stopPropagation()}>
+                              <td className="py-7 px-2 align-middle text-center w-[100px] min-w-[100px]" onClick={(e) => e.stopPropagation()}>
                                 {(item.targetPageUrl || '').trim() ? (
                                   <a
                                     href={item.targetPageUrl.startsWith('http') ? item.targetPageUrl : `${siteUrl}${item.targetPageUrl.startsWith('/') ? '' : '/'}${item.targetPageUrl}`}
@@ -826,11 +829,11 @@ export default function Improve() {
                                   <span className="text-body-color text-sm">—</span>
                                 )}
                               </td>
-                              <td className="py-5 px-4 align-middle">
+                              <td className="py-7 px-4 align-middle">
                                 <div className="text-sm font-semibold text-green-600 dark:text-green-400">{formatEstimatedPriceLabel(item.estimatedLaborHours)} <span className="text-sm font-normal text-body-color">（税別）</span></div>
                                 <div className="text-sm text-body-color mt-0.5">{formatEstimatedDeliveryLabel(item.estimatedLaborHours)}</div>
                               </td>
-                              <td className="py-5 px-4 align-middle" onClick={(e) => e.stopPropagation()}>
+                              <td className="py-7 px-4 align-middle" onClick={(e) => e.stopPropagation()}>
                                 <select
                                   value={item.status || 'draft'}
                                   onChange={(e) => handleStatusChange(item, e.target.value)}
@@ -932,13 +935,13 @@ export default function Improve() {
         const targetUrl = (item.targetPageUrl || '').trim();
         const fullTargetUrl = targetUrl ? (targetUrl.startsWith('http') ? targetUrl : `${siteUrl}${targetUrl.startsWith('/') ? '' : '/'}${targetUrl}`) : '';
 
-        return (
-          <>
-            {/* オーバーレイ */}
-            <div className="fixed inset-0 bg-black/30 z-[55] transition-opacity" onClick={closeDrawer} />
+        return createPortal(
+          <div className="fixed inset-0 z-[100]">
+            {/* オーバーレイ（ドロワーの背面） */}
+            <div className="absolute inset-0 bg-black/30" onClick={closeDrawer} />
 
-            {/* ドロワー本体 */}
-            <div className="fixed top-0 right-0 z-[56] h-full w-[80vw] max-w-[1400px] bg-white dark:bg-dark-2 shadow-2xl flex flex-col">
+            {/* ドロワー本体（オーバーレイの前面） */}
+            <div className="absolute top-0 bottom-0 right-0 w-[85vw] max-w-[1400px] bg-white dark:bg-dark-2 shadow-2xl flex flex-col">
 
               {/* ドロワーヘッダー */}
               <div className="px-10 py-5 border-b border-gray-200 dark:border-dark-3 shrink-0">
@@ -1196,7 +1199,8 @@ export default function Improve() {
                 </div>
               </div>
             </div>
-          </>
+          </div>,
+          document.body
         );
       })()}
     </div>

@@ -259,7 +259,7 @@ div[class*="fixed"][class*="inset-0"][class*="z-50"] {
 /* AI分析ボックスのグラデーション枠線（滑らかに輝くグラデーション） */
 .ai-gradient-border {
   position: relative;
-  padding: 4px;
+  padding: 3px;
   background: linear-gradient(90deg, 
     #1e40af,
     #3b82f6,

@@ -22,7 +22,6 @@ export const PLANS = {
       aiImprovementMonthly: 1,
       dataRetention: '無制限',
       reportEvaluation: true,
-      diagnosisMonthly: 1,
       excelExportMonthly: 1,
       pptxExportMonthly: 1,
       support: 'なし',
@@ -42,7 +41,6 @@ export const PLANS = {
       aiImprovementMonthly: 4, // AI改善4回/月（週1回相当）
       dataRetention: '無制限',
       reportEvaluation: true,
-      diagnosisMonthly: 5,
       excelExportMonthly: 999999,
       pptxExportMonthly: 999999,
       support: 'メール',
@@ -63,12 +61,9 @@ export const PLANS = {
       aiImprovementMonthly: 999999,
       dataRetention: '無制限',
       reportEvaluation: true,
-      diagnosisMonthly: 999999,
       excelExportMonthly: 999999,
       pptxExportMonthly: 999999,
       support: '最優先（メール・Web会議）',
-      consultation: '月1回の無料コンサルティング（30分）',
-      customImprovements: 'カスタム改善施策の追加依頼可能',
     },
     description: '大企業、マーケティング代理店、EC事業者向け',
   },
@@ -168,5 +163,6 @@ export const PAGE_TYPES = {
   CONVERSIONS: 'conversions',
   REVERSE_FLOW: 'reverseFlow',
   MONTHLY: 'analysis/month',
+  COMPREHENSIVE_ANALYSIS: 'comprehensive_analysis',
 };
 

@@ -33,6 +33,7 @@ import PageFlow from './pages/Analysis/PageFlow';
 import ConversionList from './pages/Analysis/ConversionList';
 import ReverseFlow from './pages/Analysis/ReverseFlow';
 import Month from './pages/Analysis/Month';
+import ComprehensiveAI from './pages/Analysis/ComprehensiveAI';
 import Improve from './pages/Improve';
 import ImproveConsultationThanks from './pages/ImproveConsultationThanks';
 import UpgradeThanks from './pages/UpgradeThanks';
@@ -168,6 +169,7 @@ function App() {
               <Route path="/analysis/page-flow" element={<PageFlow />} />
               <Route path="/analysis/conversions" element={<ConversionList />} />
               <Route path="/analysis/reverse-flow" element={<ReverseFlow />} />
+              <Route path="/analysis/comprehensive" element={<ComprehensiveAI />} />
               {/* 改善する */}
               <Route path="/improve" element={<Improve />} />
               

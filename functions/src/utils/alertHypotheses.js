@@ -87,3 +87,78 @@ async function updateAlertHypotheses(db, siteId, alertId, hypotheses) {
     hypothesesUpdatedAt: FieldValue.serverTimestamp(),
   });
 }
+
+/**
+ * 複数アラートをまとめて仮説を一括生成
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {string} siteId
+ * @param {Array<{alertId: string, metricLabel: string, changePercent: number, message: string, periodCurrent: string}>} alerts
+ * @param {string} siteName
+ * @returns {Promise<Array<{text: string, source: string}>>} 総括仮説の配列
+ */
+export async function generateBatchedAlertHypotheses(db, siteId, alerts, siteName) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    return [FALLBACK_HYPOTHESIS];
+  }
+
+  const metricsListText = alerts
+    .map(a => `- ${a.metricLabel}: ${a.changePercent >= 0 ? '+' : ''}${a.changePercent.toFixed(1)}%（${a.message}）`)
+    .join('\n');
+
+  const prompt = `あなたはWebサイトのアクセス分析の専門家です。
+以下のサイトで${alerts.length}件の指標に大きな変化がありました。
+これらの変化に共通する考えられる原因の仮説を3つ、日本語で答えてください。
+各仮説は具体的で、なぜこれらの変動が同時に起きたのかを1〜2文で説明してください。
+
+サイト名: ${siteName || '（不明）'}
+対象期間: ${alerts[0]?.periodCurrent || ''}
+
+変化のあった指標:
+${metricsListText}
+
+回答は「1. 〇〇」「2. 〇〇」「3. 〇〇」の形式で3つだけ出力してください。番号と本文以外は書かないでください。`;
+
+  try {
+    const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.5,
+            maxOutputTokens: 600,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('[alertHypotheses] Batched Gemini error', response.status, errText);
+      return [FALLBACK_HYPOTHESIS];
+    }
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const hypotheses = parseHypotheses(rawText);
+    if (hypotheses.length === 0) {
+      return [FALLBACK_HYPOTHESIS];
+    }
+
+    const result = hypotheses.map((text) => ({ text, source: 'ai' }));
+
+    // 各アラートドキュメントにも仮説を保存
+    for (const alert of alerts) {
+      await updateAlertHypotheses(db, siteId, alert.alertId, result);
+    }
+
+    return result;
+  } catch (err) {
+    console.error('[alertHypotheses] Batched error', err.message);
+    return [FALLBACK_HYPOTHESIS];
+  }
+}

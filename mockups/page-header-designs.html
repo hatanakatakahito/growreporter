@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ページヘッダー配置レイアウト案 — GrowReporter</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  body { font-family: 'Inter', 'Noto Sans JP', sans-serif; -webkit-font-smoothing: antialiased; background: #f0f2f8; }
+  /* 既存のガラスカード風 */
+  .glass-card {
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(16px) saturate(180%);
+    border-color: rgba(255,255,255,0.6);
+    box-shadow: 0 4px 24px -4px rgba(0,0,0,0.06);
+  }
+</style>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        primary: '#3758f9',
+        'body-color': '#637381',
+        stroke: '#dfe4ea',
+        'gray-1': '#f9fafb',
+        'gray-2': '#f3f4f6',
+      }
+    }
+  }
+}
+</script>
+</head>
+<body>
+
+<!-- ========================================================================
+     現状（参考）
+     ======================================================================== -->
+<div class="max-w-[1400px] mx-auto px-6 pt-10">
+  <h3 class="text-xs font-bold text-red-500 uppercase tracking-widest mb-4">現状（参考）</h3>
+
+  <div class="mb-6">
+    <h2 class="mb-1 text-2xl font-bold text-gray-900">集客 - 集客チャネル</h2>
+    <p class="text-body-color">流入チャネル別の訪問者数、ユーザー数、コンバージョンを確認できます</p>
+  </div>
+
+  <div class="mb-4 flex flex-wrap items-center gap-2">
+    <button class="flex items-center gap-1.5 rounded-lg border border-stroke bg-white px-3 py-1.5 text-sm text-body-color hover:border-primary/50 hover:text-gray-900 transition-all">
+      <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+      <span>フィルタ設定</span>
+      <svg class="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+    </button>
+  </div>
+
+  <div class="mb-6 flex gap-2 rounded-lg border border-stroke bg-white p-1">
+    <button class="flex-1 rounded-md bg-primary px-8 py-2 text-sm font-medium text-white">グラフ形式</button>
+    <button class="flex-1 rounded-md px-8 py-2 text-sm font-medium text-body-color hover:bg-gray-2">表形式</button>
+  </div>
+
+  <!-- チャート領域 -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+    <div class="glass-card rounded-xl border p-6" style="height: 200px;">
+      <h3 class="text-sm font-semibold text-gray-900 mb-4">チャネル別訪問者構成比</h3>
+      <div class="flex items-center justify-center h-[120px] text-gray-300 text-sm">[円グラフ]</div>
+    </div>
+    <div class="glass-card rounded-xl border p-6" style="height: 200px;">
+      <h3 class="text-sm font-semibold text-gray-900 mb-4">チャネル別訪問者数 TOP8</h3>
+      <div class="flex items-center justify-center h-[120px] text-gray-300 text-sm">[棒グラフ]</div>
+    </div>
+  </div>
+</div>
+
+<hr class="mx-6 border-dashed border-gray-300 my-10">
+
+<!-- ========================================================================
+     案A — タイトル行にフィルタを右寄せ配置
+     h2 + 説明 は左 / フィルタは右 → 縦1段分削減
+     タブは現状通りフルワイドで下
+     ======================================================================== -->
+<div class="max-w-[1400px] mx-auto px-6">
+  <h3 class="text-xs font-bold text-primary uppercase tracking-widest mb-4">案A — タイトル横にフィルタ配置</h3>
+  <p class="text-xs text-body-color mb-6">フィルタをタイトル行の右に移動。タイトル→フィルタ→タブの3段が2段に。</p>
+
+  <!-- Row 1: タイトル（左）+ フィルタ（右） -->
+  <div class="mb-1 flex items-start justify-between gap-4">
+    <div>
+      <h2 class="text-lg font-bold text-gray-900">集客 - 集客チャネル</h2>
+      <p class="mt-0.5 text-sm text-body-color">流入チャネル別の訪問者数、ユーザー数、コンバージョンを確認できます</p>
+    </div>
+    <div class="flex flex-shrink-0 items-center gap-2 pt-0.5">
+      <button class="flex items-center gap-1.5 rounded-lg border border-stroke bg-white px-3 py-1.5 text-sm text-body-color hover:border-primary/50 hover:text-gray-900 transition-all">
+        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+        <span>フィルタ設定</span>
+        <svg class="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Row 2: タブ（フルワイド、現状通り） -->
+  <div class="mb-6 mt-4 flex gap-2 rounded-lg border border-stroke bg-white p-1">
+    <button class="flex-1 rounded-md bg-primary px-8 py-2 text-sm font-medium text-white">グラフ形式</button>
+    <button class="flex-1 rounded-md px-8 py-2 text-sm font-medium text-body-color hover:bg-gray-2">表形式</button>
+  </div>
+
+  <!-- チャート領域 -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+    <div class="glass-card rounded-xl border p-6" style="height: 200px;">
+      <h3 class="text-sm font-semibold text-gray-900 mb-4">チャネル別訪問者構成比</h3>
+      <div class="flex items-center justify-center h-[120px] text-gray-300 text-sm">[円グラフ]</div>
+    </div>
+    <div class="glass-card rounded-xl border p-6" style="height: 200px;">
+      <h3 class="text-sm font-semibold text-gray-900 mb-4">チャネル別訪問者数 TOP8</h3>
+      <div class="flex items-center justify-center h-[120px] text-gray-300 text-sm">[棒グラフ]</div>
+    </div>
+  </div>
+</div>
+
+<hr class="mx-6 border-dashed border-gray-300 my-10">
+
+<!-- ========================================================================
+     案B — タイトル + フィルタ + タブを1行に統合
+     最もコンパクト。説明文はタイトル下に小さく残す
+     ======================================================================== -->
+<div class="max-w-[1400px] mx-auto px-6">
+  <h3 class="text-xs font-bold text-primary uppercase tracking-widest mb-4">案B — 全要素1行統合</h3>
+  <p class="text-xs text-body-color mb-6">タイトル・タブ・フィルタをすべて1行に配置。最もコンパクト。説明文はタイトル直下に小さく。</p>
+
+  <!-- Row 1: タイトル（左）+ タブ（中央寄り）+ フィルタ（右） -->
+  <div class="flex items-center justify-between gap-6">
+    <h2 class="text-lg font-bold text-gray-900 flex-shrink-0">集客 - 集客チャネル</h2>
+
+    <div class="flex gap-2 rounded-lg border border-stroke bg-white p-1">
+      <button class="rounded-md bg-primary px-6 py-1.5 text-sm font-medium text-white">グラフ形式</button>
+      <button class="rounded-md px-6 py-1.5 text-sm font-medium text-body-color hover:bg-gray-2">表形式</button>
+    </div>
+
+    <div class="flex flex-shrink-0 items-center gap-2">
+      <button class="flex items-center gap-1.5 rounded-lg border border-stroke bg-white px-3 py-1.5 text-sm text-body-color hover:border-primary/50 hover:text-gray-900 transition-all">
+        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+        <span>フィルタ設定</span>
+        <svg class="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+    </div>
+  </div>
+  <p class="mt-1 mb-6 text-sm text-body-color">流入チャネル別の訪問者数、ユーザー数、コンバージョンを確認できます</p>
+
+  <!-- チャート領域 -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+    <div class="glass-card rounded-xl border p-6" style="height: 200px;">
+      <h3 class="text-sm font-semibold text-gray-900 mb-4">チャネル別訪問者構成比</h3>
+      <div class="flex items-center justify-center h-[120px] text-gray-300 text-sm">[円グラフ]</div>
+    </div>
+    <div class="glass-card rounded-xl border p-6" style="height: 200px;">
+      <h3 class="text-sm font-semibold text-gray-900 mb-4">チャネル別訪問者数 TOP8</h3>
+      <div class="flex items-center justify-center h-[120px] text-gray-300 text-sm">[棒グラフ]</div>
+    </div>
+  </div>
+</div>
+
+<hr class="mx-6 border-dashed border-gray-300 my-10">
+
+<!-- ========================================================================
+     案C — タイトル+説明を1行 / フィルタ+タブを1行（2段構成）
+     タイトルと説明をベースライン揃え、フィルタとタブを同じ行に
+     ======================================================================== -->
+<div class="max-w-[1400px] mx-auto px-6 pb-16">
+  <h3 class="text-xs font-bold text-primary uppercase tracking-widest mb-4">案C — 2行構成（タイトル行 + 操作行）</h3>
+  <p class="text-xs text-body-color mb-6">1行目にタイトル＋説明、2行目にフィルタ＋タブ。操作系が同じ行にまとまり直感的。</p>
+
+  <!-- Row 1: タイトル + 説明（ベースライン揃え） -->
+  <div class="flex items-baseline gap-3 mb-3">
+    <h2 class="text-lg font-bold text-gray-900">集客 - 集客チャネル</h2>
+    <p class="text-sm text-body-color">流入チャネル別の訪問者数、ユーザー数、コンバージョンを確認できます</p>
+  </div>
+
+  <!-- Row 2: フィルタ（左）+ タブ（右） -->
+  <div class="flex items-center justify-between gap-4 mb-6">
+    <div class="flex flex-wrap items-center gap-2">
+      <button class="flex items-center gap-1.5 rounded-lg border border-stroke bg-white px-3 py-1.5 text-sm text-body-color hover:border-primary/50 hover:text-gray-900 transition-all">
+        <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
+        <span>フィルタ設定</span>
+        <svg class="h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
+      </button>
+      <!-- フィルタ選択時のタグ例 -->
+      <span class="inline-flex items-center gap-1 rounded-full border border-primary/20 bg-primary/5 px-2.5 py-1 text-xs font-medium text-primary">
+        デバイス: mobile
+        <button class="ml-0.5 text-primary/60 hover:text-primary">&times;</button>
+      </span>
+    </div>
+
+    <div class="flex gap-2 rounded-lg border border-stroke bg-white p-1 flex-shrink-0">
+      <button class="rounded-md bg-primary px-6 py-1.5 text-sm font-medium text-white">グラフ形式</button>
+      <button class="rounded-md px-6 py-1.5 text-sm font-medium text-body-color hover:bg-gray-2">表形式</button>
+    </div>
+  </div>
+
+  <!-- チャート領域 -->
+  <div class="grid grid-cols-2 gap-6 mb-6">
+    <div class="glass-card rounded-xl border p-6" style="height: 200px;">
+      <h3 class="text-sm font-semibold text-gray-900 mb-4">チャネル別訪問者構成比</h3>
+      <div class="flex items-center justify-center h-[120px] text-gray-300 text-sm">[円グラフ]</div>
+    </div>
+    <div class="glass-card rounded-xl border p-6" style="height: 200px;">
+      <h3 class="text-sm font-semibold text-gray-900 mb-4">チャネル別訪問者数 TOP8</h3>
+      <div class="flex items-center justify-center h-[120px] text-gray-300 text-sm">[棒グラフ]</div>
+    </div>
+  </div>
+</div>
+
+<hr class="mx-6 border-dashed border-gray-300 my-10">
+
+<!-- ========================================================================
+     比較表
+     ======================================================================== -->
+<div class="max-w-[1400px] mx-auto px-6 pb-16">
+  <h3 class="text-xs font-bold text-primary uppercase tracking-widest mb-6">比較まとめ</h3>
+  <table class="w-full text-sm rounded-xl border border-stroke/40 bg-white/80 overflow-hidden">
+    <thead>
+      <tr class="border-b border-gray-100 bg-gray-50/80">
+        <th class="px-5 py-3 text-left font-semibold text-gray-900 w-32"></th>
+        <th class="px-5 py-3 text-left font-semibold text-gray-900">現状</th>
+        <th class="px-5 py-3 text-left font-semibold text-primary">A — タイトル横にフィルタ</th>
+        <th class="px-5 py-3 text-left font-semibold text-primary">B — 全要素1行統合</th>
+        <th class="px-5 py-3 text-left font-semibold text-primary">C — 2行構成</th>
+      </tr>
+    </thead>
+    <tbody class="text-body-color">
+      <tr class="border-b border-gray-50">
+        <td class="px-5 py-2.5 font-medium text-gray-700">行数</td>
+        <td class="px-5 py-2.5">3行（タイトル→フィルタ→タブ）</td>
+        <td class="px-5 py-2.5">2行（タイトル+フィルタ→タブ）</td>
+        <td class="px-5 py-2.5 font-medium text-primary">1行＋説明</td>
+        <td class="px-5 py-2.5">2行（タイトル+説明→フィルタ+タブ）</td>
+      </tr>
+      <tr class="border-b border-gray-50">
+        <td class="px-5 py-2.5 font-medium text-gray-700">フィルタ位置</td>
+        <td class="px-5 py-2.5">独立した行（左寄せ）</td>
+        <td class="px-5 py-2.5">タイトル行の右端</td>
+        <td class="px-5 py-2.5">タブの右隣</td>
+        <td class="px-5 py-2.5">タブと同じ行の左側</td>
+      </tr>
+      <tr class="border-b border-gray-50">
+        <td class="px-5 py-2.5 font-medium text-gray-700">タブ位置</td>
+        <td class="px-5 py-2.5">フルワイド独立行</td>
+        <td class="px-5 py-2.5">フルワイド独立行</td>
+        <td class="px-5 py-2.5">タイトルの隣（中央）</td>
+        <td class="px-5 py-2.5">フィルタ行の右側</td>
+      </tr>
+      <tr class="border-b border-gray-50">
+        <td class="px-5 py-2.5 font-medium text-gray-700">説明文</td>
+        <td class="px-5 py-2.5">タイトル直下</td>
+        <td class="px-5 py-2.5">タイトル直下</td>
+        <td class="px-5 py-2.5">1行目の下に小さく</td>
+        <td class="px-5 py-2.5">タイトル横（ベースライン揃え）</td>
+      </tr>
+      <tr>
+        <td class="px-5 py-2.5 font-medium text-gray-700">特徴</td>
+        <td class="px-5 py-2.5">—</td>
+        <td class="px-5 py-2.5">最小変更、タブは維持</td>
+        <td class="px-5 py-2.5">最コンパクト、大胆</td>
+        <td class="px-5 py-2.5">操作系が横一列で直感的</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</body>
+</html>

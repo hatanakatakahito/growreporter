@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI総合分析 - デザイン案</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background: #f0f2f8;
+    color: #111928;
+  }
+
+  /* アンビエント背景 */
+  .ambient {
+    position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  }
+  .ambient .blob1 { position: absolute; top: -160px; right: 80px; width: 500px; height: 500px; border-radius: 9999px; background: rgba(165,180,252,0.4); filter: blur(100px); }
+  .ambient .blob2 { position: absolute; bottom: 80px; left: 25%; width: 400px; height: 400px; border-radius: 9999px; background: rgba(196,181,253,0.3); filter: blur(100px); }
+  .ambient .blob3 { position: absolute; top: 50%; right: 33%; width: 300px; height: 300px; border-radius: 9999px; background: rgba(186,230,253,0.2); filter: blur(80px); }
+
+  /* 共通 */
+  .container { max-width: 1400px; margin: 0 auto; padding: 44px 24px 48px; }
+  .page-title { font-size: 18px; font-weight: 700; color: #111928; }
+  .page-desc { margin-top: 2px; font-size: 13px; color: #637381; }
+
+  /* glass card */
+  .glass {
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px -4px rgba(0,0,0,0.06);
+  }
+
+  /* ai gradient border */
+  .ai-border {
+    padding: 4px;
+    background: linear-gradient(90deg, #1e40af, #3b82f6, #60a5fa, #93c5fd, #c084fc, #a855f7, #9333ea, #7e22ce, #9333ea, #a855f7, #c084fc, #93c5fd, #60a5fa, #3b82f6, #1e40af);
+    background-size: 400% 100%;
+    border-radius: 12px;
+    animation: gradient-move 10s ease infinite;
+  }
+  @keyframes gradient-move {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+  .ai-border-inner {
+    background: rgba(255,255,255,0.92);
+    border-radius: 8px;
+    padding: 24px;
+  }
+
+  /* タブ */
+  .tab-bar { display: flex; gap: 4px; padding: 4px; background: rgba(0,0,0,0.04); border-radius: 8px; margin-bottom: 20px; width: fit-content; }
+  .tab { padding: 8px 16px; font-size: 13px; font-weight: 500; border-radius: 6px; cursor: pointer; color: #637381; display: flex; align-items: center; gap: 6px; }
+  .tab.active { background: #fff; color: #3758f9; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+  .tab svg { width: 16px; height: 16px; }
+
+  /* 案選択 */
+  .design-switcher {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 100;
+    display: flex; gap: 8px; padding: 8px 16px;
+    background: rgba(255,255,255,0.95); border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    font-size: 13px;
+  }
+  .design-switcher button {
+    padding: 8px 20px; border: 2px solid transparent; border-radius: 8px;
+    cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;
+    background: #f3f4f6; color: #374151;
+  }
+  .design-switcher button.active { background: #3758f9; color: #fff; border-color: #3758f9; }
+  .design-section { display: none; }
+  .design-section.active { display: block; }
+
+  /* ---- A案: ダッシュボード型 ---- */
+  .a-summary-bg { background: linear-gradient(135deg, rgba(59,130,246,0.06), rgba(139,92,246,0.06), rgba(236,72,153,0.04)); padding: 20px; border-radius: 10px; }
+  .a-summary-text { font-size: 14px; line-height: 1.8; color: #374151; }
+  .a-kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .a-kpi-card { padding: 16px; border-radius: 10px; border: 1px solid rgba(0,0,0,0.06); background: rgba(249,250,251,0.8); }
+  .a-kpi-label { font-size: 11px; color: #637381; font-weight: 500; }
+  .a-kpi-value { font-size: 22px; font-weight: 700; color: #111928; margin-top: 4px; }
+  .a-kpi-change { font-size: 11px; margin-top: 4px; display: flex; align-items: center; gap: 3px; }
+  .a-kpi-change.up { color: #059669; }
+  .a-kpi-change.down { color: #dc2626; }
+
+  .a-highlight-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .a-highlight { padding: 16px; border-radius: 10px; }
+  .a-highlight.change { background: rgba(59,130,246,0.06); border: 1px solid rgba(59,130,246,0.15); }
+  .a-highlight.risk { background: rgba(244,63,94,0.05); border: 1px solid rgba(244,63,94,0.15); }
+  .a-highlight.chance { background: rgba(16,185,129,0.05); border: 1px solid rgba(16,185,129,0.15); }
+  .a-highlight-label { font-size: 11px; color: #637381; font-weight: 500; }
+  .a-highlight-value { font-size: 14px; font-weight: 600; color: #111928; margin-top: 6px; }
+  .a-highlight-detail { font-size: 12px; color: #637381; margin-top: 4px; line-height: 1.5; }
+
+  .a-section-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px; cursor: pointer; }
+  .a-section-icon { width: 36px; height: 36px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .a-section-icon svg { width: 20px; height: 20px; }
+  .a-section-title { font-size: 15px; font-weight: 600; color: #111928; flex: 1; }
+  .a-section-body { padding: 0 20px 20px; }
+  .a-section-text { font-size: 13px; line-height: 1.8; color: #4b5563; }
+  .a-links { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+  .a-link { padding: 5px 12px; border: 1px solid #e5e7eb; border-radius: 9999px; font-size: 12px; color: #4b5563; text-decoration: none; background: rgba(249,250,251,0.8); transition: all 0.15s; }
+  .a-link:hover { border-color: #3758f9; color: #3758f9; background: rgba(55,88,249,0.04); }
+
+  /* チャネルバー */
+  .a-channel-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .a-channel-name { font-size: 12px; color: #4b5563; width: 120px; text-align: right; flex-shrink: 0; }
+  .a-channel-bar-bg { flex: 1; height: 8px; border-radius: 4px; background: rgba(0,0,0,0.04); overflow: hidden; }
+  .a-channel-bar { height: 100%; border-radius: 4px; background: linear-gradient(90deg, #10b981, #34d399); }
+  .a-channel-val { font-size: 11px; color: #637381; width: 60px; flex-shrink: 0; }
+
+  /* テーブル */
+  .a-table { width: 100%; font-size: 12px; }
+  .a-table th { text-align: left; padding: 8px 12px; color: #637381; font-weight: 500; border-bottom: 1px solid rgba(0,0,0,0.06); }
+  .a-table td { padding: 8px 12px; color: #374151; border-bottom: 1px solid rgba(0,0,0,0.03); }
+  .a-table tr:hover td { background: rgba(55,88,249,0.03); }
+  .a-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* CV cards */
+  .a-cv-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+
+  /* 改善導線 */
+  .a-cta { display: flex; flex-direction: column; align-items: center; padding: 24px; border-top: 1px solid rgba(0,0,0,0.06); }
+  .a-cta-btn {
+    display: inline-flex; align-items: center; gap: 8px; padding: 12px 28px;
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6); color: #fff;
+    font-size: 14px; font-weight: 600; border-radius: 10px; border: none; cursor: pointer;
+    box-shadow: 0 4px 12px rgba(59,130,246,0.3); transition: all 0.2s;
+  }
+  .a-cta-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(59,130,246,0.4); }
+  .a-cta-desc { font-size: 12px; color: #637381; margin-top: 8px; }
+
+  /* ---- B案: コンパクトカード型 ---- */
+  .b-top-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+  .b-summary-card { padding: 24px; }
+  .b-summary-card .label { font-size: 12px; color: #3758f9; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .b-summary-card .label svg { width: 16px; height: 16px; }
+  .b-summary-text { font-size: 14px; line-height: 1.8; color: #374151; }
+  .b-highlights-stack { display: flex; flex-direction: column; gap: 10px; }
+  .b-hl-card { padding: 14px 16px; border-radius: 10px; }
+  .b-hl-card.change { background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(59,130,246,0.02)); border: 1px solid rgba(59,130,246,0.12); }
+  .b-hl-card.risk { background: linear-gradient(135deg, rgba(244,63,94,0.06), rgba(244,63,94,0.02)); border: 1px solid rgba(244,63,94,0.12); }
+  .b-hl-card.chance { background: linear-gradient(135deg, rgba(16,185,129,0.06), rgba(16,185,129,0.02)); border: 1px solid rgba(16,185,129,0.12); }
+  .b-hl-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  .b-hl-card.change .b-hl-label { color: #3b82f6; }
+  .b-hl-card.risk .b-hl-label { color: #f43f5e; }
+  .b-hl-card.chance .b-hl-label { color: #10b981; }
+  .b-hl-value { font-size: 13px; font-weight: 600; color: #111928; margin-top: 4px; }
+
+  .b-section-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+  .b-section-card { padding: 20px; }
+  .b-section-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid rgba(0,0,0,0.05); }
+  .b-section-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .b-section-icon svg { width: 18px; height: 18px; }
+  .b-section-title { font-size: 14px; font-weight: 600; color: #111928; }
+  .b-section-text { font-size: 13px; line-height: 1.7; color: #4b5563; }
+  .b-section-data { margin-bottom: 12px; }
+  .b-mini-kpi { display: flex; gap: 8px; flex-wrap: wrap; }
+  .b-mini-kpi-item { padding: 8px 12px; border-radius: 8px; background: rgba(249,250,251,0.9); border: 1px solid rgba(0,0,0,0.04); }
+  .b-mini-kpi-label { font-size: 10px; color: #637381; }
+  .b-mini-kpi-val { font-size: 15px; font-weight: 700; color: #111928; margin-top: 2px; }
+
+  /* ---- C案: フルワイド・ストーリー型 ---- */
+  .c-hero { padding: 32px; border-radius: 12px; background: linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(139,92,246,0.06) 50%, rgba(236,72,153,0.04) 100%); margin-bottom: 20px; position: relative; overflow: hidden; }
+  .c-hero::before { content: ''; position: absolute; top: -50px; right: -30px; width: 200px; height: 200px; border-radius: 9999px; background: rgba(139,92,246,0.08); filter: blur(50px); }
+  .c-hero-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; position: relative; }
+  .c-hero-icon { width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); display: flex; align-items: center; justify-content: center; }
+  .c-hero-icon svg { width: 22px; height: 22px; color: #fff; fill: none; stroke: currentColor; stroke-width: 2; }
+  .c-hero-title { font-size: 18px; font-weight: 700; color: #111928; }
+  .c-hero-meta { font-size: 12px; color: #637381; }
+  .c-hero-text { font-size: 14px; line-height: 1.8; color: #374151; position: relative; }
+
+  .c-status-bar { display: flex; gap: 16px; align-items: stretch; margin-bottom: 20px; }
+  .c-status-item { flex: 1; padding: 20px; text-align: center; }
+  .c-status-label { font-size: 11px; color: #637381; font-weight: 500; }
+  .c-status-value { font-size: 28px; font-weight: 800; margin-top: 6px; background: linear-gradient(135deg, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .c-status-sub { font-size: 11px; margin-top: 4px; display: flex; align-items: center; justify-content: center; gap: 3px; }
+  .c-status-sub.up { color: #059669; }
+  .c-status-sub.down { color: #dc2626; }
+
+  .c-alerts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+  .c-alert { padding: 18px; border-radius: 12px; position: relative; overflow: hidden; }
+  .c-alert::before { content: ''; position: absolute; top: 0; left: 0; width: 4px; height: 100%; border-radius: 2px; }
+  .c-alert.change { background: rgba(59,130,246,0.04); border: 1px solid rgba(59,130,246,0.1); }
+  .c-alert.change::before { background: #3b82f6; }
+  .c-alert.risk { background: rgba(244,63,94,0.03); border: 1px solid rgba(244,63,94,0.1); }
+  .c-alert.risk::before { background: #f43f5e; }
+  .c-alert.chance { background: rgba(16,185,129,0.03); border: 1px solid rgba(16,185,129,0.1); }
+  .c-alert.chance::before { background: #10b981; }
+  .c-alert-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 8px; }
+  .c-alert.change .c-alert-label { color: #3b82f6; }
+  .c-alert.risk .c-alert-label { color: #f43f5e; }
+  .c-alert.chance .c-alert-label { color: #10b981; }
+  .c-alert-value { font-size: 14px; font-weight: 600; color: #111928; margin-top: 6px; padding-left: 8px; }
+  .c-alert-detail { font-size: 12px; color: #637381; margin-top: 4px; padding-left: 8px; line-height: 1.5; }
+
+  .c-section { margin-bottom: 16px; }
+  .c-section-header { display: flex; align-items: center; gap: 10px; padding: 16px 20px; cursor: pointer; }
+  .c-section-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; }
+  .c-section-icon svg { width: 20px; height: 20px; }
+  .c-section-title { font-size: 15px; font-weight: 600; color: #111928; flex: 1; }
+  .c-section-body { padding: 0 20px 20px; display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+  .c-section-text { font-size: 13px; line-height: 1.8; color: #4b5563; }
+  .c-section-data-label { font-size: 11px; color: #637381; font-weight: 500; margin-bottom: 8px; }
+
+  /* Color icons */
+  .icon-blue { background: rgba(59,130,246,0.1); color: #3b82f6; }
+  .icon-violet { background: rgba(139,92,246,0.1); color: #8b5cf6; }
+  .icon-emerald { background: rgba(16,185,129,0.1); color: #10b981; }
+  .icon-amber { background: rgba(245,158,11,0.1); color: #f59e0b; }
+  .icon-rose { background: rgba(244,63,94,0.1); color: #f43f5e; }
+
+  /* Regenerate button */
+  .regen-btn {
+    display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px;
+    border: 1px solid #e5e7eb; border-radius: 8px; font-size: 13px; font-weight: 500;
+    color: #4b5563; background: #fff; cursor: pointer; transition: all 0.15s;
+  }
+  .regen-btn:hover { border-color: #3758f9; color: #3758f9; }
+  .regen-btn svg { width: 16px; height: 16px; }
+
+  /* SVG icons inline */
+  .svg-sparkle { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+</style>
+</head>
+<body>
+
+<div class="ambient">
+  <div class="blob1"></div>
+  <div class="blob2"></div>
+  <div class="blob3"></div>
+</div>
+
+<!-- 案切り替え -->
+<div class="design-switcher">
+  <span style="font-weight:600; color:#111928; padding:8px 0;">デザイン案:</span>
+  <button class="active" onclick="switchDesign('a')">A案: セクション展開型</button>
+  <button onclick="switchDesign('b')">B案: カードグリッド型</button>
+  <button onclick="switchDesign('c')">C案: ヒーロー＋ステータス型</button>
+</div>
+
+<!-- ========== A案: セクション展開型（現行ベース改善） ========== -->
+<div id="design-a" class="design-section active">
+<div class="container" style="padding-top:80px;">
+  <div class="page-title">分析する - AI総合分析</div>
+  <div class="page-desc">全データを横断してAIが自動分析し、サイトの現状を明らかにします</div>
+
+  <div style="margin-top:20px;">
+    <!-- タブ -->
+    <div class="tab-bar">
+      <div class="tab active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5h4.5l-3.5 2.5 1.5 4.5-3.5-2.5-3.5 2.5 1.5-4.5-3.5-2.5h4.5z"/></svg>
+        AI分析
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        メモ
+      </div>
+    </div>
+
+    <div class="ai-border">
+      <div class="ai-border-inner">
+
+        <!-- ヘッダー -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); display:flex; align-items:center; justify-content:center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3l1.5 4.5h4.5l-3.5 2.5 1.5 4.5-3.5-2.5-3.5 2.5 1.5-4.5-3.5-2.5h4.5z"/></svg>
+            </div>
+            <div>
+              <div style="font-size:16px; font-weight:700; color:#111928;">AI総合分析結果</div>
+              <div style="font-size:12px; color:#637381;">2026/03/20 09:00 生成</div>
+            </div>
+          </div>
+          <button class="regen-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            再分析
+          </button>
+        </div>
+
+        <!-- サマリー -->
+        <div class="a-summary-bg" style="margin-bottom:16px;">
+          <p class="a-summary-text">
+            選択期間のアクセスは前月比で大幅に増加しており、セッション数は前月比+75.9%、ユーザー数は+70.8%と好調です。一方でエンゲージメント率（サイト内で積極的に行動した割合）は微減しており、流入増がそのまま成果につながっていない可能性があります。コンバージョン（お問い合わせなどの成果）は144件で、全体として前月を上回る実績です。
+          </p>
+        </div>
+
+        <!-- 注目ポイント -->
+        <div class="a-highlight-grid" style="margin-bottom:20px;">
+          <div class="a-highlight change">
+            <div class="a-highlight-label">最も注目すべき変化</div>
+            <div class="a-highlight-value">セッション数が前月比+75.9%</div>
+            <div class="a-highlight-detail">オーガニック検索とSNSからの流入が大幅に増加しました</div>
+          </div>
+          <div class="a-highlight risk">
+            <div class="a-highlight-label">最大のリスク</div>
+            <div class="a-highlight-value">被リンク元上位のCVが0件</div>
+            <div class="a-highlight-detail">多くの流入があるにも関わらず成果につながっていません</div>
+          </div>
+          <div class="a-highlight chance">
+            <div class="a-highlight-label">最大の機会</div>
+            <div class="a-highlight-value">docs.google.comからのCV率が高い</div>
+            <div class="a-highlight-detail">21セッションで4件のCVを獲得。同様の流入元の開拓が有望です</div>
+          </div>
+        </div>
+
+        <!-- アクセス概況セクション -->
+        <div class="glass" style="margin-bottom:12px;">
+          <div class="a-section-header">
+            <div class="a-section-icon icon-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+            <div class="a-section-title">アクセス概況</div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
+          </div>
+          <div class="a-section-body">
+            <div class="a-kpi-grid" style="margin-bottom:14px;">
+              <div class="a-kpi-card">
+                <div class="a-kpi-label">セッション</div>
+                <div class="a-kpi-value">3,842</div>
+                <div class="a-kpi-change up">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+                  +75.9%
+                </div>
+              </div>
+              <div class="a-kpi-card">
+                <div class="a-kpi-label">ユーザー</div>
+                <div class="a-kpi-value">2,981</div>
+                <div class="a-kpi-change up">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+                  +70.8%
+                </div>
+              </div>
+              <div class="a-kpi-card">
+                <div class="a-kpi-label">PV</div>
+                <div class="a-kpi-value">8,214</div>
+                <div class="a-kpi-change up">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+                  +69.4%
+                </div>
+              </div>
+              <div class="a-kpi-card">
+                <div class="a-kpi-label">エンゲージメント率</div>
+                <div class="a-kpi-value">58.2%</div>
+                <div class="a-kpi-change down">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 7l9.2 9.2M17 7v10H7"/></svg>
+                  -3.1%
+                </div>
+              </div>
+            </div>
+            <p class="a-section-text">
+              選択期間のセッション数は3,842回で前月比+75.9%と大幅増加。ユーザー数も2,981人（+70.8%）と好調です。一方でエンゲージメント率は58.2%とやや低下しており、新規流入ユーザーのサイト内回遊が課題です。
+            </p>
+            <div class="a-links">
+              <a href="#" class="a-link">全体サマリー →</a>
+              <a href="#" class="a-link">月別 →</a>
+              <a href="#" class="a-link">日別 →</a>
+              <a href="#" class="a-link">曜日別 →</a>
+              <a href="#" class="a-link">時間帯別 →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 集客分析セクション -->
+        <div class="glass" style="margin-bottom:12px;">
+          <div class="a-section-header">
+            <div class="a-section-icon icon-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+            <div class="a-section-title">集客分析</div>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><path d="M18 15l-6-6-6 6"/></svg>
+          </div>
+          <div class="a-section-body">
+            <div style="margin-bottom:14px;">
+              <div class="a-channel-row">
+                <div class="a-channel-name">Organic Search</div>
+                <div class="a-channel-bar-bg"><div class="a-channel-bar" style="width:100%"></div></div>
+                <div class="a-channel-val">1,842</div>
+              </div>
+              <div class="a-channel-row">
+                <div class="a-channel-name">Direct</div>
+                <div class="a-channel-bar-bg"><div class="a-channel-bar" style="width:52%"></div></div>
+                <div class="a-channel-val">961</div>
+              </div>
+              <div class="a-channel-row">
+                <div class="a-channel-name">Referral</div>
+                <div class="a-channel-bar-bg"><div class="a-channel-bar" style="width:28%"></div></div>
+                <div class="a-channel-val">512</div>
+              </div>
+              <div class="a-channel-row">
+                <div class="a-channel-name">Social</div>
+                <div class="a-channel-bar-bg"><div class="a-channel-bar" style="width:15%"></div></div>
+                <div class="a-channel-val">284</div>
+              </div>
+            </div>
+            <p class="a-section-text">
+              Organic Searchが全体の48%を占め、主要な流入経路です。Directも前月比+50%と増加しており、リピーターの定着が進んでいます。SNSからの流入も増加傾向にあり、効果的な情報発信ができています。
+            </p>
+            <div class="a-links">
+              <a href="#" class="a-link">集客チャネル →</a>
+              <a href="#" class="a-link">流入キーワード →</a>
+              <a href="#" class="a-link">被リンク元 →</a>
+            </div>
+          </div>
+        </div>
+
+        <!-- 改善導線 -->
+        <div class="a-cta" style="margin-top:20px;">
+          <button class="a-cta-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5h4.5l-3.5 2.5 1.5 4.5-3.5-2.5-3.5 2.5 1.5-4.5-3.5-2.5h4.5z"/></svg>
+            サイト改善案を生成する
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <div class="a-cta-desc">この分析結果をもとに、具体的な改善施策を生成します</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ========== B案: カードグリッド型 ========== -->
+<div id="design-b" class="design-section">
+<div class="container" style="padding-top:80px;">
+  <div class="page-title">分析する - AI総合分析</div>
+  <div class="page-desc">全データを横断してAIが自動分析し、サイトの現状を明らかにします</div>
+
+  <div style="margin-top:20px;">
+    <div class="tab-bar">
+      <div class="tab active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5h4.5l-3.5 2.5 1.5 4.5-3.5-2.5-3.5 2.5 1.5-4.5-3.5-2.5h4.5z"/></svg>
+        AI分析
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        メモ
+      </div>
+    </div>
+
+    <div class="ai-border">
+      <div class="ai-border-inner">
+        <!-- ヘッダー -->
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:20px;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#3b82f6,#8b5cf6); display:flex; align-items:center; justify-content:center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M12 3l1.5 4.5h4.5l-3.5 2.5 1.5 4.5-3.5-2.5-3.5 2.5 1.5-4.5-3.5-2.5h4.5z"/></svg>
+            </div>
+            <div>
+              <div style="font-size:16px; font-weight:700;">AI総合分析結果</div>
+              <div style="font-size:12px; color:#637381;">2026/03/20 09:00 生成</div>
+            </div>
+          </div>
+          <button class="regen-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            再分析
+          </button>
+        </div>
+
+        <!-- サマリー + 注目ポイント 横並び -->
+        <div class="b-top-grid" style="margin-bottom:20px;">
+          <div class="glass b-summary-card">
+            <div class="label">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5h4.5l-3.5 2.5 1.5 4.5-3.5-2.5-3.5 2.5 1.5-4.5-3.5-2.5h4.5z"/></svg>
+              エグゼクティブサマリー
+            </div>
+            <p class="b-summary-text">
+              選択期間のアクセスは前月比で大幅に増加しており、セッション数は前月比+75.9%、ユーザー数は+70.8%と好調です。一方でエンゲージメント率は微減しており、流入増がそのまま成果につながっていない可能性があります。コンバージョンは144件で、全体として前月を上回る実績です。
+            </p>
+          </div>
+          <div class="b-highlights-stack">
+            <div class="b-hl-card change">
+              <div class="b-hl-label">注目すべき変化</div>
+              <div class="b-hl-value">セッション数 前月比+75.9%</div>
+            </div>
+            <div class="b-hl-card risk">
+              <div class="b-hl-label">最大のリスク</div>
+              <div class="b-hl-value">被リンク元上位のCV 0件</div>
+            </div>
+            <div class="b-hl-card chance">
+              <div class="b-hl-label">最大の機会</div>
+              <div class="b-hl-value">docs.google.comのCV率が高い</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- セクション 2x2 グリッド -->
+        <div class="b-section-grid" style="margin-bottom:16px;">
+          <div class="glass b-section-card">
+            <div class="b-section-header">
+              <div class="b-section-icon icon-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+              <div class="b-section-title">アクセス概況</div>
+            </div>
+            <div class="b-section-data">
+              <div class="b-mini-kpi">
+                <div class="b-mini-kpi-item"><div class="b-mini-kpi-label">セッション</div><div class="b-mini-kpi-val">3,842</div></div>
+                <div class="b-mini-kpi-item"><div class="b-mini-kpi-label">ユーザー</div><div class="b-mini-kpi-val">2,981</div></div>
+                <div class="b-mini-kpi-item"><div class="b-mini-kpi-label">PV</div><div class="b-mini-kpi-val">8,214</div></div>
+              </div>
+            </div>
+            <p class="b-section-text">セッション数+75.9%と大幅増加。エンゲージメント率は58.2%とやや低下しており、新規流入ユーザーのサイト内回遊が課題です。</p>
+          </div>
+
+          <div class="glass b-section-card">
+            <div class="b-section-header">
+              <div class="b-section-icon icon-violet"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+              <div class="b-section-title">ユーザー分析</div>
+            </div>
+            <div class="b-section-data">
+              <div class="b-mini-kpi">
+                <div class="b-mini-kpi-item"><div class="b-mini-kpi-label">主要デバイス</div><div class="b-mini-kpi-val">mobile 68%</div></div>
+                <div class="b-mini-kpi-item"><div class="b-mini-kpi-label">新規率</div><div class="b-mini-kpi-val">72%</div></div>
+              </div>
+            </div>
+            <p class="b-section-text">モバイルユーザーが約7割を占めます。新規ユーザー比率が高く、SEOやSNS施策の効果が出ています。25-34歳が最多です。</p>
+          </div>
+
+          <div class="glass b-section-card">
+            <div class="b-section-header">
+              <div class="b-section-icon icon-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+              <div class="b-section-title">集客分析</div>
+            </div>
+            <div class="b-section-data">
+              <div class="b-mini-kpi">
+                <div class="b-mini-kpi-item"><div class="b-mini-kpi-label">Organic</div><div class="b-mini-kpi-val">48%</div></div>
+                <div class="b-mini-kpi-item"><div class="b-mini-kpi-label">Direct</div><div class="b-mini-kpi-val">25%</div></div>
+                <div class="b-mini-kpi-item"><div class="b-mini-kpi-label">Referral</div><div class="b-mini-kpi-val">13%</div></div>
+              </div>
+            </div>
+            <p class="b-section-text">Organic Searchが主要流入。Directも+50%増でリピーター定着が進んでいます。SNSからの流入も増加傾向です。</p>
+          </div>
+
+          <div class="glass b-section-card">
+            <div class="b-section-header">
+              <div class="b-section-icon icon-amber"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+              <div class="b-section-title">コンテンツ分析</div>
+            </div>
+            <div class="b-section-data">
+              <div class="b-mini-kpi">
+                <div class="b-mini-kpi-item"><div class="b-mini-kpi-label">総PV</div><div class="b-mini-kpi-val">8,214</div></div>
+                <div class="b-mini-kpi-item"><div class="b-mini-kpi-label">ページ数</div><div class="b-mini-kpi-val">142</div></div>
+              </div>
+            </div>
+            <p class="b-section-text">トップページが全PVの18%を占め、商品一覧ページが続きます。カテゴリページのエンゲージメント率が低く、導線改善の余地があります。</p>
+          </div>
+        </div>
+
+        <!-- CV（フル幅） -->
+        <div class="glass" style="padding:20px; margin-bottom:16px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(0,0,0,0.05);">
+            <div class="b-section-icon icon-rose"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+            <div class="b-section-title">コンバージョン分析</div>
+          </div>
+          <div style="display:grid; grid-template-columns:auto 1fr; gap:20px; align-items:start;">
+            <div class="a-cv-grid">
+              <div class="a-kpi-card"><div class="a-kpi-label">お問い合わせ</div><div style="font-size:20px; font-weight:700; margin-top:4px;">89件</div><div class="a-kpi-change up"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>+12.3%</div></div>
+              <div class="a-kpi-card"><div class="a-kpi-label">資料請求</div><div style="font-size:20px; font-weight:700; margin-top:4px;">55件</div><div class="a-kpi-change up"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>+8.7%</div></div>
+            </div>
+            <p class="b-section-text" style="padding-top:4px;">
+              コンバージョンは合計144件で前月を上回りました。お問い合わせが89件（+12.3%）、資料請求が55件（+8.7%）。Organic Search経由のCVRが最も高く、SEO施策の成果が見られます。
+            </p>
+          </div>
+        </div>
+
+        <!-- 改善導線 -->
+        <div class="a-cta" style="margin-top:8px;">
+          <button class="a-cta-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5h4.5l-3.5 2.5 1.5 4.5-3.5-2.5-3.5 2.5 1.5-4.5-3.5-2.5h4.5z"/></svg>
+            サイト改善案を生成する
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <div class="a-cta-desc">この分析結果をもとに、具体的な改善施策を生成します</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ========== C案: ヒーロー＋ステータスバー型 ========== -->
+<div id="design-c" class="design-section">
+<div class="container" style="padding-top:80px;">
+  <div class="page-title">分析する - AI総合分析</div>
+  <div class="page-desc">全データを横断してAIが自動分析し、サイトの現状を明らかにします</div>
+
+  <div style="margin-top:20px;">
+    <div class="tab-bar">
+      <div class="tab active">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5h4.5l-3.5 2.5 1.5 4.5-3.5-2.5-3.5 2.5 1.5-4.5-3.5-2.5h4.5z"/></svg>
+        AI分析
+      </div>
+      <div class="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        メモ
+      </div>
+    </div>
+
+    <div class="ai-border">
+      <div class="ai-border-inner">
+
+        <!-- ヒーロー -->
+        <div class="c-hero">
+          <div class="c-hero-header">
+            <div class="c-hero-icon">
+              <svg viewBox="0 0 24 24"><path d="M12 3l1.5 4.5h4.5l-3.5 2.5 1.5 4.5-3.5-2.5-3.5 2.5 1.5-4.5-3.5-2.5h4.5z" fill="none" stroke="#fff" stroke-width="2"/></svg>
+            </div>
+            <div>
+              <div class="c-hero-title">AI総合分析結果</div>
+              <div class="c-hero-meta">2026/03/20 09:00 生成 ・ 対象期間: 2026/02/20 - 2026/03/19</div>
+            </div>
+            <div style="margin-left:auto;">
+              <button class="regen-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+                再分析
+              </button>
+            </div>
+          </div>
+          <p class="c-hero-text">
+            選択期間のアクセスは前月比で大幅に増加しており、セッション数は前月比+75.9%、ユーザー数は+70.8%と好調です。一方でエンゲージメント率は微減しており、流入増がそのまま成果につながっていない可能性があります。コンバージョンは144件で、全体として前月を上回る実績です。
+          </p>
+        </div>
+
+        <!-- 主要KPIステータスバー -->
+        <div class="c-status-bar">
+          <div class="glass c-status-item">
+            <div class="c-status-label">セッション</div>
+            <div class="c-status-value">3,842</div>
+            <div class="c-status-sub up">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+              前月比 +75.9%
+            </div>
+          </div>
+          <div class="glass c-status-item">
+            <div class="c-status-label">ユーザー</div>
+            <div class="c-status-value">2,981</div>
+            <div class="c-status-sub up">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+              前月比 +70.8%
+            </div>
+          </div>
+          <div class="glass c-status-item">
+            <div class="c-status-label">コンバージョン</div>
+            <div class="c-status-value">144</div>
+            <div class="c-status-sub up">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l9.2-9.2M17 17V7H7"/></svg>
+              前月比 +10.8%
+            </div>
+          </div>
+          <div class="glass c-status-item">
+            <div class="c-status-label">エンゲージメント率</div>
+            <div class="c-status-value">58.2%</div>
+            <div class="c-status-sub down">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 7l9.2 9.2M17 7v10H7"/></svg>
+              前月比 -3.1%
+            </div>
+          </div>
+        </div>
+
+        <!-- 注目ポイント -->
+        <div class="c-alerts">
+          <div class="c-alert change">
+            <div class="c-alert-label">最も注目すべき変化</div>
+            <div class="c-alert-value">セッション数が前月比+75.9%</div>
+            <div class="c-alert-detail">オーガニック検索とSNSからの流入が大幅に増加しました</div>
+          </div>
+          <div class="c-alert risk">
+            <div class="c-alert-label">最大のリスク</div>
+            <div class="c-alert-value">被リンク元上位のCVが0件</div>
+            <div class="c-alert-detail">多くの流入があるにも関わらず成果につながっていません</div>
+          </div>
+          <div class="c-alert chance">
+            <div class="c-alert-label">最大の機会</div>
+            <div class="c-alert-value">docs.google.comからのCV率が高い</div>
+            <div class="c-alert-detail">21セッションで4件のCVを獲得。同様の流入元の開拓が有望です</div>
+          </div>
+        </div>
+
+        <!-- セクション -->
+        <div class="c-section glass">
+          <div class="c-section-header">
+            <div class="c-section-icon icon-blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg></div>
+            <div class="c-section-title">アクセス概況</div>
+            <div class="a-links" style="margin-top:0;">
+              <a href="#" class="a-link">全体サマリー →</a>
+              <a href="#" class="a-link">月別 →</a>
+              <a href="#" class="a-link">日別 →</a>
+            </div>
+          </div>
+          <div class="c-section-body">
+            <div>
+              <div class="c-section-data-label">主要指標</div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                <div class="a-kpi-card"><div class="a-kpi-label">PV</div><div style="font-size:18px; font-weight:700; margin-top:2px;">8,214</div></div>
+                <div class="a-kpi-card"><div class="a-kpi-label">ENG率</div><div style="font-size:18px; font-weight:700; margin-top:2px;">58.2%</div></div>
+              </div>
+            </div>
+            <div>
+              <p class="c-section-text">
+                選択期間のセッション数は3,842回で前月比+75.9%と大幅増加。ユーザー数も2,981人（+70.8%）と好調です。一方でエンゲージメント率は58.2%とやや低下しており、新規流入ユーザーのサイト内回遊が課題です。PVは8,214で69.4%増加しています。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="c-section glass">
+          <div class="c-section-header">
+            <div class="c-section-icon icon-emerald"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+            <div class="c-section-title">集客分析</div>
+            <div class="a-links" style="margin-top:0;">
+              <a href="#" class="a-link">集客チャネル →</a>
+              <a href="#" class="a-link">キーワード →</a>
+            </div>
+          </div>
+          <div class="c-section-body">
+            <div>
+              <div class="c-section-data-label">チャネル別セッション</div>
+              <div style="margin-top:4px;">
+                <div class="a-channel-row"><div class="a-channel-name" style="width:100px; font-size:11px;">Organic</div><div class="a-channel-bar-bg"><div class="a-channel-bar" style="width:100%"></div></div><div class="a-channel-val">1,842</div></div>
+                <div class="a-channel-row"><div class="a-channel-name" style="width:100px; font-size:11px;">Direct</div><div class="a-channel-bar-bg"><div class="a-channel-bar" style="width:52%"></div></div><div class="a-channel-val">961</div></div>
+                <div class="a-channel-row"><div class="a-channel-name" style="width:100px; font-size:11px;">Referral</div><div class="a-channel-bar-bg"><div class="a-channel-bar" style="width:28%"></div></div><div class="a-channel-val">512</div></div>
+              </div>
+            </div>
+            <div>
+              <p class="c-section-text">
+                Organic Searchが全体の48%を占め主要な流入経路。Directも前月比+50%増でリピーター定着が進んでいます。SNSからの流入も増加傾向です。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 改善導線 -->
+        <div class="a-cta" style="margin-top:12px;">
+          <button class="a-cta-btn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3l1.5 4.5h4.5l-3.5 2.5 1.5 4.5-3.5-2.5-3.5 2.5 1.5-4.5-3.5-2.5h4.5z"/></svg>
+            サイト改善案を生成する
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+          <div class="a-cta-desc">この分析結果をもとに、具体的な改善施策を生成します</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+function switchDesign(id) {
+  document.querySelectorAll('.design-section').forEach(el => el.classList.remove('active'));
+  document.getElementById('design-' + id).classList.add('active');
+  document.querySelectorAll('.design-switcher button').forEach(btn => btn.classList.remove('active'));
+  event.target.classList.add('active');
+}
+</script>
+
+</body>
+</html>

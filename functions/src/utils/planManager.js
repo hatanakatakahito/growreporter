@@ -7,7 +7,6 @@ const DEFAULT_PLANS = {
     maxSites: 1,
     aiSummaryLimit: -1, // 無制限（再分析はgenerateAISummary.js内で制限）
     aiImprovementLimit: 1,
-    diagnosisLimit: 1,
     excelExportLimit: 1,
     pptxExportLimit: 1,
   },
@@ -15,7 +14,6 @@ const DEFAULT_PLANS = {
     maxSites: 3,
     aiSummaryLimit: 4, // 再分析4回/月（週1回相当）
     aiImprovementLimit: 4, // AI改善4回/月（週1回相当）
-    diagnosisLimit: 5,
     excelExportLimit: -1,
     pptxExportLimit: -1,
   },
@@ -23,7 +21,6 @@ const DEFAULT_PLANS = {
     maxSites: 10,
     aiSummaryLimit: -1, // 無制限
     aiImprovementLimit: -1, // 無制限
-    diagnosisLimit: -1, // 無制限
     excelExportLimit: -1,
     pptxExportLimit: -1,
   },
@@ -32,7 +29,6 @@ const DEFAULT_PLANS = {
     maxSites: 999999,
     aiSummaryLimit: -1,
     aiImprovementLimit: -1,
-    diagnosisLimit: -1,
     excelExportLimit: -1,
     pptxExportLimit: -1,
   },
@@ -75,7 +71,7 @@ async function getCustomLimits(db, userId) {
 /**
  * 有効な制限値を取得（個別制限 > プラン制限）
  * @param {string} userId 
- * @param {string} type - 'summary', 'improvement', 'diagnosis', 'excelExport', or 'pptxExport'
+ * @param {string} type - 'summary', 'improvement', 'excelExport', or 'pptxExport'
  * @returns {Promise<number>} 制限値（-1 = 無制限）
  */
 export async function getEffectiveLimit(userId, type = 'summary') {
@@ -88,7 +84,6 @@ export async function getEffectiveLimit(userId, type = 'summary') {
       const customLimitMap = {
         summary: customLimits.aiSummaryMonthly,
         improvement: customLimits.aiImprovementMonthly,
-        diagnosis: customLimits.diagnosisMonthly,
         excelExport: customLimits.excelExportMonthly,
         pptxExport: customLimits.pptxExportMonthly,
       };
@@ -114,11 +109,10 @@ export async function getEffectiveLimit(userId, type = 'summary') {
     const limitMap = {
       summary: planConfig.aiSummaryLimit,
       improvement: planConfig.aiImprovementLimit,
-      diagnosis: planConfig.diagnosisLimit,
       excelExport: planConfig.excelExportLimit,
       pptxExport: planConfig.pptxExportLimit,
     };
-    const limit = limitMap[type] ?? planConfig.diagnosisLimit;
+    const limit = limitMap[type] ?? 0;
     
     logger.info(`[PlanManager] プラン制限適用: ${userId}, プラン: ${plan}, タイプ: ${type}, 制限: ${limit}`);
     
@@ -132,7 +126,7 @@ export async function getEffectiveLimit(userId, type = 'summary') {
 /**
  * ユーザーがAI生成可能かチェック
  * @param {string} userId 
- * @param {string} type - 'summary', 'improvement', or 'diagnosis'
+ * @param {string} type - 'summary', 'improvement', 'excelExport', or 'pptxExport'
  * @returns {Promise<boolean>}
  */
 export async function checkCanGenerate(userId, type = 'summary') {
@@ -159,7 +153,6 @@ export async function checkCanGenerate(userId, type = 'summary') {
     const usageMap = {
       summary: userData.aiSummaryUsage || 0,
       improvement: userData.aiImprovementUsage || 0,
-      diagnosis: userData.diagnosisUsage || 0,
       excelExport: userData.excelExportUsage || 0,
       pptxExport: userData.pptxExportUsage || 0,
     };
@@ -179,7 +172,7 @@ export async function checkCanGenerate(userId, type = 'summary') {
 /**
  * AI生成回数をインクリメント
  * @param {string} userId 
- * @param {string} type - 'summary', 'improvement', or 'diagnosis'
+ * @param {string} type - 'summary', 'improvement', 'excelExport', or 'pptxExport'
  */
 export async function incrementGenerationCount(userId, type = 'summary') {
   const db = getFirestore();
@@ -189,11 +182,10 @@ export async function incrementGenerationCount(userId, type = 'summary') {
     const fieldMap = {
       summary: 'aiSummaryUsage',
       improvement: 'aiImprovementUsage',
-      diagnosis: 'diagnosisUsage',
       excelExport: 'excelExportUsage',
       pptxExport: 'pptxExportUsage',
     };
-    const fieldName = fieldMap[type] || 'diagnosisUsage';
+    const fieldName = fieldMap[type] || 'aiSummaryUsage';
     await userRef.update({
       [fieldName]: FieldValue.increment(1),
     });
@@ -229,7 +221,6 @@ export async function resetMonthlyLimits() {
       batch.update(doc.ref, {
         aiSummaryUsage: 0,
         aiImprovementUsage: 0,
-        diagnosisUsage: 0,
         excelExportUsage: 0,
         pptxExportUsage: 0,
         updatedAt: FieldValue.serverTimestamp(),
