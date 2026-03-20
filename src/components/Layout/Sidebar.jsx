@@ -191,6 +191,7 @@ export default function Sidebar() {
             { label: '逆算フロー', path: '/analysis/reverse-flow' },
           ]
         },
+        { label: 'AI総合分析', path: '/analysis/comprehensive' },
       ],
     },
     {

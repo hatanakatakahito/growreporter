@@ -9,7 +9,6 @@ const FOCUS_OPTIONS = [
   { value: 'conversion', label: 'コンバージョン（成果）の向上' },
   { value: 'branding', label: 'ブランディングの向上' },
   { value: 'usability', label: 'ユーザービリティの向上' },
-  { value: 'performance', label: 'パフォーマンスの向上' },
 ];
 
 /**
@@ -25,7 +24,7 @@ export default function ImprovementFocusModal({ isOpen, onClose, onConfirm }) {
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} size="md">
+    <Dialog open={isOpen} onClose={onClose} size="2xl">
       <DialogTitle>
         <span className="flex items-center gap-2">
           <Sparkles className="h-6 w-6 text-primary" />

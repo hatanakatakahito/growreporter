@@ -107,12 +107,6 @@ export const captureScreenshot = lazyCallable('./callable/captureScreenshot.js',
 export const generateAISummary = lazyCallable('./callable/generateAISummary.js', 'generateAISummaryCallable', { memory: '512MiB', timeoutSeconds: 60, secrets: ['GEMINI_API_KEY'] });
 
 /**
- * サイト診断 Callable Function
- * PageSpeed Insights API + 独自データでサイト健全度を診断
- */
-export const runSiteDiagnosis = lazyCallable('./callable/runSiteDiagnosis.js', 'runSiteDiagnosisCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] });
-
-/**
  * エクスポート使用回数インクリメント Callable Function
  */
 export const incrementExportUsage = lazyCallable('./callable/incrementExportUsage.js', 'incrementExportUsageCallable');
@@ -470,11 +464,6 @@ export const submitUpgradeInquiry = lazyCallable('./callable/submitUpgradeInquir
  * GA4データ取得 → Gemini AI → キャッシュ保存
  */
 export const batchGenerateAISummaries = lazyCallable('./callable/admin/batchGenerateAISummaries.js', 'batchGenerateAISummariesCallable', { memory: '1GiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY'] });
-
-/**
- * 管理者用: 全サイトまたは指定サイトに対してサイト診断を一括実行（プラン消費なし）
- */
-export const batchRunDiagnosis = lazyCallable('./callable/admin/batchRunDiagnosis.js', 'batchRunDiagnosisCallable', { memory: '1GiB', timeoutSeconds: 540 });
 
 /**
  * ページスクレイピングデータ定期更新 Scheduled Function

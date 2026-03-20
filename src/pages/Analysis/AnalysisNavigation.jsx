@@ -19,6 +19,7 @@ import {
   FolderTree,
   Target,
   GitMerge,
+  Sparkles,
 } from 'lucide-react';
 
 /**
@@ -157,6 +158,17 @@ export default function AnalysisNavigation() {
               title: '逆算フロー',
               description: 'コンバージョンまでのステップを逆算し、離脱ポイントを特定します。',
               path: '/analysis/reverse-flow',
+            },
+          ],
+        },
+        {
+          title: 'AI分析',
+          items: [
+            {
+              icon: <Sparkles className="h-6 w-6" />,
+              title: 'AI総合分析',
+              description: '全データを横断してAIが自動分析し、サイトの現状と次に取り組むべきことを明らかにします。',
+              path: '/analysis/comprehensive',
             },
           ],
         },

@@ -236,7 +236,7 @@ export async function generateAISummaryCallable(request) {
           ],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 1500,
+            maxOutputTokens: pageType === 'comprehensive_analysis' ? 3000 : 1500,
           },
         }),
       }
@@ -746,6 +746,12 @@ function extractRecommendations(summary, pageType) {
  * 番号付きリスト（1., 2., 3.）が連続して出現する直前の見出しから削除
  */
 function removeActionPlanSection(text, pageType) {
+  // comprehensive_analysisの場合は改善提案セクションを除去
+  if (pageType === 'comprehensive_analysis') {
+    const idx = text.indexOf('## 改善');
+    return idx >= 0 ? text.substring(0, idx).trim() : text;
+  }
+
   // comprehensive_improvementの場合は「### 選択した施策ID」セクション以降を削除
   if (pageType === 'comprehensive_improvement') {
     const lines = text.split('\n');
@@ -876,6 +882,36 @@ function estimatePriority(text, order) {
  * @param {string} pageType - ページタイプ
  * @returns {object} AI分析用のメトリクス
  */
+/**
+ * demographicsデータからunknown/不明/undefined/(not set)を除外
+ */
+function cleanDemographics(demographics) {
+  if (!demographics) return null;
+  const UNKNOWN = new Set(['不明', 'unknown', '(not set)', 'undefined', 'null', '']);
+  const isUnknown = (val) => val == null || UNKNOWN.has(String(val).toLowerCase().trim());
+  const cleanArray = (arr, ...nameKeys) => {
+    if (!Array.isArray(arr)) return arr;
+    return arr.filter(item => {
+      const name = nameKeys.reduce((found, key) => found || item[key], null);
+      return !isUnknown(name);
+    });
+  };
+
+  const cleaned = { ...demographics };
+  if (cleaned.device) cleaned.device = cleanArray(cleaned.device, 'name', 'device', 'deviceCategory');
+  if (cleaned.gender) cleaned.gender = cleanArray(cleaned.gender, 'name');
+  if (cleaned.age) cleaned.age = cleanArray(cleaned.age, 'name', 'age', 'userAgeBracket');
+  if (cleaned.newReturning) cleaned.newReturning = cleanArray(cleaned.newReturning, 'name', 'type', 'newVsReturning');
+  if (cleaned.location) {
+    cleaned.location = { ...cleaned.location };
+    if (cleaned.location.country) cleaned.location.country = cleanArray(cleaned.location.country, 'name', 'country');
+    if (cleaned.location.region) cleaned.location.region = cleanArray(cleaned.location.region, 'name', 'region');
+    if (cleaned.location.city) cleaned.location.city = cleanArray(cleaned.location.city, 'name', 'city');
+    if (cleaned.location.regions) cleaned.location.regions = cleanArray(cleaned.location.regions, 'name', 'region');
+  }
+  return cleaned;
+}
+
 function formatRawDataToMetrics(rawData, pageType) {
   console.log(`[formatRawDataToMetrics] ページタイプ: ${pageType}`);
   console.log(`[formatRawDataToMetrics] rawData keys:`, Object.keys(rawData || {}));
@@ -1358,6 +1394,46 @@ function formatRawDataToMetrics(rawData, pageType) {
         linksData: clickRows,
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
+      };
+
+    case 'comprehensive_analysis':
+      // AI総合分析：全データを横断
+      const compCurrent = rawData.current || {};
+      const compPrev = rawData.previousMonth || null;
+      const compMetrics = compCurrent.metrics || compCurrent;
+      const compPrevMetrics = compPrev?.metrics || compPrev;
+      const compCurrentConv = compCurrent.totalConversions ?? compMetrics.conversions ?? 0;
+      const compPrevConv = compPrev?.totalConversions ?? compPrevMetrics?.conversions ?? 0;
+
+      let compMonthOverMonth = null;
+      if (compPrev && compPrevMetrics) {
+        const cUsers = compMetrics.users || compMetrics.totalUsers || 0;
+        const pUsers = compPrevMetrics.users || compPrevMetrics.totalUsers || 0;
+        compMonthOverMonth = {
+          users: { current: cUsers, previous: pUsers, change: pUsers > 0 ? ((cUsers - pUsers) / pUsers) * 100 : 0 },
+          sessions: { current: compMetrics.sessions || 0, previous: compPrevMetrics.sessions || 0, change: compPrevMetrics.sessions > 0 ? ((compMetrics.sessions || 0) - compPrevMetrics.sessions) / compPrevMetrics.sessions * 100 : 0 },
+          conversions: { current: compCurrentConv, previous: compPrevConv, change: compPrevConv > 0 ? ((compCurrentConv - compPrevConv) / compPrevConv) * 100 : 0 },
+          engagementRate: { current: compMetrics.engagementRate || 0, previous: compPrevMetrics.engagementRate || 0, change: compPrevMetrics.engagementRate > 0 ? ((compMetrics.engagementRate || 0) - compPrevMetrics.engagementRate) / compPrevMetrics.engagementRate * 100 : 0 },
+        };
+      }
+
+      return {
+        users: compMetrics.users || compMetrics.totalUsers || 0,
+        sessions: compMetrics.sessions || 0,
+        pageViews: compMetrics.pageViews || compMetrics.screenPageViews || 0,
+        engagementRate: compMetrics.engagementRate || 0,
+        conversions: compCurrentConv,
+        monthOverMonth: compMonthOverMonth,
+        yearAgoData: rawData.yearAgo?.metrics || rawData.yearAgo,
+        monthlyData: rawData.monthlyTrend || [],
+        channelsData: (rawData.channels || []).sort((a, b) => (b.sessions || 0) - (a.sessions || 0)).slice(0, 7),
+        landingPagesData: (rawData.landingPages || []).sort((a, b) => (b.sessions || 0) - (a.sessions || 0)).slice(0, 5),
+        referralsData: (rawData.referrals || []).sort((a, b) => (b.sessions || 0) - (a.sessions || 0)).slice(0, 5),
+        pagesData: (rawData.pages || []).sort((a, b) => (b.screenPageViews || 0) - (a.screenPageViews || 0)).slice(0, 10),
+        keywordsData: rawData.keywords ? (rawData.keywords || []).slice(0, 10) : null,
+        demographics: cleanDemographics(rawData.demographics),
+        hasConversionDefinitions: rawData.hasConversionEvents || false,
+        hasGSCConnection: rawData.hasGSCConnection || false,
       };
 
     case 'comprehensive_improvement':

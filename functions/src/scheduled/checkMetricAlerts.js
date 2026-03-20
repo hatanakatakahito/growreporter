@@ -2,11 +2,11 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { format, subDays } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { getGA4MetricsForSite } from '../utils/ga4ServerHelper.js';
-import { generateAlertEmailTemplate } from '../utils/emailTemplates.js';
+import { generateBatchedAlertEmailTemplate } from '../utils/emailTemplates.js';
 import { sendEmailDirect } from '../utils/emailSender.js';
-import { generateAlertHypotheses } from '../utils/alertHypotheses.js';
+import { generateBatchedAlertHypotheses } from '../utils/alertHypotheses.js';
 
-const ALERT_THRESHOLD_PERCENT = 40;
+const ALERT_THRESHOLD_PERCENT = 50;
 const METRIC_KEYS = [
   'sessions',
   'totalUsers',
@@ -110,6 +110,7 @@ async function hasExistingAlertToday(db, siteId, metricName, alertDate) {
 
 /**
  * メトリクス比較で閾値超えを検出し、アラート作成・メール送信・仮説生成を実行
+ * 同一サイトの複数アラートを1通のメールにまとめて送信
  */
 async function runCheckMetricAlerts() {
   const db = getFirestore();
@@ -153,6 +154,9 @@ async function runCheckMetricAlerts() {
     }
     if (!currentMetrics || !previousMetrics) continue;
 
+    // Phase 1: アラート検出とFirestore保存（メール送信はまだしない）
+    const collectedAlerts = [];
+
     for (const metricKey of METRIC_KEYS) {
       const currentVal = currentMetrics[metricKey];
       const previousVal = previousMetrics[metricKey];
@@ -191,24 +195,25 @@ async function runCheckMetricAlerts() {
       };
       await alertRef.set(alertData);
 
-      // 仮説を生成してからメール送信（仮説の内容をメールに含めるため await）
-      let hypothesesForEmail = [{ text: '仮説を取得できませんでした', source: 'ai' }];
+      collectedAlerts.push({ ...alertData, alertId });
+    }
+
+    // Phase 2: アラートが1件以上あれば、仮説を一括生成してメール送信
+    if (collectedAlerts.length > 0) {
+      // 仮説を一括生成
+      let hypotheses = [{ text: '仮説を取得できませんでした', source: 'ai' }];
       try {
-        await generateAlertHypotheses(db, siteId, alertId, { ...alertData, id: alertId }, siteName);
-        // 生成後のアラートドキュメントから仮説を取得
-        const updatedAlert = await alertRef.get();
-        const updatedHypotheses = updatedAlert.data()?.hypotheses;
-        if (updatedHypotheses && updatedHypotheses.length > 0) {
-          hypothesesForEmail = updatedHypotheses;
-        }
+        hypotheses = await generateBatchedAlertHypotheses(db, siteId, collectedAlerts, siteName);
       } catch (err) {
-        console.error('[checkMetricAlerts] hypotheses error', err.message);
+        console.error('[checkMetricAlerts] batched hypotheses error', err.message);
       }
 
+      // メール送信（1サイト1通）
       const recipients = await getAlertRecipientsForSite(db, siteId, membersByOwner);
       const dashboardUrl = `${appBaseUrl}/dashboard?siteId=${siteId}`;
-      const { subject, html, text } = generateAlertEmailTemplate(
-        { ...alertData, hypotheses: hypothesesForEmail },
+      const { subject, html, text } = generateBatchedAlertEmailTemplate(
+        collectedAlerts,
+        hypotheses,
         siteName,
         siteUrl,
         dashboardUrl
@@ -221,6 +226,8 @@ async function runCheckMetricAlerts() {
           console.error(`[checkMetricAlerts] sendEmail failed ${email}`, e.message);
         }
       }
+
+      console.log(`[checkMetricAlerts] site=${siteId} ${collectedAlerts.length}件のアラートを1通のメールにまとめて送信`);
     }
   }
 }

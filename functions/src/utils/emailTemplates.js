@@ -554,6 +554,87 @@ export function generateAlertEmailTemplate(alert, siteName, siteUrl, dashboardUr
 }
 
 /**
+ * アラート通知メール（統合版）のテンプレートを生成
+ * 同一サイトの複数アラートを1通のメールにまとめる
+ * @param {Array<Object>} alerts - アラートオブジェクトの配列
+ * @param {Array<Object>} hypotheses - 総括仮説の配列 [{text, source}]
+ * @param {string} siteName - サイト名
+ * @param {string} siteUrl - サイトURL
+ * @param {string} dashboardUrl - ダッシュボードURL
+ * @returns {Object} { subject, html, text }
+ */
+export function generateBatchedAlertEmailTemplate(alerts, hypotheses, siteName, siteUrl, dashboardUrl = '') {
+  const displaySiteName = (siteName != null && siteName !== '') ? String(siteName) : '（サイト名なし）';
+  const alertCount = alerts.length;
+  const periodCurrent = alerts[0]?.periodCurrent || '';
+
+  const subject = `【グローレポータ】アラート: ${displaySiteName} - ${alertCount}件の指標に大きな変化がありました`;
+
+  // アラート一覧HTML
+  const alertListHtml = alerts
+    .map(a => {
+      const msg = (a.message || '指標に変化がありました').replace(/</g, '&lt;');
+      return `<li style="margin-bottom: 6px; font-size: 15px; color: #1f2937;"><strong>${msg}</strong></li>`;
+    })
+    .join('');
+
+  // 仮説HTML
+  const hyps = hypotheses || [];
+  const hypothesesHtml = hyps.length > 0
+    ? hyps.map(h => `<li style="margin-bottom: 8px;">${(h.text || '').replace(/</g, '&lt;')}</li>`).join('')
+    : '<li>仮説を取得できませんでした</li>';
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${subject}</title>
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+          <tr>
+            <td style="background-color: #3758F9; padding: 24px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">グローレポータ - アラート</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding: 24px;">
+              <h2 style="margin: 0 0 8px 0; color: #1f2937; font-size: 18px;">${displaySiteName}</h2>
+              ${periodCurrent ? `<p style="margin: 0 0 20px 0; color: #6b7280; font-size: 14px;">対象期間: ${periodCurrent}</p>` : ''}
+              <p style="margin: 0 0 12px 0; color: #374151; font-size: 14px;"><strong>変化のあった指標</strong></p>
+              <ul style="margin: 0 0 24px 0; padding-left: 20px; list-style: disc;">
+                ${alertListHtml}
+              </ul>
+              <p style="margin: 0 0 12px 0; color: #374151; font-size: 14px;"><strong>考えられる原因（仮説）</strong></p>
+              <ul style="margin: 0 0 20px 0; padding-left: 20px; color: #4b5563; font-size: 14px;">
+                ${hypothesesHtml}
+              </ul>
+              ${dashboardUrl ? `<p style="margin: 0;"><a href="${dashboardUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3758F9; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">ダッシュボードで確認</a></p>` : ''}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+  const alertListText = alerts.map(a => `・${a.message || '指標に変化がありました'}`).join('\n');
+  const hypothesesText = hyps.length > 0
+    ? hyps.map(h => `・${h.text}`).join('\n')
+    : '・仮説を取得できませんでした';
+
+  const text = `【グローレポータ】アラート: ${displaySiteName}\n\n変化のあった指標:\n${alertListText}\n\n考えられる原因:\n${hypothesesText}\n\n${dashboardUrl ? `ダッシュボード: ${dashboardUrl}` : ''}`;
+
+  return { subject, html, text };
+}
+
+/**
  * 新規ユーザー登録 ウェルカムメールテンプレート
  * @param {Object} data - ユーザー情報
  * @param {string} data.userName - ユーザー名

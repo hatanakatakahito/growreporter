@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI総合分析 - モックアップ</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --primary: #3758F9;
+    --primary-blue: #3b82f6;
+    --primary-purple: #8b5cf6;
+    --secondary: #13C296;
+    --stroke: #DFE4EA;
+    --body-color: #637381;
+    --dark: #111928;
+    --dark-2: #1F2A37;
+    --bg-base: #f0f2f8;
+    --max-content: 1400px;
+  }
+
+  body {
+    font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    background: var(--bg-base);
+    color: var(--dark);
+    min-height: 100vh;
+    position: relative;
+    overflow-y: scroll;
+  }
+
+  /* ===== アンビエントグラデーション背景 ===== */
+  .ambient-wrap {
+    position: fixed; inset: 0; z-index: -10; overflow: hidden; pointer-events: none;
+  }
+  .ambient-wrap .blob {
+    position: absolute; border-radius: 9999px;
+  }
+  .ambient-wrap .blob-1 { top: -160px; right: 80px; width: 500px; height: 500px; background: rgba(165,180,252,0.4); filter: blur(100px); }
+  .ambient-wrap .blob-2 { bottom: 80px; left: 25%; width: 400px; height: 400px; background: rgba(196,181,253,0.3); filter: blur(100px); }
+  .ambient-wrap .blob-3 { top: 50%; right: 33%; width: 300px; height: 300px; background: rgba(186,230,253,0.2); filter: blur(80px); }
+
+  /* ===== ガラスカード ===== */
+  .glass-card {
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.6);
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 24px -4px rgba(0,0,0,0.06);
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .glass-card:hover {
+    background: rgba(255,255,255,0.85);
+    box-shadow: 0 12px 40px -8px rgba(0,0,0,0.08);
+    transform: translateY(-1px);
+  }
+
+  /* ===== AIグラデーションボーダー ===== */
+  .ai-gradient-border {
+    position: relative;
+    padding: 4px;
+    background: linear-gradient(90deg,
+      #1e40af, #3b82f6, #60a5fa, #93c5fd,
+      #c084fc, #a855f7, #9333ea, #7e22ce,
+      #9333ea, #a855f7, #c084fc, #93c5fd,
+      #60a5fa, #3b82f6, #1e40af
+    );
+    background-size: 400% 100%;
+    border-radius: 0.5rem;
+    animation: gradient-border 10s ease infinite;
+    box-shadow: inset 0 0 20px rgba(255,255,255,0.1);
+  }
+  .ai-gradient-border > * { position: relative; z-index: 1; }
+  @keyframes gradient-border {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  /* ===== AnalysisHeader（共通ヘッダー） ===== */
+  .analysis-header {
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-bottom: 1px solid rgba(255,255,255,0.5);
+  }
+  .analysis-header-inner {
+    max-width: var(--max-content);
+    margin: 0 auto;
+    padding: 12px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* ===== コンテンツエリア ===== */
+  .content-area {
+    max-width: var(--max-content);
+    margin: 0 auto;
+    padding: 2.75rem 24px 3rem;
+  }
+
+  /* bg-gray-50 の半透明化 */
+  .main-bg {
+    background: rgba(240,242,248,0.65);
+    min-height: 100vh;
+  }
+
+  /* ===== ユーティリティ ===== */
+  .text-primary { color: var(--primary); }
+  .text-body { color: var(--body-color); }
+  .text-dark { color: var(--dark); }
+  .text-secondary { color: var(--secondary); }
+
+  .flex { display: flex; }
+  .items-center { align-items: center; }
+  .items-start { align-items: flex-start; }
+  .justify-between { justify-content: space-between; }
+  .gap-1 { gap: 4px; }
+  .gap-1\.5 { gap: 6px; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .gap-4 { gap: 16px; }
+  .flex-1 { flex: 1 1 0%; }
+  .flex-wrap { flex-wrap: wrap; }
+  .shrink-0 { flex-shrink: 0; }
+  .min-w-0 { min-width: 0; }
+
+  .font-bold { font-weight: 700; }
+  .font-semibold { font-weight: 600; }
+  .font-medium { font-weight: 500; }
+
+  .text-xs { font-size: 12px; line-height: 16px; }
+  .text-sm { font-size: 14px; line-height: 20px; }
+  .text-base { font-size: 16px; line-height: 24px; }
+  .text-lg { font-size: 18px; line-height: 28px; }
+  .text-xl { font-size: 20px; line-height: 28px; }
+  .text-2xl { font-size: 24px; line-height: 32px; }
+
+  /* テーブル行ホバー */
+  table tbody tr:hover { background: rgba(55,88,249,0.04) !important; transition: background 0.15s; }
+
+  /* スクロールバー */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.1); border-radius: 3px; }
+
+  /* ===== セクション開閉 ===== */
+  .section-body { max-height: 2000px; overflow: hidden; transition: max-height 0.35s ease, opacity 0.25s ease; opacity: 1; }
+  .section-body.collapsed { max-height: 0; opacity: 0; }
+  .chevron { transition: transform 0.25s ease; }
+  .chevron.rotated { transform: rotate(-90deg); }
+
+  /* ===== 推奨アクションカード ===== */
+  .action-card {
+    transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
+  }
+  .action-card:hover {
+    border-color: var(--primary);
+    box-shadow: 0 4px 16px rgba(55,88,249,0.1);
+    transform: translateY(-1px);
+  }
+
+  /* ===== AI サマリーテキスト背景（既存と同じ） ===== */
+  .ai-summary-bg {
+    background: linear-gradient(135deg, rgba(239,246,255,0.8), rgba(245,243,255,0.8), rgba(253,242,248,0.6));
+    border-radius: 0.5rem;
+    padding: 24px;
+  }
+
+  /* ===== タブ ===== */
+  .tab-nav {
+    display: flex;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+    border-radius: 0.5rem 0.5rem 0 0;
+  }
+  .tab-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 16px 24px;
+    font-size: 14px; font-weight: 500;
+    border: none; background: none; cursor: pointer;
+    border-bottom: 2px solid transparent;
+    color: #6b7280;
+    transition: all 0.15s;
+  }
+  .tab-btn:hover { color: #374151; border-bottom-color: #d1d5db; }
+  .tab-btn.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+  .tab-content {
+    background: #fff;
+    border-radius: 0 0 0.5rem 0.5rem;
+    padding: 24px;
+  }
+
+  /* プログレスバー */
+  .progress-track { height: 6px; background: #f3f4f6; border-radius: 9999px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 9999px; transition: width 1s ease-out; }
+
+  /* 詳細リンクピル */
+  .detail-link {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    color: var(--body-color);
+    background: #f9fafb;
+    border-radius: 6px;
+    text-decoration: none;
+    transition: all 0.15s;
+  }
+  .detail-link:hover { background: rgba(55,88,249,0.05); color: var(--primary); }
+
+  /* ボタン共通 */
+  .btn-outline {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    font-size: 12px; font-weight: 500;
+    border: 1px solid var(--stroke);
+    border-radius: 0.5rem;
+    background: #fff;
+    color: var(--body-color);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+
+  .btn-primary-sm {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 12px;
+    font-size: 12px; font-weight: 500;
+    border: 1px solid rgba(55,88,249,0.3);
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--primary);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-primary-sm:hover { background: var(--primary); color: #fff; }
+
+  /* 日付ピッカー風ボタン */
+  .date-picker-btn {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 12px;
+    font-size: 13px;
+    border: 1px solid var(--stroke);
+    border-radius: 0.5rem;
+    background: #fff;
+    color: var(--dark);
+    cursor: pointer;
+  }
+
+  /* バッジ */
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 500; }
+  .badge-blue { background: #eff6ff; color: #1d4ed8; }
+  .badge-green { background: #f0fdf4; color: #15803d; }
+  .badge-red { background: #fef2f2; color: #dc2626; }
+  .badge-violet { background: #f5f3ff; color: #6d28d9; }
+  .badge-amber { background: #fffbeb; color: #b45309; }
+
+  /* セクションヘッダーのアイコンボックス */
+  .section-icon {
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 0.5rem;
+    flex-shrink: 0;
+  }
+
+  /* ミニKPIカード */
+  .mini-kpi {
+    background: #f9fafb;
+    border-radius: 0.5rem;
+    padding: 12px 16px;
+  }
+
+  /* テーブル */
+  .data-table { width: 100%; font-size: 12px; border-collapse: collapse; }
+  .data-table thead { background: #f9fafb; }
+  .data-table th { padding: 10px 16px; font-weight: 500; color: var(--body-color); text-align: left; }
+  .data-table th.right { text-align: right; }
+  .data-table td { padding: 10px 16px; border-top: 1px solid rgba(223,228,234,0.4); }
+  .data-table td.right { text-align: right; }
+  .data-table td.bold { font-weight: 600; color: var(--dark); }
+
+  /* ファネル */
+  .funnel-bar { height: 24px; border-radius: 4px; }
+
+  /* タグ */
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    font-size: 10px;
+    background: #f3f4f6;
+    color: var(--body-color);
+    border-radius: 4px;
+  }
+
+  /* 優先度の数字丸 */
+  .priority-circle {
+    width: 32px; height: 32px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 9999px;
+    font-size: 13px; font-weight: 700;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+
+<!-- アンビエントグラデーション背景 -->
+<div class="ambient-wrap">
+  <div class="blob blob-1"></div>
+  <div class="blob blob-2"></div>
+  <div class="blob blob-3"></div>
+</div>
+
+<div class="main-bg">
+
+  <!-- ===== AnalysisHeader ===== -->
+  <header class="analysis-header">
+    <div class="analysis-header-inner">
+      <div class="flex items-center gap-3">
+        <div style="width:28px;height:28px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border-radius:6px;display:flex;align-items:center;justify-content:center;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+        </div>
+        <span class="text-sm font-semibold text-dark">GrowReporter</span>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="date-picker-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#637381" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          2026/02/18 〜 2026/03/19
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== コンテンツ ===== -->
+  <div class="content-area">
+
+    <!-- ページタイトル（A案レイアウト） -->
+    <div style="margin-bottom:24px;">
+      <h2 class="text-lg font-bold text-dark">分析する - AI総合分析</h2>
+      <p class="text-sm text-body" style="margin-top:2px;">全データを横断してAIが自動分析し、サイトの現状と次に取り組むべきことを明らかにします</p>
+    </div>
+
+    <!-- ===== AI分析エリア（TabbedNoteAndAI と同じ構造） ===== -->
+    <div class="ai-gradient-border">
+      <!-- タブヘッダー -->
+      <div class="tab-nav">
+        <button class="tab-btn active">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/><path d="M18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456z"/></svg>
+          AI総合分析
+        </button>
+        <button class="tab-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          メモ
+        </button>
+      </div>
+
+      <!-- タブコンテンツ -->
+      <div class="tab-content">
+
+        <!-- AI分析ヘッダー（AIAnalysisSection と同じ） -->
+        <div class="flex items-center justify-between" style="margin-bottom:24px;">
+          <div class="flex items-center gap-3">
+            <div style="width:40px;height:40px;border-radius:9999px;background:linear-gradient(135deg,#3b82f6,#ec4899);display:flex;align-items:center;justify-content:center;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-dark" style="line-height:1.3;">AI総合分析結果</h3>
+              <p class="text-xs text-body">2026/03/20 09:15 生成 (前回の分析結果)</p>
+            </div>
+          </div>
+          <button class="btn-outline">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            再分析
+          </button>
+        </div>
+
+        <!-- ===== 総括サマリー（AI分析テキスト表示エリア） ===== -->
+        <div class="ai-summary-bg" style="margin-bottom:32px;">
+          <p class="text-sm" style="line-height:1.8;color:#334155;">
+            直近30日間でセッション数は前月比<strong style="color:#111928;">+12.3%</strong>（8,420から9,456）と堅調に伸びていますが、コンバージョン率は<strong style="color:#dc2626;">2.8%から2.1%に低下</strong>しています。集客の「量」は改善している一方で、「質」に課題がある状態です。主な原因は、Organic Search経由の新規キーワードに情報収集目的のユーザーが多いことです。一方で、Referral経由のCVRは<strong style="color:#15803d;">4.2%と高水準</strong>を維持しており、この流入源の強化が即効性のある施策です。また、ランディングページ「/service/pricing」の直帰率が78%に悪化しており、早急な改善が必要です。
+          </p>
+        </div>
+
+        <!-- ===== 注目ポイント3つ ===== -->
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:32px;">
+          <div class="glass-card" style="padding:16px 20px;text-align:center;">
+            <div class="text-xs font-medium text-body" style="margin-bottom:4px;">最も注目すべき変化</div>
+            <div class="text-xl font-bold text-dark">CVR -0.7pt</div>
+            <div class="text-xs" style="color:#dc2626;">2.8% から 2.1%</div>
+          </div>
+          <div class="glass-card" style="padding:16px 20px;text-align:center;">
+            <div class="text-xs font-medium text-body" style="margin-bottom:4px;">最大のリスク</div>
+            <div class="text-xl font-bold text-dark">直帰率 78%</div>
+            <div class="text-xs" style="color:#dc2626;">/service/pricing</div>
+          </div>
+          <div class="glass-card" style="padding:16px 20px;text-align:center;">
+            <div class="text-xs font-medium text-body" style="margin-bottom:4px;">最大の機会</div>
+            <div class="text-xl font-bold text-dark">CVR 4.2%</div>
+            <div class="text-xs" style="color:#15803d;">Referral経由</div>
+          </div>
+        </div>
+
+        <!-- ===== セクション群 ===== -->
+        <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:32px;">
+
+          <!-- セクション1: アクセス概況 -->
+          <div class="glass-card" style="overflow:hidden;">
+            <button onclick="toggleSection('s1')" class="flex items-center justify-between" style="width:100%;padding:16px 20px;border:none;background:none;cursor:pointer;text-align:left;">
+              <div class="flex items-center gap-3">
+                <div class="section-icon" style="background:#eff6ff;color:#2563eb;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"/></svg>
+                </div>
+                <div>
+                  <div class="text-sm font-bold text-dark">アクセス概況</div>
+                  <div class="text-xs text-body">サマリー / 月別 / 日別 / 曜日別 / 時間帯別</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="badge badge-green">前月比 +12.3%</span>
+                <svg id="s1-chevron" class="chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#637381" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </button>
+            <div id="s1" class="section-body">
+              <div style="border-top:1px solid rgba(223,228,234,0.5);padding:20px;">
+                <!-- ミニKPI -->
+                <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:20px;">
+                  <div class="mini-kpi">
+                    <div class="text-xs text-body">セッション</div>
+                    <div class="text-lg font-bold text-dark" style="margin-top:2px;">9,456</div>
+                    <div class="text-xs" style="color:#15803d;">+12.3%</div>
+                  </div>
+                  <div class="mini-kpi">
+                    <div class="text-xs text-body">ユーザー</div>
+                    <div class="text-lg font-bold text-dark" style="margin-top:2px;">6,823</div>
+                    <div class="text-xs" style="color:#15803d;">+8.7%</div>
+                  </div>
+                  <div class="mini-kpi">
+                    <div class="text-xs text-body">表示回数</div>
+                    <div class="text-lg font-bold text-dark" style="margin-top:2px;">28,190</div>
+                    <div class="text-xs" style="color:#15803d;">+5.2%</div>
+                  </div>
+                  <div class="mini-kpi">
+                    <div class="text-xs text-body">エンゲージメント率</div>
+                    <div class="text-lg font-bold text-dark" style="margin-top:2px;">62.4%</div>
+                    <div class="text-xs" style="color:#dc2626;">-1.8pt</div>
+                  </div>
+                </div>
+
+                <!-- 分析テキスト -->
+                <div style="font-size:13px;line-height:1.9;color:#475569;margin-bottom:16px;">
+                  <p>月別トレンドでは<strong style="color:#111928;">4ヶ月連続でセッション数が増加傾向</strong>にあり、前年同月比でも+22%と好調です。</p>
+                  <p style="margin-top:8px;">曜日別では<strong style="color:#111928;">火曜日と水曜日にセッションが集中</strong>（全体の35%）し、週末は平日の約40%です。BtoB寄りのアクセスパターンが見られます。時間帯別では10:00〜11:00がピークで、18:00以降に小さな第2ピークがあります。</p>
+                  <p style="margin-top:8px;">エンゲージメント率の微減は、新規ユーザー増加（+18%）に伴う一時的な傾向と推測されます。再訪問ユーザーのエンゲージメント率は68%で安定しています。</p>
+                </div>
+
+                <!-- 詳細リンク -->
+                <div class="flex flex-wrap gap-2">
+                  <a href="#" class="detail-link">全体サマリー <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">月別 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">日別 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">曜日別 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">時間帯別 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- セクション2: ユーザー分析 -->
+          <div class="glass-card" style="overflow:hidden;">
+            <button onclick="toggleSection('s2')" class="flex items-center justify-between" style="width:100%;padding:16px 20px;border:none;background:none;cursor:pointer;text-align:left;">
+              <div class="flex items-center gap-3">
+                <div class="section-icon" style="background:#f5f3ff;color:#7c3aed;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                </div>
+                <div>
+                  <div class="text-sm font-bold text-dark">ユーザー分析</div>
+                  <div class="text-xs text-body">デバイス / 地域 / 年齢 / 性別 / 新規と再訪問</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="badge badge-violet">新規ユーザー +18.2%</span>
+                <svg id="s2-chevron" class="chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#637381" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </button>
+            <div id="s2" class="section-body">
+              <div style="border-top:1px solid rgba(223,228,234,0.5);padding:20px;">
+                <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:20px;">
+                  <div class="mini-kpi" style="text-align:center;">
+                    <div class="text-xs text-body">モバイル</div>
+                    <div class="text-base font-bold text-dark" style="margin-top:2px;">72%</div>
+                  </div>
+                  <div class="mini-kpi" style="text-align:center;">
+                    <div class="text-xs text-body">デスクトップ</div>
+                    <div class="text-base font-bold text-dark" style="margin-top:2px;">25%</div>
+                  </div>
+                  <div class="mini-kpi" style="text-align:center;">
+                    <div class="text-xs text-body">新規率</div>
+                    <div class="text-base font-bold text-dark" style="margin-top:2px;">64%</div>
+                  </div>
+                  <div class="mini-kpi" style="text-align:center;">
+                    <div class="text-xs text-body">最多年齢層</div>
+                    <div class="text-base font-bold text-dark" style="margin-top:2px;">25-34歳</div>
+                  </div>
+                  <div class="mini-kpi" style="text-align:center;">
+                    <div class="text-xs text-body">最多地域</div>
+                    <div class="text-base font-bold text-dark" style="margin-top:2px;">東京</div>
+                  </div>
+                </div>
+                <div style="font-size:13px;line-height:1.9;color:#475569;margin-bottom:16px;">
+                  <p>訪問者の72%がスマートフォンからのアクセスです。ただし<strong style="color:#111928;">スマートフォンのコンバージョン率はパソコンの約半分</strong>（1.4% 対 3.2%）なので、スマートフォンでの使いやすさを改善すると成果全体が伸びる見込みです。</p>
+                  <p style="margin-top:8px;">年齢層では25-34歳が最多（38%）ですが、<strong style="color:#111928;">45-54歳が前月比+42%と急増</strong>しています。この年齢層はコンバージョン率3.8%と最も高く、注目すべきターゲットです。</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <a href="#" class="detail-link">ユーザー属性 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- セクション3: 集客分析 -->
+          <div class="glass-card" style="overflow:hidden;">
+            <button onclick="toggleSection('s3')" class="flex items-center justify-between" style="width:100%;padding:16px 20px;border:none;background:none;cursor:pointer;text-align:left;">
+              <div class="flex items-center gap-3">
+                <div class="section-icon" style="background:#f0fdf4;color:#16a34a;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
+                </div>
+                <div>
+                  <div class="text-sm font-bold text-dark">集客分析</div>
+                  <div class="text-xs text-body">集客チャネル / 流入キーワード / 被リンク元</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="badge badge-green">Organic +15.6%</span>
+                <svg id="s3-chevron" class="chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#637381" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </button>
+            <div id="s3" class="section-body">
+              <div style="border-top:1px solid rgba(223,228,234,0.5);padding:20px;">
+                <!-- チャネル別バー -->
+                <div style="margin-bottom:20px;">
+                  <div style="margin-bottom:10px;">
+                    <div class="flex items-center justify-between text-xs" style="margin-bottom:4px;">
+                      <span class="font-medium text-dark">Organic Search（自然検索）</span>
+                      <span class="text-body">4,890 (51.7%) <span style="color:#15803d;">+15.6%</span></span>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" style="width:51.7%;background:#3b82f6;"></div></div>
+                  </div>
+                  <div style="margin-bottom:10px;">
+                    <div class="flex items-center justify-between text-xs" style="margin-bottom:4px;">
+                      <span class="font-medium text-dark">Direct（直接アクセス）</span>
+                      <span class="text-body">2,080 (22.0%) <span style="color:#15803d;">+3.2%</span></span>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" style="width:22%;background:#6366f1;"></div></div>
+                  </div>
+                  <div style="margin-bottom:10px;">
+                    <div class="flex items-center justify-between text-xs" style="margin-bottom:4px;">
+                      <span class="font-medium text-dark">Referral（他サイトからの紹介）</span>
+                      <span class="text-body">1,420 (15.0%) <span style="color:#15803d;">+28.4%</span></span>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" style="width:15%;background:#8b5cf6;"></div></div>
+                  </div>
+                  <div>
+                    <div class="flex items-center justify-between text-xs" style="margin-bottom:4px;">
+                      <span class="font-medium text-dark">Social / Paid / Other</span>
+                      <span class="text-body">1,066 (11.3%)</span>
+                    </div>
+                    <div class="progress-track"><div class="progress-fill" style="width:11.3%;background:#d1d5db;"></div></div>
+                  </div>
+                </div>
+
+                <div style="font-size:13px;line-height:1.9;color:#475569;margin-bottom:16px;">
+                  <p>自然検索が全体の半分以上を占めています。ただし新しく流入が増えたキーワードは「○○ 比較」「○○ 無料」など<strong style="color:#111928;">情報収集段階のユーザーが多く、すぐに成果にはつながりにくい</strong>傾向があります。</p>
+                  <p style="margin-top:8px;">一方で<strong style="color:#111928;">他サイトからの紹介（Referral）は+28.4%と大幅増</strong>し、コンバージョン率も4.2%と非常に優秀です。業界メディアAに掲載された記事がきっかけで、質の高い訪問者が増えています。</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <a href="#" class="detail-link">集客チャネル <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">流入キーワード <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">被リンク元 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- セクション4: コンテンツ分析 -->
+          <div class="glass-card" style="overflow:hidden;">
+            <button onclick="toggleSection('s4')" class="flex items-center justify-between" style="width:100%;padding:16px 20px;border:none;background:none;cursor:pointer;text-align:left;">
+              <div class="flex items-center gap-3">
+                <div class="section-icon" style="background:#fffbeb;color:#d97706;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                </div>
+                <div>
+                  <div class="text-sm font-bold text-dark">コンテンツ分析</div>
+                  <div class="text-xs text-body">ページ別 / 分類別 / LP / ダウンロード / 外部リンク / フロー</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="badge badge-red">LP直帰率 +11pt</span>
+                <svg id="s4-chevron" class="chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#637381" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </button>
+            <div id="s4" class="section-body">
+              <div style="border-top:1px solid rgba(223,228,234,0.5);padding:20px;">
+                <!-- ページテーブル -->
+                <div style="border:1px solid rgba(223,228,234,0.5);border-radius:8px;overflow:hidden;margin-bottom:20px;">
+                  <table class="data-table">
+                    <thead>
+                      <tr>
+                        <th>ページ</th>
+                        <th class="right">表示回数</th>
+                        <th class="right">直帰率</th>
+                        <th class="right">CVR</th>
+                        <th class="right">前月比</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td class="bold">/</td>
+                        <td class="right">5,210</td>
+                        <td class="right">42%</td>
+                        <td class="right">1.8%</td>
+                        <td class="right" style="color:#15803d;">+8%</td>
+                      </tr>
+                      <tr>
+                        <td class="bold">/service/pricing</td>
+                        <td class="right">3,840</td>
+                        <td class="right bold" style="color:#dc2626;">78%</td>
+                        <td class="right" style="color:#dc2626;">0.9%</td>
+                        <td class="right" style="color:#dc2626;">-22%</td>
+                      </tr>
+                      <tr>
+                        <td class="bold">/blog/seo-guide</td>
+                        <td class="right">2,890</td>
+                        <td class="right">55%</td>
+                        <td class="right">2.1%</td>
+                        <td class="right" style="color:#15803d;">+35%</td>
+                      </tr>
+                      <tr>
+                        <td class="bold">/contact</td>
+                        <td class="right">1,280</td>
+                        <td class="right">18%</td>
+                        <td class="right bold" style="color:#15803d;">12.4%</td>
+                        <td class="right" style="color:#15803d;">+5%</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div style="font-size:13px;line-height:1.9;color:#475569;margin-bottom:16px;">
+                  <p><strong style="color:#111928;">/service/pricing（料金ページ）が最大の課題です。</strong>アクセスは多い（2位）のに、78%の人がすぐに離脱しています。料金体系の見せ方やページの第一印象を改善することで、成果が大きく伸びる可能性があります。</p>
+                  <p style="margin-top:8px;">逆に成功しているのが「/blog/seo-guide」です。このブログ記事からお問い合わせページへの遷移率が8.2%あり、<strong style="color:#111928;">良質なコンテンツが成果につながるお手本</strong>のようなページです。</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <a href="#" class="detail-link">ページ別 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">ページ分類別 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">ランディングページ <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">ファイルDL <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">外部リンク <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">ページフロー <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- セクション5: コンバージョン分析 -->
+          <div class="glass-card" style="overflow:hidden;">
+            <button onclick="toggleSection('s5')" class="flex items-center justify-between" style="width:100%;padding:16px 20px;border:none;background:none;cursor:pointer;text-align:left;">
+              <div class="flex items-center gap-3">
+                <div class="section-icon" style="background:#fef2f2;color:#dc2626;">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                </div>
+                <div>
+                  <div class="text-sm font-bold text-dark">コンバージョン分析</div>
+                  <div class="text-xs text-body">コンバージョン一覧 / 逆算フロー</div>
+                </div>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="badge badge-red">CVR -0.7pt</span>
+                <svg id="s5-chevron" class="chevron" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#637381" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </div>
+            </button>
+            <div id="s5" class="section-body">
+              <div style="border-top:1px solid rgba(223,228,234,0.5);padding:20px;">
+                <!-- CVイベント -->
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+                  <div style="border:1px solid rgba(223,228,234,0.5);border-radius:8px;padding:12px 16px;">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs text-body">お問い合わせ完了</span>
+                      <span class="badge badge-red">-18%</span>
+                    </div>
+                    <div class="text-xl font-bold text-dark" style="margin-top:4px;">68</div>
+                    <div class="text-xs text-body">前月: 83</div>
+                  </div>
+                  <div style="border:1px solid rgba(223,228,234,0.5);border-radius:8px;padding:12px 16px;">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs text-body">資料請求</span>
+                      <span class="badge badge-green">+12%</span>
+                    </div>
+                    <div class="text-xl font-bold text-dark" style="margin-top:4px;">45</div>
+                    <div class="text-xs text-body">前月: 40</div>
+                  </div>
+                  <div style="border:1px solid rgba(223,228,234,0.5);border-radius:8px;padding:12px 16px;">
+                    <div class="flex items-center justify-between">
+                      <span class="text-xs text-body">無料トライアル</span>
+                      <span class="badge badge-green">+5%</span>
+                    </div>
+                    <div class="text-xl font-bold text-dark" style="margin-top:4px;">22</div>
+                    <div class="text-xs text-body">前月: 21</div>
+                  </div>
+                </div>
+
+                <!-- ファネル -->
+                <div style="background:#f9fafb;border-radius:8px;padding:16px 20px;margin-bottom:20px;">
+                  <div class="text-xs font-medium text-body" style="margin-bottom:10px;">お問い合わせまでの流れ（逆算フロー）</div>
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1">
+                      <div class="text-xs text-body" style="margin-bottom:4px;">サイト訪問</div>
+                      <div class="funnel-bar" style="width:100%;background:#3b82f6;"></div>
+                      <div class="text-xs font-medium text-dark" style="margin-top:3px;">9,456</div>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    <div class="flex-1">
+                      <div class="text-xs text-body" style="margin-bottom:4px;">料金ページ</div>
+                      <div class="funnel-bar" style="width:40%;background:#6366f1;"></div>
+                      <div class="text-xs font-medium text-dark" style="margin-top:3px;">3,840</div>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    <div class="flex-1">
+                      <div class="text-xs text-body" style="margin-bottom:4px;">フォーム閲覧</div>
+                      <div class="funnel-bar" style="width:14%;background:#8b5cf6;"></div>
+                      <div class="text-xs font-medium text-dark" style="margin-top:3px;">1,280</div>
+                    </div>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+                    <div class="flex-1">
+                      <div class="text-xs text-body" style="margin-bottom:4px;">送信完了</div>
+                      <div class="funnel-bar" style="width:2%;background:#13C296;min-width:4px;"></div>
+                      <div class="text-xs font-medium text-dark" style="margin-top:3px;">68</div>
+                    </div>
+                  </div>
+                  <div class="flex gap-2 text-xs text-body" style="margin-top:8px;">
+                    <span>料金ページからフォーム: <strong class="text-dark">33.3%</strong></span>
+                    <span style="color:#d1d5db;">|</span>
+                    <span>フォームから完了: <strong class="text-dark">5.3%</strong></span>
+                    <span style="color:#d1d5db;">|</span>
+                    <span>全体CVR: <strong class="text-dark">0.72%</strong></span>
+                  </div>
+                </div>
+
+                <div style="font-size:13px;line-height:1.9;color:#475569;margin-bottom:16px;">
+                  <p>成果（コンバージョン）の合計は135件で前月の144件から減少しています。特に<strong style="color:#111928;">お問い合わせ完了が-18%と大きく落ち込んでいます。</strong>フォームを見た人のうち、実際に送信まで完了する割合が5.3%と低く、フォームの使いやすさに改善余地があります。</p>
+                  <p style="margin-top:8px;">一方で「資料請求」は+12%と好調です。<strong style="color:#111928;">ハードルの低い成果ポイントへの誘導がうまく機能</strong>しています。</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <a href="#" class="detail-link">コンバージョン一覧 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                  <a href="#" class="detail-link">逆算フロー <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg></a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /セクション群 -->
+
+        <!-- ===== 改善提案（AIAnalysisSection の recommendations と同じ構造） ===== -->
+        <div>
+          <h4 class="text-sm font-semibold text-dark" style="margin-bottom:12px;">改善提案</h4>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+
+            <!-- 提案1 -->
+            <div class="glass-card action-card" style="padding:16px 20px;">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2" style="margin-bottom:6px;">
+                    <div class="priority-circle" style="background:#fef2f2;color:#dc2626;">1</div>
+                    <h5 class="text-sm font-medium text-dark">/service/pricing ページの第一印象を改善する</h5>
+                    <span class="badge badge-red">緊急</span>
+                  </div>
+                  <p class="text-sm text-body" style="padding-left:44px;line-height:1.7;">
+                    直帰率78%、CVR 0.9%と大幅に悪化しています。料金体系をわかりやすく整理し、「このサービスを使うメリット」が一目で伝わるようにファーストビューを見直しましょう。ボタンの配置も改善すると効果的です。
+                  </p>
+                  <div class="flex flex-wrap gap-1" style="padding-left:44px;margin-top:8px;">
+                    <span class="tag">コンテンツ</span>
+                    <span class="tag">LP最適化</span>
+                  </div>
+                </div>
+                <button class="btn-primary-sm shrink-0" style="margin-top:4px;">+ タスクに追加</button>
+              </div>
+            </div>
+
+            <!-- 提案2 -->
+            <div class="glass-card action-card" style="padding:16px 20px;">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2" style="margin-bottom:6px;">
+                    <div class="priority-circle" style="background:#fffbeb;color:#b45309;">2</div>
+                    <h5 class="text-sm font-medium text-dark">スマートフォンでの操作性を改善する</h5>
+                    <span class="badge badge-amber">重要</span>
+                  </div>
+                  <p class="text-sm text-body" style="padding-left:44px;line-height:1.7;">
+                    訪問者の72%がスマートフォンですが、CVRはパソコンの半分しかありません。フォーム入力のしやすさ、ボタンのタップしやすさ、ページの読み込み速度を見直すことで、全体の成果が底上げされます。
+                  </p>
+                  <div class="flex flex-wrap gap-1" style="padding-left:44px;margin-top:8px;">
+                    <span class="tag">UX/UI</span>
+                    <span class="tag">モバイル</span>
+                  </div>
+                </div>
+                <button class="btn-primary-sm shrink-0" style="margin-top:4px;">+ タスクに追加</button>
+              </div>
+            </div>
+
+            <!-- 提案3 -->
+            <div class="glass-card action-card" style="padding:16px 20px;">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2" style="margin-bottom:6px;">
+                    <div class="priority-circle" style="background:#eff6ff;color:#2563eb;">3</div>
+                    <h5 class="text-sm font-medium text-dark">業界メディアAとの連携を強化する</h5>
+                    <span class="badge badge-blue">機会</span>
+                  </div>
+                  <p class="text-sm text-body" style="padding-left:44px;line-height:1.7;">
+                    業界メディアAからの訪問者はCVR 4.2%と最も成果が出ています。寄稿記事を増やしたり、専用のランディングページを用意することで、月あたり15〜25件のコンバージョン増が見込めます。
+                  </p>
+                  <div class="flex flex-wrap gap-1" style="padding-left:44px;margin-top:8px;">
+                    <span class="tag">集客</span>
+                    <span class="tag">PR</span>
+                  </div>
+                </div>
+                <button class="btn-primary-sm shrink-0" style="margin-top:4px;">+ タスクに追加</button>
+              </div>
+            </div>
+
+            <!-- 提案4 -->
+            <div class="glass-card action-card" style="padding:16px 20px;">
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-center gap-2" style="margin-bottom:6px;">
+                    <div class="priority-circle" style="background:#f0fdf4;color:#16a34a;">4</div>
+                    <h5 class="text-sm font-medium text-dark">成功しているブログ記事のパターンを横展開する</h5>
+                    <span class="badge badge-green">成長</span>
+                  </div>
+                  <p class="text-sm text-body" style="padding-left:44px;line-height:1.7;">
+                    「SEOガイド」記事はアクセス+35%で、お問い合わせページへの遷移も8.2%と優秀です。この「役に立つ記事からお問い合わせに導く」パターンを、他のテーマの記事にも展開しましょう。
+                  </p>
+                  <div class="flex flex-wrap gap-1" style="padding-left:44px;margin-top:8px;">
+                    <span class="tag">SEO</span>
+                    <span class="tag">コンテンツ</span>
+                  </div>
+                </div>
+                <button class="btn-primary-sm shrink-0" style="margin-top:4px;">+ タスクに追加</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- サイト改善案を生成するボタン（既存と同じ） -->
+        <div style="margin-top:32px;padding-top:24px;border-top:1px solid #e5e7eb;display:flex;flex-direction:column;align-items:center;">
+          <button style="display:inline-flex;align-items:center;gap:8px;padding:12px 24px;font-size:14px;font-weight:500;color:#fff;background:linear-gradient(135deg,#3b82f6,#8b5cf6);border:none;border-radius:0.5rem;cursor:pointer;box-shadow:0 4px 14px -3px rgba(55,88,249,0.4);transition:all 0.2s;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+            サイト改善案を生成する
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          </button>
+          <p class="text-xs text-body" style="margin-top:8px;text-align:center;">過去365日分のデータを分析し、最適な改善提案を生成します</p>
+        </div>
+
+      </div><!-- /tab-content -->
+    </div><!-- /ai-gradient-border -->
+
+    <!-- 余白 -->
+    <div style="height:64px;"></div>
+
+  </div><!-- /content-area -->
+</div><!-- /main-bg -->
+
+<script>
+function toggleSection(id) {
+  const el = document.getElementById(id);
+  const chevron = document.getElementById(id + '-chevron');
+  el.classList.toggle('collapsed');
+  chevron.classList.toggle('rotated');
+}
+</script>
+
+</body>
+</html>
