@@ -43,7 +43,7 @@ export async function sendTestReportEmailHandler(req) {
     if (reportType === 'account') {
       const { subject, html, text } = generateAdminCreatedAccountEmail({
         userName: data.userName || '和波 悠生',
-        email: data.testEmail || 'ads@grow-group.jp',
+        email: data.testEmail || 'info@grow-reporter.com',
         password: data.testPassword || '00001724',
       });
       await sendEmailDirect({ to: recipientEmail, subject, html, text });
