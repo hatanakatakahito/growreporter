@@ -541,7 +541,7 @@ export default function AdminSiteDetail() {
                     )}
                   </div>
                   {typeof event === 'object' && event.isActive !== undefined && (
-                    <span className={`text-xs ${event.isActive ? 'text-green-600' : 'text-gray-400'}`}>
+                    <span className={`text-xs ${event.isActive ? 'text-green-600' : 'text-body-color'}`}>
                       {event.isActive ? '有効' : '無効'}
                     </span>
                   )}

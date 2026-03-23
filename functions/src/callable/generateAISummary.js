@@ -1437,18 +1437,37 @@ function formatRawDataToMetrics(rawData, pageType) {
       };
 
     case 'comprehensive_improvement':
-      // 包括的改善案生成
+      // 包括的改善案生成（全データソース）
       return {
-        monthlyTrend: rawData.monthlyTrend || {},
+        // 全体サマリー
         summary: rawData.summary || {},
+        // ユーザー属性
+        demographics: rawData.demographics || null,
+        // 時系列
+        monthlyTrend: rawData.monthlyTrend || {},
+        dailyData: rawData.dailyData || null,
+        weeklyData: rawData.weeklyData || null,
+        hourlyData: rawData.hourlyData || null,
+        // 集客
         channels: rawData.channels || [],
-        landingPages: rawData.landingPages || [],
+        keywords: rawData.keywords || [],
+        referrals: rawData.referrals || [],
+        // ページ
         pages: rawData.pages || [],
         pageCategories: rawData.pageCategories || [],
+        landingPages: rawData.landingPages || [],
+        fileDownloads: rawData.fileDownloads || [],
+        externalLinks: rawData.externalLinks || [],
+        pageFlow: rawData.pageFlow || [],
+        // コンバージョン
         monthlyConversions: rawData.monthlyConversions || {},
-        improvementKnowledge: rawData.improvementKnowledge || [],
+        reverseFlow: rawData.reverseFlow || [],
+        // AI総合分析
+        aiComprehensiveAnalysis: rawData.aiComprehensiveAnalysis || null,
+        // スクレイピング・診断・構造
         scrapingData: rawData.scrapingData || { pages: [], meta: null, totalPages: 0 },
         diagnosisData: rawData.diagnosisData || null,
+        improvementKnowledge: rawData.improvementKnowledge || [],
       };
 
     default:

@@ -5,12 +5,12 @@ import { Shield } from 'lucide-react';
 
 /**
  * アドミン画面のヘッダー
+ * メインアプリのHeader.jsx に合わせたデザイン
  */
 export default function AdminHeader() {
   const { currentUser, userProfile } = useAuth();
   const { adminRole } = useAdmin();
 
-  // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
   const getUserName = () => {
     if (userProfile?.lastName && userProfile?.firstName) {
       return `${userProfile.lastName} ${userProfile.firstName}`;
@@ -20,34 +20,32 @@ export default function AdminHeader() {
 
   const userInitial = getUserName().charAt(0);
 
-  // ロールバッジの色
   const getRoleBadgeColor = (role) => {
     switch (role) {
       case 'admin':
-        return 'bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400';
+        return 'bg-red-100 text-red-600';
       case 'editor':
-        return 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400';
+        return 'bg-blue-100 text-blue-600';
       case 'viewer':
-        return 'bg-gray-100 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400';
+        return 'bg-gray-100 text-body-color';
       default:
-        return 'bg-gray-100 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400';
+        return 'bg-gray-100 text-body-color';
     }
   };
 
   return (
-    <div className="bg-white border-b border-gray-200 h-20 dark:bg-dark-2 dark:border-dark-3">
+    <div className="bg-white border-b border-gray-200 h-20 glass-header sticky top-0 z-40">
       <div className="mx-auto max-w-content px-6 h-full flex items-center">
         <div className="flex items-center justify-between w-full">
           {/* タイトル */}
           <div>
-            <h1 className="text-2xl font-bold text-dark dark:text-white">
+            <h1 className="text-xl font-bold text-dark">
               管理画面
             </h1>
           </div>
 
           {/* 右側メニュー */}
           <div className="flex items-center gap-4">
-            {/* ユーザー情報 */}
             <div className="flex items-center gap-3">
               {currentUser?.photoURL ? (
                 <img
@@ -62,7 +60,7 @@ export default function AdminHeader() {
                 </div>
               )}
               <div>
-                <p className="text-sm font-medium text-dark dark:text-white">
+                <p className="text-sm font-medium text-dark">
                   {getUserName()}
                 </p>
                 {adminRole && (
@@ -79,4 +77,3 @@ export default function AdminHeader() {
     </div>
   );
 }
-

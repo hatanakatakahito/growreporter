@@ -166,7 +166,7 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
                 <select
                   value={selectedMetric}
                   onChange={(e) => setSelectedMetric(e.target.value)}
-                  className="w-full appearance-none rounded-md border border-stroke bg-transparent px-4 py-2 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
+                  className="w-full appearance-none [background-image:none] rounded-md border border-stroke bg-transparent px-4 py-2 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
                 >
                   <option value="">選択してください</option>
                   

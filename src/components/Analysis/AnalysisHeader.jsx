@@ -154,7 +154,7 @@ export default function AnalysisHeader({
               <select
                 value={selectedSiteId || ''}
                 onChange={(e) => handleSiteChange(e.target.value)}
-                className="h-auto w-auto min-w-[200px] max-w-[400px] cursor-pointer rounded-lg border border-stroke bg-white py-2 pl-9 pr-8 text-sm font-medium text-dark shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:border-primary focus:outline-none [background-image:none]"
+                className="h-auto w-auto min-w-[200px] max-w-[400px] cursor-pointer appearance-none [background-image:none] rounded-lg border border-stroke bg-white py-2 pl-9 pr-8 text-sm font-medium text-dark shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:border-primary focus:outline-none"
               >
                 <option value="">サイトを選択</option>
                 {sites.map((site) => (

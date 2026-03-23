@@ -2,7 +2,7 @@ import { onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { runScrapingForSite } from '../callable/scrapeTop100Pages.js';
-import { runSiteDiagnosisInternal } from '../callable/runSiteDiagnosis.js';
+
 
 /** トリガー設定（index で遅延読み込み時に使用） */
 export const onScrapingJobCreatedTriggerConfig = {
@@ -60,8 +60,21 @@ export async function onScrapingJobCreatedHandler(event) {
 
       logger.info('[onScrapingJobCreated] スクレイピング完了', { jobId, siteId, successCount: result.successCount });
 
+      // スクレイピング完了の通知をアラートに保存
+      try {
+        await db.collection('sites').doc(siteId).collection('alerts').add({
+          type: 'scraping_completed',
+          message: `ページスクレイピングが完了しました（成功: ${result.successCount ?? 0}件、失敗: ${result.failedCount ?? 0}件）`,
+          createdAt: new Date(),
+        });
+        logger.info('[onScrapingJobCreated] スクレイピング完了アラートを保存', { siteId });
+      } catch (alertError) {
+        logger.warn('[onScrapingJobCreated] アラート保存エラー', { siteId, error: alertError.message });
+      }
+
       // スクレイピング完了後にサイト診断を自動実行（プラン消費なし）
       try {
+        const { runSiteDiagnosisInternal } = await import('../callable/runSiteDiagnosis.js');
         logger.info('[onScrapingJobCreated] 自動サイト診断を開始', { siteId });
         const diagResult = await runSiteDiagnosisInternal(siteId);
         if (diagResult) {

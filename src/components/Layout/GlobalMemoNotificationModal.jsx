@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Globe, Bell, AlertTriangle } from 'lucide-react';
+import { FileText, Globe, Bell, AlertTriangle, CheckCircle } from 'lucide-react';
 import { getPageTypeLabel } from '../../constants/pageTypes';
 import { useSite } from '../../contexts/SiteContext';
 import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
@@ -24,6 +24,8 @@ const ALERT_TYPE_LABELS = {
   conversionRate_surge: 'コンバージョン率の上昇',
   bounceRate_drop: '直帰率の低下',
   bounceRate_surge: '直帰率の上昇',
+  screenshot_completed: 'スクリーンショット取得完了',
+  scraping_completed: 'ページスクレイピング完了',
 };
 
 const getAlertTypeLabel = (type) => ALERT_TYPE_LABELS[type] || type || 'アラート';
@@ -158,26 +160,39 @@ export default function GlobalMemoNotificationModal({
           ) : (
             <div className="space-y-3">
               {/* アラート通知 */}
-              {displayAlerts.map((alert) => (
+              {displayAlerts.map((alert) => {
+                const isCompletionAlert = alert.type === 'screenshot_completed' || alert.type === 'scraping_completed';
+                return (
                 <div
                   key={`alert-${alert.id}`}
                   onClick={() => handleAlertClick(alert)}
-                  className="cursor-pointer rounded-lg border border-amber-200 bg-amber-50/50 p-3 transition hover:border-amber-300 hover:bg-amber-50 dark:border-amber-900/30 dark:bg-amber-900/10 dark:hover:border-amber-800/50 dark:hover:bg-amber-900/20"
+                  className={`cursor-pointer rounded-lg border p-3 transition ${
+                    isCompletionAlert
+                      ? 'border-green-200 bg-green-50/50 hover:border-green-300 hover:bg-green-50 dark:border-green-900/30 dark:bg-green-900/10 dark:hover:border-green-800/50 dark:hover:bg-green-900/20'
+                      : 'border-amber-200 bg-amber-50/50 hover:border-amber-300 hover:bg-amber-50 dark:border-amber-900/30 dark:bg-amber-900/10 dark:hover:border-amber-800/50 dark:hover:bg-amber-900/20'
+                  }`}
                 >
-                  {/* サイト名 + アラートバッジ */}
+                  {/* サイト名 + バッジ */}
                   <div className="mb-2 flex items-center gap-1.5">
                     <Globe className="h-3 w-3 text-primary" />
                     <span className="text-xs font-medium text-primary">
                       {alert.siteName}
                     </span>
-                    <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
-                      アラート
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
+                      isCompletionAlert
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                        : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400'
+                    }`}>
+                      {isCompletionAlert ? '完了' : 'アラート'}
                     </span>
                   </div>
 
                   {/* アラートタイトル（日本語化） */}
                   <div className="mb-1 flex items-center gap-1.5">
-                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                    {isCompletionAlert
+                      ? <CheckCircle className="h-3.5 w-3.5 shrink-0 text-green-500" />
+                      : <AlertTriangle className="h-3.5 w-3.5 shrink-0 text-amber-500" />
+                    }
                     <span className="text-sm font-medium text-dark dark:text-white">
                       {getAlertTypeLabel(alert.type)}
                     </span>
@@ -195,7 +210,8 @@ export default function GlobalMemoNotificationModal({
                     {formatDate(alert.createdAt)}
                   </p>
                 </div>
-              ))}
+                );
+              })}
 
               {/* メモ通知 */}
               {displayMemos.map((memo) => (

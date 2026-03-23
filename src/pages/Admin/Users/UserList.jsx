@@ -172,7 +172,7 @@ export default function UserList() {
             <button
               onClick={handleExportCSV}
               disabled={!users || users.length === 0}
-              className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+              className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
             >
               <Download className="h-4 w-4" />
               CSVエクスポート
@@ -193,7 +193,7 @@ export default function UserList() {
           <div className="overflow-hidden rounded-lg border border-stroke bg-white shadow-sm dark:border-dark-3 dark:bg-dark-2">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="border-b border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
+                <thead className="border-b-2 border-primary-mid/20 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5">
                   <tr>
                     <th className="px-4 py-3 text-left text-xs font-semibold text-dark dark:text-white">
                       ユーザー
@@ -226,7 +226,7 @@ export default function UserList() {
                     <tr
                       key={user.uid}
                       onClick={() => handleUserClick(user.uid)}
-                      className="cursor-pointer border-b border-stroke transition hover:bg-gray-50 dark:border-dark-3 dark:hover:bg-dark-3"
+                      className="cursor-pointer border-b border-stroke transition hover:bg-gray-1 dark:border-dark-3 dark:hover:bg-dark-3"
                     >
                       <td className="px-4 py-4">
                         <div className="flex items-center gap-3">
@@ -330,7 +330,7 @@ export default function UserList() {
                 <button
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={!pagination.hasPrevPage}
-                  className="flex items-center gap-1 rounded-lg border border-stroke bg-white px-3 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                  className="flex items-center gap-1 rounded-lg border border-stroke bg-white px-3 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
                 >
                   <ChevronLeft className="h-4 w-4" />
                   前へ
@@ -341,7 +341,7 @@ export default function UserList() {
                 <button
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={!pagination.hasNextPage}
-                  className="flex items-center gap-1 rounded-lg border border-stroke bg-white px-3 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                  className="flex items-center gap-1 rounded-lg border border-stroke bg-white px-3 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
                 >
                   次へ
                   <ChevronRight className="h-4 w-4" />

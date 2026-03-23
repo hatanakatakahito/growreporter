@@ -2,21 +2,36 @@ import React, { useState, useEffect } from 'react';
 import { setPageTitle } from '../utils/pageTitle';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useSite } from '../contexts/SiteContext';
 import { db, functions } from '../config/firebase';
 import { collection, query, where, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
+import UpgradeModal from '@/components/common/UpgradeModal';
 
 export default function SiteList() {
   const [sites, setSites] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const { currentUser, userProfile } = useAuth();
+  const { maxSites } = useSite();
   const navigate = useNavigate();
   
   const memberRole = userProfile?.memberRole || 'owner';
   const isOwner = memberRole === 'owner';
+
+  // サイト上限チェック（setupCompleted済みサイトのみカウント）
+  const completedSitesCount = sites.filter(s => s.setupCompleted === true).length;
+  const canAddSite = completedSitesCount < maxSites;
+
+  const handleNewSite = (e) => {
+    if (!canAddSite) {
+      e.preventDefault();
+      setIsUpgradeModalOpen(true);
+    }
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -154,6 +169,7 @@ export default function SiteList() {
           </div>
           <Link
             to="/sites/new"
+            onClick={handleNewSite}
             className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -307,6 +323,12 @@ export default function SiteList() {
         </div>
       </div>
     </div>
+
+      {/* プランアップグレードモーダル */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+      />
 
       {/* 削除確認モーダル */}
       {deleteTarget && (

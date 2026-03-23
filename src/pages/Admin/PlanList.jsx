@@ -56,7 +56,7 @@ export default function PlanList() {
       <div className="overflow-x-auto rounded-lg border border-stroke bg-white shadow-sm dark:border-dark-3 dark:bg-dark-2">
         <table className="w-full table-fixed text-sm">
           <thead>
-            <tr className="border-b border-stroke dark:border-dark-3">
+            <tr className="border-b-2 border-primary-mid/20 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5">
               <th className="w-1/4 px-4 py-3 text-left font-medium text-body-color dark:text-dark-6">
                 項目
               </th>
@@ -77,7 +77,7 @@ export default function PlanList() {
                 key={row.label}
                 className={
                   i % 2 === 0
-                    ? 'bg-gray-1 dark:bg-dark'
+                    ? 'bg-gray-50 dark:bg-dark'
                     : 'bg-white dark:bg-dark-2'
                 }
               >

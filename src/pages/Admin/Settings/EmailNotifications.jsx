@@ -294,7 +294,7 @@ export default function EmailNotifications() {
                   <select
                     value={weeklyDay}
                     onChange={(e) => setWeeklyDay(Number(e.target.value))}
-                    className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                    className="w-full rounded-lg border border-stroke bg-white dark:bg-dark px-4 py-3 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
                   >
                     {dayOfWeekOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -312,7 +312,7 @@ export default function EmailNotifications() {
                   <select
                     value={weeklyHour}
                     onChange={(e) => setWeeklyHour(Number(e.target.value))}
-                    className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                    className="w-full rounded-lg border border-stroke bg-white dark:bg-dark px-4 py-3 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
                   >
                     {hourOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -359,7 +359,7 @@ export default function EmailNotifications() {
                   <select
                     value={monthlyDay}
                     onChange={(e) => setMonthlyDay(Number(e.target.value))}
-                    className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                    className="w-full rounded-lg border border-stroke bg-white dark:bg-dark px-4 py-3 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
                   >
                     {dayOfMonthOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -380,7 +380,7 @@ export default function EmailNotifications() {
                   <select
                     value={monthlyHour}
                     onChange={(e) => setMonthlyHour(Number(e.target.value))}
-                    className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                    className="w-full rounded-lg border border-stroke bg-white dark:bg-dark px-4 py-3 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
                   >
                     {hourOptions.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -462,7 +462,7 @@ export default function EmailNotifications() {
                   }}
                   placeholder={usersLoading ? '読み込み中...' : 'ユーザーを検索・選択...'}
                   disabled={usersLoading}
-                  className="w-full rounded-lg border border-stroke bg-transparent py-3 pl-10 pr-10 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                  className="w-full rounded-lg border border-stroke bg-white dark:bg-dark py-3 pl-10 pr-10 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
                 />
                 <ChevronDown
                   className={`absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 cursor-pointer text-body-color transition-transform ${userDropdownOpen ? 'rotate-180' : ''}`}
@@ -506,7 +506,7 @@ export default function EmailNotifications() {
               value={selectedSiteId}
               onChange={(e) => setSelectedSiteId(e.target.value)}
               disabled={!selectedUserId || sitesLoading}
-              className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-dark outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-3 dark:text-white"
+              className="w-full rounded-lg border border-stroke bg-white dark:bg-dark px-4 py-3 text-dark outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-3 dark:text-white"
             >
               <option value="">
                 {!selectedUserId

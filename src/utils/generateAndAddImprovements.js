@@ -89,8 +89,12 @@ export async function generateAndAddImprovements(siteId, currentUserEmail, onSta
     
     console.log('[generateAndAddImprovements] 既存の改善案（draft/in_progress）:', existingImprovements.length, '件');
 
-    // Step 2: データ取得（365日分のデータ、直近30日重点）
-    const comprehensiveData = await fetchComprehensiveDataForImprovement(siteId);
+    // Step 2: サイトドキュメント取得（reverse_flow_settings等のため）
+    const siteDoc = await getDoc(doc(db, 'sites', siteId));
+    const siteData = siteDoc.exists() ? siteDoc.data() : null;
+
+    // Step 2.1: データ取得（365日分のデータ、直近30日重点）
+    const comprehensiveData = await fetchComprehensiveDataForImprovement(siteId, siteData);
     console.log('[generateAndAddImprovements] データ取得完了');
 
     // Step 3: AI生成（既存改善案を含める）

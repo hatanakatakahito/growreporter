@@ -283,10 +283,10 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
         </div>
       </DialogBody>
 
-      <DialogActions>
+      <DialogActions className="!justify-center">
         <Button plain onClick={handleClose}>閉じる</Button>
         <Button color="blue" onClick={() => { initFormFields(); setStep('form'); }}>
-          お問い合わせ
+          プラン変更のお問い合わせ
         </Button>
       </DialogActions>
     </Dialog>

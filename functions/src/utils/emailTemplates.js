@@ -743,6 +743,134 @@ GA4・サーチコンソールのデータをAIで分析し、サイト改善に
 }
 
 /**
+ * サイト登録完了メール
+ */
+export function generateSiteRegistrationCompleteEmail(data) {
+  const { userName, siteName, siteUrl } = data;
+  const displayName = userName || 'ユーザー';
+  const appUrl = 'https://grow-reporter.com';
+
+  const subject = `【グローレポータ】サイト「${siteName}」の登録が完了しました`;
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+          <tr>
+            <td style="background-color: #3758F9; padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">グローレポータ</h1>
+              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">サイト登録完了のお知らせ</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
+                ${displayName} さん
+              </h2>
+
+              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+                サイトの登録が完了しました。<br>
+                バックグラウンドでデータの取得・分析準備を行っています。
+              </p>
+
+              <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                  <tr>
+                    <td style="color: #6b7280; font-size: 13px; padding-bottom: 8px;">サイト名</td>
+                    <td style="color: #1f2937; font-size: 14px; font-weight: 600; padding-bottom: 8px; text-align: right;">${siteName}</td>
+                  </tr>
+                  <tr>
+                    <td style="color: #6b7280; font-size: 13px;">URL</td>
+                    <td style="color: #3758F9; font-size: 14px; text-align: right;">
+                      <a href="${siteUrl}" style="color: #3758F9; text-decoration: none;">${siteUrl}</a>
+                    </td>
+                  </tr>
+                </table>
+              </div>
+
+              <div style="background-color: #f9fafb; border-left: 4px solid #3758F9; padding: 15px; margin: 20px 0;">
+                <p style="margin: 0 0 10px 0; color: #374151; font-size: 14px; font-weight: 600;">現在実行中の処理</p>
+                <p style="margin: 0; color: #4b5563; font-size: 14px; line-height: 1.8;">
+                  ・スクリーンショットの撮影<br>
+                  ・上位100ページのスクレイピング<br>
+                  ・過去3ヶ月分のデータエクスポート
+                </p>
+                <p style="margin: 10px 0 0 0; color: #9ca3af; font-size: 12px;">
+                  ※ 完了まで数分かかる場合があります
+                </p>
+              </div>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${appUrl}/dashboard" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                      ダッシュボードを見る
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
+                ご不明点がございましたら、お気軽にお問い合わせください。
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+                &copy; 2026 グローレポータ by Grow Group
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  const text = `
+${displayName} さん
+
+サイト「${siteName}」の登録が完了しました。
+バックグラウンドでデータの取得・分析準備を行っています。
+
+■ 登録サイト情報
+サイト名: ${siteName}
+URL: ${siteUrl}
+
+■ 現在実行中の処理
+・スクリーンショットの撮影
+・上位100ページのスクレイピング
+・過去3ヶ月分のデータエクスポート
+※ 完了まで数分かかる場合があります
+
+ダッシュボード: ${appUrl}/dashboard
+
+ご不明点がございましたら、お気軽にお問い合わせください。
+
+────────────────────────
+グローレポータ運営チーム
+────────────────────────
+  `;
+
+  return { subject, html, text };
+}
+
+/**
  * 管理者がユーザーを代理作成した際のアカウント発行通知メール
  * ログイン情報（メール・パスワード）を記載
  */

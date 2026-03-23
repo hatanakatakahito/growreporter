@@ -16,7 +16,7 @@ export default function FormSelect({
         onChange={onChange}
         required={required}
         disabled={disabled}
-        className="w-full appearance-none rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-3 dark:text-white dark:focus:border-primary"
+        className="w-full appearance-none [background-image:none] rounded-md border border-stroke bg-transparent px-5 py-3 text-dark outline-none transition focus:border-primary disabled:cursor-not-allowed disabled:bg-gray-100 dark:border-dark-3 dark:text-white dark:focus:border-primary"
         {...props}
       >
         <option value="" disabled>{placeholder}</option>
