@@ -76,7 +76,7 @@ export default function AdminDashboard() {
         </div>
         <button
           onClick={refetch}
-          className="rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+          className="rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
         >
           <svg className="h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -156,14 +156,14 @@ export default function AdminDashboard() {
                   サイト
                 </div>
               </div>
-              <div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800/20">
-                <div className="mb-1 text-xs font-medium text-gray-700 dark:text-gray-400">
+              <div className="rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
+                <div className="mb-1 text-xs font-medium text-body-color dark:text-dark-6">
                   待機中
                 </div>
-                <div className="text-2xl font-bold text-gray-600 dark:text-gray-300">
+                <div className="text-2xl font-bold text-dark dark:text-white">
                   {stats.scrapingStatus.pending}
                 </div>
-                <div className="mt-1 text-xs text-gray-600 dark:text-gray-400">
+                <div className="mt-1 text-xs text-body-color dark:text-dark-6">
                   サイト
                 </div>
               </div>
@@ -194,7 +194,7 @@ export default function AdminDashboard() {
                   {stats.planDistribution?.free || 0}人
                 </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
+              <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
                 <div 
                   className="h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600"
                   style={{ 
@@ -214,7 +214,7 @@ export default function AdminDashboard() {
                   {stats.planDistribution?.standard || 0}人
                 </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
+              <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
                 <div 
                   className="h-full rounded-full bg-gradient-to-r from-red-400 to-pink-600"
                   style={{ 
@@ -234,7 +234,7 @@ export default function AdminDashboard() {
                   {stats.planDistribution?.premium || 0}人
                 </span>
               </div>
-              <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
+              <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
                 <div 
                   className="h-full rounded-full bg-gradient-to-r from-amber-400 to-yellow-500"
                   style={{ 

@@ -25,7 +25,7 @@ export default function Register() {
   const { signup, loginWithGoogle, loginWithMicrosoft, fetchUserProfile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const redirectUrl = searchParams.get('redirect') || '/dashboard';
+  const redirectUrl = searchParams.get('redirect') || '/sites/new';
 
   // 招待トークンから情報を取得
   useEffect(() => {

@@ -1,7 +1,8 @@
 import React from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, Navigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useSidebar } from '../../contexts/SidebarContext';
+import { useSite } from '../../contexts/SiteContext';
 import SiteSelectionModal from '../common/SiteSelectionModal';
 
 /**
@@ -11,6 +12,12 @@ import SiteSelectionModal from '../common/SiteSelectionModal';
  */
 export default function MainLayout() {
   const { isSidebarOpen } = useSidebar();
+  const { sites, isLoading } = useSite();
+
+  // サイト未登録の場合、サイト設定画面へ強制リダイレクト
+  if (!isLoading && sites.length === 0) {
+    return <Navigate to="/sites/new" replace />;
+  }
 
   return (
     <div className="relative flex h-screen overflow-hidden bg-[#f0f2f8]">

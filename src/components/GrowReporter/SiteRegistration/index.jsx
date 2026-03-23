@@ -1,11 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useSite } from '../../../contexts/SiteContext';
 import { db, functions } from '../../../config/firebase';
-import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import logoImg from '../../../assets/img/logo.svg';
+import UpgradeModal from '../../common/UpgradeModal';
 import StepIndicator from './StepIndicator';
 import Step1BasicInfo from './Step1BasicInfo';
 import Step2GA4Connect from './Step2GA4Connect';
@@ -19,6 +21,8 @@ export default function SiteRegistration({ mode = 'new' }) {
   const [searchParams] = useSearchParams();
   const { siteId: siteIdFromParams } = useParams();
   const { currentUser, userProfile } = useAuth();
+  const { maxSites, allSites, isLoading: isSiteLoading } = useSite();
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const stepParam = parseInt(searchParams.get('step')) || 1;
   // 編集モードの場合はURLパラメータから、新規作成の場合はクエリパラメータから取得
@@ -69,6 +73,16 @@ export default function SiteRegistration({ mode = 'new' }) {
     setupStep: 1,
     setupCompleted: false,
   });
+
+  // 新規作成時のサイト上限チェック（読み込み完了後のみ判定）
+  useEffect(() => {
+    if (mode !== 'new' || isSiteLoading) return;
+    // setupCompleted === true のサイトだけカウント（登録途中は除外）
+    const completedSites = allSites.filter(s => s.setupCompleted === true);
+    if (completedSites.length >= maxSites) {
+      setIsUpgradeModalOpen(true);
+    }
+  }, [mode, allSites, maxSites, isSiteLoading]);
 
   // URLパラメータの変更を監視
   useEffect(() => {
@@ -540,6 +554,18 @@ export default function SiteRegistration({ mode = 'new' }) {
           </div>
         </div>
       </div>
+      {/* プランアップグレードモーダル */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => {
+          setIsUpgradeModalOpen(false);
+          // モーダルを閉じたらサイト一覧に戻す
+          const completedSites = allSites.filter(s => s.setupCompleted === true);
+          if (mode === 'new' && completedSites.length >= maxSites) {
+            navigate('/sites/list');
+          }
+        }}
+      />
     </div>
   );
 }

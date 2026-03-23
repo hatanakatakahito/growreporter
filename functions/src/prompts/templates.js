@@ -590,6 +590,144 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, 
     });
   }
 
+  // ── 時系列: 日別データ ──
+  let dailyDataText = '';
+  if (metrics.dailyData && metrics.dailyData.rows && Array.isArray(metrics.dailyData.rows) && metrics.dailyData.rows.length > 0) {
+    dailyDataText = '\n\n【日別データ（直近30日のうち特徴的な日）】\n';
+    const rows = metrics.dailyData.rows;
+    // セッション数上位5日と下位3日を表示
+    const sorted = [...rows].sort((a, b) => (b.sessions || 0) - (a.sessions || 0));
+    dailyDataText += '上位日:\n';
+    sorted.slice(0, 5).forEach(row => {
+      dailyDataText += `- ${row.date}: 訪問${row.sessions?.toLocaleString() || 0}回, CV${row.conversions?.toLocaleString() || 0}件, ENG率${((row.engagementRate || 0) * 100).toFixed(1)}%\n`;
+    });
+    dailyDataText += '下位日:\n';
+    sorted.slice(-3).forEach(row => {
+      dailyDataText += `- ${row.date}: 訪問${row.sessions?.toLocaleString() || 0}回, CV${row.conversions?.toLocaleString() || 0}件\n`;
+    });
+  }
+
+  // ── 時系列: 曜日別データ ──
+  let weeklyDataText = '';
+  if (metrics.weeklyData && metrics.weeklyData.rows && Array.isArray(metrics.weeklyData.rows) && metrics.weeklyData.rows.length > 0) {
+    weeklyDataText = '\n\n【曜日別データ（直近30日）】\n';
+    metrics.weeklyData.rows.forEach(row => {
+      weeklyDataText += `- ${row.dayOfWeekName || row.dayOfWeek}: 訪問${row.sessions?.toLocaleString() || 0}回, CV${row.conversions?.toLocaleString() || 0}件, ENG率${((row.engagementRate || 0) * 100).toFixed(1)}%\n`;
+    });
+  }
+
+  // ── 時系列: 時間帯別データ ──
+  let hourlyDataText = '';
+  if (metrics.hourlyData && metrics.hourlyData.rows && Array.isArray(metrics.hourlyData.rows) && metrics.hourlyData.rows.length > 0) {
+    hourlyDataText = '\n\n【時間帯別データ（直近30日）】\n';
+    metrics.hourlyData.rows.forEach(row => {
+      hourlyDataText += `- ${row.hour}時: 訪問${row.sessions?.toLocaleString() || 0}回, CV${row.conversions?.toLocaleString() || 0}件\n`;
+    });
+  }
+
+  // ── 集客: 被リンク元データ ──
+  let referralsText = '';
+  if (metrics.referrals && Array.isArray(metrics.referrals) && metrics.referrals.length > 0) {
+    referralsText = '\n\n【被リンク元（直近30日、トップ10）】\n';
+    metrics.referrals.slice(0, 10).forEach(row => {
+      referralsText += `- ${row.source || '不明'}: 訪問${row.sessions?.toLocaleString() || 0}回, CV${row.conversions?.toLocaleString() || 0}件\n`;
+    });
+  }
+
+  // ── ページ: ファイルダウンロード ──
+  let fileDownloadsText = '';
+  if (metrics.fileDownloads && Array.isArray(metrics.fileDownloads) && metrics.fileDownloads.length > 0) {
+    fileDownloadsText = '\n\n【ファイルダウンロード（直近30日）】\n';
+    metrics.fileDownloads.slice(0, 10).forEach(row => {
+      fileDownloadsText += `- ${row.url}: ${row.downloads?.toLocaleString() || 0}回（ユーザー${row.users?.toLocaleString() || 0}人）\n`;
+    });
+  }
+
+  // ── ページ: 外部リンククリック ──
+  let externalLinksText = '';
+  if (metrics.externalLinks && Array.isArray(metrics.externalLinks) && metrics.externalLinks.length > 0) {
+    externalLinksText = '\n\n【外部リンククリック（直近30日、トップ10）】\n';
+    metrics.externalLinks.slice(0, 10).forEach(row => {
+      externalLinksText += `- ${row.url}: ${row.clicks?.toLocaleString() || 0}回（ユーザー${row.users?.toLocaleString() || 0}人）\n`;
+    });
+  }
+
+  // ── ページ: ページフロー（遷移分析） ──
+  let pageFlowText = '';
+  if (metrics.pageFlow && Array.isArray(metrics.pageFlow) && metrics.pageFlow.length > 0) {
+    pageFlowText = '\n\n【ページフロー（主要ページの遷移分析）】\n';
+    metrics.pageFlow.forEach(flow => {
+      pageFlowText += `\n■ ${flow.pagePath}\n`;
+      if (flow.previousPages && flow.previousPages.length > 0) {
+        pageFlowText += '  流入元: ';
+        pageFlowText += flow.previousPages.slice(0, 3).map(p => `${p.pageReferrer}(${p.sessions || 0}回)`).join(', ');
+        pageFlowText += '\n';
+      }
+      if (flow.exitData && flow.exitData.length > 0) {
+        pageFlowText += '  遷移先: ';
+        pageFlowText += flow.exitData.slice(0, 3).map(p => `${p.exitPage}(${p.exitCount || 0}回)`).join(', ');
+        pageFlowText += '\n';
+      }
+    });
+  }
+
+  // ── コンバージョン: 逆算フロー ──
+  let reverseFlowText = '';
+  if (metrics.reverseFlow && Array.isArray(metrics.reverseFlow) && metrics.reverseFlow.length > 0) {
+    reverseFlowText = '\n\n【逆算フロー（コンバージョン導線分析）】\n';
+    metrics.reverseFlow.forEach(flow => {
+      reverseFlowText += `\n■ ${flow.flowName}\n`;
+      reverseFlowText += `  全体セッション: ${flow.totalSessions?.toLocaleString() || 0}回\n`;
+      reverseFlowText += `  フォーム到達: ${flow.entryToFormSessions?.toLocaleString() || 0}回\n`;
+      reverseFlowText += `  コンバージョン: ${flow.totalConversions?.toLocaleString() || 0}件\n`;
+      if (flow.entryPages && flow.entryPages.length > 0) {
+        reverseFlowText += '  主要流入ページ: ';
+        reverseFlowText += flow.entryPages.slice(0, 3).map(p => `${p.pagePath}(${p.sessions || 0}回)`).join(', ');
+        reverseFlowText += '\n';
+      }
+    });
+  }
+
+  // ── AI総合分析キャッシュ ──
+  let aiComprehensiveAnalysisText = '';
+  if (metrics.aiComprehensiveAnalysis) {
+    aiComprehensiveAnalysisText = '\n\n【AI総合分析（直近の分析結果）】\n';
+    // 長すぎる場合は先頭1000文字に制限
+    const analysisText = typeof metrics.aiComprehensiveAnalysis === 'string'
+      ? metrics.aiComprehensiveAnalysis
+      : JSON.stringify(metrics.aiComprehensiveAnalysis);
+    aiComprehensiveAnalysisText += analysisText.length > 1000
+      ? analysisText.substring(0, 1000) + '...(省略)'
+      : analysisText;
+    aiComprehensiveAnalysisText += '\n';
+  }
+
+  // ── ユーザー属性（デモグラフィック）──
+  let demographicsText = '';
+  if (metrics.demographics) {
+    const demo = metrics.demographics;
+    demographicsText = '\n\n【ユーザー属性（直近30日）】\n';
+    if (demo.device && Array.isArray(demo.device) && demo.device.length > 0) {
+      demographicsText += 'デバイス: ';
+      demographicsText += demo.device.map(d => `${d.device || d.category}(${d.sessions?.toLocaleString() || d.users?.toLocaleString() || 0})`).join(', ');
+      demographicsText += '\n';
+    }
+    if (demo.newReturning && Array.isArray(demo.newReturning) && demo.newReturning.length > 0) {
+      demographicsText += '新規/リピーター: ';
+      demographicsText += demo.newReturning.map(d => `${d.userType || d.type}(${d.sessions?.toLocaleString() || d.users?.toLocaleString() || 0})`).join(', ');
+      demographicsText += '\n';
+    }
+  }
+
+  // ── GSCキーワードデータ ──
+  let keywordsText = '';
+  if (metrics.keywords && Array.isArray(metrics.keywords) && metrics.keywords.length > 0) {
+    keywordsText = '\n\n【流入キーワード元（GSC、直近30日、トップ10）】\n';
+    metrics.keywords.slice(0, 10).forEach(kw => {
+      keywordsText += `- "${kw.query || kw.keys?.[0] || ''}": クリック${kw.clicks?.toLocaleString() || 0}回, 表示${kw.impressions?.toLocaleString() || 0}回, CTR${((kw.ctr || 0) * 100).toFixed(1)}%, 順位${(kw.position || 0).toFixed(1)}\n`;
+    });
+  }
+
   // スクレイピングデータ（上位50ページの詳細情報）
   let scrapingDataText = '';
   if (metrics.scrapingData && metrics.scrapingData.pages && metrics.scrapingData.pages.length > 0) {
@@ -622,7 +760,9 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, 
       }
       
       if (page.hasForm) {
-        scrapingDataText += `フォーム: あり（${page.formFields?.length || 0}項目）\n`;
+        const fieldCount = page.formFields?.length || 0;
+        const fieldLabels = (page.formFields || []).map(f => f.label || f.name).filter(Boolean).join('、');
+        scrapingDataText += `フォーム: あり（${fieldCount}項目: ${fieldLabels || '詳細不明'}）\n`;
       }
       
       // 問題点を特定
@@ -879,16 +1019,30 @@ ${hasConversionSettings
 **【重要】分析サマリーには「改善施策」や「アクション」を含めないでください。現状の分析と課題特定のみです。**
 
 ${recentSummaryText}
+${demographicsText}
 ${monthlyTrendText}
+${dailyDataText}
+${weeklyDataText}
+${hourlyDataText}
 ${channelsText}
-${landingPagesText}
+${keywordsText}
+${referralsText}
 ${pagesText}
 ${pageCategoriesText}
+${landingPagesText}
+${fileDownloadsText}
+${externalLinksText}
+${pageFlowText}
 ${monthlyConversionsText}
+${reverseFlowText}
+${aiComprehensiveAnalysisText}
 
 【分析の視点】
 - 長期トレンド（過去13ヶ月）と直近30日の比較
 - 季節性や前年同期との変化
+- 曜日別・時間帯別のパターン分析
+- ページ遷移フローと離脱ポイントの特定
+- コンバージョン導線（逆算フロー）の効率性
 - 最もビジネスインパクトが大きい課題の特定（チャネル、コンテンツ、CV導線など）
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

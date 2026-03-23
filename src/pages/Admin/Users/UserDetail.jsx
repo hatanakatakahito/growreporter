@@ -219,7 +219,7 @@ export default function UserDetail() {
         <div className="flex items-center gap-4">
           <button
             onClick={() => navigate('/admin/users')}
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-stroke bg-white transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:hover:bg-dark-3"
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-stroke bg-white transition hover:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:hover:bg-dark-3"
           >
             <ArrowLeft className="h-5 w-5 text-dark dark:text-white" />
           </button>
@@ -346,7 +346,7 @@ export default function UserDetail() {
                         {userDetail.usage.aiSummaryUsage} / {summaryUnlimited ? (canRegenerate(userDetail.plan) ? '無制限' : '無制限（再分析不可）') : `${summaryLimit}回`}
                       </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
                       <div
                         className="h-full rounded-full bg-purple-500"
                         style={{
@@ -365,7 +365,7 @@ export default function UserDetail() {
                         {userDetail.usage.aiImprovementUsage} / {improvementUnlimited ? '無制限' : `${improvementLimit}回`}
                       </span>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-dark-3">
+                    <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
                       <div
                         className="h-full rounded-full bg-orange-500"
                         style={{
@@ -440,7 +440,7 @@ export default function UserDetail() {
                   <button
                     onClick={() => setEditingActiveSites(false)}
                     disabled={isSavingActiveSites}
-                    className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-body-color transition hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:hover:bg-dark-3"
+                    className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-body-color transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:hover:bg-dark-3"
                   >
                     キャンセル
                   </button>
@@ -653,7 +653,7 @@ export default function UserDetail() {
         {userDetail.planChangeHistory && userDetail.planChangeHistory.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="border-b border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
+              <thead className="border-b-2 border-primary-mid/20 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-dark dark:text-white">
                     変更日時

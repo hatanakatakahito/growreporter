@@ -125,6 +125,20 @@ export async function onSiteChangedHandler(event) {
     logger.error('captureScreenshotモジュール読み込みエラー', { siteId, error: importError.message });
   }
 
+  // スクリーンショット取得完了の通知をアラートに保存
+  if (Object.keys(screenshotData).length > 0) {
+    try {
+      await db.collection('sites').doc(siteId).collection('alerts').add({
+        type: 'screenshot_completed',
+        message: 'スクリーンショットの取得が完了しました',
+        createdAt: new Date(),
+      });
+      logger.info('スクリーンショット完了アラートを保存', { siteId });
+    } catch (alertError) {
+      logger.warn('アラート保存エラー', { siteId, error: alertError.message });
+    }
+  }
+
   // 何も取得できなかった場合はフラグをリセット
   if (Object.keys(updateData).length === 0 && Object.keys(screenshotData).length === 0) {
     logger.warn('取得できたデータがありません、フラグをリセット', { siteId });

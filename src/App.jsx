@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import { Toaster } from 'react-hot-toast';
 import { queryClient } from './config/queryClient';
 import { AuthProvider } from './contexts/AuthContext';
 import { SiteProvider } from './contexts/SiteContext';
@@ -232,6 +233,7 @@ function App() {
           </SiteProvider>
         </Router>
       </AuthProvider>
+      <Toaster position="top-right" toastOptions={{ duration: 5000 }} />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );

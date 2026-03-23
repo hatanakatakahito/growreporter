@@ -3,6 +3,8 @@ import { logger } from 'firebase-functions/v2';
 import { appendOrUpdateRows, createRowData } from '../utils/sheetsManager.js';
 import { fetchGA4MonthlyDataCallable } from '../callable/fetchGA4MonthlyData.js';
 import { subMonths, format, startOfMonth, endOfMonth } from 'date-fns';
+import { sendEmailDirect } from '../utils/emailSender.js';
+import { generateSiteRegistrationCompleteEmail } from '../utils/emailTemplates.js';
 
 /**
  * サイト登録完了時のFirestoreトリガー
@@ -165,6 +167,33 @@ export async function onSiteCreatedTrigger(event) {
         error: scrapingError.message,
         stack: scrapingError.stack,
         timestamp: new Date(),
+      });
+    }
+
+    // サイト登録完了メール送信
+    try {
+      const userDoc = await db.collection('users').doc(siteData.userId).get();
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const userEmail = userData.email;
+        const userName = userData.lastName && userData.firstName
+          ? `${userData.lastName} ${userData.firstName}`
+          : userData.displayName || '';
+
+        if (userEmail) {
+          const { subject, html, text } = generateSiteRegistrationCompleteEmail({
+            userName,
+            siteName: siteData.siteName,
+            siteUrl: siteData.siteUrl,
+          });
+          await sendEmailDirect({ to: userEmail, subject, html, text });
+          logger.info('[onSiteCreated] サイト登録完了メール送信成功', { siteId, to: userEmail });
+        }
+      }
+    } catch (emailError) {
+      logger.warn('[onSiteCreated] サイト登録完了メール送信エラー（サイト登録は成功）', {
+        siteId,
+        error: emailError.message,
       });
     }
 

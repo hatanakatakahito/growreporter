@@ -86,9 +86,9 @@ export default function AdminSettings() {
       case 'editor':
         return 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400';
       case 'viewer':
-        return 'bg-gray-100 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400';
+        return 'bg-gray-100 text-body-color dark:bg-dark-3 dark:text-dark-6';
       default:
-        return 'bg-gray-100 text-gray-600 dark:bg-gray-900/20 dark:text-gray-400';
+        return 'bg-gray-100 text-body-color dark:bg-dark-3 dark:text-dark-6';
     }
   };
 
@@ -155,7 +155,7 @@ export default function AdminSettings() {
         {admins && admins.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="border-b border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
+              <thead className="border-b-2 border-primary-mid/20 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5">
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-dark dark:text-white">
                     管理者
@@ -290,7 +290,7 @@ export default function AdminSettings() {
               </div>
               <button
                 onClick={() => setShowPermissionsModal(false)}
-                className="rounded-lg p-1 text-body-color transition hover:bg-gray-2 dark:hover:bg-dark-3"
+                className="rounded-lg p-1 text-body-color transition hover:bg-gray-100 dark:hover:bg-dark-3"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -304,7 +304,7 @@ export default function AdminSettings() {
                     <th className="py-3 pr-4 text-left font-semibold text-dark dark:text-white">権限</th>
                     <th className="px-4 py-3 text-center font-semibold text-red-600">管理者</th>
                     <th className="px-4 py-3 text-center font-semibold text-blue-600">編集者</th>
-                    <th className="px-4 py-3 text-center font-semibold text-gray-600">閲覧者</th>
+                    <th className="px-4 py-3 text-center font-semibold text-body-color">閲覧者</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -362,7 +362,7 @@ export default function AdminSettings() {
             <div className="border-t border-stroke p-4 text-center dark:border-dark-3">
               <button
                 onClick={() => setShowPermissionsModal(false)}
-                className="rounded-lg border border-stroke bg-white px-6 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                className="rounded-lg border border-stroke bg-white px-6 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
               >
                 閉じる
               </button>

@@ -12,6 +12,7 @@ import logoImg from '../../assets/img/logo.svg';
 
 /**
  * アドミン画面のサイドバー
+ * メインアプリのSidebar (white theme) に合わせたデザイン
  */
 export default function AdminSidebar() {
   const location = useLocation();
@@ -55,28 +56,27 @@ export default function AdminSidebar() {
   ];
 
   const isActive = (path) => {
-    // 完全一致をチェック
     if (location.pathname === path) {
       return true;
     }
-    
-    // その他のパスは子パスもアクティブ
     return location.pathname.startsWith(path + '/');
   };
 
   return (
-    <aside className="flex h-screen w-64 flex-shrink-0 flex-col border-r border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+    <aside className="flex h-screen w-64 flex-shrink-0 flex-col border-r border-stroke/60 bg-white">
       {/* ロゴ */}
-      <div className="flex h-20 flex-shrink-0 items-center justify-center border-b border-stroke px-6 dark:border-dark-3">
-        <img 
-          src={logoImg} 
-          alt="GROW REPORTER" 
-          className="h-10 w-auto"
-        />
+      <div className="flex h-20 items-center justify-center px-6">
+        <Link to="/admin/dashboard" className="flex items-center gap-2">
+          <img
+            src={logoImg}
+            alt="GROW REPORTER"
+            className="h-10 w-auto"
+          />
+        </Link>
       </div>
 
       {/* ナビゲーション */}
-      <nav className="flex-1 overflow-y-auto px-4 py-6">
+      <nav className="flex-1 overflow-y-auto px-4 py-4">
         <ul className="space-y-2">
           {menuItems.map((item, index) => {
             const Icon = item.icon;
@@ -86,8 +86,8 @@ export default function AdminSidebar() {
                   to={item.path}
                   className={`flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
                     isActive(item.path)
-                      ? 'bg-primary text-white'
-                      : 'text-dark hover:bg-gray-2 dark:text-white dark:hover:bg-dark-3'
+                      ? 'sidebar-active-white text-primary font-semibold'
+                      : 'text-slate-700 hover:bg-[rgba(55,88,249,0.05)]'
                   }`}
                 >
                   <Icon className="h-5 w-5" />
@@ -99,10 +99,10 @@ export default function AdminSidebar() {
         </ul>
 
         {/* 通常画面へ戻る */}
-        <div className="mt-8 border-t border-stroke pt-4 dark:border-dark-3">
+        <div className="mt-8 border-t border-stroke/60 pt-4">
           <Link
             to="/dashboard"
-            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-body-color transition hover:bg-gray-2 dark:hover:bg-dark-3"
+            className="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-400 transition hover:bg-[rgba(55,88,249,0.05)] hover:text-slate-600"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
@@ -114,5 +114,3 @@ export default function AdminSidebar() {
     </aside>
   );
 }
-
-

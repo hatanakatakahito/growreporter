@@ -133,12 +133,13 @@ export async function scrapePage(url, options = {}) {
     });
     const ctaButtonsSlice = ctaButtons.slice(0, 10);
 
-    // フォーム分析
+    // フォーム分析（ラベル名ベースでカウント、同名radio/checkboxはグループ化）
     const forms = $('form');
     const hasForm = forms.length > 0;
     const formFields = [];
     if (hasForm) {
       forms.each((_, formEl) => {
+        const seenNames = new Set();
         $(formEl)
           .find('input, textarea, select')
           .each((__, inputEl) => {
@@ -146,9 +147,27 @@ export async function scrapePage(url, options = {}) {
             const type = $input.attr('type') || $input.prop('tagName').toLowerCase();
             const name = $input.attr('name') || $input.attr('id') || '';
             const required = $input.attr('required') != null;
-            if (name && type !== 'hidden' && type !== 'submit') {
-              formFields.push({ type, name, required });
+            if (!name || type === 'hidden' || type === 'submit') return;
+            // radio/checkboxは同じname属性で1グループ＝1項目としてカウント
+            if ((type === 'radio' || type === 'checkbox') && seenNames.has(name)) return;
+            seenNames.add(name);
+
+            // ラベル名を取得（label[for], 親label, placeholder, aria-label の順）
+            const inputId = $input.attr('id');
+            let label = '';
+            if (inputId) {
+              const $label = $(`label[for="${inputId}"]`);
+              if ($label.length) label = $label.first().text().trim();
             }
+            if (!label) {
+              const $parentLabel = $input.closest('label');
+              if ($parentLabel.length) label = $parentLabel.text().trim();
+            }
+            if (!label) label = $input.attr('placeholder') || $input.attr('aria-label') || '';
+            // ラベルが長すぎる場合は切り詰め
+            if (label.length > 50) label = label.substring(0, 50);
+
+            formFields.push({ type, name, required, label: label || name });
           });
       });
     }

@@ -365,7 +365,7 @@ export default function Users() {
                     <select
                       value={locationType}
                       onChange={(e) => setLocationType(e.target.value)}
-                      className="w-[180px] appearance-none rounded-md border border-stroke bg-transparent py-2 px-4 pr-10 text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20"
+                      className="w-[180px] appearance-none [background-image:none] rounded-md border border-stroke bg-transparent py-2 px-4 pr-10 text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20"
                     >
                       <option value="country">国別</option>
                       <option value="region">都道府県別</option>
