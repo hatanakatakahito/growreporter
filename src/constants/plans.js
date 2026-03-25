@@ -80,9 +80,9 @@ export const getPlanBadgeColor = (planType) => {
     case 'free':
       return 'bg-gradient-to-r from-blue-400 to-blue-600 text-white shadow-md';
     case 'standard':
-      return 'bg-gradient-to-r from-red-400 to-pink-600 text-white shadow-md';
+      return 'bg-gradient-to-r from-amber-400 to-orange-500 text-white shadow-md';
     case 'premium':
-      return 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-md';
+      return 'bg-gradient-to-r from-red-400 to-pink-600 text-white shadow-md';
     default:
       return 'bg-gray-200 text-gray-700';
   }

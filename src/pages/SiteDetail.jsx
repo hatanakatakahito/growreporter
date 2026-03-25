@@ -63,18 +63,26 @@ export default function SiteDetail() {
       const result = await scrapeTop100Pages({ siteId, forceRescrape: true });
 
       if (result.data.success) {
+        // ジョブ開始成功 → ローディング維持＆進捗メッセージ表示
+        setScrapingMessage('スクレイピングを開始しました。完了まで数分かかります...');
         await fetchScrapingStatus();
         refetch();
-        let seenInProgress = false; // 今回の実行で in_progress を一度でも見たか（前回の completed を誤認しないため）
+        let seenInProgress = false;
         const intervalId = setInterval(async () => {
           const progressSnap = await getDocFromServer(doc(db, 'sites', siteId, 'scrapingProgress', 'default'));
           const status = progressSnap.exists() ? progressSnap.data().status : null;
           const progressData = progressSnap.exists() ? progressSnap.data() : null;
           if (status === 'in_progress') {
             seenInProgress = true;
+            // 進捗メッセージがあれば表示
+            if (progressData?.progressMessage) {
+              setScrapingMessage(progressData.progressMessage);
+            }
           }
           if (status === 'error') {
             clearInterval(intervalId);
+            setIsScrapingLoading(false);
+            setScrapingMessage(null);
             setScrapingError(progressData?.error || 'スクレイピング中にエラーが発生しました');
             return;
           }
@@ -92,16 +100,21 @@ export default function SiteDetail() {
               setScrapingMessage(`スクレイピングが完了しました。成功: ${ok}ページ、失敗: ${ng}ページ`);
               setTimeout(() => setScrapingMessage(null), 10000);
             }
+            setIsScrapingLoading(false);
           }
         }, 3000);
-        setTimeout(() => clearInterval(intervalId), 5 * 60 * 1000);
+        setTimeout(() => {
+          clearInterval(intervalId);
+          setIsScrapingLoading(false);
+        }, 10 * 60 * 1000);
+        // ここではfinallyでローディングを消さないためreturn
+        return;
       } else {
         throw new Error(result.data.message || 'スクレイピングの開始に失敗しました');
       }
     } catch (err) {
       console.error('[handleStartScraping] エラー:', err);
       setScrapingError(err.message);
-    } finally {
       setIsScrapingLoading(false);
     }
   };

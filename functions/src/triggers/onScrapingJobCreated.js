@@ -85,6 +85,7 @@ export async function onScrapingJobCreatedHandler(event) {
       } catch (diagError) {
         logger.warn('[onScrapingJobCreated] 自動サイト診断エラー（スクレイピングは成功）', { siteId, error: diagError.message });
       }
+
     } catch (error) {
       logger.error('[onScrapingJobCreated] エラー', { jobId, siteId, error: error.message });
 

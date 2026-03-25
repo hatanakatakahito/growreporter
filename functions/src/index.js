@@ -219,8 +219,11 @@ export const onScrapingJobCreated = onDocumentCreated(
   {
     document: 'scrapingJobs/{jobId}',
     region: 'asia-northeast1',
-    memory: '2GiB',
+    memory: '16GiB',
+    cpu: 8,
     timeoutSeconds: 540,
+    maxInstances: 3,
+    concurrency: 1,
   },
   async (event) => {
     const { onScrapingJobCreatedHandler } = await import('./triggers/onScrapingJobCreated.js');
@@ -275,6 +278,13 @@ export const resetMonthlyLimits = onSchedule({
   const m = await import('./scheduled/resetMonthlyLimits.js');
   return m.resetMonthlyLimitsScheduled(event);
 });
+
+/**
+ * 月次全サイト再スクレイピング Scheduled Function
+ * 毎月1日 2:00に全サイトのスクレイピングジョブをキュー登録
+ * （スクレイピング完了後にスクリーンショット撮影も自動実行される）
+ */
+export { monthlyRescrapeAllSites } from './scheduled/monthlyRescrapeAllSites.js';
 
 /**
  * 管理者ダッシュボード統計データ取得 Callable Function
@@ -442,16 +452,16 @@ export const sendTestReportEmail = lazyCallable('./callable/sendTestReportEmail.
 export const submitImprovementConsultation = lazyCallable('./callable/submitImprovementConsultation.js', 'submitImprovementConsultationCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
- * 改善案用深掘りスクレイピング Callable Function（Puppeteer）
- * 改善生成後に対象ページのコンテンツ・デザイン構造を詳細取得
+ * 改善案生成 Callable Function（サーバー側一元化）
+ * データ取得→AI生成→重複排除→保存を一括実行
  */
-export const deepScrapeForImprovement = lazyCallable('./callable/deepScrapeForImprovement.js', 'deepScrapeForImprovementCallable', { memory: '2GiB', timeoutSeconds: 300 });
+export const generateImprovements = lazyCallable('./callable/generateImprovements.js', 'generateImprovementsCallable', { memory: '1GiB', timeoutSeconds: 300, secrets: ['GEMINI_API_KEY'] });
 
 /**
- * 改善モックアップ生成 Callable Function（Claude Sonnet）
- * 深掘りデータをもとに改善適用後のHTML/CSSを生成
+ * 改善モックアップ生成 Callable Function（Gemini 2.5 Flash）
+ * 手動トリガー：改善箇所のみの部分HTML生成
  */
-export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '1GiB', timeoutSeconds: 120, secrets: ['ANTHROPIC_API_KEY'] });
+export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['GEMINI_API_KEY'] });
 
 /**
  * プランアップグレードお問い合わせ送信

@@ -54,6 +54,7 @@ export default function ConsultationFormModal({ isOpen, onClose, siteName, siteU
       return { url: downloadUrl, fileName: excelFileName };
     } catch (e) {
       console.error('[ConsultationFormModal] Excelアップロードエラー:', e);
+      toast.error('Excel添付に失敗しました。相談内容のみ送信されます。');
       return { url: '', fileName: '' };
     }
   };

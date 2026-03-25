@@ -7,6 +7,68 @@ import { getPromptTemplate } from '../prompts/templates.js';
 import { SITE_TYPE_LABELS, SITE_PURPOSE_LABELS, IMPROVEMENT_FOCUS_LABELS } from '../constants/siteOptions.js';
 import { canAccessSite, canEditSite } from '../utils/permissionHelper.js';
 
+const MAX_SCREENSHOTS_FOR_GEMINI = 10;
+
+/**
+ * 事前保存済みのページスクリーンショットをFirestoreから取得しbase64に変換
+ * @param {string} siteId
+ * @returns {Promise<Array<{url: string, base64: string, mimeType: string}>>}
+ */
+async function fetchStoredScreenshots(siteId) {
+  const db = getFirestore();
+  const results = [];
+  const startTime = Date.now();
+
+  try {
+    const snap = await db
+      .collection('sites').doc(siteId)
+      .collection('pageScreenshots')
+      .orderBy('capturedAt', 'desc')
+      .limit(MAX_SCREENSHOTS_FOR_GEMINI + 1) // +1 for _meta doc
+      .get();
+
+    if (snap.empty) {
+      logger.info(`[fetchStoredScreenshots] スクショなし: ${siteId}`);
+      return results;
+    }
+
+    // Storage URLから画像をfetchしてbase64に変換
+    const fetchPromises = [];
+    snap.forEach(doc => {
+      if (doc.id === '_meta') return;
+      const data = doc.data();
+      if (!data.screenshotUrl) return;
+      fetchPromises.push(
+        fetch(data.screenshotUrl)
+          .then(async res => {
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const buffer = await res.arrayBuffer();
+            return {
+              url: data.url || data.pagePath || '',
+              base64: Buffer.from(buffer).toString('base64'),
+              mimeType: 'image/jpeg',
+            };
+          })
+          .catch(e => {
+            logger.warn(`[fetchStoredScreenshots] Fetch失敗: ${data.screenshotUrl} - ${e.message}`);
+            return null;
+          })
+      );
+    });
+
+    const fetched = await Promise.all(fetchPromises);
+    for (const item of fetched) {
+      if (item) results.push(item);
+    }
+
+    logger.info(`[fetchStoredScreenshots] ${results.length}枚取得 (${Date.now() - startTime}ms)`);
+  } catch (e) {
+    logger.warn(`[fetchStoredScreenshots] エラー: ${e.message}`);
+  }
+
+  return results;
+}
+
 /**
  * AI要約生成 Callable Function
  * Gemini 2.5 Flash Liteを使用してGA4データの要約を生成
@@ -205,7 +267,6 @@ export async function generateAISummaryCallable(request) {
       options.userNote = userNote || '';
       options.existingImprovements = existingImprovements || [];
       options.diagnosisData = metrics.diagnosisData || null;
-      options.siteStructureData = metrics.siteStructureData || null;
       // コンバージョン設定とKPI設定を追加
       options.conversionGoals = siteData.conversionGoals || [];
       options.kpiSettings = siteData.kpiSettings || [];
@@ -213,10 +274,47 @@ export async function generateAISummaryCallable(request) {
     const prompt = await generatePrompt(db, pageType, startDate, endDate, metrics, options);
     console.log('[generateAISummary] 生成されたプロンプト (先頭500文字):', prompt.substring(0, 500));
 
+    // 7.5. 改善案生成の場合、事前保存済みスクリーンショットをFirestoreから取得
+    let pageScreenshots = [];
+    if (pageType === 'comprehensive_improvement') {
+      try {
+        logger.info(`[generateAISummary] 事前保存スクリーンショット取得開始: siteId=${siteId}`);
+        pageScreenshots = await fetchStoredScreenshots(siteId);
+        logger.info(`[generateAISummary] スクリーンショット取得完了: ${pageScreenshots.length}枚`);
+      } catch (e) {
+        logger.warn(`[generateAISummary] スクリーンショット取得失敗（テキストのみで続行）: ${e.message}`);
+      }
+    }
+
     // 8. Gemini API呼び出し
     console.log('[generateAISummary] Calling Gemini API...');
     const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
     console.log('[generateAISummary] Using model:', geminiModel);
+
+    // マルチモーダルパーツ構築（改善案生成時はスクリーンショット付き）
+    const parts = [];
+    if (pageScreenshots.length > 0) {
+      // スクリーンショットを先に配置（Geminiは画像→テキストの順が推奨）
+      for (const ss of pageScreenshots) {
+        parts.push({
+          inline_data: {
+            mime_type: ss.mimeType,
+            data: ss.base64,
+          },
+        });
+        parts.push({
+          text: `↑ 上記は ${ss.url} の現在のスクリーンショットです。`,
+        });
+      }
+      parts.push({
+        text: `\n上記のスクリーンショットはサイトの主要ページの現在の見た目です。これらの実際のデザイン・レイアウト・色使い・コンテンツ配置を踏まえて、以下のデータ分析に基づく改善案を生成してください。スクリーンショットで確認できる実際の状態と矛盾する提案は避けてください。\n\n${prompt}`,
+      });
+    } else {
+      parts.push({
+        text: `あなたはGoogle Analytics 4のデータ分析の専門家です。データを分析し、ビジネスインサイトを提供する日本語の要約を生成してください。\n\n${prompt}`,
+      });
+    }
+
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
       {
@@ -227,16 +325,12 @@ export async function generateAISummaryCallable(request) {
         body: JSON.stringify({
           contents: [
             {
-              parts: [
-                {
-                  text: `あなたはGoogle Analytics 4のデータ分析の専門家です。データを分析し、ビジネスインサイトを提供する日本語の要約を生成してください。\n\n${prompt}`,
-                },
-              ],
+              parts,
             },
           ],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: pageType === 'comprehensive_analysis' ? 3000 : 1500,
+            maxOutputTokens: (pageType === 'comprehensive_analysis' || pageType === 'comprehensive_improvement') ? 3000 : 1500,
           },
         }),
       }

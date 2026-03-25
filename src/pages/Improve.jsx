@@ -99,9 +99,31 @@ export default function Improve() {
   const [drawerItem, setDrawerItem] = useState(null);
   const [drawerTab, setDrawerTab] = useState('compare');
   const [afterIframeHeight, setAfterIframeHeight] = useState(null);
-  
+  // モックアップ生成中のID管理
+  const [mockupGeneratingIds, setMockupGeneratingIds] = useState(new Set());
+
   const queryClient = useQueryClient();
   const siteUrl = (selectedSite?.siteUrl || '').trim().replace(/\/+$/, '');
+
+  // モックアップ生成ハンドラ
+  const handleGenerateMockup = async (item) => {
+    if (mockupGeneratingIds.has(item.id)) return;
+    setMockupGeneratingIds(prev => new Set([...prev, item.id]));
+    try {
+      const generateMockup = httpsCallable(functions, 'generateImprovementMockup');
+      await generateMockup({ siteId: selectedSiteId, improvementId: item.id });
+      toast.success('モックアップを生成しました');
+      queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
+    } catch (e) {
+      toast.error(`モックアップ生成に失敗しました: ${e.message}`);
+    } finally {
+      setMockupGeneratingIds(prev => {
+        const next = new Set(prev);
+        next.delete(item.id);
+        return next;
+      });
+    }
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -189,6 +211,60 @@ export default function Improve() {
     }
   }, [searchParams, setSearchParams, selectedSiteId]);
 
+  // ページスクリーンショット取得（Before表示用）
+  const { data: pageScreenshotsMap = {} } = useQuery({
+    queryKey: ['pageScreenshots', selectedSiteId],
+    queryFn: async () => {
+      if (!selectedSiteId) return {};
+      const map = {};
+      // URLを正規化するヘルパー（末尾スラッシュ統一・小文字化）
+      const normalizeUrl = (url) => {
+        try {
+          const u = new URL(url);
+          u.hostname = u.hostname.toLowerCase();
+          if (!u.pathname.endsWith('/') && !u.pathname.includes('.')) u.pathname += '/';
+          return u.toString();
+        } catch { return url; }
+      };
+      // pageScreenshots コレクションから取得
+      const ssSnap = await getDocs(collection(db, 'sites', selectedSiteId, 'pageScreenshots'));
+      ssSnap.forEach(d => {
+        if (d.id !== '_meta' && d.data().url && d.data().screenshotUrl) {
+          map[normalizeUrl(d.data().url)] = d.data().screenshotUrl;
+        }
+      });
+      // pageScrapingData からもスクショURLを取得（フォールバック）
+      const scrapingSnap = await getDocs(collection(db, 'sites', selectedSiteId, 'pageScrapingData'));
+      scrapingSnap.forEach(d => {
+        const data = d.data();
+        if (data.pageUrl && data.screenshotUrl) {
+          const key = normalizeUrl(data.pageUrl);
+          if (!map[key]) map[key] = data.screenshotUrl;
+        }
+      });
+      return map;
+    },
+    enabled: !!selectedSiteId,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // URLを正規化するヘルパー（Before照合用）
+  const normalizeUrlForMatch = (url) => {
+    try {
+      const u = new URL(url);
+      u.hostname = u.hostname.toLowerCase();
+      if (!u.pathname.endsWith('/') && !u.pathname.includes('.')) u.pathname += '/';
+      return u.toString();
+    } catch { return url; }
+  };
+
+  // Before スクリーンショットURLを解決する関数（表示時に呼び出し）
+  const getBeforeScreenshotUrl = (targetPageUrl) => {
+    if (!targetPageUrl) return null;
+    const normalized = normalizeUrlForMatch(targetPageUrl);
+    return pageScreenshotsMap[normalized] || pageScreenshotsMap[targetPageUrl] || null;
+  };
+
   // 改善課題データの取得
   const { data: improvements = [], isLoading: improvementsLoading } = useQuery({
     queryKey: ['improvements', selectedSiteId],
@@ -207,13 +283,6 @@ export default function Improve() {
       }));
     },
     enabled: !!selectedSiteId,
-    // モックアップ未生成の改善案がある場合、10秒ごとにポーリング
-    refetchInterval: (query) => {
-      const data = query.state.data;
-      if (!data || data.length === 0) return false;
-      const hasPending = data.some(item => item.targetPageUrl && !item.mockupHtml);
-      return hasPending ? 10000 : false;
-    },
   });
 
   // 改善案が0件の場合、方針選択モーダルを自動表示（初回のみ）
@@ -223,6 +292,21 @@ export default function Improve() {
       setIsFocusModalOpen(true);
     }
   }, [improvementsLoading, improvements.length, isViewer, isGenerationModalOpen]);
+
+  // ドロワーで表示中のアイテムをデータ更新に同期（モックアップ生成完了時など）
+  useEffect(() => {
+    if (drawerItem && improvements.length > 0) {
+      const updated = improvements.find(i => i.id === drawerItem.id);
+      if (updated && (updated.mockupHtml !== drawerItem.mockupHtml)) {
+        setDrawerItem(updated);
+        // モックアップ生成完了時はAfterタブに切り替え
+        if (updated.mockupHtml && !drawerItem.mockupHtml) {
+          setDrawerTab('after');
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [improvements]);
 
   // 更新mutation
   const updateMutation = useMutation({
@@ -378,7 +462,7 @@ export default function Improve() {
 
   const openDrawer = (item) => {
     setDrawerItem(item);
-    setDrawerTab('compare');
+    setDrawerTab(item.mockupHtml ? 'after' : 'compare');
     setAfterIframeHeight(null);
   };
   const closeDrawer = () => setDrawerItem(null);
@@ -387,8 +471,9 @@ export default function Improve() {
     const idx = sortedImprovements.findIndex(i => i.id === drawerItem.id);
     const nextIdx = idx + direction;
     if (nextIdx >= 0 && nextIdx < sortedImprovements.length) {
-      setDrawerItem(sortedImprovements[nextIdx]);
-      setDrawerTab('compare');
+      const nextItem = sortedImprovements[nextIdx];
+      setDrawerItem(nextItem);
+      setDrawerTab(nextItem.mockupHtml ? 'after' : 'compare');
       setAfterIframeHeight(null);
     }
   };
@@ -398,14 +483,16 @@ export default function Improve() {
     if (count === 0) return;
     if (!window.confirm(`選択した${count}件の改善案を削除しますか？`)) return;
     const ids = Array.from(detailViewSelectedIds);
-    Promise.all(ids.map(id => deleteDoc(doc(db, 'sites', selectedSiteId, 'improvements', id))))
-      .then(() => {
+    Promise.allSettled(ids.map(id => deleteDoc(doc(db, 'sites', selectedSiteId, 'improvements', id))))
+      .then((results) => {
+        const failed = results.filter(r => r.status === 'rejected');
         queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
         setDetailViewSelectedIds(new Set());
-        toast.success(`${count}件を削除しました`);
-      })
-      .catch(err => {
-        toast.error(err?.message || '削除に失敗しました');
+        if (failed.length === 0) {
+          toast.success(`${count}件を削除しました`);
+        } else {
+          toast.error(`${count - failed.length}件削除、${failed.length}件失敗しました`);
+        }
       });
   };
 
@@ -414,15 +501,17 @@ export default function Improve() {
     if (ids.length === 0) return;
     const updateData = { status: newStatus };
     if (newStatus === 'completed') updateData.completedAt = new Date().toISOString();
-    Promise.all(ids.map(id => updateDoc(doc(db, 'sites', selectedSiteId, 'improvements', id), { ...updateData, updatedAt: new Date() })))
-      .then(() => {
+    Promise.allSettled(ids.map(id => updateDoc(doc(db, 'sites', selectedSiteId, 'improvements', id), { ...updateData, updatedAt: new Date() })))
+      .then((results) => {
+        const failed = results.filter(r => r.status === 'rejected');
         queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
         queryClient.invalidateQueries({ queryKey: ['completed-improvements', selectedSiteId] });
         setDetailViewSelectedIds(new Set());
-        toast.success(`${ids.length}件のステータスを更新しました`);
-      })
-      .catch(err => {
-        toast.error(err?.message || '更新に失敗しました');
+        if (failed.length === 0) {
+          toast.success(`${ids.length}件のステータスを更新しました`);
+        } else {
+          toast.error(`${ids.length - failed.length}件更新、${failed.length}件失敗しました`);
+        }
       });
   };
 
@@ -810,7 +899,29 @@ export default function Improve() {
                                 )}
                               </td>
                               <td className="py-7 px-4 align-middle">
-                                <div className="text-sm font-medium text-dark dark:text-white leading-snug line-clamp-1">{item.title}</div>
+                                <div className="flex items-center gap-2">
+                                  <div className="text-sm font-medium text-dark dark:text-white leading-snug line-clamp-1">{item.title}</div>
+                                  {item.mockupHtml ? (
+                                    <span className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 text-[9px] font-bold text-green-600 dark:text-green-400" title="モックアップ生成済み">
+                                      <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="m4.5 12.75 6 6 9-13.5" /></svg>
+                                      モック
+                                    </span>
+                                  ) : item.mockupSkipped ? null
+                                  : item.targetPageUrl ? (
+                                    <button
+                                      className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-primary/10 hover:bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold text-primary transition cursor-pointer"
+                                      title="モックアップを生成する"
+                                      onClick={(e) => { e.stopPropagation(); handleGenerateMockup(item); }}
+                                      disabled={mockupGeneratingIds.has(item.id)}
+                                    >
+                                      {mockupGeneratingIds.has(item.id) ? (
+                                        <><Loader2 className="h-2.5 w-2.5 animate-spin" />生成中</>
+                                      ) : (
+                                        <><Sparkles className="h-2.5 w-2.5" />モック</>
+                                      )}
+                                    </button>
+                                  ) : null}
+                                </div>
                                 <div className="text-sm text-body-color mt-1 line-clamp-1">{item.description || '—'}</div>
                               </td>
                               <td className="py-7 px-2 align-middle text-center w-[100px] min-w-[100px]" onClick={(e) => e.stopPropagation()}>
@@ -1083,30 +1194,52 @@ export default function Improve() {
                           <div className="grid grid-cols-2 gap-4">
                             <div>
                               <div className="text-xs font-semibold text-gray-400 mb-2">Before（現在）</div>
-                              <div className="rounded-xl border-2 border-gray-200 dark:border-dark-3 overflow-hidden bg-white dark:bg-dark-2">
-                                {item.beforeScreenshot ? (
-                                  <img src={item.beforeScreenshot} alt="現在のページ" className="w-full h-auto" />
-                                ) : (
-                                  <div className="flex h-[300px] items-center justify-center text-xs text-body-color">スクリーンショットなし</div>
-                                )}
+                              {/* ブラウザフレーム */}
+                              <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-dark-3 shadow-lg">
+                                <div className="flex items-center gap-2 bg-gray-100 dark:bg-dark-3 px-3 py-2 border-b border-gray-200 dark:border-dark-3">
+                                  <div className="flex gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>
+                                  </div>
+                                  <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl || 'https://example.com'}</div>
+                                </div>
+                                <div className="bg-white dark:bg-dark-2">
+                                  {(getBeforeScreenshotUrl(item.targetPageUrl)) ? (
+                                    <img src={getBeforeScreenshotUrl(item.targetPageUrl)} alt="現在のページ" className="w-full h-auto" />
+                                  ) : (
+                                    <div className="flex h-[300px] items-center justify-center text-xs text-body-color">スクリーンショットなし</div>
+                                  )}
+                                </div>
                               </div>
                             </div>
                             <div>
                               <div className="text-xs font-semibold text-primary mb-2">After（改善案適用後）</div>
-                              <div className="rounded-xl border-2 border-primary/30 overflow-hidden bg-white dark:bg-dark-2 relative" style={{ height: afterIframeHeight ? `${afterIframeHeight * 0.5}px` : '800px' }}>
-                                <iframe
-                                  title="改善モックアップ"
-                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
-                                  className="absolute top-0 left-0 border-0 pointer-events-none"
-                                  sandbox="allow-same-origin"
-                                  onLoad={(e) => {
-                                    try {
-                                      const h = e.target.contentDocument?.documentElement?.scrollHeight;
-                                      if (h) setAfterIframeHeight(h);
-                                    } catch (_) {}
-                                  }}
-                                  style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px', width: '200%', transform: 'scale(0.5)', transformOrigin: 'top left' }}
-                                />
+                              {/* ブラウザフレーム */}
+                              <div className="rounded-xl overflow-hidden border border-primary/30 shadow-lg" style={{ height: afterIframeHeight ? `${afterIframeHeight * 0.5 + 44}px` : '844px' }}>
+                                <div className="flex items-center gap-2 bg-gray-100 dark:bg-dark-3 px-3 py-2 border-b border-gray-200 dark:border-dark-3">
+                                  <div className="flex gap-1.5">
+                                    <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                                    <span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>
+                                  </div>
+                                  <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl || 'https://example.com'}</div>
+                                </div>
+                                <div className="bg-white dark:bg-dark-2 relative pt-3" style={{ height: afterIframeHeight ? `${afterIframeHeight * 0.5 + 12}px` : '812px' }}>
+                                  <iframe
+                                    title="改善モックアップ"
+                                    srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:2px;border-radius:4px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;top:-10px;right:-4px;background:#3758F9;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;line-height:1.4;z-index:9999;pointer-events:none;white-space:nowrap;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                    className="absolute top-3 left-0 border-0 pointer-events-none"
+                                    sandbox="allow-same-origin"
+                                    onLoad={(e) => {
+                                      try {
+                                        const h = e.target.contentDocument?.documentElement?.scrollHeight;
+                                        if (h) setAfterIframeHeight(h);
+                                      } catch (_) {}
+                                    }}
+                                    style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px', width: '200%', transform: 'scale(0.5)', transformOrigin: 'top left' }}
+                                  />
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1117,12 +1250,23 @@ export default function Improve() {
                       {drawerTab === 'before' && (
                         <div className="px-8 pb-8">
                           <div className="text-xs font-semibold text-gray-400 mb-2">Before（現在）</div>
-                          <div className="rounded-xl border-2 border-gray-200 dark:border-dark-3 overflow-hidden bg-white dark:bg-dark-2">
-                            {item.beforeScreenshot ? (
-                              <img src={item.beforeScreenshot} alt="現在のページ" className="w-full h-auto" />
-                            ) : (
-                              <div className="flex h-[300px] items-center justify-center text-xs text-body-color">スクリーンショットなし</div>
-                            )}
+                          {/* ブラウザフレーム */}
+                          <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-dark-3 shadow-lg">
+                            <div className="flex items-center gap-2 bg-gray-100 dark:bg-dark-3 px-3 py-2 border-b border-gray-200 dark:border-dark-3">
+                              <div className="flex gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                                <span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>
+                              </div>
+                              <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl || 'https://example.com'}</div>
+                            </div>
+                            <div className="bg-white dark:bg-dark-2">
+                              {(getBeforeScreenshotUrl(item.targetPageUrl)) ? (
+                                <img src={getBeforeScreenshotUrl(item.targetPageUrl)} alt="現在のページ" className="w-full h-auto" />
+                              ) : (
+                                <div className="flex h-[300px] items-center justify-center text-xs text-body-color">スクリーンショットなし</div>
+                              )}
+                            </div>
                           </div>
                         </div>
                       )}
@@ -1131,34 +1275,120 @@ export default function Improve() {
                       {drawerTab === 'after' && (
                         <div className="px-8 pb-8">
                           <div className="text-xs font-semibold text-primary mb-2">After（改善案適用後）</div>
-                          <div className="rounded-xl border-2 border-primary/30 overflow-hidden bg-white dark:bg-dark-2">
-                            <iframe
-                              title="改善モックアップ"
-                              srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
-                              className="w-full border-0 pointer-events-none"
-                              sandbox="allow-same-origin"
-                              onLoad={(e) => {
-                                try {
-                                  const h = e.target.contentDocument?.documentElement?.scrollHeight;
-                                  if (h) setAfterIframeHeight(h);
-                                } catch (_) {}
-                              }}
-                              style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px' }}
-                            />
+                          {/* ブラウザフレーム */}
+                          <div className="rounded-xl overflow-hidden border border-primary/30 shadow-lg">
+                            <div className="flex items-center gap-2 bg-gray-100 dark:bg-dark-3 px-3 py-2 border-b border-gray-200 dark:border-dark-3">
+                              <div className="flex gap-1.5">
+                                <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                                <span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>
+                              </div>
+                              <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl || 'https://example.com'}</div>
+                            </div>
+                            <div className="bg-white dark:bg-dark-2 pt-3">
+                              <iframe
+                                title="改善モックアップ"
+                                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:2px;border-radius:4px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;top:-10px;right:-4px;background:#3758F9;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;line-height:1.4;z-index:9999;pointer-events:none;white-space:nowrap;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                className="w-full border-0 pointer-events-none"
+                                sandbox="allow-same-origin"
+                                onLoad={(e) => {
+                                  try {
+                                    const h = e.target.contentDocument?.documentElement?.scrollHeight;
+                                    if (h) setAfterIframeHeight(h);
+                                  } catch (_) {}
+                                }}
+                                style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px' }}
+                              />
+                            </div>
                           </div>
                         </div>
                       )}
                     </>
-                  ) : item.targetPageUrl && !item.mockupHtml ? (
-                    <div className="flex h-full items-center justify-center">
-                      <div className="text-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-3" />
-                        <p className="text-sm text-body-color">モックアップを生成中...</p>
+                  ) : item.targetPageUrl && !item.mockupHtml && !item.mockupSkipped ? (
+                    <>
+                      {/* ヘッダー（sticky） */}
+                      <div className="sticky top-0 z-10 bg-gray-50/95 dark:bg-dark/95 backdrop-blur px-8 pt-5 pb-3 flex items-center">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm font-bold text-gray-800 dark:text-white">改善モックアップ</h3>
+                        </div>
                       </div>
-                    </div>
+                      {/* 並べて比較レイアウト: Before + After(未生成) */}
+                      <div className="px-8 pb-8">
+                        <div className="grid grid-cols-2 gap-4">
+                          {/* Before */}
+                          <div>
+                            <div className="text-xs font-semibold text-gray-400 mb-2">Before（現在）</div>
+                            <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-dark-3 shadow-lg">
+                              <div className="flex items-center gap-2 bg-gray-100 dark:bg-dark-3 px-3 py-2 border-b border-gray-200 dark:border-dark-3">
+                                <div className="flex gap-1.5">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                                  <span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>
+                                </div>
+                                <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl}</div>
+                              </div>
+                              <div className="bg-white dark:bg-dark-2">
+                                {getBeforeScreenshotUrl(item.targetPageUrl) ? (
+                                  <img src={getBeforeScreenshotUrl(item.targetPageUrl)} alt="現在のページ" className="w-full h-auto" />
+                                ) : (
+                                  <div className="flex h-[300px] items-center justify-center text-xs text-body-color">スクリーンショットなし</div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          {/* After（未生成 / 生成中） */}
+                          <div>
+                            <div className="text-xs font-semibold text-primary mb-2">After（改善案適用後）</div>
+                            <div className="rounded-xl overflow-hidden border border-primary/30 shadow-lg">
+                              <div className="flex items-center gap-2 bg-gray-100 dark:bg-dark-3 px-3 py-2 border-b border-gray-200 dark:border-dark-3">
+                                <div className="flex gap-1.5">
+                                  <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                                  <span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>
+                                </div>
+                                <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl}</div>
+                              </div>
+                              <div className="bg-white dark:bg-dark-2 flex items-center justify-center" style={{ minHeight: '300px' }}>
+                                <div className="text-center p-8">
+                                  {mockupGeneratingIds.has(item.id) ? (
+                                    <>
+                                      <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <Loader2 className="h-7 w-7 text-primary animate-spin" />
+                                      </div>
+                                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">モックアップを生成しています</p>
+                                      <p className="text-xs text-gray-400 dark:text-gray-500">AIがデザインを作成中です。しばらくお待ちください。</p>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                                        <Sparkles className="h-7 w-7 text-primary" />
+                                      </div>
+                                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">改善適用後のモックアップを生成できます</p>
+                                      <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">AIがこのページの改善デザインを作成します</p>
+                                      <button
+                                        onClick={() => handleGenerateMockup(item)}
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition cursor-pointer"
+                                      >
+                                        <Sparkles className="h-4 w-4" />
+                                        モックアップを生成する
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </>
                   ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <p className="text-sm text-body-color">モックアップはありません</p>
+                    <div className="flex h-full items-center justify-center p-8">
+                      <div className="text-center max-w-xs">
+                        <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-gray-100 dark:bg-dark-3 flex items-center justify-center">
+                          <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" /></svg>
+                        </div>
+                        <p className="text-sm text-gray-400 dark:text-gray-500">モックアップはありません</p>
+                      </div>
                     </div>
                   )}
                 </div>
