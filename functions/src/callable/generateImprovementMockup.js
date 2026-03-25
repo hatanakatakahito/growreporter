@@ -1,8 +1,9 @@
 /**
- * 改善モックアップ生成 Callable Function（Claude Sonnet）
+ * 改善モックアップ生成 Callable Function（Gemini 2.5 Flash）
  *
- * 深掘りスクレイピングで取得した実際のサイトソース（HTML/CSS/デザイントークン）と
- * 改善案テキストをもとに、改善適用後のHTML/CSSを生成する。
+ * 手動トリガー: ユーザーがボタンを押して個別に呼び出す。
+ * pageScrapingData のリッチデータ（firstView, designTokens, sections等）と
+ * pageScreenshots のスクリーンショットを使用して部分HTMLモックアップを生成。
  *
  * パラメータ:
  *   siteId: string
@@ -15,9 +16,9 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
-const MAX_OUTPUT_TOKENS = 4096;
+const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const MAX_OUTPUT_TOKENS = 8192;
 
 export async function generateImprovementMockupCallable(req) {
   // 認証チェック
@@ -31,9 +32,9 @@ export async function generateImprovementMockupCallable(req) {
     throw new HttpsError('invalid-argument', 'siteId と improvementId が必要です');
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    throw new HttpsError('failed-precondition', 'ANTHROPIC_API_KEY が設定されていません');
+    throw new HttpsError('failed-precondition', 'GEMINI_API_KEY が設定されていません');
   }
 
   const db = getFirestore();
@@ -49,66 +50,217 @@ export async function generateImprovementMockupCallable(req) {
     }
 
     const improvement = impDoc.data();
-    let deepScrapeData = improvement.deepScrapeData;
 
-    // deepScrapeDataがない場合、サイト共通デザインデータをフォールバック
-    if (!deepScrapeData) {
-      console.log(`[generateImprovementMockup] No deepScrapeData, trying site design fallback`);
+    // ── Step 0: 非ビジュアル改善はモックアップ生成をスキップ ──
+    const NON_VISUAL_KEYWORDS = [
+      '読込速度', '読み込み速度', '表示速度', 'ページ速度', 'パフォーマンス',
+      'Core Web Vitals', 'LCP', 'FID', 'CLS', 'TTFB', 'INP',
+      'alt属性', 'メタディスクリプション', 'meta description',
+      'robots.txt', 'sitemap', 'canonical', 'hreflang',
+      '構造化データ', 'schema.org', 'JSON-LD',
+      'SSL', 'HTTPS', 'セキュリティ',
+      'キャッシュ', 'CDN', '圧縮', 'minify', 'gzip',
+      'リダイレクト', '301', '302', '404',
+      'アクセシビリティ', 'WCAG',
+    ];
+    const titleAndDesc = `${improvement.title || ''} ${improvement.description || ''}`;
+    const isNonVisual = NON_VISUAL_KEYWORDS.some(kw => titleAndDesc.toLowerCase().includes(kw.toLowerCase()));
+    if (isNonVisual) {
+      console.log(`[generateImprovementMockup] Skipped (non-visual): ${improvementId} — "${improvement.title}"`);
+      await db.doc(`sites/${siteId}/improvements/${improvementId}`).update({
+        mockupSkipped: true,
+        mockupSkipReason: 'non_visual',
+        mockupGeneratedAt: new Date(),
+      });
+      return { success: true, message: 'ビジュアル変更を伴わない改善のためモックアップ生成をスキップしました', skipped: true };
+    }
+
+    // ── Step 1: Beforeスクリーンショットを取得（pageScrapingData → pageScreenshots → なし） ──
+    let beforeScreenshotBase64 = '';
+    let screenshotSource = '';
+
+    // 1a. pageScrapingData の screenshotUrl から取得
+    if (improvement.targetPageUrl) {
       try {
-        const siteDesignDoc = await db.doc(`sites/${siteId}/siteStructureData/_siteDesign`).get();
-        if (siteDesignDoc.exists) {
-          deepScrapeData = siteDesignDoc.data();
-          console.log(`[generateImprovementMockup] Using site design fallback for ${improvementId}`);
+        // pageScrapingData から対象URLのデータを検索
+        const scrapingSnap = await db.collection('sites').doc(siteId).collection('pageScrapingData')
+          .where('pageUrl', '==', improvement.targetPageUrl)
+          .limit(1)
+          .get();
+        if (!scrapingSnap.empty) {
+          const scrapingData = scrapingSnap.docs[0].data();
+          if (scrapingData.screenshotUrl) {
+            const res = await fetch(scrapingData.screenshotUrl);
+            if (res.ok) {
+              const buffer = await res.arrayBuffer();
+              beforeScreenshotBase64 = `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`;
+              screenshotSource = 'pageScrapingData';
+            }
+          }
         }
       } catch (e) {
-        console.warn(`[generateImprovementMockup] Site design fallback failed: ${e.message}`);
+        console.warn(`[generateImprovementMockup] pageScrapingData screenshot lookup failed: ${e.message}`);
       }
     }
 
-    if (!deepScrapeData) {
-      console.warn(`[generateImprovementMockup] No design data available for ${improvementId}`);
-      return { success: false, message: 'デザインデータがありません' };
+    // 1b. pageScreenshots コレクションからフォールバック
+    if (!beforeScreenshotBase64 && improvement.targetPageUrl) {
+      try {
+        const ssSnap = await db.collection('sites').doc(siteId).collection('pageScreenshots')
+          .where('url', '==', improvement.targetPageUrl)
+          .limit(1)
+          .get();
+        if (!ssSnap.empty) {
+          const ssData = ssSnap.docs[0].data();
+          if (ssData.screenshotUrl) {
+            const res = await fetch(ssData.screenshotUrl);
+            if (res.ok) {
+              const buffer = await res.arrayBuffer();
+              beforeScreenshotBase64 = `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`;
+              screenshotSource = 'pageScreenshots';
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`[generateImprovementMockup] pageScreenshots lookup failed: ${e.message}`);
+      }
+    }
+
+    // 1c. サイトトップのスクショをフォールバック
+    if (!beforeScreenshotBase64) {
+      try {
+        const ssSnap = await db.collection('sites').doc(siteId).collection('pageScreenshots')
+          .where('pagePath', '==', '/')
+          .limit(1)
+          .get();
+        if (!ssSnap.empty) {
+          const ssData = ssSnap.docs[0].data();
+          if (ssData.screenshotUrl) {
+            const res = await fetch(ssData.screenshotUrl);
+            if (res.ok) {
+              const buffer = await res.arrayBuffer();
+              beforeScreenshotBase64 = `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`;
+              screenshotSource = 'pageScreenshots(top)';
+            }
+          }
+        }
+      } catch (e) {
+        console.warn(`[generateImprovementMockup] Top page screenshot fallback failed: ${e.message}`);
+      }
+    }
+
+    console.log(`[generateImprovementMockup] Screenshot source: ${screenshotSource || 'none'} for ${improvementId}`);
+
+    // ── Step 2: デザインデータを pageScrapingData から取得 ──
+    let designData = null;
+
+    if (improvement.targetPageUrl) {
+      try {
+        const scrapingSnap = await db.collection('sites').doc(siteId).collection('pageScrapingData')
+          .where('pageUrl', '==', improvement.targetPageUrl)
+          .limit(1)
+          .get();
+        if (!scrapingSnap.empty) {
+          const data = scrapingSnap.docs[0].data();
+          designData = {
+            firstView: data.firstView || null,
+            designTokens: data.designTokens || null,
+            keyElements: data.keyElements || [],
+            sections: data.sections || [],
+            forms: data.forms || [],
+          };
+        }
+      } catch (e) {
+        console.warn(`[generateImprovementMockup] pageScrapingData design lookup failed: ${e.message}`);
+      }
+    }
+
+    // フォールバック: トップページのデザインデータ
+    if (!designData) {
+      try {
+        const topSnap = await db.collection('sites').doc(siteId).collection('pageScrapingData')
+          .where('pageType', '==', 'home')
+          .limit(1)
+          .get();
+        if (!topSnap.empty) {
+          const data = topSnap.docs[0].data();
+          designData = {
+            firstView: data.firstView || null,
+            designTokens: data.designTokens || null,
+            keyElements: data.keyElements || [],
+            sections: data.sections || [],
+            forms: data.forms || [],
+          };
+          console.log(`[generateImprovementMockup] Using home page design data fallback`);
+        }
+      } catch (e) {
+        console.warn(`[generateImprovementMockup] Home page design fallback failed: ${e.message}`);
+      }
+    }
+
+    // スクショもデザインデータもない場合のみ失敗
+    if (!designData && !beforeScreenshotBase64) {
+      console.warn(`[generateImprovementMockup] No design data or screenshot for ${improvementId}`);
+      return { success: false, message: 'デザインデータがありません。先にスクレイピングを実行してください。' };
     }
 
     // 新規ページ/コンテンツかどうかを判定
-    const isNewPage = !improvement.targetPageUrl || !improvement.deepScrapeData;
+    const isNewPage = !improvement.targetPageUrl;
 
     // プロンプト構築
-    const prompt = buildMockupPrompt(improvement, deepScrapeData, isNewPage);
+    const prompt = buildMockupPrompt(improvement, designData || {}, isNewPage);
 
-    // Claude Sonnet API呼び出し
-    const response = await fetch(ANTHROPIC_API_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: CLAUDE_MODEL,
-        max_tokens: MAX_OUTPUT_TOKENS,
-        messages: [{
-          role: 'user',
-          content: prompt,
-        }],
-        system: 'あなたはWebデザイン・フロントエンド開発の専門家です。指示された改善を適用した完全なHTML/CSSを生成してください。',
-      }),
-    });
+    // ── Step 3: Gemini マルチモーダル入力構築 ──
+    const systemInstruction = 'あなたはWebデザイン・フロントエンド開発の専門家です。指示された改善を適用した完全なHTML/CSSを生成してください。Beforeスクリーンショットが提供された場合、そのデザイン・レイアウト・色使い・フォントを忠実に再現した上で改善箇所のみ変更してください。';
+
+    const parts = [];
+    if (beforeScreenshotBase64) {
+      const mediaTypeMatch = beforeScreenshotBase64.match(/^data:(image\/[a-z]+);base64,/);
+      const mimeType = mediaTypeMatch ? mediaTypeMatch[1] : 'image/jpeg';
+      const base64Data = beforeScreenshotBase64.replace(/^data:image\/[a-z]+;base64,/, '');
+      parts.push({
+        inline_data: { mime_type: mimeType, data: base64Data },
+      });
+      parts.push({
+        text: `上記は改善対象ページの現在のスクリーンショット（Before）です。このデザインを基に、以下の改善案を適用したモックアップを生成してください。\n\n${prompt}`,
+      });
+      console.log(`[generateImprovementMockup] Using screenshot (${screenshotSource}, ${Math.round(base64Data.length / 1024)}KB) for ${improvementId}`);
+    } else {
+      parts.push({ text: prompt });
+    }
+
+    // Gemini API呼び出し
+    const response = await fetch(
+      `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: systemInstruction }] },
+          contents: [{ parts }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: MAX_OUTPUT_TOKENS,
+            thinkingConfig: { thinkingBudget: 2048 },
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[generateImprovementMockup] Claude API error: ${response.status}`, errorText);
-      throw new HttpsError('internal', `Claude API error: ${response.status}`);
+      console.error(`[generateImprovementMockup] Gemini API error: ${response.status}`, errorText);
+      throw new HttpsError('internal', `Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const rawText = data.content?.[0]?.text || '';
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     // HTML/CSS抽出
     const { html, css } = extractHtmlCss(rawText);
 
     if (!html) {
-      console.warn(`[generateImprovementMockup] No HTML generated for ${improvementId}`);
+      console.warn(`[generateImprovementMockup] No HTML generated for ${improvementId}. rawText length=${rawText.length}, first 500 chars: ${rawText.substring(0, 500)}`);
       return { success: false, message: 'モックアップHTMLの生成に失敗しました' };
     }
 
@@ -223,12 +375,16 @@ function buildMockupPrompt(improvement, deepScrapeData, isNewPage = false) {
    - 例: ヘッダーの改善ならヘッダー部分のみ、フォームの改善ならフォーム部分のみ
    - 例: 会社概要の基本情報の改善なら基本情報セクションのみ
    - ${isNewPage ? '新規コンテンツの場合は、追加する新しいセクション/コンテンツのみ' : '改善箇所に集中し、前後のセクションは含めない'}
-2. サイトの既存デザイン（フォント、カラー、余白）を忠実に再現すること
+2. サイトの既存デザイン（フォント、カラー、余白）を忠実に再現すること（Beforeスクリーンショットがある場合はそれを最も重要な参考資料として使用）
 3. **<style>タグ内CSS**を使用し、外部ファイル参照は禁止
 4. PC幅1280pxで適切に表示
 5. 日本語テキストを使用すること
 6. 画像はプレースホルダー（灰色の矩形 + altテキスト表示）で代替
 7. コードのみ出力し、説明文は不要
+8. **変更箇所のマーキング**: 改善で変更・追加した要素には必ず \`data-changed\` 属性を付けること
+   - 属性値には変更内容の短いラベルを日本語で記載（例: data-changed="CTA追加", data-changed="見出し変更"）
+   - 変更箇所が複数ある場合はそれぞれに個別のラベルを付ける
+   - 既存要素をそのまま残す部分には付けない（変更・追加した要素のみ）
 
 ## 出力形式
 \`\`\`html
@@ -246,24 +402,42 @@ function extractHtmlCss(rawText) {
   let html = '';
   let css = '';
 
-  // ```html ... ``` ブロックを抽出
-  const htmlMatch = rawText.match(/```html\s*\n([\s\S]*?)\n```/);
+  // ```html ... ``` ブロックを抽出（改行パターンの揺れに対応）
+  const htmlMatch = rawText.match(/```html\s*\n?([\s\S]*?)```/);
   if (htmlMatch) {
     html = htmlMatch[1].trim();
   }
 
   // ```css ... ``` ブロックを抽出
-  const cssMatch = rawText.match(/```css\s*\n([\s\S]*?)\n```/);
+  const cssMatch = rawText.match(/```css\s*\n?([\s\S]*?)```/);
   if (cssMatch) {
     css = cssMatch[1].trim();
   }
 
-  // HTMLブロックがない場合、全体をHTMLとして扱う
+  // ```だけのコードブロック（言語指定なし）からHTML抽出
+  if (!html) {
+    const genericMatch = rawText.match(/```\s*\n([\s\S]*?)```/);
+    if (genericMatch) {
+      const content = genericMatch[1].trim();
+      if (content.includes('<') && (content.includes('</') || content.includes('/>'))) {
+        html = content;
+      }
+    }
+  }
+
+  // コードブロックがない場合、HTMLタグ部分を直接抽出
   if (!html && rawText.includes('<')) {
-    // <html> or <div> で始まる部分を抽出
-    const tagMatch = rawText.match(/(<(?:!DOCTYPE|html|head|body|div|section|header|main)[\s\S]*)/i);
+    const tagMatch = rawText.match(/(<(?:!DOCTYPE|html|head|body|div|section|header|nav|main|footer|style|article)[\s\S]*)/i);
     if (tagMatch) {
       html = tagMatch[1].trim();
+      // 末尾の説明文を除去（最後の閉じタグ以降をカット）
+      const lastCloseTag = html.lastIndexOf('</');
+      if (lastCloseTag > 0) {
+        const endOfTag = html.indexOf('>', lastCloseTag);
+        if (endOfTag > 0) {
+          html = html.substring(0, endOfTag + 1).trim();
+        }
+      }
     }
   }
 

@@ -98,7 +98,6 @@ function App() {
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/reset-password" element={<ForgotPassword />} />
-            
             {/* 招待承認（認証不要でもアクセス可能） */}
             <Route path="/accept-invitation" element={<AcceptInvitation />} />
             <Route 

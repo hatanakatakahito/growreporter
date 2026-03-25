@@ -216,9 +216,9 @@ export default function AdminDashboard() {
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
                 <div 
-                  className="h-full rounded-full bg-gradient-to-r from-red-400 to-pink-600"
-                  style={{ 
-                    width: `${((stats.planDistribution?.standard || 0) / stats.totalUsers * 100)}%` 
+                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
+                  style={{
+                    width: `${((stats.planDistribution?.standard || 0) / stats.totalUsers * 100)}%`
                   }}
                 />
               </div>
@@ -235,8 +235,8 @@ export default function AdminDashboard() {
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
-                <div 
-                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-yellow-500"
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-red-400 to-pink-600"
                   style={{ 
                     width: `${((stats.planDistribution?.premium || 0) / stats.totalUsers * 100)}%` 
                   }}

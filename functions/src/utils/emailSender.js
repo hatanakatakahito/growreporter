@@ -85,7 +85,7 @@ ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 
 ────────────────────────
 グローレポータ運営チーム
-お問い合わせ: support@grow-group.jp
+お問い合わせ: info@grow-reporter.com
 ────────────────────────
 `;
     await sendEmailDirect({

@@ -1,0 +1,299 @@
+/**
+ * 改善案生成 サーバー側一元化 Callable Function
+ *
+ * クライアント側の generateAndAddImprovements.js (400行) をサーバー側に移動。
+ * 1. 包括的データ取得（GA4/GSC/Firestore直接アクセス）
+ * 2. AI改善案生成（generateAISummary内部ロジック呼び出し）
+ * 3. Jaccard類似度による重複排除
+ * 4. Firestore保存 + 非ビジュアル改善のmockupSkipped設定
+ */
+import { HttpsError } from 'firebase-functions/v2/https';
+import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { logger } from 'firebase-functions/v2';
+import { canEditSite } from '../utils/permissionHelper.js';
+import { fetchComprehensiveDataForImprovement } from '../utils/serverComprehensiveDataFetcher.js';
+
+const JACCARD_THRESHOLD = 0.5;
+
+// ==================== 重複判定ユーティリティ ====================
+
+function normalizeTitle(s) {
+  return (s || '').trim().replace(/\s+/g, ' ');
+}
+
+function bigramSet(str) {
+  const n = normalizeTitle(str);
+  const set = new Set();
+  for (let i = 0; i < n.length - 1; i++) {
+    set.add(n.slice(i, i + 2));
+  }
+  return set;
+}
+
+function jaccardSimilarity(a, b) {
+  const sa = bigramSet(a);
+  const sb = bigramSet(b);
+  if (sa.size === 0 && sb.size === 0) return 1;
+  let intersection = 0;
+  for (const x of sa) {
+    if (sb.has(x)) intersection++;
+  }
+  const union = sa.size + sb.size - intersection;
+  return union === 0 ? 0 : intersection / union;
+}
+
+function extractPathFromTitleOrDescription(title, description) {
+  const text = [title, description].filter(Boolean).join(' ');
+  if (!text) return null;
+  const parenMatch = text.match(/[（(](\/[^）)]*\/?)[）)]/);
+  if (parenMatch?.[1]) return parenMatch[1].trim() || '/';
+  const pathMatch = text.match(/(\/[a-zA-Z0-9/_.-]+)/);
+  if (pathMatch?.[1]) return pathMatch[1];
+  return null;
+}
+
+// 非ビジュアル改善キーワード
+const NON_VISUAL_KEYWORDS = [
+  '読込速度', '読み込み速度', '表示速度', 'ページ速度', 'パフォーマンス',
+  'Core Web Vitals', 'LCP', 'FID', 'CLS', 'TTFB', 'INP',
+  'alt属性', 'メタディスクリプション', 'meta description',
+  'robots.txt', 'sitemap', 'canonical', 'hreflang',
+  '構造化データ', 'schema.org', 'JSON-LD',
+  'SSL', 'HTTPS', 'セキュリティ',
+  'キャッシュ', 'CDN', '圧縮', 'minify', 'gzip',
+  'リダイレクト', '301', '302', '404',
+  'アクセシビリティ', 'WCAG',
+];
+
+function isNonVisual(title, description) {
+  const text = `${title || ''} ${description || ''}`.toLowerCase();
+  return NON_VISUAL_KEYWORDS.some(kw => text.includes(kw.toLowerCase()));
+}
+
+// カテゴリ/優先度の正規化
+const categoryMap = {
+  content: 'content', コンテンツ: 'content', コンテント: 'content',
+  design: 'design', デザイン: 'design',
+  acquisition: 'acquisition', 集客: 'acquisition',
+  feature: 'feature', 機能: 'feature',
+  technical: 'other', 技術: 'other',
+  other: 'other', その他: 'other',
+};
+const priorityMap = {
+  high: 'high', 高: 'high',
+  medium: 'medium', 中: 'medium',
+  low: 'low', 低: 'low',
+};
+
+function normalizeCategory(v) {
+  if (!v || typeof v !== 'string') return 'other';
+  const key = v.trim().toLowerCase();
+  return categoryMap[key] ?? 'other';
+}
+
+function normalizePriority(v) {
+  if (!v || typeof v !== 'string') return 'medium';
+  const key = v.trim().toLowerCase();
+  return priorityMap[key] || 'medium';
+}
+
+// ==================== メインハンドラ ====================
+
+export async function generateImprovementsCallable(req) {
+  if (!req.auth) {
+    throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
+  }
+
+  const userId = req.auth.uid;
+  const { siteId, improvementFocus = 'balance', userNote = '', forceRegenerate = false } = req.data;
+
+  if (!siteId) {
+    throw new HttpsError('invalid-argument', 'siteIdが必要です');
+  }
+
+  // 権限チェック
+  const canEdit = await canEditSite(userId, siteId);
+  if (!canEdit) {
+    throw new HttpsError('permission-denied', 'このサイトの改善案を生成する権限がありません');
+  }
+
+  const db = getFirestore();
+  const startTime = Date.now();
+
+  logger.info('[generateImprovements] 開始', { siteId, improvementFocus, userId });
+
+  try {
+    // Step 1: プラン制限チェック
+    const { checkCanGenerate } = await import('../utils/planManager.js');
+    await checkCanGenerate(userId, siteId, 'improvement');
+
+    // Step 2: サイトデータ取得
+    const siteDoc = await db.collection('sites').doc(siteId).get();
+    if (!siteDoc.exists) throw new HttpsError('not-found', 'サイトが見つかりません');
+    const siteData = siteDoc.data();
+    const siteUrl = (siteData.siteUrl || '').trim().replace(/\/+$/, '');
+
+    // Step 3: 既存改善案を取得（重複チェック用）
+    const existingSnap = await db.collection('sites').doc(siteId).collection('improvements').get();
+    const existingForPrompt = existingSnap.docs
+      .filter(d => {
+        const status = d.data().status;
+        return status === 'draft' || status === 'in_progress';
+      })
+      .map(d => ({ title: d.data().title || '', description: d.data().description || '' }));
+
+    const existingTitles = existingSnap.docs
+      .filter(d => d.data().status !== 'completed')
+      .map(d => normalizeTitle(d.data().title || ''));
+    const existingDedupKeys = new Set(
+      existingSnap.docs
+        .filter(d => d.data().status !== 'completed')
+        .map(d => (d.data().dedupKey || '').trim().toLowerCase())
+        .filter(Boolean)
+    );
+
+    // Step 4: 包括的データ取得
+    logger.info('[generateImprovements] データ取得開始');
+    const comprehensiveData = await fetchComprehensiveDataForImprovement(siteId);
+    logger.info('[generateImprovements] データ取得完了');
+
+    // Step 5: AI改善案生成（generateAISummaryの内部ロジックを直接呼び出し）
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const startDate = today.toISOString().split('T')[0];
+    const endDate = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const { generateAISummaryCallable } = await import('./generateAISummary.js');
+    const aiResult = await generateAISummaryCallable({
+      auth: req.auth,
+      data: {
+        siteId,
+        pageType: 'comprehensive_improvement',
+        startDate: endDate,
+        endDate: startDate,
+        metrics: comprehensiveData,
+        forceRegenerate: true,
+        improvementFocus,
+        userNote,
+        existingImprovements: existingForPrompt,
+      },
+    });
+
+    const recommendations = aiResult.recommendations || [];
+    logger.info(`[generateImprovements] AI生成完了: ${recommendations.length}件`);
+
+    if (recommendations.length === 0) {
+      return { success: true, count: 0, improvementIds: [], message: '推奨施策が見つかりませんでした' };
+    }
+
+    // Step 6: Jaccard類似度による重複排除
+    const filtered = [];
+    const seenDedupKeys = new Set();
+    for (const rec of recommendations) {
+      const title = normalizeTitle(rec.title);
+      const dedupKey = (rec.dedupKey || '').trim().toLowerCase();
+
+      if (dedupKey && existingDedupKeys.has(dedupKey)) continue;
+      if (dedupKey && seenDedupKeys.has(dedupKey)) continue;
+
+      let tooSimilar = false;
+      for (const existing of existingTitles) {
+        if (jaccardSimilarity(title, existing) >= JACCARD_THRESHOLD) {
+          tooSimilar = true;
+          break;
+        }
+      }
+      if (tooSimilar) continue;
+
+      for (const other of filtered) {
+        if (jaccardSimilarity(title, normalizeTitle(other.title)) >= JACCARD_THRESHOLD) {
+          tooSimilar = true;
+          break;
+        }
+      }
+      if (tooSimilar) continue;
+
+      if (dedupKey) seenDedupKeys.add(dedupKey);
+      filtered.push(rec);
+    }
+
+    if (filtered.length === 0) {
+      return { success: true, count: 0, improvementIds: [], message: '新規の改善案はありません（全て既存と重複）' };
+    }
+
+    logger.info(`[generateImprovements] 重複除外後: ${filtered.length}件`);
+
+    // Step 7: Firestore保存
+    const buildTargetPageUrl = (pathOrUrl) => {
+      if (!pathOrUrl || pathOrUrl === '/') return '';
+      if (pathOrUrl.startsWith('http://') || pathOrUrl.startsWith('https://')) return pathOrUrl;
+      if (!siteUrl) return '';
+      const path = pathOrUrl.startsWith('/') ? pathOrUrl : `/${pathOrUrl}`;
+      return `${siteUrl}${path}`;
+    };
+
+    // ユーザーメール取得
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userEmail = userDoc.exists ? (userDoc.data().email || 'unknown') : 'unknown';
+
+    const improvementIds = [];
+
+    for (let i = 0; i < filtered.length; i += 250) {
+      const chunk = filtered.slice(i, i + 250);
+      const batch = db.batch();
+
+      for (const suggestion of chunk) {
+        let targetPagePath = (suggestion.targetPagePath || suggestion.targetPageUrl || '').trim();
+        if (!targetPagePath) {
+          const extracted = extractPathFromTitleOrDescription(suggestion.title, suggestion.description);
+          if (extracted && extracted !== '/') targetPagePath = extracted;
+        }
+        const targetPageUrl = buildTargetPageUrl(targetPagePath);
+        const hours = suggestion.estimatedLaborHours;
+        const estimatedLaborHours = (hours != null && !Number.isNaN(Number(hours)) && Number(hours) > 0)
+          ? Number(hours) : null;
+
+        const nonVisual = isNonVisual(suggestion.title, suggestion.description);
+
+        const ref = db.collection('sites').doc(siteId).collection('improvements').doc();
+        batch.set(ref, {
+          title: suggestion.title,
+          description: suggestion.description,
+          status: 'draft',
+          expectedImpact: suggestion.expectedImpact || '',
+          targetPageUrl: targetPageUrl || '',
+          targetArea: suggestion.targetArea || '',
+          category: normalizeCategory(suggestion.category),
+          priority: normalizePriority(suggestion.priority),
+          estimatedLaborHours,
+          dedupKey: suggestion.dedupKey || null,
+          order: Date.now(),
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+          createdBy: userEmail,
+          source: 'ai_generated',
+          // 非ビジュアル改善はモックアップスキップ
+          ...(nonVisual ? { mockupSkipped: true, mockupSkipReason: 'non_visual' } : {}),
+        });
+        improvementIds.push(ref.id);
+      }
+
+      await batch.commit();
+    }
+
+    const duration = Date.now() - startTime;
+    logger.info(`[generateImprovements] 完了: ${improvementIds.length}件保存 (${duration}ms)`);
+
+    return {
+      success: true,
+      count: improvementIds.length,
+      improvementIds,
+      message: `${improvementIds.length}件の改善案を生成しました`,
+    };
+  } catch (error) {
+    logger.error('[generateImprovements] エラー:', error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('internal', `改善案生成に失敗しました: ${error.message}`);
+  }
+}
