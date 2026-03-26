@@ -17,7 +17,7 @@ import { logger } from 'firebase-functions/v2';
 const NAV_TIMEOUT_MS = 8_000;
 const POST_NAV_WAIT_MS = 200;
 const CONCURRENCY = 5;
-const SCREENSHOT_VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 1 };
+export const SCREENSHOT_VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 1 };
 const SCREENSHOT_QUALITY = 65;
 
 // ========== ブラウザ起動 ==========
@@ -68,7 +68,7 @@ export async function launchBrowser() {
  *   content  — Phase A用: 画像・フォント・メディアもブロック（DOM抽出のみ）
  *   screenshot — Phase B用: トラッカーのみブロック（スクショ用に画像等は許可）
  */
-async function setupRequestInterception(page, mode = 'screenshot') {
+export async function setupRequestInterception(page, mode = 'screenshot') {
   try {
     await page.setRequestInterception(true);
     page.on('request', (request) => {
@@ -488,7 +488,7 @@ function detectPageType(url, pageData) {
 
 // ========== スクロール + 遅延読み込み対策 ==========
 
-async function scrollAndWaitForLazyLoad(page) {
+export async function scrollAndWaitForLazyLoad(page) {
   await page.evaluate(async () => {
     const distance = 500;
     const delay = 50;
@@ -518,7 +518,7 @@ async function scrollAndWaitForLazyLoad(page) {
 
 const SCREENSHOT_MAX_HEIGHT = 5000;
 
-async function captureAndUploadScreenshot(page, siteId, pagePath) {
+export async function captureAndUploadScreenshot(page, siteId, pagePath) {
   const bucket = getStorage().bucket();
 
   // ページ全体の高さを取得し、上限を設ける（メモリ爆発防止）

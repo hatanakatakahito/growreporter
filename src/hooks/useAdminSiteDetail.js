@@ -10,13 +10,15 @@ export function useAdminSiteDetail(siteId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchSiteDetail = useCallback(async () => {
+  const fetchSiteDetail = useCallback(async ({ silent = false } = {}) => {
     if (!siteId) {
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -49,7 +51,7 @@ export function useAdminSiteDetail(siteId) {
   }, [fetchSiteDetail]);
 
   const refetch = useCallback(() => {
-    fetchSiteDetail();
+    fetchSiteDetail({ silent: true });
   }, [fetchSiteDetail]);
 
   return {

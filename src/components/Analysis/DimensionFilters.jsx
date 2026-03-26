@@ -3,6 +3,7 @@ import { Filter, ChevronDown, ChevronLeft, X, Search, Check } from 'lucide-react
 import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
+import DotWaveSpinner from '../common/DotWaveSpinner';
 
 /**
  * 利用可能なGA4ディメンション一覧
@@ -100,7 +101,7 @@ function DimensionValuePanel({ dimensionDef, siteId, startDate, endDate, selecte
       <div className="max-h-64 overflow-y-auto p-1">
         {isLoading ? (
           <div className="flex items-center justify-center py-6">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            <DotWaveSpinner size="sm" />
             <span className="ml-2 text-sm text-body-color">読み込み中...</span>
           </div>
         ) : filteredValues.length === 0 ? (

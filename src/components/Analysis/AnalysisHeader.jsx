@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSite } from '../../contexts/SiteContext';
-import { Settings, ChevronDown, LogOut, User as UserIcon, Globe, Bell, Download, Loader2 } from 'lucide-react';
+import { Settings, ChevronDown, LogOut, User as UserIcon, Globe, Bell, Download } from 'lucide-react';
+import DotWaveSpinner from '../common/DotWaveSpinner';
 import DateRangePicker from './DateRangePicker';
 
 const ExcelIcon = ({ className, disabled }) => (
@@ -183,7 +184,7 @@ export default function AnalysisHeader({
                     title="レポートダウンロード"
                   >
                     {isExporting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <DotWaveSpinner size="xs" />
                     ) : (
                       <Download className="h-4 w-4" />
                     )}

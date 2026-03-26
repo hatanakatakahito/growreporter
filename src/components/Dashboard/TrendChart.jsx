@@ -3,6 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip,
   ResponsiveContainer, Legend,
 } from 'recharts';
+import DotWaveSpinner from '../common/DotWaveSpinner';
 
 const METRIC_OPTIONS = [
   { key: 'sessions', label: 'セッション', color: '#3758F9', axis: 'left' },
@@ -167,7 +168,7 @@ export default function TrendChart({ monthlyData, dailyData, dailyConversionData
 
       {isLoading ? (
         <div className="flex h-64 items-center justify-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <DotWaveSpinner size="md" />
         </div>
       ) : chartData.length === 0 ? (
         <div className="flex h-64 items-center justify-center text-sm text-body-color">

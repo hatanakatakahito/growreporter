@@ -4,7 +4,8 @@ import { INDUSTRY_GROUPS } from '../../../constants/industries';
 import { storage, functions } from '../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { Upload, X } from 'lucide-react';
+import DotWaveSpinner from '../../common/DotWaveSpinner';
 import MultiSelectField from './MultiSelectField';
 import { SCREENSHOT_DISPLAY_HEIGHT_PX } from '../../../constants/screenshotDisplay';
 
@@ -370,7 +371,7 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
               className="flex items-center gap-1 rounded bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isMetadataFetching ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <DotWaveSpinner size="xs" variant="white" />
               ) : (
                 <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -392,7 +393,7 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
             {isMetadataFetching && (
               <div className="absolute inset-0 flex items-center justify-center rounded-md bg-primary/10 backdrop-blur-sm dark:bg-primary/20">
                 <div className="flex items-center gap-2 text-sm font-medium text-primary">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <DotWaveSpinner size="xs" />
                   <span>メタ情報を取得中...</span>
                 </div>
               </div>
@@ -421,7 +422,7 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
             {isMetadataFetching && (
               <div className="absolute inset-0 flex items-center justify-center rounded-md bg-primary/10 backdrop-blur-sm dark:bg-primary/20">
                 <div className="flex items-center gap-2 text-sm font-medium text-primary">
-                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <DotWaveSpinner size="xs" />
                   <span>メタ情報を取得中...</span>
                 </div>
               </div>
@@ -445,7 +446,7 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
             className="flex items-center gap-1 rounded bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isScreenshotFetching ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              <DotWaveSpinner size="xs" variant="white" />
             ) : (
               <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -458,7 +459,7 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
         {/* 進行状況インジケーター */}
         {screenshotProgress && (
           <div className="mb-4 flex items-center gap-3 rounded-md border-2 border-primary/30 bg-primary/10 px-4 py-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <DotWaveSpinner size="sm" />
             <div className="flex-1">
               <p className="text-sm font-medium text-primary">{screenshotProgress}</p>
               <p className="mt-0.5 text-xs font-medium text-primary/70">処理には10-20秒程度かかります</p>
@@ -490,7 +491,7 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
               <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isManualUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: `${SCREENSHOT_DISPLAY_HEIGHT_PX}px` }}>
                 {isManualUploading ? (
                   <>
-                    <Loader2 className="mb-2 h-8 w-8 animate-spin text-primary" />
+                    <div className="mb-2"><DotWaveSpinner size="md" /></div>
                     <span className="text-sm text-primary">アップロード中...</span>
                   </>
                 ) : (
@@ -534,7 +535,7 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
               <label className={`flex w-full flex-col items-center justify-center rounded-md border-2 border-dashed border-stroke bg-gray-1 transition dark:border-dark-3 dark:bg-dark-2 ${isManualUploading ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-2 dark:hover:bg-dark-3'}`} style={{ height: `${SCREENSHOT_DISPLAY_HEIGHT_PX}px` }}>
                 {isManualUploading ? (
                   <>
-                    <Loader2 className="mb-2 h-8 w-8 animate-spin text-primary" />
+                    <div className="mb-2"><DotWaveSpinner size="md" /></div>
                     <span className="text-sm text-primary">アップロード中...</span>
                   </>
                 ) : (

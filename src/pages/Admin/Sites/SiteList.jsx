@@ -6,6 +6,7 @@ import { setPageTitle } from '../../../utils/pageTitle';
 import { useAdminSites } from '../../../hooks/useAdminSites';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
+import DotWaveSpinner from '../../../components/common/DotWaveSpinner';
 import { Search, Download, ChevronLeft, ChevronRight, Globe, AlertTriangle, CheckCircle, XCircle, BarChart3, Trash2, AlertCircle } from 'lucide-react';
 import { SITE_PURPOSES } from '../../../constants/siteOptions';
 
@@ -461,7 +462,7 @@ export default function AdminSiteList() {
               >
                 {deleteLoading ? (
                   <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                    <DotWaveSpinner size="xs" variant="white" />
                     削除中...
                   </>
                 ) : (

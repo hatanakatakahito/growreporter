@@ -6,6 +6,7 @@ import { AlertCircle } from 'lucide-react';
 import Step1BasicInfo from '../GrowReporter/SiteRegistration/Step1BasicInfo';
 import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
+import DotWaveSpinner from '../common/DotWaveSpinner';
 
 /**
  * 管理者サイト登録モーダル（Step1BasicInfo再利用）
@@ -144,7 +145,7 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
           <Button color="blue" onClick={handleCreate} disabled={loading}>
             {loading ? (
               <>
-                <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                <DotWaveSpinner size="xs" variant="white" />
                 登録中...
               </>
             ) : (

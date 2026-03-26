@@ -282,6 +282,29 @@ export async function generateImprovementsCallable(req) {
       await batch.commit();
     }
 
+    // Step 8: 不足スクリーンショットの撮影（31〜50位のページ等）
+    const targetPageUrls = filtered
+      .map(suggestion => {
+        let path = (suggestion.targetPagePath || suggestion.targetPageUrl || '').trim();
+        if (!path) {
+          const extracted = extractPathFromTitleOrDescription(suggestion.title, suggestion.description);
+          if (extracted && extracted !== '/') path = extracted;
+        }
+        return buildTargetPageUrl(path);
+      })
+      .filter(Boolean);
+
+    if (targetPageUrls.length > 0) {
+      try {
+        const { captureMissingScreenshots } = await import('../utils/captureMissingScreenshots.js');
+        const ssResult = await captureMissingScreenshots(siteId, targetPageUrls);
+        logger.info('[generateImprovements] 不足スクショ撮影結果:', ssResult);
+      } catch (ssError) {
+        // スクショ失敗は改善案生成の成否に影響させない
+        logger.warn('[generateImprovements] 不足スクショ撮影エラー（無視）:', ssError.message);
+      }
+    }
+
     const duration = Date.now() - startTime;
     logger.info(`[generateImprovements] 完了: ${improvementIds.length}件保存 (${duration}ms)`);
 

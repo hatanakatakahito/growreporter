@@ -11,6 +11,7 @@ import { db, functions } from '../config/firebase';
 import { Switch } from '../components/ui/switch';
 import { setPageTitle } from '../utils/pageTitle';
 import { Button } from '@/components/ui/button';
+import DotWaveSpinner from '@/components/common/DotWaveSpinner';
 
 /**
  * アカウント設定画面
@@ -416,7 +417,7 @@ export default function AccountSettings() {
               >
                 {deleteLoading ? (
                   <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                    <DotWaveSpinner size="xs" variant="white" />
                     削除中...
                   </>
                 ) : (

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import DotWaveSpinner from './common/DotWaveSpinner';
 
 export default function ProtectedRoute({ children }) {
   const { currentUser, loading } = useAuth();
@@ -9,7 +10,7 @@ export default function ProtectedRoute({ children }) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="mb-4 inline-block h-12 w-12 animate-spin rounded-full border-4 border-solid border-primary border-r-transparent"></div>
+          <div className="mb-4"><DotWaveSpinner size="lg" /></div>
           <p className="text-body-color">読み込み中...</p>
         </div>
       </div>

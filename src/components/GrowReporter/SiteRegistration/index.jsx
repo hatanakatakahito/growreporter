@@ -8,6 +8,7 @@ import { httpsCallable } from 'firebase/functions';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import logoImg from '../../../assets/img/logo.svg';
 import UpgradeModal from '../../common/UpgradeModal';
+import DotWaveSpinner from '../../common/DotWaveSpinner';
 import StepIndicator from './StepIndicator';
 import Step1BasicInfo from './Step1BasicInfo';
 import Step2GA4Connect from './Step2GA4Connect';
@@ -428,7 +429,7 @@ export default function SiteRegistration({ mode = 'new' }) {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: 'rgb(244, 244, 244)' }}>
         <div className="text-center">
-          <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <DotWaveSpinner size="lg" />
           <p className="mt-4 text-body-color">読み込み中...</p>
         </div>
       </div>

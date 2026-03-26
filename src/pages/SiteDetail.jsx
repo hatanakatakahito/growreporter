@@ -5,6 +5,7 @@ import { setPageTitle } from '../utils/pageTitle';
 import { useSiteDetail } from '../hooks/useSiteDetail';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorAlert from '../components/common/ErrorAlert';
+import DotWaveSpinner from '../components/common/DotWaveSpinner';
 import { functions } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, getDoc, getDocFromServer } from 'firebase/firestore';
@@ -494,7 +495,7 @@ export default function SiteDetail() {
               >
                 {deleteLoading ? (
                   <>
-                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white"></div>
+                    <DotWaveSpinner size="xs" variant="white" />
                     削除中...
                   </>
                 ) : (

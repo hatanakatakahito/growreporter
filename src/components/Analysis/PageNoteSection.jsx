@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import NoteHistoryCard from './NoteHistoryCard';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
+import DotWaveSpinner from '../common/DotWaveSpinner';
 
 /**
  * ページメモセクションコンポーネント
@@ -126,7 +127,7 @@ export default function PageNoteSection({ userId, siteId, pageType, dateRange })
     return (
       <div className="rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark-2">
         <div className="flex items-center justify-center py-2">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+          <DotWaveSpinner size="xs" />
           <span className="ml-2 text-xs text-body-color">読み込み中...</span>
         </div>
       </div>
@@ -210,7 +211,7 @@ export default function PageNoteSection({ userId, siteId, pageType, dateRange })
 
           {historyLoading ? (
             <div className="flex items-center justify-center py-6">
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-primary border-t-transparent"></div>
+              <DotWaveSpinner size="sm" />
               <span className="ml-2 text-xs text-body-color">読み込み中...</span>
             </div>
           ) : history.length === 0 ? (
@@ -250,7 +251,7 @@ export default function PageNoteSection({ userId, siteId, pageType, dateRange })
       {consultantNoteLoading ? (
         <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 dark:border-purple-900/50 dark:bg-purple-900/20">
           <div className="flex items-center justify-center py-2">
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-purple-600 border-t-transparent"></div>
+            <DotWaveSpinner size="xs" />
             <span className="ml-2 text-xs text-purple-700 dark:text-purple-300">読み込み中...</span>
           </div>
         </div>

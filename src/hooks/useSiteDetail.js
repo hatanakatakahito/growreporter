@@ -10,13 +10,15 @@ export function useSiteDetail(siteId) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const fetchSiteDetail = useCallback(async () => {
+  const fetchSiteDetail = useCallback(async ({ silent = false } = {}) => {
     if (!siteId) {
       setLoading(false);
       return;
     }
 
-    setLoading(true);
+    if (!silent) {
+      setLoading(true);
+    }
     setError(null);
 
     try {
@@ -41,7 +43,7 @@ export function useSiteDetail(siteId) {
   }, [fetchSiteDetail]);
 
   const refetch = useCallback(() => {
-    fetchSiteDetail();
+    fetchSiteDetail({ silent: true });
   }, [fetchSiteDetail]);
 
   return {
