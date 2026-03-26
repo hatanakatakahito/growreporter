@@ -5,7 +5,8 @@ import { useSidebar } from '../contexts/SidebarContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, Loader2, X, FileText, Clock, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, X, FileText, Clock, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import DotWaveSpinner from '../components/common/DotWaveSpinner';
 import { setPageTitle } from '../utils/pageTitle';
 import { db, functions } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -74,11 +75,9 @@ export default function Improve() {
   // 方針選択モーダル（AI生成の前に表示）
   const [isFocusModalOpen, setIsFocusModalOpen] = useState(false);
   const hasAutoOpenedFocusRef = useRef(false);
-  // AI生成モーダルの状態
+  // AI生成オーバーレイの状態
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
   const [generationStatus, setGenerationStatus] = useState('loading');
-  const [generationCount, setGenerationCount] = useState(0);
-  const [generationError, setGenerationError] = useState('');
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   // ダウンロードメニュー
@@ -583,7 +582,7 @@ export default function Improve() {
                     title="改善内容ダウンロード"
                   >
                     {isExporting ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <DotWaveSpinner size="xs" />
                     ) : (
                       <Download className="h-4 w-4" />
                     )}
@@ -681,7 +680,6 @@ export default function Improve() {
               }
               setIsGenerationModalOpen(true);
               setGenerationStatus('loading');
-              setGenerationError('');
               try {
                 await generateAndAddImprovements(
                   selectedSiteId,
@@ -689,39 +687,15 @@ export default function Improve() {
                   async (status, count, error) => {
                     setGenerationStatus(status);
                     if (status === 'success') {
-                      setGenerationCount(count);
-                      await queryClient.refetchQueries({ queryKey: ['improvements', selectedSiteId] });
-                      const list = queryClient.getQueryData(['improvements', selectedSiteId]) || [];
-                      const withUrl = list.filter((imp) => imp.targetPageUrl);
-                      const captureScreenshot = httpsCallable(functions, 'captureScreenshot');
-                      for (const item of withUrl) {
-                        try {
-                          const pcRes = await captureScreenshot({ siteUrl: item.targetPageUrl, deviceType: 'pc' });
-                          if (pcRes?.data?.imageUrl) {
-                            await updateDoc(doc(db, 'sites', selectedSiteId, 'improvements', item.id), { targetPageScreenshotUrlPc: pcRes.data.imageUrl, updatedAt: new Date() });
-                          }
-                        } catch (e) {
-                          console.warn('[Improve] PCスクショ取得スキップ:', item.id, e?.message);
-                        }
-                        try {
-                          const mobileRes = await captureScreenshot({ siteUrl: item.targetPageUrl, deviceType: 'mobile' });
-                          if (mobileRes?.data?.imageUrl) {
-                            await updateDoc(doc(db, 'sites', selectedSiteId, 'improvements', item.id), { targetPageScreenshotUrlMobile: mobileRes.data.imageUrl, updatedAt: new Date() });
-                          }
-                        } catch (e) {
-                          console.warn('[Improve] モバイルスクショ取得スキップ:', item.id, e?.message);
-                        }
-                      }
-                      if (withUrl.length > 0) {
-                        queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
-                      }
+                      setIsGenerationModalOpen(false);
+                      toast.success(`${count}件の改善案を追加しました`);
+                      queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
                     } else if (status === 'error') {
-                      // プラン上限エラーの場合はアップグレードモーダルを表示
+                      setIsGenerationModalOpen(false);
                       if (error && error.includes('上限に達しました')) {
-                        setIsGenerationModalOpen(false);
                         setIsUpgradeModalOpen(true);
                       } else {
-                        setGenerationError(error);
+                        toast.error(error || '改善案の生成に失敗しました');
                       }
                     }
                   },
@@ -729,12 +703,11 @@ export default function Improve() {
                 );
               } catch (err) {
                 const msg = err?.message || '生成に失敗しました';
+                setIsGenerationModalOpen(false);
                 if (msg.includes('上限に達しました')) {
-                  setIsGenerationModalOpen(false);
                   setIsUpgradeModalOpen(true);
                 } else {
-                  setGenerationStatus('error');
-                  setGenerationError(msg);
+                  toast.error(msg);
                 }
               }
             }}
@@ -900,7 +873,7 @@ export default function Improve() {
                               </td>
                               <td className="py-7 px-4 align-middle">
                                 <div className="flex items-center gap-2">
-                                  <div className="text-sm font-medium text-dark dark:text-white leading-snug line-clamp-1">{item.title}</div>
+                                  <div className="text-sm font-medium text-dark dark:text-white leading-snug">{item.title}</div>
                                   {item.mockupHtml ? (
                                     <span className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 text-[9px] font-bold text-green-600 dark:text-green-400" title="モックアップ生成済み">
                                       <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="m4.5 12.75 6 6 9-13.5" /></svg>
@@ -915,7 +888,7 @@ export default function Improve() {
                                       disabled={mockupGeneratingIds.has(item.id)}
                                     >
                                       {mockupGeneratingIds.has(item.id) ? (
-                                        <><Loader2 className="h-2.5 w-2.5 animate-spin" />生成中</>
+                                        <><DotWaveSpinner size="xs" />生成中</>
                                       ) : (
                                         <><Sparkles className="h-2.5 w-2.5" />モック</>
                                       )}
@@ -1006,13 +979,10 @@ export default function Improve() {
 
       {/* AI生成モーダル */}
       <AIGenerationModal
-        isOpen={isGenerationModalOpen}
-        status={generationStatus}
-        count={generationCount}
-        error={generationError}
-        onClose={() => {
+        isOpen={isGenerationModalOpen && generationStatus === 'loading'}
+        onCancel={() => {
           setIsGenerationModalOpen(false);
-          queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
+          setGenerationStatus('loading');
         }}
       />
 
@@ -1348,30 +1318,59 @@ export default function Improve() {
                                 </div>
                                 <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl}</div>
                               </div>
-                              <div className="bg-white dark:bg-dark-2 flex items-center justify-center" style={{ minHeight: '300px' }}>
-                                <div className="text-center p-8">
+                              {/* 半透明スクショ背景 + 3ステップCTA */}
+                              <div className="relative overflow-hidden bg-white dark:bg-dark-2" style={{ minHeight: '300px' }}>
+                                {/* 背景: Beforeスクショ半透明 + グラデーション */}
+                                {getBeforeScreenshotUrl(item.targetPageUrl) && (
+                                  <img
+                                    src={getBeforeScreenshotUrl(item.targetPageUrl)}
+                                    alt=""
+                                    className="absolute inset-0 w-full h-full object-cover opacity-[0.10]"
+                                  />
+                                )}
+                                <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(55,88,249,0.04) 0%, rgba(255,255,255,0.96) 35%, rgba(255,255,255,1) 100%)' }} />
+                                {/* コンテンツ */}
+                                <div className="relative z-10 flex flex-col items-center justify-center p-8" style={{ minHeight: '300px' }}>
                                   {mockupGeneratingIds.has(item.id) ? (
                                     <>
                                       <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <Loader2 className="h-7 w-7 text-primary animate-spin" />
+                                        <DotWaveSpinner size="md" />
                                       </div>
                                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">モックアップを生成しています</p>
                                       <p className="text-xs text-gray-400 dark:text-gray-500">AIがデザインを作成中です。しばらくお待ちください。</p>
                                     </>
                                   ) : (
                                     <>
-                                      <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <Sparkles className="h-7 w-7 text-primary" />
+                                      {/* 3ステップ */}
+                                      <div className="w-full max-w-[260px] mb-7">
+                                        {[
+                                          { num: '1', main: 'ボタンをクリック', sub: 'ワンクリックで生成開始', active: true },
+                                          { num: '2', main: 'AIがデザインを作成', sub: '改善内容をもとに自動生成', active: false },
+                                          { num: '3', main: 'Before / After で比較', sub: '改善効果を視覚的に確認', active: false },
+                                        ].map((step, i) => (
+                                          <div key={i} className="flex items-start gap-3 mb-4 last:mb-0 relative">
+                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${step.active ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-dark-3 text-gray-400'}`}>
+                                              {step.num}
+                                            </div>
+                                            <div>
+                                              <div className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">{step.main}</div>
+                                              <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{step.sub}</div>
+                                            </div>
+                                            {i < 2 && <div className="absolute left-[13px] top-[30px] w-0.5 h-3 bg-gray-200 dark:bg-dark-3" />}
+                                          </div>
+                                        ))}
                                       </div>
-                                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">改善適用後のモックアップを生成できます</p>
-                                      <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">AIがこのページの改善デザインを作成します</p>
                                       <button
                                         onClick={() => handleGenerateMockup(item)}
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 transition cursor-pointer"
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition cursor-pointer shadow-sm"
                                       >
                                         <Sparkles className="h-4 w-4" />
                                         モックアップを生成する
                                       </button>
+                                      <div className="flex items-center gap-1 mt-4 text-[11px] text-gray-400">
+                                        <Clock className="w-3.5 h-3.5" />
+                                        所要時間: 約30秒
+                                      </div>
                                     </>
                                   )}
                                 </div>

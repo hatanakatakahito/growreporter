@@ -150,12 +150,12 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} size="2xl">
+    <Dialog open={isOpen} onClose={onClose} size="2xl" className="flex max-h-[80vh] flex-col">
       <DialogTitle>
         {editingItem ? '改善課題を編集' : '改善課題を追加'}
       </DialogTitle>
 
-      <DialogBody>
+      <DialogBody className="min-h-0 overflow-y-auto">
         <form id="improvement-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-sm font-medium text-dark dark:text-white">

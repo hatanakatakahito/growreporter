@@ -7,6 +7,7 @@ import { functions } from '../../../config/firebase';
 import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { setPageTitle } from '../../../utils/pageTitle';
+import DotWaveSpinner from '../../../components/common/DotWaveSpinner';
 
 /**
  * メール通知設定画面（管理者用）
@@ -231,7 +232,7 @@ export default function EmailNotifications() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+        <DotWaveSpinner size="md" />
         <span className="ml-3 text-body-color">読み込み中...</span>
       </div>
     );

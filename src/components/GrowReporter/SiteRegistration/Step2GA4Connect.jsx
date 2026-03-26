@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { db, functions } from '../../../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
+import DotWaveSpinner from '../../common/DotWaveSpinner';
 
 export default function Step2GA4Connect({ siteData, setSiteData }) {
   const { currentUser } = useAuth();
@@ -425,10 +426,7 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
           >
             {isConnecting ? (
               <>
-                <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <DotWaveSpinner size="sm" variant="white" />
                 接続中...
               </>
             ) : (
@@ -471,13 +469,10 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
               GA4プロパティを選択
               <span className="text-red-500">*</span>
             </label>
-            
+
             {isLoadingProperties ? (
               <div className="flex items-center gap-2 rounded-md border border-stroke bg-transparent px-5 py-3 text-body-color dark:border-dark-3">
-                <svg className="h-5 w-5 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                <DotWaveSpinner size="sm" />
                 プロパティを読み込み中...
               </div>
             ) : properties.length > 0 ? (

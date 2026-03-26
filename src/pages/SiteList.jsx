@@ -8,6 +8,7 @@ import { collection, query, where, getDocs, deleteDoc, doc, getDoc } from 'fireb
 import { httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
 import UpgradeModal from '@/components/common/UpgradeModal';
+import DotWaveSpinner from '@/components/common/DotWaveSpinner';
 
 export default function SiteList() {
   const [sites, setSites] = useState([]);
@@ -146,7 +147,7 @@ export default function SiteList() {
           </div>
           <div className="flex min-h-[60vh] items-center justify-center">
             <div className="text-center">
-              <div className="mx-auto h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+              <DotWaveSpinner size="lg" />
               <p className="mt-4 text-body-color">読み込み中...</p>
             </div>
           </div>

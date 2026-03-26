@@ -37,11 +37,16 @@ module.exports = {
       },
       animation: {
         'bounce-once': 'pulse-scale 0.6s ease-in-out',
+        'dot-wave': 'dot-wave 1.4s ease-in-out infinite',
       },
       keyframes: {
         'pulse-scale': {
           '0%, 100%': { transform: 'scale(1)' },
           '50%': { transform: 'scale(1.1)' },
+        },
+        'dot-wave': {
+          '0%, 60%, 100%': { transform: 'translateY(0)', opacity: '0.4' },
+          '30%': { transform: 'translateY(var(--dot-y, -12px))', opacity: '1' },
         },
       },
     },

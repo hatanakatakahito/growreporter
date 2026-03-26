@@ -455,7 +455,7 @@ export const submitImprovementConsultation = lazyCallable('./callable/submitImpr
  * 改善案生成 Callable Function（サーバー側一元化）
  * データ取得→AI生成→重複排除→保存を一括実行
  */
-export const generateImprovements = lazyCallable('./callable/generateImprovements.js', 'generateImprovementsCallable', { memory: '1GiB', timeoutSeconds: 300, secrets: ['GEMINI_API_KEY'] });
+export const generateImprovements = lazyCallable('./callable/generateImprovements.js', 'generateImprovementsCallable', { memory: '2GiB', timeoutSeconds: 300, secrets: ['GEMINI_API_KEY'] });
 
 /**
  * 改善モックアップ生成 Callable Function（Gemini 2.5 Flash）

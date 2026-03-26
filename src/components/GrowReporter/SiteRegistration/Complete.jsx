@@ -5,6 +5,7 @@ import { db } from '../../../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import Confetti from 'react-confetti';
 import { Check } from 'lucide-react';
+import DotWaveSpinner from '../../common/DotWaveSpinner';
 import CompleteSummary from './CompleteSummary';
 
 export default function Complete() {
@@ -109,7 +110,7 @@ export default function Complete() {
     return (
       <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: 'rgb(244, 244, 244)' }}>
         <div className="text-center">
-          <div className="mx-auto mb-6 h-16 w-16 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+          <div className="mb-6"><DotWaveSpinner size="lg" /></div>
           <p className="text-lg font-medium text-primary">登録処理中...</p>
           <p className="mt-2 text-sm text-body-color">もうすぐ完了します</p>
         </div>
