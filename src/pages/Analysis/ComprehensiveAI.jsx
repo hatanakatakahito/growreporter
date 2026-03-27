@@ -282,6 +282,7 @@ export default function ComprehensiveAI() {
         setDateRange={updateDateRange}
         showDateRange={true}
         showSiteInfo={false}
+        hideComparison={true}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         <div className="mx-auto max-w-content px-6 py-10">
@@ -484,6 +485,9 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
     }
   };
 
+  // 比較期間ラベル - Hooksルールのため早期リターン前に配置
+  const compPeriodLabel = '前期間比';
+
   useEffect(() => {
     if (selectedSiteId && rawData) {
       loadAnalysis(false);
@@ -632,8 +636,14 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
                   <p className="text-[18px] font-bold text-gray-900">{kpi.value}</p>
                   <p className="text-[11px] text-gray-700">{kpi.label}</p>
                   {kpi.change != null && (
-                    <p className={`text-[11px] ${kpi.change > 0 ? 'text-emerald-600' : kpi.change < 0 ? 'text-rose-600' : 'text-gray-500'}`}>
-                      {kpi.change > 0 ? '↑' : kpi.change < 0 ? '↓' : '―'} {kpi.change !== 0 ? `${Math.abs(kpi.change).toFixed(1)}%` : '変化なし'}
+                    <p className={`inline-flex items-center justify-center gap-0.5 text-[11px] ${kpi.change > 0 ? 'text-emerald-600' : kpi.change < 0 ? 'text-rose-600' : 'text-gray-500'}`}>
+                      {Math.abs(kpi.change) < 1
+                        ? <><Minus className="h-3 w-3" /> {Math.abs(kpi.change).toFixed(1)}%</>
+                        : kpi.change > 0
+                          ? <><ArrowUpRight className="h-3 w-3" /> +{Math.abs(kpi.change).toFixed(1)}%</>
+                          : <><ArrowDownRight className="h-3 w-3" /> -{Math.abs(kpi.change).toFixed(1)}%</>
+                      }
+                      <span className="ml-0.5 text-gray-400">{compPeriodLabel}</span>
                     </p>
                   )}
                 </div>
@@ -667,6 +677,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
                   sectionTitle={section.title}
                   rawData={rawData}
                   selectedSite={selectedSite}
+                  compPeriodLabel={compPeriodLabel}
                 />
               </div>
               <p className="text-[14px] leading-[1.8] text-gray-900">
@@ -812,13 +823,13 @@ function HealthScoreRing({ rawData }) {
 }
 
 
-function SectionStructuredData({ sectionTitle, rawData, selectedSite }) {
+function SectionStructuredData({ sectionTitle, rawData, selectedSite, compPeriodLabel }) {
   const metrics = rawData.current?.metrics;
   const prevMetrics = rawData.previousMonth?.metrics;
 
   switch (sectionTitle) {
     case 'アクセス概況':
-      return <AccessOverviewCards metrics={metrics} prevMetrics={prevMetrics} rawData={rawData} />;
+      return <AccessOverviewCards metrics={metrics} prevMetrics={prevMetrics} rawData={rawData} compPeriodLabel={compPeriodLabel} />;
     case 'ユーザー分析':
     case '訪問者の特徴':
     case '訪問者の傾向':
@@ -837,7 +848,7 @@ function SectionStructuredData({ sectionTitle, rawData, selectedSite }) {
 /**
  * 変化率バッジ
  */
-function ChangeBadge({ current, previous }) {
+function ChangeBadge({ current, previous, periodLabel = '前期間比' }) {
   if (!previous || previous === 0) return null;
   const change = ((current - previous) / previous) * 100;
   const isPositive = change > 0;
@@ -848,6 +859,7 @@ function ChangeBadge({ current, previous }) {
       <span className="inline-flex items-center gap-0.5 text-xs text-gray-600">
         <Minus className="h-3 w-3" />
         {Math.abs(change).toFixed(1)}%
+        <span className="ml-0.5 text-gray-400">{periodLabel}</span>
       </span>
     );
   }
@@ -856,6 +868,7 @@ function ChangeBadge({ current, previous }) {
     <span className={`inline-flex items-center gap-0.5 text-xs ${isPositive ? 'text-emerald-600' : 'text-rose-600'}`}>
       {isPositive ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
       {isPositive ? '+' : ''}{change.toFixed(1)}%
+      <span className="ml-0.5 text-gray-400">{periodLabel}</span>
     </span>
   );
 }
@@ -863,7 +876,7 @@ function ChangeBadge({ current, previous }) {
 /**
  * アクセス概況 - KPIカード（素人向けラベル）
  */
-function AccessOverviewCards({ metrics, prevMetrics, rawData }) {
+function AccessOverviewCards({ metrics, prevMetrics, rawData, compPeriodLabel }) {
   if (!metrics) return null;
 
   const sessions = metrics.sessions || 0;
@@ -890,6 +903,7 @@ function AccessOverviewCards({ metrics, prevMetrics, rawData }) {
               <ChangeBadge
                 current={kpi.isRate ? kpi.current : parseFloat(String(kpi.value).replace(/,/g, ''))}
                 previous={kpi.prev}
+                periodLabel={compPeriodLabel}
               />
             </div>
           )}

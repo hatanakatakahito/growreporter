@@ -352,14 +352,19 @@ export default function AccountSettings() {
           </div>
         </div>
 
-        {/* アカウント削除 */}
-        <div className="mt-8 border-t border-gray-200 pt-6 lg:col-span-2">
+        {/* アカウント削除 & 法的リンク */}
+        <div className="mt-8 border-t border-gray-200 pt-6 lg:col-span-2 flex flex-wrap items-center justify-between gap-y-2">
           <button
             onClick={() => setShowDeleteAccount(true)}
             className="text-sm text-gray-400 hover:text-red-500 transition"
           >
             アカウントを削除する
           </button>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
+            <a href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-gray-500 hover:underline">利用規約</a>
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" className="hover:text-gray-500 hover:underline">プライバシーポリシー</a>
+            <a href="/commercial-transaction" target="_blank" rel="noopener noreferrer" className="hover:text-gray-500 hover:underline">特定商取引法に基づく表記</a>
+          </div>
         </div>
       </div>
       </div>

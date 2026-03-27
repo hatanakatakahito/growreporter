@@ -184,12 +184,23 @@ export default function PageCategories() {
       const path = row.pagePath || '/';
       const category = path === '/' ? 'トップページ' : '/' + path.split('/').filter(Boolean)[0];
       if (!compCategories[category]) {
-        compCategories[category] = { category, sessions: 0, pageViews: 0, conversions: 0 };
+        compCategories[category] = { category, sessions: 0, users: 0, newUsers: 0, pageViews: 0, engagementRateSum: 0, bounceRateSum: 0, avgDurationSum: 0, conversions: 0 };
       }
       compCategories[category].sessions += row.sessions || 0;
+      compCategories[category].users += row.activeUsers || 0;
+      compCategories[category].newUsers += row.newUsers || 0;
       compCategories[category].pageViews += row.screenPageViews || 0;
+      compCategories[category].engagementRateSum += (row.engagementRate || 0) * (row.sessions || 0);
+      compCategories[category].bounceRateSum += (row.bounceRate || 0) * (row.sessions || 0);
+      compCategories[category].avgDurationSum += (row.averageSessionDuration || 0) * (row.sessions || 0);
     });
-    const compTable = Object.values(compCategories);
+    const compTable = Object.values(compCategories).map(cat => ({
+      ...cat,
+      engagementRate: cat.sessions > 0 ? ((cat.engagementRateSum / cat.sessions) * 100).toFixed(1) : '0.0',
+      bounceRate: cat.sessions > 0 ? ((cat.bounceRateSum / cat.sessions) * 100).toFixed(1) : '0.0',
+      avgDuration: cat.sessions > 0 ? cat.avgDurationSum / cat.sessions : 0,
+      conversionRate: cat.sessions > 0 ? ((cat.conversions / cat.sessions) * 100).toFixed(2) : '0.00',
+    }));
     return mergeComparisonRows(categoryData, compTable, 'category', ['sessions', 'users', 'newUsers', 'pageViews', 'engagementRate', 'bounceRate', 'avgDuration', 'conversions', 'conversionRate']);
   }, [categoryData, isComparing, compPageData]);
 

@@ -1,0 +1,2405 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>GROW REPORTER（グローレポーター）｜GA4 x AI アクセス解析ツール</title>
+    <meta name="description" content="Google Analytics 4（GA4）とSearch ConsoleのデータをAIが自動で分析・考察し、サイト改善の提案からモックアップまで生成。分析・改善・評価のサイクルでサイトを成長させるアクセス解析ツール。" />
+    <link rel="canonical" href="https://growreporter.web.app/lp/" />
+    <meta property="og:title" content="GROW REPORTER｜GA4 x AI アクセス解析ツール" />
+    <meta property="og:description" content="GA4とSearch ConsoleのデータをAIが自動分析。考察・改善提案・モックアップまで。サイトを成長させるアクセス解析ツール。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://growreporter.web.app/lp/" />
+    <meta property="og:image" content="https://growreporter.web.app/lp/assets/images/ogp.png" />
+    <meta property="og:site_name" content="GROW REPORTER" />
+    <meta property="og:locale" content="ja_JP" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GROW REPORTER｜GA4 x AI アクセス解析ツール" />
+    <meta name="twitter:description" content="GA4とSearch ConsoleのデータをAIが自動分析。考察・改善提案・モックアップまで。" />
+    <meta name="twitter:image" content="https://growreporter.web.app/lp/assets/images/ogp.png" />
+    <link rel="icon" href="./favicon.ico" />
+    <link rel="stylesheet" href="./assets/css/output.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      html { scroll-behavior: smooth; }
+      body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+      @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+      .animate-marquee { animation: marquee 25s linear infinite; }
+      .animate-marquee:hover { animation-play-state: paused; }
+      .icon-gradient { stroke: url(#icon-grad); }
+      @keyframes hero-gradient {
+        0%, 100% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+      }
+      .hero-gradient-bg {
+        background: linear-gradient(135deg,
+          #1e40af,
+          #3b82f6,
+          #6366f1,
+          #8b5cf6,
+          #a855f7,
+          #7c3aed,
+          #6366f1,
+          #3b82f6,
+          #1e40af
+        );
+        background-size: 400% 400%;
+        animation: hero-gradient 12s ease infinite;
+      }
+      .hero-container { max-width: 1320px; margin: 0 auto; padding: 0; }
+      @media (min-width: 1024px) {
+        .hero-left-col { width: 52% !important; }
+        .hero-right-col { width: 48% !important; }
+        .hero-right-col > div { margin-top: 0 !important; }
+      }
+      @media (min-width: 1440px) {
+        .hero-left-col { width: 50% !important; }
+        .hero-right-col { width: 50% !important; }
+      }
+      @media (max-width: 1023px) {
+        .hero-left-col > div { text-align: center !important; }
+        .hero-left-col > div > .flex { justify-content: center !important; }
+        .hero-left-col > div > p { margin-left: auto; margin-right: auto; }
+        .hero-right-col { margin-top: 24px !important; }
+      }
+    </style>
+  </head>
+  <body
+    x-data="{ scrolledFromTop: false }"
+    x-init="window.pageYOffset >= 50 ? scrolledFromTop = true : scrolledFromTop = false"
+    @scroll.window="window.pageYOffset >= 50 ? scrolledFromTop = true : scrolledFromTop = false"
+  >
+
+    <!-- ====== Navbar Section Start -->
+    <header
+      x-data="
+        {
+          navbarOpen: false,
+        }
+      "
+      :class="scrolledFromTop ? 'fixed bg-white/80 shadow-sm backdrop-blur-sm' : 'absolute' "
+      class="top-0 left-0 z-50 w-full"
+    >
+      <div style="max-width:1320px; margin:0 auto; padding:0;">
+        <div class="relative flex items-center justify-between">
+          <div class="w-60 max-w-full">
+            <a href="/lp/" class="block w-full py-5">
+              <img
+                :src="scrolledFromTop ? 'assets/images/logo.svg' : 'assets/images/logo-white.svg'"
+                alt="グローレポーター"
+                class="w-full"
+              />
+            </a>
+          </div>
+          <div class="flex w-full items-center justify-between">
+            <div>
+              <button
+                @click="navbarOpen = !navbarOpen"
+                :class="navbarOpen && 'navbarTogglerActive'"
+                id="navbarToggler"
+                class="ring-primary absolute top-1/2 right-4 block -translate-y-1/2 rounded-lg px-3 py-[6px] focus:ring-2 lg:hidden"
+              >
+                <span
+                  :class="scrolledFromTop ? 'bg-body-color' : 'bg-white'"
+                  class="relative my-[6px] block h-[2px] w-[30px]"
+                ></span>
+                <span
+                  :class="scrolledFromTop ? 'bg-body-color' : 'bg-white'"
+                  class="relative my-[6px] block h-[2px] w-[30px]"
+                ></span>
+                <span
+                  :class="scrolledFromTop ? 'bg-body-color' : 'bg-white'"
+                  class="relative my-[6px] block h-[2px] w-[30px]"
+                ></span>
+              </button>
+              <nav
+                x-transition
+                :class="!navbarOpen && 'hidden'"
+                id="navbarCollapse"
+                class="absolute top-full right-4 w-full max-w-[250px] rounded-lg bg-white px-6 py-5 shadow transition-all lg:static lg:block lg:w-full lg:max-w-full lg:bg-transparent lg:shadow-none"
+              >
+                <ul class="block lg:flex">
+                  <li>
+                    <a
+                      href="#about"
+                      :class="scrolledFromTop ? 'text-dark hover:text-primary' : 'text-white hover:text-white/80'"
+                      class="flex py-2 text-base font-medium lg:ml-12 lg:inline-flex"
+                    >
+                      グローレポーターとは
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="#features"
+                      :class="scrolledFromTop ? 'text-dark hover:text-primary' : 'text-white hover:text-white/80'"
+                      class="flex py-2 text-base font-medium lg:ml-12 lg:inline-flex"
+                    >
+                      3つの特長
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="#functions"
+                      :class="scrolledFromTop ? 'text-dark hover:text-primary' : 'text-white hover:text-white/80'"
+                      class="flex py-2 text-base font-medium lg:ml-12 lg:inline-flex"
+                    >
+                      主な機能
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="#pricing"
+                      :class="scrolledFromTop ? 'text-dark hover:text-primary' : 'text-white hover:text-white/80'"
+                      class="flex py-2 text-base font-medium lg:ml-12 lg:inline-flex"
+                    >
+                      料金プラン
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="#testimonials"
+                      :class="scrolledFromTop ? 'text-dark hover:text-primary' : 'text-white hover:text-white/80'"
+                      class="flex py-2 text-base font-medium lg:ml-12 lg:inline-flex"
+                    >
+                      お客様の声
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="#faq"
+                      :class="scrolledFromTop ? 'text-dark hover:text-primary' : 'text-white hover:text-white/80'"
+                      class="flex py-2 text-base font-medium lg:ml-12 lg:inline-flex"
+                    >
+                      FAQ
+                    </a>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+            <div class="hidden justify-end pr-16 sm:flex lg:pr-0">
+              <a
+                href="https://grow-reporter.com/login"
+                :class="scrolledFromTop ? 'text-dark hover:text-primary' : 'text-white hover:text-white/80'"
+                class="px-7 py-3 text-base font-medium"
+              >
+                ログイン
+              </a>
+              <a
+                href="https://grow-reporter.com/register"
+                :class="scrolledFromTop ? 'bg-primary hover:bg-primary/90 text-white' : 'bg-white hover:bg-white/90 text-primary'"
+                class="rounded-lg px-7 py-3 text-base font-medium"
+              >
+                無料で登録
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <!-- ====== Navbar Section End -->
+
+    <!-- ====== Hero Section Start -->
+    <div
+      class="hero-gradient-bg relative overflow-hidden"
+      style="display:flex; flex-direction:column; padding-bottom:0;"
+    >
+      <!-- メインコンテンツ（テキスト+画像） flex-grow で中央寄り -->
+      <div class="hero-container" style="display:flex; align-items:center; padding-top:180px; padding-bottom:96px; width:100%;">
+        <div style="display:flex; flex-wrap:wrap; align-items:center; justify-content:center; width:100%;">
+          <!-- 左カラム: テキスト -->
+          <div style="width:100%; padding:0 16px;" class="hero-left-col">
+            <div style="text-align:left;">
+              <h1
+                class="text-4xl leading-snug font-bold text-white sm:text-[42px]"
+                style="margin-bottom:24px;"
+              >
+                アクセス解析 x AIで<br>Webサイトに"次の打ち手"を。
+              </h1>
+              <p class="text-base text-[#e4e4e4]" style="max-width:520px; margin-bottom:56px;">
+                GA4やSearch Consoleのデータに、AIを掛け合わせて"次の打ち手"まで導く。分析・改善・評価のサイクルで、サイトを着実に成長させます。
+              </p>
+              <ul class="flex flex-wrap items-center" style="justify-content:flex-start; margin-top:8px;">
+                <li class="mr-3 mb-3">
+                  <a
+                    href="https://grow-reporter.com/register"
+                    class="text-dark inline-flex items-center justify-center rounded-lg bg-white px-5 py-4 text-center text-base font-normal hover:bg-white/90 sm:px-10"
+                  >
+                    無料で登録
+                  </a>
+                </li>
+                <li class="mx-2 mb-3 sm:mx-4">
+                  <a
+                    href="#features"
+                    class="flex items-center text-base font-medium text-white"
+                  >
+                    <span class="mr-3">機能を見る</span>
+                    <svg width="15" height="15" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M7.5 0L15 7.5L7.5 15L6.44 13.94L11.88 8.5H0V6.5H11.88L6.44 1.06L7.5 0Z" fill="white"/>
+                    </svg>
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- 右カラム: スクリーンショット -->
+          <div style="width:100%; padding:0 16px;" class="hero-right-col">
+            <div class="relative z-10" style="max-width:640px; margin:0 auto;">
+              <div>
+                <img
+                  src="assets/images/screenshot-dashboard.png"
+                  alt="GROW REPORTER ダッシュボード"
+                  style="width:100%; height:auto; box-shadow: 0 10px 50px rgba(0,0,0,0.25); display:block; border-radius:12px;"
+                />
+              </div>
+              <!-- 左下ドット装飾 -->
+              <div style="position:absolute; bottom:-16px; left:-36px; z-index:-1; opacity:0.6;">
+                <svg width="134" height="106" viewBox="0 0 134 106" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="1.667" cy="104" r="1.667" fill="white"/><circle cx="16.333" cy="104" r="1.667" fill="white"/><circle cx="31" cy="104" r="1.667" fill="white"/><circle cx="45.667" cy="104" r="1.667" fill="white"/><circle cx="60.333" cy="104" r="1.667" fill="white"/><circle cx="75" cy="104" r="1.667" fill="white"/><circle cx="89.667" cy="104" r="1.667" fill="white"/><circle cx="104.333" cy="104" r="1.667" fill="white"/><circle cx="119" cy="104" r="1.667" fill="white"/><circle cx="132" cy="104" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="89.333" r="1.667" fill="white"/><circle cx="16.333" cy="89.333" r="1.667" fill="white"/><circle cx="31" cy="89.333" r="1.667" fill="white"/><circle cx="45.667" cy="89.333" r="1.667" fill="white"/><circle cx="60.333" cy="89.333" r="1.667" fill="white"/><circle cx="75" cy="89.333" r="1.667" fill="white"/><circle cx="89.667" cy="89.333" r="1.667" fill="white"/><circle cx="104.333" cy="89.333" r="1.667" fill="white"/><circle cx="119" cy="89.333" r="1.667" fill="white"/><circle cx="132" cy="89.333" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="74.667" r="1.667" fill="white"/><circle cx="16.333" cy="74.667" r="1.667" fill="white"/><circle cx="31" cy="74.667" r="1.667" fill="white"/><circle cx="45.667" cy="74.667" r="1.667" fill="white"/><circle cx="60.333" cy="74.667" r="1.667" fill="white"/><circle cx="75" cy="74.667" r="1.667" fill="white"/><circle cx="89.667" cy="74.667" r="1.667" fill="white"/><circle cx="104.333" cy="74.667" r="1.667" fill="white"/><circle cx="119" cy="74.667" r="1.667" fill="white"/><circle cx="132" cy="74.667" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="60" r="1.667" fill="white"/><circle cx="16.333" cy="60" r="1.667" fill="white"/><circle cx="31" cy="60" r="1.667" fill="white"/><circle cx="45.667" cy="60" r="1.667" fill="white"/><circle cx="60.333" cy="60" r="1.667" fill="white"/><circle cx="75" cy="60" r="1.667" fill="white"/><circle cx="89.667" cy="60" r="1.667" fill="white"/><circle cx="104.333" cy="60" r="1.667" fill="white"/><circle cx="119" cy="60" r="1.667" fill="white"/><circle cx="132" cy="60" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="45.333" r="1.667" fill="white"/><circle cx="16.333" cy="45.333" r="1.667" fill="white"/><circle cx="31" cy="45.333" r="1.667" fill="white"/><circle cx="45.667" cy="45.333" r="1.667" fill="white"/><circle cx="60.333" cy="45.333" r="1.667" fill="white"/><circle cx="75" cy="45.333" r="1.667" fill="white"/><circle cx="89.667" cy="45.333" r="1.667" fill="white"/><circle cx="104.333" cy="45.333" r="1.667" fill="white"/><circle cx="119" cy="45.333" r="1.667" fill="white"/><circle cx="132" cy="45.333" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="31" r="1.667" fill="white"/><circle cx="16.333" cy="31" r="1.667" fill="white"/><circle cx="31" cy="31" r="1.667" fill="white"/><circle cx="45.667" cy="31" r="1.667" fill="white"/><circle cx="60.333" cy="31" r="1.667" fill="white"/><circle cx="75" cy="31" r="1.667" fill="white"/><circle cx="89.667" cy="31" r="1.667" fill="white"/><circle cx="104.333" cy="31" r="1.667" fill="white"/><circle cx="119" cy="31" r="1.667" fill="white"/><circle cx="132" cy="31" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="16.333" r="1.667" fill="white"/><circle cx="16.333" cy="16.333" r="1.667" fill="white"/><circle cx="31" cy="16.333" r="1.667" fill="white"/><circle cx="45.667" cy="16.333" r="1.667" fill="white"/><circle cx="60.333" cy="16.333" r="1.667" fill="white"/><circle cx="75" cy="16.333" r="1.667" fill="white"/><circle cx="89.667" cy="16.333" r="1.667" fill="white"/><circle cx="104.333" cy="16.333" r="1.667" fill="white"/><circle cx="119" cy="16.333" r="1.667" fill="white"/><circle cx="132" cy="16.333" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="1.667" r="1.667" fill="white"/><circle cx="16.333" cy="1.667" r="1.667" fill="white"/><circle cx="31" cy="1.667" r="1.667" fill="white"/><circle cx="45.667" cy="1.667" r="1.667" fill="white"/><circle cx="60.333" cy="1.667" r="1.667" fill="white"/><circle cx="75" cy="1.667" r="1.667" fill="white"/><circle cx="89.667" cy="1.667" r="1.667" fill="white"/><circle cx="104.333" cy="1.667" r="1.667" fill="white"/><circle cx="119" cy="1.667" r="1.667" fill="white"/><circle cx="132" cy="1.667" r="1.667" fill="white"/>
+                </svg>
+              </div>
+              <!-- 右上ドット装飾 -->
+              <div style="position:absolute; top:-24px; right:-24px; z-index:-1; opacity:0.6;">
+                <svg width="134" height="106" viewBox="0 0 134 106" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="1.667" cy="104" r="1.667" fill="white"/><circle cx="16.333" cy="104" r="1.667" fill="white"/><circle cx="31" cy="104" r="1.667" fill="white"/><circle cx="45.667" cy="104" r="1.667" fill="white"/><circle cx="60.333" cy="104" r="1.667" fill="white"/><circle cx="75" cy="104" r="1.667" fill="white"/><circle cx="89.667" cy="104" r="1.667" fill="white"/><circle cx="104.333" cy="104" r="1.667" fill="white"/><circle cx="119" cy="104" r="1.667" fill="white"/><circle cx="132" cy="104" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="89.333" r="1.667" fill="white"/><circle cx="16.333" cy="89.333" r="1.667" fill="white"/><circle cx="31" cy="89.333" r="1.667" fill="white"/><circle cx="45.667" cy="89.333" r="1.667" fill="white"/><circle cx="60.333" cy="89.333" r="1.667" fill="white"/><circle cx="75" cy="89.333" r="1.667" fill="white"/><circle cx="89.667" cy="89.333" r="1.667" fill="white"/><circle cx="104.333" cy="89.333" r="1.667" fill="white"/><circle cx="119" cy="89.333" r="1.667" fill="white"/><circle cx="132" cy="89.333" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="74.667" r="1.667" fill="white"/><circle cx="16.333" cy="74.667" r="1.667" fill="white"/><circle cx="31" cy="74.667" r="1.667" fill="white"/><circle cx="45.667" cy="74.667" r="1.667" fill="white"/><circle cx="60.333" cy="74.667" r="1.667" fill="white"/><circle cx="75" cy="74.667" r="1.667" fill="white"/><circle cx="89.667" cy="74.667" r="1.667" fill="white"/><circle cx="104.333" cy="74.667" r="1.667" fill="white"/><circle cx="119" cy="74.667" r="1.667" fill="white"/><circle cx="132" cy="74.667" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="60" r="1.667" fill="white"/><circle cx="16.333" cy="60" r="1.667" fill="white"/><circle cx="31" cy="60" r="1.667" fill="white"/><circle cx="45.667" cy="60" r="1.667" fill="white"/><circle cx="60.333" cy="60" r="1.667" fill="white"/><circle cx="75" cy="60" r="1.667" fill="white"/><circle cx="89.667" cy="60" r="1.667" fill="white"/><circle cx="104.333" cy="60" r="1.667" fill="white"/><circle cx="119" cy="60" r="1.667" fill="white"/><circle cx="132" cy="60" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="45.333" r="1.667" fill="white"/><circle cx="16.333" cy="45.333" r="1.667" fill="white"/><circle cx="31" cy="45.333" r="1.667" fill="white"/><circle cx="45.667" cy="45.333" r="1.667" fill="white"/><circle cx="60.333" cy="45.333" r="1.667" fill="white"/><circle cx="75" cy="45.333" r="1.667" fill="white"/><circle cx="89.667" cy="45.333" r="1.667" fill="white"/><circle cx="104.333" cy="45.333" r="1.667" fill="white"/><circle cx="119" cy="45.333" r="1.667" fill="white"/><circle cx="132" cy="45.333" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="31" r="1.667" fill="white"/><circle cx="16.333" cy="31" r="1.667" fill="white"/><circle cx="31" cy="31" r="1.667" fill="white"/><circle cx="45.667" cy="31" r="1.667" fill="white"/><circle cx="60.333" cy="31" r="1.667" fill="white"/><circle cx="75" cy="31" r="1.667" fill="white"/><circle cx="89.667" cy="31" r="1.667" fill="white"/><circle cx="104.333" cy="31" r="1.667" fill="white"/><circle cx="119" cy="31" r="1.667" fill="white"/><circle cx="132" cy="31" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="16.333" r="1.667" fill="white"/><circle cx="16.333" cy="16.333" r="1.667" fill="white"/><circle cx="31" cy="16.333" r="1.667" fill="white"/><circle cx="45.667" cy="16.333" r="1.667" fill="white"/><circle cx="60.333" cy="16.333" r="1.667" fill="white"/><circle cx="75" cy="16.333" r="1.667" fill="white"/><circle cx="89.667" cy="16.333" r="1.667" fill="white"/><circle cx="104.333" cy="16.333" r="1.667" fill="white"/><circle cx="119" cy="16.333" r="1.667" fill="white"/><circle cx="132" cy="16.333" r="1.667" fill="white"/>
+                  <circle cx="1.667" cy="1.667" r="1.667" fill="white"/><circle cx="16.333" cy="1.667" r="1.667" fill="white"/><circle cx="31" cy="1.667" r="1.667" fill="white"/><circle cx="45.667" cy="1.667" r="1.667" fill="white"/><circle cx="60.333" cy="1.667" r="1.667" fill="white"/><circle cx="75" cy="1.667" r="1.667" fill="white"/><circle cx="89.667" cy="1.667" r="1.667" fill="white"/><circle cx="104.333" cy="1.667" r="1.667" fill="white"/><circle cx="119" cy="1.667" r="1.667" fill="white"/><circle cx="132" cy="1.667" r="1.667" fill="white"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 導入企業ロゴ（ヒーロー底部） -->
+      <div style="padding:0 0 48px; flex-shrink:0;">
+        <div class="overflow-hidden" style="mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);">
+          <div class="animate-marquee flex items-center" style="width: max-content; gap: 20px;">
+            <!-- Set 1 -->
+            <div class="flex items-center shrink-0" style="gap: 20px;">
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_gamo.png" alt="GAMO" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_kudo.png" alt="工藤建設株式会社" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_dormybiz.png" alt="Dormy Biz" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_gbnavi.png" alt="GBnavi" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_gamo.png" alt="GAMO" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_kudo.png" alt="工藤建設株式会社" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_dormybiz.png" alt="Dormy Biz" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_gbnavi.png" alt="GBnavi" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+            </div>
+            <!-- Set 2 (duplicate for seamless loop) -->
+            <div class="flex items-center shrink-0" style="gap: 20px;">
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_gamo.png" alt="GAMO" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_kudo.png" alt="工藤建設株式会社" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_dormybiz.png" alt="Dormy Biz" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_gbnavi.png" alt="GBnavi" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_gamo.png" alt="GAMO" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_kudo.png" alt="工藤建設株式会社" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_dormybiz.png" alt="Dormy Biz" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+              <div style="width:220px; height:88px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px;"><img src="assets/images/logo_gbnavi.png" alt="GBnavi" style="max-width:70%; max-height:55%; object-fit:contain;" /></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ====== Hero Section End -->
+
+    <!-- ====== Pain Points Section Start -->
+    <section class="relative overflow-hidden bg-white pt-20 pb-16 lg:pt-[120px] lg:pb-[100px]">
+      <!-- Background watermark -->
+      <div aria-hidden="true" style="position: absolute; top: 90px; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; user-select: none;">
+        <span style="font-size: clamp(80px, 12vw, 160px); font-weight: 900; color: rgba(0,0,0,0.03); letter-spacing: 0.05em; line-height: 1; white-space: nowrap;">PROBLEM</span>
+      </div>
+
+      <div class="container relative z-10 mx-auto">
+        <!-- Header -->
+        <div class="mx-auto mb-14 text-center lg:mb-20">
+          <span class="text-primary mb-2 block text-lg font-semibold">よくあるお悩み</span>
+          <h2 class="text-dark text-3xl font-bold leading-tight sm:text-4xl md:text-[40px]" style="white-space: nowrap;">
+            こんなお悩み、ありませんか？
+          </h2>
+        </div>
+
+        <!-- 4-column: card row -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 40px;">
+          <div style="background: #f5f6f8; border-radius: 16px; padding: 28px 24px; min-height: 150px;">
+            <ul style="list-style: none; padding: 0; margin: 0; color: #1B2336; font-size: 15.5px; line-height: 1.8; font-weight: 600;">
+              <li style="display: flex; align-items: baseline; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>GA4の画面が複雑でどこを見ればいいかわからない</li>
+              <li style="display: flex; align-items: baseline; gap: 8px; margin-top: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>結局アクセス数だけ見て終わってしまう</li>
+            </ul>
+          </div>
+          <div style="background: #f5f6f8; border-radius: 16px; padding: 28px 24px; min-height: 150px;">
+            <ul style="list-style: none; padding: 0; margin: 0; color: #1B2336; font-size: 15.5px; line-height: 1.8; font-weight: 600;">
+              <li style="display: flex; align-items: baseline; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>数値を見ても具体的な改善策が浮かばない</li>
+              <li style="display: flex; align-items: baseline; gap: 8px; margin-top: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>レポート作成に毎回半日かかる</li>
+            </ul>
+          </div>
+          <div style="background: #f5f6f8; border-radius: 16px; padding: 28px 24px; min-height: 150px;">
+            <ul style="list-style: none; padding: 0; margin: 0; color: #1B2336; font-size: 15.5px; line-height: 1.8; font-weight: 600;">
+              <li style="display: flex; align-items: baseline; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>外注すると月数十万、コストが見合わない</li>
+              <li style="display: flex; align-items: baseline; gap: 8px; margin-top: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>Webの成果が見えにくい</li>
+            </ul>
+          </div>
+          <div style="background: #f5f6f8; border-radius: 16px; padding: 28px 24px; min-height: 150px;">
+            <ul style="list-style: none; padding: 0; margin: 0; color: #1B2336; font-size: 15.5px; line-height: 1.8; font-weight: 600;">
+              <li style="display: flex; align-items: baseline; gap: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>改善のPDCAが続かない</li>
+              <li style="display: flex; align-items: baseline; gap: 8px; margin-top: 8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>サイトの異変に気づけない</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- 4-column: illustration + label row -->
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;">
+          <div style="text-align: center;">
+            <img src="assets/images/problem-illust02.svg" alt="Web担当者" style="width: 120px; height: 120px; margin: 0 auto 12px; object-fit: contain;">
+            <span style="font-size: 16px; font-weight: 700; color: #1B2336;">Web担当者</span>
+          </div>
+          <div style="text-align: center;">
+            <img src="assets/images/problem-illust08.svg" alt="マーケター" style="width: 120px; height: 120px; margin: 0 auto 12px; object-fit: contain;">
+            <span style="font-size: 16px; font-weight: 700; color: #1B2336;">マーケター</span>
+          </div>
+          <div style="text-align: center;">
+            <img src="assets/images/problem-illust05.svg" alt="経営者" style="width: 120px; height: 120px; margin: 0 auto 12px; object-fit: contain;">
+            <span style="font-size: 16px; font-weight: 700; color: #1B2336;">経営者</span>
+          </div>
+          <div style="text-align: center;">
+            <img src="assets/images/problem-illust06.svg" alt="制作会社" style="width: 120px; height: 120px; margin: 0 auto 12px; object-fit: contain;">
+            <span style="font-size: 16px; font-weight: 700; color: #1B2336;">制作会社</span>
+          </div>
+        </div>
+
+        <!-- Bottom CTA banner -->
+        <div style="position: relative; background: linear-gradient(135deg, #3758F9 0%, #7C3AED 100%); border-radius: 16px; padding: 48px 32px; text-align: center; overflow: hidden; margin-top: 60px;">
+          <!-- Decorative wave -->
+          <svg style="position: absolute; bottom: 0; left: 0; width: 100%; opacity: 0.06;" viewBox="0 0 1200 120" preserveAspectRatio="none"><path d="M0 60c200-40 400 40 600 0s400-40 600 0v60H0z" fill="#fff"/></svg>
+          <p style="color: rgba(255,255,255,0.7); font-size: 16px; margin-bottom: 12px; letter-spacing: 0.1em;">＼ ご安心ください ／</p>
+          <h3 style="color: #fff; font-size: clamp(24px, 4vw, 36px); font-weight: 800; line-height: 1.4; margin: 0;">
+            <span style="color: #fff;">グローレポーターなら </span><span style="color: #FACC15; border-bottom: 3px solid #FACC15; padding-bottom: 2px;">すべて解決</span><span style="color: #fff;"> いたします！</span>
+          </h3>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Pain Points Section End -->
+
+    <!-- ====== Services Section Start -->
+    <section
+      id="about"
+      class="bg-tg-bg relative pt-12 pb-12 lg:pt-[80px] lg:pb-[90px]"
+      x-data="{
+        activeStep: 0,
+        images: ['assets/images/about01.png', 'assets/images/about02.png', 'assets/images/about03.png'],
+        timer: null,
+        startTimer() {
+          this.timer = setInterval(() => { this.activeStep = (this.activeStep + 1) % 3; }, 3000);
+        },
+        goTo(i) {
+          this.activeStep = i;
+          clearInterval(this.timer);
+          this.startTimer();
+        }
+      }"
+      x-init="startTimer()"
+    >
+      <div class="container mx-auto">
+        <div class="-mx-4 mb-10 flex flex-wrap items-center lg:mb-[60px]">
+          <div class="w-full px-4 lg:w-6/12">
+            <div class="mb-[60px] max-w-[500px] xl:mb-[70px]">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                グローレポーターとは
+              </span>
+              <h2
+                class="text-dark text-3xl leading-[1.4] font-bold sm:text-4xl md:text-[40px]"
+              >
+                GA4 x AIで"次の打ち手"<br>まで導くサイト改善ツール
+              </h2>
+            </div>
+            <div class="-mx-4 flex flex-wrap">
+              <div class="w-full max-w-[520px] px-4">
+                <div class="group mb-12 flex" style="cursor:pointer" @click="goTo(0)">
+                  <div
+                    class="mr-6 flex h-[60px] w-full max-w-[60px] items-center justify-center rounded-full border-2 text-xl font-semibold md:h-[80px] md:max-w-[80px] md:text-2xl"
+                    :style="activeStep === 0
+                      ? 'border-color:#3758F9; background:#3758F9; color:#fff; transform:scale(1.1); box-shadow:0 10px 15px rgba(55,88,249,0.3); transition:all 0.3s;'
+                      : 'border-color:rgba(55,88,249,0.3); background:#fff; color:rgba(55,88,249,0.6); transform:scale(1); box-shadow:none; transition:all 0.3s;'"
+                  >
+                    01
+                  </div>
+                  <div class="w-full">
+                    <h3
+                      class="mb-4 text-xl font-semibold 2xl:text-[22px]"
+                      :style="activeStep === 0 ? 'color:#1B2336; transition:color 0.3s;' : 'color:#637381; transition:color 0.3s;'"
+                    >
+                      かんたん登録
+                    </h3>
+                    <p
+                      class="text-base leading-relaxed"
+                      :style="activeStep === 0 ? 'color:#637381; transition:color 0.3s;' : 'color:#9CA3AF; transition:color 0.3s;'"
+                    >
+                      サイトURLとGA4・Search Consoleを接続するだけ。登録したその日からAI分析が届き始めます。
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="w-full max-w-[520px] px-4">
+                <div class="group mb-12 flex" style="cursor:pointer" @click="goTo(1)">
+                  <div
+                    class="mr-6 flex h-[60px] w-full max-w-[60px] items-center justify-center rounded-full border-2 text-xl font-semibold md:h-[80px] md:max-w-[80px] md:text-2xl"
+                    :style="activeStep === 1
+                      ? 'border-color:#3758F9; background:#3758F9; color:#fff; transform:scale(1.1); box-shadow:0 10px 15px rgba(55,88,249,0.3); transition:all 0.3s;'
+                      : 'border-color:rgba(55,88,249,0.3); background:#fff; color:rgba(55,88,249,0.6); transform:scale(1); box-shadow:none; transition:all 0.3s;'"
+                  >
+                    02
+                  </div>
+                  <div class="w-full">
+                    <h3
+                      class="mb-4 text-xl font-semibold 2xl:text-[22px]"
+                      :style="activeStep === 1 ? 'color:#1B2336; transition:color 0.3s;' : 'color:#637381; transition:color 0.3s;'"
+                    >
+                      AIが自動分析
+                    </h3>
+                    <p
+                      class="text-base leading-relaxed"
+                      :style="activeStep === 1 ? 'color:#637381; transition:color 0.3s;' : 'color:#9CA3AF; transition:color 0.3s;'"
+                    >
+                      AIがアクセス状況を自動分析。数値を見せるだけでなく、考察・改善提案・モックアップまで一気通貫で生成します。
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="w-full max-w-[520px] px-4">
+                <div class="group mb-12 flex" style="cursor:pointer" @click="goTo(2)">
+                  <div
+                    class="mr-6 flex h-[60px] w-full max-w-[60px] items-center justify-center rounded-full border-2 text-xl font-semibold md:h-[80px] md:max-w-[80px] md:text-2xl"
+                    :style="activeStep === 2
+                      ? 'border-color:#3758F9; background:#3758F9; color:#fff; transform:scale(1.1); box-shadow:0 10px 15px rgba(55,88,249,0.3); transition:all 0.3s;'
+                      : 'border-color:rgba(55,88,249,0.3); background:#fff; color:rgba(55,88,249,0.6); transform:scale(1); box-shadow:none; transition:all 0.3s;'"
+                  >
+                    03
+                  </div>
+                  <div class="w-full">
+                    <h3
+                      class="mb-4 text-xl font-semibold 2xl:text-[22px]"
+                      :style="activeStep === 2 ? 'color:#1B2336; transition:color 0.3s;' : 'color:#637381; transition:color 0.3s;'"
+                    >
+                      成長サイクル
+                    </h3>
+                    <p
+                      class="text-base leading-relaxed"
+                      :style="activeStep === 2 ? 'color:#637381; transition:color 0.3s;' : 'color:#9CA3AF; transition:color 0.3s;'"
+                    >
+                      分析→改善→評価のサイクルをAIが支援。形骸化を防ぎ、担当者が迷わず次の一手を打てる環境をつくります。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="w-full px-4 lg:w-6/12">
+            <div
+              class="top-1/2 right-0 hidden w-1/2 lg:absolute lg:flex lg:-translate-y-1/2"
+            >
+              <div style="position:relative" class="ml-auto w-full">
+                <template x-for="(img, i) in images" :key="i">
+                  <img
+                    :src="img"
+                    alt="GROW REPORTER アプリ画面"
+                    class="max-w-full"
+                    :style="activeStep === i
+                      ? 'position:relative; opacity:1; transform:translateY(0); transition:opacity 0.5s, transform 0.5s;'
+                      : 'position:absolute; top:0; left:0; opacity:0; transform:translateY(16px); transition:opacity 0.5s, transform 0.5s; pointer-events:none;'"
+                  />
+                </template>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Services Section End -->
+
+    <!-- ====== Alternating Features Section Start -->
+    <section id="features" class="relative pt-20 pb-12 lg:pt-[120px] lg:pb-[90px]">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] text-center">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                3つの特長
+              </span>
+              <h2 class="text-dark mb-3 text-3xl leading-[1.4] font-bold sm:text-4xl md:text-[40px]" style="white-space: nowrap;">
+                グローレポーターが選ばれる理由
+              </h2>
+              <p class="text-body-color text-base" style="white-space: nowrap;">
+                専門知識がなくても、データに基づいた意思決定ができる環境をつくります。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 1: Text Left, Image Right -->
+        <div class="-mx-4 mb-16 flex flex-wrap items-center">
+          <div class="order-2 w-full px-4 lg:order-1 lg:w-1/2">
+            <div class="lg:pr-12">
+              <span class="text-primary mb-4 block text-lg font-semibold">01</span>
+              <h3 class="text-dark mb-4 text-2xl leading-[1.4] font-bold sm:text-3xl">
+                アクセス解析を見に行かなくていい。<br><span style="border-bottom: 3px solid #FACC15; padding-bottom: 2px;">AIが届けてくれる。</span>
+              </h3>
+              <p class="text-body-color mb-6 text-base leading-relaxed">
+                GA4を開いてデータを読み解く必要はありません。サイトを登録するだけで、AIが自動で分析し、変化があればメールで通知。必要な情報は自分から取りに行くのではなく、向こうから届きます。
+              </p>
+            </div>
+          </div>
+          <div class="order-1 w-full px-4 lg:order-2 lg:w-1/2">
+            <div class="mb-12 lg:mb-0">
+              <img
+                src="assets/images/feature01.png"
+                alt="見に行かなくていい。AIが届けてくれる。"
+                class="mx-auto max-w-full rounded-xl"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 2: Text Left, Image Right -->
+        <div class="-mx-4 mb-16 flex flex-wrap items-center">
+          <div class="order-2 w-full px-4 lg:order-1 lg:w-1/2">
+            <div class="lg:pr-12">
+              <span class="text-primary mb-4 block text-lg font-semibold">02</span>
+              <h3 class="text-dark mb-4 text-2xl leading-[1.4] font-bold sm:text-3xl">
+                数値だけでなく「次に何をすべきか」<br>まで<span style="border-bottom: 3px solid #FACC15; padding-bottom: 2px;">改善を提案</span>
+              </h3>
+              <p class="text-body-color mb-6 text-base leading-relaxed">
+                一般的なアクセス解析ツールはデータを見せるだけ。グローレポーターはAIが考察・改善提案・モックアップ画像まで一気通貫で生成。「数字は見た、で、どうすればいい？」にそのまま答えます。
+              </p>
+            </div>
+          </div>
+          <div class="order-1 w-full px-4 lg:order-2 lg:w-1/2">
+            <div class="mb-12 lg:mb-0">
+              <img
+                src="assets/images/feature02.png"
+                alt="数字だけでなく次に何をすべきかまで提案"
+                class="mx-auto max-w-full rounded-xl"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 3: Text Left, Image Right -->
+        <div class="-mx-4 flex flex-wrap items-center">
+          <div class="order-2 w-full px-4 lg:order-1 lg:w-1/2">
+            <div class="lg:pr-12">
+              <span class="text-primary mb-4 block text-lg font-semibold">03</span>
+              <h3 class="text-dark mb-4 text-2xl leading-[1.4] font-bold sm:text-3xl">
+                <span style="border-bottom: 3px solid #FACC15; padding-bottom: 2px;">分析→改善→評価</span>のサイクルが途切れない。
+              </h3>
+              <p class="text-body-color mb-6 text-base leading-relaxed">
+                分析して終わり、改善して終わりにさせません。改善施策の効果測定までをひとつのツールで完結。サイト運用の形骸化を防ぎ、担当者が継続的に成果を積み上げていける仕組みを提供します。
+              </p>
+            </div>
+          </div>
+          <div class="order-1 w-full px-4 lg:order-2 lg:w-1/2">
+            <div class="mb-12 lg:mb-0">
+              <img
+                src="assets/images/feature03.png"
+                alt="分析→改善→評価のサイクルが途切れない"
+                class="mx-auto max-w-full rounded-xl"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Alternating Features Section End -->
+
+    <!-- ====== Functions Section Start -->
+    <section id="functions" class="bg-tg-bg relative pt-20 pb-12 lg:pt-[120px] lg:pb-[90px]">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[510px] text-center">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                主な機能
+              </span>
+              <h2 class="text-dark mb-3 text-3xl leading-[1.4] font-bold sm:text-4xl md:text-[40px]">
+                主要な機能をご紹介
+              </h2>
+              <p class="text-dark-3 text-base">
+                分析から改善、効果測定まで。<br>サイト運用を「続けられるもの」に変える機能を揃えています。
+              </p>
+            </div>
+          </div>
+        </div>
+        <svg width="0" height="0" class="absolute">
+          <defs>
+            <linearGradient id="icon-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#3b82f6"/>
+              <stop offset="100%" stop-color="#8b5cf6"/>
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-10 flex h-[220px] flex-col items-center rounded-xl bg-white p-8 text-center shadow-pricing-2">
+              <div class="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#icon-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a7 7 0 0 1 7 7c0 2.5-1.5 4.5-3 6s-2 3.5-2 5h-4c0-1.5-.5-3.5-2-5s-3-3.5-3-6a7 7 0 0 1 7-7z"/><path d="M10 22h4"/><path d="M19 4l1.5-1.5"/><path d="M3 4L1.5 2.5"/><path d="M12 1V0" stroke-width="1.2"/></svg>
+              </div>
+              <h3 class="text-dark mb-3 text-xl font-semibold">AI総合分析</h3>
+              <p class="text-dark-3 text-base">GA4やSearch Consoleの複雑なデータをAIが自動で読み解き、日本語レポートにまとめます。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-10 flex h-[220px] flex-col items-center rounded-xl bg-white p-8 text-center shadow-pricing-2">
+              <div class="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#icon-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/><path d="M15 14l2 2-2 2"/><path d="M13 14l-2 2 2 2"/></svg>
+              </div>
+              <h3 class="text-dark mb-3 text-xl font-semibold">AI改善提案+モックアップ</h3>
+              <p class="text-dark-3 text-base">目的を選ぶだけでAIが改善内容と改善前後のモックアップ画像まで自動生成します。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-10 flex h-[220px] flex-col items-center rounded-xl bg-white p-8 text-center shadow-pricing-2">
+              <div class="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#icon-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><line x1="12" y1="2" x2="12" y2="4"/></svg>
+              </div>
+              <h3 class="text-dark mb-3 text-xl font-semibold">異変の自動通知+定期レポート</h3>
+              <p class="text-dark-3 text-base">大きな変化をAIが原因仮説つきでメール通知。週次・月次レポートも自動で届きます。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-10 flex h-[220px] flex-col items-center rounded-xl bg-white p-8 text-center shadow-pricing-2">
+              <div class="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#icon-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M12 18v-6"/><path d="M9 15l3 3 3-3"/></svg>
+              </div>
+              <h3 class="text-dark mb-3 text-xl font-semibold">レポート出力</h3>
+              <p class="text-dark-3 text-base">Excel・PowerPoint形式にワンクリックで変換。グラフやAIコメント入りの報告資料が数秒で完成。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-10 flex h-[220px] flex-col items-center rounded-xl bg-white p-8 text-center shadow-pricing-2">
+              <div class="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#icon-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+              <h3 class="text-dark mb-3 text-xl font-semibold">15以上の分析ビュー</h3>
+              <p class="text-dark-3 text-base">日別・チャネル別・キーワード別・ページ別など多角的に可視化。各ビューにAI考察がつきます。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-10 flex h-[220px] flex-col items-center rounded-xl bg-white p-8 text-center shadow-pricing-2">
+              <div class="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#icon-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/><circle cx="12" cy="12" r="1" fill="url(#icon-grad)" stroke="none"/></svg>
+              </div>
+              <h3 class="text-dark mb-3 text-xl font-semibold">コンバージョン逆引き分析</h3>
+              <p class="text-dark-3 text-base">成果に至ったユーザーの直前行動を逆引きで可視化。改善すべきページの優先順位が明確に。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-10 flex h-[220px] flex-col items-center rounded-xl bg-white p-8 text-center shadow-pricing-2">
+              <div class="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#icon-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><path d="M4 10l4-4 4 3 6-6" stroke-width="1.8"/><polyline points="18 3 22 3 22 7" stroke-width="1.8"/></svg>
+              </div>
+              <h3 class="text-dark mb-3 text-xl font-semibold">改善の効果測定</h3>
+              <p class="text-dark-3 text-base">完了した施策に星評価でフィードバック。どの施策が効果的だったかを振り返り、次の精度を高めます。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-10 flex h-[220px] flex-col items-center rounded-xl bg-white p-8 text-center shadow-pricing-2">
+              <div class="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#icon-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="13" y2="13"/></svg>
+              </div>
+              <h3 class="text-dark mb-3 text-xl font-semibold">ページメモ・チーム共有</h3>
+              <p class="text-dark-3 text-base">分析ページごとにメモを残しチームで共有。数値の変化に背景情報の文脈を持たせられます。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-10 flex h-[220px] flex-col items-center rounded-xl bg-white p-8 text-center shadow-pricing-2">
+              <div class="mb-4">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="url(#icon-grad)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <h3 class="text-dark mb-3 text-xl font-semibold">チーム管理・複数サイト対応</h3>
+              <p class="text-dark-3 text-base">メンバー招待と権限設定に対応。制作会社が複数クライアントをまとめて管理する運用にも。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Functions Section End -->
+
+    <!-- ====== Call To Action Section Start -->
+    <section
+      class="bg-primary relative z-10 overflow-hidden py-20 lg:py-[110px]"
+    >
+      <div class="container mx-auto">
+        <div class="relative overflow-hidden">
+          <div class="-mx-4 flex flex-wrap items-stretch">
+            <div class="w-full px-4">
+              <div class="mx-auto max-w-[570px] text-center">
+                <h2
+                  class="mb-6 text-3xl leading-snug font-semibold text-white md:text-[40px]"
+                >
+                  無料登録で今すぐ試そう
+                </h2>
+                <p class="mb-8 text-base leading-relaxed text-white md:pr-10">
+                  アカウント・サイト登録まで最短5分で<br>過去データもその日から分析やサイト改善が可能です。
+                </p>
+                <a
+                  href="https://grow-reporter.com/register"
+                  class="inline-block rounded bg-white px-7 py-3 text-base font-semibold text-primary transition hover:bg-white/90"
+                >
+                  無料で登録
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <span class="absolute top-0 left-0">
+          <svg
+            width="495"
+            height="470"
+            viewBox="0 0 495 470"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="55"
+              cy="442"
+              r="138"
+              stroke="white"
+              stroke-opacity="0.04"
+              stroke-width="50"
+            />
+            <circle
+              cx="446"
+              r="39"
+              stroke="white"
+              stroke-opacity="0.04"
+              stroke-width="20"
+            />
+            <path
+              d="M245.406 137.609L233.985 94.9852L276.609 106.406L245.406 137.609Z"
+              stroke="white"
+              stroke-opacity="0.08"
+              stroke-width="12"
+            />
+          </svg>
+        </span>
+        <span class="absolute right-0 bottom-0">
+          <svg
+            width="493"
+            height="470"
+            viewBox="0 0 493 470"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="462"
+              cy="5"
+              r="138"
+              stroke="white"
+              stroke-opacity="0.04"
+              stroke-width="50"
+            />
+            <circle
+              cx="49"
+              cy="470"
+              r="39"
+              stroke="white"
+              stroke-opacity="0.04"
+              stroke-width="20"
+            />
+            <path
+              d="M222.393 226.701L272.808 213.192L259.299 263.607L222.393 226.701Z"
+              stroke="white"
+              stroke-opacity="0.06"
+              stroke-width="13"
+            />
+          </svg>
+        </span>
+      </div>
+    </section>
+    <!-- ====== Call To Action Section End -->
+
+    <!-- ====== Pricing Section Start -->
+    <section
+      id="pricing"
+      class="relative z-20 overflow-hidden bg-white pt-20 pb-12 lg:pt-[120px] lg:pb-[90px]"
+    >
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[510px] text-center">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                料金プラン
+              </span>
+              <h2
+                class="text-dark mb-3 text-3xl leading-[1.4] font-bold sm:text-4xl md:text-[40px]"
+              >
+                シンプルな料金体系
+              </h2>
+              <p class="text-dark-3 text-base">
+                すべてのプランで、基本的な分析機能をご利用いただけます。<br>ビジネスの規模に合わせてお選びください。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="-mx-4 flex flex-wrap justify-center items-stretch">
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3 flex">
+            <div
+              class="shadow-pricing-2 relative z-10 mb-10 flex w-full flex-col overflow-hidden rounded-xl bg-white px-8 py-10 sm:p-12 lg:px-6 lg:py-10 xl:p-14"
+            >
+              <p class="mb-4 block rounded-full text-center text-sm font-semibold text-white" style="background:linear-gradient(to right,#60a5fa,#2563eb); padding:10px 16px;">
+                個人ブロガー・スタートアップに
+              </p>
+              <span
+                class="text-dark mb-5 block text-xl font-medium"
+              >
+                無料プラン
+              </span>
+
+              <h2
+                class="text-dark mb-11 text-4xl font-semibold xl:text-[42px]"
+              >
+                <span class="text-xl font-medium">¥</span>
+                <span class="px-0.5">0</span>
+                <span class="text-dark-3 text-base">
+                  / 月
+                </span>
+              </h2>
+
+              <div class="mb-[50px]">
+                <h5 class="text-dark mb-5 text-lg font-medium">
+                  含まれる機能
+                </h5>
+
+                <div class="flex flex-col gap-[14px]">
+                  <p class="text-dark-3 text-base">
+                    サイト登録 1件
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    メンバー 1名
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    AI分析（自動生成のみ）
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    AI改善提案 月1回
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    Excel/PPTXエクスポート 各月1回
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    &nbsp;
+                  </p>
+                </div>
+              </div>
+              <a
+                href="https://grow-reporter.com/register"
+                class="hover:bg-blue-dark mt-auto inline-block rounded-md px-7 py-3 text-center text-base font-medium text-white transition"
+                style="background:linear-gradient(to right,#60a5fa,#2563eb);"
+              >
+                無料で登録
+              </a>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3 flex" style="position:relative;">
+            <div style="position:absolute; top:-32px; left:50%; transform:translateX(-50%); z-index:20;">
+              <span class="inline-block text-lg font-bold text-white" style="background:linear-gradient(to right,#f97316,#f59e0b); box-shadow:0 6px 16px rgba(249,115,22,0.35); padding:14px 40px; border-radius:12px; position:relative;">おすすめ<span style="position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); width:0; height:0; border-left:10px solid transparent; border-right:10px solid transparent; border-top:10px solid #f59e0b;"></span></span>
+            </div>
+            <div
+              class="shadow-pricing-2 relative z-10 mb-10 flex w-full flex-col overflow-hidden rounded-xl bg-white px-8 py-10 sm:p-12 lg:px-6 lg:py-10 xl:p-14"
+            >
+              <p class="mb-4 block rounded-full text-center text-sm font-semibold text-white" style="background:linear-gradient(to right,#fbbf24,#f97316); padding:10px 16px;">
+                中小企業・Web制作会社に
+              </p>
+              <span
+                class="text-dark mb-5 block text-xl font-medium"
+              >
+                スタンダードプラン
+              </span>
+
+              <h2
+                class="text-dark mb-11 text-4xl font-semibold xl:text-[42px]"
+              >
+                <span class="text-xl font-medium">¥</span>
+                <span class="px-0.5">9,800</span>
+                <span class="text-dark-3 text-base">
+                  / 月（税別）
+                </span>
+              </h2>
+
+              <div class="mb-[50px]">
+                <h5 class="text-dark mb-5 text-lg font-medium">
+                  含まれる機能
+                </h5>
+
+                <div class="flex flex-col gap-[14px]">
+                  <p class="text-dark-3 text-base">
+                    サイト登録 3件
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    メンバー 3名
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    AI分析（再分析）可能
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    AI改善提案 月4回
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    Excel/PPTXエクスポート 無制限
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    メールサポート
+                  </p>
+                </div>
+              </div>
+              <a
+                href="https://grow-reporter.com/register"
+                class="hover:bg-blue-dark mt-auto inline-block rounded-md px-7 py-3 text-center text-base font-medium text-white transition"
+                style="background:linear-gradient(to right,#fbbf24,#f97316);"
+              >
+                このプランを選ぶ
+              </a>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3 flex">
+            <div
+              class="shadow-pricing-2 relative z-10 mb-10 flex w-full flex-col overflow-hidden rounded-xl bg-white px-8 py-10 sm:p-12 lg:px-6 lg:py-10 xl:p-14"
+            >
+              <p class="mb-4 block rounded-full text-center text-sm font-semibold text-white" style="background:linear-gradient(to right,#f87171,#db2777); padding:10px 16px;">
+                大企業・代理店・EC事業者に
+              </p>
+              <span
+                class="text-dark mb-5 block text-xl font-medium"
+              >
+                プレミアムプラン
+              </span>
+
+              <h2
+                class="text-dark mb-11 text-4xl font-semibold xl:text-[42px]"
+              >
+                <span class="text-xl font-medium">¥</span>
+                <span class="px-0.5">29,800</span>
+                <span class="text-dark-3 text-base">
+                  / 月（税別）
+                </span>
+              </h2>
+
+              <div class="mb-[50px]">
+                <h5 class="text-dark mb-5 text-lg font-medium">
+                  含まれる機能
+                </h5>
+
+                <div class="flex flex-col gap-[14px]">
+                  <p class="text-dark-3 text-base">
+                    サイト登録 10件
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    メンバー 5名
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    AI分析・再分析 無制限
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    AI改善提案 無制限
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    Excel/PPTXエクスポート 無制限
+                  </p>
+                  <p class="text-dark-3 text-base">
+                    最優先サポート（メール・Web会議）
+                  </p>
+                </div>
+              </div>
+              <a
+                href="https://grow-reporter.com/register"
+                class="hover:bg-blue-dark mt-auto inline-block rounded-md px-7 py-3 text-center text-base font-medium text-white transition"
+                style="background:linear-gradient(to right,#f87171,#db2777);"
+              >
+                このプランを選ぶ
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Pricing Section End -->
+
+    <!-- ====== Testimonials Section Start -->
+    <section id="testimonials" class="bg-tg-bg pt-20 pb-10 lg:pt-[120px] lg:pb-20">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap justify-center">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[510px] text-center">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                お客様の声
+              </span>
+              <h2
+                class="text-dark mb-3 text-3xl leading-[1.4] font-bold sm:text-4xl md:text-[40px]"
+              >
+                導入企業の声をご紹介
+              </h2>
+              <p class="text-dark-3 text-base">
+                グローレポーターを導入いただいた企業様から、<br>多くの喜びの声をいただいています。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          x-data="
+            {
+              slides: ['1','2','3', '4'],
+              activeSlide: 1,
+              activeButton: 'w-[30px] bg-primary',
+              button: 'w-[10px] bg-[#E4E4E4]'
+            }
+          "
+        >
+          <div class="relative flex justify-center">
+            <div class="relative w-full pb-16">
+              <div
+                class="flex-no-wrap snap xs:max-w-[400px] mx-auto flex h-auto w-full max-w-[300px] overflow-hidden transition-all sm:max-w-[540px] md:max-w-[720px] lg:max-w-[960px] xl:max-w-[1140px] 2xl:max-w-[1320px]"
+                x-ref="carousel"
+              >
+                <div
+                  class="xs:min-w-[368px] mx-auto h-full min-w-[300px] px-4 sm:min-w-[510px] md:min-w-[340px] lg:min-w-[465px] xl:min-w-[370px] 2xl:min-w-[430px]"
+                >
+                  <div
+                    class="shadow-testimonial-5 mb-10 flex h-[320px] flex-col bg-white p-8 lg:px-6 lg:py-8 xl:p-8"
+                  >
+                    <div class="mb-5 flex items-center">
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                    </div>
+
+                    <p class="text-body-color mb-6 text-base">
+                      「GA4は導入していたものの誰も見ていなかった状態でした。グローレポーターを入れてからは、AIが自動で分析を届けてくれるので、データに基づいた判断ができるようになりました。」
+                    </p>
+                    <div class="mt-auto flex items-center">
+                      <div class="mr-4 h-[50px] w-[50px] shrink-0 overflow-hidden rounded-full">
+                        <img src="assets/images/avatar-placeholder.svg" alt="avatar" class="h-full w-full object-cover" />
+                      </div>
+                      <div class="w-full">
+                        <h5
+                          class="text-dark mb-0.5 text-sm font-semibold"
+                        >
+                          中堅企業 Web担当者様
+                        </h5>
+                        <p
+                          class="text-secondary-color text-xs"
+                        >
+                          製造業
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="xs:min-w-[368px] mx-auto h-full min-w-[300px] px-4 sm:min-w-[510px] md:min-w-[340px] lg:min-w-[465px] xl:min-w-[370px] 2xl:min-w-[430px]"
+                >
+                  <div
+                    class="shadow-testimonial-5 mb-10 flex h-[320px] flex-col bg-white p-8 lg:px-6 lg:py-8 xl:p-8"
+                  >
+                    <div class="mb-5 flex items-center">
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                    </div>
+
+                    <p class="text-body-color mb-6 text-base">
+                      「以前は外部コンサルに月10万円以上払っていましたが、同等以上の分析がこの価格で。改善提案からモックアップまで出てくるので、制作会社への指示もそのまま使えます。」
+                    </p>
+                    <div class="mt-auto flex items-center">
+                      <div class="mr-4 h-[50px] w-[50px] shrink-0 overflow-hidden rounded-full">
+                        <img src="assets/images/avatar-placeholder.svg" alt="avatar" class="h-full w-full object-cover" />
+                      </div>
+                      <div class="w-full">
+                        <h5
+                          class="text-dark mb-0.5 text-sm font-semibold"
+                        >
+                          広告代理店 マーケティング部長様
+                        </h5>
+                        <p
+                          class="text-secondary-color text-xs"
+                        >
+                          広告代理店
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="xs:min-w-[368px] mx-auto h-full min-w-[300px] px-4 sm:min-w-[510px] md:min-w-[340px] lg:min-w-[465px] xl:min-w-[370px] 2xl:min-w-[430px]"
+                >
+                  <div
+                    class="shadow-testimonial-5 mb-10 flex h-[320px] flex-col bg-white p-8 lg:px-6 lg:py-8 xl:p-8"
+                  >
+                    <div class="mb-5 flex items-center">
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                    </div>
+
+                    <p class="text-body-color mb-6 text-base">
+                      「複数クライアントのサイトをまとめて管理でき、レポートもワンクリックで出力。分析→改善→評価のサイクルがクライアントごとに回せるのが強みです。」
+                    </p>
+                    <div class="mt-auto flex items-center">
+                      <div class="mr-4 h-[50px] w-[50px] shrink-0 overflow-hidden rounded-full">
+                        <img src="assets/images/avatar-placeholder.svg" alt="avatar" class="h-full w-full object-cover" />
+                      </div>
+                      <div class="w-full">
+                        <h5
+                          class="text-dark mb-0.5 text-sm font-semibold"
+                        >
+                          Web制作会社 ディレクター様
+                        </h5>
+                        <p
+                          class="text-secondary-color text-xs"
+                        >
+                          Web制作会社
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div
+                  class="xs:min-w-[368px] mx-auto h-full min-w-[300px] px-4 sm:min-w-[510px] md:min-w-[340px] lg:min-w-[465px] xl:min-w-[370px] 2xl:min-w-[430px]"
+                >
+                  <div
+                    class="shadow-testimonial-5 mb-10 flex h-[320px] flex-col bg-white p-8 lg:px-6 lg:py-8 xl:p-8"
+                  >
+                    <div class="mb-5 flex items-center">
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                      <span class="mr-1">
+                        <svg
+                          width="18"
+                          height="16"
+                          viewBox="0 0 18 16"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                        >
+                          <path
+                            d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z"
+                            fill="#FBB040"
+                          />
+                        </svg>
+                      </span>
+                    </div>
+
+                    <p class="text-body-color mb-6 text-base">
+                      「専門知識がなくてもAIが分かりやすく解説してくれるので、数字を見て終わりにならない。異変があればメールで通知が届くので、わざわざ管理画面を開く必要もありません。」
+                    </p>
+                    <div class="mt-auto flex items-center">
+                      <div class="mr-4 h-[50px] w-[50px] shrink-0 overflow-hidden rounded-full">
+                        <img src="assets/images/avatar-placeholder.svg" alt="avatar" class="h-full w-full object-cover" />
+                      </div>
+                      <div class="w-full">
+                        <h5
+                          class="text-dark mb-0.5 text-sm font-semibold"
+                        >
+                          山田 恵子
+                        </h5>
+                        <p
+                          class="text-secondary-color text-xs"
+                        >
+                          小規模企業 代表取締役
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div
+                class="absolute right-0 bottom-0 left-0 flex items-center justify-center gap-3"
+              >
+                <button
+                  class="text-dark shadow-btn-3 hover:bg-primary flex h-12 w-12 items-center justify-center bg-white transition-all hover:text-white"
+                  @click="$refs.carousel.scrollLeft = $refs.carousel.scrollLeft - ($refs.carousel.scrollWidth / slides.length); activeSlide -= 1"
+                >
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="fill-current"
+                  >
+                    <path
+                      d="M19.25 10.2437H4.57187L10.4156 4.29687C10.725 3.9875 10.725 3.50625 10.4156 3.19687C10.1062 2.8875 9.625 2.8875 9.31562 3.19687L2.2 10.4156C1.89062 10.725 1.89062 11.2063 2.2 11.5156L9.31562 18.7344C9.45312 18.8719 9.65937 18.975 9.86562 18.975C10.0719 18.975 10.2437 18.9062 10.4156 18.7687C10.725 18.4594 10.725 17.9781 10.4156 17.6688L4.60625 11.7906H19.25C19.6625 11.7906 20.0063 11.4469 20.0063 11.0344C20.0063 10.5875 19.6625 10.2437 19.25 10.2437Z"
+                      fill=""
+                    />
+                  </svg>
+                </button>
+                <button
+                  class="text-dark shadow-btn-3 hover:bg-primary flex h-12 w-12 items-center justify-center bg-white transition-all hover:text-white"
+                  @click="$refs.carousel.scrollLeft = $refs.carousel.scrollLeft + ($refs.carousel.scrollWidth / slides.length); activeSlide += 1"
+                >
+                  <svg
+                    width="22"
+                    height="22"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                    class="fill-current"
+                  >
+                    <path
+                      d="M19.8 10.45L12.6844 3.23124C12.375 2.92186 11.8938 2.92186 11.5844 3.23124C11.275 3.54061 11.275 4.02186 11.5844 4.33124L17.3594 10.2094H2.75C2.3375 10.2094 1.99375 10.5531 1.99375 10.9656C1.99375 11.3781 2.3375 11.7562 2.75 11.7562H17.4281L11.5844 17.7031C11.275 18.0125 11.275 18.4937 11.5844 18.8031C11.7219 18.9406 11.9281 19.0094 12.1344 19.0094C12.3406 19.0094 12.5469 18.9406 12.6844 18.7687L19.8 11.55C20.1094 11.2406 20.1094 10.7594 19.8 10.45Z"
+                      fill=""
+                    />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Testimonials Section End -->
+
+    <!-- ====== FAQ Section Start -->
+    <section
+      id="faq"
+      x-data="
+        {
+          openFaq1: false,
+          openFaq2: false,
+          openFaq3: false,
+          openFaq4: false,
+          openFaq5: false,
+          openFaq6: false
+        }
+      "
+      class="relative z-20 overflow-hidden bg-white pt-20 pb-12 lg:pt-[120px] lg:pb-[90px]"
+    >
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[520px] text-center lg:mb-20">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                よくあるご質問
+              </span>
+              <h2
+                class="text-dark mb-4 text-3xl leading-[1.4] font-bold sm:text-[40px]/[56px]"
+              >
+                FAQ
+              </h2>
+              <p class="text-dark-3 text-base">
+                グローレポーターに関するよくあるご質問にお答えします。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mx-auto max-w-[800px]">
+            <div
+              class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8"
+            >
+              <button
+                class="faq-btn flex w-full text-left"
+                @click="openFaq1 = !openFaq1"
+              >
+                <div
+                  class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg"
+                >
+                  <svg
+                    :class="openFaq1 && 'rotate-180'"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4
+                    class="text-dark mt-1 text-lg font-semibold"
+                  >
+                    GA4の専門知識がなくても使えますか？
+                  </h4>
+                </div>
+              </button>
+              <div x-show="openFaq1" class="faq-content pl-[62px]">
+                <p
+                  class="text-body-color py-3 text-base leading-relaxed"
+                >
+                  はい、まったく問題ありません。難しいGA4の画面を自分で見る必要はなく、サイトのURLを登録してGoogleアカウントで接続するだけ。あとはAIが「何が起きているか」「どうすればいいか」をわかりやすい日本語で教えてくれます。
+                </p>
+              </div>
+            </div>
+            <div
+              class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8"
+            >
+              <button
+                class="faq-btn flex w-full text-left"
+                @click="openFaq2 = !openFaq2"
+              >
+                <div
+                  class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg"
+                >
+                  <svg
+                    :class="openFaq2 && 'rotate-180'"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4
+                    class="text-dark mt-1 text-lg font-semibold"
+                  >
+                    無料プランと有料プランの違いは？
+                  </h4>
+                </div>
+              </button>
+              <div x-show="openFaq2" class="faq-content pl-[62px]">
+                <p
+                  class="text-body-color py-3 text-base leading-relaxed"
+                >
+                  無料プランでも、1サイト分のAI分析と月1回のAI改善提案をお使いいただけます。まずはお試しで十分です。有料プランにすると、複数サイトの管理やAI分析のやり直し、改善提案の回数アップ、レポートのダウンロードし放題、メールでのサポートなどが使えるようになります。
+                </p>
+              </div>
+            </div>
+            <div
+              class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8"
+            >
+              <button
+                class="faq-btn flex w-full text-left"
+                @click="openFaq3 = !openFaq3"
+              >
+                <div
+                  class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg"
+                >
+                  <svg
+                    :class="openFaq3 && 'rotate-180'"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4
+                    class="text-dark mt-1 text-lg font-semibold"
+                  >
+                    データのセキュリティは大丈夫ですか？
+                  </h4>
+                </div>
+              </button>
+              <div x-show="openFaq3" class="faq-content pl-[62px]">
+                <p
+                  class="text-body-color py-3 text-base leading-relaxed"
+                >
+                  ご安心ください。Googleが提供するセキュリティ基盤の上で動いており、お客様のデータは暗号化して保管しています。また、Googleアカウントでの連携方式のため、GA4のパスワードをお預かりすることは一切ありません。
+                </p>
+              </div>
+            </div>
+            <div
+              class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8"
+            >
+              <button
+                class="faq-btn flex w-full text-left"
+                @click="openFaq4 = !openFaq4"
+              >
+                <div
+                  class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg"
+                >
+                  <svg
+                    :class="openFaq4 && 'rotate-180'"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4
+                    class="text-dark mt-1 text-lg font-semibold"
+                  >
+                    外部コンサルタントとの違いは何ですか？
+                  </h4>
+                </div>
+              </button>
+              <div x-show="openFaq4" class="faq-content pl-[62px]">
+                <p
+                  class="text-body-color py-3 text-base leading-relaxed"
+                >
+                  外部のコンサルタントに頼むと、月10万円以上かかることも珍しくありません。しかもレポートは月に1回届くだけ。グローレポーターなら月額9,800円から、好きなときにAI分析ができて、「こうすればサイトが良くなる」という具体的な提案や改善イメージまで自動で作ってくれます。
+                </p>
+              </div>
+            </div>
+            <div
+              class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8"
+            >
+              <button
+                class="faq-btn flex w-full text-left"
+                @click="openFaq5 = !openFaq5"
+              >
+                <div
+                  class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg"
+                >
+                  <svg
+                    :class="openFaq5 && 'rotate-180'"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4
+                    class="text-dark mt-1 text-lg font-semibold"
+                  >
+                    解約はいつでもできますか？
+                  </h4>
+                </div>
+              </button>
+              <div x-show="openFaq5" class="faq-content pl-[62px]">
+                <p
+                  class="text-body-color py-3 text-base leading-relaxed"
+                >
+                  はい、いつでもすぐに解約できます。解約しても、その月の末日まではそのままお使いいただけます。登録データの削除をご希望の場合は、お気軽にお問い合わせください。
+                </p>
+              </div>
+            </div>
+            <div
+              class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8"
+            >
+              <button
+                class="faq-btn flex w-full text-left"
+                @click="openFaq6 = !openFaq6"
+              >
+                <div
+                  class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg"
+                >
+                  <svg
+                    :class="openFaq6 && 'rotate-180'"
+                    width="22"
+                    height="22"
+                    viewBox="0 0 22 22"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4
+                    class="text-dark mt-1 text-lg font-semibold"
+                  >
+                    チームで利用できますか？
+                  </h4>
+                </div>
+              </button>
+              <div x-show="openFaq6" class="faq-content pl-[62px]">
+                <p
+                  class="text-body-color py-3 text-base leading-relaxed"
+                >
+                  はい、チームメンバーをメールで招待して、一緒に使うことができます。「編集できる人」「見るだけの人」と権限を分けられるので安心です。Web制作会社さんがお客様のサイトをまとめて管理して、レポートを納品するといった使い方にも対応しています。各プランのメンバー数は、無料プラン：1名、スタンダードプラン：3名、プレミアムプラン：5名までです。
+                </p>
+              </div>
+            </div>
+        </div>
+      </div>
+
+      <div class="absolute right-0 bottom-0 z-[-1]">
+        <svg
+          width="1440"
+          height="886"
+          viewBox="0 0 1440 886"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            opacity="0.5"
+            d="M193.307 -273.321L1480.87 1014.24L1121.85 1373.26C1121.85 1373.26 731.745 983.231 478.513 729.927C225.976 477.317 -165.714 85.6993 -165.714 85.6993L193.307 -273.321Z"
+            fill="url(#paint0_linear_faq)"
+          />
+          <defs>
+            <linearGradient
+              id="paint0_linear_faq"
+              x1="1308.65"
+              y1="1142.58"
+              x2="602.827"
+              y2="-418.681"
+              gradientUnits="userSpaceOnUse"
+            >
+              <stop stop-color="#3056D3" stop-opacity="0.36" />
+              <stop offset="1" stop-color="#F5F2FD" stop-opacity="0" />
+              <stop offset="1" stop-color="#F5F2FD" stop-opacity="0.096144" />
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+    </section>
+    <!-- ====== FAQ Section End -->
+
+    <!-- ====== Call To Action 2 Section Start -->
+    <section
+      class="bg-primary relative z-10 overflow-hidden py-20 lg:py-[110px]"
+    >
+      <div class="container mx-auto">
+        <div class="relative overflow-hidden">
+          <div class="-mx-4 flex flex-wrap items-stretch">
+            <div class="w-full px-4">
+              <div class="mx-auto max-w-[570px] text-center">
+                <h2
+                  class="mb-6 text-3xl leading-snug font-semibold text-white md:text-[40px]"
+                >
+                  無料登録で今すぐ試そう
+                </h2>
+                <p class="mb-8 text-base leading-relaxed text-white md:pr-10">
+                  アカウント・サイト登録まで最短5分で<br>過去データもその日から分析やサイト改善が可能です。
+                </p>
+                <a
+                  href="https://grow-reporter.com/register"
+                  class="inline-block rounded bg-white px-7 py-3 text-base font-semibold text-primary transition hover:bg-white/90"
+                >
+                  無料で登録
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <span class="absolute top-0 left-0">
+          <svg
+            width="495"
+            height="470"
+            viewBox="0 0 495 470"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="55"
+              cy="442"
+              r="138"
+              stroke="white"
+              stroke-opacity="0.04"
+              stroke-width="50"
+            />
+            <circle
+              cx="446"
+              r="39"
+              stroke="white"
+              stroke-opacity="0.04"
+              stroke-width="20"
+            />
+            <path
+              d="M245.406 137.609L233.985 94.9852L276.609 106.406L245.406 137.609Z"
+              stroke="white"
+              stroke-opacity="0.08"
+              stroke-width="12"
+            />
+          </svg>
+        </span>
+        <span class="absolute right-0 bottom-0">
+          <svg
+            width="493"
+            height="470"
+            viewBox="0 0 493 470"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="462"
+              cy="5"
+              r="138"
+              stroke="white"
+              stroke-opacity="0.04"
+              stroke-width="50"
+            />
+            <circle
+              cx="49"
+              cy="470"
+              r="39"
+              stroke="white"
+              stroke-opacity="0.04"
+              stroke-width="20"
+            />
+            <path
+              d="M222.393 226.701L272.808 213.192L259.299 263.607L222.393 226.701Z"
+              stroke="white"
+              stroke-opacity="0.06"
+              stroke-width="13"
+            />
+          </svg>
+        </span>
+      </div>
+    </section>
+    <!-- ====== Call To Action 2 Section End -->
+
+
+    <!-- ====== Brands Section 2 Start -->
+    <section class="py-20 lg:py-[120px]" style="background: #f8fafc; border-top: 1px solid #e2e8f0; border-bottom: 1px solid #e2e8f0; box-shadow: inset 0 2px 8px rgba(0,0,0,0.04), inset 0 -2px 8px rgba(0,0,0,0.04);">
+      <div class="w-full">
+        <div class="w-full">
+          <div class="overflow-hidden" style="padding: 8px 0;">
+            <div class="animate-marquee flex items-center" style="width: max-content; gap: 24px;">
+              <!-- Set 1 -->
+              <div class="flex items-center shrink-0" style="gap: 24px;">
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_gamo.png" alt="GAMO" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_kudo.png" alt="工藤建設株式会社" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_dormybiz.png" alt="Dormy Biz" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_gbnavi.png" alt="GBnavi" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_gamo.png" alt="GAMO" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_kudo.png" alt="工藤建設株式会社" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_dormybiz.png" alt="Dormy Biz" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_gbnavi.png" alt="GBnavi" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+              </div>
+              <!-- Set 2 (duplicate for seamless loop) -->
+              <div class="flex items-center shrink-0" style="gap: 24px;">
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_gamo.png" alt="GAMO" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_kudo.png" alt="工藤建設株式会社" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_dormybiz.png" alt="Dormy Biz" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_gbnavi.png" alt="GBnavi" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_gamo.png" alt="GAMO" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_kudo.png" alt="工藤建設株式会社" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_dormybiz.png" alt="Dormy Biz" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+                <div style="width:220px; height:90px; background:#fff; border-radius:10px; display:flex; align-items:center; justify-content:center; padding:0 16px; box-shadow:0 4px 16px rgba(0,0,0,0.10), 0 1px 4px rgba(0,0,0,0.06);"><img src="assets/images/logo_gbnavi.png" alt="GBnavi" style="max-width:70%; max-height:60%; object-fit:contain;" /></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Brands Section 2 End -->
+
+    <!-- ====== Footer Section Start -->
+    <footer
+      class="relative z-10 overflow-hidden bg-[#090E34] pt-20 lg:pt-[120px]"
+    >
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4 lg:w-5/12 xl:w-4/12">
+            <div class="mb-10 w-full">
+              <a
+                href="/lp/"
+                class="mb-6 inline-block max-w-[200px]"
+              >
+                <img
+                  src="assets/images/logo-white.svg"
+                  alt="グローレポーター"
+                  class="max-w-full"
+                  width="200"
+                  height="48"
+                />
+              </a>
+              <p class="text-gray-7 mb-7 text-base">
+                アクセス解析とAIでWebサイトに"次の打ち手"を。
+              </p>
+            </div>
+          </div>
+          <div class="w-full px-4 sm:w-1/3 lg:w-3/12 lg:ml-auto">
+            <div class="mb-10 w-full">
+              <ul class="space-y-3">
+                <li>
+                  <a
+                    href="#about"
+                    class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline"
+                  >
+                    グローレポーターについて
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#features"
+                    class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline"
+                  >
+                    3つの特長
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="w-full px-4 sm:w-1/3 lg:w-2/12">
+            <div class="mb-10 w-full">
+              <ul class="space-y-3">
+                <li>
+                  <a
+                    href="#functions"
+                    class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline"
+                  >
+                    主な機能
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#pricing"
+                    class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline"
+                  >
+                    料金プラン
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="w-full px-4 sm:w-1/3 lg:w-2/12">
+            <div class="mb-10 w-full">
+              <ul class="space-y-3">
+                <li>
+                  <a
+                    href="#testimonials"
+                    class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline"
+                  >
+                    お客様の声
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#faq"
+                    class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline"
+                  >
+                    FAQ
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-12 border-t border-[#8890A46E] py-8 lg:mt-[60px]">
+        <div class="container mx-auto">
+          <div class="flex justify-center">
+            <p class="text-gray-7 text-base">&copy; 2026 グローレポーター Produced by <a href="https://grow-group.jp" target="_blank" rel="noopener noreferrer" class="hover:text-white underline-offset-2 hover:underline">GrowGroup Co.,Ltd.</a></p>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <span class="absolute top-0 left-0 z-[-1]">
+          <svg
+            width="419"
+            height="492"
+            viewBox="0 0 419 492"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <ellipse
+              cx="55.0003"
+              cy="350"
+              rx="364"
+              ry="364"
+              transform="rotate(-45 55.0003 350)"
+              fill="url(#paint0_linear_footer_1)"
+            />
+            <defs>
+              <linearGradient
+                id="paint0_linear_footer_1"
+                x1="55.0003"
+                y1="-14"
+                x2="55.0003"
+                y2="714"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="#13C296" stop-opacity="0.4" />
+                <stop offset="1" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </span>
+
+        <span class="absolute right-0 bottom-0 z-[-1]">
+          <svg
+            width="327"
+            height="220"
+            viewBox="0 0 327 220"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <ellipse
+              cx="199.343"
+              cy="199.965"
+              rx="199.017"
+              ry="199.017"
+              transform="rotate(-75 199.343 199.965)"
+              fill="url(#paint0_linear_footer_2)"
+            />
+            <defs>
+              <linearGradient
+                id="paint0_linear_footer_2"
+                x1="199.343"
+                y1="0.948181"
+                x2="199.343"
+                y2="398.982"
+                gradientUnits="userSpaceOnUse"
+              >
+                <stop stop-color="#3056D3" stop-opacity="0.32" />
+                <stop offset="1" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+          </svg>
+        </span>
+
+        <span class="absolute top-0 right-0 z-[-1]">
+          <svg
+            width="102"
+            height="102"
+            viewBox="0 0 102 102"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M1.8667 33.1956C2.89765 33.1956 3.7334 34.0318 3.7334 35.0633C3.7334 36.0947 2.89765 36.9309 1.8667 36.9309C0.835744 36.9309 4.50645e-08 36.0947 0 35.0633C-4.50645e-08 34.0318 0.835744 33.1956 1.8667 33.1956Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M18.2939 33.1956C19.3249 33.1956 20.1606 34.0318 20.1606 35.0633C20.1606 36.0947 19.3249 36.9309 18.2939 36.9309C17.263 36.9309 16.4272 36.0947 16.4272 35.0633C16.4272 34.0318 17.263 33.1956 18.2939 33.1956Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M34.7209 33.195C35.7519 33.195 36.5876 34.0311 36.5876 35.0626C36.5876 36.0941 35.7519 36.9303 34.7209 36.9303C33.69 36.9303 32.8542 36.0941 32.8542 35.0626C32.8542 34.0311 33.69 33.195 34.7209 33.195Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M50.9341 33.195C51.965 33.195 52.8008 34.0311 52.8008 35.0626C52.8008 36.0941 51.965 36.9303 50.9341 36.9303C49.9031 36.9303 49.0674 36.0941 49.0674 35.0626C49.0674 34.0311 49.9031 33.195 50.9341 33.195Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M1.8667 16.7605C2.89765 16.7605 3.7334 17.5966 3.7334 18.6281C3.7334 19.6596 2.89765 20.4957 1.8667 20.4957C0.835744 20.4957 4.50645e-08 19.6596 0 18.6281C-4.50645e-08 17.5966 0.835744 16.7605 1.8667 16.7605Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M18.2939 16.7605C19.3249 16.7605 20.1606 17.5966 20.1606 18.6281C20.1606 19.6596 19.3249 20.4957 18.2939 20.4957C17.263 20.4957 16.4272 19.6596 16.4272 18.6281C16.4272 17.5966 17.263 16.7605 18.2939 16.7605Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M34.7209 16.7605C35.7519 16.7605 36.5876 17.5966 36.5876 18.6281C36.5876 19.6596 35.7519 20.4957 34.7209 20.4957C33.69 20.4957 32.8542 19.6596 32.8542 18.6281C32.8542 17.5966 33.69 16.7605 34.7209 16.7605Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M50.9341 16.7605C51.965 16.7605 52.8008 17.5966 52.8008 18.6281C52.8008 19.6596 51.965 20.4957 50.9341 20.4957C49.9031 20.4957 49.0674 19.6596 49.0674 18.6281C49.0674 17.5966 49.9031 16.7605 50.9341 16.7605Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M1.8667 0.324951C2.89765 0.324951 3.7334 1.16115 3.7334 2.19261C3.7334 3.22408 2.89765 4.06024 1.8667 4.06024C0.835744 4.06024 4.50645e-08 3.22408 0 2.19261C-4.50645e-08 1.16115 0.835744 0.324951 1.8667 0.324951Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M18.2939 0.324951C19.3249 0.324951 20.1606 1.16115 20.1606 2.19261C20.1606 3.22408 19.3249 4.06024 18.2939 4.06024C17.263 4.06024 16.4272 3.22408 16.4272 2.19261C16.4272 1.16115 17.263 0.324951 18.2939 0.324951Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M34.7209 0.325302C35.7519 0.325302 36.5876 1.16147 36.5876 2.19293C36.5876 3.2244 35.7519 4.06056 34.7209 4.06056C33.69 4.06056 32.8542 3.2244 32.8542 2.19293C32.8542 1.16147 33.69 0.325302 34.7209 0.325302Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M50.9341 0.325302C51.965 0.325302 52.8008 1.16147 52.8008 2.19293C52.8008 3.2244 51.965 4.06056 50.9341 4.06056C49.9031 4.06056 49.0674 3.2244 49.0674 2.19293C49.0674 1.16147 49.9031 0.325302 50.9341 0.325302Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M66.9037 33.1956C67.9346 33.1956 68.7704 34.0318 68.7704 35.0633C68.7704 36.0947 67.9346 36.9309 66.9037 36.9309C65.8727 36.9309 65.037 36.0947 65.037 35.0633C65.037 34.0318 65.8727 33.1956 66.9037 33.1956Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M83.3307 33.1956C84.3616 33.1956 85.1974 34.0318 85.1974 35.0633C85.1974 36.0947 84.3616 36.9309 83.3307 36.9309C82.2997 36.9309 81.464 36.0947 81.464 35.0633C81.464 34.0318 82.2997 33.1956 83.3307 33.1956Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M99.7576 33.1956C100.789 33.1956 101.624 34.0318 101.624 35.0633C101.624 36.0947 100.789 36.9309 99.7576 36.9309C98.7266 36.9309 97.8909 36.0947 97.8909 35.0633C97.8909 34.0318 98.7266 33.1956 99.7576 33.1956Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M66.9037 16.7605C67.9346 16.7605 68.7704 17.5966 68.7704 18.6281C68.7704 19.6596 67.9346 20.4957 66.9037 20.4957C65.8727 20.4957 65.037 19.6596 65.037 18.6281C65.037 17.5966 65.8727 16.7605 66.9037 16.7605Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M83.3307 16.7605C84.3616 16.7605 85.1974 17.5966 85.1974 18.6281C85.1974 19.6596 84.3616 20.4957 83.3307 20.4957C82.2997 20.4957 81.464 19.6596 81.464 18.6281C81.464 17.5966 82.2997 16.7605 83.3307 16.7605Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M99.7576 16.7605C100.789 16.7605 101.624 17.5966 101.624 18.6281C101.624 19.6596 100.789 20.4957 99.7576 20.4957C98.7266 20.4957 97.8909 19.6596 97.8909 18.6281C97.8909 17.5966 98.7266 16.7605 99.7576 16.7605Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M66.9037 0.324966C67.9346 0.324966 68.7704 1.16115 68.7704 2.19261C68.7704 3.22408 67.9346 4.06024 66.9037 4.06024C65.8727 4.06024 65.037 3.22408 65.037 2.19261C65.037 1.16115 65.8727 0.324966 66.9037 0.324966Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M83.3307 0.324951C84.3616 0.324951 85.1974 1.16115 85.1974 2.19261C85.1974 3.22408 84.3616 4.06024 83.3307 4.06024C82.2997 4.06024 81.464 3.22408 81.464 2.19261C81.464 1.16115 82.2997 0.324951 83.3307 0.324951Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M99.7576 0.324951C100.789 0.324951 101.624 1.16115 101.624 2.19261C101.624 3.22408 100.789 4.06024 99.7576 4.06024C98.7266 4.06024 97.8909 3.22408 97.8909 2.19261C97.8909 1.16115 98.7266 0.324951 99.7576 0.324951Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M1.8667 82.2029C2.89765 82.2029 3.7334 83.039 3.7334 84.0705C3.7334 85.102 2.89765 85.9382 1.8667 85.9382C0.835744 85.9382 4.50645e-08 85.102 0 84.0705C-4.50645e-08 83.039 0.835744 82.2029 1.8667 82.2029Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M18.2939 82.2029C19.3249 82.2029 20.1606 83.039 20.1606 84.0705C20.1606 85.102 19.3249 85.9382 18.2939 85.9382C17.263 85.9382 16.4272 85.102 16.4272 84.0705C16.4272 83.039 17.263 82.2029 18.2939 82.2029Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M34.7209 82.2026C35.7519 82.2026 36.5876 83.0387 36.5876 84.0702C36.5876 85.1017 35.7519 85.9378 34.7209 85.9378C33.69 85.9378 32.8542 85.1017 32.8542 84.0702C32.8542 83.0387 33.69 82.2026 34.7209 82.2026Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M50.9341 82.2026C51.965 82.2026 52.8008 83.0387 52.8008 84.0702C52.8008 85.1017 51.965 85.9378 50.9341 85.9378C49.9031 85.9378 49.0674 85.1017 49.0674 84.0702C49.0674 83.0387 49.9031 82.2026 50.9341 82.2026Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M1.8667 65.7677C2.89765 65.7677 3.7334 66.6039 3.7334 67.6353C3.7334 68.6668 2.89765 69.503 1.8667 69.503C0.835744 69.503 4.50645e-08 68.6668 0 67.6353C-4.50645e-08 66.6039 0.835744 65.7677 1.8667 65.7677Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M18.2939 65.7677C19.3249 65.7677 20.1606 66.6039 20.1606 67.6353C20.1606 68.6668 19.3249 69.503 18.2939 69.503C17.263 69.503 16.4272 68.6668 16.4272 67.6353C16.4272 66.6039 17.263 65.7677 18.2939 65.7677Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M34.7209 65.7674C35.7519 65.7674 36.5876 66.6036 36.5876 67.635C36.5876 68.6665 35.7519 69.5027 34.7209 69.5027C33.69 69.5027 32.8542 68.6665 32.8542 67.635C32.8542 66.6036 33.69 65.7674 34.7209 65.7674Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M50.9341 65.7674C51.965 65.7674 52.8008 66.6036 52.8008 67.635C52.8008 68.6665 51.965 69.5027 50.9341 69.5027C49.9031 69.5027 49.0674 68.6665 49.0674 67.635C49.0674 66.6036 49.9031 65.7674 50.9341 65.7674Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M1.8667 98.2644C2.89765 98.2644 3.7334 99.1005 3.7334 100.132C3.7334 101.163 2.89765 102 1.8667 102C0.835744 102 4.50645e-08 101.163 0 100.132C-4.50645e-08 99.1005 0.835744 98.2644 1.8667 98.2644Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M1.8667 49.3322C2.89765 49.3322 3.7334 50.1684 3.7334 51.1998C3.7334 52.2313 2.89765 53.0675 1.8667 53.0675C0.835744 53.0675 4.50645e-08 52.2313 0 51.1998C-4.50645e-08 50.1684 0.835744 49.3322 1.8667 49.3322Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M18.2939 98.2644C19.3249 98.2644 20.1606 99.1005 20.1606 100.132C20.1606 101.163 19.3249 102 18.2939 102C17.263 102 16.4272 101.163 16.4272 100.132C16.4272 99.1005 17.263 98.2644 18.2939 98.2644Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M18.2939 49.3322C19.3249 49.3322 20.1606 50.1684 20.1606 51.1998C20.1606 52.2313 19.3249 53.0675 18.2939 53.0675C17.263 53.0675 16.4272 52.2313 16.4272 51.1998C16.4272 50.1684 17.263 49.3322 18.2939 49.3322Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M34.7209 98.2647C35.7519 98.2647 36.5876 99.1008 36.5876 100.132C36.5876 101.164 35.7519 102 34.7209 102C33.69 102 32.8542 101.164 32.8542 100.132C32.8542 99.1008 33.69 98.2647 34.7209 98.2647Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M50.9341 98.2647C51.965 98.2647 52.8008 99.1008 52.8008 100.132C52.8008 101.164 51.965 102 50.9341 102C49.9031 102 49.0674 101.164 49.0674 100.132C49.0674 99.1008 49.9031 98.2647 50.9341 98.2647Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M34.7209 49.3326C35.7519 49.3326 36.5876 50.1687 36.5876 51.2002C36.5876 52.2317 35.7519 53.0678 34.7209 53.0678C33.69 53.0678 32.8542 52.2317 32.8542 51.2002C32.8542 50.1687 33.69 49.3326 34.7209 49.3326Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M50.9341 49.3326C51.965 49.3326 52.8008 50.1687 52.8008 51.2002C52.8008 52.2317 51.965 53.0678 50.9341 53.0678C49.9031 53.0678 49.0674 52.2317 49.0674 51.2002C49.0674 50.1687 49.9031 49.3326 50.9341 49.3326Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M66.9037 82.2029C67.9346 82.2029 68.7704 83.0391 68.7704 84.0705C68.7704 85.102 67.9346 85.9382 66.9037 85.9382C65.8727 85.9382 65.037 85.102 65.037 84.0705C65.037 83.0391 65.8727 82.2029 66.9037 82.2029Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M83.3307 82.2029C84.3616 82.2029 85.1974 83.0391 85.1974 84.0705C85.1974 85.102 84.3616 85.9382 83.3307 85.9382C82.2997 85.9382 81.464 85.102 81.464 84.0705C81.464 83.0391 82.2997 82.2029 83.3307 82.2029Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M99.7576 82.2029C100.789 82.2029 101.624 83.039 101.624 84.0705C101.624 85.102 100.789 85.9382 99.7576 85.9382C98.7266 85.9382 97.8909 85.102 97.8909 84.0705C97.8909 83.039 98.7266 82.2029 99.7576 82.2029Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M66.9037 65.7674C67.9346 65.7674 68.7704 66.6036 68.7704 67.635C68.7704 68.6665 67.9346 69.5027 66.9037 69.5027C65.8727 69.5027 65.037 68.6665 65.037 67.635C65.037 66.6036 65.8727 65.7674 66.9037 65.7674Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M83.3307 65.7677C84.3616 65.7677 85.1974 66.6039 85.1974 67.6353C85.1974 68.6668 84.3616 69.503 83.3307 69.503C82.2997 69.503 81.464 68.6668 81.464 67.6353C81.464 66.6039 82.2997 65.7677 83.3307 65.7677Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M99.7576 65.7677C100.789 65.7677 101.624 66.6039 101.624 67.6353C101.624 68.6668 100.789 69.503 99.7576 69.503C98.7266 69.503 97.8909 68.6668 97.8909 67.6353C97.8909 66.6039 98.7266 65.7677 99.7576 65.7677Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M66.9037 98.2644C67.9346 98.2644 68.7704 99.1005 68.7704 100.132C68.7704 101.163 67.9346 102 66.9037 102C65.8727 102 65.037 101.163 65.037 100.132C65.037 99.1005 65.8727 98.2644 66.9037 98.2644Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M66.9037 49.3322C67.9346 49.3322 68.7704 50.1684 68.7704 51.1998C68.7704 52.2313 67.9346 53.0675 66.9037 53.0675C65.8727 53.0675 65.037 52.2313 65.037 51.1998C65.037 50.1684 65.8727 49.3322 66.9037 49.3322Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M83.3307 98.2644C84.3616 98.2644 85.1974 99.1005 85.1974 100.132C85.1974 101.163 84.3616 102 83.3307 102C82.2997 102 81.464 101.163 81.464 100.132C81.464 99.1005 82.2997 98.2644 83.3307 98.2644Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M83.3307 49.3322C84.3616 49.3322 85.1974 50.1684 85.1974 51.1998C85.1974 52.2313 84.3616 53.0675 83.3307 53.0675C82.2997 53.0675 81.464 52.2313 81.464 51.1998C81.464 50.1684 82.2997 49.3322 83.3307 49.3322Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M99.7576 98.2644C100.789 98.2644 101.624 99.1005 101.624 100.132C101.624 101.163 100.789 102 99.7576 102C98.7266 102 97.8909 101.163 97.8909 100.132C97.8909 99.1005 98.7266 98.2644 99.7576 98.2644Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+            <path
+              d="M99.7576 49.3322C100.789 49.3322 101.624 50.1684 101.624 51.1998C101.624 52.2313 100.789 53.0675 99.7576 53.0675C98.7266 53.0675 97.8909 52.2313 97.8909 51.1998C97.8909 50.1684 98.7266 49.3322 99.7576 49.3322Z"
+              fill="white"
+              fill-opacity="0.08"
+            />
+          </svg>
+        </span>
+      </div>
+    </footer>
+    <!-- ====== Footer Section End -->
+
+    <script defer src="./assets/js/alpine.min.js"></script>
+  </body>
+</html>

@@ -107,7 +107,7 @@ function MonthNav({ label, month, onPrev, onNext }) {
 /**
  * 日付範囲選択カレンダーコンポーネント
  */
-export default function DateRangePicker({ dateRange, onDateRangeChange }) {
+export default function DateRangePicker({ dateRange, onDateRangeChange, hideComparison = false }) {
   const { comparisonMode, setComparisonMode, comparisonDateRange, setCustomComparisonRange } = useSite();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedRange, setSelectedRange] = useState(null);
@@ -239,7 +239,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange }) {
           ) : (
             <span className="text-sm font-medium text-dark">期間を選択</span>
           )}
-          {comparisonMode !== 'none' && comparisonDateRange && (
+          {!hideComparison && comparisonMode !== 'none' && comparisonDateRange && (
             <span className="text-xs leading-tight text-blue-500">
               比較:{comparisonDateRange.from} ~ {comparisonDateRange.to}
             </span>
@@ -288,6 +288,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange }) {
           </div>
 
           {/* 比較モード */}
+          {!hideComparison && (
           <div className="border-t border-gray-100 px-3 py-2">
             <div className="mb-1">
               <span className="text-[11px] font-medium text-gray-500">期間比較</span>
@@ -313,6 +314,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange }) {
               </p>
             )}
           </div>
+          )}
 
           {/* フッター */}
           <div className="flex items-center border-t border-gray-100 px-3 py-2">

@@ -198,12 +198,30 @@ async function runCheckMetricAlerts() {
       collectedAlerts.push({ ...alertData, alertId });
     }
 
-    // Phase 2: アラートが1件以上あれば、仮説を一括生成してメール送信
+    // Phase 2: アラートが1件以上あれば、AI分析を生成してメール送信
     if (collectedAlerts.length > 0) {
-      // 仮説を一括生成
-      let hypotheses = [{ text: '仮説を取得できませんでした', source: 'ai' }];
+      // 全指標サマリー（変化なし指標も含む）を構築
+      const allMetricsSummary = METRIC_KEYS.map((key) => {
+        const current = currentMetrics[key];
+        const previous = previousMetrics[key];
+        const change = previous && previous !== 0 ? ((current - previous) / previous) * 100 : null;
+        const isAlert = collectedAlerts.some(a => a.metricName === key);
+        return {
+          key,
+          label: METRIC_LABELS[key] || key,
+          current,
+          previous,
+          changePercent: change,
+          isAlert,
+        };
+      });
+
+      // AI分析を一括生成（状況整理 + 確認アクション）
+      let aiAnalysis = { summary: '', actions: [] };
       try {
-        hypotheses = await generateBatchedAlertHypotheses(db, siteId, collectedAlerts, siteName);
+        aiAnalysis = await generateBatchedAlertHypotheses(
+          db, siteId, collectedAlerts, siteName, siteUrl, allMetricsSummary
+        );
       } catch (err) {
         console.error('[checkMetricAlerts] batched hypotheses error', err.message);
       }
@@ -213,9 +231,11 @@ async function runCheckMetricAlerts() {
       const dashboardUrl = `${appBaseUrl}/dashboard?siteId=${siteId}`;
       const { subject, html, text } = generateBatchedAlertEmailTemplate(
         collectedAlerts,
-        hypotheses,
+        aiAnalysis,
+        allMetricsSummary,
         siteName,
         siteUrl,
+        periodCurrentLabel,
         dashboardUrl
       );
 

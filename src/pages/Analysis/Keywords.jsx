@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSite } from '../../contexts/SiteContext';
 import { useGSCData } from '../../hooks/useGSCData';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
@@ -15,6 +15,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import {
   ResponsiveContainer,
   BarChart,
@@ -34,7 +35,7 @@ import {
  * Search Console の検索クエリデータを表示
  */
 export default function Keywords() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
@@ -65,6 +66,16 @@ export default function Keywords() {
     hasGSCConnection
   );
 
+  // 比較期間データ
+  const { data: compGscData } = useGSCData(
+    comparisonDateRange ? selectedSiteId : null,
+    comparisonDateRange?.from,
+    comparisonDateRange?.to,
+    hasGSCConnection
+  );
+
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compGscData;
+
   // データ整形
   const keywordData = gscData?.topQueries || [];
 
@@ -88,6 +99,19 @@ export default function Keywords() {
     ctr: (row.ctr * 100).toFixed(2),
     position: row.position.toFixed(1),
   }));
+
+  // 比較データのマージ
+  const mergedTableData = useMemo(() => {
+    if (!isComparing || !compGscData?.topQueries) return tableData;
+    const compTable = compGscData.topQueries.map((row) => ({
+      keyword: row.query,
+      clicks: row.clicks,
+      impressions: row.impressions,
+      ctr: (row.ctr * 100).toFixed(2),
+      position: row.position.toFixed(1),
+    }));
+    return mergeComparisonRows(tableData, compTable, 'keyword', ['clicks', 'impressions', 'ctr', 'position']);
+  }, [tableData, isComparing, compGscData]);
 
   // グラフ用のデータ整形（クリック数上位10件）
   const chartData = [...keywordData].slice(0, 10);
@@ -343,6 +367,7 @@ export default function Keywords() {
               ) : (
                 <DataTable
                   tableKey="analysis-keywords"
+                  isComparing={isComparing}
                   columns={[
                     {
                       key: 'keyword',
@@ -357,6 +382,7 @@ export default function Keywords() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'clicks',
+                      comparison: true,
                     },
                     {
                       key: 'impressions',
@@ -364,6 +390,7 @@ export default function Keywords() {
                       format: 'number',
                       align: 'right',
                       tooltip: 'impressions',
+                      comparison: true,
                     },
                     {
                       key: 'ctr',
@@ -371,12 +398,15 @@ export default function Keywords() {
                       align: 'right',
                       render: (value) => `${value}%`,
                       tooltip: 'ctr',
+                      comparison: true,
                     },
                     {
                       key: 'position',
                       label: '平均掲載順位',
                       align: 'right',
                       tooltip: 'position',
+                      comparison: true,
+                      invertColor: true,
                       render: (value, row) => (
                         <div className="flex items-center justify-end gap-2">
                           {getPositionIcon(parseFloat(value))}
@@ -385,7 +415,7 @@ export default function Keywords() {
                       ),
                     },
                   ]}
-                  data={tableData}
+                  data={mergedTableData}
                   pageSize={25}
                   showPagination={true}
                   emptyMessage="表示するデータがありません。"
@@ -417,6 +447,8 @@ export default function Keywords() {
                       startDate: dateRange?.from,
                       endDate: dateRange?.to,
                     }}
+                    comparisonRawData={isComparing ? compGscData : null}
+                    comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
                     onLimitExceeded={() => setIsLimitModalOpen(true)}
                   />
                 ) : (

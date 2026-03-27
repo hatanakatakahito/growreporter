@@ -108,13 +108,13 @@ export default function Pages() {
     staleTime: 5 * 60 * 1000,
   });
 
-  // 比較期間データ
+  // 比較期間データ（pageTitleを含めるとパス重複で比較値が壊れるためpagePathのみ）
   const { data: compPageData } = useGA4Data(
     comparisonDateRange ? selectedSiteId : null,
     comparisonDateRange?.from,
     comparisonDateRange?.to,
     ['screenPageViews', 'sessions', 'activeUsers', 'newUsers', 'averageSessionDuration', 'engagementRate', 'bounceRate'],
-    ['pagePath', 'pageTitle'],
+    ['pagePath'],
     ga4DimensionFilter
   );
 
@@ -161,8 +161,13 @@ export default function Pages() {
       path: row.pagePath || '/',
       pageViews: row.screenPageViews || 0,
       sessions: row.sessions || 0,
+      users: row.activeUsers || 0,
+      newUsers: row.newUsers || 0,
+      engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
+      bounceRate: ((row.bounceRate || 0) * 100).toFixed(1),
+      avgDuration: row.averageSessionDuration || 0,
     }));
-    return mergeComparisonRows(tableData, compTable, 'path', ['pageViews', 'sessions', 'users', 'newUsers', 'engagementRate', 'bounceRate', 'avgDuration', 'conversions', 'conversionRate']);
+    return mergeComparisonRows(tableData, compTable, 'path', ['pageViews', 'sessions', 'users', 'newUsers', 'engagementRate', 'bounceRate', 'avgDuration']);
   }, [tableData, isComparing, compPageData]);
 
   // グラフ用のデータ（上位10件）

@@ -26,7 +26,7 @@ export default function CompleteProfile() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoLoadError, setPhotoLoadError] = useState(false);
-  
+
   const { currentUser, userProfile, updateUserProfile } = useAuth();
   const navigate = useNavigate();
 

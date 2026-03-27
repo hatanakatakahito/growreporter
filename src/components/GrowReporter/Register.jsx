@@ -12,7 +12,7 @@ export default function Register() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // 新規登録用の追加フィールド
   const [companyName, setCompanyName] = useState('');
   const [name, setName] = useState('');
@@ -21,7 +21,7 @@ export default function Register() {
   const [agreedToTerms, setAgreedToTerms] = useState(false);
   const [isFromInvitation, setIsFromInvitation] = useState(false);
   const [isLoadingInvitation, setIsLoadingInvitation] = useState(false);
-  
+
   const { signup, loginWithGoogle, loginWithMicrosoft, fetchUserProfile } = useAuth();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -494,8 +494,10 @@ export default function Register() {
                     />
                     <span className="text-sm text-body-color dark:text-dark-6">
                       <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">利用規約</a>
-                      と
+                      、
                       <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">プライバシーポリシー</a>
+                      、
+                      <a href="/commercial-transaction" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">特定商取引法に基づく表記</a>
                       に同意します
                     </span>
                   </label>

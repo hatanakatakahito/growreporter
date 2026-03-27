@@ -475,6 +475,7 @@ export default function ReverseFlow() {
           setDateRange={updateDateRange}
           showDateRange={true}
           showSiteInfo={false}
+          hideComparison={true}
         />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         {/* コンテンツ */}

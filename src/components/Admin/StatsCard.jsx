@@ -1,3 +1,5 @@
+import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+
 /**
  * 統計カードコンポーネント
  */
@@ -16,22 +18,16 @@ export default function StatsCard({ title, value, subtitle, trend, trendValue, c
       </div>
 
       {trend && trendValue !== null && trendValue !== undefined && (
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-4 flex items-center gap-1">
           {trend === 'up' && (
-            <>
-              <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-              </svg>
-              <span className="text-sm font-medium text-green-500">+{trendValue}</span>
-            </>
+            <span className="inline-flex items-center gap-0.5 text-sm font-medium text-green-500">
+              <ArrowUpRight className="h-4 w-4" /> +{trendValue}
+            </span>
           )}
           {trend === 'down' && (
-            <>
-              <svg className="h-4 w-4 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-              </svg>
-              <span className="text-sm font-medium text-red-500">-{trendValue}</span>
-            </>
+            <span className="inline-flex items-center gap-0.5 text-sm font-medium text-red-500">
+              <ArrowDownRight className="h-4 w-4" /> -{trendValue}
+            </span>
           )}
           <span className="text-xs text-body-color dark:text-dark-6">今月</span>
         </div>

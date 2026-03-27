@@ -47,6 +47,7 @@ import AcceptInvitation from './pages/AcceptInvitation';
 import OAuthCallback from './components/OAuthCallback';
 import TermsOfService from './pages/TermsOfService';
 import PrivacyPolicy from './pages/PrivacyPolicy';
+import CommercialTransaction from './pages/CommercialTransaction';
 import ForgotPassword from './pages/ForgotPassword';
 
 // Admin
@@ -97,6 +98,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
+            <Route path="/commercial-transaction" element={<CommercialTransaction />} />
             <Route path="/reset-password" element={<ForgotPassword />} />
             {/* 招待承認（認証不要でもアクセス可能） */}
             <Route path="/accept-invitation" element={<AcceptInvitation />} />

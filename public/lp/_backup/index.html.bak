@@ -1,0 +1,1103 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>GROW REPORTER（グローレポーター）｜GA4 x AI アクセス解析ツール</title>
+    <meta name="description" content="Google Analytics 4（GA4）とSearch ConsoleのデータをAIが自動で分析・考察し、サイト改善の提案からモックアップまで生成。分析・改善・評価のサイクルでサイトを成長させるアクセス解析ツール。" />
+    <meta name="keywords" content="GA4,アクセス解析,AI分析,Google Analytics,Search Console,サイト改善,レポート自動生成,Web解析ツール" />
+    <link rel="canonical" href="https://growreporter.web.app/lp/" />
+    <meta property="og:title" content="GROW REPORTER｜GA4 x AI アクセス解析ツール" />
+    <meta property="og:description" content="GA4とSearch ConsoleのデータをAIが自動分析。考察・改善提案・モックアップまで。サイトを成長させるアクセス解析ツール。" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://growreporter.web.app/lp/" />
+    <meta property="og:image" content="https://growreporter.web.app/lp/assets/images/ogp.png" />
+    <meta property="og:site_name" content="GROW REPORTER" />
+    <meta property="og:locale" content="ja_JP" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="GROW REPORTER｜GA4 x AI アクセス解析ツール" />
+    <meta name="twitter:description" content="GA4とSearch ConsoleのデータをAIが自動分析。考察・改善提案・モックアップまで。" />
+    <meta name="twitter:image" content="https://growreporter.web.app/lp/assets/images/ogp.png" />
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      "name": "GROW REPORTER",
+      "applicationCategory": "BusinessApplication",
+      "operatingSystem": "Web",
+      "description": "GA4とSearch ConsoleのデータをAIが自動で分析・考察し、サイト改善の提案からモックアップまで生成するアクセス解析ツール",
+      "offers": [
+        { "@type": "Offer", "price": "0", "priceCurrency": "JPY", "name": "無料プラン" },
+        { "@type": "Offer", "price": "9800", "priceCurrency": "JPY", "name": "スタンダードプラン" },
+        { "@type": "Offer", "price": "29800", "priceCurrency": "JPY", "name": "プレミアムプラン" }
+      ],
+      "provider": { "@type": "Organization", "name": "GrowGroup株式会社", "address": { "@type": "PostalAddress", "addressLocality": "名古屋市", "addressRegion": "愛知県", "addressCountry": "JP" } }
+    }
+    </script>
+    <link rel="icon" href="./favicon.ico" />
+    <link rel="stylesheet" href="./assets/css/output.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      html { scroll-behavior: smooth; }
+      body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
+    </style>
+  </head>
+
+  <body
+    x-data="{ scrolledFromTop: false }"
+    x-init="window.pageYOffset >= 50 ? scrolledFromTop = true : scrolledFromTop = false"
+    @scroll.window="window.pageYOffset >= 50 ? scrolledFromTop = true : scrolledFromTop = false"
+  >
+
+    <!-- ====== Navbar Section Start -->
+    <header
+      x-data="{ navbarOpen: false }"
+      :class="scrolledFromTop ? 'fixed z-50 bg-white/80 shadow-sm backdrop-blur-sm' : 'absolute'"
+      class="top-0 left-0 z-50 w-full"
+    >
+      <div class="container mx-auto">
+        <div class="relative -mx-4 flex items-center justify-between">
+          <div class="w-60 max-w-full px-4">
+            <a href="/lp/" class="block w-full py-5">
+              <img src="assets/images/logo.svg" alt="GROW REPORTER" class="w-full" />
+            </a>
+          </div>
+          <div class="flex w-full items-center justify-between px-4">
+            <div>
+              <button
+                @click="navbarOpen = !navbarOpen"
+                :class="navbarOpen && 'navbarTogglerActive'"
+                id="navbarToggler"
+                class="ring-primary absolute top-1/2 right-4 block -translate-y-1/2 rounded-lg px-3 py-[6px] focus:ring-2 lg:hidden"
+              >
+                <span class="bg-body-color relative my-[6px] block h-[2px] w-[30px]"></span>
+                <span class="bg-body-color relative my-[6px] block h-[2px] w-[30px]"></span>
+                <span class="bg-body-color relative my-[6px] block h-[2px] w-[30px]"></span>
+              </button>
+              <nav
+                x-transition
+                :class="!navbarOpen && 'hidden'"
+                id="navbarCollapse"
+                class="absolute top-full right-4 w-full max-w-[250px] rounded-lg bg-white px-6 py-5 shadow transition-all lg:static lg:block lg:w-full lg:max-w-full lg:bg-transparent lg:shadow-none"
+              >
+                <ul class="block lg:flex">
+                  <li>
+                    <a href="#features" class="text-dark hover:text-primary flex py-2 text-base font-medium lg:ml-12 lg:inline-flex">
+                      特長
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#how-it-works" class="text-dark hover:text-primary flex py-2 text-base font-medium lg:ml-12 lg:inline-flex">
+                      使い方
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#pricing" class="text-dark hover:text-primary flex py-2 text-base font-medium lg:ml-12 lg:inline-flex">
+                      料金
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#faq" class="text-dark hover:text-primary flex py-2 text-base font-medium lg:ml-12 lg:inline-flex">
+                      FAQ
+                    </a>
+                  </li>
+                  <li>
+                    <a href="#contact" class="text-dark hover:text-primary flex py-2 text-base font-medium lg:ml-12 lg:inline-flex">
+                      お問い合わせ
+                    </a>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+            <div class="hidden justify-end pr-16 sm:flex lg:pr-0">
+              <a href="/login" class="text-dark hover:text-primary px-7 py-3 text-base font-medium">
+                ログイン
+              </a>
+              <a href="/register" class="bg-primary hover:bg-primary/90 rounded-lg px-7 py-3 text-base font-medium text-white">
+                無料で始める
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <!-- ====== Navbar Section End -->
+
+    <!-- ====== Hero Section Start -->
+    <div class="bg-primary relative pt-[120px] md:pt-[130px] lg:pt-[160px]">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap items-center">
+          <div class="w-full px-4">
+            <div class="hero-content text-center">
+              <h1 class="mx-auto mb-5 max-w-[600px] text-3xl leading-snug font-bold text-white sm:text-4xl md:text-[42px]">
+                GA4 x AIで、<br>アクセス解析を<br class="sm:hidden">次のステージへ
+              </h1>
+              <p class="mx-auto mb-8 max-w-[520px] text-base leading-relaxed text-[#e4e4e4]">
+                Google Analytics 4とSearch ConsoleのデータをAIが自動で分析・考察。<br class="hidden sm:inline">
+                改善提案からモックアップ生成まで、サイト成長に必要なすべてを。
+              </p>
+              <ul class="flex flex-wrap items-center justify-center">
+                <li class="mx-2 mb-3 sm:mx-4">
+                  <a href="/register" class="text-dark inline-flex items-center justify-center rounded-lg bg-white px-5 py-4 text-center text-base font-medium hover:bg-white/90 sm:px-10">
+                    無料で始める
+                  </a>
+                </li>
+                <li class="mx-2 mb-3 sm:mx-4">
+                  <a href="#features" class="flex items-center text-base font-medium text-white hover:opacity-80">
+                    <span class="mr-3 flex h-12 w-12 items-center justify-center rounded-full border border-white/30">
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M7 0L7 14M7 14L13 8M7 14L1 8" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                      </svg>
+                    </span>
+                    詳しく見る
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="w-full px-4">
+            <div class="relative z-10 mx-auto max-w-[845px]">
+              <div class="mt-16">
+                <img
+                  src="assets/images/screenshot-dashboard.png"
+                  alt="GROW REPORTER ダッシュボード"
+                  class="mx-auto max-w-full rounded-t-xl"
+                />
+              </div>
+              <div class="absolute bottom-0 -left-9 z-[-1]">
+                <svg width="134" height="106" viewBox="0 0 134 106" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="1.66667" cy="104" r="1.66667" transform="rotate(-90 1.66667 104)" fill="white"/>
+                  <circle cx="16.3333" cy="104" r="1.66667" transform="rotate(-90 16.3333 104)" fill="white"/>
+                  <circle cx="31" cy="104" r="1.66667" transform="rotate(-90 31 104)" fill="white"/>
+                  <circle cx="45.6667" cy="104" r="1.66667" transform="rotate(-90 45.6667 104)" fill="white"/>
+                  <circle cx="60.3333" cy="104" r="1.66667" transform="rotate(-90 60.3333 104)" fill="white"/>
+                  <circle cx="88.6667" cy="104" r="1.66667" transform="rotate(-90 88.6667 104)" fill="white"/>
+                  <circle cx="117.667" cy="104" r="1.66667" transform="rotate(-90 117.667 104)" fill="white"/>
+                  <circle cx="74.6667" cy="104" r="1.66667" transform="rotate(-90 74.6667 104)" fill="white"/>
+                  <circle cx="103" cy="104" r="1.66667" transform="rotate(-90 103 104)" fill="white"/>
+                  <circle cx="132" cy="104" r="1.66667" transform="rotate(-90 132 104)" fill="white"/>
+                  <circle cx="1.66667" cy="89.3333" r="1.66667" transform="rotate(-90 1.66667 89.3333)" fill="white"/>
+                  <circle cx="16.3333" cy="89.3333" r="1.66667" transform="rotate(-90 16.3333 89.3333)" fill="white"/>
+                  <circle cx="31" cy="89.3333" r="1.66667" transform="rotate(-90 31 89.3333)" fill="white"/>
+                  <circle cx="45.6667" cy="89.3333" r="1.66667" transform="rotate(-90 45.6667 89.3333)" fill="white"/>
+                  <circle cx="60.3333" cy="89.3338" r="1.66667" transform="rotate(-90 60.3333 89.3338)" fill="white"/>
+                  <circle cx="88.6667" cy="89.3338" r="1.66667" transform="rotate(-90 88.6667 89.3338)" fill="white"/>
+                  <circle cx="117.667" cy="89.3338" r="1.66667" transform="rotate(-90 117.667 89.3338)" fill="white"/>
+                  <circle cx="74.6667" cy="89.3338" r="1.66667" transform="rotate(-90 74.6667 89.3338)" fill="white"/>
+                  <circle cx="103" cy="89.3338" r="1.66667" transform="rotate(-90 103 89.3338)" fill="white"/>
+                  <circle cx="132" cy="89.3338" r="1.66667" transform="rotate(-90 132 89.3338)" fill="white"/>
+                  <circle cx="1.66667" cy="74.6673" r="1.66667" transform="rotate(-90 1.66667 74.6673)" fill="white"/>
+                  <circle cx="16.3333" cy="74.6668" r="1.66667" transform="rotate(-90 16.3333 74.6668)" fill="white"/>
+                  <circle cx="31" cy="74.6668" r="1.66667" transform="rotate(-90 31 74.6668)" fill="white"/>
+                  <circle cx="45.6667" cy="74.6668" r="1.66667" transform="rotate(-90 45.6667 74.6668)" fill="white"/>
+                </svg>
+              </div>
+              <div class="absolute -top-6 -right-6 z-[-1]">
+                <svg width="134" height="106" viewBox="0 0 134 106" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <circle cx="1.66667" cy="104" r="1.66667" transform="rotate(-90 1.66667 104)" fill="white"/>
+                  <circle cx="16.3333" cy="104" r="1.66667" transform="rotate(-90 16.3333 104)" fill="white"/>
+                  <circle cx="31" cy="104" r="1.66667" transform="rotate(-90 31 104)" fill="white"/>
+                  <circle cx="45.6667" cy="104" r="1.66667" transform="rotate(-90 45.6667 104)" fill="white"/>
+                  <circle cx="60.3333" cy="104" r="1.66667" transform="rotate(-90 60.3333 104)" fill="white"/>
+                  <circle cx="88.6667" cy="104" r="1.66667" transform="rotate(-90 88.6667 104)" fill="white"/>
+                  <circle cx="117.667" cy="104" r="1.66667" transform="rotate(-90 117.667 104)" fill="white"/>
+                  <circle cx="74.6667" cy="104" r="1.66667" transform="rotate(-90 74.6667 104)" fill="white"/>
+                  <circle cx="103" cy="104" r="1.66667" transform="rotate(-90 103 104)" fill="white"/>
+                  <circle cx="132" cy="104" r="1.66667" transform="rotate(-90 132 104)" fill="white"/>
+                  <circle cx="1.66667" cy="89.3333" r="1.66667" transform="rotate(-90 1.66667 89.3333)" fill="white"/>
+                  <circle cx="16.3333" cy="89.3333" r="1.66667" transform="rotate(-90 16.3333 89.3333)" fill="white"/>
+                  <circle cx="31" cy="89.3333" r="1.66667" transform="rotate(-90 31 89.3333)" fill="white"/>
+                  <circle cx="45.6667" cy="89.3333" r="1.66667" transform="rotate(-90 45.6667 89.3333)" fill="white"/>
+                  <circle cx="60.3333" cy="89.3338" r="1.66667" transform="rotate(-90 60.3333 89.3338)" fill="white"/>
+                  <circle cx="88.6667" cy="89.3338" r="1.66667" transform="rotate(-90 88.6667 89.3338)" fill="white"/>
+                  <circle cx="117.667" cy="89.3338" r="1.66667" transform="rotate(-90 117.667 89.3338)" fill="white"/>
+                  <circle cx="74.6667" cy="89.3338" r="1.66667" transform="rotate(-90 74.6667 89.3338)" fill="white"/>
+                  <circle cx="103" cy="89.3338" r="1.66667" transform="rotate(-90 103 89.3338)" fill="white"/>
+                  <circle cx="132" cy="89.3338" r="1.66667" transform="rotate(-90 132 89.3338)" fill="white"/>
+                  <circle cx="1.66667" cy="74.6673" r="1.66667" transform="rotate(-90 1.66667 74.6673)" fill="white"/>
+                  <circle cx="16.3333" cy="74.6668" r="1.66667" transform="rotate(-90 16.3333 74.6668)" fill="white"/>
+                  <circle cx="31" cy="74.6668" r="1.66667" transform="rotate(-90 31 74.6668)" fill="white"/>
+                  <circle cx="45.6667" cy="74.6668" r="1.66667" transform="rotate(-90 45.6667 74.6668)" fill="white"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ====== Hero Section End -->
+
+    <!-- ====== Features Section Start -->
+    <section id="features" class="bg-tg-bg relative pt-20 pb-12 lg:pt-[120px] lg:pb-[90px]">
+      <div class="container mx-auto">
+        <div class="-mx-4 mb-10 flex flex-wrap items-center lg:mb-[60px]">
+          <div class="w-full px-4 lg:w-6/12">
+            <div class="mb-[60px] max-w-[500px] xl:mb-[70px]">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                GROW REPORTERの特長
+              </span>
+              <h2 class="text-dark text-3xl font-bold sm:text-4xl md:text-[40px]">
+                AIが自動で分析・考察し、<br>改善提案まで行います
+              </h2>
+            </div>
+            <div class="-mx-4 flex flex-wrap">
+              <div class="w-full max-w-[520px] px-4">
+                <div class="group mb-12 flex">
+                  <div class="border-primary bg-primary group-hover:text-primary mr-6 flex h-[60px] w-full max-w-[60px] items-center justify-center rounded-full border-2 text-xl font-semibold text-white group-hover:bg-transparent md:h-[80px] md:max-w-[80px] md:text-2xl">
+                    01
+                  </div>
+                  <div class="w-full">
+                    <h3 class="text-dark mb-4 text-xl font-semibold 2xl:text-[22px]">
+                      GA4・Search Console<br>データの自動分析
+                    </h3>
+                    <p class="text-body-color text-base leading-relaxed">
+                      複雑なGA4データを自動で取得し、AIが考察・要約を生成。専門知識がなくても、サイトの状況が一目でわかります。
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="w-full max-w-[520px] px-4">
+                <div class="group mb-12 flex">
+                  <div class="border-primary bg-primary group-hover:text-primary mr-6 flex h-[60px] w-full max-w-[60px] items-center justify-center rounded-full border-2 text-xl font-semibold text-white group-hover:bg-transparent md:h-[80px] md:max-w-[80px] md:text-2xl">
+                    02
+                  </div>
+                  <div class="w-full">
+                    <h3 class="text-dark mb-4 text-xl font-semibold 2xl:text-[22px]">
+                      AIによる改善提案と<br>モックアップ生成
+                    </h3>
+                    <p class="text-body-color text-base leading-relaxed">
+                      分析結果に基づき、具体的な改善ポイントをAIが提案。さらに改善後のイメージをモックアップとして自動生成します。
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div class="w-full max-w-[520px] px-4">
+                <div class="group mb-12 flex">
+                  <div class="border-primary bg-primary group-hover:text-primary mr-6 flex h-[60px] w-full max-w-[60px] items-center justify-center rounded-full border-2 text-xl font-semibold text-white group-hover:bg-transparent md:h-[80px] md:max-w-[80px] md:text-2xl">
+                    03
+                  </div>
+                  <div class="w-full">
+                    <h3 class="text-dark mb-4 text-xl font-semibold 2xl:text-[22px]">
+                      改善効果の評価と<br>成長サイクルの確立
+                    </h3>
+                    <p class="text-body-color text-base leading-relaxed">
+                      施策の効果をデータで評価し、次のアクションにつなげます。分析・改善・評価のサイクルでサイトを継続的に成長させます。
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="w-full px-4 lg:w-6/12">
+            <div class="top-1/2 right-0 hidden w-1/2 lg:absolute lg:flex lg:-translate-y-1/2">
+              <img
+                src="assets/images/screenshot-analysis.png"
+                alt="GROW REPORTER 分析画面"
+                class="ml-auto max-w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Features Section End -->
+
+    <!-- ====== How It Works Section Start -->
+    <section id="how-it-works" class="pt-20 pb-10 lg:pt-[120px] lg:pb-20">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[510px] text-center">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                HOW IT WORKS
+              </span>
+              <h2 class="text-dark mb-3 text-3xl leading-[1.2] font-bold sm:text-4xl md:text-[40px]">
+                かんたん3ステップで開始
+              </h2>
+              <p class="text-body-color text-base">
+                面倒な設定は不要。GA4アカウントを連携するだけで、すぐにAI分析を開始できます。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="-mx-4 flex flex-wrap justify-center">
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-10 rounded-xl bg-white p-8 text-center sm:p-12 lg:px-6 lg:py-10 xl:p-10">
+              <div class="bg-primary mx-auto mb-6 flex h-[70px] w-[70px] items-center justify-center rounded-full text-white">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/>
+                </svg>
+              </div>
+              <span class="text-primary mb-2 block text-sm font-semibold">STEP 01</span>
+              <h3 class="text-dark mb-4 text-xl font-semibold">
+                無料アカウント登録
+              </h3>
+              <p class="text-body-color text-base leading-relaxed">
+                メールアドレスまたはGoogleアカウントで簡単に登録。クレジットカード不要で今すぐ始められます。
+              </p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-10 rounded-xl bg-white p-8 text-center sm:p-12 lg:px-6 lg:py-10 xl:p-10">
+              <div class="bg-primary mx-auto mb-6 flex h-[70px] w-[70px] items-center justify-center rounded-full text-white">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+                </svg>
+              </div>
+              <span class="text-primary mb-2 block text-sm font-semibold">STEP 02</span>
+              <h3 class="text-dark mb-4 text-xl font-semibold">
+                GA4アカウントを連携
+              </h3>
+              <p class="text-body-color text-base leading-relaxed">
+                Googleアカウントで認証するだけでGA4とSearch Consoleのデータが自動で連携されます。
+              </p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-10 rounded-xl bg-white p-8 text-center sm:p-12 lg:px-6 lg:py-10 xl:p-10">
+              <div class="bg-primary mx-auto mb-6 flex h-[70px] w-[70px] items-center justify-center rounded-full text-white">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                </svg>
+              </div>
+              <span class="text-primary mb-2 block text-sm font-semibold">STEP 03</span>
+              <h3 class="text-dark mb-4 text-xl font-semibold">
+                AI分析レポートを確認
+              </h3>
+              <p class="text-body-color text-base leading-relaxed">
+                AIがデータを自動で分析。考察・改善提案・モックアップ生成まで、すべてお任せください。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== How It Works Section End -->
+
+    <!-- ====== Functions Section Start -->
+    <section id="functions" class="bg-tg-bg pt-20 pb-12 lg:pt-[120px] lg:pb-[90px]">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[510px] text-center">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                FUNCTIONS
+              </span>
+              <h2 class="text-dark mb-3 text-3xl leading-[1.2] font-bold sm:text-4xl md:text-[40px]">
+                充実の分析機能
+              </h2>
+              <p class="text-body-color text-base">
+                GA4の主要データを網羅。15以上の分析ビューでサイトのあらゆる側面を可視化します。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-8 rounded-lg bg-white p-8">
+              <div class="bg-primary/10 text-primary mb-5 flex h-[50px] w-[50px] items-center justify-center rounded-lg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                </svg>
+              </div>
+              <h3 class="text-dark mb-3 text-lg font-semibold">ダッシュボード</h3>
+              <p class="text-body-color text-sm leading-relaxed">主要指標を一画面に集約。サイト全体の状況を一目で把握できます。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-8 rounded-lg bg-white p-8">
+              <div class="bg-primary/10 text-primary mb-5 flex h-[50px] w-[50px] items-center justify-center rounded-lg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <h3 class="text-dark mb-3 text-lg font-semibold">ユーザー分析</h3>
+              <p class="text-body-color text-sm leading-relaxed">新規/リピーター比率、デバイス、地域など、ユーザー属性を詳細に分析します。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-8 rounded-lg bg-white p-8">
+              <div class="bg-primary/10 text-primary mb-5 flex h-[50px] w-[50px] items-center justify-center rounded-lg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+                </svg>
+              </div>
+              <h3 class="text-dark mb-3 text-lg font-semibold">流入チャネル分析</h3>
+              <p class="text-body-color text-sm leading-relaxed">検索・SNS・広告・直接流入など、チャネル別のパフォーマンスを可視化します。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-8 rounded-lg bg-white p-8">
+              <div class="bg-primary/10 text-primary mb-5 flex h-[50px] w-[50px] items-center justify-center rounded-lg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                </svg>
+              </div>
+              <h3 class="text-dark mb-3 text-lg font-semibold">キーワード分析</h3>
+              <p class="text-body-color text-sm leading-relaxed">Search Consoleデータから検索キーワードの順位・クリック数・表示回数を分析します。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-8 rounded-lg bg-white p-8">
+              <div class="bg-primary/10 text-primary mb-5 flex h-[50px] w-[50px] items-center justify-center rounded-lg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+              </div>
+              <h3 class="text-dark mb-3 text-lg font-semibold">ページ分析</h3>
+              <p class="text-body-color text-sm leading-relaxed">ページ別のPV数・滞在時間・離脱率を把握。改善すべきページが明確になります。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-8 rounded-lg bg-white p-8">
+              <div class="bg-primary/10 text-primary mb-5 flex h-[50px] w-[50px] items-center justify-center rounded-lg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                </svg>
+              </div>
+              <h3 class="text-dark mb-3 text-lg font-semibold">コンバージョン分析</h3>
+              <p class="text-body-color text-sm leading-relaxed">目標達成率の推移やコンバージョン経路を分析し、成果につながる導線を特定します。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-8 rounded-lg bg-white p-8">
+              <div class="bg-primary/10 text-primary mb-5 flex h-[50px] w-[50px] items-center justify-center rounded-lg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+                </svg>
+              </div>
+              <h3 class="text-dark mb-3 text-lg font-semibold">AI考察・レポート</h3>
+              <p class="text-body-color text-sm leading-relaxed">AIがデータを読み解き、わかりやすい日本語で考察を自動生成。Excel/PPTXエクスポートにも対応。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-8 rounded-lg bg-white p-8">
+              <div class="bg-primary/10 text-primary mb-5 flex h-[50px] w-[50px] items-center justify-center rounded-lg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+                </svg>
+              </div>
+              <h3 class="text-dark mb-3 text-lg font-semibold">AI改善提案</h3>
+              <p class="text-body-color text-sm leading-relaxed">分析データに基づく具体的な改善提案を自動生成。モックアップで改善後のイメージも確認できます。</p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-testimonial-6 mb-8 rounded-lg bg-white p-8">
+              <div class="bg-primary/10 text-primary mb-5 flex h-[50px] w-[50px] items-center justify-center rounded-lg">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                </svg>
+              </div>
+              <h3 class="text-dark mb-3 text-lg font-semibold">アラート通知</h3>
+              <p class="text-body-color text-sm leading-relaxed">指標の急変動を自動検知し、原因の仮説とともにメールで通知。異常にすぐ気付けます。</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Functions Section End -->
+
+    <!-- ====== CTA Section Start -->
+    <section class="bg-primary relative z-10 overflow-hidden py-20 lg:py-[110px]">
+      <div class="container mx-auto">
+        <div class="relative overflow-hidden">
+          <div class="-mx-4 flex flex-wrap items-stretch">
+            <div class="w-full px-4">
+              <div class="mx-auto max-w-[570px] text-center">
+                <h2 class="mb-6 text-3xl leading-snug font-semibold text-white md:text-[40px]">
+                  サイト改善を、<span class="font-light">AIと一緒に始めましょう</span>
+                </h2>
+                <p class="mb-8 text-base leading-relaxed text-white md:pr-10">
+                  無料プランですぐにお試しいただけます。クレジットカード登録は不要です。
+                </p>
+                <a href="/register" class="inline-block rounded bg-[#13C296] px-7 py-3 text-base font-medium text-white transition hover:bg-[#13C296]/90">
+                  無料で始める
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <span class="absolute top-0 left-0">
+          <svg width="495" height="470" viewBox="0 0 495 470" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="55" cy="442" r="138" stroke="white" stroke-opacity="0.04" stroke-width="50"/>
+            <circle cx="446" r="39" stroke="white" stroke-opacity="0.04" stroke-width="20"/>
+            <path d="M245.406 137.609L233.985 94.9852L276.609 106.406L245.406 137.609Z" stroke="white" stroke-opacity="0.08" stroke-width="12"/>
+          </svg>
+        </span>
+        <span class="absolute right-0 bottom-0">
+          <svg width="493" height="470" viewBox="0 0 493 470" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="462" cy="5" r="138" stroke="white" stroke-opacity="0.04" stroke-width="50"/>
+            <circle cx="49" cy="470" r="39" stroke="white" stroke-opacity="0.04" stroke-width="20"/>
+            <path d="M222.393 226.701L272.808 213.192L259.299 263.607L222.393 226.701Z" stroke="white" stroke-opacity="0.06" stroke-width="13"/>
+          </svg>
+        </span>
+      </div>
+    </section>
+    <!-- ====== CTA Section End -->
+
+    <!-- ====== Pricing Section Start -->
+    <section id="pricing" class="relative z-20 overflow-hidden bg-white pt-20 pb-12 lg:pt-[120px] lg:pb-[90px]">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[510px] text-center">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                PRICING
+              </span>
+              <h2 class="text-dark mb-3 text-3xl font-bold sm:text-4xl md:text-[40px]">
+                料金プラン
+              </h2>
+              <p class="text-body-color text-base">
+                個人ブロガーから大企業まで。ニーズに合わせた3つのプランをご用意しています。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="-mx-4 flex flex-wrap justify-center">
+          <!-- Free Plan -->
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-pricing mb-10 overflow-hidden rounded-xl bg-white px-8 py-10 sm:p-12 lg:px-6 lg:py-10 xl:p-14">
+              <span class="text-dark mb-5 block text-xl font-medium">
+                無料プラン
+              </span>
+              <h2 class="text-dark mb-11 text-4xl font-semibold xl:text-[42px]">
+                <span class="text-body-color text-base">月額</span>
+                <span class="px-1">0</span>
+                <span class="text-body-color text-base">円</span>
+              </h2>
+              <div class="mb-[50px]">
+                <h5 class="text-dark mb-5 text-lg font-medium">含まれる機能</h5>
+                <div class="flex flex-col gap-[14px]">
+                  <p class="text-body-color text-base">サイト登録 1件</p>
+                  <p class="text-body-color text-base">メンバー 1名</p>
+                  <p class="text-body-color text-base">AI分析レポート 無制限</p>
+                  <p class="text-body-color text-base">AI改善提案 月1回</p>
+                  <p class="text-body-color text-base">Excel/PPTXエクスポート 月1回</p>
+                </div>
+              </div>
+              <a href="/register" class="bg-primary hover:bg-primary/90 inline-block rounded-md px-7 py-3 text-center text-base font-medium text-white transition">
+                無料で始める
+              </a>
+            </div>
+          </div>
+          <!-- Standard Plan -->
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-pricing relative z-10 mb-10 overflow-hidden rounded-xl bg-white px-8 py-10 sm:p-12 lg:px-6 lg:py-10 xl:p-14" style="box-shadow: 0 8px 32px rgba(55,88,249,.18); border: 2px solid #3758F9;">
+              <p class="bg-primary absolute top-[60px] right-[-50px] inline-block -rotate-90 rounded-tl-md rounded-bl-md px-5 py-2 text-base font-medium text-white">
+                おすすめ
+              </p>
+              <span class="text-dark mb-5 block text-xl font-medium">
+                スタンダードプラン
+              </span>
+              <h2 class="text-dark mb-11 text-4xl font-semibold xl:text-[42px]">
+                <span class="text-body-color text-base">月額</span>
+                <span class="px-1">9,800</span>
+                <span class="text-body-color text-base">円</span>
+              </h2>
+              <div class="mb-[50px]">
+                <h5 class="text-dark mb-5 text-lg font-medium">含まれる機能</h5>
+                <div class="flex flex-col gap-[14px]">
+                  <p class="text-body-color text-base">サイト登録 3件</p>
+                  <p class="text-body-color text-base">メンバー 3名</p>
+                  <p class="text-body-color text-base">AI再分析 月4回</p>
+                  <p class="text-body-color text-base">AI改善提案 月4回</p>
+                  <p class="text-body-color text-base">Excel/PPTXエクスポート 無制限</p>
+                  <p class="text-body-color text-base">メールサポート</p>
+                </div>
+              </div>
+              <a href="/register" class="bg-primary hover:bg-primary/90 inline-block rounded-md px-7 py-3 text-center text-base font-medium text-white transition">
+                無料で始める
+              </a>
+            </div>
+          </div>
+          <!-- Premium Plan -->
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="shadow-pricing mb-10 overflow-hidden rounded-xl bg-white px-8 py-10 sm:p-12 lg:px-6 lg:py-10 xl:p-14">
+              <span class="text-dark mb-5 block text-xl font-medium">
+                プレミアムプラン
+              </span>
+              <h2 class="text-dark mb-11 text-4xl font-semibold xl:text-[42px]">
+                <span class="text-body-color text-base">月額</span>
+                <span class="px-1">29,800</span>
+                <span class="text-body-color text-base">円</span>
+              </h2>
+              <div class="mb-[50px]">
+                <h5 class="text-dark mb-5 text-lg font-medium">含まれる機能</h5>
+                <div class="flex flex-col gap-[14px]">
+                  <p class="text-body-color text-base">サイト登録 10件</p>
+                  <p class="text-body-color text-base">メンバー 5名</p>
+                  <p class="text-body-color text-base">AI再分析 無制限</p>
+                  <p class="text-body-color text-base">AI改善提案 無制限</p>
+                  <p class="text-body-color text-base">Excel/PPTXエクスポート 無制限</p>
+                  <p class="text-body-color text-base">最優先サポート（メール・Web会議）</p>
+                </div>
+              </div>
+              <a href="/register" class="bg-primary hover:bg-primary/90 inline-block rounded-md px-7 py-3 text-center text-base font-medium text-white transition">
+                無料で始める
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Pricing Section End -->
+
+    <!-- ====== Testimonials Section Start -->
+    <section class="bg-tg-bg pt-20 pb-10 lg:pt-[120px] lg:pb-20">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap justify-center">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[510px] text-center">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                TESTIMONIALS
+              </span>
+              <h2 class="text-dark mb-3 text-3xl leading-[1.2] font-bold sm:text-4xl md:text-[40px]">
+                導入企業の声
+              </h2>
+              <p class="text-body-color text-base">
+                GROW REPORTERを導入いただいた企業様からの評価をご紹介します。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="-mx-4 flex flex-wrap justify-center">
+          <div class="w-full px-4 md:w-1/2 xl:w-1/4">
+            <div class="shadow-testimonial-6 mb-10 bg-white p-8">
+              <div class="mb-5 flex items-center">
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+              </div>
+              <p class="text-body-color mb-6 text-base">
+                「GA4の操作に苦戦していましたが、GROW REPORTERのおかげでデータを活用できるようになりました。AIの考察が具体的で、上司への報告にもそのまま使えています。」
+              </p>
+              <div class="flex items-center">
+                <div class="bg-primary/10 mr-4 flex h-[50px] w-[50px] items-center justify-center rounded-full">
+                  <span class="text-primary text-lg font-bold">T</span>
+                </div>
+                <div class="w-full">
+                  <h5 class="text-dark mb-0.5 text-sm font-semibold">T.K. 様</h5>
+                  <p class="text-body-color text-xs">中堅企業 Web担当</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 xl:w-1/4">
+            <div class="shadow-testimonial-6 mb-10 bg-white p-8">
+              <div class="mb-5 flex items-center">
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+              </div>
+              <p class="text-body-color mb-6 text-base">
+                「複数クライアントのレポートを毎月作成する工数が大幅に削減できました。AI分析の品質も高く、クライアントからも好評です。」
+              </p>
+              <div class="flex items-center">
+                <div class="bg-primary/10 mr-4 flex h-[50px] w-[50px] items-center justify-center rounded-full">
+                  <span class="text-primary text-lg font-bold">S</span>
+                </div>
+                <div class="w-full">
+                  <h5 class="text-dark mb-0.5 text-sm font-semibold">S.M. 様</h5>
+                  <p class="text-body-color text-xs">広告代理店 アカウントマネージャー</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 xl:w-1/4">
+            <div class="shadow-testimonial-6 mb-10 bg-white p-8">
+              <div class="mb-5 flex items-center">
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+              </div>
+              <p class="text-body-color mb-6 text-base">
+                「制作したサイトの運用提案がしやすくなりました。AIが出す改善モックアップは、クライアントへの提案資料としてそのまま活用しています。」
+              </p>
+              <div class="flex items-center">
+                <div class="bg-primary/10 mr-4 flex h-[50px] w-[50px] items-center justify-center rounded-full">
+                  <span class="text-primary text-lg font-bold">Y</span>
+                </div>
+                <div class="w-full">
+                  <h5 class="text-dark mb-0.5 text-sm font-semibold">Y.H. 様</h5>
+                  <p class="text-body-color text-xs">Web制作会社 ディレクター</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 xl:w-1/4">
+            <div class="shadow-testimonial-6 mb-10 bg-white p-8">
+              <div class="mb-5 flex items-center">
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+                <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
+              </div>
+              <p class="text-body-color mb-6 text-base">
+                「小規模なので専任の分析担当はいませんが、GROW REPORTERが代わりにデータを分析してくれるので、施策の判断に自信が持てるようになりました。」
+              </p>
+              <div class="flex items-center">
+                <div class="bg-primary/10 mr-4 flex h-[50px] w-[50px] items-center justify-center rounded-full">
+                  <span class="text-primary text-lg font-bold">A</span>
+                </div>
+                <div class="w-full">
+                  <h5 class="text-dark mb-0.5 text-sm font-semibold">A.N. 様</h5>
+                  <p class="text-body-color text-xs">小規模企業 代表取締役</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Testimonials Section End -->
+
+    <!-- ====== FAQ Section Start -->
+    <section
+      id="faq"
+      x-data="{ openFaq1: false, openFaq2: false, openFaq3: false, openFaq4: false, openFaq5: false, openFaq6: false }"
+      class="relative z-20 overflow-hidden bg-white pt-20 pb-12 lg:pt-[120px] lg:pb-[90px]"
+    >
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[520px] text-center lg:mb-20">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                FAQ
+              </span>
+              <h2 class="text-dark mb-4 text-3xl font-bold sm:text-[40px]/[48px]">
+                よくある質問
+              </h2>
+              <p class="text-body-color text-base">
+                ご利用にあたってよくいただくご質問をまとめました。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4 lg:w-1/2">
+            <div class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8">
+              <button class="faq-btn flex w-full text-left" @click="openFaq1 = !openFaq1">
+                <div class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg">
+                  <svg :class="openFaq1 && 'rotate-180'" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4 class="text-dark mt-1 text-lg font-semibold">無料プランで何ができますか？</h4>
+                </div>
+              </button>
+              <div x-show="openFaq1" class="faq-content pl-[62px]">
+                <p class="text-body-color py-3 text-base leading-relaxed">
+                  無料プランでは、1サイトのGA4データ分析、AI考察レポートの閲覧、月1回のAI改善提案、月1回のExcel/PPTXエクスポートをご利用いただけます。クレジットカード登録は不要です。
+                </p>
+              </div>
+            </div>
+            <div class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8">
+              <button class="faq-btn flex w-full text-left" @click="openFaq2 = !openFaq2">
+                <div class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg">
+                  <svg :class="openFaq2 && 'rotate-180'" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4 class="text-dark mt-1 text-lg font-semibold">GA4の設定は必要ですか？</h4>
+                </div>
+              </button>
+              <div x-show="openFaq2" class="faq-content pl-[62px]">
+                <p class="text-body-color py-3 text-base leading-relaxed">
+                  GA4がサイトに設置済みであれば、追加の設定は不要です。Googleアカウントで認証するだけで、GA4とSearch Consoleのデータが自動で連携されます。
+                </p>
+              </div>
+            </div>
+            <div class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8">
+              <button class="faq-btn flex w-full text-left" @click="openFaq3 = !openFaq3">
+                <div class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg">
+                  <svg :class="openFaq3 && 'rotate-180'" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4 class="text-dark mt-1 text-lg font-semibold">データのセキュリティは大丈夫ですか？</h4>
+                </div>
+              </button>
+              <div x-show="openFaq3" class="faq-content pl-[62px]">
+                <p class="text-body-color py-3 text-base leading-relaxed">
+                  お客様のデータはFirebase（Google Cloud）上で暗号化して保管しています。OAuthトークンも暗号化して保存しており、第三者にアクセスされることはありません。
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="w-full px-4 lg:w-1/2">
+            <div class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8">
+              <button class="faq-btn flex w-full text-left" @click="openFaq4 = !openFaq4">
+                <div class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg">
+                  <svg :class="openFaq4 && 'rotate-180'" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4 class="text-dark mt-1 text-lg font-semibold">AIの分析はどのくらい正確ですか？</h4>
+                </div>
+              </button>
+              <div x-show="openFaq4" class="faq-content pl-[62px]">
+                <p class="text-body-color py-3 text-base leading-relaxed">
+                  最新のAIモデル（Claude/Gemini）を使用し、GA4の実データに基づいて分析しています。一般的な解釈ではなく、お客様のサイト固有のデータから具体的な考察を生成します。
+                </p>
+              </div>
+            </div>
+            <div class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8">
+              <button class="faq-btn flex w-full text-left" @click="openFaq5 = !openFaq5">
+                <div class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg">
+                  <svg :class="openFaq5 && 'rotate-180'" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4 class="text-dark mt-1 text-lg font-semibold">プランの変更やキャンセルはできますか？</h4>
+                </div>
+              </button>
+              <div x-show="openFaq5" class="faq-content pl-[62px]">
+                <p class="text-body-color py-3 text-base leading-relaxed">
+                  はい、いつでもプランの変更やキャンセルが可能です。アップグレードは即時反映、ダウングレードは次の請求サイクルから適用されます。
+                </p>
+              </div>
+            </div>
+            <div class="mb-8 w-full rounded-lg bg-white p-4 shadow-[0px_20px_95px_0px_rgba(201,203,204,0.30)] sm:p-8 lg:px-6 xl:px-8">
+              <button class="faq-btn flex w-full text-left" @click="openFaq6 = !openFaq6">
+                <div class="bg-primary/5 text-primary mr-5 flex h-10 w-full max-w-[40px] items-center justify-center rounded-lg">
+                  <svg :class="openFaq6 && 'rotate-180'" width="22" height="22" viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11 15.675C10.7937 15.675 10.6219 15.6062 10.45 15.4687L2.54374 7.69998C2.23436 7.3906 2.23436 6.90935 2.54374 6.59998C2.85311 6.2906 3.33436 6.2906 3.64374 6.59998L11 13.7844L18.3562 6.53123C18.6656 6.22185 19.1469 6.22185 19.4562 6.53123C19.7656 6.8406 19.7656 7.32185 19.4562 7.63123L11.55 15.4C11.3781 15.5719 11.2062 15.675 11 15.675Z" fill="currentColor"/>
+                  </svg>
+                </div>
+                <div class="w-full">
+                  <h4 class="text-dark mt-1 text-lg font-semibold">チームで利用できますか？</h4>
+                </div>
+              </button>
+              <div x-show="openFaq6" class="faq-content pl-[62px]">
+                <p class="text-body-color py-3 text-base leading-relaxed">
+                  はい。スタンダードプラン以上でチームメンバーを招待できます。オーナー・編集者・閲覧者の3段階の権限で、安全にデータを共有できます。
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="absolute right-0 bottom-0 z-[-1]">
+        <svg width="1440" height="886" viewBox="0 0 1440 886" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path opacity="0.5" d="M193.307 -273.321L1480.87 1014.24L1121.85 1373.26C1121.85 1373.26 731.745 983.231 478.513 729.927C225.976 477.317 -165.714 85.6993 -165.714 85.6993L193.307 -273.321Z" fill="url(#paint0_linear)"/>
+          <defs>
+            <linearGradient id="paint0_linear" x1="1308.65" y1="1142.58" x2="602.827" y2="-418.681" gradientUnits="userSpaceOnUse">
+              <stop stop-color="#3056D3" stop-opacity="0.36"/>
+              <stop offset="1" stop-color="#F5F2FD" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+    </section>
+    <!-- ====== FAQ Section End -->
+
+    <!-- ====== Contact Section Start -->
+    <section id="contact" class="relative z-40 py-20 lg:py-[120px]">
+      <div class="absolute top-0 left-0 z-[-1] h-1/2 w-full bg-[#E9F9FF]"></div>
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap items-center">
+          <div class="w-full px-4 lg:w-6/12 xl:w-7/12">
+            <div class="mb-[60px] lg:mb-[100px] xl:mb-[150px]">
+              <span class="text-dark mb-6 block text-base font-medium">
+                お問い合わせ
+              </span>
+              <h2 class="text-dark text-[35px] leading-tight font-semibold">
+                お気軽に<br />ご相談ください
+              </h2>
+            </div>
+
+            <div class="-mx-4 flex flex-wrap">
+              <div class="w-full max-w-[330px] px-4">
+                <div class="mb-12 w-full">
+                  <div class="flex">
+                    <div class="text-primary mr-6 h-9 w-9">
+                      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M16 0.899902C9.1 0.899902 3.5 6.2999 3.5 12.9499C3.5 17.9999 10.2 25.9999 14.15 30.2999C14.65 30.8499 15.3 31.0999 16 31.0999C16.7 31.0999 17.35 30.7999 17.85 30.2999C21.8 25.9999 28.5 17.9999 28.5 12.9499C28.5 6.2999 22.9 0.899902 16 0.899902ZM16.2 28.7999C16.1 28.8999 15.95 28.8999 15.8 28.7999C10.95 23.4999 5.75 16.5999 5.75 12.9499C5.75 7.5499 10.35 3.1499 16 3.1499C21.65 3.1499 26.25 7.5499 26.25 12.9499C26.25 16.5999 21.05 23.4999 16.2 28.7999Z" fill="currentColor"/>
+                        <path d="M16 7.84985C13 7.84985 10.55 10.2999 10.55 13.2999C10.55 16.2999 13 18.7999 16 18.7999C19 18.7999 21.45 16.3499 21.45 13.3499C21.45 10.3499 19 7.84985 16 7.84985ZM16 16.5499C14.2 16.5499 12.8 15.0999 12.8 13.3499C12.8 11.5999 14.25 10.1499 16 10.1499C17.75 10.1499 19.2 11.5999 19.2 13.3499C19.2 15.0999 17.8 16.5499 16 16.5499Z" fill="currentColor"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 class="text-dark mb-4 text-lg font-medium">所在地</h5>
+                      <p class="text-body-color text-base">
+                        愛知県名古屋市中区栄3-18-1<br>ナディアパーク
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="w-full max-w-[330px] px-4">
+                <div class="mb-12 w-full">
+                  <div class="flex">
+                    <div class="text-primary mr-6 h-9 w-9">
+                      <svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M28 4.80005H4.00001C2.30001 4.80005 0.850006 6.20005 0.850006 7.95005V24.15C0.850006 25.85 2.25001 27.3 4.00001 27.3H28C29.7 27.3 31.15 25.9 31.15 24.15V7.90005C31.15 6.20005 29.7 4.80005 28 4.80005ZM28 7.05005C28.05 7.05005 28.1 7.05005 28.15 7.05005L16 14.85L3.85001 7.05005C3.90001 7.05005 3.95001 7.05005 4.00001 7.05005H28ZM28 24.9501H4.00001C3.50001 24.9501 3.10001 24.55 3.10001 24.05V9.25005L14.8 16.75C15.15 17 15.55 17.1 15.95 17.1C16.35 17.1 16.75 17 17.1 16.75L28.8 9.25005V24.1C28.9 24.6 28.5 24.9501 28 24.9501Z" fill="currentColor"/>
+                      </svg>
+                    </div>
+                    <div>
+                      <h5 class="text-dark mb-4 text-lg font-medium">お問い合わせ先</h5>
+                      <p class="text-body-color text-base">
+                        info@and-suspended.com
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="w-full px-4 lg:w-6/12 xl:w-5/12">
+            <div class="shadow-testimonial-6 rounded-lg bg-white px-8 py-12 sm:p-[60px] lg:px-12 xl:p-[60px]">
+              <h3 class="text-dark mb-8 text-2xl font-semibold sm:text-[28px]">
+                メッセージを送る
+              </h3>
+              <form>
+                <div class="mb-6">
+                  <label class="text-body-color block text-xs">お名前 *</label>
+                  <input type="text" placeholder="山田 太郎" class="text-body-color focus:border-primary w-full border-b border-[#f1f1f1] bg-transparent py-4 text-base outline-none focus-visible:shadow-none" />
+                </div>
+                <div class="mb-6">
+                  <label class="text-body-color block text-xs">メールアドレス *</label>
+                  <input type="email" placeholder="example@yourmail.com" class="text-body-color focus:border-primary w-full border-b border-[#f1f1f1] bg-transparent py-4 text-base outline-none focus-visible:shadow-none" />
+                </div>
+                <div class="mb-6">
+                  <label class="text-body-color block text-xs">会社名</label>
+                  <input type="text" placeholder="株式会社サンプル" class="text-body-color focus:border-primary w-full border-b border-[#f1f1f1] bg-transparent py-4 text-base outline-none focus-visible:shadow-none" />
+                </div>
+                <div class="mb-6">
+                  <label class="text-body-color block text-xs">メッセージ *</label>
+                  <textarea rows="3" placeholder="お問い合わせ内容をご記入ください" class="text-body-color focus:border-primary w-full resize-none border-b border-[#f1f1f1] bg-transparent py-4 text-base outline-none focus-visible:shadow-none"></textarea>
+                </div>
+                <div>
+                  <button type="submit" class="bg-primary hover:bg-primary/90 rounded px-10 py-3 text-base font-medium text-white transition">
+                    送信する
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Contact Section End -->
+
+    <!-- ====== Footer Section Start -->
+    <footer class="relative z-10 overflow-hidden bg-[#090E34] pt-20 lg:pt-[120px]">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4 sm:w-2/3 lg:w-4/12 xl:w-3/12">
+            <div class="mb-10 w-full">
+              <a href="/lp/" class="mb-6 inline-block max-w-[160px]">
+                <img src="./assets/images/logo.svg" alt="GROW REPORTER" class="max-w-full brightness-0 invert" />
+              </a>
+              <p class="text-gray-7 mb-7 text-base">
+                GA4 x AIでサイトを成長させる<br>アクセス解析ツール
+              </p>
+              <p class="text-gray-7 text-sm">
+                GrowGroup株式会社
+              </p>
+            </div>
+          </div>
+          <div class="w-full px-4 sm:w-1/2 lg:w-3/12 xl:w-2/12">
+            <div class="mb-10 w-full">
+              <h4 class="mb-9 text-lg font-semibold text-white">サービス</h4>
+              <ul class="space-y-3">
+                <li><a href="#features" class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline">特長</a></li>
+                <li><a href="#functions" class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline">機能一覧</a></li>
+                <li><a href="#pricing" class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline">料金プラン</a></li>
+                <li><a href="#faq" class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline">よくある質問</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="w-full px-4 sm:w-1/2 lg:w-3/12 xl:w-2/12">
+            <div class="mb-10 w-full">
+              <h4 class="mb-9 text-lg font-semibold text-white">アカウント</h4>
+              <ul class="space-y-3">
+                <li><a href="/register" class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline">無料登録</a></li>
+                <li><a href="/login" class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline">ログイン</a></li>
+                <li><a href="#contact" class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline">お問い合わせ</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="w-full px-4 sm:w-1/2 lg:w-4/12 xl:w-2/12">
+            <div class="mb-10 w-full">
+              <h4 class="mb-9 text-lg font-semibold text-white">法的情報</h4>
+              <ul class="space-y-3">
+                <li><a href="/privacy" target="_blank" rel="noopener noreferrer" class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline">プライバシーポリシー</a></li>
+                <li><a href="/terms" target="_blank" rel="noopener noreferrer" class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline">利用規約</a></li>
+                <li><a href="https://and-suspended.com/" target="_blank" rel="noopener noreferrer" class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline">運営会社</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="w-full px-4 sm:w-1/2 lg:w-4/12 xl:w-3/12">
+            <div class="mb-10 w-full">
+              <h4 class="mb-9 text-lg font-semibold text-white">会社情報</h4>
+              <p class="text-gray-7 mb-4 text-sm leading-relaxed">
+                GrowGroup株式会社<br>
+                本社：愛知県名古屋市中区栄3-18-1<br>ナディアパーク<br>
+                東京オフィス：東京都渋谷区
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="mt-12 border-t border-[#8890A4]/20 py-8">
+        <div class="container mx-auto">
+          <p class="text-center text-base text-[#8890A4]">
+            &copy; 2024 GrowGroup Inc. All Rights Reserved.
+          </p>
+        </div>
+      </div>
+
+      <div class="absolute top-24 left-0 z-[-1]">
+        <svg width="55" height="99" viewBox="0 0 55 99" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle opacity="0.05" cx="6" cy="50" r="49" stroke="white"/>
+        </svg>
+      </div>
+      <div class="absolute right-0 bottom-14 z-[-1]">
+        <svg width="79" height="94" viewBox="0 0 79 94" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect opacity="0.05" x="52.5" y="-20" width="60" height="60" rx="2" transform="rotate(45 52.5 -20)" stroke="white"/>
+        </svg>
+      </div>
+    </footer>
+    <!-- ====== Footer Section End -->
+
+    <!-- ====== Back to Top Start -->
+    <a
+      href="#"
+      x-show="scrolledFromTop"
+      x-transition
+      class="bg-primary hover:bg-primary/90 fixed right-8 bottom-8 z-[999] flex h-10 w-10 items-center justify-center rounded-md text-white shadow-md transition"
+    >
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M7 0L7 14M7 0L1 6M7 0L13 6" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </a>
+    <!-- ====== Back to Top End -->
+
+    <script src="./assets/js/alpine.min.js" defer></script>
+  </body>
+</html>

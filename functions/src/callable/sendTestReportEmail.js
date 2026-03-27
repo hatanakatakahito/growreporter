@@ -2,7 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { format, subDays, startOfWeek, endOfWeek, subWeeks, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { generateEmailTemplate, generateAlertEmailTemplate, generateAdminCreatedAccountEmail } from '../utils/emailTemplates.js';
+import { generateEmailTemplate, generateBatchedAlertEmailTemplate, generateAdminCreatedAccountEmail } from '../utils/emailTemplates.js';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { getGA4MetricsForSite } from '../utils/ga4ServerHelper.js';
 
@@ -132,7 +132,8 @@ export async function sendTestReportEmailHandler(req) {
 }
 
 /**
- * アラート通知のテスト送信
+ * アラート通知のテスト送信（構成B: 実データ + AI分析）
+ * 本番 checkMetricAlerts と同じテンプレート・フォーマットを使用
  */
 async function sendTestAlert(db, recipientEmail, siteId) {
   if (!siteId) {
@@ -147,44 +148,108 @@ async function sendTestAlert(db, recipientEmail, siteId) {
   const siteName = site.siteName || site.siteUrl || '（サイト名なし）';
   const siteUrl = site.siteUrl || '';
 
-  // 最新のアラートを取得
-  const alertsSnap = await db
-    .collection('sites').doc(siteId).collection('alerts')
-    .orderBy('createdAt', 'desc')
-    .limit(1)
-    .get();
+  // 実データを取得（直近7日 vs 前7日）
+  const now = new Date();
+  const currentEnd = subDays(now, 1);
+  const currentStart = subDays(currentEnd, 6);
+  const previousEnd = subDays(currentStart, 1);
+  const previousStart = subDays(previousEnd, 6);
 
-  let alertData;
-  if (!alertsSnap.empty) {
-    alertData = alertsSnap.docs[0].data();
-  } else {
-    // アラートが存在しない場合はサンプルデータ
-    const now = new Date();
-    const end = subDays(now, 1);
-    const start = subDays(end, 6);
-    alertData = {
-      message: 'セッション数が35.2%減少しました',
-      metricLabel: '流入数（セッション）',
-      metricName: 'sessions',
-      changePercent: -35.2,
-      currentValue: 850,
-      previousValue: 1312,
-      periodCurrent: `${format(start, 'yyyy-MM-dd')} 〜 ${format(end, 'yyyy-MM-dd')}`,
-      hypotheses: [
-        { text: '季節的なトラフィック変動の可能性' },
-        { text: '検索順位の変動による影響' },
-        { text: 'リファラー元サイトの変化' },
-      ],
+  const currentStartStr = format(currentStart, 'yyyy-MM-dd');
+  const currentEndStr = format(currentEnd, 'yyyy-MM-dd');
+  const previousStartStr = format(previousStart, 'yyyy-MM-dd');
+  const previousEndStr = format(previousEnd, 'yyyy-MM-dd');
+  const periodLabel = `${currentStartStr} 〜 ${currentEndStr}`;
+
+  let currentMetrics, previousMetrics;
+  if (site.ga4PropertyId && site.ga4OauthTokenId) {
+    try {
+      currentMetrics = await getGA4MetricsForSite(db, siteId, currentStartStr, currentEndStr);
+      previousMetrics = await getGA4MetricsForSite(db, siteId, previousStartStr, previousEndStr);
+    } catch (err) {
+      console.error('[sendTestAlert] GA4 fetch error:', err.message);
+    }
+  }
+
+  // GA4データがない場合はサンプルデータ
+  if (!currentMetrics || !previousMetrics) {
+    currentMetrics = {
+      sessions: 472, totalUsers: 456, screenPageViews: 1203, averagePageviews: 2.55,
+      engagementRate: 58.2, totalConversions: 2, conversionRate: 0.42, bounceRate: 41.8,
+    };
+    previousMetrics = {
+      sessions: 1247, totalUsers: 1089, screenPageViews: 1318, averagePageviews: 2.61,
+      engagementRate: 57.8, totalConversions: 7, conversionRate: 0.56, bounceRate: 42.2,
     };
   }
 
-  const appBaseUrl = process.env.APP_BASE_URL || 'https://grow-reporter.web.app';
+  const METRIC_KEYS = ['sessions', 'totalUsers', 'screenPageViews', 'averagePageviews', 'engagementRate', 'totalConversions', 'conversionRate', 'bounceRate'];
+  const METRIC_LABELS = {
+    sessions: '流入数（セッション）', totalUsers: 'ユーザー数', screenPageViews: '表示回数',
+    averagePageviews: '平均PV', engagementRate: 'エンゲージメント率',
+    totalConversions: 'コンバージョン数', conversionRate: 'コンバージョン率', bounceRate: '直帰率',
+  };
+  const ALERT_THRESHOLD = 30; // テスト用に閾値を下げる（本番は50%）
+
+  // 全指標サマリーを構築
+  const allMetricsSummary = [];
+  const collectedAlerts = [];
+  for (const key of METRIC_KEYS) {
+    const current = currentMetrics[key];
+    const previous = previousMetrics[key];
+    const change = previous && previous !== 0 ? ((current - previous) / previous) * 100 : null;
+    const isAlert = change != null && Math.abs(change) >= ALERT_THRESHOLD;
+    allMetricsSummary.push({ key, label: METRIC_LABELS[key], current, previous, changePercent: change, isAlert });
+    if (isAlert) {
+      const isDrop = change < 0;
+      collectedAlerts.push({
+        metricName: key,
+        metricLabel: METRIC_LABELS[key],
+        currentValue: current,
+        previousValue: previous,
+        changePercent: change,
+        message: `${METRIC_LABELS[key]}が${Math.abs(change).toFixed(1)}%${isDrop ? '減少' : '増加'}しました`,
+        periodCurrent: periodLabel,
+        periodPrevious: `${previousStartStr} 〜 ${previousEndStr}`,
+      });
+    }
+  }
+
+  // アラートが0件の場合、テスト用にセッションを強制追加
+  if (collectedAlerts.length === 0) {
+    allMetricsSummary[0].isAlert = true;
+    collectedAlerts.push({
+      metricName: 'sessions', metricLabel: '流入数（セッション）',
+      currentValue: currentMetrics.sessions, previousValue: previousMetrics.sessions,
+      changePercent: allMetricsSummary[0].changePercent || -10,
+      message: '流入数（セッション）が変化しました（テスト送信）',
+      periodCurrent: periodLabel,
+      periodPrevious: `${previousStartStr} 〜 ${previousEndStr}`,
+    });
+  }
+
+  // AI分析を生成
+  const { generateBatchedAlertHypotheses } = await import('../utils/alertHypotheses.js');
+  let aiAnalysis = { summary: '', actions: [] };
+  try {
+    aiAnalysis = await generateBatchedAlertHypotheses(db, siteId, collectedAlerts, siteName, siteUrl, allMetricsSummary);
+  } catch (err) {
+    console.error('[sendTestAlert] AI analysis error:', err.message);
+    aiAnalysis = {
+      summary: 'AI分析の生成に失敗しました。ダッシュボードで詳細をご確認ください。',
+      actions: [],
+    };
+  }
+
+  const appBaseUrl = process.env.APP_BASE_URL || 'https://grow-reporter.com';
   const dashboardUrl = `${appBaseUrl}/dashboard?siteId=${siteId}`;
 
-  const { subject, html, text } = generateAlertEmailTemplate(alertData, siteName, siteUrl, dashboardUrl);
+  const { subject, html, text } = generateBatchedAlertEmailTemplate(
+    collectedAlerts, aiAnalysis, allMetricsSummary, siteName, siteUrl, periodLabel, dashboardUrl
+  );
   const result = await sendEmailDirect({ to: recipientEmail, subject, html, text });
-  console.log(`テストアラートメール送信成功: ${recipientEmail}`);
-  return { success: true, message: 'アラート通知テストメールを送信しました', messageId: result.messageId };
+  console.log(`テストアラートメール送信成功: ${recipientEmail} (${collectedAlerts.length}件のアラート)`);
+  return { success: true, message: `アラート通知テストメールを送信しました（${collectedAlerts.length}件の指標変化）`, messageId: result.messageId };
 }
 
 function mapMetrics(raw) {
