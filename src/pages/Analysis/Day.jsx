@@ -160,22 +160,22 @@ export default function Day() {
   // カスタム凡例
   const CustomLegend = ({ payload }) => {
     return (
-      <div className="mt-4 flex justify-center gap-6">
+      <div className="mt-4 flex flex-wrap justify-center gap-4">
         {payload.map((entry, index) => (
           <div
             key={`legend-${index}`}
-            className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-70"
+            className="flex cursor-pointer items-center gap-1.5 transition-opacity hover:opacity-70"
             onClick={() => handleLegendClick(entry.dataKey)}
           >
             <div
-              className="h-0.5 w-8"
+              className="h-0.5 w-6"
               style={{
                 backgroundColor: hiddenLines[entry.dataKey] ? '#ccc' : entry.color,
                 opacity: hiddenLines[entry.dataKey] ? 0.3 : 1,
               }}
             />
             <span
-              className="text-sm"
+              className="text-xs"
               style={{
                 color: hiddenLines[entry.dataKey] ? '#ccc' : entry.color,
                 textDecoration: hiddenLines[entry.dataKey] ? 'line-through' : 'none',
@@ -197,11 +197,13 @@ export default function Day() {
     return mergeComparisonByIndex(rawRows, compDailyData?.rows || [], COMP_VALUE_FIELDS);
   }, [rawRows, isComparing, compDailyData]);
 
-  // グラフ用のデータ整形
+  // グラフ用のデータ整形（日付昇順：左が古い、右が新しい）
   const chartData = useMemo(() => {
-    if (!isComparing) return rawRows;
-    return rawRows.map((row, i) => {
-      const comp = compDailyData?.rows?.[i];
+    const sorted = [...rawRows].sort((a, b) => (a.date > b.date ? 1 : -1));
+    if (!isComparing) return sorted;
+    const compRows = [...(compDailyData?.rows || [])].sort((a, b) => (a.date > b.date ? 1 : -1));
+    return sorted.map((row, i) => {
+      const comp = compRows[i];
       return {
         ...row,
         sessions_prev: comp?.sessions ?? null,
@@ -279,17 +281,19 @@ export default function Day() {
               {activeTab === 'chart' ? (
                 <ChartContainer title="日別推移グラフ" height={400}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
+                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="date" tickFormatter={formatDateLabel} />
                       <YAxis
                         yAxisId="left"
                         label={{ value: '訪問者', angle: -90, position: 'insideLeft' }}
+                        tickFormatter={(v) => v.toLocaleString()}
                       />
                       <YAxis
                         yAxisId="right"
                         orientation="right"
                         label={{ value: 'コンバージョン', angle: 90, position: 'insideRight' }}
+                        tickFormatter={(v) => v.toLocaleString()}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
                       <Legend content={<CustomLegend />} />
@@ -319,7 +323,7 @@ export default function Day() {
                           type="monotone"
                           dataKey="sessions_prev"
                           name="訪問者（比較）"
-                          stroke="#3b82f6"
+                          stroke="#93c5fd"
                           strokeWidth={1.5}
                           strokeDasharray="5 5"
                           dot={false}
@@ -332,7 +336,7 @@ export default function Day() {
                           type="monotone"
                           dataKey="conversions_prev"
                           name="CV（比較）"
-                          stroke="#ef4444"
+                          stroke="#fca5a5"
                           strokeWidth={1.5}
                           strokeDasharray="5 5"
                           dot={false}
@@ -446,6 +450,7 @@ export default function Day() {
                   pageSize={31}
                   showPagination={true}
                   emptyMessage="表示するデータがありません。"
+                  showTotals
                 />
               )}
             </>
@@ -473,6 +478,8 @@ export default function Day() {
                       startDate: dateRange?.from || new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
                       endDate: dateRange?.to || new Date(new Date().getFullYear(), new Date().getMonth(), 0),
                     }}
+                    comparisonRawData={isComparing ? compDailyData : null}
+                    comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
                     onLimitExceeded={() => setIsLimitModalOpen(true)}
                   />
                 ) : (

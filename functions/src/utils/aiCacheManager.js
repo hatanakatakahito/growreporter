@@ -5,22 +5,34 @@ const CACHE_DURATION_DAYS = 7;
 
 /**
  * キャッシュされたAI分析を取得
- * @param {string} userId 
- * @param {string} siteId 
- * @param {string} pageType 
- * @param {string} startDate 
- * @param {string} endDate 
+ * @param {string} userId
+ * @param {string} siteId
+ * @param {string} pageType
+ * @param {string} startDate
+ * @param {string} endDate
+ * @param {string|null} comparisonStartDate - 比較期間の開始日（任意）
+ * @param {string|null} comparisonEndDate - 比較期間の終了日（任意）
  * @returns {Promise<Object|null>}
  */
-export async function getCachedAnalysis(userId, siteId, pageType, startDate, endDate) {
+export async function getCachedAnalysis(userId, siteId, pageType, startDate, endDate, comparisonStartDate = null, comparisonEndDate = null) {
   const db = getFirestore();
 
   try {
-    const cacheSnapshot = await db.collection('sites').doc(siteId).collection('aiAnalysisCache')
+    let q = db.collection('sites').doc(siteId).collection('aiAnalysisCache')
       .where('userId', '==', userId)
       .where('pageType', '==', pageType)
       .where('period.startDate', '==', startDate)
-      .where('period.endDate', '==', endDate)
+      .where('period.endDate', '==', endDate);
+
+    // 比較期間がある場合はキャッシュキーに含める
+    if (comparisonStartDate && comparisonEndDate) {
+      q = q.where('period.comparisonStartDate', '==', comparisonStartDate)
+           .where('period.comparisonEndDate', '==', comparisonEndDate);
+    } else {
+      q = q.where('period.comparisonStartDate', '==', null);
+    }
+
+    const cacheSnapshot = await q
       .orderBy('generatedAt', 'desc')
       .limit(1)
       .get();
@@ -79,7 +91,7 @@ export async function getCachedAnalysis(userId, siteId, pageType, startDate, end
  * @param {string} endDate 
  * @returns {Promise<string>} cacheId
  */
-export async function saveCachedAnalysis(userId, siteId, pageType, summary, recommendations, startDate, endDate) {
+export async function saveCachedAnalysis(userId, siteId, pageType, summary, recommendations, startDate, endDate, comparisonStartDate = null, comparisonEndDate = null) {
   const db = getFirestore();
 
   try {
@@ -97,6 +109,8 @@ export async function saveCachedAnalysis(userId, siteId, pageType, summary, reco
       period: {
         startDate,
         endDate,
+        comparisonStartDate: comparisonStartDate || null,
+        comparisonEndDate: comparisonEndDate || null,
       },
     };
 

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
 import { useSite } from '../../contexts/SiteContext';
 import { useGA4Data } from '../../hooks/useGA4Data';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
@@ -21,7 +22,7 @@ import { useAuth } from '../../contexts/AuthContext';
  * clickイベントを追跡
  */
 export default function ExternalLinks() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [dimensionFilters, setDimensionFilters] = useState({});
@@ -56,9 +57,21 @@ export default function ExternalLinks() {
     ga4DimensionFilter
   );
 
+  // 比較期間データ
+  const { data: compClickData } = useGA4Data(
+    comparisonDateRange ? selectedSiteId : null,
+    comparisonDateRange?.from,
+    comparisonDateRange?.to,
+    ['eventCount', 'activeUsers'],
+    ['eventName', 'linkUrl'],
+    ga4DimensionFilter
+  );
+
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compClickData;
+
   // テーブル用のデータ整形（イベント数降順）
   // clickイベントのみフィルタリング
-  const tableData =
+  const tableData = useMemo(() =>
     clickData?.rows
       ?.filter((row) => row.eventName === 'click')
       ?.map((row) => ({
@@ -66,7 +79,21 @@ export default function ExternalLinks() {
         clicks: row.eventCount || 0,
         users: row.activeUsers || 0,
       }))
-      .sort((a, b) => b.clicks - a.clicks) || [];
+      ?.sort((a, b) => b.clicks - a.clicks) || [],
+    [clickData]
+  );
+
+  const mergedTableData = useMemo(() => {
+    if (!isComparing || !compClickData?.rows) return tableData;
+    const compTable = compClickData.rows
+      .filter((row) => row.eventName === 'click')
+      .map((row) => ({
+        linkUrl: row.linkUrl || '(不明)',
+        clicks: row.eventCount || 0,
+        users: row.activeUsers || 0,
+      }));
+    return mergeComparisonRows(tableData, compTable, 'linkUrl', ['clicks', 'users']);
+  }, [tableData, isComparing, compClickData]);
 
   // 合計値の計算
   const totalClicks = tableData.reduce((sum, row) => sum + row.clicks, 0);
@@ -120,6 +147,7 @@ export default function ExternalLinks() {
           ) : (
             <DataTable
               tableKey="analysis-external-links"
+              isComparing={isComparing}
               columns={[
                 {
                   key: 'linkUrl',
@@ -148,6 +176,7 @@ export default function ExternalLinks() {
                   format: 'number',
                   align: 'right',
                   tooltip: 'clicks',
+                  comparison: true,
                 },
                 {
                   key: 'users',
@@ -155,12 +184,14 @@ export default function ExternalLinks() {
                   format: 'number',
                   align: 'right',
                   tooltip: 'users',
+                  comparison: true,
                 },
               ]}
-              data={tableData}
+              data={mergedTableData}
               pageSize={25}
               showPagination={true}
               emptyMessage="表示するデータがありません。"
+              showTotals
             />
           )}
 
@@ -186,6 +217,8 @@ export default function ExternalLinks() {
                         startDate: dateRange?.from,
                         endDate: dateRange?.to,
                       }}
+                      comparisonRawData={isComparing ? compClickData : null}
+                      comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
                       onLimitExceeded={() => setIsLimitModalOpen(true)}
                     />
                   ) : (

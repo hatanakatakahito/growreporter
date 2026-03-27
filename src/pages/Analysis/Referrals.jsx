@@ -215,22 +215,22 @@ export default function Referrals() {
   // カスタム凡例
   const CustomLegend = ({ payload }) => {
     return (
-      <div className="mt-4 flex justify-center gap-6">
+      <div className="mt-4 flex flex-wrap justify-center gap-4">
         {payload.map((entry, index) => (
           <div
             key={`legend-${index}`}
-            className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-70"
+            className="flex cursor-pointer items-center gap-1.5 transition-opacity hover:opacity-70"
             onClick={() => handleLegendClick(entry.dataKey)}
           >
             <div
-              className="h-3 w-3 rounded"
+              className="h-2.5 w-2.5 rounded"
               style={{
                 backgroundColor: hiddenSeries[entry.dataKey] ? '#ccc' : entry.color,
                 opacity: hiddenSeries[entry.dataKey] ? 0.3 : 1,
               }}
             />
             <span
-              className="text-sm"
+              className="text-xs"
               style={{
                 color: hiddenSeries[entry.dataKey] ? '#ccc' : entry.color,
                 textDecoration: hiddenSeries[entry.dataKey] ? 'line-through' : 'none',
@@ -386,7 +386,7 @@ export default function Referrals() {
                           textAnchor="end"
                           height={100}
                         />
-                        <YAxis />
+                        <YAxis tickFormatter={(v) => v.toLocaleString()} />
                         <RechartsTooltip content={<CustomTooltip />} />
                         <Legend content={<CustomLegend />} />
                         <Bar
@@ -509,6 +509,7 @@ export default function Referrals() {
                   pageSize={25}
                   showPagination={true}
                   emptyMessage="表示するデータがありません。"
+                  showTotals
                 />
               )}
             </>
@@ -536,6 +537,8 @@ export default function Referrals() {
                       startDate: dateRange?.from,
                       endDate: dateRange?.to,
                     }}
+                    comparisonRawData={isComparing ? compReferralData : null}
+                    comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
                     onLimitExceeded={() => setIsLimitModalOpen(true)}
                   />
                 ) : (

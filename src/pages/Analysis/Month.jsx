@@ -72,7 +72,10 @@ export default function Month() {
     isLoading,
   } = useGA4MonthlyData(selectedSiteId, monthlyStartDate, monthlyEndDate, ga4DimensionFilter);
 
-  const monthlyData = monthlyDataResponse?.monthlyData || [];
+  const monthlyData = useMemo(() => {
+    const data = monthlyDataResponse?.monthlyData || [];
+    return [...data].sort((a, b) => (a.label > b.label ? 1 : -1));
+  }, [monthlyDataResponse]);
 
   // 比較期間の月別データ
   const { data: compMonthlyDataResponse } = useGA4MonthlyData(
@@ -112,22 +115,22 @@ export default function Month() {
   // グラフ用の凡例
   const CustomLegend = ({ payload }) => {
     return (
-      <div className="mt-4 flex flex-wrap justify-center gap-6">
+      <div className="mt-4 flex flex-wrap justify-center gap-4">
         {payload.map((entry, index) => (
           <div
             key={`legend-${index}`}
-            className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-70"
+            className="flex cursor-pointer items-center gap-1.5 transition-opacity hover:opacity-70"
             onClick={() => setHiddenLines((prev) => ({ ...prev, [entry.dataKey]: !prev[entry.dataKey] }))}
           >
             <div
-              className="h-0.5 w-8"
+              className="h-0.5 w-6"
               style={{
                 backgroundColor: hiddenLines[entry.dataKey] ? '#ccc' : entry.color,
                 opacity: hiddenLines[entry.dataKey] ? 0.3 : 1,
               }}
             />
             <span
-              className="text-sm"
+              className="text-xs"
               style={{
                 color: hiddenLines[entry.dataKey] ? '#ccc' : entry.color,
                 textDecoration: hiddenLines[entry.dataKey] ? 'line-through' : 'none',
@@ -229,15 +232,16 @@ export default function Month() {
                   pageSize={13}
                   showPagination={false}
                   emptyMessage="データがありません。GA4連携を確認してください。"
+                  showTotals
                 />
               ) : (
                 /* グラフ形式 */
                 <ChartContainer title="月別推移グラフ" height={400}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={mergedMonthlyData}>
+                    <LineChart data={mergedMonthlyData} margin={{ top: 5, right: 20, left: 20, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="label" angle={-45} textAnchor="end" height={80} />
-                      <YAxis />
+                      <YAxis tickFormatter={(v) => v.toLocaleString()} />
                       <RechartsTooltip content={<CustomTooltip />} />
                       <Legend content={<CustomLegend />} />
                       <Line type="monotone" dataKey="users" name="ユーザー数" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.users} />
@@ -245,10 +249,10 @@ export default function Month() {
                       <Line type="monotone" dataKey="pageViews" name="PV数" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.pageViews} />
                       <Line type="monotone" dataKey="conversions" name="CV数" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.conversions} />
                       {isComparing && (
-                        <Line yAxisId="left" type="monotone" dataKey="sessions_prev" name="訪問者（比較）" stroke="#3b82f6" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
+                        <Line type="monotone" dataKey="sessions_prev" name="訪問者（比較）" stroke="#fcd34d" strokeWidth={1.5} strokeDasharray="5 5" dot={false} hide={hiddenLines.sessions_prev} />
                       )}
                       {isComparing && (
-                        <Line yAxisId="right" type="monotone" dataKey="conversions_prev" name="CV（比較）" stroke="#ef4444" strokeWidth={1.5} strokeDasharray="5 5" dot={false} />
+                        <Line type="monotone" dataKey="conversions_prev" name="CV（比較）" stroke="#fca5a5" strokeWidth={1.5} strokeDasharray="5 5" dot={false} hide={hiddenLines.conversions_prev} />
                       )}
                     </LineChart>
                   </ResponsiveContainer>
@@ -280,6 +284,8 @@ export default function Month() {
                       startDate: monthlyStartDate,
                       endDate: monthlyEndDate,
                     }}
+                    comparisonRawData={isComparing ? { monthlyTrend: compMonthlyData } : null}
+                    comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
                     onLimitExceeded={() => setIsLimitModalOpen(true)}
                   />
                 }

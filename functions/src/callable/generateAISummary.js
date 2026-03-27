@@ -4,6 +4,7 @@ import { logger } from 'firebase-functions/v2';
 import { checkCanGenerate, incrementGenerationCount } from '../utils/planManager.js';
 import { getCachedAnalysis, saveCachedAnalysis } from '../utils/aiCacheManager.js';
 import { getPromptTemplate } from '../prompts/templates.js';
+import { buildScrapingContextText } from '../prompts/scrapingContextBuilder.js';
 import { SITE_TYPE_LABELS, SITE_PURPOSE_LABELS, IMPROVEMENT_FOCUS_LABELS } from '../constants/siteOptions.js';
 import { canAccessSite, canEditSite } from '../utils/permissionHelper.js';
 
@@ -81,7 +82,7 @@ export async function generateAISummaryCallable(request) {
   const db = getFirestore();
   // 【重要】legacyMetrics は後方互換性のためのみ残している
   // 実際には rawData → finalMetrics → metrics という流れで使用する
-  const { siteId, pageType, startDate, endDate, metrics: legacyMetrics, rawData, forceRegenerate = false, improvementFocus: improvementFocusValue = 'balance', userNote = '', existingImprovements = [] } = request.data;
+  const { siteId, pageType, startDate, endDate, metrics: legacyMetrics, rawData, comparisonRawData = null, comparisonStartDate = null, comparisonEndDate = null, forceRegenerate = false, improvementFocus: improvementFocusValue = 'balance', userNote = '', existingImprovements = [] } = request.data;
 
   // 入力バリデーション
   if (!siteId || !pageType || !startDate || !endDate) {
@@ -150,7 +151,7 @@ export async function generateAISummaryCallable(request) {
 
     // 3. キャッシュチェック（強制再生成でない場合）
     if (!forceRegenerate) {
-      const cachedAnalysis = await getCachedAnalysis(siteOwnerId, siteId, pageType, startDate, endDate);
+      const cachedAnalysis = await getCachedAnalysis(siteOwnerId, siteId, pageType, startDate, endDate, comparisonStartDate, comparisonEndDate);
       if (cachedAnalysis) {
         console.log('[generateAISummary] Cache hit (aiAnalysisCache):', cachedAnalysis.cacheId);
         
@@ -229,6 +230,14 @@ export async function generateAISummaryCallable(request) {
       console.log('[generateAISummary] ✅ 新方式: rawDataをmetricsに変換');
       metrics = formatRawDataToMetrics(rawData, pageType);
       console.log('[generateAISummary] 変換後のメトリクス keys:', Object.keys(metrics));
+
+      // 比較データがある場合、比較期間のメトリクスも生成してプロンプトに追加
+      if (comparisonRawData && comparisonStartDate && comparisonEndDate) {
+        const compMetrics = formatRawDataToMetrics(comparisonRawData, pageType);
+        metrics.comparisonMetrics = compMetrics;
+        metrics.comparisonPeriod = { startDate: comparisonStartDate, endDate: comparisonEndDate };
+        console.log('[generateAISummary] 比較データあり: comparisonMetrics keys:', Object.keys(compMetrics));
+      }
     } else {
       // ❌ 旧方式（非推奨・後方互換性のみ）：legacyMetricsが直接渡されている場合
       console.log('[generateAISummary] ⚠️ 旧方式: フロントから受け取ったlegacyMetricsを使用（非推奨）');
@@ -243,6 +252,41 @@ export async function generateAISummaryCallable(request) {
       );
     }
     
+    // 6.5. 分析ページ向け: スクレイピングデータをFirestoreから取得してコンテキスト注入
+    if (pageType !== 'comprehensive_improvement') {
+      try {
+        const [scrapingSnap, metaDoc] = await Promise.all([
+          db.collection('sites').doc(siteId)
+            .collection('pageScrapingData')
+            .orderBy('pageViews', 'desc')
+            .limit(15)
+            .get(),
+          db.collection('sites').doc(siteId)
+            .collection('pageScrapingMeta').doc('default')
+            .get(),
+        ]);
+
+        if (!scrapingSnap.empty) {
+          const scrapingPages = scrapingSnap.docs.map(d => d.data());
+          const scrapingMeta = metaDoc.exists ? metaDoc.data() : null;
+
+          const SCRAPING_TIER_MAP = {
+            pages: 'full', landingPages: 'full', comprehensive_analysis: 'full',
+            keywords: 'summary', channels: 'summary', conversions: 'summary',
+            reverseFlow: 'summary', dashboard: 'summary', summary: 'summary', users: 'summary',
+            day: 'compact', week: 'compact', hour: 'compact', 'analysis/month': 'compact',
+            pageCategories: 'compact', referrals: 'compact', fileDownloads: 'compact',
+            externalLinks: 'compact', pageFlow: 'compact',
+          };
+          const tier = SCRAPING_TIER_MAP[pageType] || 'compact';
+          metrics.scrapingContext = buildScrapingContextText(scrapingPages, scrapingMeta, tier);
+          logger.info(`[generateAISummary] スクレイピングコンテキスト注入: tier=${tier}, pages=${scrapingPages.length}`);
+        }
+      } catch (e) {
+        logger.warn('[generateAISummary] スクレイピングデータ取得エラー（無視）:', e.message);
+      }
+    }
+
     // 7. プロンプト生成（スクレイピングデータの反映をログで確認可能に）
     if (metrics.scrapingData?.pages?.length > 0) {
       logger.info('[generateAISummary] スクレイピングデータをサイト改善に反映', {
@@ -381,7 +425,7 @@ export async function generateAISummaryCallable(request) {
 
     // 7. 新しいキャッシュシステムに保存
     const now = new Date();
-    await saveCachedAnalysis(siteOwnerId, siteId, pageType, summary, recommendations, startDate, endDate);
+    await saveCachedAnalysis(siteOwnerId, siteId, pageType, summary, recommendations, startDate, endDate, comparisonStartDate, comparisonEndDate);
     
     // 8. 旧システムにも保存（互換性のため、将来的に削除予定）
     const summaryDoc = {
@@ -1239,12 +1283,24 @@ function formatRawDataToMetrics(rawData, pageType) {
     case 'pageFlow':
     case 'page_flow':
       // ページフロー分析：fetchGA4PageTransition の結果
+      // APIレスポンス: { pagePath, metrics: { pageViews, sessions }, inbound: [{ page, pageViews, percentage }], trafficBreakdown: { internal: { count, percentage }, external: { count }, direct: { count } } }
+      const pfInbound = rawData.inbound || [];
+      const pfTrafficBreakdown = rawData.trafficBreakdown || {};
       return {
         pagePath: rawData.pagePath || '',
-        totalPageViews: rawData.totalPageViews || 0,
-        trafficBreakdown: rawData.trafficBreakdown || {},
-        internalTransitions: rawData.internalTransitions || [],
-        transitionCount: rawData.internalTransitions?.length || 0,
+        totalPageViews: rawData.metrics?.pageViews || rawData.totalPageViews || 0,
+        totalSessions: rawData.metrics?.sessions || 0,
+        trafficBreakdown: {
+          'サイト内遷移': pfTrafficBreakdown.internal?.count || 0,
+          '外部サイト': pfTrafficBreakdown.external?.count || 0,
+          '直接アクセス': pfTrafficBreakdown.direct?.count || 0,
+        },
+        internalTransitions: pfInbound.map(item => ({
+          previousPage: item.page || '不明',
+          count: item.pageViews || 0,
+          percentage: item.percentage || 0,
+        })),
+        transitionCount: pfInbound.length,
       };
 
     case 'channels':

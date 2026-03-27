@@ -124,6 +124,12 @@ html {
   transition: background-color 0.15s ease;
 }
 
+/* テーブル数値の等幅表示 — 全テーブル共通 */
+table td,
+table th {
+  font-variant-numeric: tabular-nums;
+}
+
 /* フォント */
 body {
   font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;

@@ -156,22 +156,22 @@ export default function ConversionList() {
   // カスタム凡例
   const CustomLegend = ({ payload }) => {
     return (
-      <div className="mt-4 flex flex-wrap justify-center gap-6">
+      <div className="mt-4 flex flex-wrap justify-center gap-4">
         {payload.map((entry, index) => (
           <div
             key={`legend-${index}`}
-            className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-70"
+            className="flex cursor-pointer items-center gap-1.5 transition-opacity hover:opacity-70"
             onClick={() => handleLegendClick(entry.dataKey)}
           >
             <div
-              className="h-0.5 w-8"
+              className="h-0.5 w-6"
               style={{
                 backgroundColor: hiddenLines[entry.dataKey] ? '#ccc' : entry.color,
                 opacity: hiddenLines[entry.dataKey] ? 0.3 : 1,
               }}
             />
             <span
-              className="text-sm"
+              className="text-xs"
               style={{
                 color: hiddenLines[entry.dataKey] ? '#ccc' : entry.color,
                 textDecoration: hiddenLines[entry.dataKey] ? 'line-through' : 'none',
@@ -334,6 +334,28 @@ export default function ConversionList() {
                           );
                         })}
                       </tbody>
+                      <tfoot>
+                        {(() => {
+                          const allData = [...displayData].reverse();
+                          const grandTotal = allData.reduce((sum, row) => sum + conversionEvents.reduce((s, e) => s + (row[e.eventName] || 0), 0), 0);
+                          return (
+                            <tr className="border-t-2 border-primary-mid/30 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5 font-semibold">
+                              <td className="whitespace-nowrap px-4 py-3 text-sm text-dark dark:text-white">合計</td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-bold text-dark dark:text-white">
+                                {grandTotal.toLocaleString()}
+                              </td>
+                              {conversionEvents.map((event) => {
+                                const eventTotal = allData.reduce((sum, row) => sum + (row[event.eventName] || 0), 0);
+                                return (
+                                  <td key={event.eventName} className="whitespace-nowrap px-4 py-3 text-right text-sm text-dark dark:text-white">
+                                    {eventTotal.toLocaleString()}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })()}
+                      </tfoot>
                     </table>
                   </div>
                 </div>
@@ -346,7 +368,7 @@ export default function ConversionList() {
                         dataKey="yearMonth" 
                         tickFormatter={(val) => `${val.slice(0, 4)}/${val.slice(4)}`}
                       />
-                      <YAxis allowDecimals={false} />
+                      <YAxis allowDecimals={false} tickFormatter={(v) => v.toLocaleString()} />
                       <RechartsTooltip content={<CustomTooltip />} />
                       <Legend content={<CustomLegend />} />
                       {conversionEvents.map((event, index) => (

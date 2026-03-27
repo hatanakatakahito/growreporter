@@ -133,26 +133,40 @@ function addSlideFooter(slide) {
 function addAIAndMemoFooter(slide, aiData, memos, y, maxH) {
   if (!aiData && (!memos || memos.length === 0)) return;
 
+  const hasAI = !!aiData?.summary;
+  const hasMemos = memos && memos.length > 0;
+
   let currentY = y;
-  const lineH = 0.12;
+
+  // AI分析とメモの高さ配分
+  let aiH = 0;
+  let memoH = 0;
+  if (hasAI && hasMemos) {
+    aiH = Math.max(maxH * 0.55, 0.35);
+    memoH = Math.max(maxH - aiH - 0.05, 0.25);
+  } else if (hasAI) {
+    aiH = Math.max(maxH, 0.35);
+  } else {
+    memoH = Math.max(maxH, 0.25);
+  }
 
   // AI分析
-  if (aiData?.summary) {
+  if (hasAI) {
     const aiText = cleanMarkdown(aiData.summary);
     if (aiText) {
       slide.addText([
         { text: 'AI分析: ', options: { bold: true, color: COLORS.accent, fontSize: 10, fontFace: FONT_FACE } },
         { text: aiText, options: { color: COLORS.subText, fontSize: 10, fontFace: FONT_FACE } },
       ], {
-        x: MARGIN_X, y: currentY, w: CONTENT_W, h: Math.max(maxH * 0.6, 0.3),
+        x: MARGIN_X, y: currentY, w: CONTENT_W, h: aiH,
         valign: 'top', wrap: true, shrinkText: true,
       });
-      currentY += Math.max(maxH * 0.6, 0.3);
+      currentY += aiH + 0.05;
     }
   }
 
   // メモ
-  if (memos && memos.length > 0) {
+  if (hasMemos) {
     const memoTexts = memos.map((m) => {
       const author = m.isConsultantNote
         ? `[コンサルタント] ${m.consultantName || ''}`
@@ -166,9 +180,8 @@ function addAIAndMemoFooter(slide, aiData, memos, y, maxH) {
       { text: memoTexts.join('\n'), options: { color: COLORS.subText, fontSize: 9, fontFace: FONT_FACE } },
     ];
 
-    const remainH = Math.max(maxH - (currentY - y), 0.2);
     slide.addText(memoContent, {
-      x: MARGIN_X, y: currentY, w: CONTENT_W, h: remainH,
+      x: MARGIN_X, y: currentY, w: CONTENT_W, h: memoH,
       valign: 'top', wrap: true, shrinkText: true,
     });
   }
@@ -249,7 +262,7 @@ function formatSeconds(sec) {
 // ─── スライド生成関数 ──────────────────────────────────────────
 
 // 1. 表紙
-function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64) {
+function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64, compDateRange) {
   const slide = pptx.addSlide();
 
   // ロゴ画像（一回り小さく中央配置）
@@ -272,8 +285,11 @@ function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64) {
     ['サイト名', siteName || ''],
     ['URL', siteUrl || ''],
     ['分析期間', `${dateRange?.from || ''} 〜 ${dateRange?.to || ''}`],
-    ['レポート作成日', new Date().toLocaleDateString('ja-JP')],
   ];
+  if (compDateRange) {
+    infoRows.push(['比較期間', `${compDateRange.from || ''} 〜 ${compDateRange.to || ''}`]);
+  }
+  infoRows.push(['レポート作成日', new Date().toLocaleDateString('ja-JP')]);
 
   const tableRows = infoRows.map(([label, val]) => [
     { text: label, options: { bold: true, color: COLORS.subText, fontSize: 12, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
@@ -290,69 +306,104 @@ function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64) {
 }
 
 // 2. 全体サマリー（主要指標 + KPI予実 + コンバージョン内訳）
-function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos) {
+function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos, compSummary) {
   const slide = pptx.addSlide();
   addSlideTitle(slide, '全体サマリー');
 
   const hasAI = !!aiData?.summary;
   const hasMemos = memos && memos.length > 0;
+  const hasComp = !!compSummary?.metrics;
 
   if (dashboard?.metrics) {
     const m = dashboard.metrics;
+    const cm = compSummary?.metrics || {};
+
+    // 変化率ヘルパー
+    const fmtChange = (cur, prev) => {
+      if (cur == null || prev == null || prev === 0) return '';
+      const pct = ((cur - prev) / prev * 100).toFixed(1);
+      return pct > 0 ? `(+${pct}%)` : `(${pct}%)`;
+    };
+
+    // [label, currentValue, prevValue(optional)]
     const metricsData = [
-      ['セッション数', formatNumber(m.sessions)],
-      ['ユーザー数', formatNumber(m.totalUsers)],
-      ['新規ユーザー数', formatNumber(m.newUsers)],
-      ['ページビュー数', formatNumber(m.pageViews)],
-      ['エンゲージメント率', fmtPct(m.engagementRate)],
-      ['コンバージョン数', formatNumber(m.conversions)],
+      ['セッション数', formatNumber(m.sessions), hasComp ? formatNumber(cm.sessions) : null, hasComp ? fmtChange(m.sessions, cm.sessions) : null],
+      ['ユーザー数', formatNumber(m.totalUsers), hasComp ? formatNumber(cm.totalUsers) : null, hasComp ? fmtChange(m.totalUsers, cm.totalUsers) : null],
+      ['新規ユーザー数', formatNumber(m.newUsers), hasComp ? formatNumber(cm.newUsers) : null, hasComp ? fmtChange(m.newUsers, cm.newUsers) : null],
+      ['ページビュー数', formatNumber(m.pageViews), hasComp ? formatNumber(cm.pageViews) : null, hasComp ? fmtChange(m.pageViews, cm.pageViews) : null],
+      ['エンゲージメント率', fmtPct(m.engagementRate), hasComp ? fmtPct(cm.engagementRate) : null, null],
+      ['コンバージョン数', formatNumber(m.conversions), hasComp ? formatNumber(cm.conversions) : null, hasComp ? fmtChange(m.conversions, cm.conversions) : null],
     ];
 
     // GSC指標
     if (m.clicks || m.impressions) {
       metricsData.push(
-        ['クリック数（GSC）', formatNumber(m.clicks)],
-        ['表示回数（GSC）', formatNumber(m.impressions)],
-        ['CTR（GSC）', fmtPct(m.ctr)],
-        ['平均掲載順位（GSC）', m.position ? Number(m.position).toFixed(1) : '-'],
+        ['クリック数（GSC）', formatNumber(m.clicks), hasComp ? formatNumber(cm.clicks) : null, hasComp ? fmtChange(m.clicks, cm.clicks) : null],
+        ['表示回数（GSC）', formatNumber(m.impressions), hasComp ? formatNumber(cm.impressions) : null, hasComp ? fmtChange(m.impressions, cm.impressions) : null],
+        ['CTR（GSC）', fmtPct(m.ctr), hasComp ? fmtPct(cm.ctr) : null, null],
+        ['平均掲載順位（GSC）', m.position ? Number(m.position).toFixed(1) : '-', hasComp && cm.position ? Number(cm.position).toFixed(1) : null, null],
       );
     }
 
-    // 2列×N行のカード風テーブル
     const labelCellOpts = { bold: true, color: COLORS.subText, fontSize: 12, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border }, margin: [1, 8, 1, 8] };
     const valueCellOpts = { bold: true, color: COLORS.primary, fontSize: 14, fontFace: FONT_FACE, align: 'right', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border }, margin: [1, 8, 1, 8] };
+    const compCellOpts = { color: COLORS.subText, fontSize: 10, fontFace: FONT_FACE, align: 'right', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border }, margin: [1, 8, 1, 8] };
 
-    const tableRows = [];
-    for (let i = 0; i < metricsData.length; i += 2) {
-      const row = [];
-      // 左カード
-      row.push(
-        { text: metricsData[i][0], options: { ...labelCellOpts } },
-        { text: metricsData[i][1], options: { ...valueCellOpts } },
-      );
-      // 右カード
-      if (i + 1 < metricsData.length) {
+    let tableRows;
+    if (hasComp) {
+      // 比較モード: 縦1列形式（ラベル / 当期 / 前期 / 変化率）
+      const headerRow = [
+        { text: '指標', options: headerCellOpts('left') },
+        { text: '当期', options: headerCellOpts('right') },
+        { text: '前期', options: headerCellOpts('right') },
+        { text: '変化率', options: headerCellOpts('right') },
+      ];
+      tableRows = [headerRow, ...metricsData.map(([label, val, prevVal, change], rIdx) => [
+        { text: label, options: { ...dataCellOpts(rIdx, 'left'), bold: true } },
+        { text: val, options: { ...dataCellOpts(rIdx, 'right'), bold: true, color: COLORS.primary } },
+        { text: prevVal || '-', options: dataCellOpts(rIdx, 'right') },
+        { text: change || '-', options: dataCellOpts(rIdx, 'right') },
+      ])];
+
+      slide.addTable(tableRows, {
+        x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W,
+        colW: [3.0, 2.6, 2.6, 2.0],
+        rowH: 0.42,
+        fontSize: 10, fontFace: FONT_FACE,
+      });
+    } else {
+      // 通常モード: 2列×N行カード風
+      tableRows = [];
+      for (let i = 0; i < metricsData.length; i += 2) {
+        const row = [];
         row.push(
-          { text: metricsData[i + 1][0], options: { ...labelCellOpts } },
-          { text: metricsData[i + 1][1], options: { ...valueCellOpts } },
+          { text: metricsData[i][0], options: { ...labelCellOpts } },
+          { text: metricsData[i][1], options: { ...valueCellOpts } },
         );
-      } else {
-        row.push(
-          { text: '', options: { border: { type: 'none' } } },
-          { text: '', options: { border: { type: 'none' } } },
-        );
+        if (i + 1 < metricsData.length) {
+          row.push(
+            { text: metricsData[i + 1][0], options: { ...labelCellOpts } },
+            { text: metricsData[i + 1][1], options: { ...valueCellOpts } },
+          );
+        } else {
+          row.push(
+            { text: '', options: { border: { type: 'none' } } },
+            { text: '', options: { border: { type: 'none' } } },
+          );
+        }
+        tableRows.push(row);
       }
-      tableRows.push(row);
+
+      slide.addTable(tableRows, {
+        x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W,
+        colW: [2.2, 2.85, 2.2, 2.85],
+        rowH: 0.55,
+      });
     }
 
-    slide.addTable(tableRows, {
-      x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W,
-      colW: [2.2, 2.85, 2.2, 2.85],
-      rowH: 0.55,
-    });
-
     // KPI達成状況
-    let kpiEndY = CONTENT_Y + tableRows.length * 0.55 + 0.2;
+    const rowH = hasComp ? 0.42 : 0.55;
+    let kpiEndY = CONTENT_Y + tableRows.length * rowH + 0.2;
     if (kpiSettings?.kpiList && kpiSettings.kpiList.length > 0) {
       const activeKpis = kpiSettings.kpiList.filter(k => k.isActive);
       if (activeKpis.length > 0) {
@@ -390,9 +441,12 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos) {
       }
     }
 
-    // AI分析+メモ
-    const aiY = Math.max(kpiEndY, FOOTER_Y - 1.0);
-    addAIAndMemoFooter(slide, aiData, memos, aiY, FOOTER_Y - aiY - 0.05);
+    // AI分析+メモ（テーブル/KPIの直下から配置）
+    const aiY = kpiEndY + 0.1;
+    const aiMaxH = FOOTER_Y - aiY - 0.05;
+    if (aiMaxH > 0.2) {
+      addAIAndMemoFooter(slide, aiData, memos, aiY, aiMaxH);
+    }
   }
 
   addSlideFooter(slide);
@@ -430,28 +484,41 @@ function createSectionDivider(pptx, title) {
 }
 
 // 月別（13ヶ月推移）
-function createMonthlySlide(pptx, monthlyData, aiData, memos) {
+function createMonthlySlide(pptx, monthlyData, aiData, memos, compMonthlyData) {
   if (!monthlyData || monthlyData.length === 0) return;
+  // 昇順ソート（古い→新しい）
+  const sorted = [...monthlyData].sort((a, b) => ((a.label || a.month || '') > (b.label || b.month || '') ? 1 : -1));
   const slide = pptx.addSlide();
   addSlideTitle(slide, '月別（13ヶ月推移）');
 
   const hasAI = !!aiData?.summary;
   const hasMemos = memos && memos.length > 0;
-  const layout = calcLayout(monthlyData.length, hasAI, hasMemos);
+  const layout = calcLayout(sorted.length, hasAI, hasMemos);
 
   // 折れ線チャート
-  const labels = monthlyData.map(d => fmtYearMonth(d.month || d.label || d.yearMonth));
+  const labels = sorted.map(d => fmtYearMonth(d.month || d.label || d.yearMonth));
   const chartData = [
-    { name: 'ユーザー', labels, values: monthlyData.map(d => fmtNum(d.users || d.totalUsers)) },
-    { name: 'セッション', labels, values: monthlyData.map(d => fmtNum(d.sessions)) },
-    { name: 'PV', labels, values: monthlyData.map(d => fmtNum(d.pageViews || d.screenPageViews)) },
-    { name: 'CV', labels, values: monthlyData.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
+    { name: 'ユーザー', labels, values: sorted.map(d => fmtNum(d.users || d.totalUsers)) },
+    { name: 'セッション', labels, values: sorted.map(d => fmtNum(d.sessions)) },
+    { name: 'PV', labels, values: sorted.map(d => fmtNum(d.pageViews || d.screenPageViews)) },
+    { name: 'CV', labels, values: sorted.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
   ];
+  let chartColors = ['3b82f6', 'f59e0b', '8b5cf6', 'ef4444'];
+
+  // 比較データ
+  if (compMonthlyData && compMonthlyData.length > 0) {
+    const compSorted = [...compMonthlyData].sort((a, b) => ((a.label || a.month || '') > (b.label || b.month || '') ? 1 : -1));
+    chartData.push(
+      { name: '前期セッション', labels, values: labels.map((_, i) => fmtNum(compSorted[i]?.sessions)) },
+      { name: '前期CV', labels, values: labels.map((_, i) => fmtNum(compSorted[i]?.conversions || compSorted[i]?.totalConversions || 0)) },
+    );
+    chartColors = [...chartColors, '93c5fd', 'fca5a5'];
+  }
 
   slide.addChart(pptx.charts.LINE, chartData, {
     x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
     showLegend: true, legendPos: 'b', legendFontSize: 7,
-    chartColors: ['3b82f6', 'f59e0b', '8b5cf6', 'ef4444'],
+    chartColors,
     lineSize: 2, lineSmooth: false,
     catAxisLabelFontSize: 9, valAxisLabelFontSize: 9,
     catAxisOrientation: 'minMax',
@@ -470,7 +537,7 @@ function createMonthlySlide(pptx, monthlyData, aiData, memos) {
     { label: 'CVR', align: 'right' },
   ];
 
-  const rows = monthlyData.map(d => [
+  const rows = sorted.map(d => [
     fmtYearMonth(d.month || d.label || d.yearMonth),
     formatNumber(d.sessions),
     formatNumber(d.users || d.totalUsers),
@@ -492,10 +559,11 @@ function createMonthlySlide(pptx, monthlyData, aiData, memos) {
 }
 
 // 日別推移
-function createDailySlide(pptx, dailyData, aiData, memos) {
+function createDailySlide(pptx, dailyData, aiData, memos, compDailyData) {
   if (!dailyData?.rows || dailyData.rows.length === 0) return;
 
-  const dataRows = dailyData.rows;
+  // 昇順ソート（古い→新しい）
+  const dataRows = [...dailyData.rows].sort((a, b) => (a.date > b.date ? 1 : -1));
   const hasAI = !!aiData?.summary;
   const hasMemos = memos && memos.length > 0;
 
@@ -509,11 +577,22 @@ function createDailySlide(pptx, dailyData, aiData, memos) {
     { name: 'セッション', labels, values: dataRows.map(d => fmtNum(d.sessions)) },
     { name: 'CV', labels, values: dataRows.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
   ];
+  let chartColors = ['3b82f6', 'ef4444'];
+
+  // 比較データ
+  if (compDailyData?.rows && compDailyData.rows.length > 0) {
+    const compRows = [...compDailyData.rows].sort((a, b) => (a.date > b.date ? 1 : -1));
+    chartData.push(
+      { name: '前期セッション', labels, values: labels.map((_, i) => fmtNum(compRows[i]?.sessions)) },
+      { name: '前期CV', labels, values: labels.map((_, i) => fmtNum(compRows[i]?.conversions || compRows[i]?.totalConversions || 0)) },
+    );
+    chartColors = [...chartColors, '93c5fd', 'fca5a5'];
+  }
 
   slide1.addChart(pptx.charts.LINE, chartData, {
     x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W, h: chartH,
     showLegend: true, legendPos: 'b', legendFontSize: 7,
-    chartColors: ['3b82f6', 'ef4444'],
+    chartColors,
     lineSize: 2,
     catAxisLabelFontSize: dataRows.length > 31 ? 5 : 6,
     valAxisLabelFontSize: 9,
@@ -1195,7 +1274,8 @@ function createConversionsSlide(pptx, conversions, aiData, memos) {
   const slide = pptx.addSlide();
   addSlideTitle(slide, 'コンバージョン月次推移');
 
-  const convData = conversions.data;
+  // 昇順ソート（古い→新しい）
+  const convData = [...conversions.data].sort((a, b) => ((a.yearMonth || a.month || '') > (b.yearMonth || b.month || '') ? 1 : -1));
   const hasAI = !!aiData?.summary;
   const hasMemos = memos && memos.length > 0;
   const layout = calcLayout(convData.length, hasAI, hasMemos);
@@ -1402,16 +1482,18 @@ export async function downloadAnalysisPptx(allData, siteName, dateRange) {
   const ai = allData.aiAnalysis || {};
   const memos = allData.memos || {};
 
+  const comp = allData.comparison || null;
+
   // 1. 表紙
-  createCoverSlide(pptx, siteName, allData.siteUrl, dateRange, logoBase64);
+  createCoverSlide(pptx, siteName, allData.siteUrl, dateRange, logoBase64, comp?.dateRange);
 
   // 2. 全体サマリー（主要指標 + KPI予実 + コンバージョン内訳）
-  createSummarySlide(pptx, allData.summaryMetrics, allData.kpiSettings, ai['analysis/summary'], memos['analysis/summary']);
+  createSummarySlide(pptx, allData.summaryMetrics, allData.kpiSettings, ai['analysis/summary'], memos['analysis/summary'], comp?.summaryMetrics);
 
   // セクション2: トレンド分析
   createSectionDivider(pptx, 'トレンド分析');
-  createMonthlySlide(pptx, allData.monthlyData, ai['analysis/month'], memos['analysis/month']);
-  createDailySlide(pptx, allData.daily, ai['analysis/day'], memos['analysis/day']);
+  createMonthlySlide(pptx, allData.monthlyData, ai['analysis/month'], memos['analysis/month'], comp?.monthlyData);
+  createDailySlide(pptx, allData.daily, ai['analysis/day'], memos['analysis/day'], comp?.daily);
   createWeeklySlide(pptx, allData.weekly, ai['analysis/week'], memos['analysis/week']);
   createHourlySlide(pptx, allData.hourly, ai['analysis/hour'], memos['analysis/hour']);
 

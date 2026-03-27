@@ -796,6 +796,28 @@ export default function ReverseFlow() {
                               );
                             })}
                           </tbody>
+                          {(() => {
+                            const allRows = [...monthlyData].reverse();
+                            const totalStart = allRows.reduce((s, r) => s + (hasEntry ? (r.entryPageViews ?? 0) : r.totalSiteViews), 0);
+                            const totalForm = allRows.reduce((s, r) => s + r.formPageViews, 0);
+                            const totalSubmit = allRows.reduce((s, r) => s + r.submissionComplete, 0);
+                            const avgRate1 = totalStart > 0 ? (totalForm / totalStart) * 100 : 0;
+                            const avgRate2 = totalForm > 0 ? (totalSubmit / totalForm) * 100 : 0;
+                            const avgOverall = totalStart > 0 ? (totalSubmit / totalStart) * 100 : 0;
+                            return (
+                              <tfoot>
+                                <tr className="border-t-2 border-primary-mid/30 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5 font-semibold">
+                                  <td className="px-4 py-3 text-sm text-dark dark:text-white">合計</td>
+                                  <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">{totalStart.toLocaleString()}</td>
+                                  <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">{avgRate1.toFixed(2)}%</td>
+                                  <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">{totalForm.toLocaleString()}</td>
+                                  <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">{avgRate2.toFixed(2)}%</td>
+                                  <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">{totalSubmit.toLocaleString()}</td>
+                                  <td className="px-4 py-3 text-right text-sm text-dark dark:text-white">{avgOverall.toFixed(2)}%</td>
+                                </tr>
+                              </tfoot>
+                            );
+                          })()}
                           </>
                             );
                           })()}
@@ -905,6 +927,7 @@ export default function ReverseFlow() {
                   isLoading={pagePathsLoading}
                   isSearchable={true}
                   isClearable={true}
+                  menuPortalTarget={document.body}
                   placeholder="未入力の場合は全PVが起点になります"
                   noOptionsMessage={() => 'ページパスが見つかりません'}
                   loadingMessage={() => '読み込み中...'}
@@ -937,6 +960,7 @@ export default function ReverseFlow() {
                       boxShadow: 'none',
                       '&:hover': { borderColor: '#3C50E0' },
                     }),
+                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                     menu: (base) => ({ ...base, zIndex: 9999 }),
                   }}
                 />
@@ -956,6 +980,7 @@ export default function ReverseFlow() {
                   isLoading={pagePathsLoading}
                   isSearchable={true}
                   isClearable={true}
+                  menuPortalTarget={document.body}
                   placeholder="ページパスを選択または入力..."
                   noOptionsMessage={() => 'ページパスが見つかりません'}
                   loadingMessage={() => '読み込み中...'}
@@ -988,6 +1013,7 @@ export default function ReverseFlow() {
                       boxShadow: 'none',
                       '&:hover': { borderColor: '#3C50E0' },
                     }),
+                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                     menu: (base) => ({ ...base, zIndex: 9999 }),
                   }}
                 />

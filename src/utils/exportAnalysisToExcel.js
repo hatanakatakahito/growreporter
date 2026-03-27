@@ -59,6 +59,21 @@ const MEMO_CONTENT_STYLE = {
   alignment: { vertical: 'top', horizontal: 'left', wrapText: true },
 };
 
+/** 比較ヘッダー（オレンジ背景） */
+const COMP_HEADER_STYLE = {
+  fill: { fgColor: { rgb: 'F59E0B' } },
+  font: { ...FONT_BASE, bold: true, color: { rgb: 'FFFFFF' } },
+  alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+  border: thinBorder(),
+};
+
+/** 変化率ヘルパー */
+function fmtChange(current, prev) {
+  if (prev == null || prev === 0 || current == null) return '-';
+  const change = ((current - prev) / prev * 100).toFixed(1);
+  return `${change > 0 ? '+' : ''}${change}%`;
+}
+
 /** 表紙タイトル */
 const COVER_TITLE_STYLE = {
   font: { name: 'MS Gothic', sz: 16, bold: true, color: { rgb: '333333' } },
@@ -332,7 +347,7 @@ function createDataSheet(headers, rows, colWidths, aiData, memos) {
 // ─── 個別シート生成関数 ──────────────────────────────────────
 
 /** 1. レポート概要（表紙） */
-function createCoverSheet(siteName, siteUrl, dateRange) {
+function createCoverSheet(siteName, siteUrl, dateRange, compDateRange) {
   const ws = XLSX.utils.aoa_to_sheet([]);
   const totalCols = 6;
   ws['!cols'] = [{ wch: 3 }, { wch: 18 }, { wch: 30 }, { wch: 20 }, { wch: 15 }, { wch: 3 }];
@@ -402,6 +417,7 @@ function createCoverSheet(siteName, siteUrl, dateRange) {
     ['サイト名', siteName || ''],
     ['URL', siteUrl || ''],
     ['分析期間', `${dateRange?.from || ''} 〜 ${dateRange?.to || ''}`],
+    ...(compDateRange ? [['比較期間', `${compDateRange.from || ''} 〜 ${compDateRange.to || ''}`]] : []),
     ['レポート生成日', new Date().toLocaleDateString('ja-JP')],
   ];
 
@@ -458,7 +474,7 @@ function createCoverSheet(siteName, siteUrl, dateRange) {
 }
 
 /** 2. 全体サマリー（主要指標 + KPI予実 + コンバージョン内訳） */
-function createSummarySheet(data, kpiSettings, aiData, memos) {
+function createSummarySheet(data, kpiSettings, aiData, memos, compSummary) {
   const m = data?.metrics || {};
   const conversions = data?.conversions || {};
   const kpiList = kpiSettings?.kpiList || [];
@@ -523,35 +539,42 @@ function createSummarySheet(data, kpiSettings, aiData, memos) {
   }
 
   // KPI未設定の場合は従来のレイアウト
-  const headers = ['指標', '値'];
+  const cm = compSummary?.metrics || {};
+  const hasComp = compSummary != null;
+  const headers = hasComp ? ['指標', '当期', '前期', '変化率'] : ['指標', '値'];
+  const makeRow = (label, val, compVal) => {
+    if (hasComp) return [label, val, compVal ?? '-', typeof val === 'number' && typeof compVal === 'number' ? fmtChange(val, compVal) : '-'];
+    return [label, val];
+  };
   const rows = [
-    ['セッション数', fmtNum(m.sessions)],
-    ['ユーザー数', fmtNum(m.totalUsers)],
-    ['新規ユーザー数', fmtNum(m.newUsers)],
-    ['ページビュー数', fmtNum(m.pageViews)],
-    ['エンゲージメント率', fmtPct(m.engagementRate)],
-    ['コンバージョン数（合計）', fmtNum(m.conversions)],
-    ['クリック数（GSC）', fmtNum(m.clicks)],
-    ['表示回数（GSC）', fmtNum(m.impressions)],
-    ['CTR（GSC）', fmtPctRaw(m.ctr)],
-    ['平均掲載順位（GSC）', m.position ? Number(m.position).toFixed(1) : '-'],
+    makeRow('セッション数', fmtNum(m.sessions), fmtNum(cm.sessions)),
+    makeRow('ユーザー数', fmtNum(m.totalUsers), fmtNum(cm.totalUsers)),
+    makeRow('新規ユーザー数', fmtNum(m.newUsers), fmtNum(cm.newUsers)),
+    makeRow('ページビュー数', fmtNum(m.pageViews), fmtNum(cm.pageViews)),
+    makeRow('エンゲージメント率', fmtPct(m.engagementRate), fmtPct(cm.engagementRate)),
+    makeRow('コンバージョン数（合計）', fmtNum(m.conversions), fmtNum(cm.conversions)),
+    makeRow('クリック数（GSC）', fmtNum(m.clicks), fmtNum(cm.clicks)),
+    makeRow('表示回数（GSC）', fmtNum(m.impressions), fmtNum(cm.impressions)),
+    makeRow('CTR（GSC）', fmtPctRaw(m.ctr), fmtPctRaw(cm.ctr)),
+    makeRow('平均掲載順位（GSC）', m.position ? Number(m.position).toFixed(1) : '-', cm.position ? Number(cm.position).toFixed(1) : '-'),
   ];
   // コンバージョン内訳
   if (Object.keys(conversions).length > 0) {
-    rows.push(['', '']);
-    rows.push(['【コンバージョン内訳】', '']);
+    rows.push(hasComp ? ['', '', '', ''] : ['', '']);
+    rows.push(hasComp ? ['【コンバージョン内訳】', '', '', ''] : ['【コンバージョン内訳】', '']);
     for (const [eventName, count] of Object.entries(conversions)) {
-      rows.push([`  ${eventName}`, fmtNum(count)]);
+      rows.push(hasComp ? [`  ${eventName}`, fmtNum(count), '', ''] : [`  ${eventName}`, fmtNum(count)]);
     }
   }
-  const colWidths = [{ wch: 30 }, { wch: 20 }];
+  const colWidths = hasComp ? [{ wch: 30 }, { wch: 16 }, { wch: 16 }, { wch: 14 }] : [{ wch: 30 }, { wch: 20 }];
   return createDataSheet(headers, rows, colWidths, aiData, memos);
 }
 
-/** 3. 月別（13ヶ月推移） */
+/** 3. 月別（13ヶ月推移） — 昇順（古い→新しい） */
 function createMonthlySheet(monthlyData, aiData, memos) {
   const headers = ['月', 'セッション数', 'ユーザー数', '新規ユーザー数', 'PV数', 'エンゲージメント率', 'CV数', 'CV率'];
-  const rows = (monthlyData || []).map(d => [
+  const sorted = [...(monthlyData || [])].sort((a, b) => (b.label || '').localeCompare(a.label || ''));
+  const rows = sorted.map(d => [
     d.label || fmtYearMonth(d.month),
     fmtNum(d.sessions),
     fmtNum(d.users),
@@ -621,10 +644,25 @@ function createUsersSheet(demographics, aiData, memos) {
   return ws;
 }
 
-/** 5. 日別 */
-function createDailySheet(data, aiData, memos) {
+/** 5. 日別 — 昇順（古い→新しい）、比較対応 */
+function createDailySheet(data, aiData, memos, compData) {
+  const sorted = [...(data?.rows || [])].sort((a, b) => (a.date > b.date ? -1 : 1));
+  if (compData) {
+    const compSorted = [...(compData?.rows || [])].sort((a, b) => (a.date > b.date ? -1 : 1));
+    const headers = ['日付', 'セッション数', '前期セッション', '変化率', 'CV数', '前期CV', '変化率'];
+    const rows = sorted.map((r, i) => {
+      const c = compSorted[i];
+      return [
+        fmtDate(r.date),
+        fmtNum(r.sessions), fmtNum(c?.sessions), fmtChange(r.sessions, c?.sessions),
+        fmtNum(r.conversions), fmtNum(c?.conversions), fmtChange(r.conversions, c?.conversions),
+      ];
+    });
+    const colWidths = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
+    return createDataSheet(headers, rows, colWidths, aiData, memos);
+  }
   const headers = ['日付', 'セッション数', 'CV数'];
-  const rows = (data?.rows || []).map(r => [
+  const rows = sorted.map(r => [
     fmtDate(r.date),
     fmtNum(r.sessions),
     fmtNum(r.conversions),
@@ -657,8 +695,23 @@ function createHourlySheet(data, aiData, memos) {
   return createDataSheet(headers, rows, colWidths, aiData, memos);
 }
 
-/** 8. 集客チャネル */
-function createChannelsSheet(data, aiData, memos) {
+/** 8. 集客チャネル — 比較対応 */
+function createChannelsSheet(data, aiData, memos, compData) {
+  if (compData) {
+    const compMap = {};
+    (compData?.rows || []).forEach(r => { compMap[r.sessionDefaultChannelGroup] = r; });
+    const headers = ['チャネル', 'セッション数', '前期', '変化率', 'CV数', '前期', '変化率'];
+    const rows = (data?.rows || []).map(r => {
+      const c = compMap[r.sessionDefaultChannelGroup];
+      return [
+        CHANNEL_MAP[r.sessionDefaultChannelGroup] || r.sessionDefaultChannelGroup || '',
+        fmtNum(r.sessions), fmtNum(c?.sessions), fmtChange(r.sessions, c?.sessions),
+        fmtNum(r.conversions), fmtNum(c?.conversions), fmtChange(r.conversions, c?.conversions),
+      ];
+    });
+    const colWidths = [{ wch: 24 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
+    return createDataSheet(headers, rows, colWidths, aiData, memos);
+  }
   const headers = ['チャネル', 'セッション数', 'ユーザー数', 'CV数'];
   const rows = (data?.rows || []).map(r => [
     CHANNEL_MAP[r.sessionDefaultChannelGroup] || r.sessionDefaultChannelGroup || '',
@@ -684,8 +737,23 @@ function createKeywordsSheet(gscData, aiData, memos) {
   return createDataSheet(headers, rows, colWidths, aiData, memos);
 }
 
-/** 10. 被リンク元 */
-function createReferralsSheet(data, aiData, memos) {
+/** 10. 被リンク元 — 比較対応 */
+function createReferralsSheet(data, aiData, memos, compData) {
+  if (compData) {
+    const compMap = {};
+    (compData?.rows || []).forEach(r => { compMap[r.source] = r; });
+    const headers = ['参照元', 'セッション数', '前期', '変化率', 'CV数', '前期', '変化率'];
+    const rows = (data?.rows || []).map(r => {
+      const c = compMap[r.source];
+      return [
+        r.source || '',
+        fmtNum(r.sessions), fmtNum(c?.sessions), fmtChange(r.sessions, c?.sessions),
+        fmtNum(r.conversions), fmtNum(c?.conversions), fmtChange(r.conversions, c?.conversions),
+      ];
+    });
+    const colWidths = [{ wch: 35 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
+    return createDataSheet(headers, rows, colWidths, aiData, memos);
+  }
   const headers = ['参照元', 'セッション数', 'ユーザー数', 'エンゲージメント率', '平均セッション時間', 'CV数'];
   const rows = (data?.rows || []).map(r => [
     r.source || '',
@@ -699,8 +767,23 @@ function createReferralsSheet(data, aiData, memos) {
   return createDataSheet(headers, rows, colWidths, aiData, memos);
 }
 
-/** 11. ページ別 */
-function createPagesSheet(data, aiData, memos) {
+/** 11. ページ別 — 比較対応 */
+function createPagesSheet(data, aiData, memos, compData) {
+  if (compData) {
+    const compMap = {};
+    (compData?.rows || []).forEach(r => { compMap[r.pagePath] = r; });
+    const headers = ['ページパス', 'タイトル', 'PV数', '前期PV', '変化率', 'セッション数', '前期', '変化率'];
+    const rows = (data?.rows || []).map(r => {
+      const c = compMap[r.pagePath];
+      return [
+        r.pagePath || '', r.pageTitle || '',
+        fmtNum(r.screenPageViews), fmtNum(c?.screenPageViews), fmtChange(r.screenPageViews, c?.screenPageViews),
+        fmtNum(r.sessions), fmtNum(c?.sessions), fmtChange(r.sessions, c?.sessions),
+      ];
+    });
+    const colWidths = [{ wch: 40 }, { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 10 }];
+    return createDataSheet(headers, rows, colWidths, aiData, memos);
+  }
   const headers = ['ページパス', 'タイトル', 'PV数', 'セッション数', 'ユーザー数', 'エンゲージメント率'];
   const rows = (data?.rows || []).map(r => [
     r.pagePath || '',
@@ -744,7 +827,22 @@ function createPageCategoriesSheet(data, aiData, memos) {
 }
 
 /** 13. ランディングページ */
-function createLandingPagesSheet(data, aiData, memos) {
+function createLandingPagesSheet(data, aiData, memos, compData) {
+  if (compData) {
+    const compMap = {};
+    (compData?.rows || []).forEach(r => { compMap[r.landingPage] = r; });
+    const headers = ['ランディングページ', 'セッション数', '前期', '変化率', 'CV数', '前期', '変化率'];
+    const rows = (data?.rows || []).map(r => {
+      const c = compMap[r.landingPage];
+      return [
+        r.landingPage || '',
+        fmtNum(r.sessions), fmtNum(c?.sessions), fmtChange(r.sessions, c?.sessions),
+        fmtNum(r.conversions), fmtNum(c?.conversions), fmtChange(r.conversions, c?.conversions),
+      ];
+    });
+    const colWidths = [{ wch: 50 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
+    return createDataSheet(headers, rows, colWidths, aiData, memos);
+  }
   const headers = ['ランディングページ', 'セッション数', 'エンゲージメント率', '平均セッション時間', 'CV数'];
   const rows = (data?.rows || []).map(r => [
     r.landingPage || '',
@@ -800,7 +898,7 @@ function createConversionsSheet(data, aiData, memos) {
   }
   const events = [...eventNames];
   const headers = ['月', ...events];
-  const rows = [...data.data].reverse().map(r => [
+  const rows = [...data.data].sort((a, b) => (b.yearMonth || '').localeCompare(a.yearMonth || '')).map(r => [
     fmtYearMonth(r.yearMonth),
     ...events.map(e => fmtNum(r[e])),
   ]);
@@ -906,13 +1004,14 @@ export function exportAnalysisToExcel(allData, siteName, dateRange) {
   const wb = XLSX.utils.book_new();
   const ai = allData.aiAnalysis || {};
   const memos = allData.memos || {};
+  const comp = allData.comparison || null;
 
   // 1. レポート概要
-  XLSX.utils.book_append_sheet(wb, createCoverSheet(siteName, allData.siteUrl, dateRange), safeSheetName('レポート概要'));
+  XLSX.utils.book_append_sheet(wb, createCoverSheet(siteName, allData.siteUrl, dateRange, comp?.dateRange), safeSheetName('レポート概要'));
 
   // 2. 全体サマリー（主要指標 + KPI予実 + コンバージョン内訳）
   if (allData.summaryMetrics) {
-    XLSX.utils.book_append_sheet(wb, createSummarySheet(allData.summaryMetrics, allData.kpiSettings, ai['analysis/summary'], memos['analysis/summary']), safeSheetName('全体サマリー'));
+    XLSX.utils.book_append_sheet(wb, createSummarySheet(allData.summaryMetrics, allData.kpiSettings, ai['analysis/summary'], memos['analysis/summary'], comp?.summaryMetrics), safeSheetName('全体サマリー'));
   }
 
   // 3. 月別（13ヶ月推移）
@@ -927,7 +1026,7 @@ export function exportAnalysisToExcel(allData, siteName, dateRange) {
 
   // 5. 日別
   if (allData.daily) {
-    XLSX.utils.book_append_sheet(wb, createDailySheet(allData.daily, ai['analysis/day'], memos['analysis/day']), safeSheetName('日別'));
+    XLSX.utils.book_append_sheet(wb, createDailySheet(allData.daily, ai['analysis/day'], memos['analysis/day'], comp?.daily), safeSheetName('日別'));
   }
 
   // 6. 曜日別
@@ -942,7 +1041,7 @@ export function exportAnalysisToExcel(allData, siteName, dateRange) {
 
   // 8. 集客チャネル
   if (allData.channels) {
-    XLSX.utils.book_append_sheet(wb, createChannelsSheet(allData.channels, ai['analysis/channels'], memos['analysis/channels']), safeSheetName('集客チャネル'));
+    XLSX.utils.book_append_sheet(wb, createChannelsSheet(allData.channels, ai['analysis/channels'], memos['analysis/channels'], comp?.channels), safeSheetName('集客チャネル'));
   }
 
   // 9. 流入キーワード（GSC接続時のみ）
@@ -952,12 +1051,12 @@ export function exportAnalysisToExcel(allData, siteName, dateRange) {
 
   // 10. 被リンク元
   if (allData.referrals) {
-    XLSX.utils.book_append_sheet(wb, createReferralsSheet(allData.referrals, ai['analysis/referrals'], memos['analysis/referrals']), safeSheetName('被リンク元'));
+    XLSX.utils.book_append_sheet(wb, createReferralsSheet(allData.referrals, ai['analysis/referrals'], memos['analysis/referrals'], comp?.referrals), safeSheetName('被リンク元'));
   }
 
   // 11. ページ別
   if (allData.pages) {
-    XLSX.utils.book_append_sheet(wb, createPagesSheet(allData.pages, ai['analysis/pages'], memos['analysis/pages']), safeSheetName('ページ別'));
+    XLSX.utils.book_append_sheet(wb, createPagesSheet(allData.pages, ai['analysis/pages'], memos['analysis/pages'], comp?.pages), safeSheetName('ページ別'));
   }
 
   // 12. ページ分類別
@@ -967,7 +1066,7 @@ export function exportAnalysisToExcel(allData, siteName, dateRange) {
 
   // 13. ランディングページ
   if (allData.landingPages) {
-    XLSX.utils.book_append_sheet(wb, createLandingPagesSheet(allData.landingPages, ai['analysis/landing-pages'], memos['analysis/landing-pages']), safeSheetName('ランディングページ'));
+    XLSX.utils.book_append_sheet(wb, createLandingPagesSheet(allData.landingPages, ai['analysis/landing-pages'], memos['analysis/landing-pages'], comp?.landingPages), safeSheetName('ランディングページ'));
   }
 
   // 14. ファイルDL

@@ -422,6 +422,8 @@ export default function Users() {
                       startDate: dateRange?.from || new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
                       endDate: dateRange?.to || new Date(new Date().getFullYear(), new Date().getMonth(), 0),
                     }}
+                    comparisonRawData={isComparing ? compDemographics : null}
+                    comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
                     onLimitExceeded={() => setIsLimitModalOpen(true)}
                   />
                 ) : (
