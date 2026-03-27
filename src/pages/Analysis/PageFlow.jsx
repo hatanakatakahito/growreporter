@@ -212,6 +212,7 @@ export default function PageFlow() {
                   isLoading={pagePathsLoading}
                   isSearchable={true}
                   isClearable={true}
+                  menuPortalTarget={document.body}
                   placeholder="ページパスを選択または入力..."
                   noOptionsMessage={() => 'ページパスが見つかりません'}
                   loadingMessage={() => '読み込み中...'}
@@ -246,6 +247,7 @@ export default function PageFlow() {
                         borderColor: '#3C50E0',
                       },
                     }),
+                    menuPortal: (base) => ({ ...base, zIndex: 9999 }),
                     menu: (base) => ({
                       ...base,
                       zIndex: 9999,
@@ -365,7 +367,7 @@ export default function PageFlow() {
                   </div>
 
                   {/* サイト内の直前ページ */}
-                  {transitionData.inbound && transitionData.inbound.length > 0 && (
+                  {transitionData?.inbound && transitionData.inbound.length > 0 && (
                     <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
                       <div className="border-b border-stroke p-6 dark:border-dark-3">
                         <h3 className="text-lg font-semibold text-dark dark:text-white">
@@ -415,6 +417,15 @@ export default function PageFlow() {
                             ))}
                           </tbody>
                           <tfoot>
+                            <tr className="border-t-2 border-primary-mid/30 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5 font-semibold">
+                              <td className="whitespace-nowrap px-4 py-3 text-sm text-dark dark:text-white">合計</td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-dark dark:text-white">
+                                {formatNumber(transitionData.inbound.reduce((sum, item) => sum + (item?.pageViews || 0), 0))}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm text-dark dark:text-white">
+                                {transitionData.inbound.reduce((sum, item) => sum + (item?.percentage || 0), 0).toFixed(1)}%
+                              </td>
+                            </tr>
                             <tr>
                               <td colSpan="3" className="px-4 py-3">
                                 <p className="text-xs text-body-color">

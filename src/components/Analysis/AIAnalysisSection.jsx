@@ -8,7 +8,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions, db } from '../../config/firebase';
 import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
-import LoadingSpinner from '../common/LoadingSpinner';
+import DotWaveSpinner from '../common/DotWaveSpinner';
 import UpgradeModal from '../common/UpgradeModal';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
@@ -19,12 +19,14 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
  * @param {object} rawData - フロント画面で取得したCloud Functionの生データ
  * @param {object} metrics - AI分析用メトリクス
  * @param {object} period - 分析期間 { startDate, endDate }
+ * @param {object|null} comparisonRawData - 比較期間の生データ（比較時のみ）
+ * @param {object|null} comparisonPeriod - 比較期間 { startDate, endDate }（比較時のみ）
  * @param {function} onLimitExceeded - 制限超過時のコールバック
  */
-export default function AIAnalysisSection({ pageType, rawData, metrics, period, onLimitExceeded }) {
+export default function AIAnalysisSection({ pageType, rawData, metrics, period, comparisonRawData, comparisonPeriod, onLimitExceeded }) {
   const { selectedSiteId, selectedSite } = useSite();
   const { checkCanGenerate, planId } = usePlan();
-  const { user } = useAuth();
+  const { currentUser } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
 
@@ -87,7 +89,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
 
       const generateAISummary = httpsCallable(functions, 'generateAISummary');
       
-      const result = await generateAISummary({
+      const params = {
         siteId: selectedSiteId,
         pageType,
         rawData: rawData || null,
@@ -95,7 +97,16 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
         startDate: period?.startDate || new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
         endDate: period?.endDate || new Date(new Date().getFullYear(), new Date().getMonth(), 0),
         forceRegenerate,
-      });
+      };
+
+      // 比較期間データがある場合のみ追加（コスト最適化）
+      if (comparisonRawData && comparisonPeriod?.startDate && comparisonPeriod?.endDate) {
+        params.comparisonRawData = comparisonRawData;
+        params.comparisonStartDate = comparisonPeriod.startDate;
+        params.comparisonEndDate = comparisonPeriod.endDate;
+      }
+
+      const result = await generateAISummary(params);
 
       const data = result.data;
       
@@ -118,15 +129,20 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
     }
   };
 
+  // 比較期間の開始・終了日をプリミティブ値として取得（useEffect deps用）
+  const compStartDate = comparisonPeriod?.startDate || null;
+  const compEndDate = comparisonPeriod?.endDate || null;
+  const hasComparison = !!comparisonRawData;
+
   useEffect(() => {
     // 必要なデータが揃っている場合のみ実行
     // rawData/metricsはオブジェクト参照が毎回変わるためdepsに含めない
-    // （再分析は手動の forceRegenerate で行う）
+    // 比較ON/OFF切替・比較期間変更時は自動で再分析
     if (selectedSiteId && pageType && (rawData || metrics)) {
       loadAnalysis(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSiteId, pageType]);
+  }, [selectedSiteId, pageType, hasComparison, compStartDate, compEndDate]);
 
   // タスク追加
   const addTaskMutation = useMutation({
@@ -142,7 +158,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
         order: Date.now(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        createdBy: user?.email || '',
+        createdBy: currentUser?.email || '',
       };
       
       return await addDoc(collection(db, 'sites', selectedSiteId, 'improvements'), newTask);
@@ -165,9 +181,9 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   // ローディング中
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <LoadingSpinner size="lg" />
-        <p className="mt-4 text-sm text-gray-600 dark:text-gray-400">AI分析を生成中...</p>
+      <div className="flex min-h-[400px] flex-col items-center justify-center">
+        <DotWaveSpinner size="lg" />
+        <p className="mt-4 text-sm text-body-color">AI分析を生成中...</p>
       </div>
     );
   }

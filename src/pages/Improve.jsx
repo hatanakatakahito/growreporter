@@ -809,14 +809,14 @@ export default function Improve() {
                             {sortKey === 'category' && (sortOrder === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)}
                           </button>
                         </th>
-                        <th className="w-[8%] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
+                        <th className="w-[6%] text-left py-3 px-3 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
                           <button type="button" onClick={(e) => { e.stopPropagation(); handleSort('priority'); }} className="inline-flex items-center gap-0.5 hover:opacity-80 whitespace-nowrap" title="クリックで並び替え">
                             優先度
                             {sortKey === 'priority' && (sortOrder === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)}
                           </button>
                         </th>
                         <th className="min-w-[200px] w-[52%] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">改善内容</th>
-                        <th className="w-[100px] min-w-[100px] py-3 px-2 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3 text-center whitespace-nowrap">プレビュー</th>
+                        <th className="w-[100px] min-w-[100px] py-3 px-2 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3 text-center whitespace-nowrap">モック</th>
                         <th className="w-[14%] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
                           <button type="button" onClick={(e) => { e.stopPropagation(); handleSort('estimatedLaborHours'); }} className="inline-flex items-center gap-0.5 hover:opacity-80" title="クリックで並び替え">
                             目安料金・納期
@@ -864,7 +864,7 @@ export default function Improve() {
                                   </span>
                                 )}
                               </td>
-                              <td className="py-7 px-4 align-middle">
+                              <td className="py-7 px-3 align-middle">
                                 {item.priority && priorityLabels[item.priority] && (
                                   <span className={`inline-block rounded px-2.5 py-0.5 text-sm font-medium whitespace-nowrap ${priorityColors[item.priority] || ''}`}>
                                     {priorityLabels[item.priority]}
@@ -872,43 +872,43 @@ export default function Improve() {
                                 )}
                               </td>
                               <td className="py-7 px-4 align-middle">
-                                <div className="flex items-center gap-2">
-                                  <div className="text-sm font-medium text-dark dark:text-white leading-snug">{item.title}</div>
-                                  {item.mockupHtml ? (
-                                    <span className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 text-[9px] font-bold text-green-600 dark:text-green-400" title="モックアップ生成済み">
-                                      <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="m4.5 12.75 6 6 9-13.5" /></svg>
-                                      モック
-                                    </span>
-                                  ) : item.mockupSkipped ? null
-                                  : item.targetPageUrl ? (
-                                    <button
-                                      className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-primary/10 hover:bg-primary/20 px-1.5 py-0.5 text-[9px] font-bold text-primary transition cursor-pointer"
-                                      title="モックアップを生成する"
-                                      onClick={(e) => { e.stopPropagation(); handleGenerateMockup(item); }}
-                                      disabled={mockupGeneratingIds.has(item.id)}
-                                    >
-                                      {mockupGeneratingIds.has(item.id) ? (
-                                        <><DotWaveSpinner size="xs" />生成中</>
-                                      ) : (
-                                        <><Sparkles className="h-2.5 w-2.5" />モック</>
-                                      )}
-                                    </button>
-                                  ) : null}
-                                </div>
-                                <div className="text-sm text-body-color mt-1 line-clamp-1">{item.description || '—'}</div>
-                              </td>
-                              <td className="py-7 px-2 align-middle text-center w-[100px] min-w-[100px]" onClick={(e) => e.stopPropagation()}>
-                                {(item.targetPageUrl || '').trim() ? (
+                                <div className="text-sm font-medium text-dark dark:text-white leading-snug">{item.title}</div>
+                                {(item.targetPageUrl || '').trim() && (
                                   <a
                                     href={item.targetPageUrl.startsWith('http') ? item.targetPageUrl : `${siteUrl}${item.targetPageUrl.startsWith('/') ? '' : '/'}${item.targetPageUrl}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline whitespace-nowrap"
+                                    className="inline-flex items-center gap-1 mt-0.5 text-xs text-primary/70 hover:text-primary hover:underline"
                                     title="対象ページを新しいタブで開く"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    <ExternalLink className="h-3 w-3 shrink-0" />
-                                    開く
+                                    <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                                    対象ページ
                                   </a>
+                                )}
+                                <div className="text-sm text-body-color mt-1 line-clamp-1">{item.description || '—'}</div>
+                              </td>
+                              <td className="py-7 px-2 align-middle text-center w-[100px] min-w-[100px]" onClick={(e) => e.stopPropagation()}>
+                                {item.mockupHtml ? (
+                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-green-50 dark:bg-green-900/20 px-2 py-1 text-[10px] font-bold text-green-600 dark:text-green-400" title="モックアップ生成済み">
+                                    <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="m4.5 12.75 6 6 9-13.5" /></svg>
+                                    モック
+                                  </span>
+                                ) : item.mockupSkipped ? (
+                                  <span className="text-body-color text-sm">—</span>
+                                ) : item.targetPageUrl ? (
+                                  <button
+                                    className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 hover:bg-primary/20 px-2 py-1 text-[10px] font-bold text-primary transition cursor-pointer"
+                                    title="モックアップを生成する"
+                                    onClick={(e) => { e.stopPropagation(); handleGenerateMockup(item); }}
+                                    disabled={mockupGeneratingIds.has(item.id)}
+                                  >
+                                    {mockupGeneratingIds.has(item.id) ? (
+                                      <><DotWaveSpinner size="xs" />生成中</>
+                                    ) : (
+                                      <><Sparkles className="h-2.5 w-2.5" />モック</>
+                                    )}
+                                  </button>
                                 ) : (
                                   <span className="text-body-color text-sm">—</span>
                                 )}
@@ -918,15 +918,20 @@ export default function Improve() {
                                 <div className="text-sm text-body-color mt-0.5">{formatEstimatedDeliveryLabel(item.estimatedLaborHours)}</div>
                               </td>
                               <td className="py-7 px-4 align-middle" onClick={(e) => e.stopPropagation()}>
-                                <select
-                                  value={item.status || 'draft'}
-                                  onChange={(e) => handleStatusChange(item, e.target.value)}
-                                  className="rounded-full border border-stroke dark:border-dark-3 bg-white dark:bg-dark-2 px-3 py-1.5 text-sm text-dark dark:text-white focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
-                                >
-                                  <option value="draft">{statusLabels.draft}</option>
-                                  <option value="in_progress">{statusLabels.in_progress}</option>
-                                  <option value="completed">{statusLabels.completed}</option>
-                                </select>
+                                <div className="relative inline-block">
+                                  <select
+                                    value={item.status || 'draft'}
+                                    onChange={(e) => handleStatusChange(item, e.target.value)}
+                                    className="appearance-none [background-image:none] rounded-lg border border-stroke dark:border-dark-3 bg-white dark:bg-dark-2 pl-3 pr-8 py-1.5 text-sm text-dark dark:text-white focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
+                                  >
+                                    <option value="draft">{statusLabels.draft}</option>
+                                    <option value="in_progress">{statusLabels.in_progress}</option>
+                                    <option value="completed">{statusLabels.completed}</option>
+                                  </select>
+                                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
+                                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M5 7.5L10 12.5L15 7.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                                  </span>
+                                </div>
                               </td>
                             </tr>
                           );
@@ -1053,18 +1058,23 @@ export default function Improve() {
                     </span>
                   )}
                   <div className="ml-auto flex items-center gap-2">
-                    <select
-                      value={item.status || 'draft'}
-                      onChange={(e) => {
-                        handleStatusChange(item, e.target.value);
-                        setDrawerItem({ ...item, status: e.target.value });
-                      }}
-                      className="text-sm border border-gray-200 dark:border-dark-3 rounded-lg px-3 py-1.5 cursor-pointer bg-white dark:bg-dark-2 text-dark dark:text-white"
-                    >
-                      <option value="draft">{statusLabels.draft}</option>
-                      <option value="in_progress">{statusLabels.in_progress}</option>
-                      <option value="completed">{statusLabels.completed}</option>
-                    </select>
+                    <div className="relative inline-block">
+                      <select
+                        value={item.status || 'draft'}
+                        onChange={(e) => {
+                          handleStatusChange(item, e.target.value);
+                          setDrawerItem({ ...item, status: e.target.value });
+                        }}
+                        className="appearance-none [background-image:none] text-sm border border-gray-200 dark:border-dark-3 rounded-lg pl-3 pr-8 py-1.5 cursor-pointer bg-white dark:bg-dark-2 text-dark dark:text-white"
+                      >
+                        <option value="draft">{statusLabels.draft}</option>
+                        <option value="in_progress">{statusLabels.in_progress}</option>
+                        <option value="completed">{statusLabels.completed}</option>
+                      </select>
+                      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
+                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M5 7.5L10 12.5L15 7.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </span>
+                    </div>
                     {!isViewer && (
                       <button
                         onClick={() => {
@@ -1080,58 +1090,59 @@ export default function Improve() {
                 </div>
               </div>
 
-              {/* ドロワーコンテンツ: 左テキスト＋右モックアップの2カラム */}
+              {/* ドロワーコンテンツ */}
               <div className="flex-1 overflow-hidden flex">
 
                 {/* 左カラム: テキスト情報 */}
-                <div className="w-[400px] shrink-0 border-r border-gray-100 dark:border-dark-3 overflow-y-auto p-8">
-                  <div className="mb-5">
-                    <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-2 flex items-center gap-1.5">
-                      <FileText className="w-4 h-4 text-primary" />
-                      改善内容
-                    </h3>
-                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-7">{item.description || '—'}</p>
+                <div className={`shrink-0 border-r border-gray-100 dark:border-dark-3 overflow-y-auto p-8 ${item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped) ? 'w-[400px]' : 'w-full border-r-0'}`}>
+                  <div className={`${!item.mockupHtml && (!item.targetPageUrl || item.mockupSkipped) ? 'max-w-3xl mx-auto' : ''}`}>
+                    <div className="mb-6">
+                      <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-2 flex items-center gap-1.5">
+                        <FileText className="w-4 h-4 text-primary" />
+                        改善内容
+                      </h3>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-7">{item.description || '—'}</p>
+                    </div>
+
+                    {item.expectedImpact && (
+                      <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 mb-6">
+                        <div className="text-sm font-bold text-green-800 dark:text-green-300 mb-1.5 flex items-center gap-1.5">
+                          <TrendingUp className="w-4 h-4" />
+                          期待する効果
+                        </div>
+                        <p className="text-sm text-green-800 dark:text-green-300">{item.expectedImpact}</p>
+                      </div>
+                    )}
+
+                    <hr className="border-gray-200 dark:border-dark-3 mb-6" />
+
+                    <div className="grid grid-cols-2 gap-4 mb-3">
+                      <div className="bg-gray-50 dark:bg-dark-3 rounded-xl p-5">
+                        <div className="text-sm font-bold text-gray-800 dark:text-white mb-1.5 flex items-center gap-1.5">
+                          <span className="text-green-600 text-base font-bold">¥</span>
+                          目安料金
+                        </div>
+                        <div className={`font-bold text-gray-900 dark:text-white ${item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped) ? 'text-lg' : 'text-xl'}`}>
+                          {formatEstimatedPriceLabel(item.estimatedLaborHours)}
+                        </div>
+                        <div className="text-xs text-body-color mt-0.5">（税別）</div>
+                      </div>
+                      <div className="bg-gray-50 dark:bg-dark-3 rounded-xl p-5">
+                        <div className="text-sm font-bold text-gray-800 dark:text-white mb-1.5 flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 text-blue-500" />
+                          目安納期
+                        </div>
+                        <div className={`font-bold text-gray-900 dark:text-white ${item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped) ? 'text-lg' : 'text-xl'}`}>
+                          {formatEstimatedDeliveryLabel(item.estimatedLaborHours)}
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-5">※目安料金・納期についてはAIが算出した目安となり実際の料金・納期とは異なる可能性があります。</p>
                   </div>
-
-                  {/* 期待する効果 */}
-                  {item.expectedImpact && (
-                    <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 mb-5">
-                      <div className="text-sm font-bold text-green-800 dark:text-green-300 mb-1.5 flex items-center gap-1.5">
-                        <TrendingUp className="w-4 h-4" />
-                        期待する効果
-                      </div>
-                      <p className="text-sm text-green-800 dark:text-green-300">{item.expectedImpact}</p>
-                    </div>
-                  )}
-
-                  <hr className="border-gray-200 dark:border-dark-3 mb-5" />
-
-                  {/* 目安料金・納期 */}
-                  <div className="grid grid-cols-2 gap-3 mb-3">
-                    <div className="bg-gray-50 dark:bg-dark-3 rounded-xl p-4">
-                      <div className="text-sm font-bold text-gray-800 dark:text-white mb-1.5 flex items-center gap-1.5">
-                        <span className="text-green-600 text-base font-bold">¥</span>
-                        目安料金
-                      </div>
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        {formatEstimatedPriceLabel(item.estimatedLaborHours)}
-                      </div>
-                      <div className="text-xs text-body-color mt-0.5">（税別）</div>
-                    </div>
-                    <div className="bg-gray-50 dark:bg-dark-3 rounded-xl p-4">
-                      <div className="text-sm font-bold text-gray-800 dark:text-white mb-1.5 flex items-center gap-1.5">
-                        <Clock className="w-4 h-4 text-blue-500" />
-                        目安納期
-                      </div>
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        {formatEstimatedDeliveryLabel(item.estimatedLaborHours)}
-                      </div>
-                    </div>
-                  </div>
-                  <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-5">※目安料金・納期についてはAIが算出した目安となり実際の料金・納期とは異なる可能性があります。</p>
                 </div>
 
-                {/* 右カラム: モックアップ（単一スクロール） */}
+                {/* 右カラム: モックアップ（モックアップ対象の場合のみ表示） */}
+                {(item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped)) && (
                 <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-dark">
                   {item.mockupHtml ? (
                     <>
@@ -1380,34 +1391,36 @@ export default function Improve() {
                         </div>
                       </div>
                     </>
-                  ) : (
-                    <div className="flex h-full items-center justify-center p-8">
-                      <div className="text-center max-w-xs">
-                        <div className="mx-auto mb-3 h-12 w-12 rounded-full bg-gray-100 dark:bg-dark-3 flex items-center justify-center">
-                          <svg className="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="m2.25 15.75 5.159-5.159a2.25 2.25 0 0 1 3.182 0l5.159 5.159m-1.5-1.5 1.409-1.409a2.25 2.25 0 0 1 3.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0 0 22.5 18.75V5.25A2.25 2.25 0 0 0 20.25 3H3.75A2.25 2.25 0 0 0 1.5 5.25v13.5A2.25 2.25 0 0 0 3.75 21Z" /></svg>
-                        </div>
-                        <p className="text-sm text-gray-400 dark:text-gray-500">モックアップはありません</p>
-                      </div>
-                    </div>
-                  )}
+                  ) : null}
                 </div>
+                )}
               </div>
 
               {/* ドロワーフッター */}
               <div className="px-10 py-4 border-t border-gray-200 dark:border-dark-3 flex items-center justify-between shrink-0 bg-gray-50/80 dark:bg-dark-3">
                 {!isViewer ? (
-                  <Button
-                    color="red"
-                    outline
-                    onClick={() => {
-                      if (window.confirm('この改善案を削除しますか？')) {
-                        deleteMutation.mutate(item.id);
-                        closeDrawer();
-                      }
-                    }}
-                  >
-                    削除
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setIsConsultationModalOpen(true)}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:from-blue-600 hover:to-purple-600 hover:shadow-md"
+                    >
+                      <Mail className="h-4 w-4" />
+                      制作会社に相談する
+                    </button>
+                    <Button
+                      color="red"
+                      outline
+                      onClick={() => {
+                        if (window.confirm('この改善案を削除しますか？')) {
+                          deleteMutation.mutate(item.id);
+                          closeDrawer();
+                        }
+                      }}
+                    >
+                      削除
+                    </Button>
+                  </div>
                 ) : <div />}
                 <div className="flex items-center gap-3">
                   <button

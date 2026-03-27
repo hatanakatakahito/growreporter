@@ -16,11 +16,14 @@ const incrementExportUsageFn = httpsCallable(functions, 'incrementExportUsage');
  * 全分析ページのデータを取得し、各形式で生成・ダウンロードを実行する
  */
 export function useAnalysisExport() {
-  const { selectedSite, selectedSiteId, dateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const { checkCanGenerate } = usePlan();
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState('');
+
+  // 比較モードが有効かどうか
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange;
 
   const canExportExcel = checkCanGenerate('excelExport');
   const canExportPptx = checkCanGenerate('pptxExport');
@@ -35,7 +38,7 @@ export function useAnalysisExport() {
     setExportProgress('データ取得中...');
 
     try {
-      const allData = await fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser);
+      const allData = await fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser, isComparing ? comparisonDateRange : null);
       const startDate = typeof dateRange.from === 'string' ? dateRange.from : format(dateRange.from, 'yyyy-MM-dd');
       const endDate = typeof dateRange.to === 'string' ? dateRange.to : format(dateRange.to, 'yyyy-MM-dd');
 
@@ -54,7 +57,7 @@ export function useAnalysisExport() {
     } finally {
       setIsExporting(false);
     }
-  }, [selectedSiteId, selectedSite, dateRange, currentUser, canExportExcel]);
+  }, [selectedSiteId, selectedSite, dateRange, currentUser, canExportExcel, isComparing, comparisonDateRange]);
 
   const handleExportPptx = useCallback(async () => {
     if (!selectedSiteId || !dateRange?.from || !dateRange?.to) return;
@@ -66,7 +69,7 @@ export function useAnalysisExport() {
     setExportProgress('データ取得中...');
 
     try {
-      const allData = await fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser);
+      const allData = await fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser, isComparing ? comparisonDateRange : null);
       const startDate = typeof dateRange.from === 'string' ? dateRange.from : format(dateRange.from, 'yyyy-MM-dd');
       const endDate = typeof dateRange.to === 'string' ? dateRange.to : format(dateRange.to, 'yyyy-MM-dd');
 
@@ -85,7 +88,7 @@ export function useAnalysisExport() {
     } finally {
       setIsExporting(false);
     }
-  }, [selectedSiteId, selectedSite, dateRange, currentUser, canExportPptx]);
+  }, [selectedSiteId, selectedSite, dateRange, currentUser, canExportPptx, isComparing, comparisonDateRange]);
 
   return {
     isExporting,
@@ -98,7 +101,7 @@ export function useAnalysisExport() {
 }
 
 // ─── 全データ並列取得（Excel/PPTX共通） ─────────────────────
-async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser) {
+async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser, comparisonDateRange = null) {
   const startDate = typeof dateRange.from === 'string' ? dateRange.from : format(dateRange.from, 'yyyy-MM-dd');
   const endDate = typeof dateRange.to === 'string' ? dateRange.to : format(dateRange.to, 'yyyy-MM-dd');
 
@@ -227,6 +230,38 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
     allMemos: fetchAllMemos(selectedSiteId),
   };
 
+  // ─── 比較期間データ（比較モード時のみ） ─────────────────────
+  if (comparisonDateRange) {
+    const compStart = typeof comparisonDateRange.from === 'string' ? comparisonDateRange.from : format(comparisonDateRange.from, 'yyyy-MM-dd');
+    const compEnd = typeof comparisonDateRange.to === 'string' ? comparisonDateRange.to : format(comparisonDateRange.to, 'yyyy-MM-dd');
+    const compEndObj = new Date(compEnd);
+    const compMonthlyStart = format(startOfMonth(sub(startOfMonth(compEndObj), { months: 12 })), 'yyyy-MM-dd');
+
+    promises.comp_monthly = fetchMonthly({ siteId: selectedSiteId, startDate: compMonthlyStart, endDate: compEnd })
+      .then(r => r.data).catch(() => null);
+    promises.comp_daily = fetchDaily({ siteId: selectedSiteId, startDate: compStart, endDate: compEnd })
+      .then(r => r.data).catch(() => null);
+    promises.comp_channels = fetchChannels({ siteId: selectedSiteId, startDate: compStart, endDate: compEnd })
+      .then(r => r.data).catch(() => null);
+    promises.comp_referrals = fetchReferrals({ siteId: selectedSiteId, startDate: compStart, endDate: compEnd })
+      .then(r => r.data).catch(() => null);
+    promises.comp_pages = fetchGA4({
+      siteId: selectedSiteId, startDate: compStart, endDate: compEnd,
+      metrics: ['screenPageViews', 'sessions', 'activeUsers', 'averageSessionDuration', 'engagementRate'],
+      dimensions: ['pagePath', 'pageTitle'],
+    }).then(r => r.data).catch(() => null);
+    promises.comp_landingPages = fetchLandingPages({ siteId: selectedSiteId, startDate: compStart, endDate: compEnd })
+      .then(r => r.data).catch(() => null);
+    promises.comp_summaryGA4 = fetchGA4({
+      siteId: selectedSiteId, startDate: compStart, endDate: compEnd,
+      metrics: ['sessions', 'totalUsers', 'newUsers', 'screenPageViews', 'engagementRate'],
+      dimensions: [],
+    }).then(r => r.data).catch(() => null);
+    promises.comp_summaryGSC = hasGSC
+      ? fetchGSC({ siteId: selectedSiteId, startDate: compStart, endDate: compEnd }).then(r => r.data).catch(() => null)
+      : Promise.resolve(null);
+  }
+
   // 逆算フロー（設定がある場合のみ）
   if (reverseFlowSettings.length > 0) {
     promises.reverseFlows = Promise.all(
@@ -277,6 +312,31 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
     conversions: results.summaryGA4?.metrics?.conversions || {},
   } : null;
 
+  // 比較期間のサマリー
+  let compSummaryMetrics = null;
+  if (comparisonDateRange && (results.comp_summaryGA4 || results.comp_summaryGSC)) {
+    compSummaryMetrics = {
+      metrics: {
+        sessions: results.comp_summaryGA4?.metrics?.sessions || 0,
+        totalUsers: results.comp_summaryGA4?.metrics?.totalUsers || 0,
+        newUsers: results.comp_summaryGA4?.metrics?.newUsers || 0,
+        pageViews: results.comp_summaryGA4?.metrics?.screenPageViews || 0,
+        engagementRate: results.comp_summaryGA4?.metrics?.engagementRate || 0,
+        conversions: results.comp_summaryGA4?.metrics?.totalConversions || 0,
+        clicks: results.comp_summaryGSC?.metrics?.clicks || 0,
+        impressions: results.comp_summaryGSC?.metrics?.impressions || 0,
+        ctr: results.comp_summaryGSC?.metrics?.ctr || 0,
+        position: results.comp_summaryGSC?.metrics?.position || 0,
+      },
+    };
+  }
+
+  // 比較期間情報
+  const comparisonInfo = comparisonDateRange ? {
+    from: typeof comparisonDateRange.from === 'string' ? comparisonDateRange.from : format(comparisonDateRange.from, 'yyyy-MM-dd'),
+    to: typeof comparisonDateRange.to === 'string' ? comparisonDateRange.to : format(comparisonDateRange.to, 'yyyy-MM-dd'),
+  } : null;
+
   // allData組み立て
   return {
     siteUrl: selectedSite?.siteUrl || '',
@@ -300,6 +360,17 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
     reverseFlows: results.reverseFlows || [],
     aiAnalysis: results.aiAnalysis || {},
     memos: results.allMemos || {},
+    // 比較データ
+    comparison: comparisonDateRange ? {
+      dateRange: comparisonInfo,
+      summaryMetrics: compSummaryMetrics,
+      monthlyData: results.comp_monthly?.monthlyData || null,
+      daily: results.comp_daily || null,
+      channels: results.comp_channels || null,
+      referrals: results.comp_referrals || null,
+      pages: results.comp_pages || null,
+      landingPages: results.comp_landingPages || null,
+    } : null,
   };
 }
 

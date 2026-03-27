@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { setPageTitle } from '../../utils/pageTitle';
 import { useSite } from '../../contexts/SiteContext';
 import { useGA4Data } from '../../hooks/useGA4Data';
+import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
@@ -32,7 +33,7 @@ import {
  * file_downloadイベントを追跡
  */
 export default function FileDownloads() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
@@ -69,9 +70,21 @@ export default function FileDownloads() {
     ga4DimensionFilter
   );
 
+  // 比較期間データ
+  const { data: compDownloadData } = useGA4Data(
+    comparisonDateRange ? selectedSiteId : null,
+    comparisonDateRange?.from,
+    comparisonDateRange?.to,
+    ['eventCount', 'activeUsers'],
+    ['eventName', 'linkUrl', 'fileName'],
+    ga4DimensionFilter
+  );
+
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compDownloadData;
+
   // テーブル用のデータ整形（イベント数降順）
   // file_downloadイベントのみフィルタリング
-  const tableData =
+  const tableData = useMemo(() =>
     downloadData?.rows
       ?.filter((row) => row.eventName === 'file_download')
       ?.map((row) => ({
@@ -80,7 +93,21 @@ export default function FileDownloads() {
         downloads: row.eventCount || 0,
         users: row.activeUsers || 0,
       }))
-      .sort((a, b) => b.downloads - a.downloads) || [];
+      ?.sort((a, b) => b.downloads - a.downloads) || [],
+    [downloadData]
+  );
+
+  const mergedTableData = useMemo(() => {
+    if (!isComparing || !compDownloadData?.rows) return tableData;
+    const compTable = compDownloadData.rows
+      .filter((row) => row.eventName === 'file_download')
+      .map((row) => ({
+        fileName: row.fileName || '(不明)',
+        downloads: row.eventCount || 0,
+        users: row.activeUsers || 0,
+      }));
+    return mergeComparisonRows(tableData, compTable, 'fileName', ['downloads', 'users']);
+  }, [tableData, isComparing, compDownloadData]);
 
   // グラフ用のデータ（上位10件）
   const chartData = [...tableData].slice(0, 10);
@@ -100,22 +127,22 @@ export default function FileDownloads() {
   // カスタム凡例
   const CustomLegend = ({ payload }) => {
     return (
-      <div className="mt-4 flex justify-center gap-6">
+      <div className="mt-4 flex flex-wrap justify-center gap-4">
         {payload.map((entry, index) => (
           <div
             key={`legend-${index}`}
-            className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-70"
+            className="flex cursor-pointer items-center gap-1.5 transition-opacity hover:opacity-70"
             onClick={() => handleLegendClick(entry.dataKey)}
           >
             <div
-              className="h-3 w-3 rounded"
+              className="h-2.5 w-2.5 rounded"
               style={{
                 backgroundColor: hiddenSeries[entry.dataKey] ? '#ccc' : entry.color,
                 opacity: hiddenSeries[entry.dataKey] ? 0.3 : 1,
               }}
             />
             <span
-              className="text-sm"
+              className="text-xs"
               style={{
                 color: hiddenSeries[entry.dataKey] ? '#ccc' : entry.color,
                 textDecoration: hiddenSeries[entry.dataKey] ? 'line-through' : 'none',
@@ -234,7 +261,7 @@ export default function FileDownloads() {
                         height={120}
                         interval={0}
                       />
-                      <YAxis />
+                      <YAxis tickFormatter={(v) => v.toLocaleString()} />
                       <RechartsTooltip content={<CustomTooltip />} />
                       <Legend content={<CustomLegend />} />
                       <Bar
@@ -255,6 +282,7 @@ export default function FileDownloads() {
               ) : (
                 <DataTable
                   tableKey="analysis-file-downloads"
+                  isComparing={isComparing}
                   columns={[
                     {
                       key: 'fileName',
@@ -286,6 +314,7 @@ export default function FileDownloads() {
                       sortable: true,
                       align: 'right',
                       tooltip: 'downloads',
+                      comparison: true,
                     },
                     {
                       key: 'users',
@@ -294,12 +323,14 @@ export default function FileDownloads() {
                       sortable: true,
                       align: 'right',
                       tooltip: 'users',
+                      comparison: true,
                     },
                   ]}
-                  data={tableData}
+                  data={mergedTableData}
                   pageSize={25}
                   showPagination={true}
                   emptyMessage="表示するデータがありません。"
+                  showTotals
                 />
               )}
             </>
@@ -327,6 +358,8 @@ export default function FileDownloads() {
                         startDate: dateRange?.from,
                         endDate: dateRange?.to,
                       }}
+                      comparisonRawData={isComparing ? compDownloadData : null}
+                      comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
                       onLimitExceeded={() => setIsLimitModalOpen(true)}
                     />
                   ) : (

@@ -136,22 +136,22 @@ export default function Hour() {
   // カスタム凡例
   const CustomLegend = ({ payload }) => {
     return (
-      <div className="mt-4 flex flex-wrap justify-center gap-6">
+      <div className="mt-4 flex flex-wrap justify-center gap-4">
         {payload.map((entry, index) => (
           <div
             key={`legend-${index}`}
-            className="flex cursor-pointer items-center gap-2 transition-opacity hover:opacity-70"
+            className="flex cursor-pointer items-center gap-1.5 transition-opacity hover:opacity-70"
             onClick={() => handleLegendClick(entry.dataKey)}
           >
             <div
-              className="h-4 w-4 rounded"
+              className="h-3 w-3 rounded"
               style={{
                 backgroundColor: hiddenBars[entry.dataKey] ? '#ccc' : entry.color,
                 opacity: hiddenBars[entry.dataKey] ? 0.6 : 1,
               }}
             />
             <span
-              className="text-sm"
+              className="text-xs"
               style={{
                 color: hiddenBars[entry.dataKey] ? '#ccc' : '#374151',
                 textDecoration: hiddenBars[entry.dataKey] ? 'line-through' : 'none',
@@ -267,11 +267,13 @@ export default function Hour() {
                     <YAxis
                       yAxisId="left"
                       label={{ value: '訪問者', angle: -90, position: 'insideLeft' }}
+                      tickFormatter={(v) => v.toLocaleString()}
                     />
                     <YAxis
                       yAxisId="right"
                       orientation="right"
                       label={{ value: 'コンバージョン', angle: 90, position: 'insideRight' }}
+                      tickFormatter={(v) => v.toLocaleString()}
                     />
                     <RechartsTooltip content={<CustomTooltip />} />
                     <Legend content={<CustomLegend />} />
@@ -400,6 +402,7 @@ export default function Hour() {
                 pageSize={24}
                 showPagination={false}
                 emptyMessage="表示するデータがありません。"
+                showTotals
               />
               )}
             </>
@@ -427,6 +430,8 @@ export default function Hour() {
                       startDate: dateRange?.from || new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
                       endDate: dateRange?.to || new Date(new Date().getFullYear(), new Date().getMonth(), 0),
                     }}
+                    comparisonRawData={isComparing ? compHourlyData : null}
+                    comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
                     onLimitExceeded={() => setIsLimitModalOpen(true)}
                   />
                 ) : (

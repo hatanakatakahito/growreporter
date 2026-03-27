@@ -295,11 +295,13 @@ export default function Week() {
                       <YAxis
                         yAxisId="left"
                         label={{ value: '訪問者', angle: -90, position: 'insideLeft' }}
+                        tickFormatter={(v) => v.toLocaleString()}
                       />
                       <YAxis
                         yAxisId="right"
                         orientation="right"
                         label={{ value: 'コンバージョン', angle: 90, position: 'insideRight' }}
+                        tickFormatter={(v) => v.toLocaleString()}
                       />
                       <RechartsTooltip />
                       <Legend 
@@ -426,6 +428,7 @@ export default function Week() {
                   pageSize={7}
                   showPagination={false}
                   emptyMessage="表示するデータがありません。"
+                  showTotals
                 />
               )}
             </>
@@ -453,6 +456,8 @@ export default function Week() {
                       startDate: dateRange?.from || new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
                       endDate: dateRange?.to || new Date(new Date().getFullYear(), new Date().getMonth(), 0),
                     }}
+                    comparisonRawData={isComparing ? compWeeklyData : null}
+                    comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
                     onLimitExceeded={() => setIsLimitModalOpen(true)}
                   />
                 ) : (

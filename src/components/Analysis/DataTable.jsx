@@ -70,6 +70,7 @@ export default function DataTable({
   showPagination = true,
   emptyMessage = 'データがありません',
   isComparing = false,
+  showTotals = false,
 }) {
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState('desc');
@@ -154,6 +155,34 @@ export default function DataTable({
         return value;
     }
   };
+
+  // 合計行の計算（全データ対象、ページネーション前のデータを使用）
+  const totalsRow = useMemo(() => {
+    if (!showTotals || !data || data.length === 0) return null;
+    const row = {};
+    displayColumns.forEach((col, idx) => {
+      if (idx === 0) {
+        row[col.key] = '合計';
+        return;
+      }
+      const totalType = col.totalType || (col.format === 'number' ? 'sum' : col.format === 'percent' || col.format === 'decimal' || col.format === 'duration' ? 'avg' : 'none');
+      if (totalType === 'none') {
+        row[col.key] = null;
+        return;
+      }
+      const values = data.map(r => r[col.key]).filter(v => typeof v === 'number' && !isNaN(v));
+      if (values.length === 0) {
+        row[col.key] = null;
+        return;
+      }
+      if (totalType === 'sum') {
+        row[col.key] = values.reduce((a, b) => a + b, 0);
+      } else {
+        row[col.key] = values.reduce((a, b) => a + b, 0) / values.length;
+      }
+    });
+    return row;
+  }, [showTotals, data, displayColumns]);
 
   if (!data || data.length === 0) {
     return (
@@ -303,6 +332,28 @@ export default function DataTable({
               );
             })}
           </tbody>
+          {totalsRow && (
+            <tfoot>
+              <tr className="border-t-2 border-primary-mid/30 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5 font-semibold">
+                {displayColumns.map((column) => (
+                  <td
+                    key={column.key}
+                    className={`whitespace-nowrap px-4 py-3 text-sm text-dark ${
+                      column.align === 'right' ? 'text-right' : 'text-left'
+                    }`}
+                  >
+                    {column.key === displayColumns[0]?.key
+                      ? totalsRow[column.key]
+                      : totalsRow[column.key] != null
+                        ? (column.render
+                            ? column.render(totalsRow[column.key], totalsRow)
+                            : formatValue(totalsRow[column.key], column.format))
+                        : ''}
+                  </td>
+                ))}
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
 
