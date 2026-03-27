@@ -18,6 +18,8 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
+import ComparisonBadge from '../../components/Analysis/ComparisonBadge';
+import { calculateChangePercent } from '../../utils/comparisonHelpers';
 import {
   ResponsiveContainer,
   LineChart,
@@ -34,7 +36,7 @@ import {
  * 登録されているコンバージョンイベントの一覧を表示
  */
 export default function ConversionList() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('table');
@@ -122,6 +124,60 @@ export default function ConversionList() {
     enabled: !!selectedSiteId && !!monthlyDateRange.start && conversionEvents.length > 0,
     retry: false,
   });
+
+  // 比較期間の13ヶ月分を計算
+  const compMonthlyDateRange = useMemo(() => {
+    if (!comparisonDateRange?.to) return { start: null, end: null };
+    const endDate = new Date(comparisonDateRange.to);
+    const startDate = new Date(endDate);
+    startDate.setMonth(startDate.getMonth() - 12);
+    startDate.setDate(1);
+    const formatDate = (date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    return { start: formatDate(startDate), end: formatDate(endDate) };
+  }, [comparisonDateRange?.to]);
+
+  // 比較期間の月次コンバージョンデータ
+  const { data: compConversionData } = useQuery({
+    queryKey: ['ga4-monthly-conversions-comp', selectedSiteId, compMonthlyDateRange],
+    queryFn: async () => {
+      const fn = httpsCallable(functions, 'fetchGA4MonthlyConversionData');
+      const result = await fn({
+        siteId: selectedSiteId,
+        startDate: compMonthlyDateRange.start,
+        endDate: compMonthlyDateRange.end,
+      });
+      return result.data;
+    },
+    enabled: !!selectedSiteId && !!compMonthlyDateRange.start && conversionEvents.length > 0 && comparisonMode !== 'none',
+    retry: false,
+  });
+
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compConversionData;
+
+  // 比較データのマップ（yearMonth → row）と月オフセット計算
+  const { compDataMap, monthOffset } = useMemo(() => {
+    if (!isComparing || !compConversionData?.data) return { compDataMap: {}, monthOffset: 0 };
+    const map = {};
+    compConversionData.data.forEach(row => { map[row.yearMonth] = row; });
+    // メイン期間と比較期間の月差を計算
+    const mainEnd = new Date(dateRange.to);
+    const compEnd = new Date(comparisonDateRange.to);
+    const offset = (mainEnd.getFullYear() - compEnd.getFullYear()) * 12 + (mainEnd.getMonth() - compEnd.getMonth());
+    return { compDataMap: map, monthOffset: offset };
+  }, [isComparing, compConversionData, dateRange.to, comparisonDateRange?.to]);
+
+  // 現在のyearMonthから比較期間のyearMonthを算出
+  const getCompYearMonth = (currentYearMonth) => {
+    const year = parseInt(currentYearMonth.slice(0, 4));
+    const month = parseInt(currentYearMonth.slice(4));
+    const compDate = new Date(year, month - 1 - monthOffset, 1);
+    return `${compDate.getFullYear()}${String(compDate.getMonth() + 1).padStart(2, '0')}`;
+  };
 
   // グラフ用のカラー
   const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#6366f1'];
@@ -305,31 +361,63 @@ export default function ConversionList() {
                       </thead>
                       <tbody>
                         {[...displayData].reverse().map((row) => {
-                          // 各行の合計を計算
                           const rowTotal = conversionEvents.reduce(
                             (sum, event) => sum + (row[event.eventName] || 0),
                             0
                           );
-                          
+                          // 比較データ
+                          const compYM = isComparing ? getCompYearMonth(row.yearMonth) : null;
+                          const compRow = compYM ? compDataMap[compYM] : null;
+                          const compRowTotal = compRow
+                            ? conversionEvents.reduce((sum, event) => sum + (compRow[event.eventName] || 0), 0)
+                            : null;
+
                           return (
                             <tr
                               key={row.yearMonth}
                               className="border-b border-stroke last:border-0 dark:border-dark-3"
                             >
-                              <td className="whitespace-nowrap px-4 py-3 text-sm font-medium text-dark dark:text-white">
+                              <td className="whitespace-nowrap px-4 py-2.5 text-sm font-medium text-dark dark:text-white">
                                 {`${row.yearMonth.slice(0, 4)}年${row.yearMonth.slice(4)}月`}
                               </td>
-                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-bold text-dark dark:text-white">
-                                {rowTotal.toLocaleString()}
+                              <td className="whitespace-nowrap px-4 py-2.5 text-right">
+                                {isComparing ? (
+                                  <div className="grid gap-0.5" style={{ gridTemplateColumns: '1fr 72px' }}>
+                                    <span className="text-sm font-bold text-right text-dark dark:text-white">{rowTotal.toLocaleString()}</span>
+                                    {compRowTotal != null ? (
+                                      <span className="pl-1.5"><ComparisonBadge value={calculateChangePercent(rowTotal, compRowTotal)} /></span>
+                                    ) : <span></span>}
+                                    {compRowTotal != null ? (
+                                      <span className="text-sm text-right text-gray-400">{compRowTotal.toLocaleString()}</span>
+                                    ) : <span></span>}
+                                    <span></span>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm font-bold text-dark dark:text-white">{rowTotal.toLocaleString()}</span>
+                                )}
                               </td>
-                              {conversionEvents.map((event) => (
-                                <td
-                                  key={event.eventName}
-                                  className="whitespace-nowrap px-4 py-3 text-right text-sm text-dark dark:text-white"
-                                >
-                                  {(row[event.eventName] || 0).toLocaleString()}
-                                </td>
-                              ))}
+                              {conversionEvents.map((event) => {
+                                const val = row[event.eventName] || 0;
+                                const compVal = compRow ? (compRow[event.eventName] || 0) : null;
+                                return (
+                                  <td key={event.eventName} className="whitespace-nowrap px-4 py-2.5 text-right">
+                                    {isComparing ? (
+                                      <div className="grid gap-0.5" style={{ gridTemplateColumns: '1fr 72px' }}>
+                                        <span className="text-sm text-right text-dark dark:text-white">{val.toLocaleString()}</span>
+                                        {compVal != null ? (
+                                          <span className="pl-1.5"><ComparisonBadge value={calculateChangePercent(val, compVal)} /></span>
+                                        ) : <span></span>}
+                                        {compVal != null ? (
+                                          <span className="text-sm text-right text-gray-400">{compVal.toLocaleString()}</span>
+                                        ) : <span></span>}
+                                        <span></span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-dark dark:text-white">{val.toLocaleString()}</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
                             </tr>
                           );
                         })}
@@ -338,17 +426,43 @@ export default function ConversionList() {
                         {(() => {
                           const allData = [...displayData].reverse();
                           const grandTotal = allData.reduce((sum, row) => sum + conversionEvents.reduce((s, e) => s + (row[e.eventName] || 0), 0), 0);
+                          // 比較の合計
+                          const compAllData = isComparing && compConversionData?.data ? compConversionData.data : [];
+                          const compGrandTotal = isComparing
+                            ? compAllData.reduce((sum, row) => sum + conversionEvents.reduce((s, e) => s + (row[e.eventName] || 0), 0), 0)
+                            : null;
                           return (
                             <tr className="border-t-2 border-primary-mid/30 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5 font-semibold">
                               <td className="whitespace-nowrap px-4 py-3 text-sm text-dark dark:text-white">合計</td>
-                              <td className="whitespace-nowrap px-4 py-3 text-right text-sm font-bold text-dark dark:text-white">
-                                {grandTotal.toLocaleString()}
+                              <td className="whitespace-nowrap px-4 py-3 text-right">
+                                {isComparing && compGrandTotal != null ? (
+                                  <div className="grid gap-0.5" style={{ gridTemplateColumns: '1fr 72px' }}>
+                                    <span className="text-sm font-bold text-right text-dark dark:text-white">{grandTotal.toLocaleString()}</span>
+                                    <span className="pl-1.5"><ComparisonBadge value={calculateChangePercent(grandTotal, compGrandTotal)} /></span>
+                                    <span className="text-sm text-right text-gray-400">{compGrandTotal.toLocaleString()}</span>
+                                    <span></span>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm font-bold text-dark dark:text-white">{grandTotal.toLocaleString()}</span>
+                                )}
                               </td>
                               {conversionEvents.map((event) => {
                                 const eventTotal = allData.reduce((sum, row) => sum + (row[event.eventName] || 0), 0);
+                                const compEventTotal = isComparing
+                                  ? compAllData.reduce((sum, row) => sum + (row[event.eventName] || 0), 0)
+                                  : null;
                                 return (
-                                  <td key={event.eventName} className="whitespace-nowrap px-4 py-3 text-right text-sm text-dark dark:text-white">
-                                    {eventTotal.toLocaleString()}
+                                  <td key={event.eventName} className="whitespace-nowrap px-4 py-3 text-right">
+                                    {isComparing && compEventTotal != null ? (
+                                      <div className="grid gap-0.5" style={{ gridTemplateColumns: '1fr 72px' }}>
+                                        <span className="text-sm text-right text-dark dark:text-white">{eventTotal.toLocaleString()}</span>
+                                        <span className="pl-1.5"><ComparisonBadge value={calculateChangePercent(eventTotal, compEventTotal)} /></span>
+                                        <span className="text-sm text-right text-gray-400">{compEventTotal.toLocaleString()}</span>
+                                        <span></span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-sm text-dark dark:text-white">{eventTotal.toLocaleString()}</span>
+                                    )}
                                   </td>
                                 );
                               })}
@@ -412,6 +526,8 @@ export default function ConversionList() {
                         startDate: monthlyDateRange.start,
                         endDate: monthlyDateRange.end,
                       }}
+                      comparisonRawData={isComparing ? compConversionData : null}
+                      comparisonPeriod={isComparing ? { startDate: compMonthlyDateRange.start, endDate: compMonthlyDateRange.end } : null}
                       onLimitExceeded={() => setIsLimitModalOpen(true)}
                     />
                   ) : (

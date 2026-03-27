@@ -112,7 +112,7 @@ export default function AnalysisSummary() {
   if (isLoading && !data) {
     return (
       <div className="flex h-full flex-col">
-        <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
+        <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} hideComparison={true} />
         <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
           <div className="flex min-h-[60vh] items-center justify-center">
             <LoadingSpinner message="データを読み込んでいます..." />
@@ -216,6 +216,7 @@ export default function AnalysisSummary() {
         setDateRange={updateDateRange}
         showDateRange={true}
         showSiteInfo={false}
+        hideComparison={true}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         <div className="mx-auto max-w-content px-6 py-10">

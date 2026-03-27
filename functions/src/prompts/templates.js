@@ -7,11 +7,47 @@
 
 // ==================== 共通ヘルパー ====================
 
-function getCommonOutputRules() {
+function getCommonOutputRules(hasComparison = false) {
+  if (hasComparison) {
+    return `
+【出力形式 — 比較データあり】
+冒頭: 全体の変化を2〜3文（150〜200文字）で要約。主要指標の増減、主因、全体の傾向を具体的な数値とともに述べる。
+その後: 注目すべき変化を3〜5個、「・」で始まる箇条書きで1行ずつ記載。
+
+出力例:
+全体流入は875→1,133で-22.8%と大きく減少しました。主因はダイレクト流入の落ち込みで、自然検索も減少した一方、直帰率は44.75%→40.57%へ改善しており、流入量は縮小しつつ質はやや改善しています。
+
+・ダイレクト流入の急減が全体UU減少を主導（434→254、-41.5%）
+・自然検索の減速で主力流入基盤が縮小（642→573、-10.7%）
+・流入減少の中でも直帰率は改善、低品質流入の縮小が示唆（44.75%→40.57%）
+・前週に流入を押し上げたニュース記事LPが失速し、反動減を発生（82→4、-95.1%）
+・リファラー/UTMの構成は大勢維持、ただしメール流入は消失（8→0）`;
+  }
+
+  // 比較データなしの場合
   return `
-【出力ルール】
-- 150-200文字程度の自然な文章（段落形式）
+【出力形式 — 比較データなし（当期のみ）】
+「前期値→当期値」の比較は絶対に書かないこと。【前期間データ】セクションがない場合、前期との比較は一切行わない。
+同じ期間内の異なる指標（例: 訪問数とユーザー数）を「前期→当期」と誤解して比較することは厳禁。
+
+冒頭: 当期データの全体像を2〜3文（150〜200文字）で要約。主要指標の数値、構成の特徴、目立つ傾向を具体的に述べる。
+その後: 注目すべきポイントを3〜5個、「・」で始まる箇条書きで1行ずつ記載。
+
+出力例:
+当期の訪問数は合計99,840回で、9種類のチャネルから流入がありました。検索からの流入が全体の52.5%を占め、主力チャネルとなっています。
+
+・検索からの流入が全体の過半数を占める（52,412回、構成比52.5%）
+・有料検索広告は訪問数に対して成果効率が低い（23,288回に対し成果9件、CVR 0.04%）
+・紹介（Referral）は少数ながら成果効率が高い（1,784回、CVR 0.17%）`;
+}
+
+function getCommonOutputRulesFooter() {
+  return `
+【共通ルール】
 - 前置きや挨拶は一切不要、分析内容から直接始める
+- **太字**、\`バッククォート\`、見出し記号（#）などの装飾は一切使わない。プレーンテキストのみ
+- 箇条書きは「・」（中黒）のみ使用。「-」「*」「1.」は使わない
+- 各箇条書きは1行で完結させる。箇条書きの下に補足説明文を書かない
 - 専門用語はできるだけ避け、やさしい日本語で書く。どうしても使う場合は括弧で補足
   - CVR → お問い合わせ率（CVR）
   - セッション → 訪問数
@@ -22,15 +58,15 @@ function getCommonOutputRules() {
   - ランディングページ → 最初に見られるページ（ランディングページ）
   - CTR → クリック率（CTR）
   - インプレッション → 検索結果での表示回数
-- 数値は基本的に実数値（○○回、○○件、○○人など）を優先し、素人にも直感的に分かるようにする
-- パーセンテージは前月比・前年比などの比較文脈でのみ使用する
+- 数値は実数値（○○回、○○件、○○人など）を優先
 - 「ポイント」表記は禁止
-- 改善提案は含めない
+- 改善提案は含めない（事実と分析のみ）
+- 各箇条書きには具体的な数値を必ず含める
 
 【厳守事項】
 - 提供されたデータにない数値は絶対に記載しないこと
+- 同じ期間内の異なる指標（訪問数とユーザー数など）を前期→当期と誤解して比較しないこと
 - 「承知しました」「分析します」などの前置き禁止
-- 箇条書き記号（•、-、1.など）禁止
 - 具体的な改善提案禁止`;
 }
 
@@ -44,7 +80,7 @@ function getComparisonContextBlock(metrics) {
   const comp = metrics.comparisonMetrics;
   const period = metrics.comparisonPeriod;
 
-  let text = `\n\n【比較期間データ】${period.startDate}〜${period.endDate}\n`;
+  let text = `\n\n【前期間データ（${period.startDate}〜${period.endDate}）】\n`;
 
   // 共通指標の比較テキスト生成
   const pairs = [
@@ -64,15 +100,18 @@ function getComparisonContextBlock(metrics) {
       const cur = metrics[key];
       const prev = comp[key];
       const change = prev > 0 ? (((cur - prev) / prev) * 100).toFixed(1) : null;
-      const changeText = change != null ? `（前期間比 ${change > 0 ? '+' : ''}${change}%）` : '';
-      shown.push(`${label}: 現在${cur.toLocaleString()} / 前期間${prev.toLocaleString()} ${changeText}`);
+      const changeText = change != null ? `（${change > 0 ? '+' : ''}${change}%）` : '';
+      shown.push(`${label}: 前期${prev.toLocaleString()} → 当期${cur.toLocaleString()} ${changeText}`);
     }
   }
   if (shown.length > 0) {
     text += shown.join('\n') + '\n';
   }
 
-  text += '\n上記の比較期間データがある場合、現在期間との違いや変化の傾向にも触れてください。';
+  // 詳細データの前期比較は当期テキスト側に対比形式で組み込み済み（buildComparisonDetailTexts）
+  // ここでは合計値の比較のみ表示
+
+  text += '\n重要: 当期データの各項目に「前期:」行が付いている場合、その前期値と比較して変化を分析してください。変化の大きい項目を優先的に取り上げてください。';
   return text;
 }
 
@@ -157,13 +196,15 @@ function getDayPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の日別データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の日別データを分析してください。
+単なるデータの羅列ではなく、「何が起きたか」「なぜか」を中心に、変化の大きい日や曜日パターンに注目して分析してください。
 
-【データ】
+【当期データ】
 - 訪問数合計: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}
 - データ日数: ${metrics.dailyDataCount || metrics.dailyData?.length || 0}日${dailyDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== 曜日別分析 ====================
@@ -184,12 +225,14 @@ function getWeekPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の曜日別データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の曜日別データを分析してください。
+単なるデータの羅列ではなく、曜日間の差異パターンや前期間との変化に注目して分析してください。
 
-【データ】
+【当期データ】
 - 訪問数合計: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}${weeklyDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== 時間帯別分析 ====================
@@ -209,12 +252,14 @@ function getHourPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の時間帯別データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の時間帯別データを分析してください。
+単なるデータの羅列ではなく、ピーク時間帯・閑散時間帯のパターンや前期間との変化に注目して分析してください。
 
-【データ】
+【当期データ】
 - 訪問数合計: ${metrics.sessions?.toLocaleString() || 0}回${conversionNote}${hourlyDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== 月別分析 ====================
@@ -229,17 +274,16 @@ function getMonthlyPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の月別推移データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の月別推移データを分析してください。
+月次トレンド（増加・減少・横ばい）を中心に、変化の大きい月とその原因を分析してください。季節性やイベント影響の可能性にも言及してください。
 
-【データ】
+【当期データ】
 - 対象期間: ${metrics.monthCount || 0}ヶ月分
 - 総訪問数: ${metrics.sessions?.toLocaleString() || 0}回
 - 総成果数: ${metrics.conversions?.toLocaleString() || 0}件${monthlyDataText}
-
-- 月次トレンド（増加傾向・減少傾向・横ばい）を中心に分析
-- 季節性やイベント影響の可能性にも言及
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== ダッシュボード ====================
@@ -322,12 +366,14 @@ function getDashboardPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の全体サマリーデータを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の全体サマリーデータを分析してください。
+単なるデータの羅列ではなく、前月比・前年比の変化を中心に「何が起きたか」「なぜか」を分析してください。
 
-【データ】
+【当期データ】
 - 訪問数: ${metrics.sessions?.toLocaleString() || 0}回${additionalMetrics}${conversionText}${monthOverMonthText}${yearAgoText}${kpiText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== ユーザー属性分析 ====================
@@ -418,11 +464,13 @@ function getUsersPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}のユーザー属性データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}のユーザー属性データを分析してください。
+単なるデータの羅列ではなく、属性間の偏りや前期間との変化に注目して分析してください。
 
-【データ】${demographicsText}${dataLimitationNote}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+【当期データ】${demographicsText}${dataLimitationNote}
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== 逆算フロー分析 ====================
@@ -460,9 +508,10 @@ function getReverseFlowPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の「${flowName}」フローのデータを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の「${flowName}」フローのデータを分析してください。
+ファネルの各ステップでの離脱ポイントや、前期間との変化に注目して分析してください。
 
-【現在期間のデータ】
+【当期データ】
 - フロー名: ${flowName}${entryPageText}
 - フォームページパス: ${formPagePath}
 - 目標成果イベント: ${targetCvEvent}
@@ -472,8 +521,9 @@ function getReverseFlowPrompt(period, metrics) {
 - フォーム到達率 (${startLabel}→フォーム閲覧): ${achievementRate1.toFixed(2)}%
 - フォーム完了率 (フォーム閲覧→成果完了): ${achievementRate2.toFixed(2)}%
 - 全体成果率 (${startLabel}→成果完了): ${overallCVR.toFixed(2)}%${monthlyText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== 集客チャネル分析 ====================
@@ -489,14 +539,16 @@ function getChannelsPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の流入経路データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の流入経路データを分析してください。
+チャネル間の構成比の変化や、特定チャネルの急増・急減とその原因に注目して分析してください。
 
-【データ】
+【当期データ】
 - 訪問数合計: ${metrics.totalSessions?.toLocaleString() || 0}回
 - ユーザー数: ${metrics.totalUsers?.toLocaleString() || 0}人${conversionNote}
 - チャネル数: ${metrics.channelCount || 0}種類${channelsDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== 参照元/メディア分析 ====================
@@ -512,14 +564,16 @@ function getReferralsPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の参照元データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の参照元データを分析してください。
+主要な参照元の変化や、新規・消失した参照元に注目して分析してください。
 
-【データ】
+【当期データ】
 - 訪問数合計: ${metrics.totalSessions?.toLocaleString() || 0}回
 - ユーザー数: ${metrics.totalUsers?.toLocaleString() || 0}人${conversionNote}
 - 参照元数: ${metrics.referralCount || 0}種類${referralsDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== ランディングページ分析 ====================
@@ -535,13 +589,15 @@ function getLandingPagesPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の最初に見られるページ（ランディングページ）データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の最初に見られるページ（ランディングページ）データを分析してください。
+上位LPの順位変動や、新規・消失したLPに注目して分析してください。
 
-【データ】
+【当期データ】
 - 訪問数合計: ${metrics.totalSessions?.toLocaleString() || 0}回${conversionNote}
 - ページ数: ${metrics.landingPageCount || 0}ページ${landingPagesDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== ページ別分析 ====================
@@ -554,13 +610,15 @@ function getPagesPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}のページ別データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}のページ別データを分析してください。
+上位ページの閲覧数変化や、急増・急減したページに注目して分析してください。
 
-【データ】
+【当期データ】
 - ページ閲覧数合計: ${metrics.totalPageViews?.toLocaleString() || 0}回
 - ページ数: ${metrics.pageCount || 0}ページ${pagesDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== ページ分類別分析 ====================
@@ -573,13 +631,15 @@ function getPageCategoriesPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}のページ分類別データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}のページ分類別データを分析してください。
+カテゴリ間の閲覧数の偏りや、前期間との構成比変化に注目して分析してください。
 
-【データ】
+【当期データ】
 - ページ閲覧数合計: ${metrics.totalPageViews?.toLocaleString() || 0}回
 - カテゴリ数: ${metrics.categoryCount || 0}種類${categoriesDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== 流入キーワード分析 ====================
@@ -595,16 +655,18 @@ function getKeywordsPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の検索キーワードデータを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の検索キーワードデータを分析してください。
+主要キーワードの順位・クリック数変化や、新たに流入を生んだキーワードに注目して分析してください。
 
-【データ】
+【当期データ】
 - クリック数合計: ${metrics.totalClicks?.toLocaleString() || 0}回
 - 検索結果での表示回数合計: ${metrics.totalImpressions?.toLocaleString() || 0}回
 - 平均クリック率（CTR）: ${((metrics.avgCTR || 0) * 100).toFixed(2)}%
 - 平均掲載順位: ${(metrics.avgPosition || 0).toFixed(1)}位
 - キーワード数: ${metrics.keywordCount || 0}個${noDataNote}${keywordsDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== コンバージョン一覧分析 ====================
@@ -626,13 +688,15 @@ function getConversionsPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の成果データを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の成果データを分析してください。
+成果数の推移や、成果イベントごとの変化に注目して分析してください。
 
-【データ】
+【当期データ】
 - 成果イベント数: ${metrics.conversionEventCount || 0}種類
 - データ期間: ${metrics.monthlyDataPoints || 0}ヶ月分${noDataNote}${conversionDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== ファイルダウンロード分析 ====================
@@ -645,14 +709,16 @@ function getFileDownloadsPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}のファイルダウンロードデータを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}のファイルダウンロードデータを分析してください。
+人気ファイルの変化や、新規・消失したダウンロード対象に注目して分析してください。
 
-【データ】
+【当期データ】
 - ダウンロード数合計: ${metrics.totalDownloads?.toLocaleString() || 0}回
 - ユーザー数: ${metrics.totalUsers?.toLocaleString() || 0}人
 - ファイル数: ${metrics.downloadCount || 0}種類${filesDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== 外部リンククリック分析 ====================
@@ -665,14 +731,16 @@ function getExternalLinksPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}の外部リンククリックデータを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}の外部リンククリックデータを分析してください。
+クリック数の多いリンクの変化や、新規・消失したリンクに注目して分析してください。
 
-【データ】
+【当期データ】
 - クリック数合計: ${metrics.totalClicks?.toLocaleString() || 0}回
 - ユーザー数: ${metrics.totalUsers?.toLocaleString() || 0}人
 - リンク数: ${metrics.clickCount || 0}種類${linksDetailText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== ページフロー分析（新規） ====================
@@ -708,24 +776,28 @@ function getPageFlowPrompt(period, metrics) {
   }
 
   return `
-あなたはWebサイト分析の専門家です。${period}のページ「${pagePath}」への流入フローデータを分析し、初心者にも分かりやすく説明してください。
+あなたはWebサイト分析の専門家です。${period}のページ「${pagePath}」への流入フローデータを分析してください。
+流入元の構成変化や、サイト内遷移パターンの変動に注目して分析してください。
 
-【データ】
+【当期データ】
 - 対象ページ: ${pagePath}
 - ページ閲覧数: ${totalPageViews.toLocaleString()}回
 - セッション数: ${totalSessions.toLocaleString()}回
 - サイト内からの遷移パターン数: ${metrics.transitionCount || 0}件${trafficText}${transitionsText}
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== デフォルトプロンプト ====================
 
 function getDefaultPrompt(period, metrics) {
   return `
-あなたはWebサイト分析の専門家です。${period}のWebサイトデータを分析し、初心者にも分かりやすく説明してください。
-${getCommonOutputRules()}
-${getComparisonContextBlock(metrics)}${getScrapingContextBlock(metrics)}`;
+あなたはWebサイト分析の専門家です。${period}のWebサイトデータを分析してください。
+単なるデータの羅列ではなく、変化の大きい項目とその原因に注目して分析してください。
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
 // ==================== AI総合分析 ====================

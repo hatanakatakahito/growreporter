@@ -151,7 +151,14 @@ export default function Referrals() {
     const compTable = compReferralData.rows.map((row) => ({
       source: row.sessionSource || row.source || '(direct)',
       sessions: row.sessions || 0,
+      users: row.users || 0,
+      newUsers: row.newUsers || 0,
+      pageViews: row.screenPageViews || 0,
       conversions: row.conversions || 0,
+      engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
+      bounceRate: ((row.bounceRate || 0) * 100).toFixed(1),
+      avgSessionDuration: row.averageSessionDuration || 0,
+      conversionRate: row.sessions > 0 ? ((row.conversions / row.sessions) * 100).toFixed(2) : '0.00',
     }));
     return mergeComparisonRows(referrals, compTable, 'source', ['sessions', 'users', 'newUsers', 'pageViews', 'conversions', 'engagementRate', 'bounceRate', 'avgSessionDuration', 'conversionRate']);
   }, [referrals, isComparing, compReferralData]);

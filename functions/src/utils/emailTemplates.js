@@ -43,7 +43,7 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
     const change = calculateChange(current, previous);
     const isPositive = change >= 0;
     const color = isPositive ? '#10b981' : '#ef4444';
-    const arrow = isPositive ? '▲' : '▼';
+    const arrow = isPositive ? '↗' : '↘';
 
     return `
       <tr>
@@ -52,7 +52,7 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
           ${fmt(current, decimals)}${suffix}
         </td>
         <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; color: ${color}; font-weight: 600; font-size: 14px;">
-          ${arrow} ${Math.abs(change).toFixed(1)}%
+          ${arrow} ${isPositive ? '+' : '-'}${Math.abs(change).toFixed(1)}%
         </td>
       </tr>
     `;
@@ -554,35 +554,74 @@ export function generateAlertEmailTemplate(alert, siteName, siteUrl, dashboardUr
 }
 
 /**
- * アラート通知メール（統合版）のテンプレートを生成
- * 同一サイトの複数アラートを1通のメールにまとめる
- * @param {Array<Object>} alerts - アラートオブジェクトの配列
- * @param {Array<Object>} hypotheses - 総括仮説の配列 [{text, source}]
+ * アラート通知メール（構成B: 数値 + 状況整理 + 確認アクション型）
+ * @param {Array} alerts - アラートの配列
+ * @param {{summary: string, actions: string[]}} aiAnalysis - AI分析結果
+ * @param {Array} allMetricsSummary - 全指標サマリー（変化あり＋横ばい）
  * @param {string} siteName - サイト名
  * @param {string} siteUrl - サイトURL
+ * @param {string} periodLabel - 対象期間ラベル
  * @param {string} dashboardUrl - ダッシュボードURL
  * @returns {Object} { subject, html, text }
  */
-export function generateBatchedAlertEmailTemplate(alerts, hypotheses, siteName, siteUrl, dashboardUrl = '') {
+export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetricsSummary, siteName, siteUrl, periodLabel, dashboardUrl = '') {
   const displaySiteName = (siteName != null && siteName !== '') ? String(siteName) : '（サイト名なし）';
+  const displaySiteUrl = (siteUrl != null && siteUrl !== '') ? String(siteUrl) : '';
   const alertCount = alerts.length;
-  const periodCurrent = alerts[0]?.periodCurrent || '';
 
-  const subject = `【グローレポータ】アラート: ${displaySiteName} - ${alertCount}件の指標に大きな変化がありました`;
+  const subject = `【グローレポータ】アラート: ${displaySiteName} - ${alertCount}件の指標に大きな変化`;
 
-  // アラート一覧HTML
-  const alertListHtml = alerts
-    .map(a => {
-      const msg = (a.message || '指標に変化がありました').replace(/</g, '&lt;');
-      return `<li style="margin-bottom: 6px; font-size: 15px; color: #1f2937;"><strong>${msg}</strong></li>`;
-    })
-    .join('');
+  // 数値フォーマット
+  const fmtVal = (key, value) => {
+    if (value == null || isNaN(value)) return '—';
+    if (['engagementRate', 'conversionRate', 'bounceRate'].includes(key)) return `${Number(value).toFixed(1)}%`;
+    if (key === 'averagePageviews') return Number(value).toFixed(2);
+    return Number(value).toLocaleString();
+  };
 
-  // 仮説HTML
-  const hyps = hypotheses || [];
-  const hypothesesHtml = hyps.length > 0
-    ? hyps.map(h => `<li style="margin-bottom: 8px;">${(h.text || '').replace(/</g, '&lt;')}</li>`).join('')
-    : '<li>仮説を取得できませんでした</li>';
+  // 変化のあった指標テーブル行
+  const alertedMetrics = (allMetricsSummary || []).filter(m => m.isAlert);
+  const stableMetrics = (allMetricsSummary || []).filter(m => !m.isAlert);
+
+  const alertRowsHtml = alertedMetrics.map(m => {
+    const isDown = m.changePercent < 0;
+    const color = isDown ? '#ef4444' : '#10b981';
+    const arrow = isDown ? '↘' : '↗';
+    return `
+      <tr>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #1f2937;">${m.label}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 14px; color: #6b7280;">${fmtVal(m.key, m.previous)}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 14px; color: #9ca3af;">→</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 14px; font-weight: 600; color: #1f2937;">${fmtVal(m.key, m.current)}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 13px; font-weight: 600; color: ${color};">${arrow} ${isDown ? '-' : '+'}${Math.abs(m.changePercent).toFixed(1)}%</td>
+      </tr>`;
+  }).join('');
+
+  // 横ばい指標テキスト
+  const stableNames = stableMetrics.map(m => m.label).join(', ');
+  const stableHtml = stableNames
+    ? `<p style="margin: 8px 0 0 0; font-size: 13px; color: #9ca3af;">※ 横ばい: ${stableNames}</p>`
+    : '';
+
+  // AI分析セクション
+  const analysis = aiAnalysis || {};
+  const summaryHtml = analysis.summary
+    ? `<div style="background-color: #f9fafb; border-radius: 8px; padding: 16px; margin: 0;">
+        <p style="margin: 0; font-size: 14px; color: #374151; line-height: 1.7;">${analysis.summary.replace(/\n/g, '<br>')}</p>
+       </div>`
+    : '';
+
+  const actionsHtml = (analysis.actions && analysis.actions.length > 0)
+    ? analysis.actions.map((action, i) => {
+        const escaped = action.replace(/</g, '&lt;').replace(/\n/g, '<br>');
+        return `<tr>
+          <td style="padding: 0 0 12px 0; vertical-align: top;">
+            <span style="display: inline-block; width: 22px; height: 22px; border-radius: 50%; background-color: #3758F9; color: #fff; font-size: 12px; font-weight: 700; text-align: center; line-height: 22px; margin-right: 8px;">${i + 1}</span>
+          </td>
+          <td style="padding: 0 0 12px 0; font-size: 14px; color: #374151; line-height: 1.6;">${escaped}</td>
+        </tr>`;
+      }).join('')
+    : '';
 
   const html = `
 <!DOCTYPE html>
@@ -592,31 +631,86 @@ export function generateBatchedAlertEmailTemplate(alerts, hypotheses, siteName, 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${subject}</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', 'Hiragino Sans', Meiryo, sans-serif; background-color: #f3f4f6;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
         <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+          <!-- ヘッダー -->
           <tr>
-            <td style="background-color: #3758F9; padding: 24px; text-align: center;">
+            <td style="background-color: #3758F9; padding: 24px 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 20px; font-weight: 700;">グローレポータ - アラート</h1>
             </td>
           </tr>
+
+          <!-- サイト情報 -->
           <tr>
-            <td style="padding: 24px;">
-              <h2 style="margin: 0 0 8px 0; color: #1f2937; font-size: 18px;">${displaySiteName}</h2>
-              ${periodCurrent ? `<p style="margin: 0 0 20px 0; color: #6b7280; font-size: 14px;">対象期間: ${periodCurrent}</p>` : ''}
-              <p style="margin: 0 0 12px 0; color: #374151; font-size: 14px;"><strong>変化のあった指標</strong></p>
-              <ul style="margin: 0 0 24px 0; padding-left: 20px; list-style: disc;">
-                ${alertListHtml}
-              </ul>
-              <p style="margin: 0 0 12px 0; color: #374151; font-size: 14px;"><strong>考えられる原因（仮説）</strong></p>
-              <ul style="margin: 0 0 20px 0; padding-left: 20px; color: #4b5563; font-size: 14px;">
-                ${hypothesesHtml}
-              </ul>
-              ${dashboardUrl ? `<p style="margin: 0;"><a href="${dashboardUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3758F9; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">ダッシュボードで確認</a></p>` : ''}
+            <td style="padding: 24px 30px 8px 30px;">
+              <h2 style="margin: 0 0 4px 0; color: #1f2937; font-size: 18px; font-weight: 700;">${displaySiteName}</h2>
+              ${displaySiteUrl ? `<p style="margin: 0 0 4px 0; font-size: 13px;"><a href="${displaySiteUrl}" style="color: #3758F9; text-decoration: none;">${displaySiteUrl}</a></p>` : ''}
+              ${periodLabel ? `<p style="margin: 0; color: #6b7280; font-size: 13px;">対象期間: ${periodLabel}</p>` : ''}
             </td>
           </tr>
+
+          <!-- 変化のあった指標 -->
+          <tr>
+            <td style="padding: 20px 30px;">
+              <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 15px; font-weight: 700;">■ 変化のあった指標</h3>
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                <thead>
+                  <tr style="background-color: #f9fafb;">
+                    <th style="padding: 8px 12px; text-align: left; font-size: 12px; color: #6b7280; font-weight: 600;">指標</th>
+                    <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #6b7280; font-weight: 600;">前週</th>
+                    <th style="padding: 8px 12px; text-align: center; font-size: 12px; color: #6b7280;"></th>
+                    <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #6b7280; font-weight: 600;">今週</th>
+                    <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #6b7280; font-weight: 600;">変化</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${alertRowsHtml}
+                </tbody>
+              </table>
+              ${stableHtml}
+            </td>
+          </tr>
+
+          <!-- 状況の整理 -->
+          ${summaryHtml ? `
+          <tr>
+            <td style="padding: 0 30px 20px 30px;">
+              <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 15px; font-weight: 700;">■ 状況の整理</h3>
+              ${summaryHtml}
+            </td>
+          </tr>` : ''}
+
+          <!-- 確認すべきこと -->
+          ${actionsHtml ? `
+          <tr>
+            <td style="padding: 0 30px 20px 30px;">
+              <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 15px; font-weight: 700;">■ 確認すべきこと</h3>
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                ${actionsHtml}
+              </table>
+            </td>
+          </tr>` : ''}
+
+          <!-- アクションボタン -->
+          ${dashboardUrl ? `
+          <tr>
+            <td style="padding: 0 30px 30px 30px; text-align: center;">
+              <a href="${dashboardUrl}" style="display: inline-block; background-color: #3758F9; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 15px; font-weight: 600; box-shadow: 0 4px 6px rgba(55, 88, 249, 0.3);">ダッシュボードで確認</a>
+            </td>
+          </tr>` : ''}
+
+          <!-- フッター -->
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 12px;">このメールは グローレポータ から自動送信されています</p>
+              <p style="margin: 0; color: #9ca3af; font-size: 11px;">メール通知の設定は<a href="https://grow-reporter.com/account/settings" style="color: #3758F9; text-decoration: none;">アカウント設定</a>から変更できます</p>
+            </td>
+          </tr>
+
         </table>
       </td>
     </tr>
@@ -624,12 +718,21 @@ export function generateBatchedAlertEmailTemplate(alerts, hypotheses, siteName, 
 </body>
 </html>`;
 
-  const alertListText = alerts.map(a => `・${a.message || '指標に変化がありました'}`).join('\n');
-  const hypothesesText = hyps.length > 0
-    ? hyps.map(h => `・${h.text}`).join('\n')
-    : '・仮説を取得できませんでした';
+  // プレーンテキスト版
+  const alertListText = alertedMetrics
+    .map(m => {
+      const arrow = m.changePercent < 0 ? '↘' : '↗';
+      return `  ${m.label}  ${fmtVal(m.key, m.previous)} → ${fmtVal(m.key, m.current)}  ${arrow}${m.changePercent < 0 ? '-' : '+'}${Math.abs(m.changePercent).toFixed(1)}%`;
+    })
+    .join('\n');
 
-  const text = `【グローレポータ】アラート: ${displaySiteName}\n\n変化のあった指標:\n${alertListText}\n\n考えられる原因:\n${hypothesesText}\n\n${dashboardUrl ? `ダッシュボード: ${dashboardUrl}` : ''}`;
+  const stableText = stableNames ? `\n  ※ 横ばい: ${stableNames}` : '';
+  const summaryText = analysis.summary ? `\n■ 状況の整理\n${analysis.summary}` : '';
+  const actionsText = (analysis.actions && analysis.actions.length > 0)
+    ? `\n■ 確認すべきこと\n${analysis.actions.map((a, i) => `${i + 1}. ${a}`).join('\n')}`
+    : '';
+
+  const text = `【グローレポータ】アラート: ${displaySiteName}\n対象期間: ${periodLabel}\n\n■ 変化のあった指標\n${alertListText}${stableText}\n${summaryText}\n${actionsText}\n\n${dashboardUrl ? `ダッシュボードで確認: ${dashboardUrl}` : ''}`;
 
   return { subject, html, text };
 }

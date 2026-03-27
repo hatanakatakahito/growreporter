@@ -70,13 +70,13 @@ export default function FileDownloads() {
     ga4DimensionFilter
   );
 
-  // 比較期間データ
+  // 比較期間データ（linkUrlを含めるとfileName重複で比較値が壊れるため除外）
   const { data: compDownloadData } = useGA4Data(
     comparisonDateRange ? selectedSiteId : null,
     comparisonDateRange?.from,
     comparisonDateRange?.to,
     ['eventCount', 'activeUsers'],
-    ['eventName', 'linkUrl', 'fileName'],
+    ['eventName', 'fileName'],
     ga4DimensionFilter
   );
 

@@ -156,9 +156,11 @@ export default function Users() {
           {data.map((item, i) => (
             <div key={i} className="flex items-center justify-between text-sm">
               <span className="text-dark dark:text-white">{item.name}</span>
-              <div className="flex items-center gap-3">
-                <span className="text-body-color">{item.value?.toLocaleString()}</span>
-                <ComparisonBadge value={item.value_change} />
+              <div className="grid gap-x-1.5 gap-y-0.5" style={{ gridTemplateColumns: '1fr 72px' }}>
+                <span className="text-right text-dark dark:text-white">{item.value?.toLocaleString()}</span>
+                <span className="pl-0.5"><ComparisonBadge value={item.value_change} /></span>
+                <span className="text-right text-gray-400">{item.value_prev != null ? item.value_prev.toLocaleString() : '—'}</span>
+                <span></span>
               </div>
             </div>
           ))}

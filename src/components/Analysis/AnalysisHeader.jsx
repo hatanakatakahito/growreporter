@@ -37,6 +37,7 @@ export default function AnalysisHeader({
   showDateRange = true,
   showSiteInfo = true,
   showExport = true,
+  hideComparison = false,
   title = '',
   subtitle = '',
   improveActions = null,
@@ -235,6 +236,7 @@ export default function AnalysisHeader({
                 <DateRangePicker
                   dateRange={dateRange}
                   onDateRangeChange={setDateRange}
+                  hideComparison={hideComparison}
                 />
               )}
               

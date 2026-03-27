@@ -247,10 +247,45 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
 
       {/* AI分析サマリ */}
       {summary && (
-        <div className="rounded-lg bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 p-6">
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            <ReactMarkdown>{summary}</ReactMarkdown>
-          </div>
+        <div className="rounded-lg bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 px-10 py-8">
+          {pageType === 'comprehensive_analysis' || pageType === 'comprehensive_improvement' ? (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <ReactMarkdown>{summary}</ReactMarkdown>
+            </div>
+          ) : (() => {
+            const lines = summary.split('\n').filter(l => l.trim() !== '');
+            const paragraphs = [];
+            const bullets = [];
+            for (const line of lines) {
+              if (line.trim().startsWith('・')) {
+                bullets.push(line.trim().replace(/^・\s?/, ''));
+              } else {
+                paragraphs.push(line.trim());
+              }
+            }
+            return (
+              <div className="ai-summary-content text-sm text-gray-800 dark:text-gray-200">
+                {paragraphs.length > 0 && (() => {
+                  const joined = paragraphs.join('');
+                  const sentences = joined.split(/(?<=。)/).filter(s => s.trim() !== '');
+                  return (
+                    <p className="leading-relaxed">
+                      {sentences.map((s, i) => (
+                        <span key={i}>{i > 0 && <><br /><span className="block h-1" /></>}{s.trim()}</span>
+                      ))}
+                    </p>
+                  );
+                })()}
+                {bullets.length > 0 && (
+                  <ul className="mt-4 space-y-2 list-disc pl-5">
+                    {bullets.map((item, i) => (
+                      <li key={i} className="leading-relaxed">{item}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

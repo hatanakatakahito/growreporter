@@ -234,6 +234,8 @@ export async function generateAISummaryCallable(request) {
       // 比較データがある場合、比較期間のメトリクスも生成してプロンプトに追加
       if (comparisonRawData && comparisonStartDate && comparisonEndDate) {
         const compMetrics = formatRawDataToMetrics(comparisonRawData, pageType);
+        // 詳細データの対比テキストを事前構築（AIの数値捏造を防止）
+        buildComparisonDetailTexts(metrics, compMetrics, pageType);
         metrics.comparisonMetrics = compMetrics;
         metrics.comparisonPeriod = { startDate: comparisonStartDate, endDate: comparisonEndDate };
         console.log('[generateAISummary] 比較データあり: comparisonMetrics keys:', Object.keys(compMetrics));
@@ -428,6 +430,7 @@ export async function generateAISummaryCallable(request) {
     await saveCachedAnalysis(siteOwnerId, siteId, pageType, summary, recommendations, startDate, endDate, comparisonStartDate, comparisonEndDate);
     
     // 8. 旧システムにも保存（互換性のため、将来的に削除予定）
+    // metricsはサイズが大きい場合があるため保存しない（Firestore 1MBドキュメント上限対策）
     const summaryDoc = {
       userId,
       siteId,
@@ -436,7 +439,6 @@ export async function generateAISummaryCallable(request) {
       endDate,
       summary,
       recommendations,
-      metrics: JSON.parse(JSON.stringify(metrics)), // undefinedを除外（metricsは常に定義済み）
       generatedAt: Timestamp.fromDate(now),
       createdAt: Timestamp.fromDate(now),
     };
@@ -1050,6 +1052,49 @@ function cleanDemographics(demographics) {
   return cleaned;
 }
 
+/**
+ * 比較データがある場合、当期の詳細テキスト（topPagesText等）を
+ * 前期データと突き合わせた対比テキストに置き換える。
+ * AIが勝手に数値をマッチングして捏造するのを防止する。
+ */
+function buildComparisonDetailTexts(metrics, compMetrics, pageType) {
+  // ヘルパー: 当期リストの各項目に前期の対応する値を付与
+  function buildCompText(curText, compText, keyExtractor) {
+    if (!curText || !compText) return;
+    const compMap = new Map();
+    compText.split('\n').filter(l => l.trim()).forEach(line => {
+      const key = keyExtractor(line);
+      if (key) compMap.set(key, line);
+    });
+    const lines = curText.split('\n').filter(l => l.trim());
+    return lines.map(line => {
+      const key = keyExtractor(line);
+      const compLine = key ? compMap.get(key) : null;
+      if (compLine) {
+        return `${line}\n  前期: ${compLine}`;
+      }
+      return `${line}\n  前期: データなし（新規）`;
+    }).join('\n');
+  }
+
+  // キー抽出: 行の「:」前の部分をキーとする
+  const colonKey = (line) => {
+    const idx = line.indexOf(':');
+    return idx > 0 ? line.substring(0, idx).trim() : null;
+  };
+
+  // ページ別テキスト系フィールドの対比構築
+  const textFields = [
+    'topPagesText', 'channelsText', 'topReferralsText', 'topLandingPagesText',
+    'topCategoriesText', 'topKeywordsText', 'topFilesText', 'topLinksText',
+  ];
+  for (const field of textFields) {
+    if (metrics[field] && compMetrics[field]) {
+      metrics[field] = buildCompText(metrics[field], compMetrics[field], colonKey);
+    }
+  }
+}
+
 function formatRawDataToMetrics(rawData, pageType) {
   console.log(`[formatRawDataToMetrics] ページタイプ: ${pageType}`);
   console.log(`[formatRawDataToMetrics] rawData keys:`, Object.keys(rawData || {}));
@@ -1312,8 +1357,15 @@ function formatRawDataToMetrics(rawData, pageType) {
       const channelsText = channelsRows
         .sort((a, b) => (b.sessions || 0) - (a.sessions || 0))
         .slice(0, 5)
-        .map(row => `${row.sessionDefaultChannelGroup || row.channel || '不明'}: ${row.sessions || 0}訪問, ${row.conversions || 0}コンバージョン`)
-        .join(', ');
+        .map(row => {
+          const name = row.sessionDefaultChannelGroup || row.channel || '不明';
+          const sessions = row.sessions || 0;
+          const users = row.activeUsers || 0;
+          const conversions = row.conversions || 0;
+          const cvr = sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : '0.00';
+          return `${name}: ${sessions}訪問, ${users}ユーザー, ${conversions}コンバージョン (CVR ${cvr}%)`;
+        })
+        .join('\n');
       return {
         totalSessions,
         totalUsers,
@@ -1435,10 +1487,7 @@ function formatRawDataToMetrics(rawData, pageType) {
 
     case 'pageCategories':
       // ページ分類別分析：categoryDataの結果
-      console.log('[formatRawDataToMetrics - pageCategories] rawData:', JSON.stringify(rawData, null, 2));
       const pageCategoriesRows = rawData.rows || [];
-      console.log('[formatRawDataToMetrics - pageCategories] rows count:', pageCategoriesRows.length);
-      console.log('[formatRawDataToMetrics - pageCategories] sample row:', pageCategoriesRows[0]);
       const categoriesTotalPageViews = pageCategoriesRows.reduce((sum, row) => sum + (row.pageViews || 0), 0);
       
       // カテゴリ別の詳細テキスト生成（上位10件）
@@ -1514,8 +1563,8 @@ function formatRawDataToMetrics(rawData, pageType) {
       const topFilesText = downloadRows
         .sort((a, b) => (b.eventCount || 0) - (a.eventCount || 0))
         .slice(0, 10)
-        .map(row => `${row.fileName || row.linkUrl}: ${row.eventCount || 0}ダウンロード`)
-        .join(', ');
+        .map(row => `${row.fileName || row.linkUrl}: ${row.eventCount || 0}ダウンロード, ${row.activeUsers || 0}ユーザー`)
+        .join('\n');
       return {
         totalDownloads,
         totalUsers: downloadTotalUsers,
@@ -1534,8 +1583,8 @@ function formatRawDataToMetrics(rawData, pageType) {
       const topLinksText = clickRows
         .sort((a, b) => (b.eventCount || 0) - (a.eventCount || 0))
         .slice(0, 10)
-        .map(row => `${row.linkUrl}: ${row.eventCount || 0}クリック`)
-        .join(', ');
+        .map(row => `${row.linkUrl}: ${row.eventCount || 0}クリック, ${row.activeUsers || 0}ユーザー`)
+        .join('\n');
       return {
         totalClicks: totalClicksCount,
         totalUsers: clickTotalUsers,

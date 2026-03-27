@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import Tooltip from '../common/Tooltip';
 
 export default function MetricCard({ title, value, change, icon, isLoading, format = 'number', tooltip }) {
@@ -38,11 +39,15 @@ export default function MetricCard({ title, value, change, icon, isLoading, form
           {change !== undefined && change !== null && (
             <div className="mt-2 flex items-center gap-1">
               <span
-                className={`text-sm font-medium ${
-                  isPositive ? 'text-green-600' : 'text-red-600'
+                className={`inline-flex items-center gap-0.5 text-sm font-medium ${
+                  Math.abs(change) < 0.1 ? 'text-gray-500' : isPositive ? 'text-green-600' : 'text-red-600'
                 }`}
               >
-                {isPositive ? '↑' : '↓'} {Math.abs(change).toFixed(1)}%
+                {Math.abs(change) < 0.1
+                  ? <Minus className="h-3.5 w-3.5" />
+                  : isPositive ? <ArrowUpRight className="h-3.5 w-3.5" /> : <ArrowDownRight className="h-3.5 w-3.5" />
+                }
+                {Math.abs(change) < 0.1 ? '' : isPositive ? '+' : ''}{Math.abs(change).toFixed(1)}%
               </span>
               <span className="text-xs text-body-color">前期間比</span>
             </div>

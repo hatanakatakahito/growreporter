@@ -180,9 +180,24 @@ export default function DataTable({
       } else {
         row[col.key] = values.reduce((a, b) => a + b, 0) / values.length;
       }
+
+      // 比較モード: _prev の合計も計算
+      if (isComparing && col.comparison) {
+        const prevValues = data.map(r => r[`${col.key}_prev`]).filter(v => typeof v === 'number' && !isNaN(v));
+        if (prevValues.length > 0) {
+          const prevTotal = totalType === 'sum'
+            ? prevValues.reduce((a, b) => a + b, 0)
+            : prevValues.reduce((a, b) => a + b, 0) / prevValues.length;
+          row[`${col.key}_prev`] = prevTotal;
+          const cur = row[col.key];
+          if (prevTotal === 0 && cur === 0) row[`${col.key}_change`] = 0;
+          else if (prevTotal === 0) row[`${col.key}_change`] = cur > 0 ? 100 : -100;
+          else row[`${col.key}_change`] = ((cur - prevTotal) / Math.abs(prevTotal)) * 100;
+        }
+      }
     });
     return row;
-  }, [showTotals, data, displayColumns]);
+  }, [showTotals, data, displayColumns, isComparing]);
 
   if (!data || data.length === 0) {
     return (
@@ -259,15 +274,6 @@ export default function DataTable({
           </thead>
           <tbody>
             {paginatedData.map((row, rowIndex) => {
-              // 比較サブ行用: _prev フィールドを元キーにマッピングした仮想行を構築
-              const prevRow = isComparing ? (() => {
-                const pr = {};
-                displayColumns.forEach(col => {
-                  if (col.comparison) pr[col.key] = row[`${col.key}_prev`];
-                });
-                return pr;
-              })() : null;
-
               // 日付列から曜日を判定（土曜=blue, 日曜=red）
               const firstColValue = String(row[displayColumns[0]?.key] || '');
               const isSaturday = firstColValue.includes('（土）') || firstColValue.includes('(土)');
@@ -275,18 +281,52 @@ export default function DataTable({
               const dayRowClass = isSunday ? 'bg-red-50/60' : isSaturday ? 'bg-blue-50/60' : '';
 
               return (
-                <React.Fragment key={rowIndex}>
-                  {/* メイン行 */}
-                  <tr className={`hover:bg-gray-1 ${dayRowClass} ${isComparing ? '' : 'border-b border-stroke last:border-b-0'}`}>
-                    {displayColumns.map((column) => {
-                      // 日付セルの曜日部分に色を付ける
-                      const cellValue = column.render
-                        ? column.render(row[column.key], row)
-                        : formatValue(row[column.key], column.format);
-                      const isFirstCol = column.key === displayColumns[0]?.key;
-                      const textColorClass = isFirstCol && isSunday ? 'text-red-500' : isFirstCol && isSaturday ? 'text-blue-500' : 'text-dark';
+                <tr key={rowIndex} className={`border-b border-stroke last:border-b-0 hover:bg-gray-1 ${dayRowClass}`}>
+                  {displayColumns.map((column) => {
+                    const cellValue = column.render
+                      ? column.render(row[column.key], row)
+                      : formatValue(row[column.key], column.format);
+                    const isFirstCol = column.key === displayColumns[0]?.key;
+                    const textColorClass = isFirstCol && isSunday ? 'text-red-500' : isFirstCol && isSaturday ? 'text-blue-500' : 'text-dark';
+
+                    // 比較モード: セル内に当期値+バッジ（上）、前期値（下）を表示
+                    if (isComparing && column.comparison) {
+                      const prevValue = row[`${column.key}_prev`];
+                      const changeValue = row[`${column.key}_change`];
+                      const prevRow = {};
+                      displayColumns.forEach(col => {
+                        if (col.comparison) prevRow[col.key] = row[`${col.key}_prev`];
+                      });
+                      const formattedPrev = prevValue == null
+                        ? '—'
+                        : column.render
+                          ? column.render(prevValue, prevRow)
+                          : formatValue(prevValue, column.format);
 
                       return (
+                        <td
+                          key={column.key}
+                          className={`whitespace-nowrap px-4 py-2.5 ${
+                            column.align === 'right' ? 'text-right' : 'text-left'
+                          }`}
+                        >
+                          <div className="grid gap-0.5" style={{ gridTemplateColumns: '1fr 72px' }}>
+                            <span className={`text-sm ${textColorClass} ${column.align === 'right' ? 'text-right' : 'text-left'}`}>
+                              {cellValue}
+                            </span>
+                            <span className="pl-1.5">
+                              <ComparisonBadge value={changeValue} invertColor={column.invertColor} />
+                            </span>
+                            <span className={`text-sm text-gray-400 ${column.align === 'right' ? 'text-right' : 'text-left'}`}>
+                              {formattedPrev}
+                            </span>
+                            <span></span>
+                          </div>
+                        </td>
+                      );
+                    }
+
+                    return (
                       <td
                         key={column.key}
                         className={`whitespace-nowrap px-4 py-3 text-sm ${textColorClass} ${
@@ -295,62 +335,69 @@ export default function DataTable({
                       >
                         {cellValue}
                       </td>
-                      );
-                    })}
-                  </tr>
-                  {/* 比較サブ行 */}
-                  {isComparing && (
-                    <tr className="border-b border-stroke bg-gray-50/60">
-                      {displayColumns.map((column, colIdx) => {
-                        if (!column.comparison) {
-                          return (
-                            <td key={column.key} className="whitespace-nowrap px-4 py-1.5 text-[11px] text-gray-500">
-                              {colIdx === 0 ? '前期間' : ''}
-                            </td>
-                          );
-                        }
-                        const prevValue = prevRow[column.key];
-                        const changeValue = row[`${column.key}_change`];
-                        const formattedPrev = prevValue == null
-                          ? '—'
-                          : column.render
-                            ? column.render(prevValue, prevRow)
-                            : formatValue(prevValue, column.format);
-
-                        return (
-                          <td key={column.key} className={`whitespace-nowrap px-4 py-1.5 text-[11px] ${column.align === 'right' ? 'text-right' : 'text-left'}`}>
-                            <div className={`flex items-center gap-1.5 ${column.align === 'right' ? 'justify-end' : ''}`}>
-                              <span className="text-gray-500">{formattedPrev}</span>
-                              <ComparisonBadge value={changeValue} invertColor={column.invertColor} />
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  )}
-                </React.Fragment>
+                    );
+                  })}
+                </tr>
               );
             })}
           </tbody>
           {totalsRow && (
             <tfoot>
               <tr className="border-t-2 border-primary-mid/30 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5 font-semibold">
-                {displayColumns.map((column) => (
-                  <td
-                    key={column.key}
-                    className={`whitespace-nowrap px-4 py-3 text-sm text-dark ${
-                      column.align === 'right' ? 'text-right' : 'text-left'
-                    }`}
-                  >
-                    {column.key === displayColumns[0]?.key
-                      ? totalsRow[column.key]
-                      : totalsRow[column.key] != null
-                        ? (column.render
-                            ? column.render(totalsRow[column.key], totalsRow)
-                            : formatValue(totalsRow[column.key], column.format))
-                        : ''}
-                  </td>
-                ))}
+                {displayColumns.map((column) => {
+                  const isFirstCol = column.key === displayColumns[0]?.key;
+                  const cellValue = isFirstCol
+                    ? totalsRow[column.key]
+                    : totalsRow[column.key] != null
+                      ? (column.render
+                          ? column.render(totalsRow[column.key], totalsRow)
+                          : formatValue(totalsRow[column.key], column.format))
+                      : '';
+
+                  // 比較モード: 合計行もセル内2段で表示
+                  if (isComparing && column.comparison && !isFirstCol) {
+                    const prevValue = totalsRow[`${column.key}_prev`];
+                    const changeValue = totalsRow[`${column.key}_change`];
+                    const formattedPrev = prevValue == null
+                      ? '—'
+                      : column.render
+                        ? column.render(prevValue, totalsRow)
+                        : formatValue(prevValue, column.format);
+
+                    return (
+                      <td
+                        key={column.key}
+                        className={`whitespace-nowrap px-4 py-2.5 ${
+                          column.align === 'right' ? 'text-right' : 'text-left'
+                        }`}
+                      >
+                        <div className="grid gap-0.5" style={{ gridTemplateColumns: '1fr 72px' }}>
+                          <span className={`text-sm text-dark ${column.align === 'right' ? 'text-right' : 'text-left'}`}>
+                            {cellValue}
+                          </span>
+                          <span className="pl-1.5">
+                            <ComparisonBadge value={changeValue} invertColor={column.invertColor} />
+                          </span>
+                          <span className={`text-sm text-gray-400 font-medium ${column.align === 'right' ? 'text-right' : 'text-left'}`}>
+                            {formattedPrev}
+                          </span>
+                          <span></span>
+                        </div>
+                      </td>
+                    );
+                  }
+
+                  return (
+                    <td
+                      key={column.key}
+                      className={`whitespace-nowrap px-4 py-3 text-sm text-dark ${
+                        column.align === 'right' ? 'text-right' : 'text-left'
+                      }`}
+                    >
+                      {cellValue}
+                    </td>
+                  );
+                })}
               </tr>
             </tfoot>
           )}

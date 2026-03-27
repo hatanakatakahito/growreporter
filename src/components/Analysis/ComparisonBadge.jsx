@@ -1,4 +1,5 @@
 import React from 'react';
+import { ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import { formatChangePercent } from '../../utils/comparisonHelpers';
 
 /**
@@ -10,7 +11,6 @@ export default function ComparisonBadge({ value, invertColor = false }) {
 
   const isPositive = value > 0;
   const isNegative = value < 0;
-  const isZero = value === 0;
 
   // invertColor: 直帰率など「下がると良い」指標で色を反転
   const goodDirection = invertColor ? isNegative : isPositive;
@@ -20,11 +20,11 @@ export default function ComparisonBadge({ value, invertColor = false }) {
   if (goodDirection) colorClass = 'text-green-700 bg-green-50';
   if (badDirection) colorClass = 'text-red-600 bg-red-50';
 
-  const arrow = isPositive ? '↑' : isNegative ? '↓' : '';
+  const Icon = isPositive ? ArrowUpRight : isNegative ? ArrowDownRight : Minus;
 
   return (
     <span className={`inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[11px] font-medium ${colorClass}`}>
-      {arrow}{formatChangePercent(value)}
+      <Icon className="h-3 w-3" />{formatChangePercent(value)}
     </span>
   );
 }
