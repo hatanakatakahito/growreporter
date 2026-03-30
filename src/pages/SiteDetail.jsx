@@ -8,8 +8,9 @@ import ErrorAlert from '../components/common/ErrorAlert';
 import DotWaveSpinner from '../components/common/DotWaveSpinner';
 import { functions } from '../config/firebase';
 import { db } from '../config/firebase';
-import { doc, getDoc, getDocFromServer } from 'firebase/firestore';
-import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, Copy, Check, AlertCircle } from 'lucide-react';
+import { doc, getDoc, getDocFromServer, updateDoc } from 'firebase/firestore';
+import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, Copy, Check, AlertCircle, Sparkles } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { SITE_TYPES, SITE_PURPOSES } from '../constants/siteOptions';
 import { Button } from '@/components/ui/button';
 
@@ -428,6 +429,45 @@ export default function SiteDetail() {
             </div>
           </div>
         </div>
+        </div>
+
+        {/* AI改善提案 */}
+        <div className="mt-8 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+          <div className="flex items-center gap-2 mb-4">
+            <Sparkles className="h-5 w-5 text-primary" />
+            <h3 className="text-lg font-semibold text-dark dark:text-white">AI改善提案</h3>
+          </div>
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium text-dark dark:text-white">月次自動生成</div>
+              <p className="mt-0.5 text-xs text-body-color">月次スクレイピング後にAI改善提案を自動で再生成します。月間AI改善回数を1回消費します。</p>
+            </div>
+            <button
+              onClick={async () => {
+                const newVal = !site?.autoImprovementEnabled;
+                try {
+                  await updateDoc(doc(db, 'sites', siteId), { autoImprovementEnabled: newVal });
+                  toast.success(newVal ? '自動生成を有効にしました' : '自動生成を無効にしました');
+                  // refetchで最新データを反映
+                  window.location.reload();
+                } catch (e) {
+                  toast.error('設定の変更に失敗しました');
+                }
+              }}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+                site?.autoImprovementEnabled ? 'bg-primary' : 'bg-gray-200 dark:bg-dark-3'
+              }`}
+            >
+              <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
+                site?.autoImprovementEnabled ? 'translate-x-5' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+          {site?.lastAutoImprovementAt && (
+            <div className="mt-3 text-xs text-body-color">
+              最終自動生成: {site.lastAutoImprovementAt.toDate ? site.lastAutoImprovementAt.toDate().toLocaleDateString('ja-JP') : new Date(site.lastAutoImprovementAt).toLocaleDateString('ja-JP')}
+            </div>
+          )}
         </div>
 
         {/* サイト削除 */}

@@ -132,6 +132,20 @@ export async function captureMissingScreenshots(siteId, targetPageUrls) {
     if (browser) await browser.close().catch(() => {});
   }
 
+  // _meta ドキュメントに撮影完了を記録（フロントエンドのリアルタイム監視用）
+  if (captured > 0) {
+    try {
+      const metaRef = db.collection('sites').doc(siteId).collection('pageScreenshots').doc('_meta');
+      await metaRef.set({
+        lastCapturedAt: FieldValue.serverTimestamp(),
+        totalCaptured: captured,
+        totalFailed: failed,
+      }, { merge: true });
+    } catch (metaErr) {
+      logger.warn(`[captureMissingScreenshots] _meta更新エラー（無視）:`, metaErr.message);
+    }
+  }
+
   logger.info(`[captureMissingScreenshots] 完了: captured=${captured}, failed=${failed}`);
   return {
     captured,

@@ -10,10 +10,12 @@ import DotWaveSpinner from '../components/common/DotWaveSpinner';
 import { setPageTitle } from '../utils/pageTitle';
 import { db, functions } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
-import { collection, query, where, limit, getDocs, updateDoc, doc, deleteDoc, addDoc, serverTimestamp, getDoc } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs, updateDoc, doc, deleteDoc, addDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ImprovementDialog from '../components/Improve/ImprovementDialog';
 import EvaluationModal from '../components/Improve/EvaluationModal';
+import CompletionDialog from '../components/Improve/CompletionDialog';
+import EffectMeasurementPanel from '../components/Improve/EffectMeasurementPanel';
 import AIGenerationModal from '../components/Improve/AIGenerationModal';
 import ImprovementFocusModal from '../components/Improve/ImprovementFocusModal';
 import ConsultationFormModal from '../components/Improve/ConsultationFormModal';
@@ -49,7 +51,7 @@ const ExcelIcon = ({ className, disabled }) => (
     <path d="M10.5 4.5L8 8L10.5 11.5" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
-const statusLabels = { draft: '起案', in_progress: '対応中', completed: '完了' };
+const statusLabels = { draft: '起案', in_progress: '対応中', completed: '完了', archived: 'アーカイブ' };
 const priorityColors = {
   high: 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300',
   medium: 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-300',
@@ -71,6 +73,9 @@ export default function Improve() {
   const [evaluatingItem, setEvaluatingItem] = useState(null);
   const [isConsultationModalOpen, setIsConsultationModalOpen] = useState(false);
   const [isEvaluationOpen, setIsEvaluationOpen] = useState(false);
+  const [completionItem, setCompletionItem] = useState(null);
+  const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
+  const [isCompletionLoading, setIsCompletionLoading] = useState(false);
   
   // 方針選択モーダル（AI生成の前に表示）
   const [isFocusModalOpen, setIsFocusModalOpen] = useState(false);
@@ -247,6 +252,23 @@ export default function Improve() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // スクショ撮影完了をリアルタイム監視 → キャッシュ自動更新
+  const lastCapturedAtRef = useRef(null);
+  useEffect(() => {
+    if (!selectedSiteId) return;
+    const metaRef = doc(db, 'sites', selectedSiteId, 'pageScreenshots', '_meta');
+    const unsubscribe = onSnapshot(metaRef, (snap) => {
+      if (!snap.exists()) return;
+      const ts = snap.data().lastCapturedAt?.toMillis?.() || null;
+      // 初回は記録のみ、2回目以降（値が変わった時）にキャッシュ更新
+      if (lastCapturedAtRef.current !== null && ts !== lastCapturedAtRef.current) {
+        queryClient.invalidateQueries({ queryKey: ['pageScreenshots', selectedSiteId] });
+      }
+      lastCapturedAtRef.current = ts;
+    });
+    return () => { unsubscribe(); lastCapturedAtRef.current = null; };
+  }, [selectedSiteId, queryClient]);
+
   // URLを正規化するヘルパー（Before照合用）
   const normalizeUrlForMatch = (url) => {
     try {
@@ -382,18 +404,81 @@ export default function Improve() {
     if (item.status === newStatus) return;
     const updateData = { status: newStatus };
     if (newStatus === 'completed') {
-      updateData.completedAt = new Date().toISOString();
-      updateMutation.mutate(
-        { id: item.id, data: updateData },
-        {
-          onSuccess: () => {
-            setEvaluatingItem({ ...item, ...updateData });
-            setIsEvaluationOpen(true);
-          }
-        }
-      );
+      // 完了ダイアログを表示（改善反映日入力 + 効果計測開始）
+      setCompletionItem(item);
+      setIsCompletionDialogOpen(true);
     } else {
+      // 完了→他ステータスへの差し戻し時: effectMeasurementをsuspendedに
+      if (item.status === 'completed' && item.effectMeasurement) {
+        updateData['effectMeasurement.status'] = 'suspended';
+        updateData['emStatus'] = 'suspended';
+      }
       updateMutation.mutate({ id: item.id, data: updateData });
+    }
+  };
+
+  // 完了ダイアログの確認ハンドラー
+  const handleCompletionConfirm = async ({ effectiveDate, generateNextStep }) => {
+    if (!completionItem) return;
+    setIsCompletionLoading(true);
+
+    try {
+      // 1. ステータスを完了に更新
+      const updateData = {
+        status: 'completed',
+        completedAt: new Date().toISOString(),
+        effectiveDate,
+      };
+      await updateMutation.mutateAsync({ id: completionItem.id, data: updateData });
+
+      // 2. Before指標取得をバックグラウンドで実行
+      const fetchBeforeMetricsFn = httpsCallable(functions, 'fetchBeforeMetrics');
+      fetchBeforeMetricsFn({
+        siteId: selectedSiteId,
+        improvementId: completionItem.id,
+        effectiveDate,
+        category: completionItem.category || 'other',
+        targetPageUrl: completionItem.targetPageUrl || null,
+      }).then(() => {
+        toast.success('効果計測のBefore指標を取得しました');
+      }).catch((err) => {
+        console.error('[CompletionConfirm] Before指標取得エラー:', err);
+        toast.error('Before指標の取得に失敗しました。後で再取得できます。');
+      });
+
+      // 3. 次ステップ提案を生成（ユーザーが選択した場合）
+      if (generateNextStep) {
+        const generateFn = httpsCallable(functions, 'generateImprovements');
+        generateFn({
+          siteId: selectedSiteId,
+          improvementFocus: 'auto',
+          userNote: `前回完了した改善: 「${completionItem.title}」（カテゴリ: ${completionItem.category || 'other'}、期待効果: ${completionItem.expectedImpact || '不明'}）。この改善の次ステップとして最適な提案を1-2件生成してください。`,
+          triggeredBy: 'completion',
+          autoGenerated: true,
+        }).then((result) => {
+          const count = result.data?.count || 0;
+          if (count > 0) {
+            toast.success(`次ステップの改善提案を${count}件生成しました`);
+            queryClient.invalidateQueries({ queryKey: ['improvements'] });
+          }
+        }).catch((err) => {
+          console.error('[CompletionConfirm] 次ステップ提案生成エラー:', err);
+          toast.error('次ステップ提案の生成に失敗しました');
+        });
+      }
+
+      // 4. 完了ダイアログを閉じてEvaluationModalを表示
+      setIsCompletionDialogOpen(false);
+      setCompletionItem(null);
+      setEvaluatingItem({ ...completionItem, ...updateData });
+      setIsEvaluationOpen(true);
+      toast.success('改善タスクを完了にしました');
+
+    } catch (err) {
+      console.error('[CompletionConfirm] Error:', err);
+      toast.error('ステータスの更新に失敗しました');
+    } finally {
+      setIsCompletionLoading(false);
     }
   };
 
@@ -498,8 +583,12 @@ export default function Improve() {
   const handleBulkStatusChangeDetailView = (newStatus) => {
     const ids = Array.from(detailViewSelectedIds);
     if (ids.length === 0) return;
+    // 一括完了は非対応（効果計測には個別の改善反映日入力が必要）
+    if (newStatus === 'completed') {
+      toast.error('一括での完了変更はできません。各タスクを個別に完了にしてください。');
+      return;
+    }
     const updateData = { status: newStatus };
-    if (newStatus === 'completed') updateData.completedAt = new Date().toISOString();
     Promise.allSettled(ids.map(id => updateDoc(doc(db, 'sites', selectedSiteId, 'improvements', id), { ...updateData, updatedAt: new Date() })))
       .then((results) => {
         const failed = results.filter(r => r.status === 'rejected');
@@ -646,9 +735,29 @@ export default function Improve() {
               )}
               {!scrapingStatus && (
                 <p className="mt-1 text-amber-600 dark:text-amber-400">
-                  ⚠️ サイトマップデータ未取得。管理画面から「スクレイピング開始」を実行すると、AI改善案の精度が向上します。
+                  サイトマップデータ未取得。管理画面から「スクレイピング開始」を実行すると、AI改善案の精度が向上します。
                 </p>
               )}
+              {/* 自動生成トグル */}
+              <div className="mt-2 flex items-center gap-2">
+                <button
+                  onClick={async () => {
+                    const newVal = !selectedSite?.autoImprovementEnabled;
+                    try {
+                      await updateDoc(doc(db, 'sites', selectedSiteId), { autoImprovementEnabled: newVal });
+                      toast.success(newVal ? '月次自動生成を有効にしました' : '月次自動生成を無効にしました');
+                    } catch { toast.error('設定の変更に失敗しました'); }
+                  }}
+                  className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+                    selectedSite?.autoImprovementEnabled ? 'bg-primary' : 'bg-gray-200 dark:bg-dark-3'
+                  }`}
+                >
+                  <span className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
+                    selectedSite?.autoImprovementEnabled ? 'translate-x-4' : 'translate-x-0'
+                  }`} />
+                </button>
+                <span className="text-xs text-body-color">月次自動生成 {selectedSite?.autoImprovementEnabled ? 'ON' : 'OFF'}</span>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               {/* ステータス絞り込み */}
@@ -662,6 +771,7 @@ export default function Improve() {
                   <option value="draft">{statusLabels.draft}</option>
                   <option value="in_progress">{statusLabels.in_progress}</option>
                   <option value="completed">{statusLabels.completed}</option>
+                  <option value="archived">{statusLabels.archived}</option>
                 </select>
               )}
             </div>
@@ -840,11 +950,12 @@ export default function Improve() {
                         sortedImprovements.map((item) => {
                           const isChecked = detailViewSelectedIds.has(item.id);
                           const isDrawerActive = drawerItem?.id === item.id;
+                          const isArchived = item.status === 'archived';
                           return (
                             <tr
                               key={item.id}
                               onClick={() => openDrawer(item)}
-                              className={`border-b border-gray-100 dark:border-dark-3 cursor-pointer transition-colors ${isDrawerActive ? 'bg-primary/5' : 'hover:bg-gray-50 dark:hover:bg-dark-3'}`}
+                              className={`border-b border-gray-100 dark:border-dark-3 cursor-pointer transition-colors ${isArchived ? 'opacity-50' : ''} ${isDrawerActive ? 'bg-primary/5' : 'hover:bg-gray-50 dark:hover:bg-dark-3'}`}
                             >
                               {!isViewer && (
                                 <td className="py-7 pl-4 pr-2 align-middle text-center" onClick={(e) => e.stopPropagation()}>
@@ -887,6 +998,12 @@ export default function Improve() {
                                   </a>
                                 )}
                                 <div className="text-sm text-body-color mt-1 line-clamp-1">{item.description || '—'}</div>
+                                {item.status === 'draft' && item.createdAt && (() => {
+                                  const created = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
+                                  const days = Math.floor((Date.now() - created.getTime()) / (24 * 60 * 60 * 1000));
+                                  if (days > 0) return <span className={`text-xs ${days > 60 ? 'text-red-500' : days > 30 ? 'text-amber-600' : 'text-body-color'}`}>{days}日前に提案</span>;
+                                  return null;
+                                })()}
                               </td>
                               <td className="py-7 px-2 align-middle text-center w-[100px] min-w-[100px]" onClick={(e) => e.stopPropagation()}>
                                 {item.mockupHtml ? (
@@ -970,6 +1087,17 @@ export default function Improve() {
         onDeleted={() => setDrawerItem(null)}
         siteId={selectedSiteId}
         editingItem={editingItem}
+      />
+
+      <CompletionDialog
+        isOpen={isCompletionDialogOpen}
+        onClose={() => {
+          setIsCompletionDialogOpen(false);
+          setCompletionItem(null);
+        }}
+        item={completionItem}
+        onConfirm={handleCompletionConfirm}
+        isLoading={isCompletionLoading}
       />
 
       <EvaluationModal
@@ -1058,12 +1186,30 @@ export default function Improve() {
                     </span>
                   )}
                   <div className="ml-auto flex items-center gap-2">
+                    {item.status === 'archived' ? (
+                      <button
+                        onClick={async () => {
+                          await updateDoc(doc(db, 'sites', selectedSiteId, 'improvements', item.id), {
+                            status: 'draft', isStale: false, archivedAt: null, archivedReason: null,
+                          });
+                          setDrawerItem({ ...item, status: 'draft' });
+                          queryClient.invalidateQueries({ queryKey: ['improvements'] });
+                          toast.success('提案を復元しました');
+                        }}
+                        className="text-sm border border-gray-200 dark:border-dark-3 rounded-lg px-3 py-1.5 text-primary hover:bg-gray-50 dark:hover:bg-dark-3"
+                      >
+                        起案に復元
+                      </button>
+                    ) : (
                     <div className="relative inline-block">
                       <select
                         value={item.status || 'draft'}
                         onChange={(e) => {
-                          handleStatusChange(item, e.target.value);
-                          setDrawerItem({ ...item, status: e.target.value });
+                          const newStatus = e.target.value;
+                          handleStatusChange(item, newStatus);
+                          if (newStatus !== 'completed') {
+                            setDrawerItem({ ...item, status: newStatus });
+                          }
                         }}
                         className="appearance-none [background-image:none] text-sm border border-gray-200 dark:border-dark-3 rounded-lg pl-3 pr-8 py-1.5 cursor-pointer bg-white dark:bg-dark-2 text-dark dark:text-white"
                       >
@@ -1075,6 +1221,7 @@ export default function Improve() {
                         <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M5 7.5L10 12.5L15 7.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
                       </span>
                     </div>
+                    )}
                     {!isViewer && (
                       <button
                         onClick={() => {
@@ -1138,6 +1285,16 @@ export default function Improve() {
                       </div>
                     </div>
                     <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-5">※目安料金・納期についてはAIが算出した目安となり実際の料金・納期とは異なる可能性があります。</p>
+
+                    {/* 効果計測パネル（完了タスクのみ） */}
+                    <EffectMeasurementPanel
+                      item={item}
+                      siteId={selectedSiteId}
+                      onRefresh={() => {
+                        queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
+                        queryClient.invalidateQueries({ queryKey: ['completed-improvements', selectedSiteId] });
+                      }}
+                    />
                   </div>
                 </div>
 
@@ -1189,7 +1346,10 @@ export default function Improve() {
                                   {(getBeforeScreenshotUrl(item.targetPageUrl)) ? (
                                     <img src={getBeforeScreenshotUrl(item.targetPageUrl)} alt="現在のページ" className="w-full h-auto" />
                                   ) : (
-                                    <div className="flex h-[300px] items-center justify-center text-xs text-body-color">スクリーンショットなし</div>
+                                    <div className="flex h-[300px] flex-col items-center justify-center gap-2 text-xs text-body-color">
+                                      <svg className="h-5 w-5 animate-spin text-primary/40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                      スクリーンショットを取得中...
+                                    </div>
                                   )}
                                 </div>
                               </div>
@@ -1245,7 +1405,10 @@ export default function Improve() {
                               {(getBeforeScreenshotUrl(item.targetPageUrl)) ? (
                                 <img src={getBeforeScreenshotUrl(item.targetPageUrl)} alt="現在のページ" className="w-full h-auto" />
                               ) : (
-                                <div className="flex h-[300px] items-center justify-center text-xs text-body-color">スクリーンショットなし</div>
+                                <div className="flex h-[300px] flex-col items-center justify-center gap-2 text-xs text-body-color">
+                                  <svg className="h-5 w-5 animate-spin text-primary/40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                  スクリーンショットを取得中...
+                                </div>
                               )}
                             </div>
                           </div>
@@ -1312,7 +1475,10 @@ export default function Improve() {
                                 {getBeforeScreenshotUrl(item.targetPageUrl) ? (
                                   <img src={getBeforeScreenshotUrl(item.targetPageUrl)} alt="現在のページ" className="w-full h-auto" />
                                 ) : (
-                                  <div className="flex h-[300px] items-center justify-center text-xs text-body-color">スクリーンショットなし</div>
+                                  <div className="flex h-[300px] flex-col items-center justify-center gap-2 text-xs text-body-color">
+                                  <svg className="h-5 w-5 animate-spin text-primary/40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
+                                  スクリーンショットを取得中...
+                                </div>
                                 )}
                               </div>
                             </div>
