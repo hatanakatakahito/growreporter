@@ -179,9 +179,9 @@ async function sendAutoImprovementNotification(db, siteId, siteData, ownerId, co
 
 function buildAutoImprovementEmailHtml(siteName, count) {
   return `
-    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, 'Yu Gothic', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <h2 style="color: #1B2559; font-size: 18px;">AI改善提案が更新されました</h2>
-      <p style="color: #637381; font-size: 14px; line-height: 1.6;">
+      <p style="color: #374151; font-size: 14px; line-height: 1.6;">
         「${siteName}」に<strong>${count}件</strong>の新しい改善提案が自動生成されました。
         最新のサイトデータに基づいた提案です。
       </p>
@@ -191,7 +191,7 @@ function buildAutoImprovementEmailHtml(siteName, count) {
           改善提案を確認する
         </a>
       </p>
-      <p style="color: #9CA3AF; font-size: 12px; margin-top: 32px;">
+      <p style="color: #6b7280; font-size: 12px; margin-top: 32px;">
         この通知はGrowReporterの自動改善提案機能によるものです。<br>
         通知設定はアカウント設定から変更できます。
       </p>

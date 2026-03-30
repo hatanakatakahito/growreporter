@@ -113,10 +113,10 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <thead>
                   <tr style="background-color: #f9fafb;">
-                    <th style="padding: 10px 12px; text-align: left; font-size: 13px; color: #6b7280;">KPI</th>
-                    <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #6b7280;">実績</th>
-                    <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #6b7280;">目標</th>
-                    <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #6b7280;">達成率</th>
+                    <th style="padding: 10px 12px; text-align: left; font-size: 13px; color: #374151;">KPI</th>
+                    <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #374151;">実績</th>
+                    <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #374151;">目標</th>
+                    <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #374151;">達成率</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -140,7 +140,7 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${subject}</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', 'Hiragino Sans', Meiryo, sans-serif; background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
@@ -158,10 +158,10 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
           <tr>
             <td style="padding: 30px;">
               <h2 style="margin: 0 0 5px 0; color: #1f2937; font-size: 20px; font-weight: 700;">${displaySiteName}</h2>
-              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+              <p style="margin: 0; color: #374151; font-size: 14px;">
                 ${displaySiteUrl ? `<a href="${displaySiteUrl}" style="color: #3758F9; text-decoration: none;">${displaySiteUrl}</a>` : '（URLなし）'}
               </p>
-              <p style="margin: 15px 0 0 0; color: #6b7280; font-size: 14px;">対象期間: ${dateRange.startDate} 〜 ${dateRange.endDate}</p>
+              <p style="margin: 15px 0 0 0; color: #374151; font-size: 14px;">対象期間: ${dateRange.startDate} 〜 ${dateRange.endDate}</p>
             </td>
           </tr>
 
@@ -171,9 +171,9 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <thead>
                   <tr style="background-color: #f9fafb;">
-                    <th style="padding: 12px; text-align: left; font-size: 14px; color: #6b7280; font-weight: 600;">指標</th>
-                    <th style="padding: 12px; text-align: right; font-size: 14px; color: #6b7280; font-weight: 600;">${periodLabel}</th>
-                    <th style="padding: 12px; text-align: right; font-size: 14px; color: #6b7280; font-weight: 600;">前${prevPeriodLabel}比</th>
+                    <th style="padding: 12px; text-align: left; font-size: 14px; color: #374151; font-weight: 600;">指標</th>
+                    <th style="padding: 12px; text-align: right; font-size: 14px; color: #374151; font-weight: 600;">${periodLabel}</th>
+                    <th style="padding: 12px; text-align: right; font-size: 14px; color: #374151; font-weight: 600;">前${prevPeriodLabel}比</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -203,8 +203,8 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
           <!-- フッター -->
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 12px;">このメールは グローレポータ から自動送信されています</p>
-              <p style="margin: 0; color: #9ca3af; font-size: 11px;">メール通知の設定は<a href="${appBaseUrl}/account/settings" style="color: #3758F9; text-decoration: none;">アカウント設定</a>から変更できます</p>
+              <p style="margin: 0 0 10px 0; color: #374151; font-size: 12px;">このメールは グローレポータ から自動送信されています</p>
+              <p style="margin: 0; color: #6b7280; font-size: 11px;">メール通知の設定は<a href="${appBaseUrl}/account/settings" style="color: #3758F9; text-decoration: none;">アカウント設定</a>から変更できます</p>
             </td>
           </tr>
 
@@ -294,7 +294,7 @@ export function generateInvitationEmail(data) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${subject}</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', 'Hiragino Sans', Meiryo, sans-serif; background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
@@ -313,7 +313,7 @@ export function generateInvitationEmail(data) {
                 ${inviterName} さんから招待が届いています
               </h2>
               
-              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+              <p style="margin: 0 0 20px 0; color: #1f2937; font-size: 16px; line-height: 1.6;">
                 <strong>${companyName}</strong> のメンバーとして招待されました。
               </p>
               
@@ -323,7 +323,7 @@ export function generateInvitationEmail(data) {
                 </p>
               </div>
               
-              <p style="margin: 20px 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+              <p style="margin: 20px 0; color: #374151; font-size: 14px; line-height: 1.6;">
                 招待を承認すると、${companyName} の全サイトのデータにアクセスできるようになります。
               </p>
               
@@ -336,11 +336,11 @@ export function generateInvitationEmail(data) {
                   </td>
                 </tr>
               </table>
-              <p style="margin: 16px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+              <p style="margin: 16px 0 0 0; color: #374151; font-size: 13px; line-height: 1.6;">
                 ボタンが表示されない場合は、以下のリンクをクリックしてください：<br>
                 <a href="${invitationUrl}" style="color: #3758F9; text-decoration: underline; word-break: break-all;">${invitationUrl}</a>
               </p>
-              <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
+              <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
                 ※ この招待は <strong>${expiresAt}</strong> まで有効です。<br>
                 ※ グローレポータのアカウントをお持ちでない場合は、まず新規登録を行ってから招待を承認してください。
               </p>
@@ -349,7 +349,7 @@ export function generateInvitationEmail(data) {
 
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">
                 © 2026 グローレポータ by Grow Group
               </p>
             </td>
@@ -396,7 +396,7 @@ export function generateMemberRemovedEmail(data) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin: 0; padding: 0; font-family: sans-serif; background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
@@ -404,11 +404,11 @@ export function generateMemberRemovedEmail(data) {
           <tr>
             <td>
               <h2 style="margin: 0 0 20px 0; color: #1f2937;">メンバーから削除されました</h2>
-              <p style="margin: 0 0 15px 0; color: #4b5563;">${memberName} さん、</p>
-              <p style="margin: 0 0 15px 0; color: #4b5563;">
+              <p style="margin: 0 0 15px 0; color: #1f2937;">${memberName} さん、</p>
+              <p style="margin: 0 0 15px 0; color: #1f2937;">
                 ${companyName} のメンバーから削除されました。今後、このアカウントのサイトにはアクセスできません。
               </p>
-              <p style="margin: 0; color: #6b7280; font-size: 14px;">
+              <p style="margin: 0; color: #374151; font-size: 14px;">
                 ご質問がある場合は、アカウントオーナーにお問い合わせください。
               </p>
             </td>
@@ -449,7 +449,7 @@ export function generateOwnershipTransferEmail(data) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin: 0; padding: 0; font-family: sans-serif; background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
@@ -457,11 +457,11 @@ export function generateOwnershipTransferEmail(data) {
           <tr>
             <td>
               <h2 style="margin: 0 0 20px 0; color: #1f2937;">オーナー権限が譲渡されました</h2>
-              <p style="margin: 0 0 15px 0; color: #4b5563;">${newOwnerName} さん、</p>
-              <p style="margin: 0 0 15px 0; color: #4b5563;">
+              <p style="margin: 0 0 15px 0; color: #1f2937;">${newOwnerName} さん、</p>
+              <p style="margin: 0 0 15px 0; color: #1f2937;">
                 ${previousOwnerName} さんから、<strong>${companyName}</strong> のオーナー権限が譲渡されました。
               </p>
-              <p style="margin: 0 0 20px 0; color: #4b5563;">
+              <p style="margin: 0 0 20px 0; color: #1f2937;">
                 今後、あなたがこのアカウントのオーナーとして、メンバー管理やプラン変更などの全ての操作が可能になります。
               </p>
               <p style="margin: 0;">
@@ -519,7 +519,7 @@ export function generateAlertEmailTemplate(alert, siteName, siteUrl, dashboardUr
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${subject}</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
@@ -533,9 +533,9 @@ export function generateAlertEmailTemplate(alert, siteName, siteUrl, dashboardUr
             <td style="padding: 24px;">
               <h2 style="margin: 0 0 16px 0; color: #1f2937; font-size: 18px;">${displaySiteName}</h2>
               <p style="margin: 0 0 16px 0; color: #374151; font-size: 16px; font-weight: 600;">${message}</p>
-              ${alert.periodCurrent ? `<p style="margin: 0 0 16px 0; color: #6b7280; font-size: 14px;">対象期間: ${alert.periodCurrent}</p>` : ''}
+              ${alert.periodCurrent ? `<p style="margin: 0 0 16px 0; color: #374151; font-size: 14px;">対象期間: ${alert.periodCurrent}</p>` : ''}
               <p style="margin: 0 0 12px 0; color: #374151; font-size: 14px;"><strong>考えられる原因（仮説）</strong></p>
-              <ul style="margin: 0 0 20px 0; padding-left: 20px; color: #4b5563; font-size: 14px;">
+              <ul style="margin: 0 0 20px 0; padding-left: 20px; color: #1f2937; font-size: 14px;">
                 ${hypothesesList}
               </ul>
               ${dashboardUrl ? `<p style="margin: 0;"><a href="${dashboardUrl}" style="display: inline-block; padding: 12px 24px; background-color: #3758F9; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600;">ダッシュボードで確認</a></p>` : ''}
@@ -590,8 +590,8 @@ export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetrics
     return `
       <tr>
         <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #1f2937;">${m.label}</td>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 14px; color: #6b7280;">${fmtVal(m.key, m.previous)}</td>
-        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 14px; color: #9ca3af;">→</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 14px; color: #374151;">${fmtVal(m.key, m.previous)}</td>
+        <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 14px; color: #6b7280;">→</td>
         <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 14px; font-weight: 600; color: #1f2937;">${fmtVal(m.key, m.current)}</td>
         <td style="padding: 10px 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-size: 13px; font-weight: 600; color: ${color};">${arrow} ${isDown ? '-' : '+'}${Math.abs(m.changePercent).toFixed(1)}%</td>
       </tr>`;
@@ -600,7 +600,7 @@ export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetrics
   // 横ばい指標テキスト
   const stableNames = stableMetrics.map(m => m.label).join(', ');
   const stableHtml = stableNames
-    ? `<p style="margin: 8px 0 0 0; font-size: 13px; color: #9ca3af;">※ 横ばい: ${stableNames}</p>`
+    ? `<p style="margin: 8px 0 0 0; font-size: 13px; color: #6b7280;">※ 横ばい: ${stableNames}</p>`
     : '';
 
   // AI分析セクション
@@ -631,7 +631,7 @@ export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetrics
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>${subject}</title>
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', 'Hiragino Sans', Meiryo, sans-serif; background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
@@ -649,7 +649,7 @@ export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetrics
             <td style="padding: 24px 30px 8px 30px;">
               <h2 style="margin: 0 0 4px 0; color: #1f2937; font-size: 18px; font-weight: 700;">${displaySiteName}</h2>
               ${displaySiteUrl ? `<p style="margin: 0 0 4px 0; font-size: 13px;"><a href="${displaySiteUrl}" style="color: #3758F9; text-decoration: none;">${displaySiteUrl}</a></p>` : ''}
-              ${periodLabel ? `<p style="margin: 0; color: #6b7280; font-size: 13px;">対象期間: ${periodLabel}</p>` : ''}
+              ${periodLabel ? `<p style="margin: 0; color: #374151; font-size: 13px;">対象期間: ${periodLabel}</p>` : ''}
             </td>
           </tr>
 
@@ -660,11 +660,11 @@ export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetrics
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <thead>
                   <tr style="background-color: #f9fafb;">
-                    <th style="padding: 8px 12px; text-align: left; font-size: 12px; color: #6b7280; font-weight: 600;">指標</th>
-                    <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #6b7280; font-weight: 600;">前週</th>
-                    <th style="padding: 8px 12px; text-align: center; font-size: 12px; color: #6b7280;"></th>
-                    <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #6b7280; font-weight: 600;">今週</th>
-                    <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #6b7280; font-weight: 600;">変化</th>
+                    <th style="padding: 8px 12px; text-align: left; font-size: 12px; color: #374151; font-weight: 600;">指標</th>
+                    <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #374151; font-weight: 600;">前週</th>
+                    <th style="padding: 8px 12px; text-align: center; font-size: 12px; color: #374151;"></th>
+                    <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #374151; font-weight: 600;">今週</th>
+                    <th style="padding: 8px 12px; text-align: right; font-size: 12px; color: #374151; font-weight: 600;">変化</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -706,8 +706,8 @@ export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetrics
           <!-- フッター -->
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0 0 8px 0; color: #6b7280; font-size: 12px;">このメールは グローレポータ から自動送信されています</p>
-              <p style="margin: 0; color: #9ca3af; font-size: 11px;">メール通知の設定は<a href="https://grow-reporter.com/account/settings" style="color: #3758F9; text-decoration: none;">アカウント設定</a>から変更できます</p>
+              <p style="margin: 0 0 8px 0; color: #374151; font-size: 12px;">このメールは グローレポータ から自動送信されています</p>
+              <p style="margin: 0; color: #6b7280; font-size: 11px;">メール通知の設定は<a href="https://grow-reporter.com/account/settings" style="color: #3758F9; text-decoration: none;">アカウント設定</a>から変更できます</p>
             </td>
           </tr>
 
@@ -757,7 +757,7 @@ export function generateWelcomeEmail(data) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
@@ -776,14 +776,14 @@ export function generateWelcomeEmail(data) {
                 ${displayName} さん、ようこそ！
               </h2>
 
-              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+              <p style="margin: 0 0 20px 0; color: #1f2937; font-size: 16px; line-height: 1.6;">
                 グローレポータへのご登録ありがとうございます。<br>
                 GA4・サーチコンソールのデータをAIで分析し、サイト改善に役立つインサイトをお届けします。
               </p>
 
               <div style="background-color: #f9fafb; border-left: 4px solid #3758F9; padding: 15px; margin: 20px 0;">
                 <p style="margin: 0 0 10px 0; color: #374151; font-size: 14px; font-weight: 600;">ご利用開始の流れ</p>
-                <p style="margin: 0; color: #4b5563; font-size: 14px; line-height: 1.8;">
+                <p style="margin: 0; color: #1f2937; font-size: 14px; line-height: 1.8;">
                   1. サイトを登録する<br>
                   2. Google アカウントを連携する<br>
                   3. ダッシュボードでデータを確認する
@@ -800,7 +800,7 @@ export function generateWelcomeEmail(data) {
                 </tr>
               </table>
 
-              <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
+              <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
                 ご不明点がございましたら、お気軽にお問い合わせください。
               </p>
             </td>
@@ -808,7 +808,7 @@ export function generateWelcomeEmail(data) {
 
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">
                 &copy; 2026 グローレポータ by Grow Group
               </p>
             </td>
@@ -862,7 +862,7 @@ export function generateSiteRegistrationCompleteEmail(data) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
@@ -881,7 +881,7 @@ export function generateSiteRegistrationCompleteEmail(data) {
                 ${displayName} さん
               </h2>
 
-              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+              <p style="margin: 0 0 20px 0; color: #1f2937; font-size: 16px; line-height: 1.6;">
                 サイトの登録が完了しました。<br>
                 バックグラウンドでデータの取得・分析準備を行っています。
               </p>
@@ -889,11 +889,11 @@ export function generateSiteRegistrationCompleteEmail(data) {
               <div style="background-color: #f9fafb; border-radius: 8px; padding: 20px; margin: 20px 0;">
                 <table cellpadding="0" cellspacing="0" border="0" width="100%">
                   <tr>
-                    <td style="color: #6b7280; font-size: 13px; padding-bottom: 8px;">サイト名</td>
+                    <td style="color: #374151; font-size: 13px; padding-bottom: 8px;">サイト名</td>
                     <td style="color: #1f2937; font-size: 14px; font-weight: 600; padding-bottom: 8px; text-align: right;">${siteName}</td>
                   </tr>
                   <tr>
-                    <td style="color: #6b7280; font-size: 13px;">URL</td>
+                    <td style="color: #374151; font-size: 13px;">URL</td>
                     <td style="color: #3758F9; font-size: 14px; text-align: right;">
                       <a href="${siteUrl}" style="color: #3758F9; text-decoration: none;">${siteUrl}</a>
                     </td>
@@ -903,12 +903,12 @@ export function generateSiteRegistrationCompleteEmail(data) {
 
               <div style="background-color: #f9fafb; border-left: 4px solid #3758F9; padding: 15px; margin: 20px 0;">
                 <p style="margin: 0 0 10px 0; color: #374151; font-size: 14px; font-weight: 600;">現在実行中の処理</p>
-                <p style="margin: 0; color: #4b5563; font-size: 14px; line-height: 1.8;">
+                <p style="margin: 0; color: #1f2937; font-size: 14px; line-height: 1.8;">
                   ・スクリーンショットの撮影<br>
                   ・上位100ページのスクレイピング<br>
                   ・過去3ヶ月分のデータエクスポート
                 </p>
-                <p style="margin: 10px 0 0 0; color: #9ca3af; font-size: 12px;">
+                <p style="margin: 10px 0 0 0; color: #6b7280; font-size: 12px;">
                   ※ 完了まで数分かかる場合があります
                 </p>
               </div>
@@ -923,7 +923,7 @@ export function generateSiteRegistrationCompleteEmail(data) {
                 </tr>
               </table>
 
-              <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
+              <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
                 ご不明点がございましたら、お気軽にお問い合わせください。
               </p>
             </td>
@@ -931,7 +931,7 @@ export function generateSiteRegistrationCompleteEmail(data) {
 
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">
                 &copy; 2026 グローレポータ by Grow Group
               </p>
             </td>
@@ -991,7 +991,7 @@ export function generateAdminCreatedAccountEmail(data) {
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 </head>
-<body style="margin: 0; padding: 0; font-family: 'Helvetica Neue', Helvetica, Arial, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', Meiryo, 'Yu Gothic', sans-serif; background-color: #f3f4f6;">
   <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
     <tr>
       <td align="center">
@@ -1010,7 +1010,7 @@ export function generateAdminCreatedAccountEmail(data) {
                 ${displayName} 様
               </h2>
 
-              <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
+              <p style="margin: 0 0 20px 0; color: #1f2937; font-size: 16px; line-height: 1.6;">
                 ユーザーアカウントおよびサイト登録の発行が完了しました。<br>
                 以下の情報でログインいただけます。
               </p>
@@ -1020,17 +1020,17 @@ export function generateAdminCreatedAccountEmail(data) {
                   <td style="padding: 24px;">
                     <table cellpadding="0" cellspacing="0" border="0" width="100%">
                       <tr>
-                        <td style="padding: 8px 0; color: #6b7280; font-size: 13px; width: 140px; vertical-align: top;">ログインURL</td>
+                        <td style="padding: 8px 0; color: #374151; font-size: 13px; width: 140px; vertical-align: top;">ログインURL</td>
                         <td style="padding: 8px 0; color: #1f2937; font-size: 14px; font-weight: 600;">
                           <a href="${loginUrl}" style="color: #3758F9; text-decoration: none;">${loginUrl}</a>
                         </td>
                       </tr>
                       <tr>
-                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 13px; vertical-align: top;">メールアドレス</td>
+                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; color: #374151; font-size: 13px; vertical-align: top;">メールアドレス</td>
                         <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; color: #1f2937; font-size: 14px; font-weight: 600;">${email}</td>
                       </tr>
                       <tr>
-                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; color: #6b7280; font-size: 13px; vertical-align: top;">パスワード</td>
+                        <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; color: #374151; font-size: 13px; vertical-align: top;">パスワード</td>
                         <td style="padding: 8px 0; border-top: 1px solid #e5e7eb; color: #1f2937; font-size: 14px; font-weight: 600; letter-spacing: 1px;">${password}</td>
                       </tr>
                     </table>
@@ -1048,7 +1048,7 @@ export function generateAdminCreatedAccountEmail(data) {
                 </tr>
               </table>
 
-              <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
+              <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
                 セキュリティのため、初回ログイン後にパスワードの変更をお勧めします。<br>
                 ご不明点がございましたら、お気軽にお問い合わせください。
               </p>
@@ -1057,7 +1057,7 @@ export function generateAdminCreatedAccountEmail(data) {
 
           <tr>
             <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
-              <p style="margin: 0; color: #9ca3af; font-size: 12px;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">
                 &copy; 2026 グローレポータ by Grow Group
               </p>
             </td>
