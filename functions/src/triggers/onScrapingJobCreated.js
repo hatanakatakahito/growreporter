@@ -86,6 +86,24 @@ export async function onScrapingJobCreatedHandler(event) {
         logger.warn('[onScrapingJobCreated] 自動サイト診断エラー（スクレイピングは成功）', { siteId, error: diagError.message });
       }
 
+      // 月次スクレイピング完了後にAI改善提案を自動生成
+      if (data.source === 'monthly_rescrape') {
+        try {
+          const { generateAutoImprovements } = await import('../utils/autoImprovementGenerator.js');
+          logger.info('[onScrapingJobCreated] AI改善提案の自動生成を開始', { siteId });
+          const autoResult = await generateAutoImprovements(siteId);
+          if (autoResult.skipped) {
+            logger.info('[onScrapingJobCreated] AI改善提案の自動生成スキップ', { siteId, reason: autoResult.reason });
+          } else if (autoResult.success) {
+            logger.info('[onScrapingJobCreated] AI改善提案の自動生成完了', { siteId, count: autoResult.count });
+          } else {
+            logger.warn('[onScrapingJobCreated] AI改善提案の自動生成失敗', { siteId, reason: autoResult.reason });
+          }
+        } catch (autoError) {
+          logger.warn('[onScrapingJobCreated] AI改善提案の自動生成エラー（スクレイピングは成功）', { siteId, error: autoError.message });
+        }
+      }
+
     } catch (error) {
       logger.error('[onScrapingJobCreated] エラー', { jobId, siteId, error: error.message });
 

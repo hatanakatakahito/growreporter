@@ -458,6 +458,14 @@ export const submitImprovementConsultation = lazyCallable('./callable/submitImpr
 export const generateImprovements = lazyCallable('./callable/generateImprovements.js', 'generateImprovementsCallable', { memory: '2GiB', timeoutSeconds: 300, secrets: ['GEMINI_API_KEY'] });
 
 /**
+ * 改善効果測定 Before指標スナップショット取得
+ * 改善タスク完了時にGA4/GSCのBefore期間データを自動取得・保存
+ */
+export const fetchBeforeMetrics = lazyCallable('./callable/fetchBeforeMetrics.js', 'fetchBeforeMetricsCallable', { memory: '512MiB', timeoutSeconds: 60 });
+export const retryEffectMeasurement = lazyCallable('./callable/retryEffectMeasurement.js', 'retryEffectMeasurementCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const scheduleRemeasurement = lazyCallable('./callable/scheduleRemeasurement.js', 'scheduleRemeasurementCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
  * 改善モックアップ生成 Callable Function（Gemini 2.5 Flash）
  * 手動トリガー：改善箇所のみの部分HTML生成
  */
@@ -522,6 +530,36 @@ export const checkMetricAlertsScheduled = onSchedule({
 }, async (event) => {
   const m = await import('./scheduled/checkMetricAlerts.js');
   return m.runCheckMetricAlerts();
+});
+
+/**
+ * 改善効果 After指標自動計測 Scheduled Function
+ * 毎日AM4:00(JST)に、計測対象のBefore/After比較を実行
+ */
+export const measureImprovementEffects = onSchedule({
+  schedule: '0 4 * * *',
+  timeZone: 'Asia/Tokyo',
+  region: 'asia-northeast1',
+  memory: '512MiB',
+  timeoutSeconds: 540,
+}, async (event) => {
+  const m = await import('./scheduled/measureImprovementEffects.js');
+  return m.measureImprovementEffectsHandler(event);
+});
+
+/**
+ * 鮮度管理・自動アーカイブ（日次）
+ * draft提案の relevanceScore 更新 + 90日超を archived に変更
+ */
+export const archiveStaleImprovements = onSchedule({
+  schedule: '0 5 * * *',
+  timeZone: 'Asia/Tokyo',
+  region: 'asia-northeast1',
+  memory: '256MiB',
+  timeoutSeconds: 120,
+}, async (event) => {
+  const m = await import('./scheduled/archiveStaleImprovements.js');
+  return m.archiveStaleImprovementsHandler(event);
 });
 
 /**

@@ -384,6 +384,24 @@
         {"fieldPath": "__name__", "order": "ASCENDING"}
       ]
     }
+    ,
+    {
+      "collectionGroup": "improvements",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "emStatus", "order": "ASCENDING"},
+        {"fieldPath": "emNextMeasurementAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "improvements",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "emStatus", "order": "ASCENDING"}
+      ]
+    }
   ],
   "fieldOverrides": []
 }

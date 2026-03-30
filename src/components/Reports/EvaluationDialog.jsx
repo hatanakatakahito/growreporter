@@ -20,7 +20,7 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
 
   useEffect(() => {
     if (item) {
-      const hasEvaluation = item.rating && item.evaluation;
+      const hasEvaluation = !!item.rating;
       setIsReadOnly(hasEvaluation);
 
       setFormData({
@@ -84,7 +84,7 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
       <DialogTitle>
         <span className="flex items-center gap-3">
           <CheckCircle className="h-6 w-6 text-green-500" />
-          {isReadOnly ? '改善課題の評価詳細' : '改善課題の評価'}
+          {isReadOnly ? '評価レビュー詳細' : '評価レビュー'}
         </span>
       </DialogTitle>
 
@@ -116,36 +116,7 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
         <form id="evaluation-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-              実際の効果
-            </label>
-            <input
-              type="text"
-              value={formData.actualImpact}
-              onChange={(e) => setFormData({ ...formData, actualImpact: e.target.value })}
-              className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-dark outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white"
-              placeholder="例: CVR 12%向上、滞在時間 25%増加"
-              disabled={isReadOnly}
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-              評価・振り返り {!isReadOnly && <span className="text-red-500">*</span>}
-            </label>
-            <textarea
-              value={formData.evaluation}
-              onChange={(e) => setFormData({ ...formData, evaluation: e.target.value })}
-              rows={4}
-              className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-dark outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white"
-              placeholder="改善の効果や気づいた点を記録してください"
-              disabled={isReadOnly}
-              required={!isReadOnly}
-            />
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-              満足度評価 {!isReadOnly && <span className="text-red-500">*</span>}
+              評価 {!isReadOnly && <span className="text-red-500">*</span>}
             </label>
             <div className="flex items-center gap-4">
               {[1, 2, 3, 4, 5].map((star) => (
@@ -174,6 +145,20 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
                 1: 改善が必要 | 2: やや不満 | 3: 普通 | 4: 良い | 5: 大変良い
               </p>
             </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
+              評価・振り返り
+            </label>
+            <textarea
+              value={formData.evaluation}
+              onChange={(e) => setFormData({ ...formData, evaluation: e.target.value })}
+              rows={4}
+              className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-dark outline-none focus:border-primary disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-3 dark:text-white"
+              placeholder="改善の効果や気づいた点を記録してください"
+              disabled={isReadOnly}
+            />
           </div>
         </form>
       </DialogBody>
