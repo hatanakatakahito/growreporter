@@ -4,11 +4,11 @@ import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } fro
 import { Button } from '../ui/button';
 
 const FOCUS_OPTIONS = [
-  { value: 'balance', label: 'バランス（まんべんなく）', description: '集客・成果・デザイン・使いやすさを総合的に分析' },
-  { value: 'acquisition', label: '集客力の向上', description: 'チャネル別流入・SEO・SNS・広告からサイト訪問数を増やす' },
-  { value: 'conversion', label: 'コンバージョン（成果）の向上', description: 'CV導線・フォーム・CTA・逆算フローからCVRを改善' },
-  { value: 'branding', label: 'ブランディングの向上', description: 'ビジュアル・トンマナ・世界観など「らしさ」の表現を改善' },
-  { value: 'usability', label: 'ユーザービリティの向上', description: 'ページ別の離脱・表示速度・UI・アクセシビリティを改善' },
+  { value: 'balance', label: 'バランス（まんべんなく）' },
+  { value: 'acquisition', label: '集客力の向上' },
+  { value: 'conversion', label: 'コンバージョン（成果）の向上' },
+  { value: 'branding', label: 'ブランディングの向上' },
+  { value: 'usability', label: 'ユーザービリティの向上' },
 ];
 
 /**
@@ -53,10 +53,7 @@ export default function ImprovementFocusModal({ isOpen, onClose, onConfirm }) {
                 onChange={() => setFocus(opt.value)}
                 className="h-4 w-4 text-primary"
               />
-              <div>
-                <span className="text-sm font-medium text-dark dark:text-white">{opt.label}</span>
-                {opt.description && <p className="mt-0.5 text-xs text-body-color">{opt.description}</p>}
-              </div>
+              <span className="text-sm font-medium text-dark dark:text-white">{opt.label}</span>
             </label>
           ))}
         </div>
