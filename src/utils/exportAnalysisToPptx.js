@@ -9,18 +9,20 @@ import logoSvgRaw from '../assets/img/logo.svg?raw';
 const FONT_FACE = '游ゴシック';
 
 const COLORS = {
-  primary: '3758F9',
-  accent: '9333EA',
+  primary: '0017C1',
+  accent: 'FF7043',
+  accentDark: 'C63F17',
+  sectionBg: 'FBE9E7',
   white: 'FFFFFF',
-  dark: '333333',
+  dark: '212121',
   subText: '666666',
-  altRow: 'EEF2FF',
-  border: 'D1D5DB',
-  memoLabel: '3758F9',
+  altRow: 'D9E6FF',
+  border: 'CDCDCD',
+  memoLabel: '0017C1',
   lightGray: 'F5F5F5',
 };
 
-const CHART_PALETTE = ['3b82f6', 'ef4444', '10b981', 'f59e0b', '8b5cf6', 'ec4899', '06b6d4', 'f97316'];
+const CHART_PALETTE = ['0017C1', 'FF7043', 'C63F17', '212121', 'B2B2B2', 'D9E6FF', 'F26B43', 'FBE9E7'];
 
 // スライドサイズ（インチ）
 const SLIDE_W = 11;
@@ -265,22 +267,50 @@ function formatSeconds(sec) {
 function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64, compDateRange) {
   const slide = pptx.addSlide();
 
-  // ロゴ画像（一回り小さく中央配置）
+  // ロゴ画像（左上に小さめ配置）
   if (logoBase64) {
     slide.addImage({
       data: logoBase64,
-      x: 4.0, y: 0.8, w: 3, h: 0.72,
+      x: MARGIN_X, y: 0.4, w: 2.4, h: 0.58,
     });
   }
 
-  // タイトル
+  // メインタイトル
   slide.addText('分析レポート', {
-    x: MARGIN_X, y: logoBase64 ? 1.8 : 1.5, w: CONTENT_W, h: 0.7,
-    fontSize: 28, fontFace: FONT_FACE, bold: true,
-    color: COLORS.primary, align: 'center', valign: 'middle',
+    x: MARGIN_X, y: 1.5, w: 7, h: 0.8,
+    fontSize: 32, fontFace: FONT_FACE, bold: true,
+    color: COLORS.dark, align: 'left',
   });
 
-  // 情報テーブル（左揃え）
+  // サブタイトル
+  slide.addText('基本レポート', {
+    x: MARGIN_X, y: 2.3, w: 7, h: 0.6,
+    fontSize: 20, fontFace: FONT_FACE,
+    color: COLORS.subText, align: 'left',
+  });
+
+  // 大きな日付表示（右側に配置）
+  const from = dateRange?.from || '';
+  const dateLabel = from ? `'${from.substring(2, 4)}.${from.substring(5, 7)}` : '';
+  if (dateLabel) {
+    slide.addShape(pptx.ShapeType.rect, {
+      x: 5.5, y: 3.5, w: 5, h: 3.2,
+      fill: { color: COLORS.altRow },
+      rectRadius: 0.1,
+    });
+    slide.addText(dateLabel, {
+      x: 5.5, y: 3.5, w: 5, h: 2.0,
+      fontSize: 72, fontFace: 'Arial', bold: true,
+      color: COLORS.primary, align: 'center', valign: 'middle',
+    });
+    slide.addText('分析対象月', {
+      x: 5.5, y: 5.2, w: 5, h: 0.4,
+      fontSize: 10, fontFace: FONT_FACE,
+      color: COLORS.subText, align: 'center',
+    });
+  }
+
+  // 情報テーブル（左下に配置）
   const infoRows = [
     ['サイト名', siteName || ''],
     ['URL', siteUrl || ''],
@@ -292,13 +322,13 @@ function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64, compDa
   infoRows.push(['レポート作成日', new Date().toLocaleDateString('ja-JP')]);
 
   const tableRows = infoRows.map(([label, val]) => [
-    { text: label, options: { bold: true, color: COLORS.subText, fontSize: 12, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
-    { text: val, options: { color: COLORS.dark, fontSize: 12, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
+    { text: label, options: { bold: true, color: COLORS.subText, fontSize: 10, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
+    { text: val, options: { color: COLORS.dark, fontSize: 10, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
   ]);
 
   slide.addTable(tableRows, {
-    x: 2.5, y: logoBase64 ? 3.0 : 3.2, w: 6, colW: [1.8, 4.2],
-    rowH: 0.5,
+    x: MARGIN_X, y: 3.8, w: 4.8, colW: [1.4, 3.4],
+    rowH: 0.4,
     border: { type: 'solid', pt: 0.5, color: COLORS.border },
   });
 
@@ -445,7 +475,7 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos, compSum
     const aiY = kpiEndY + 0.1;
     const aiMaxH = FOOTER_Y - aiY - 0.05;
     if (aiMaxH > 0.2) {
-      addAIAndMemoFooter(slide, aiData, memos, aiY, aiMaxH);
+  // [moved to AI summary section]
     }
   }
 
@@ -472,14 +502,43 @@ function getKPIActual(kpi, dashboard) {
 }
 
 // セクション区切り
+const SECTION_DESCRIPTIONS = {
+  'トレンド分析': '月別・日別・曜日別・時間帯別のアクセス推移を確認いただけます。',
+  'ユーザー分析': 'ユーザーの属性（男女比・年齢比・地域・デバイス）を確認いただけます。',
+  '集客分析': 'どこからユーザーが来訪したのか、流入経路を総合的に分析いただけます。',
+  'コンテンツ分析': 'アクセスの多いページやランディングページの分析を確認いただけます。',
+  'コンバージョン分析': 'コンバージョンに至る導線やキーイベントの推移を確認いただけます。',
+  'Appendix': 'レポート内で使用している用語・指標の説明です。',
+};
+
 function createSectionDivider(pptx, title) {
   const slide = pptx.addSlide();
-  slide.background = { fill: COLORS.primary };
-  slide.addText(title, {
-    x: 0, y: 0, w: SLIDE_W, h: SLIDE_H,
-    fontSize: 32, fontFace: FONT_FACE, bold: true,
-    color: COLORS.white, align: 'center', valign: 'middle',
+  slide.background = { fill: COLORS.white };
+
+  // 上部オレンジライン
+  slide.addShape(pptx.ShapeType.rect, {
+    x: MARGIN_X, y: 1.0, w: CONTENT_W, h: 0.04,
+    fill: { color: COLORS.accentDark },
   });
+
+  // セクション名
+  slide.addText(title, {
+    x: MARGIN_X, y: 1.2, w: CONTENT_W, h: 0.7,
+    fontSize: 28, fontFace: FONT_FACE, bold: true,
+    color: COLORS.dark, align: 'left',
+  });
+
+  // 説明文
+  const desc = SECTION_DESCRIPTIONS[title] || '';
+  if (desc) {
+    slide.addText(desc, {
+      x: MARGIN_X, y: 2.0, w: CONTENT_W * 0.7, h: 1.0,
+      fontSize: 14, fontFace: FONT_FACE,
+      color: COLORS.subText, align: 'left', valign: 'top',
+      lineSpacingMultiple: 1.5,
+    });
+  }
+
   addSlideFooter(slide);
 }
 
@@ -554,7 +613,7 @@ function createMonthlySlide(pptx, monthlyData, aiData, memos, compMonthlyData) {
   tbl.options.fontSize = getTableFontSize(rows.length);
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -643,7 +702,7 @@ function createDailySlide(pptx, dailyData, aiData, memos, compDailyData) {
   tblR.options.fontSize = fontSize;
   slide2.addTable(tblR.rows, tblR.options);
 
-  addAIAndMemoFooter(slide2, aiData, memos, tableLayout.aiY, tableLayout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide2);
 }
 
@@ -689,7 +748,7 @@ function createWeeklySlide(pptx, weeklyData, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -764,7 +823,7 @@ function createHourlySlide(pptx, hourlyData, aiData, memos) {
   tblR.options.fontSize = fontSize;
   slide2.addTable(tblR.rows, tblR.options);
 
-  addAIAndMemoFooter(slide2, aiData, memos, tableLayout.aiY, tableLayout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide2);
 }
 
@@ -857,7 +916,7 @@ function createUsersRegionSlide(pptx, demographics, aiData, memos) {
   tbl.options.fontSize = getTableFontSize(rows.length);
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -912,7 +971,7 @@ function createChannelsSlide(pptx, channels, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -953,7 +1012,7 @@ function createKeywordsSlide(pptx, keywords, aiData, memos) {
   tbl.options.fontSize = getTableFontSize(rows.length);
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -1009,7 +1068,7 @@ function createReferralsSlide(pptx, referrals, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -1061,7 +1120,7 @@ function createPagesSlide(pptx, pages, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -1128,7 +1187,7 @@ function createPageCategoriesSlide(pptx, pageCategories, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -1180,7 +1239,7 @@ function createLandingPagesSlide(pptx, landingPages, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -1230,7 +1289,7 @@ function createFileDownloadsSlide(pptx, fileDownloads, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -1264,7 +1323,7 @@ function createExternalLinksSlide(pptx, externalLinks, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -1332,7 +1391,7 @@ function createConversionsSlide(pptx, conversions, aiData, memos) {
   tbl.options.fontSize = getTableFontSize(rows.length);
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
@@ -1382,11 +1441,90 @@ function createReverseFlowSlide(pptx, reverseFlows, aiData, memos) {
   tbl.options.rowH = 0.4;
   slide.addTable(tbl.rows, tbl.options);
 
-  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight);
+  // [moved to AI summary section]
   addSlideFooter(slide);
 }
 
 // Appendix: 用語集
+// AI分析サマリーセクション（全セクションのAI考察をまとめて表示）
+function createAISummarySection(pptx, aiMap, memosMap) {
+  // AI考察があるページを収集
+  const sections = [
+    { key: 'dashboard', label: '全体サマリー' },
+    { key: 'analysis/month', label: '月別分析' },
+    { key: 'analysis/day', label: '日別分析' },
+    { key: 'analysis/week', label: '曜日別分析' },
+    { key: 'analysis/hour', label: '時間帯別分析' },
+    { key: 'analysis/users', label: 'ユーザー属性' },
+    { key: 'analysis/channels', label: '集客チャネル' },
+    { key: 'analysis/keywords', label: 'キーワード' },
+    { key: 'analysis/referrals', label: '参照元' },
+    { key: 'analysis/pages', label: 'ページ分析' },
+    { key: 'analysis/page-categories', label: 'ページ分類' },
+    { key: 'analysis/landing-pages', label: 'ランディングページ' },
+    { key: 'analysis/conversions', label: 'コンバージョン' },
+    { key: 'analysis/reverse-flow', label: '逆引きフロー' },
+  ];
+
+  const entries = sections
+    .map(s => ({ ...s, ai: aiMap[s.key]?.summary, memos: memosMap[s.key] }))
+    .filter(s => s.ai || (s.memos && s.memos.length > 0));
+
+  if (entries.length === 0) return;
+
+  createSectionDivider(pptx, 'AI分析サマリー');
+
+  // 1スライドに最大3セクション分を配置
+  for (let i = 0; i < entries.length; i += 3) {
+    const chunk = entries.slice(i, i + 3);
+    const slide = pptx.addSlide();
+    addSlideTitle(slide, 'AI分析サマリー');
+
+    let y = CONTENT_Y + 0.1;
+    chunk.forEach(entry => {
+      // セクションラベル
+      slide.addText(entry.label, {
+        x: MARGIN_X, y, w: CONTENT_W, h: 0.35,
+        fontSize: 12, fontFace: FONT_FACE, bold: true,
+        color: COLORS.accent,
+      });
+      y += 0.35;
+
+      // AI考察テキスト
+      if (entry.ai) {
+        const text = cleanMarkdown(entry.ai);
+        const lines = Math.ceil(text.length / 80);
+        const h = Math.max(0.5, Math.min(lines * 0.22, 1.5));
+        slide.addText(text, {
+          x: MARGIN_X + 0.2, y, w: CONTENT_W - 0.4, h,
+          fontSize: 9, fontFace: FONT_FACE,
+          color: COLORS.dark, valign: 'top',
+          lineSpacingMultiple: 1.4,
+          shrinkText: true,
+        });
+        y += h + 0.1;
+      }
+
+      // メモ
+      if (entry.memos && entry.memos.length > 0) {
+        entry.memos.slice(0, 2).forEach(memo => {
+          const memoText = `[メモ] ${memo.text || ''}`;
+          slide.addText(memoText, {
+            x: MARGIN_X + 0.2, y, w: CONTENT_W - 0.4, h: 0.3,
+            fontSize: 8, fontFace: FONT_FACE,
+            color: COLORS.subText, valign: 'top',
+          });
+          y += 0.3;
+        });
+      }
+
+      y += 0.15; // セクション間のスペース
+    });
+
+    addSlideFooter(slide);
+  }
+}
+
 function createAppendixSlide(pptx) {
   const slide = pptx.addSlide();
   addSlideTitle(slide, '指標・用語の説明');
@@ -1468,9 +1606,28 @@ function countSlides(allData) {
 
 export async function downloadAnalysisPptx(allData, siteName, dateRange) {
   const pptx = new PptxGenJS();
-  pptx.layout = 'LAYOUT_WIDE'; // Will be overridden below
+  pptx.layout = 'LAYOUT_WIDE';
   pptx.defineLayout({ name: 'CUSTOM_4_3', width: SLIDE_W, height: SLIDE_H });
   pptx.layout = 'CUSTOM_4_3';
+
+  // テーマカラー設定
+  pptx.theme = { headFontFace: FONT_FACE, bodyFontFace: FONT_FACE };
+
+  // スライドマスター定義（チャレンジ）
+  try {
+    pptx.defineSlideMaster({
+      title: 'CONTENT_MASTER',
+      background: { fill: COLORS.white },
+      objects: [
+        // 上部にプライマリカラーのアクセントライン
+        { rect: { x: 0, y: 0, w: SLIDE_W, h: 0.03, fill: { color: COLORS.primary } } },
+        // フッターエリア
+        { rect: { x: 0, y: FOOTER_Y - 0.05, w: SLIDE_W, h: 0.01, fill: { color: COLORS.border } } },
+      ],
+    });
+  } catch (e) {
+    console.warn('[PPTX] スライドマスター定義スキップ:', e.message);
+  }
 
   // ロゴ変換
   const logoBase64 = await svgToBase64Png(logoSvgRaw).catch(() => null);
@@ -1521,7 +1678,10 @@ export async function downloadAnalysisPptx(allData, siteName, dateRange) {
   createConversionsSlide(pptx, allData.conversions, ai['analysis/conversions'], memos['analysis/conversions']);
   createReverseFlowSlide(pptx, allData.reverseFlows, ai['analysis/reverse-flow'], memos['analysis/reverse-flow']);
 
-  // セクション7: Appendix
+  // セクション7: AI分析サマリー
+  createAISummarySection(pptx, ai, memos);
+
+  // セクション8: Appendix
   createSectionDivider(pptx, 'Appendix');
   createAppendixSlide(pptx);
 
