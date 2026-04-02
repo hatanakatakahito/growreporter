@@ -444,26 +444,25 @@ export default function SiteDetail() {
             </div>
             <button
               onClick={async () => {
-                const newVal = !site?.autoImprovementEnabled;
+                const newVal = !siteDetail?.autoImprovementEnabled;
                 try {
                   await updateDoc(doc(db, 'sites', siteId), { autoImprovementEnabled: newVal });
                   toast.success(newVal ? '自動生成を有効にしました' : '自動生成を無効にしました');
-                  // refetchで最新データを反映
-                  window.location.reload();
+                  refetch();
                 } catch (e) {
                   toast.error('設定の変更に失敗しました');
                 }
               }}
               className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-                site?.autoImprovementEnabled ? 'bg-primary' : 'bg-gray-200 dark:bg-dark-3'
+                siteDetail?.autoImprovementEnabled ? 'bg-primary' : 'bg-gray-200 dark:bg-dark-3'
               }`}
             >
               <span className={`pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow ring-0 transition-transform duration-200 ${
-                site?.autoImprovementEnabled ? 'translate-x-5' : 'translate-x-0'
+                siteDetail?.autoImprovementEnabled ? 'translate-x-5' : 'translate-x-0'
               }`} />
             </button>
           </div>
-          {site?.lastAutoImprovementAt && (
+          {siteDetail?.lastAutoImprovementAt && (
             <div className="mt-3 text-xs text-body-color">
               最終自動生成: {site.lastAutoImprovementAt.toDate ? site.lastAutoImprovementAt.toDate().toLocaleDateString('ja-JP') : new Date(site.lastAutoImprovementAt).toLocaleDateString('ja-JP')}
             </div>

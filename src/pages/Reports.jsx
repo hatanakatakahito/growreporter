@@ -101,7 +101,7 @@ export default function Reports() {
 function FullCard({ item, siteId, onRefresh, onEvaluate, onDelete, expanded, onToggle }) {
   const em = item.effectMeasurement;
   const { isRetrying, isScheduling, handleRetry, handleSchedule } = useItemActions(siteId, onRefresh);
-  const hasMetrics = em?.status === 'completed' && em.before && em.after && em.changes && em.overallScore != null;
+  const hasMetrics = em?.status === 'completed' && em?.before && em?.after && em?.changes && em?.overallScore != null;
   const isPending = em?.status === 'pending' || em?.status === 'measuring';
   const metrics = hasMetrics ? getPrimaryMetrics(item.category) : [];
 

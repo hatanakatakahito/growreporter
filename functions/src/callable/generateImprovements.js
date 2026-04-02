@@ -248,7 +248,7 @@ export async function generateImprovementsCallable(req) {
 
     // ユーザーメール取得
     const userDoc = await db.collection('users').doc(userId).get();
-    const userEmail = userDoc.exists ? (userDoc.data().email || 'unknown') : 'unknown';
+    const userEmail = userDoc.exists ? (userDoc.data()?.email || 'unknown') : 'unknown';
 
     const improvementIds = [];
 

@@ -71,6 +71,9 @@ export async function deleteChatSessionCallable(req) {
   const { siteId, sessionId } = req.data;
   if (!siteId || !sessionId) throw new HttpsError('invalid-argument', 'siteId, sessionIdが必要です');
 
+  const canEdit = await canEditSite(req.auth.uid, siteId);
+  if (!canEdit) throw new HttpsError('permission-denied', 'アクセス権がありません');
+
   const db = getFirestore();
   const sessionRef = db.collection('sites').doc(siteId).collection('chatSessions').doc(sessionId);
   const sessionDoc = await sessionRef.get();

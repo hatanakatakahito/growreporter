@@ -81,7 +81,13 @@ export async function generateEffectEvaluation({
     }
 
     const jsonStr = jsonMatch[1] || jsonMatch[0];
-    const parsed = JSON.parse(jsonStr);
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonStr);
+    } catch (parseErr) {
+      console.warn('[generateEffectEvaluation] JSON parse failed:', parseErr.message, jsonStr.substring(0, 200));
+      return null;
+    }
 
     // バリデーション
     const validLevels = ['exceeded', 'met', 'partial', 'not_met'];
