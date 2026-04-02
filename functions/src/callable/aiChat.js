@@ -134,46 +134,50 @@ export async function aiChatCallable(req) {
     const userParts = [];
 
     for (const attachment of attachments) {
-      const ext = (attachment.name || '').split('.').pop().toLowerCase();
-      if (!ALLOWED_EXTENSIONS.includes(ext)) {
-        throw new HttpsError('invalid-argument', `未対応のファイル形式です: .${ext}`);
-      }
+      try {
+        const name = attachment.name || 'unknown';
+        const parts = name.split('.');
+        const ext = parts.length > 1 ? parts.pop().toLowerCase() : '';
 
-      if (attachment.size > MAX_FILE_SIZE) {
-        throw new HttpsError('invalid-argument', `ファイルサイズが上限（20MB）を超えています: ${attachment.name}`);
-      }
+        if (!ext || !ALLOWED_EXTENSIONS.includes(ext)) {
+          throw new HttpsError('invalid-argument', `未対応のファイル形式です: ${name}`);
+        }
 
-      // Cloud Storageに保存
-      const bucket = getStorage().bucket();
-      const storagePath = `chat-attachments/${siteId}/${sessionRef.id}/${Date.now()}_${attachment.name}`;
-      const fileBuffer = Buffer.from(attachment.data, 'base64');
-      await bucket.file(storagePath).save(fileBuffer);
+        if (attachment.size > MAX_FILE_SIZE) {
+          throw new HttpsError('invalid-argument', `ファイルサイズが上限（20MB）を超えています: ${name}`);
+        }
 
-      const storageUrl = `gs://${bucket.name}/${storagePath}`;
+        // Cloud Storageに保存
+        const bucket = getStorage().bucket();
+        const storagePath = `chat-attachments/${siteId}/${sessionRef.id}/${Date.now()}_${name}`;
+        const fileBuffer = Buffer.from(attachment.data, 'base64');
+        await bucket.file(storagePath).save(fileBuffer);
 
-      processedAttachments.push({
-        name: attachment.name,
-        type: attachment.contentType || `application/${ext}`,
-        size: attachment.size,
-        storageUrl,
-      });
+        const storageUrl = `gs://${bucket.name}/${storagePath}`;
 
-      // Gemini送信用のパーツ作成
-      if (GEMINI_DIRECT_EXTENSIONS.includes(ext)) {
-        // 画像/PDFはGeminiに直接送信
-        const mimeType = IMAGE_EXTENSIONS.includes(ext)
-          ? `image/${ext === 'jpg' ? 'jpeg' : ext}`
-          : 'application/pdf';
-        userParts.push({
-          inline_data: {
-            mime_type: mimeType,
-            data: attachment.data, // base64
-          },
+        processedAttachments.push({
+          name,
+          type: attachment.contentType || `application/${ext}`,
+          size: attachment.size,
+          storageUrl,
         });
-      } else {
-        // Excel/CSV/PPTX/DOCXはテキスト抽出
-        const extractedText = await extractTextFromFile(fileBuffer, ext, attachment.name);
-        userParts.push({ text: `\n\n【添付ファイル: ${attachment.name}】\n${extractedText}` });
+
+        // Gemini送信用のパーツ作成
+        if (GEMINI_DIRECT_EXTENSIONS.includes(ext)) {
+          const mimeType = IMAGE_EXTENSIONS.includes(ext)
+            ? `image/${ext === 'jpg' ? 'jpeg' : ext}`
+            : 'application/pdf';
+          userParts.push({
+            inline_data: { mime_type: mimeType, data: attachment.data },
+          });
+        } else {
+          const extractedText = await extractTextFromFile(fileBuffer, ext, name);
+          userParts.push({ text: `\n\n【添付ファイル: ${name}】\n${extractedText}` });
+        }
+      } catch (attachErr) {
+        if (attachErr instanceof HttpsError) throw attachErr;
+        logger.warn('[aiChat] ファイル処理エラー:', { name: attachment.name, error: attachErr.message });
+        userParts.push({ text: `\n\n【添付ファイル: ${attachment.name || 'unknown'}の処理に失敗しました】` });
       }
     }
 
@@ -183,6 +187,9 @@ export async function aiChatCallable(req) {
 
     // Gemini API呼び出し（リトライ付き）
     const geminiApiKey = process.env.GEMINI_API_KEY;
+    if (!geminiApiKey) {
+      throw new HttpsError('internal', 'AI機能が設定されていません。管理者にお問い合わせください。');
+    }
     const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
     let aiResponse = null;
     let lastError = null;
