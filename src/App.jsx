@@ -39,6 +39,7 @@ import Improve from './pages/Improve';
 import ImproveConsultationThanks from './pages/ImproveConsultationThanks';
 import UpgradeThanks from './pages/UpgradeThanks';
 import Reports from './pages/Reports';
+import AIChat from './pages/AIChat';
 import AccountSettings from './pages/AccountSettings';
 import ProfileEdit from './pages/ProfileEdit';
 import PlanInfo from './pages/PlanInfo';
@@ -177,6 +178,9 @@ function App() {
               
               {/* 評価する */}
               <Route path="/reports" element={<Reports />} />
+
+              {/* AIチャット */}
+              <Route path="/ai-chat" element={<AIChat />} />
               
               {/* アカウント設定 */}
               <Route path="/account/settings" element={<AccountSettings />} />

@@ -563,6 +563,19 @@ export const archiveStaleImprovements = onSchedule({
 });
 
 /**
+ * AIチャット Callable Functions
+ */
+export const aiChat = lazyCallable('./callable/aiChat.js', 'aiChatCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['GEMINI_API_KEY'] });
+export const getChatSessions = lazyCallable('./callable/chatManagement.js', 'getChatSessionsCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const deleteChatSession = lazyCallable('./callable/chatManagement.js', 'deleteChatSessionCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const archiveChatSession = lazyCallable('./callable/chatManagement.js', 'archiveChatSessionCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const endChatSession = lazyCallable('./callable/chatManagement.js', 'endChatSessionCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const updateChatSession = lazyCallable('./callable/chatManagement.js', 'updateChatSessionCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const searchChatSessions = lazyCallable('./callable/chatManagement.js', 'searchChatSessionsCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const addImprovementFromChat = lazyCallable('./callable/chatManagement.js', 'addImprovementFromChatCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const getChatMessages = lazyCallable('./callable/chatManagement.js', 'getChatMessagesCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
  * メンバー招待 Callable Function
  * アカウントオーナーがメンバーを招待
  */

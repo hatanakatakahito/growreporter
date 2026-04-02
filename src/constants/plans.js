@@ -20,6 +20,7 @@ export const PLANS = {
       maxMembers: 1,
       aiSummaryMonthly: 999999, // 無制限（再分析はcanRegenerateで制限）
       aiImprovementMonthly: 1,
+      aiChatMonthly: 10,
       dataRetention: '無制限',
       reportEvaluation: true,
       excelExportMonthly: 1,
@@ -39,6 +40,7 @@ export const PLANS = {
       maxMembers: 3,
       aiSummaryMonthly: 4, // 再分析4回/月（週1回相当）
       aiImprovementMonthly: 4, // AI改善4回/月（週1回相当）
+      aiChatMonthly: 50,
       dataRetention: '無制限',
       reportEvaluation: true,
       excelExportMonthly: 999999,
@@ -59,6 +61,7 @@ export const PLANS = {
       maxMembers: 5,
       aiSummaryMonthly: 999999, // 無制限を大きな数値で表現
       aiImprovementMonthly: 999999,
+      aiChatMonthly: 999999,
       dataRetention: '無制限',
       reportEvaluation: true,
       excelExportMonthly: 999999,

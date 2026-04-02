@@ -11,7 +11,7 @@ import { db } from '../config/firebase';
 export function usePlan() {
   const { currentUser, userProfile } = useAuth();
   const [planId, setPlanId] = useState('free');
-  const [accountUsage, setAccountUsage] = useState({ aiSummaryUsage: 0, aiImprovementUsage: 0, diagnosisUsage: 0, excelExportUsage: 0, pptxExportUsage: 0 });
+  const [accountUsage, setAccountUsage] = useState({ aiSummaryUsage: 0, aiImprovementUsage: 0, aiChatUsage: 0, diagnosisUsage: 0, excelExportUsage: 0, pptxExportUsage: 0 });
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const plan = PLANS[planId] || PLANS.free;
 
@@ -48,6 +48,7 @@ export function usePlan() {
             setAccountUsage({
               aiSummaryUsage: ownerData.aiSummaryUsage || 0,
               aiImprovementUsage: ownerData.aiImprovementUsage || 0,
+              aiChatUsage: ownerData.aiChatUsage || 0,
               diagnosisUsage: ownerData.diagnosisUsage || 0,
               excelExportUsage: ownerData.excelExportUsage || 0,
               pptxExportUsage: ownerData.pptxExportUsage || 0,
@@ -58,6 +59,7 @@ export function usePlan() {
             setAccountUsage({
               aiSummaryUsage: userProfile.aiSummaryUsage || 0,
               aiImprovementUsage: userProfile.aiImprovementUsage || 0,
+              aiChatUsage: userProfile.aiChatUsage || 0,
               diagnosisUsage: userProfile.diagnosisUsage || 0,
               excelExportUsage: userProfile.excelExportUsage || 0,
               pptxExportUsage: userProfile.pptxExportUsage || 0,
@@ -86,6 +88,7 @@ export function usePlan() {
       setAccountUsage({
         aiSummaryUsage: userProfile.aiSummaryUsage || 0,
         aiImprovementUsage: userProfile.aiImprovementUsage || 0,
+        aiChatUsage: userProfile.aiChatUsage || 0,
         diagnosisUsage: userProfile.diagnosisUsage || 0,
         excelExportUsage: userProfile.excelExportUsage || 0,
         pptxExportUsage: userProfile.pptxExportUsage || 0,
@@ -103,6 +106,7 @@ export function usePlan() {
     const limitMap = {
       summary: plan.features?.aiSummaryMonthly || 0,
       improvement: plan.features?.aiImprovementMonthly || 0,
+      chat: plan.features?.aiChatMonthly || 0,
       diagnosis: plan.features?.diagnosisMonthly || 0,
       excelExport: plan.features?.excelExportMonthly || 0,
       pptxExport: plan.features?.pptxExportMonthly || 0,
@@ -115,6 +119,7 @@ export function usePlan() {
     const usageMap = {
       summary: accountUsage.aiSummaryUsage,
       improvement: accountUsage.aiImprovementUsage,
+      chat: accountUsage.aiChatUsage,
       diagnosis: accountUsage.diagnosisUsage,
       excelExport: accountUsage.excelExportUsage,
       pptxExport: accountUsage.pptxExportUsage,
@@ -124,15 +129,11 @@ export function usePlan() {
     return used < limit;
   };
 
-  /**
-   * タイプ別の残りAI生成回数を取得（アカウント全体の合算）
-   * @param {string} type - 'summary' または 'improvement'
-   * @returns {number} 残り回数（無制限の場合は-1）
-   */
   const getRemainingByType = (type) => {
     const limitMap = {
       summary: plan.features?.aiSummaryMonthly || 0,
       improvement: plan.features?.aiImprovementMonthly || 0,
+      chat: plan.features?.aiChatMonthly || 0,
       diagnosis: plan.features?.diagnosisMonthly || 0,
       excelExport: plan.features?.excelExportMonthly || 0,
       pptxExport: plan.features?.pptxExportMonthly || 0,
@@ -140,6 +141,7 @@ export function usePlan() {
     const usageMap = {
       summary: accountUsage.aiSummaryUsage,
       improvement: accountUsage.aiImprovementUsage,
+      chat: accountUsage.aiChatUsage,
       diagnosis: accountUsage.diagnosisUsage,
       excelExport: accountUsage.excelExportUsage,
       pptxExport: accountUsage.pptxExportUsage,
@@ -151,15 +153,11 @@ export function usePlan() {
     return Math.max(0, limit - (usageMap[type] ?? 0));
   };
 
-  /**
-   * タイプ別の今月の使用回数を取得（アカウント全体の合算）
-   * @param {string} type - 'summary' または 'improvement'
-   * @returns {number} 使用回数
-   */
   const getUsedByType = (type = 'summary') => {
     const usageMap = {
       summary: accountUsage.aiSummaryUsage,
       improvement: accountUsage.aiImprovementUsage,
+      chat: accountUsage.aiChatUsage,
       diagnosis: accountUsage.diagnosisUsage,
       excelExport: accountUsage.excelExportUsage,
       pptxExport: accountUsage.pptxExportUsage,

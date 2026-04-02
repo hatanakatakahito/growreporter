@@ -7,6 +7,7 @@ const DEFAULT_PLANS = {
     maxSites: 1,
     aiSummaryLimit: -1, // 無制限（再分析はgenerateAISummary.js内で制限）
     aiImprovementLimit: 1,
+    aiChatLimit: 10, // AIチャット10回/月
     excelExportLimit: 1,
     pptxExportLimit: 1,
   },
@@ -14,6 +15,7 @@ const DEFAULT_PLANS = {
     maxSites: 3,
     aiSummaryLimit: 4, // 再分析4回/月（週1回相当）
     aiImprovementLimit: 4, // AI改善4回/月（週1回相当）
+    aiChatLimit: 50, // AIチャット50回/月
     excelExportLimit: -1,
     pptxExportLimit: -1,
   },
@@ -21,6 +23,7 @@ const DEFAULT_PLANS = {
     maxSites: 10,
     aiSummaryLimit: -1, // 無制限
     aiImprovementLimit: -1, // 無制限
+    aiChatLimit: -1, // AIチャット無制限
     excelExportLimit: -1,
     pptxExportLimit: -1,
   },
@@ -29,6 +32,7 @@ const DEFAULT_PLANS = {
     maxSites: 999999,
     aiSummaryLimit: -1,
     aiImprovementLimit: -1,
+    aiChatLimit: -1,
     excelExportLimit: -1,
     pptxExportLimit: -1,
   },
@@ -84,6 +88,7 @@ export async function getEffectiveLimit(userId, type = 'summary') {
       const customLimitMap = {
         summary: customLimits.aiSummaryMonthly,
         improvement: customLimits.aiImprovementMonthly,
+        chat: customLimits.aiChatMonthly,
         excelExport: customLimits.excelExportMonthly,
         pptxExport: customLimits.pptxExportMonthly,
       };
@@ -109,6 +114,7 @@ export async function getEffectiveLimit(userId, type = 'summary') {
     const limitMap = {
       summary: planConfig.aiSummaryLimit,
       improvement: planConfig.aiImprovementLimit,
+      chat: planConfig.aiChatLimit,
       excelExport: planConfig.excelExportLimit,
       pptxExport: planConfig.pptxExportLimit,
     };
@@ -153,6 +159,7 @@ export async function checkCanGenerate(userId, type = 'summary') {
     const usageMap = {
       summary: userData.aiSummaryUsage || 0,
       improvement: userData.aiImprovementUsage || 0,
+      chat: userData.aiChatUsage || 0,
       excelExport: userData.excelExportUsage || 0,
       pptxExport: userData.pptxExportUsage || 0,
     };
@@ -182,6 +189,7 @@ export async function incrementGenerationCount(userId, type = 'summary') {
     const fieldMap = {
       summary: 'aiSummaryUsage',
       improvement: 'aiImprovementUsage',
+      chat: 'aiChatUsage',
       excelExport: 'excelExportUsage',
       pptxExport: 'pptxExportUsage',
     };
@@ -221,6 +229,7 @@ export async function resetMonthlyLimits() {
       batch.update(doc.ref, {
         aiSummaryUsage: 0,
         aiImprovementUsage: 0,
+        aiChatUsage: 0,
         excelExportUsage: 0,
         pptxExportUsage: 0,
         updatedAt: FieldValue.serverTimestamp(),
