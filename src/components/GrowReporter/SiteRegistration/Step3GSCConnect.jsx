@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Select from 'react-select';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -44,8 +44,13 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
     loadExistingToken();
   }, [currentUser, siteData.gscOauthTokenId]);
 
+  // 重複フェッチ防止
+  const isFetchingRef = useRef(false);
+
   // GSCサイト一覧を取得
   const fetchGSCSites = async (tokenData) => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     setIsLoadingSites(true);
     setError(null);
 
@@ -57,10 +62,13 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
       if (expiresAt <= now) {
         setError('アクセストークンの有効期限が切れています。再接続してください。');
         setIsLoadingSites(false);
+        isFetchingRef.current = false;
         return;
       }
 
       // Google Search Console API を使用してサイト一覧を取得
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
       const response = await fetch(
         'https://www.googleapis.com/webmasters/v3/sites',
         {
@@ -68,15 +76,17 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
             'Authorization': `Bearer ${tokenData.access_token}`,
             'Content-Type': 'application/json',
           },
+          signal: controller.signal,
         }
       );
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status} ${response.statusText}`);
       }
 
       const data = await response.json();
-      
+
       // サイト一覧を整形
       const sitesList = [];
       if (data.siteEntry) {
@@ -90,15 +100,20 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
 
       console.log(`[GSCConnect] サイト取得完了: ${sitesList.length}件`);
       setSites(sitesList);
-      
+
       if (sitesList.length === 0) {
         setError('アクセス可能なSearch Consoleサイトが見つかりませんでした。Search Consoleの権限を確認してください。');
       }
     } catch (err) {
       console.error('GSCサイト取得エラー:', err);
-      setError('Search Consoleサイトの取得に失敗しました: ' + err.message);
+      if (err.name === 'AbortError') {
+        setError('Search Consoleサイトの取得がタイムアウトしました。通信環境を確認して再度お試しください。');
+      } else {
+        setError('Search Consoleサイトの取得に失敗しました: ' + err.message);
+      }
     } finally {
       setIsLoadingSites(false);
+      isFetchingRef.current = false;
     }
   };
 
