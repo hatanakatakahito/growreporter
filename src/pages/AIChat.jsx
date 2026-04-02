@@ -2,7 +2,7 @@
  * AIチャット専用ページ
  * ChatGPT型レイアウト: 左パネル（会話一覧）+ 右パネル（チャット画面）
  */
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useSite } from '../contexts/SiteContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -58,7 +58,7 @@ const MARKDOWN_COMPONENTS = {
   ),
 };
 
-const SUGGEST_QUESTIONS = [
+const DEFAULT_SUGGEST_QUESTIONS = [
   '前月分のアクセス状況を表組でまとめて',
   '前月分と前年同月分を比較して表組でまとめて',
   '今月のコンバージョン数を内訳別で教えて',
@@ -66,6 +66,74 @@ const SUGGEST_QUESTIONS = [
   '最も改善すべきページはどこ？',
   'SEOで改善できるキーワードは？',
 ];
+
+// ページ種別に応じた動的サジェスト質問
+const PAGE_SUGGEST_QUESTIONS = {
+  day: [
+    'アクセスが急増/急減した日とその原因は？',
+    '曜日ごとのアクセス傾向を教えて',
+  ],
+  week: [
+    '曜日ごとのアクセスパターンを分析して',
+    '平日と週末のアクセス差はどのくらい？',
+  ],
+  hour: [
+    '時間帯別のアクセスピークはいつ？',
+    'アクセスが少ない時間帯に改善できることは？',
+  ],
+  month: [
+    '月別のトレンドを前年と比較して',
+    '成長率が最も高い月と低い月は？',
+  ],
+  summary: [
+    '全体サマリーで最も注目すべき変化は？',
+    '改善の優先順位をつけるとしたら？',
+  ],
+  users: [
+    'ユーザー属性の特徴を教えて',
+    'ターゲットユーザーにリーチできている？',
+  ],
+  channels: [
+    'チャネル別の前年比較を表組で教えて',
+    '弱いチャネルを強化するにはどうすればいい？',
+  ],
+  keywords: [
+    '順位が改善できそうなキーワードは？',
+    '前年と比べてKW順位はどう変化した？',
+  ],
+  referrals: [
+    '参照元サイトで注目すべきものは？',
+    '新しい流入経路を開拓するには？',
+  ],
+  pages: [
+    'PVが高いのにCVが低いページは？',
+    'ページ別のエンゲージメント率を比較して',
+  ],
+  'page-categories': [
+    'カテゴリ別で最も改善余地があるのは？',
+    'カテゴリ別のCV貢献度を教えて',
+  ],
+  'landing-pages': [
+    'ランディングページの直帰率が高いのはどこ？',
+    'LPごとのCV率を比較して',
+  ],
+  conversions: [
+    'CV数の月別推移と傾向を教えて',
+    'CVを増やすための具体的な施策は？',
+  ],
+  'reverse-flow': [
+    'CVに至る最も効果的な導線は？',
+    'CV直前で離脱が多いページは？',
+  ],
+  'page-flow': [
+    'ユーザーが離脱しやすい遷移パターンは？',
+    'トップページからの理想的な遷移先は？',
+  ],
+  comprehensive: [
+    'サイト全体で最も優先すべき課題は？',
+    'この分析結果をもとに改善提案をして',
+  ],
+};
 
 export default function AIChat() {
   const { selectedSite, selectedSiteId } = useSite();
@@ -93,6 +161,19 @@ export default function AIChat() {
   const inputRef = useRef(null);
 
   useEffect(() => { setPageTitle('AIチャット'); }, []);
+
+  // 遷移元ページに応じた動的サジェスト質問を構築
+  const fromPage = searchParams.get('from') || '';
+  const suggestQuestions = useMemo(() => {
+    const pageQuestions = PAGE_SUGGEST_QUESTIONS[fromPage] || [];
+    // ページ固有の質問（最大2件）+ デフォルト質問から残りを埋める（合計6件）
+    const combined = [...pageQuestions];
+    for (const q of DEFAULT_SUGGEST_QUESTIONS) {
+      if (combined.length >= 6) break;
+      if (!combined.includes(q)) combined.push(q);
+    }
+    return combined.slice(0, 6);
+  }, [fromPage]);
 
   // 会話一覧の読み込み
   const loadSessions = useCallback(async () => {
@@ -212,6 +293,23 @@ export default function AIChat() {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    }
+  };
+
+  // Ctrl+Vで画像をペースト
+  const handlePaste = (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    const imageFiles = [];
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) imageFiles.push(file);
+      }
+    }
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      addFiles(imageFiles);
     }
   };
 
@@ -393,7 +491,6 @@ export default function AIChat() {
             </h2>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <span className="text-xs text-body-color">残り {remaining === -1 || remaining >= 999999 ? '無制限' : `${remaining}回`}</span>
             {messages.length > 0 && (
               <button onClick={handleExport} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3" title="テキストエクスポート">
                 <Download className="h-4 w-4 text-body-color" />
@@ -413,9 +510,10 @@ export default function AIChat() {
                 <p className="text-sm text-body-color">{selectedSite?.siteName || 'サイト'}のアクセスデータに基づいて回答します</p>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                {SUGGEST_QUESTIONS.map((q, i) => (
+                {suggestQuestions.map((q, i) => (
                   <button key={i} onClick={() => { setInputText(q); inputRef.current?.focus(); }}
-                    className="rounded-lg border border-stroke p-3 text-left text-sm text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 transition">
+                    className="rounded-lg border border-stroke p-3 text-left text-sm text-dark hover:bg-white dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 transition"
+                    style={{ background: 'rgba(255, 255, 255, 0.50)' }}>
                     {q}
                   </button>
                 ))}
@@ -424,9 +522,38 @@ export default function AIChat() {
           ) : (
             /* メッセージ一覧 */
             <div className="mx-auto max-w-3xl space-y-6">
-              {messages.map((msg, i) => (
-                <ChatMessage key={i} message={msg} onAddImprovement={handleAddImprovement} />
-              ))}
+              {messages.map((msg, i) => {
+                // 最後のユーザーメッセージかどうか判定
+                const isLastUserMsg = msg.role === 'user' && !messages.slice(i + 1).some(m => m.role === 'user');
+                return (
+                  <ChatMessage key={i} message={msg} onAddImprovement={handleAddImprovement}
+                    isLast={isLastUserMsg}
+                    onEdit={isLastUserMsg && !isSending ? (newText) => {
+                      // 最後のユーザーメッセージ以降を削除して、編集テキストで再送信
+                      setMessages(prev => prev.slice(0, i));
+                      setInputText(newText);
+                      // 少し待ってから自動送信
+                      setTimeout(() => {
+                        setInputText('');
+                        // 直接送信処理を呼ぶ
+                        const userMsg = { role: 'user', text: newText, attachments: [], timestamp: new Date().toISOString() };
+                        setMessages(prev => [...prev, userMsg]);
+                        setIsSending(true);
+                        const fn = httpsCallable(functions, 'aiChat');
+                        fn({ siteId: selectedSiteId, sessionId: activeSessionId, message: newText, attachments: [] })
+                          .then(result => {
+                            const { message: aiMsg } = result.data;
+                            setMessages(prev => [...prev, { role: 'model', text: aiMsg.text, chartData: aiMsg.chartData, improvementData: aiMsg.improvementData, timestamp: new Date().toISOString() }]);
+                          })
+                          .catch(e => {
+                            setMessages(prev => [...prev, { role: 'error', text: '回答の生成に失敗しました。', timestamp: new Date().toISOString() }]);
+                          })
+                          .finally(() => setIsSending(false));
+                      }, 100);
+                    } : null}
+                  />
+                );
+              })}
               {isSending && (
                 <div className="flex items-center gap-3 text-sm text-body-color">
                   <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -468,7 +595,7 @@ export default function AIChat() {
                   <Paperclip className="h-5 w-5 text-body-color" />
                 </button>
                 <input ref={fileInputRef} type="file" multiple accept={ALLOWED_EXTENSIONS.map(e => `.${e}`).join(',')} onChange={handleFileSelect} className="hidden" />
-                <textarea ref={inputRef} value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={handleKeyDown}
+                <textarea ref={inputRef} value={inputText} onChange={e => setInputText(e.target.value)} onKeyDown={handleKeyDown} onPaste={handlePaste}
                   placeholder="メッセージを入力... (Enter で送信、Shift+Enter で改行)"
                   rows={1}
                   className="flex-1 resize-none bg-transparent px-2 py-2 text-sm text-dark placeholder:text-body-color/50 focus:outline-none dark:text-white"
@@ -544,7 +671,10 @@ function UserAvatar() {
   );
 }
 
-function ChatMessage({ message, onAddImprovement }) {
+function ChatMessage({ message, onAddImprovement, onEdit, isLast }) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editText, setEditText] = useState('');
+
   if (message.role === 'error') {
     return (
       <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
@@ -556,27 +686,73 @@ function ChatMessage({ message, onAddImprovement }) {
 
   const isUser = message.role === 'user';
 
+  const handleStartEdit = () => {
+    setEditText(message.text);
+    setIsEditing(true);
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditText('');
+  };
+
+  const handleSubmitEdit = () => {
+    if (editText.trim() && onEdit) {
+      onEdit(editText.trim());
+      setIsEditing(false);
+    }
+  };
+
   return (
-    <div className={`flex gap-3 ${isUser ? 'justify-end' : ''}`}>
+    <div className={`group flex gap-3 ${isUser ? 'justify-end' : ''}`}>
       {!isUser && (
         <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
           <Sparkles className="h-4 w-4 text-primary" />
         </div>
       )}
-      <div className={`max-w-[85%] ${isUser ? 'bg-primary text-white rounded-2xl px-4 py-2.5' : 'space-y-3'}`}>
+      <div className={`max-w-[85%] ${isUser ? '' : 'space-y-3'}`}>
         {isUser ? (
-          <>
-            <p className="text-sm whitespace-pre-wrap">{message.text}</p>
-            {message.attachments?.length > 0 && (
-              <div className="flex flex-wrap gap-1 mt-1.5">
-                {message.attachments.map((a, i) => (
-                  <span key={i} className="inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-xs">
-                    <Paperclip className="h-3 w-3" />{a.name}
-                  </span>
-                ))}
+          isEditing ? (
+            /* 編集モード */
+            <div className="flex flex-col gap-2">
+              <textarea
+                autoFocus
+                value={editText}
+                onChange={e => setEditText(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmitEdit(); } if (e.key === 'Escape') handleCancelEdit(); }}
+                className="rounded-xl border border-primary bg-white px-4 py-2.5 text-sm text-dark focus:outline-none dark:bg-dark-2 dark:text-white"
+                rows={Math.min(editText.split('\n').length + 1, 5)}
+              />
+              <div className="flex gap-2 justify-end">
+                <button onClick={handleCancelEdit} className="rounded-lg px-3 py-1 text-xs text-body-color hover:bg-gray-100 dark:hover:bg-dark-3">キャンセル</button>
+                <button onClick={handleSubmitEdit} className="rounded-lg bg-primary px-3 py-1 text-xs text-white hover:bg-primary/90">送信</button>
               </div>
-            )}
-          </>
+            </div>
+          ) : (
+            /* 通常表示 */
+            <div className="relative">
+              <div className="bg-primary text-white rounded-2xl px-4 py-2.5">
+                <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                {message.attachments?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {message.attachments.map((a, i) => (
+                      <span key={i} className="inline-flex items-center gap-1 rounded bg-white/20 px-2 py-0.5 text-xs">
+                        <Paperclip className="h-3 w-3" />{a.name}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* 編集ボタン（最後のユーザーメッセージのみ） */}
+              {isLast && onEdit && (
+                <button onClick={handleStartEdit}
+                  className="absolute -left-8 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-md hover:bg-gray-200 dark:hover:bg-dark-3"
+                  title="編集して再送信">
+                  <svg className="h-3.5 w-3.5 text-body-color" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                </button>
+              )}
+            </div>
+          )
         ) : (
           <>
             {/* マークダウン + インライングラフ + 改善提案レンダリング */}
