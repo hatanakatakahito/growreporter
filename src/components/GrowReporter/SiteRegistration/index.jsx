@@ -1,4 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
+
+// エラーバウンダリ（子コンポーネントのクラッシュをキャッチして白画面を防ぐ）
+class StepErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
+  static getDerivedStateFromError(error) { return { hasError: true, error }; }
+  componentDidCatch(error, errorInfo) { console.error('[SiteRegistration] ステップでエラー:', error, errorInfo); }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-8 text-center">
+          <p className="text-red-600 font-medium mb-2">エラーが発生しました</p>
+          <p className="text-sm text-body-color mb-4">{this.state.error?.message || '予期しないエラーです'}</p>
+          <button onClick={() => this.setState({ hasError: false, error: null })} className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90">
+            再試行
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useSite } from '../../../contexts/SiteContext';
@@ -492,21 +513,23 @@ export default function SiteRegistration({ mode = 'new' }) {
 
           {/* ステップコンテンツ */}
           <div className="px-8 py-8">
-            {currentStep === 1 && (
-              <Step1BasicInfo siteData={siteData} setSiteData={setSiteData} step1LatestRef={step1LatestRef} mode={mode} />
-            )}
-            {currentStep === 2 && (
-              <Step2GA4Connect siteData={siteData} setSiteData={setSiteData} />
-            )}
-            {currentStep === 3 && (
-              <Step3GSCConnect siteData={siteData} setSiteData={setSiteData} />
-            )}
-            {currentStep === 4 && (
-              <Step4ConversionSettings siteData={siteData} setSiteData={setSiteData} />
-            )}
-            {currentStep === 5 && (
-              <Step5KPISettings siteData={siteData} setSiteData={setSiteData} />
-            )}
+            <StepErrorBoundary key={currentStep}>
+              {currentStep === 1 && (
+                <Step1BasicInfo siteData={siteData} setSiteData={setSiteData} step1LatestRef={step1LatestRef} mode={mode} />
+              )}
+              {currentStep === 2 && (
+                <Step2GA4Connect siteData={siteData} setSiteData={setSiteData} />
+              )}
+              {currentStep === 3 && (
+                <Step3GSCConnect siteData={siteData} setSiteData={setSiteData} />
+              )}
+              {currentStep === 4 && (
+                <Step4ConversionSettings siteData={siteData} setSiteData={setSiteData} />
+              )}
+              {currentStep === 5 && (
+                <Step5KPISettings siteData={siteData} setSiteData={setSiteData} />
+              )}
+            </StepErrorBoundary>
           </div>
 
           {/* ボタンエリア */}

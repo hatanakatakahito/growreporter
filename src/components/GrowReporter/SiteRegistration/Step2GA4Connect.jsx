@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Select from 'react-select';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -70,8 +70,13 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.uid, siteData.ga4OauthTokenId]);
 
+  // 重複フェッチ防止
+  const isFetchingRef = useRef(false);
+
   // GA4プロパティを取得（ページネーション対応）
   const fetchGA4Properties = async (tokenData) => {
+    if (isFetchingRef.current) return; // 既にフェッチ中ならスキップ
+    isFetchingRef.current = true;
     console.log('[GA4Connect] プロパティ取得開始');
     setIsLoadingProperties(true);
     setError(null);
@@ -104,12 +109,16 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
           ? `https://analyticsadmin.googleapis.com/v1beta/accountSummaries?pageToken=${pageToken}`
           : 'https://analyticsadmin.googleapis.com/v1beta/accountSummaries';
         
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
         const response = await fetch(url, {
           headers: {
             'Authorization': `Bearer ${tokenData.access_token}`,
             'Content-Type': 'application/json',
           },
+          signal: controller.signal,
         });
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
           throw new Error(`API Error: ${response.status} ${response.statusText}`);
@@ -148,9 +157,14 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
       }
     } catch (err) {
       console.error('GA4プロパティ取得エラー:', err);
-      setError('GA4プロパティの取得に失敗しました: ' + err.message);
+      if (err.name === 'AbortError') {
+        setError('GA4プロパティの取得がタイムアウトしました。通信環境を確認して再度お試しください。');
+      } else {
+        setError('GA4プロパティの取得に失敗しました: ' + err.message);
+      }
     } finally {
       setIsLoadingProperties(false);
+      isFetchingRef.current = false;
     }
   };
 
