@@ -9,20 +9,18 @@ import logoSvgRaw from '../assets/img/logo.svg?raw';
 const FONT_FACE = '游ゴシック';
 
 const COLORS = {
-  primary: '0017C1',
-  accent: 'FF7043',
-  accentDark: 'C63F17',
-  sectionBg: 'FBE9E7',
+  primary: '3758F9',
+  accent: '9333EA',
   white: 'FFFFFF',
-  dark: '212121',
+  dark: '333333',
   subText: '666666',
-  altRow: 'D9E6FF',
-  border: 'CDCDCD',
-  memoLabel: '0017C1',
+  altRow: 'EEF2FF',
+  border: 'D1D5DB',
+  memoLabel: '3758F9',
   lightGray: 'F5F5F5',
 };
 
-const CHART_PALETTE = ['0017C1', 'FF7043', 'C63F17', '212121', 'B2B2B2', 'D9E6FF', 'F26B43', 'FBE9E7'];
+const CHART_PALETTE = ['3b82f6', 'ef4444', '10b981', 'f59e0b', '8b5cf6', 'ec4899', '06b6d4', 'f97316'];
 
 // スライドサイズ（インチ）
 const SLIDE_W = 11;
@@ -31,7 +29,7 @@ const MARGIN_X = 0.4;
 const CONTENT_W = SLIDE_W - MARGIN_X * 2;
 const TITLE_Y = 0.15;
 const TITLE_H = 0.45;
-const CONTENT_Y = TITLE_Y + TITLE_H + 0.05;
+const CONTENT_Y = TITLE_Y + TITLE_H + 0.4;
 const FOOTER_H = 0.3;
 const FOOTER_Y = SLIDE_H - FOOTER_H;
 const AI_MIN_H = 0.5;
@@ -81,7 +79,7 @@ function getTableFontSize(rowCount) {
 }
 
 function calcLayout(dataRowCount, hasAI, hasMemos) {
-  const aiHeight = (hasAI || hasMemos) ? AI_MIN_H + (hasMemos ? 0.3 : 0) : 0;
+  const aiHeight = hasAI ? AI_MIN_H : 0;
   const availableH = FOOTER_Y - CONTENT_Y - aiHeight - 0.1;
 
   let chartH, tableH;
@@ -105,7 +103,7 @@ function calcLayout(dataRowCount, hasAI, hasMemos) {
 }
 
 function calcTableOnlyLayout(hasAI, hasMemos) {
-  const aiHeight = (hasAI || hasMemos) ? AI_MIN_H + (hasMemos ? 0.3 : 0) : 0;
+  const aiHeight = hasAI ? AI_MIN_H : 0;
   const tableY = CONTENT_Y;
   const tableH = FOOTER_Y - CONTENT_Y - aiHeight - 0.1;
   const aiY = tableY + tableH + 0.05;
@@ -113,80 +111,86 @@ function calcTableOnlyLayout(hasAI, hasMemos) {
 }
 
 function addSlideTitle(slide, title) {
+  // タイトルテキスト（黒太字14pt）
   slide.addText(title, {
-    x: MARGIN_X, y: TITLE_Y, w: CONTENT_W, h: TITLE_H,
-    fontSize: 18, fontFace: FONT_FACE, bold: true, color: COLORS.dark,
+    x: MARGIN_X, y: TITLE_Y, w: CONTENT_W - 2.0, h: TITLE_H,
+    fontSize: 14, fontFace: FONT_FACE, bold: true, color: COLORS.dark,
     valign: 'middle',
   });
+  // タイトル下のダークグレー横線
+  slide.addShape('rect', {
+    x: MARGIN_X, y: TITLE_Y + TITLE_H, w: CONTENT_W, h: 0.005,
+    fill: { color: COLORS.dark },
+  });
+  // 右上に日付ラベル（青文字のみ、背景なし）
+  if (_dateLabelFull) {
+    slide.addText(_dateLabelFull, {
+      x: SLIDE_W - MARGIN_X - 1.6, y: TITLE_Y + 0.08, w: 1.6, h: 0.28,
+      fontSize: 9, fontFace: FONT_FACE, color: COLORS.primary,
+      align: 'right', valign: 'middle',
+    });
+  }
 }
 
 let _slideCount = 0;
 let _totalSlides = 0;
+let _dateLabelFull = '';
 
 function addSlideFooter(slide) {
   _slideCount++;
-  slide.addText(`${_slideCount} / ${_totalSlides}`, {
+  slide.addText(`${_slideCount}`, {
     x: SLIDE_W - 1.5, y: FOOTER_Y, w: 1.2, h: FOOTER_H,
     fontSize: 8, fontFace: FONT_FACE, color: COLORS.subText,
     align: 'right', valign: 'middle',
   });
 }
 
-function addAIAndMemoFooter(slide, aiData, memos, y, maxH) {
-  if (!aiData && (!memos || memos.length === 0)) return;
+function addAIAndMemoFooter(slide, aiData, memos, y, maxH, pptx, slideTitle) {
+  if (!aiData?.summary) return;
 
-  const hasAI = !!aiData?.summary;
-  const hasMemos = memos && memos.length > 0;
+  const aiText = cleanMarkdown(aiData.summary);
+  if (!aiText) return;
 
-  let currentY = y;
+  // テキスト量から必要な高さを推定（1行≒60文字@11pt、行高≒0.20インチ）
+  const charsPerLine = Math.floor(CONTENT_W / 0.16);
+  const aiLines = Math.ceil(aiText.length / charsPerLine);
+  const aiNeeded = aiLines * 0.20 + 0.15;
 
-  // AI分析とメモの高さ配分
-  let aiH = 0;
-  let memoH = 0;
-  if (hasAI && hasMemos) {
-    aiH = Math.max(maxH * 0.55, 0.35);
-    memoH = Math.max(maxH - aiH - 0.05, 0.25);
-  } else if (hasAI) {
-    aiH = Math.max(maxH, 0.35);
-  } else {
-    memoH = Math.max(maxH, 0.25);
+  // 残りスペースに収まらない場合は別スライドに配置
+  if (aiNeeded > maxH + 0.1 && pptx) {
+    const overflowSlide = pptx.addSlide();
+    addSlideTitle(overflowSlide, slideTitle ? `${slideTitle}（AI分析）` : 'AI分析');
+    const overflowY = CONTENT_Y;
+    const overflowMaxH = FOOTER_Y - CONTENT_Y - 0.1;
+    _renderAI(overflowSlide, aiText, overflowY, overflowMaxH);
+    addSlideFooter(overflowSlide);
+    return;
   }
 
-  // AI分析
-  if (hasAI) {
-    const aiText = cleanMarkdown(aiData.summary);
-    if (aiText) {
-      slide.addText([
-        { text: 'AI分析: ', options: { bold: true, color: COLORS.accent, fontSize: 10, fontFace: FONT_FACE } },
-        { text: aiText, options: { color: COLORS.subText, fontSize: 10, fontFace: FONT_FACE } },
-      ], {
-        x: MARGIN_X, y: currentY, w: CONTENT_W, h: aiH,
-        valign: 'top', wrap: true, shrinkText: true,
-      });
-      currentY += aiH + 0.05;
-    }
-  }
+  _renderAI(slide, aiText, y, maxH);
+}
 
-  // メモ
-  if (hasMemos) {
-    const memoTexts = memos.map((m) => {
-      const author = m.isConsultantNote
-        ? `[コンサルタント] ${m.consultantName || ''}`
-        : `${m.userLastName || ''}${m.userFirstName || ''}`;
-      const date = fmtTimestamp(m.updatedAt || m.createdAt);
-      return `${author} | ${date} | ${m.content || ''}`;
-    });
+function _renderAI(slide, aiText, y, maxH) {
+  // AI分析ラベル
+  slide.addText('AI分析', {
+    x: MARGIN_X, y, w: 1.2, h: 0.28,
+    fontSize: 10, fontFace: FONT_FACE, bold: true,
+    color: COLORS.white,
+    fill: { color: COLORS.accent },
+    align: 'center', valign: 'middle',
+    rectRadius: 0.04,
+  });
 
-    const memoContent = [
-      { text: 'メモ: ', options: { bold: true, color: COLORS.memoLabel, fontSize: 9, fontFace: FONT_FACE } },
-      { text: memoTexts.join('\n'), options: { color: COLORS.subText, fontSize: 9, fontFace: FONT_FACE } },
-    ];
-
-    slide.addText(memoContent, {
-      x: MARGIN_X, y: currentY, w: CONTENT_W, h: memoH,
-      valign: 'top', wrap: true, shrinkText: true,
-    });
-  }
+  // AI分析テキスト
+  const textY = y + 0.35;
+  const textH = Math.max(maxH - 0.35, 0.3);
+  slide.addText(aiText, {
+    x: MARGIN_X + 0.1, y: textY, w: CONTENT_W - 0.2, h: textH,
+    fontSize: 11, fontFace: FONT_FACE,
+    color: COLORS.dark,
+    valign: 'top', wrap: true, shrinkText: true,
+    lineSpacingMultiple: 1.5,
+  });
 }
 
 // テーブルヘッダー行スタイル
@@ -231,11 +235,14 @@ function buildTable(headers, rows, colWidths) {
     }))
   );
 
+  const totalColW = colWidths.reduce((s, w) => s + w, 0);
+  const tableX = (SLIDE_W - totalColW) / 2;
+
   return {
     rows: [headerRow, ...dataRows],
     options: {
-      x: MARGIN_X,
-      w: CONTENT_W,
+      x: tableX,
+      w: totalColW,
       colW: colWidths,
       fontSize: getTableFontSize(rows.length),
       fontFace: FONT_FACE,
@@ -266,51 +273,25 @@ function formatSeconds(sec) {
 // 1. 表紙
 function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64, compDateRange) {
   const slide = pptx.addSlide();
+  slide.background = { fill: COLORS.white };
 
-  // ロゴ画像（左上に小さめ配置）
+  // ロゴ画像（中央配置）
   if (logoBase64) {
     slide.addImage({
       data: logoBase64,
-      x: MARGIN_X, y: 0.4, w: 2.4, h: 0.58,
+      x: 3.5, y: 1.0, w: 4, h: 0.96,
     });
   }
 
-  // メインタイトル
+  // 「分析レポート」タイトル
   slide.addText('分析レポート', {
-    x: MARGIN_X, y: 1.5, w: 7, h: 0.8,
-    fontSize: 32, fontFace: FONT_FACE, bold: true,
-    color: COLORS.dark, align: 'left',
+    x: MARGIN_X, y: logoBase64 ? 2.4 : 1.8, w: CONTENT_W, h: 0.7,
+    fontSize: 28, fontFace: FONT_FACE, bold: true,
+    color: COLORS.primary, align: 'center', valign: 'middle',
   });
 
-  // サブタイトル
-  slide.addText('基本レポート', {
-    x: MARGIN_X, y: 2.3, w: 7, h: 0.6,
-    fontSize: 20, fontFace: FONT_FACE,
-    color: COLORS.subText, align: 'left',
-  });
-
-  // 大きな日付表示（右側に配置）
-  const from = dateRange?.from || '';
-  const dateLabel = from ? `'${from.substring(2, 4)}.${from.substring(5, 7)}` : '';
-  if (dateLabel) {
-    slide.addShape(pptx.ShapeType.rect, {
-      x: 5.5, y: 3.5, w: 5, h: 3.2,
-      fill: { color: COLORS.altRow },
-      rectRadius: 0.1,
-    });
-    slide.addText(dateLabel, {
-      x: 5.5, y: 3.5, w: 5, h: 2.0,
-      fontSize: 72, fontFace: 'Arial', bold: true,
-      color: COLORS.primary, align: 'center', valign: 'middle',
-    });
-    slide.addText('分析対象月', {
-      x: 5.5, y: 5.2, w: 5, h: 0.4,
-      fontSize: 10, fontFace: FONT_FACE,
-      color: COLORS.subText, align: 'center',
-    });
-  }
-
-  // 情報テーブル（左下に配置）
+  // 情報テーブル（ラベル列=青背景白文字、値列=白背景+下線のみ）
+  const tableStartY = logoBase64 ? 3.5 : 3.2;
   const infoRows = [
     ['サイト名', siteName || ''],
     ['URL', siteUrl || ''],
@@ -321,15 +302,34 @@ function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64, compDa
   }
   infoRows.push(['レポート作成日', new Date().toLocaleDateString('ja-JP')]);
 
+  const labelCellOpts = {
+    bold: true, color: COLORS.white, fontSize: 12, fontFace: FONT_FACE,
+    align: 'center', valign: 'middle',
+    fill: { color: '3758F9' },
+    border: { type: 'solid', pt: 0.5, color: COLORS.border },
+    margin: [2, 8, 2, 8],
+  };
+  const valueCellOpts = {
+    color: COLORS.dark, fontSize: 12, fontFace: FONT_FACE,
+    align: 'left', valign: 'middle',
+    fill: { color: COLORS.white },
+    border: [
+      { type: 'solid', pt: 0.5, color: COLORS.border },
+      { type: 'none' },
+      { type: 'solid', pt: 0.5, color: COLORS.border },
+      { type: 'none' },
+    ],
+    margin: [2, 12, 2, 12],
+  };
+
   const tableRows = infoRows.map(([label, val]) => [
-    { text: label, options: { bold: true, color: COLORS.subText, fontSize: 10, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
-    { text: val, options: { color: COLORS.dark, fontSize: 10, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border } } },
+    { text: label, options: { ...labelCellOpts } },
+    { text: val, options: { ...valueCellOpts } },
   ]);
 
   slide.addTable(tableRows, {
-    x: MARGIN_X, y: 3.8, w: 4.8, colW: [1.4, 3.4],
-    rowH: 0.4,
-    border: { type: 'solid', pt: 0.5, color: COLORS.border },
+    x: 2.2, y: tableStartY, w: 6.6, colW: [1.8, 4.8],
+    rowH: 0.55,
   });
 
   addSlideFooter(slide);
@@ -375,9 +375,25 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos, compSum
       );
     }
 
-    const labelCellOpts = { bold: true, color: COLORS.subText, fontSize: 12, fontFace: FONT_FACE, align: 'left', valign: 'middle', fill: { color: COLORS.lightGray }, border: { type: 'solid', pt: 0.5, color: COLORS.border }, margin: [1, 8, 1, 8] };
-    const valueCellOpts = { bold: true, color: COLORS.primary, fontSize: 14, fontFace: FONT_FACE, align: 'right', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border }, margin: [1, 8, 1, 8] };
-    const compCellOpts = { color: COLORS.subText, fontSize: 10, fontFace: FONT_FACE, align: 'right', valign: 'middle', fill: { color: COLORS.white }, border: { type: 'solid', pt: 0.5, color: COLORS.border }, margin: [1, 8, 1, 8] };
+    const sLabelOpts = {
+      bold: true, color: COLORS.white, fontSize: 11, fontFace: FONT_FACE,
+      align: 'center', valign: 'middle',
+      fill: { color: '3758F9' },
+      border: { type: 'solid', pt: 0.5, color: COLORS.border },
+      margin: [2, 6, 2, 6],
+    };
+    const sValueOpts = {
+      bold: true, color: COLORS.primary, fontSize: 13, fontFace: FONT_FACE,
+      align: 'right', valign: 'middle',
+      fill: { color: COLORS.white },
+      border: [
+        { type: 'solid', pt: 0.5, color: COLORS.border },
+        { type: 'none' },
+        { type: 'solid', pt: 0.5, color: COLORS.border },
+        { type: 'none' },
+      ],
+      margin: [2, 10, 2, 10],
+    };
 
     let tableRows;
     if (hasComp) {
@@ -402,18 +418,18 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos, compSum
         fontSize: 10, fontFace: FONT_FACE,
       });
     } else {
-      // 通常モード: 2列×N行カード風
+      // 通常モード: 2列×N行（ラベル=青背景白文字、値=白背景+上下線）
       tableRows = [];
       for (let i = 0; i < metricsData.length; i += 2) {
         const row = [];
         row.push(
-          { text: metricsData[i][0], options: { ...labelCellOpts } },
-          { text: metricsData[i][1], options: { ...valueCellOpts } },
+          { text: metricsData[i][0], options: { ...sLabelOpts } },
+          { text: metricsData[i][1], options: { ...sValueOpts } },
         );
         if (i + 1 < metricsData.length) {
           row.push(
-            { text: metricsData[i + 1][0], options: { ...labelCellOpts } },
-            { text: metricsData[i + 1][1], options: { ...valueCellOpts } },
+            { text: metricsData[i + 1][0], options: { ...sLabelOpts } },
+            { text: metricsData[i + 1][1], options: { ...sValueOpts } },
           );
         } else {
           row.push(
@@ -427,7 +443,7 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos, compSum
       slide.addTable(tableRows, {
         x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W,
         colW: [2.2, 2.85, 2.2, 2.85],
-        rowH: 0.55,
+        rowH: 0.50,
       });
     }
 
@@ -474,9 +490,7 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos, compSum
     // AI分析+メモ（テーブル/KPIの直下から配置）
     const aiY = kpiEndY + 0.1;
     const aiMaxH = FOOTER_Y - aiY - 0.05;
-    if (aiMaxH > 0.2) {
-  // [moved to AI summary section]
-    }
+    addAIAndMemoFooter(slide, aiData, memos, aiY, Math.max(aiMaxH, 0), pptx, '全体サマリー');
   }
 
   addSlideFooter(slide);
@@ -502,69 +516,39 @@ function getKPIActual(kpi, dashboard) {
 }
 
 // セクション区切り
-const SECTION_DESCRIPTIONS = {
-  'トレンド分析': '月別・日別・曜日別・時間帯別のアクセス推移を確認いただけます。',
-  'ユーザー分析': 'ユーザーの属性（男女比・年齢比・地域・デバイス）を確認いただけます。',
-  '集客分析': 'どこからユーザーが来訪したのか、流入経路を総合的に分析いただけます。',
-  'コンテンツ分析': 'アクセスの多いページやランディングページの分析を確認いただけます。',
-  'コンバージョン分析': 'コンバージョンに至る導線やキーイベントの推移を確認いただけます。',
-  'Appendix': 'レポート内で使用している用語・指標の説明です。',
-};
-
 function createSectionDivider(pptx, title) {
   const slide = pptx.addSlide();
-  slide.background = { fill: COLORS.white };
-
-  // 上部オレンジライン
-  slide.addShape(pptx.ShapeType.rect, {
-    x: MARGIN_X, y: 1.0, w: CONTENT_W, h: 0.04,
-    fill: { color: COLORS.accentDark },
-  });
-
-  // セクション名
+  slide.background = { fill: COLORS.primary };
   slide.addText(title, {
-    x: MARGIN_X, y: 1.2, w: CONTENT_W, h: 0.7,
-    fontSize: 28, fontFace: FONT_FACE, bold: true,
-    color: COLORS.dark, align: 'left',
+    x: 0, y: 0, w: SLIDE_W, h: SLIDE_H,
+    fontSize: 32, fontFace: FONT_FACE, bold: true,
+    color: COLORS.white, align: 'center', valign: 'middle',
   });
-
-  // 説明文
-  const desc = SECTION_DESCRIPTIONS[title] || '';
-  if (desc) {
-    slide.addText(desc, {
-      x: MARGIN_X, y: 2.0, w: CONTENT_W * 0.7, h: 1.0,
-      fontSize: 14, fontFace: FONT_FACE,
-      color: COLORS.subText, align: 'left', valign: 'top',
-      lineSpacingMultiple: 1.5,
-    });
-  }
-
   addSlideFooter(slide);
 }
 
-// 月別（13ヶ月推移）
+// 月別（13ヶ月推移）— チャートとテーブルを別スライドに分離
 function createMonthlySlide(pptx, monthlyData, aiData, memos, compMonthlyData) {
   if (!monthlyData || monthlyData.length === 0) return;
-  // 昇順ソート（古い→新しい）
-  const sorted = [...monthlyData].sort((a, b) => ((a.label || a.month || '') > (b.label || b.month || '') ? 1 : -1));
-  const slide = pptx.addSlide();
-  addSlideTitle(slide, '月別（13ヶ月推移）');
+  // チャート用: 昇順（古い→新しい）
+  const sortedAsc = [...monthlyData].sort((a, b) => ((a.label || a.month || '') > (b.label || b.month || '') ? 1 : -1));
+  // テーブル用: 降順（新しい→古い）
+  const sortedDesc = [...sortedAsc].reverse();
 
-  const hasAI = !!aiData?.summary;
-  const hasMemos = memos && memos.length > 0;
-  const layout = calcLayout(sorted.length, hasAI, hasMemos);
+  // ─── スライド1: チャート ───
+  const slide1 = pptx.addSlide();
+  addSlideTitle(slide1, '月別（13ヶ月推移）');
 
-  // 折れ線チャート
-  const labels = sorted.map(d => fmtYearMonth(d.month || d.label || d.yearMonth));
+  const chartH = FOOTER_Y - CONTENT_Y - 0.1;
+  const labels = sortedAsc.map(d => fmtYearMonth(d.month || d.label || d.yearMonth));
   const chartData = [
-    { name: 'ユーザー', labels, values: sorted.map(d => fmtNum(d.users || d.totalUsers)) },
-    { name: 'セッション', labels, values: sorted.map(d => fmtNum(d.sessions)) },
-    { name: 'PV', labels, values: sorted.map(d => fmtNum(d.pageViews || d.screenPageViews)) },
-    { name: 'CV', labels, values: sorted.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
+    { name: 'ユーザー', labels, values: sortedAsc.map(d => fmtNum(d.users || d.totalUsers)) },
+    { name: 'セッション', labels, values: sortedAsc.map(d => fmtNum(d.sessions)) },
+    { name: 'PV', labels, values: sortedAsc.map(d => fmtNum(d.pageViews || d.screenPageViews)) },
+    { name: 'CV', labels, values: sortedAsc.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
   ];
   let chartColors = ['3b82f6', 'f59e0b', '8b5cf6', 'ef4444'];
 
-  // 比較データ
   if (compMonthlyData && compMonthlyData.length > 0) {
     const compSorted = [...compMonthlyData].sort((a, b) => ((a.label || a.month || '') > (b.label || b.month || '') ? 1 : -1));
     chartData.push(
@@ -574,17 +558,25 @@ function createMonthlySlide(pptx, monthlyData, aiData, memos, compMonthlyData) {
     chartColors = [...chartColors, '93c5fd', 'fca5a5'];
   }
 
-  slide.addChart(pptx.charts.LINE, chartData, {
-    x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
-    showLegend: true, legendPos: 'b', legendFontSize: 7,
+  slide1.addChart(pptx.charts.LINE, chartData, {
+    x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W, h: chartH - 0.5,
+    showLegend: true, legendPos: 'b', legendFontSize: 10,
     chartColors,
     lineSize: 2, lineSmooth: false,
     catAxisLabelFontSize: 9, valAxisLabelFontSize: 9,
     catAxisOrientation: 'minMax',
     showValue: false,
   });
+  addSlideFooter(slide1);
 
-  // テーブル
+  // ─── スライド2: テーブル（降順） + AI分析 ───
+  const slide2 = pptx.addSlide();
+  addSlideTitle(slide2, '月別（13ヶ月推移）データ');
+
+  const hasAI = !!aiData?.summary;
+  const hasMemos = memos && memos.length > 0;
+  const tableLayout = calcTableOnlyLayout(hasAI, hasMemos);
+
   const headers = [
     { label: '月', align: 'center' },
     { label: 'セッション', align: 'right' },
@@ -596,7 +588,7 @@ function createMonthlySlide(pptx, monthlyData, aiData, memos, compMonthlyData) {
     { label: 'CVR', align: 'right' },
   ];
 
-  const rows = sorted.map(d => [
+  const rows = sortedDesc.map(d => [
     fmtYearMonth(d.month || d.label || d.yearMonth),
     formatNumber(d.sessions),
     formatNumber(d.users || d.totalUsers),
@@ -608,13 +600,13 @@ function createMonthlySlide(pptx, monthlyData, aiData, memos, compMonthlyData) {
   ]);
 
   const tbl = buildTable(headers, rows, [1.2, 1.3, 1.3, 1.3, 1.2, 1.1, 1.1, 1.1]);
-  tbl.options.y = layout.tableY;
-  tbl.options.h = layout.tableH;
+  tbl.options.y = tableLayout.tableY;
+  tbl.options.h = tableLayout.tableH;
   tbl.options.fontSize = getTableFontSize(rows.length);
-  slide.addTable(tbl.rows, tbl.options);
+  slide2.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
-  addSlideFooter(slide);
+  addAIAndMemoFooter(slide2, aiData, memos, tableLayout.aiY, tableLayout.aiHeight, pptx, "月別（13ヶ月推移）");
+  addSlideFooter(slide2);
 }
 
 // 日別推移
@@ -649,8 +641,8 @@ function createDailySlide(pptx, dailyData, aiData, memos, compDailyData) {
   }
 
   slide1.addChart(pptx.charts.LINE, chartData, {
-    x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W, h: chartH,
-    showLegend: true, legendPos: 'b', legendFontSize: 7,
+    x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W, h: chartH - 0.5,
+    showLegend: true, legendPos: 'b', legendFontSize: 10,
     chartColors,
     lineSize: 2,
     catAxisLabelFontSize: dataRows.length > 31 ? 5 : 6,
@@ -702,7 +694,7 @@ function createDailySlide(pptx, dailyData, aiData, memos, compDailyData) {
   tblR.options.fontSize = fontSize;
   slide2.addTable(tblR.rows, tblR.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide2, aiData, memos, tableLayout.aiY, tableLayout.aiHeight, pptx, "日別推移");
   addSlideFooter(slide2);
 }
 
@@ -726,7 +718,7 @@ function createWeeklySlide(pptx, weeklyData, aiData, memos) {
   slide.addChart(pptx.charts.BAR, chartData, {
     x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
     barDir: 'col', barGrouping: 'clustered',
-    showLegend: true, legendPos: 'b', legendFontSize: 7,
+    showLegend: true, legendPos: 'b', legendFontSize: 10,
     chartColors: ['3b82f6', 'ef4444'],
     catAxisLabelFontSize: 8, valAxisLabelFontSize: 9,
     showValue: false,
@@ -748,7 +740,7 @@ function createWeeklySlide(pptx, weeklyData, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "曜日別");
   addSlideFooter(slide);
 }
 
@@ -772,9 +764,9 @@ function createHourlySlide(pptx, hourlyData, aiData, memos) {
   ];
 
   slide1.addChart(pptx.charts.BAR, chartData, {
-    x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W, h: chartH,
+    x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W, h: chartH - 0.5,
     barDir: 'col', barGrouping: 'clustered',
-    showLegend: true, legendPos: 'b', legendFontSize: 7,
+    showLegend: true, legendPos: 'b', legendFontSize: 10,
     chartColors: ['3b82f6', 'ef4444'],
     catAxisLabelFontSize: 6, valAxisLabelFontSize: 9,
     showValue: false,
@@ -823,7 +815,7 @@ function createHourlySlide(pptx, hourlyData, aiData, memos) {
   tblR.options.fontSize = fontSize;
   slide2.addTable(tblR.rows, tblR.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide2, aiData, memos, tableLayout.aiY, tableLayout.aiHeight, pptx, "時間帯別");
   addSlideFooter(slide2);
 }
 
@@ -842,13 +834,13 @@ function createUsersDonutSlide(pptx, demographics) {
   ];
 
   const positions = [
-    { x: 0.3, y: 0.7 },   // 左上
+    { x: 0.5, y: 0.7 },   // 左上
     { x: 5.5, y: 0.7 },   // 右上
-    { x: 0.3, y: 3.8 },   // 左下
+    { x: 0.5, y: 3.8 },   // 左下
     { x: 5.5, y: 3.8 },   // 右下
   ];
 
-  const chartW = 5.0;
+  const chartW = 4.8;
   const chartH = 2.8;
 
   chartConfigs.forEach((config, idx) => {
@@ -870,7 +862,7 @@ function createUsersDonutSlide(pptx, demographics) {
     slide.addChart(pptx.charts.DOUGHNUT, chartData, {
       x: pos.x, y: pos.y + 0.3, w: chartW, h: chartH,
       holeSize: 50,
-      showLegend: true, legendPos: 'r', legendFontSize: 7,
+      showLegend: true, legendPos: 'r', legendFontSize: 10,
       chartColors: CHART_PALETTE,
       dataLabelPosition: 'outEnd',
       showPercent: true, showValue: false, showLabel: false,
@@ -916,7 +908,7 @@ function createUsersRegionSlide(pptx, demographics, aiData, memos) {
   tbl.options.fontSize = getTableFontSize(rows.length);
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "地域別ランキング Top 20");
   addSlideFooter(slide);
 }
 
@@ -945,8 +937,8 @@ function createChannelsSlide(pptx, channels, aiData, memos) {
   }
 
   slide.addChart(pptx.charts.PIE, [{ name: 'セッション', labels: pieLabels, values: pieValues }], {
-    x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
-    showLegend: true, legendPos: 'r', legendFontSize: 7,
+    x: 2.7, y: layout.chartY, w: 5.5, h: layout.chartH,
+    showLegend: true, legendPos: 'r', legendFontSize: 10,
     chartColors: CHART_PALETTE,
     showPercent: true, showValue: false, showLabel: false,
     dataLabelFontSize: 9,
@@ -971,7 +963,7 @@ function createChannelsSlide(pptx, channels, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "集客チャネル");
   addSlideFooter(slide);
 }
 
@@ -1012,7 +1004,7 @@ function createKeywordsSlide(pptx, keywords, aiData, memos) {
   tbl.options.fontSize = getTableFontSize(rows.length);
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "流入キーワード Top 20");
   addSlideFooter(slide);
 }
 
@@ -1041,8 +1033,8 @@ function createReferralsSlide(pptx, referrals, aiData, memos) {
   }
 
   slide.addChart(pptx.charts.PIE, [{ name: 'セッション', labels: pieLabels, values: pieValues }], {
-    x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
-    showLegend: true, legendPos: 'r', legendFontSize: 9,
+    x: 2.7, y: layout.chartY, w: 5.5, h: layout.chartH,
+    showLegend: true, legendPos: 'r', legendFontSize: 10,
     chartColors: CHART_PALETTE,
     showPercent: true, showValue: false, showLabel: false,
     dataLabelFontSize: 9,
@@ -1068,7 +1060,7 @@ function createReferralsSlide(pptx, referrals, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "被リンク元");
   addSlideFooter(slide);
 }
 
@@ -1093,7 +1085,7 @@ function createPagesSlide(pptx, pages, aiData, memos) {
   slide.addChart(pptx.charts.BAR, chartData, {
     x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
     barDir: 'col', barGrouping: 'clustered',
-    showLegend: true, legendPos: 'b', legendFontSize: 7,
+    showLegend: true, legendPos: 'b', legendFontSize: 10,
     chartColors: ['3b82f6', '10b981'],
     catAxisLabelFontSize: 5, valAxisLabelFontSize: 9,
     catAxisLabelRotate: 45,
@@ -1120,7 +1112,7 @@ function createPagesSlide(pptx, pages, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "ページ別 Top 10");
   addSlideFooter(slide);
 }
 
@@ -1162,8 +1154,8 @@ function createPageCategoriesSlide(pptx, pageCategories, aiData, memos) {
   }
 
   slide.addChart(pptx.charts.PIE, [{ name: 'PV', labels: pieLabels, values: pieValues }], {
-    x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
-    showLegend: true, legendPos: 'r', legendFontSize: 7,
+    x: 2.7, y: layout.chartY, w: 5.5, h: layout.chartH,
+    showLegend: true, legendPos: 'r', legendFontSize: 10,
     chartColors: CHART_PALETTE,
     showPercent: true, showValue: false, showLabel: false,
     dataLabelFontSize: 9,
@@ -1187,7 +1179,7 @@ function createPageCategoriesSlide(pptx, pageCategories, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "ページ分類別");
   addSlideFooter(slide);
 }
 
@@ -1212,7 +1204,7 @@ function createLandingPagesSlide(pptx, landingPages, aiData, memos) {
   slide.addChart(pptx.charts.BAR, chartData, {
     x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
     barDir: 'col', barGrouping: 'clustered',
-    showLegend: true, legendPos: 'b', legendFontSize: 7,
+    showLegend: true, legendPos: 'b', legendFontSize: 10,
     chartColors: ['3b82f6', 'ef4444'],
     catAxisLabelFontSize: 5, valAxisLabelFontSize: 9,
     catAxisLabelRotate: 45,
@@ -1239,7 +1231,7 @@ function createLandingPagesSlide(pptx, landingPages, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "ランディングページ Top 10");
   addSlideFooter(slide);
 }
 
@@ -1264,7 +1256,7 @@ function createFileDownloadsSlide(pptx, fileDownloads, aiData, memos) {
   slide.addChart(pptx.charts.BAR, chartData, {
     x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
     barDir: 'col', barGrouping: 'clustered',
-    showLegend: true, legendPos: 'b', legendFontSize: 7,
+    showLegend: true, legendPos: 'b', legendFontSize: 10,
     chartColors: ['3b82f6', '10b981'],
     catAxisLabelFontSize: 5, valAxisLabelFontSize: 9,
     catAxisLabelRotate: 45,
@@ -1289,7 +1281,7 @@ function createFileDownloadsSlide(pptx, fileDownloads, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "ファイルダウンロード");
   addSlideFooter(slide);
 }
 
@@ -1323,76 +1315,85 @@ function createExternalLinksSlide(pptx, externalLinks, aiData, memos) {
   tbl.options.h = layout.tableH;
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "外部リンククリック");
   addSlideFooter(slide);
 }
 
-// コンバージョン月次推移
+// コンバージョン月次推移 — チャートとテーブルを別スライドに分離
 function createConversionsSlide(pptx, conversions, aiData, memos) {
   if (!conversions?.data || conversions.data.length === 0) return;
-  const slide = pptx.addSlide();
-  addSlideTitle(slide, 'コンバージョン月次推移');
 
-  // 昇順ソート（古い→新しい）
-  const convData = [...conversions.data].sort((a, b) => ((a.yearMonth || a.month || '') > (b.yearMonth || b.month || '') ? 1 : -1));
-  const hasAI = !!aiData?.summary;
-  const hasMemos = memos && memos.length > 0;
-  const layout = calcLayout(convData.length, hasAI, hasMemos);
+  // チャート用: 昇順（古い→新しい）
+  const convDataAsc = [...conversions.data].sort((a, b) => ((a.yearMonth || a.month || '') > (b.yearMonth || b.month || '') ? 1 : -1));
+  // テーブル用: 降順（新しい→古い）
+  const convDataDesc = [...convDataAsc].reverse();
 
   // CVイベント名を抽出
   const eventNames = new Set();
-  convData.forEach(d => {
+  convDataAsc.forEach(d => {
     Object.keys(d).forEach(k => {
       if (k !== 'yearMonth' && k !== 'month' && k !== 'total') eventNames.add(k);
     });
   });
   const events = [...eventNames];
 
-  const labels = convData.map(d => fmtYearMonth(d.yearMonth || d.month));
+  // ─── スライド1: チャート ───
+  const slide1 = pptx.addSlide();
+  addSlideTitle(slide1, 'コンバージョン月次推移');
+
+  const chartH = FOOTER_Y - CONTENT_Y - 0.1;
+  const labels = convDataAsc.map(d => fmtYearMonth(d.yearMonth || d.month));
   const colors = ['3b82f6', '10b981', 'f59e0b', 'ef4444', '8b5cf6', 'ec4899', '06b6d4'];
   const chartData = events.map(ev => ({
     name: ev,
     labels,
-    values: convData.map(d => fmtNum(d[ev])),
+    values: convDataAsc.map(d => fmtNum(d[ev])),
   }));
 
   if (chartData.length > 0) {
-    slide.addChart(pptx.charts.LINE, chartData, {
-      x: MARGIN_X, y: layout.chartY, w: CONTENT_W, h: layout.chartH,
-      showLegend: true, legendPos: 'b', legendFontSize: 7,
+    slide1.addChart(pptx.charts.LINE, chartData, {
+      x: MARGIN_X, y: CONTENT_Y, w: CONTENT_W, h: chartH - 0.5,
+      showLegend: true, legendPos: 'b', legendFontSize: 10,
       chartColors: colors.slice(0, chartData.length),
       lineSize: 2,
       catAxisLabelFontSize: 9, valAxisLabelFontSize: 9,
       showValue: false,
     });
   }
+  addSlideFooter(slide1);
 
-  // テーブル
+  // ─── スライド2: テーブル（降順） + AI分析 ───
+  const slide2 = pptx.addSlide();
+  addSlideTitle(slide2, 'コンバージョン月次推移 データ');
+
+  const hasAI = !!aiData?.summary;
+  const hasMemos = memos && memos.length > 0;
+  const tableLayout = calcTableOnlyLayout(hasAI, hasMemos);
+
   const headers = [
     { label: '月', align: 'center' },
     ...events.map(ev => ({ label: ev, align: 'right' })),
     { label: '合計', align: 'right' },
   ];
   const colWidths = [1.5, ...events.map(() => Math.max((CONTENT_W - 3.0) / (events.length + 1), 1.0)), 1.5];
-  // 幅の調整
   const totalW = colWidths.reduce((a, b) => a + b, 0);
   const scale = CONTENT_W / totalW;
   const adjustedWidths = colWidths.map(w => w * scale);
 
-  const rows = convData.map(d => [
+  const rows = convDataDesc.map(d => [
     fmtYearMonth(d.yearMonth || d.month),
     ...events.map(ev => formatNumber(d[ev])),
     formatNumber(events.reduce((sum, ev) => sum + fmtNum(d[ev]), 0)),
   ]);
 
   const tbl = buildTable(headers, rows, adjustedWidths);
-  tbl.options.y = layout.tableY;
-  tbl.options.h = layout.tableH;
+  tbl.options.y = tableLayout.tableY;
+  tbl.options.h = tableLayout.tableH;
   tbl.options.fontSize = getTableFontSize(rows.length);
-  slide.addTable(tbl.rows, tbl.options);
+  slide2.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
-  addSlideFooter(slide);
+  addAIAndMemoFooter(slide2, aiData, memos, tableLayout.aiY, tableLayout.aiHeight, pptx, "コンバージョン月次推移");
+  addSlideFooter(slide2);
 }
 
 // 逆算フロー
@@ -1441,90 +1442,11 @@ function createReverseFlowSlide(pptx, reverseFlows, aiData, memos) {
   tbl.options.rowH = 0.4;
   slide.addTable(tbl.rows, tbl.options);
 
-  // [moved to AI summary section]
+  addAIAndMemoFooter(slide, aiData, memos, layout.aiY, layout.aiHeight, pptx, "逆算フロー");
   addSlideFooter(slide);
 }
 
 // Appendix: 用語集
-// AI分析サマリーセクション（全セクションのAI考察をまとめて表示）
-function createAISummarySection(pptx, aiMap, memosMap) {
-  // AI考察があるページを収集
-  const sections = [
-    { key: 'dashboard', label: '全体サマリー' },
-    { key: 'analysis/month', label: '月別分析' },
-    { key: 'analysis/day', label: '日別分析' },
-    { key: 'analysis/week', label: '曜日別分析' },
-    { key: 'analysis/hour', label: '時間帯別分析' },
-    { key: 'analysis/users', label: 'ユーザー属性' },
-    { key: 'analysis/channels', label: '集客チャネル' },
-    { key: 'analysis/keywords', label: 'キーワード' },
-    { key: 'analysis/referrals', label: '参照元' },
-    { key: 'analysis/pages', label: 'ページ分析' },
-    { key: 'analysis/page-categories', label: 'ページ分類' },
-    { key: 'analysis/landing-pages', label: 'ランディングページ' },
-    { key: 'analysis/conversions', label: 'コンバージョン' },
-    { key: 'analysis/reverse-flow', label: '逆引きフロー' },
-  ];
-
-  const entries = sections
-    .map(s => ({ ...s, ai: aiMap[s.key]?.summary, memos: memosMap[s.key] }))
-    .filter(s => s.ai || (s.memos && s.memos.length > 0));
-
-  if (entries.length === 0) return;
-
-  createSectionDivider(pptx, 'AI分析サマリー');
-
-  // 1スライドに最大3セクション分を配置
-  for (let i = 0; i < entries.length; i += 3) {
-    const chunk = entries.slice(i, i + 3);
-    const slide = pptx.addSlide();
-    addSlideTitle(slide, 'AI分析サマリー');
-
-    let y = CONTENT_Y + 0.1;
-    chunk.forEach(entry => {
-      // セクションラベル
-      slide.addText(entry.label, {
-        x: MARGIN_X, y, w: CONTENT_W, h: 0.35,
-        fontSize: 12, fontFace: FONT_FACE, bold: true,
-        color: COLORS.accent,
-      });
-      y += 0.35;
-
-      // AI考察テキスト
-      if (entry.ai) {
-        const text = cleanMarkdown(entry.ai);
-        const lines = Math.ceil(text.length / 80);
-        const h = Math.max(0.5, Math.min(lines * 0.22, 1.5));
-        slide.addText(text, {
-          x: MARGIN_X + 0.2, y, w: CONTENT_W - 0.4, h,
-          fontSize: 9, fontFace: FONT_FACE,
-          color: COLORS.dark, valign: 'top',
-          lineSpacingMultiple: 1.4,
-          shrinkText: true,
-        });
-        y += h + 0.1;
-      }
-
-      // メモ
-      if (entry.memos && entry.memos.length > 0) {
-        entry.memos.slice(0, 2).forEach(memo => {
-          const memoText = `[メモ] ${memo.text || ''}`;
-          slide.addText(memoText, {
-            x: MARGIN_X + 0.2, y, w: CONTENT_W - 0.4, h: 0.3,
-            fontSize: 8, fontFace: FONT_FACE,
-            color: COLORS.subText, valign: 'top',
-          });
-          y += 0.3;
-        });
-      }
-
-      y += 0.15; // セクション間のスペース
-    });
-
-    addSlideFooter(slide);
-  }
-}
-
 function createAppendixSlide(pptx) {
   const slide = pptx.addSlide();
   addSlideTitle(slide, '指標・用語の説明');
@@ -1576,7 +1498,7 @@ function countSlides(allData) {
   let count = 2; // 表紙 + 全体サマリー
   // トレンド分析
   count += 1; // セクション区切り
-  if (allData.monthlyData?.length > 0) count++;
+  if (allData.monthlyData?.length > 0) count += 2; // チャート + テーブル
   if (allData.daily?.rows?.length > 0) count += 2; // チャート + テーブル
   if (allData.weekly?.rows?.length > 0) count++;
   if (allData.hourly?.rows?.length > 0) count += 2; // チャート + テーブル
@@ -1597,7 +1519,7 @@ function countSlides(allData) {
   if (allData.externalLinks?.rows?.length > 0) count++;
   // コンバージョン分析
   count += 1;
-  if (allData.conversions?.data?.length > 0) count++;
+  if (allData.conversions?.data?.length > 0) count += 2; // チャート + テーブル
   if (allData.reverseFlows?.length > 0) count++;
   // Appendix
   count += 2; // セクション区切り + 用語集
@@ -1606,31 +1528,22 @@ function countSlides(allData) {
 
 export async function downloadAnalysisPptx(allData, siteName, dateRange) {
   const pptx = new PptxGenJS();
-  pptx.layout = 'LAYOUT_WIDE';
+  pptx.layout = 'LAYOUT_WIDE'; // Will be overridden below
   pptx.defineLayout({ name: 'CUSTOM_4_3', width: SLIDE_W, height: SLIDE_H });
   pptx.layout = 'CUSTOM_4_3';
 
-  // テーマカラー設定
-  pptx.theme = { headFontFace: FONT_FACE, bodyFontFace: FONT_FACE };
-
-  // スライドマスター定義（チャレンジ）
-  try {
-    pptx.defineSlideMaster({
-      title: 'CONTENT_MASTER',
-      background: { fill: COLORS.white },
-      objects: [
-        // 上部にプライマリカラーのアクセントライン
-        { rect: { x: 0, y: 0, w: SLIDE_W, h: 0.03, fill: { color: COLORS.primary } } },
-        // フッターエリア
-        { rect: { x: 0, y: FOOTER_Y - 0.05, w: SLIDE_W, h: 0.01, fill: { color: COLORS.border } } },
-      ],
-    });
-  } catch (e) {
-    console.warn('[PPTX] スライドマスター定義スキップ:', e.message);
-  }
-
   // ロゴ変換
   const logoBase64 = await svgToBase64Png(logoSvgRaw).catch(() => null);
+
+  // 日付ラベルを生成（全データスライドのタイトルバー右上に表示）
+  const from = dateRange?.from || '';
+  const to = dateRange?.to || '';
+  if (from && to) {
+    const toDay = to.substring(8, 10);
+    _dateLabelFull = `${from.replace(/-/g, '.')}~${toDay}`;
+  } else {
+    _dateLabelFull = '';
+  }
 
   // スライド総数を事前計算
   _slideCount = 0;
@@ -1678,10 +1591,7 @@ export async function downloadAnalysisPptx(allData, siteName, dateRange) {
   createConversionsSlide(pptx, allData.conversions, ai['analysis/conversions'], memos['analysis/conversions']);
   createReverseFlowSlide(pptx, allData.reverseFlows, ai['analysis/reverse-flow'], memos['analysis/reverse-flow']);
 
-  // セクション7: AI分析サマリー
-  createAISummarySection(pptx, ai, memos);
-
-  // セクション8: Appendix
+  // セクション7: Appendix
   createSectionDivider(pptx, 'Appendix');
   createAppendixSlide(pptx);
 
