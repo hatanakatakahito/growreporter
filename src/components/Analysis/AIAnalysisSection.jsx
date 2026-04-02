@@ -1,6 +1,6 @@
 import { RefreshCw, Sparkles, Check, AlertCircle, ArrowRight } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import { usePlan } from '../../hooks/usePlan';
 import { useAuth } from '../../contexts/AuthContext';
@@ -29,6 +29,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   const { currentUser } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [summary, setSummary] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
@@ -230,19 +231,19 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
         </div>
         
         <button
-          onClick={() => {
-            if (planId === 'free') {
-              setIsUpgradeModalOpen(true);
-            } else {
-              loadAnalysis(true);
-            }
-          }}
-          disabled={isLoading}
-          className="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-3 disabled:opacity-50"
-        >
-          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          再分析
-        </button>
+            onClick={() => {
+              if (planId === 'free') {
+                setIsUpgradeModalOpen(true);
+              } else {
+                loadAnalysis(true);
+              }
+            }}
+            disabled={isLoading}
+            className="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-3 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            再分析
+          </button>
       </div>
 
       {/* AI分析サマリ */}
@@ -351,18 +352,29 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
 
       {/* サイト改善画面へのリンク */}
       <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 flex flex-col items-center">
-        <button
-          onClick={() => {
-            if (!selectedSiteId) return;
-            // /improveページに遷移（改善案0件なら自動で方針選択モーダルが表示される）
-            navigate('/improve');
-          }}
-          className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-medium text-white hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
-        >
-          <Sparkles className="h-4 w-4" />
-          サイト改善案を生成する
-          <ArrowRight className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => {
+              const pagePath = location.pathname.replace('/analysis/', '').replace('/', '');
+              navigate(`/ai-chat?from=${pagePath || 'comprehensive'}`);
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-medium text-white hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+            AIに質問する
+          </button>
+          <button
+            onClick={() => {
+              if (!selectedSiteId) return;
+              navigate('/improve');
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-medium text-white hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+          >
+            <Sparkles className="h-4 w-4" />
+            サイト改善案を生成する
+            <ArrowRight className="h-4 w-4" />
+          </button>
+        </div>
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
           過去365日分のデータを分析し、最適な改善提案を生成します
         </p>
