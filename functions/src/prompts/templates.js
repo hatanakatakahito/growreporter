@@ -2136,7 +2136,10 @@ ${prevYearText ? `\n━━ 前年同月のデータ（比較用） ━━${prevY
   形式: :::chart\n{"type":"line|bar|pie","data":[...],"xKey":"name","yKeys":["value"],"title":"グラフタイトル"}\n:::
 - 改善を提案する場合は :::improvement ブロックで出力する
   形式: :::improvement\n{"title":"提案タイトル","description":"説明","category":"acquisition|content|design|feature|other","priority":"high|medium|low","expectedImpact":"期待効果","targetPageUrl":"/path"}\n:::
-- ページURLに言及する場合は、分析ページへのリンクとサイトURLの両方を示す
+- ページURLやパス（例: /contact/）に言及する場合は、必ずマークダウンリンクで出力すること
+  - サイトの実際のページ: [/contact/](${siteUrl}/contact/) ← 別タブで開けるリンク
+  - 例: 「[トップページ](${siteUrl}/)のPVは1,432回です」
+  - パスだけをテキストで書くのは禁止。必ずリンク化すること
 - 一般的なWebマーケティングの質問にも回答可能（データがない場合はその旨を伝える）
 - 回答の長さに制限はなし。質問に応じて適切な分量で回答する`;
 }

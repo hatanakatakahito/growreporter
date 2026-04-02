@@ -16,7 +16,7 @@ import {
   MessageSquare, Plus, Send, Paperclip, X, Search, Archive, Trash2,
   MoreHorizontal, Share2, Lock, Loader2, Sparkles, ChevronLeft, Menu,
   FileText, Image, Table, Download, AlertCircle, BarChart3, Lightbulb,
-  StopCircle, Maximize2, Copy, Check, ImageDown,
+  StopCircle, Maximize2, Copy, Check, ImageDown, RefreshCw,
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import toast from 'react-hot-toast';
@@ -492,9 +492,23 @@ export default function AIChat() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {messages.length > 0 && (
-              <button onClick={handleExport} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3" title="テキストエクスポート">
-                <Download className="h-4 w-4 text-body-color" />
-              </button>
+              <>
+                <button onClick={handleExport} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3" title="テキストエクスポート">
+                  <Download className="h-4 w-4 text-body-color" />
+                </button>
+                {activeSessionId && (
+                  <button onClick={() => {
+                    if (window.confirm('この会話を終了しますか？\n会話履歴と添付ファイルは残ります。')) {
+                      const fn = httpsCallable(functions, 'endChatSession');
+                      fn({ siteId: selectedSiteId, sessionId: activeSessionId })
+                        .then(() => { toast.success('会話を終了しました'); loadSessions(); })
+                        .catch(() => toast.error('操作に失敗しました'));
+                    }
+                  }} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3" title="会話を終了">
+                    <StopCircle className="h-4 w-4 text-body-color" />
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -528,6 +542,23 @@ export default function AIChat() {
                 return (
                   <ChatMessage key={i} message={msg} onAddImprovement={handleAddImprovement}
                     isLast={isLastUserMsg}
+                    onRetry={msg.role === 'error' && i === messages.length - 1 && !isSending ? () => {
+                      // エラーメッセージを削除して、直前のユーザーメッセージを再送信
+                      const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+                      if (!lastUserMsg) return;
+                      setMessages(prev => prev.filter((_, j) => j !== i));
+                      setIsSending(true);
+                      const fn = httpsCallable(functions, 'aiChat');
+                      fn({ siteId: selectedSiteId, sessionId: activeSessionId, message: lastUserMsg.text, attachments: [] })
+                        .then(result => {
+                          const { message: aiMsg } = result.data;
+                          setMessages(prev => [...prev, { role: 'model', text: aiMsg.text, chartData: aiMsg.chartData, improvementData: aiMsg.improvementData, timestamp: new Date().toISOString() }]);
+                        })
+                        .catch(() => {
+                          setMessages(prev => [...prev, { role: 'error', text: '回答の生成に失敗しました。', timestamp: new Date().toISOString() }]);
+                        })
+                        .finally(() => setIsSending(false));
+                    } : null}
                     onEdit={isLastUserMsg && !isSending ? (newText) => {
                       // 最後のユーザーメッセージ以降を削除して、編集テキストで再送信
                       setMessages(prev => prev.slice(0, i));
@@ -671,7 +702,7 @@ function UserAvatar() {
   );
 }
 
-function ChatMessage({ message, onAddImprovement, onEdit, isLast }) {
+function ChatMessage({ message, onAddImprovement, onEdit, isLast, onRetry }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
 
@@ -679,7 +710,14 @@ function ChatMessage({ message, onAddImprovement, onEdit, isLast }) {
     return (
       <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
         <AlertCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
-        <p className="text-sm text-red-700 dark:text-red-400">{message.text}</p>
+        <div>
+          <p className="text-sm text-red-700 dark:text-red-400">{message.text}</p>
+          {onRetry && (
+            <button onClick={onRetry} className="mt-2 inline-flex items-center gap-1.5 rounded-md border border-red-300 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/30">
+              <RefreshCw className="h-3.5 w-3.5" /> 再試行
+            </button>
+          )}
+        </div>
       </div>
     );
   }
