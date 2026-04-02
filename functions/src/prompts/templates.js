@@ -1926,3 +1926,217 @@ function buildMetricsComparisonText(before, after, changes) {
 
   return lines.join('\n');
 }
+
+// ==================== AIチャット用システムプロンプト ====================
+
+/**
+ * AIチャット用のシステムプロンプトを生成
+ * サイトの全データをコンテキストとして含む
+ */
+export function getChatSystemPrompt(metrics, siteData) {
+  const siteName = siteData?.siteName || '（サイト名不明）';
+  const siteUrl = siteData?.siteUrl || '';
+  const industry = siteData?.industry ? (Array.isArray(siteData.industry) ? siteData.industry.join('、') : siteData.industry) : '未設定';
+
+  // fetchComprehensiveDataForImprovement の戻り値に合わせてデータアクセス
+  const summaryData = metrics.summary?.metrics || {};
+  const totalCV = summaryData.totalConversions || 0;
+  const cvDetail = summaryData.conversions && typeof summaryData.conversions === 'object'
+    ? Object.entries(summaryData.conversions).map(([k, v]) => `${k}: ${v}件`).join(', ')
+    : '';
+  const recentSummaryText = summaryData.sessions != null ? `
+【直近30日のサマリー】
+- ユーザー数: ${summaryData.totalUsers?.toLocaleString() || 0}人
+- 訪問数: ${summaryData.sessions?.toLocaleString() || 0}回
+- ページビュー数: ${(summaryData.screenPageViews || summaryData.pageViews || 0).toLocaleString()}回
+- エンゲージメント率: ${((summaryData.engagementRate || 0) * 100).toFixed(1)}%
+- コンバージョン数: ${totalCV}件${cvDetail ? `（${cvDetail}）` : ''}` : '';
+
+  let channelsText = '';
+  if (metrics.channels?.length > 0) {
+    channelsText = '\n\n【集客チャネル（直近30日）】\n';
+    metrics.channels.slice(0, 10).forEach(ch => {
+      channelsText += `- ${ch.channel}: 訪問${ch.sessions?.toLocaleString() || 0}回, ユーザー${(ch.users || ch.totalUsers || 0).toLocaleString()}人, CV${ch.conversions?.toLocaleString() || 0}件\n`;
+    });
+  }
+
+  let keywordsText = '';
+  if (metrics.keywords?.length > 0) {
+    keywordsText = '\n\n【流入キーワード（GSC、直近30日、トップ15）】\n';
+    metrics.keywords.slice(0, 15).forEach(kw => {
+      keywordsText += `- "${kw.query || kw.keys?.[0] || ''}": クリック${kw.clicks?.toLocaleString() || 0}回, 表示${kw.impressions?.toLocaleString() || 0}回, CTR${((kw.ctr || 0) * 100).toFixed(1)}%, 順位${(kw.position || 0).toFixed(1)}\n`;
+    });
+  }
+
+  let pagesText = '';
+  if (metrics.pages?.length > 0) {
+    pagesText = '\n\n【ページ別データ（直近30日、トップ15）】\n';
+    metrics.pages.slice(0, 15).forEach(p => {
+      const pagePath = p.path || p.page || p.pagePath || '不明';
+      const pageTitle = p.title || '';
+      pagesText += `- ${pagePath}${pageTitle ? `（${pageTitle}）` : ''}: PV${(p.pageViews || p.screenPageViews || 0).toLocaleString()}, ユーザー${(p.users || p.totalUsers || 0).toLocaleString()}, CV${(p.conversions || 0).toLocaleString()}\n`;
+    });
+  }
+
+  let landingPagesText = '';
+  if (metrics.landingPages?.length > 0) {
+    landingPagesText = '\n\n【ランディングページ（トップ10）】\n';
+    metrics.landingPages.slice(0, 10).forEach(p => {
+      const lpPath = p.page || p.path || '不明';
+      landingPagesText += `- ${lpPath}: 訪問${p.sessions?.toLocaleString() || 0}回, ENG率${((p.engagementRate || 0) * 100).toFixed(1)}%, CV${(p.conversions || 0).toLocaleString()}件\n`;
+    });
+  }
+
+  // monthlyConversions: { rows: [ { dimensionValues: [yearMonth, eventName], metricValues: [eventCount] } ] }
+  let conversionsText = '';
+  const cvRows = metrics.monthlyConversions?.rows;
+  if (cvRows?.length > 0) {
+    // yearMonth別に集計
+    const byMonth = {};
+    cvRows.forEach(r => {
+      const ym = r.dimensionValues?.[0]?.value || '不明';
+      const count = parseInt(r.metricValues?.[0]?.value || '0');
+      byMonth[ym] = (byMonth[ym] || 0) + count;
+    });
+    const sorted = Object.entries(byMonth).sort((a, b) => a[0].localeCompare(b[0]));
+    if (sorted.length > 0) {
+      conversionsText = '\n\n【月別コンバージョン推移】\n';
+      sorted.forEach(([ym, count]) => {
+        const y = ym.substring(0, 4);
+        const m = ym.substring(4, 6);
+        conversionsText += `- ${y}年${parseInt(m)}月: CV${count.toLocaleString()}件\n`;
+      });
+    }
+  }
+
+  // reverseFlow: [ { flowName, rows: [ { dimensionValues: [pagePath], metricValues: [screenPageViews, totalUsers] } ] } ]
+  let reverseFlowText = '';
+  if (Array.isArray(metrics.reverseFlow) && metrics.reverseFlow.length > 0) {
+    reverseFlowText = '\n\n【逆算フロー（CV直前のページ遷移）】\n';
+    metrics.reverseFlow.forEach(flow => {
+      const flowName = flow.flowName || '不明';
+      reverseFlowText += `\nCV地点: ${flowName}\n`;
+      (flow.rows || []).slice(0, 5).forEach(r => {
+        const page = r.dimensionValues?.[0]?.value || '不明';
+        const pv = parseInt(r.metricValues?.[0]?.value || '0');
+        reverseFlowText += `  - ${page}: ${pv.toLocaleString()}PV\n`;
+      });
+    });
+  }
+
+  // monthlyTrend: { rows: [ { dimensionValues: [yearMonth], metricValues: [sessions, totalUsers, screenPageViews, engagementRate] } ] }
+  let monthlyTrendText = '';
+  const trendRows = metrics.monthlyTrend?.rows;
+  if (trendRows?.length > 0) {
+    monthlyTrendText = '\n\n【月別トレンド（過去13ヶ月）】\n';
+    trendRows.forEach(r => {
+      const ym = r.dimensionValues?.[0]?.value || '不明';
+      const sessions = parseInt(r.metricValues?.[0]?.value || '0');
+      const users = parseInt(r.metricValues?.[1]?.value || '0');
+      const pv = parseInt(r.metricValues?.[2]?.value || '0');
+      const eng = parseFloat(r.metricValues?.[3]?.value || '0');
+      const y = ym.substring(0, 4);
+      const m = ym.substring(4, 6);
+      monthlyTrendText += `- ${y}年${parseInt(m)}月: ユーザー${users.toLocaleString()}, 訪問${sessions.toLocaleString()}, PV${pv.toLocaleString()}, ENG率${(eng * 100).toFixed(1)}%\n`;
+    });
+  }
+
+  // pageFlow: [ { pagePath, nextPages: [ { path, pageViews }, ... ] } ]
+  let pageFlowText = '';
+  if (Array.isArray(metrics.pageFlow) && metrics.pageFlow.length > 0) {
+    pageFlowText = '\n\n【ページフロー（主要な遷移パターン）】\n';
+    metrics.pageFlow.slice(0, 5).forEach(flow => {
+      pageFlowText += `\n${flow.pagePath} からの遷移先:\n`;
+      (flow.nextPages || []).slice(0, 5).forEach(next => {
+        pageFlowText += `  → ${next.path}: ${(next.pageViews || 0).toLocaleString()}PV\n`;
+      });
+    });
+  }
+
+  let scrapingText = '';
+  if (metrics.scrapingData?.pages?.length > 0) {
+    scrapingText = '\n\n【サイト構造データ（スクレイピング、上位20ページ）】\n';
+    metrics.scrapingData.pages.slice(0, 20).forEach((p, i) => {
+      scrapingText += `\n[${i + 1}] ${p.pagePath}\n`;
+      scrapingText += `  タイトル: ${p.metaTitle || '未設定'}\n`;
+      scrapingText += `  PV: ${p.pageViews?.toLocaleString() || 0}, 見出し: h1=${p.headingStructure?.h1 || 0}/h2=${p.headingStructure?.h2 || 0}\n`;
+      scrapingText += `  画像: alt有=${p.imagesWithAlt || 0}/alt無=${p.imagesWithoutAlt || 0}, 読込: ${p.loadTime || 0}ms\n`;
+      if (p.ctaButtons?.length > 0) {
+        scrapingText += `  CTA: ${p.ctaButtons.slice(0, 3).map(c => `「${c.text}」`).join(', ')}\n`;
+      }
+      const issues = [];
+      if (p.headingStructure?.h1 === 0) issues.push('h1なし');
+      if (p.headingStructure?.h1 > 1) issues.push('h1複数');
+      if (!p.metaDescription) issues.push('description未設定');
+      if (p.loadTime > 3000) issues.push('読込遅い');
+      if (p.imagesWithoutAlt > p.imagesWithAlt) issues.push('alt不足');
+      if (issues.length > 0) scrapingText += `  問題: ${issues.join(', ')}\n`;
+    });
+  }
+
+  // 前年同月データの構築
+  const prevYear = metrics.prevYear;
+  let prevYearText = '';
+  if (prevYear) {
+    const prevPeriod = prevYear.period ? `${prevYear.period.startDate} 〜 ${prevYear.period.endDate}` : '前年同月';
+
+    if (prevYear.channels?.length > 0) {
+      prevYearText += `\n\n【前年同月の集客チャネル（${prevPeriod}）】\n`;
+      prevYear.channels.slice(0, 10).forEach(ch => {
+        prevYearText += `- ${ch.channel}: 訪問${ch.sessions?.toLocaleString() || 0}回, ユーザー${ch.users?.toLocaleString() || 0}人, CV${ch.conversions?.toLocaleString() || 0}件\n`;
+      });
+    }
+
+    if (prevYear.keywords?.length > 0) {
+      prevYearText += `\n\n【前年同月の流入キーワード（${prevPeriod}、トップ15）】\n`;
+      prevYear.keywords.slice(0, 15).forEach(kw => {
+        prevYearText += `- "${kw.query || ''}": クリック${kw.clicks?.toLocaleString() || 0}回, 表示${kw.impressions?.toLocaleString() || 0}回, CTR${((kw.ctr || 0) * 100).toFixed(1)}%, 順位${(kw.position || 0).toFixed(1)}\n`;
+      });
+    }
+
+    if (prevYear.pages?.length > 0) {
+      prevYearText += `\n\n【前年同月のページ別データ（${prevPeriod}、トップ15）】\n`;
+      prevYear.pages.slice(0, 15).forEach(p => {
+        prevYearText += `- ${p.path || p.page || ''}${p.title ? `（${p.title}）` : ''}: PV${p.pageViews?.toLocaleString() || 0}, ユーザー${p.users?.toLocaleString() || 0}, CV${p.conversions?.toLocaleString() || 0}\n`;
+      });
+    }
+
+    if (prevYear.landingPages?.length > 0) {
+      prevYearText += `\n\n【前年同月のランディングページ（${prevPeriod}、トップ10）】\n`;
+      prevYear.landingPages.slice(0, 10).forEach(p => {
+        prevYearText += `- ${p.page}: 訪問${p.sessions?.toLocaleString() || 0}回, ENG率${((p.engagementRate || 0) * 100).toFixed(1)}%, CV${p.conversions?.toLocaleString() || 0}件\n`;
+      });
+    }
+  }
+
+  return `あなたは「${siteName}」（${siteUrl}）のWebアナリスト兼改善コンサルタントです。
+業種: ${industry}
+
+以下はこのサイトの最新のアクセス解析データです。ユーザーからの質問にこのデータに基づいて回答してください。
+
+━━ 直近30日のデータ ━━
+${recentSummaryText}${channelsText}${keywordsText}${pagesText}${landingPagesText}${conversionsText}${reverseFlowText}${monthlyTrendText}${pageFlowText}${scrapingText}
+${prevYearText ? `\n━━ 前年同月のデータ（比較用） ━━${prevYearText}` : ''}
+
+【回答ルール】
+- データに基づいて回答し、具体的な数値を根拠として示す
+- 専門用語は避け、括弧で補足する（例: 「訪問数（セッション）」）
+- 必ずマークダウン形式で回答する（見出し、リスト、太字、テーブル等を活用）
+- 【最重要】数値の比較・一覧・ランキング・期間比較・チャネル別データ等は、必ず以下のようなマークダウンテーブル構文で出力すること:
+
+| 指標 | 2025年3月 | 2026年3月 | 増減率 |
+| :--- | ---: | ---: | ---: |
+| ユーザー数 | 3,012人 | 4,812人 | +59.8% |
+| 訪問数 | 4,149回 | 6,373回 | +53.6% |
+
+- テーブルのヘッダー行の後に必ず区切り行（| :--- | ---: |）を入れること。これがないとテーブルとして認識されない
+- スペースで揃えたり、インデントで表を作るのは禁止。必ず | で区切ること
+- 箇条書きで数値を並べるよりテーブルの方が見やすい場合は常にテーブルを使う
+- グラフが有効な場合は :::chart ブロックでRechartsデータをJSON形式で出力する
+  形式: :::chart\n{"type":"line|bar|pie","data":[...],"xKey":"name","yKeys":["value"],"title":"グラフタイトル"}\n:::
+- 改善を提案する場合は :::improvement ブロックで出力する
+  形式: :::improvement\n{"title":"提案タイトル","description":"説明","category":"acquisition|content|design|feature|other","priority":"high|medium|low","expectedImpact":"期待効果","targetPageUrl":"/path"}\n:::
+- ページURLに言及する場合は、分析ページへのリンクとサイトURLの両方を示す
+- 一般的なWebマーケティングの質問にも回答可能（データがない場合はその旨を伝える）
+- 回答の長さに制限はなし。質問に応じて適切な分量で回答する`;
+}

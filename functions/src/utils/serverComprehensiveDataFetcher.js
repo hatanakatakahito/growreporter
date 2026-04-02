@@ -126,6 +126,26 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
     ? await fetchReverseFlowData(ga4Client, ga4PropertyId, reverseFlowSettings, recentStart, recentEnd)
     : [];
 
+  // Phase 3: 前年同月データ（チャット用）
+  const oneYearAgoStart = new Date(thirtyDaysAgo);
+  oneYearAgoStart.setFullYear(oneYearAgoStart.getFullYear() - 1);
+  const oneYearAgoEnd = new Date(today);
+  oneYearAgoEnd.setFullYear(oneYearAgoEnd.getFullYear() - 1);
+  const prevYearStart = formatDate(oneYearAgoStart);
+  const prevYearEnd = formatDate(oneYearAgoEnd);
+
+  const [
+    prevChannelsResult,
+    prevKeywordsResult,
+    prevPagesResult,
+    prevLandingPagesResult,
+  ] = await Promise.allSettled([
+    ga4Client ? fetchGA4Channels(ga4Client, ga4PropertyId, prevYearStart, prevYearEnd) : null,
+    gscClient ? fetchGSCKeywords(gscClient, siteData.gscSiteUrl, prevYearStart, prevYearEnd) : null,
+    ga4Client ? fetchGA4Pages(ga4Client, ga4PropertyId, prevYearStart, prevYearEnd) : null,
+    ga4Client ? fetchGA4LandingPages(ga4Client, ga4PropertyId, prevYearStart, prevYearEnd) : null,
+  ]);
+
   const comprehensiveData = {
     siteId,
     period: {
@@ -151,6 +171,14 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
     aiComprehensiveAnalysis: resolve(aiAnalysisResult),
     scrapingData: resolve(scrapingDataResult),
     diagnosisData: resolve(diagnosisDataResult),
+    // 前年同月データ（過去比較用）
+    prevYear: {
+      period: { startDate: prevYearStart, endDate: prevYearEnd },
+      channels: resolve(prevChannelsResult) || [],
+      keywords: resolve(prevKeywordsResult) || [],
+      pages: resolve(prevPagesResult) || [],
+      landingPages: resolve(prevLandingPagesResult) || [],
+    },
   };
 
   logger.info(`[serverDataFetcher] 完了: ${Date.now() - startTime}ms`);

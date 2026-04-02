@@ -172,6 +172,18 @@ export default function AnalysisHeader({
               {/* 改善画面専用アクション */}
               {improveActions && improveActions}
 
+              {/* AIに質問する */}
+              {showDateRange && selectedSiteId && (
+                <button
+                  onClick={() => navigate('/ai-chat')}
+                  className="flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+                  title="AIに質問する"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+                  <span className="hidden sm:inline">AIに質問</span>
+                </button>
+              )}
+
               {/* カスタムダウンロード（改善画面など） */}
               {customDownload}
 
