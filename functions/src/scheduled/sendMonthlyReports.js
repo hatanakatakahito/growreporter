@@ -3,6 +3,7 @@ import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { generateEmailTemplate, normalizePlan } from '../utils/emailTemplates.js';
 import { sendEmailDirect } from '../utils/emailSender.js';
+import { generateReportAnalysis } from '../utils/alertHypotheses.js';
 import { getGA4MetricsForSite } from '../utils/ga4ServerHelper.js';
 
 /**
@@ -121,7 +122,18 @@ export async function sendMonthlyReportsHandler(event) {
         };
 
         const isFree = normalizePlan(userData.plan) === 'free';
-        const { subject, html, text } = generateEmailTemplate('monthly', emailData, dateRange, { isFree });
+
+        // ビジネスプランのみAI考察を生成
+        let aiAnalysis = null;
+        if (!isFree && currentMetrics && previousMetrics) {
+          try {
+            aiAnalysis = await generateReportAnalysis('monthly', siteData.siteName, currentMetrics, previousMetrics, `${ga4CurrentStart} 〜 ${ga4CurrentEnd}`);
+          } catch (e) {
+            console.warn('月次AI考察生成エラー:', e.message);
+          }
+        }
+
+        const { subject, html, text } = generateEmailTemplate('monthly', emailData, dateRange, { isFree, aiAnalysis });
 
         sendPromises.push(
           sendEmailDirect({ to: userEmail, subject, html, text })
