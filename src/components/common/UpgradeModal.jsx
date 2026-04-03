@@ -1,27 +1,22 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Check, Send } from 'lucide-react';
+import { Sparkles, Check, Send, ArrowRight } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { PLANS, PLAN_TYPES, getPlanBadgeColor, isUnlimited } from '../../constants/plans';
+import { PLANS, PLAN_TYPES, getPlanBadgeColor } from '../../constants/plans';
 import toast from 'react-hot-toast';
-import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } from '../ui/dialog';
+import { Dialog, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
 
 /**
- * プランアップグレードモーダル（3ステップ）
- * 1. プラン比較表
- * 2. お問い合わせフォーム
- * 3. サンクス画面
- * @param {boolean} props.isOpen
- * @param {function} props.onClose
+ * Businessプランアップグレードモーダル
+ * Businessプラン訴求 → お問い合わせフォーム
  */
 export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' }) {
   const navigate = useNavigate();
   const { userProfile, currentUser } = useAuth();
-  const [step, setStep] = useState(initialStep); // 'compare' | 'form'
-  const [selectedPlan, setSelectedPlan] = useState('');
+  const [step, setStep] = useState(initialStep);
   const [companyName, setCompanyName] = useState('');
   const [userName, setUserName] = useState('');
   const [email, setEmail] = useState('');
@@ -29,21 +24,8 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
   const [isSending, setIsSending] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
 
-  const standardPlan = PLANS[PLAN_TYPES.STANDARD];
-  const premiumPlan = PLANS[PLAN_TYPES.PREMIUM];
+  const businessPlan = PLANS[PLAN_TYPES.BUSINESS];
 
-  const fmt = (v) => (isUnlimited(v) ? '無制限' : `${v}回`);
-
-  const features = [
-    { label: '登録サイト数', getValue: (p) => `${p.features.maxSites}サイト` },
-    { label: 'メンバー数', getValue: (p) => `${p.features.maxMembers}人` },
-    { label: 'AI分析（再分析）', getValue: () => '可能' },
-    { label: 'AI改善案 / 月', getValue: (p) => fmt(p.features.aiImprovementMonthly) },
-    { label: 'エクスポート / 月', getValue: (p) => fmt(p.features.excelExportMonthly) },
-    { label: 'サポート', getValue: (p) => p.features.support },
-  ];
-
-  // フォーム初期値をプロフィールから設定
   const initFormFields = () => {
     if (!formInitialized && userProfile) {
       const name = (userProfile.lastName && userProfile.firstName)
@@ -58,15 +40,11 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedPlan) {
-      toast.error('希望プランを選択してください');
-      return;
-    }
     setIsSending(true);
     try {
       await addDoc(collection(db, 'upgradeInquiries'), {
         uid: currentUser?.uid || null,
-        selectedPlan,
+        selectedPlan: 'business',
         companyName: companyName.trim(),
         userName: userName.trim(),
         email: email.trim() || currentUser?.email || '',
@@ -86,7 +64,6 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
 
   const handleClose = () => {
     setStep(initialStep);
-    setSelectedPlan('');
     setCompanyName('');
     setUserName('');
     setEmail('');
@@ -95,116 +72,47 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
     onClose();
   };
 
-  // initialStep が 'form' の場合、開いた時点でフォーム初期値をセット
-  if (isOpen && initialStep === 'form' && !formInitialized) {
+  if (isOpen && step === 'form' && !formInitialized) {
     initFormFields();
   }
 
+  // ── お問い合わせフォーム ──
   if (step === 'form') {
-    // ── ステップ2: お問い合わせフォーム ──
     return (
       <Dialog open={isOpen} onClose={handleClose} size="lg">
-        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-4 dark:border-dark-3 rounded-t-2xl">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold text-white">プランアップグレードのお問い合わせ</h3>
-          </div>
+        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 dark:border-dark-3 rounded-t-2xl">
+          <h3 className="text-xl font-semibold text-white">Businessプランのお問い合わせ</h3>
         </div>
 
         <form id="upgrade-form" onSubmit={handleSubmit}>
           <DialogBody>
             <div className="space-y-4">
-              {/* 希望プラン */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-                  希望プラン <span className="text-red-500">*</span>
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[standardPlan, premiumPlan].map((plan) => (
-                    <button
-                      key={plan.id}
-                      type="button"
-                      onClick={() => setSelectedPlan(plan.id)}
-                      className={`rounded-lg border-2 p-3 text-center transition ${
-                        selectedPlan === plan.id
-                          ? 'border-primary bg-blue-50 dark:bg-blue-900/20'
-                          : 'border-stroke hover:border-primary/50 dark:border-dark-3'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPlanBadgeColor(plan.id)}`}
-                      >
-                        {plan.displayName}
-                      </span>
-                      <p className="mt-1.5 text-sm font-bold text-dark dark:text-white">
-                        ¥{plan.price.toLocaleString()}<span className="text-xs font-normal text-body-color"> / 月</span>
-                      </p>
-                    </button>
-                  ))}
-                </div>
+                <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">会社名</label>
+                <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)}
+                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white" placeholder="株式会社〇〇" />
               </div>
-
-              {/* 組織名 */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-dark dark:text-white">組織名</label>
-                <input
-                  type="text"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
-                  placeholder="株式会社○○"
-                />
+                <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">お名前 <span className="text-red-500">*</span></label>
+                <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} required
+                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white" placeholder="山田 太郎" />
               </div>
-
-              {/* 氏名 */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-dark dark:text-white">氏名</label>
-                <input
-                  type="text"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
-                  placeholder="山田 太郎"
-                />
+                <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">メールアドレス <span className="text-red-500">*</span></label>
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
+                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white" placeholder="example@company.com" />
               </div>
-
-              {/* メールアドレス */}
               <div>
-                <label className="mb-2 block text-sm font-medium text-dark dark:text-white">メールアドレス</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
-                  placeholder="example@example.com"
-                />
-              </div>
-
-              {/* メッセージ */}
-              <div>
-                <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-                  メッセージ（任意）
-                </label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  rows={4}
-                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
-                  placeholder="ご質問やご要望があればご記入ください"
-                />
+                <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">ご質問・ご要望</label>
+                <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3}
+                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white" placeholder="ご不明点があればお気軽にお書きください" />
               </div>
             </div>
           </DialogBody>
-
           <DialogActions>
             <Button plain onClick={handleClose}>キャンセル</Button>
-            <Button
-              type="submit"
-              form="upgrade-form"
-              color="blue"
-              disabled={isSending || !selectedPlan}
-            >
-              <Send className="h-5 w-5" />
-              {isSending ? '送信中...' : '送信'}
+            <Button type="submit" form="upgrade-form" color="emerald" disabled={isSending}>
+              {isSending ? '送信中...' : <><Send className="h-4 w-4" /> 送信する</>}
             </Button>
           </DialogActions>
         </form>
@@ -212,81 +120,49 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
     );
   }
 
-  // ── ステップ1: プラン比較表 ──
+  // ── Businessプラン訴求 ──
   return (
-    <Dialog open={isOpen} onClose={handleClose} size="2xl">
-      {/* カスタムヘッダー */}
-      <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 p-6 dark:border-dark-3 rounded-t-2xl">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
-            <Sparkles className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">
-              より高度な分析でサイトを成長させましょう
-            </h2>
-            <p className="mt-1 text-sm text-white/80">
-              再分析機能は有料プランでご利用いただけます
-            </p>
-          </div>
-        </div>
+    <Dialog open={isOpen} onClose={handleClose} size="lg">
+      <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-5 dark:border-dark-3 rounded-t-2xl text-center">
+        <Sparkles className="mx-auto mb-2 h-8 w-8 text-white" />
+        <h3 className="text-2xl font-bold text-white">Businessプラン</h3>
+        <p className="mt-1 text-emerald-100">AIの力でサイト改善を本格的に推進</p>
       </div>
 
       <DialogBody>
-        {/* プラン比較 */}
-        <div className="grid grid-cols-2 gap-4">
-          {[standardPlan, premiumPlan].map((plan) => (
-            <div
-              key={plan.id}
-              className={`rounded-lg border-2 p-5 ${
-                plan.popular
-                  ? 'border-primary bg-blue-50/50 dark:bg-blue-900/10'
-                  : 'border-stroke dark:border-dark-3'
-              }`}
-            >
-              {/* プランバッジ */}
-              <div className="mb-3 text-center">
-                <span
-                  className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getPlanBadgeColor(plan.id)}`}
-                >
-                  {plan.displayName}
-                </span>
-                {plan.popular && (
-                  <span className="ml-2 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                    おすすめ
-                  </span>
-                )}
-              </div>
+        <div className="text-center mb-6">
+          <span className="text-3xl font-bold text-dark dark:text-white">¥{businessPlan.price.toLocaleString()}</span>
+          <span className="text-sm text-body-color"> / 月（税別）</span>
+        </div>
 
-              {/* 価格 */}
-              <div className="mb-4 text-center">
-                <span className="text-2xl font-bold text-dark dark:text-white">
-                  ¥{plan.price.toLocaleString()}
-                </span>
-                <span className="text-sm text-body-color"> / 月（税別）</span>
-              </div>
-
-              {/* 機能一覧 */}
-              <ul className="space-y-2.5">
-                {features.map((feature) => (
-                  <li key={feature.label} className="flex items-start gap-2 text-sm">
-                    <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                    <span className="text-dark dark:text-white">
-                      <span className="text-body-color dark:text-dark-6">{feature.label}: </span>
-                      {feature.getValue(plan)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+        <div className="space-y-3">
+          {[
+            'AI分析サマリー（無制限）',
+            'AI改善提案（無制限）',
+            'AIチャット（無制限）',
+            '改善タスク管理・効果測定',
+            'PPTX・Excelレポート',
+            `最大${businessPlan.features.maxSites}サイト登録`,
+            `メンバー${businessPlan.features.maxMembers}人まで招待`,
+            'アラート通知（AI仮説付き）',
+            '週次・月次レポートメール',
+            `サポート: ${businessPlan.features.support}`,
+          ].map((feature, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <Check className="h-5 w-5 shrink-0 text-emerald-500" />
+              <span className="text-sm text-dark dark:text-white">{feature}</span>
             </div>
           ))}
         </div>
       </DialogBody>
 
-      <DialogActions className="!justify-center">
+      <DialogActions>
         <Button plain onClick={handleClose}>閉じる</Button>
-        <Button color="blue" onClick={() => { initFormFields(); setStep('form'); }}>
-          プラン変更のお問い合わせ
+        <Button color="emerald" onClick={() => { initFormFields(); setStep('form'); }}>
+          <Send className="h-4 w-4" /> お問い合わせ
+        </Button>
+        <Button outline onClick={() => navigate('/plan-info')}>
+          <ArrowRight className="h-4 w-4" /> プラン詳細
         </Button>
       </DialogActions>
     </Dialog>
