@@ -7,7 +7,8 @@ import { canEditSite } from '../utils/permissionHelper.js';
 
 /**
  * メタデータ・スクリーンショットを再取得して sites を更新する
- * カバーに表示されない既存サイト用。サイトオーナーまたは管理者が実行可能。
+ * メタデータ: fetchMetadata（素fetch→Puppeteerフォールバック）
+ * スクリーンショット: captureScreenshot（Puppeteer→PSIフォールバック）
  */
 export const refreshSiteMetadataAndScreenshotsCallable = async (request) => {
   const uid = request.auth?.uid;
@@ -33,7 +34,6 @@ export const refreshSiteMetadataAndScreenshotsCallable = async (request) => {
     throw new HttpsError('invalid-argument', 'サイトにURLが設定されていません');
   }
 
-  // サイト編集権限（オーナー・アカウント編集者・システム管理者）のみ実行可
   const canEdit = await canEditSite(uid, siteId);
   if (!canEdit) {
     throw new HttpsError('permission-denied', 'このサイトのメタデータを取得する権限がありません');
@@ -41,20 +41,24 @@ export const refreshSiteMetadataAndScreenshotsCallable = async (request) => {
 
   const updateData = {};
 
+  // メタデータ: fetchMetadata（素fetch → Puppeteerフォールバック）
   try {
     const metadataResult = await fetchMetadataCallable({ data: { siteUrl } });
-    const metadata = metadataResult.metadata;
+    const metadata = metadataResult?.metadata;
     if (metadata?.title || metadata?.ogTitle) {
       updateData.metaTitle = metadata.title || metadata.ogTitle;
     }
     if (metadata?.description || metadata?.ogDescription) {
       updateData.metaDescription = metadata.description || metadata.ogDescription;
     }
+    logger.info('[refreshSiteMetadataAndScreenshots] メタデータ取得完了', {
+      siteId, title: !!updateData.metaTitle, desc: !!updateData.metaDescription,
+    });
   } catch (e) {
     logger.warn('[refreshSiteMetadataAndScreenshots] メタデータ取得エラー', { siteId, error: e.message });
   }
 
-  // STEP1当初と同じ: PC→モバイルの順で取得（遅延・タイムアウトは captureScreenshot 内で統一）
+  // スクリーンショット: captureScreenshot（Puppeteer → PSIフォールバック）
   try {
     const pcResult = await captureScreenshotCallable({
       data: { siteUrl, deviceType: 'pc' },
@@ -83,13 +87,12 @@ export const refreshSiteMetadataAndScreenshotsCallable = async (request) => {
   return { success: true, updatedFields: Object.keys(updateData) };
 };
 
-// 未捕捉の例外を 500 にしないよう、ラッパーで HttpsError に変換（ログに残しつつクライアントにメッセージを返す）
 export const refreshSiteMetadataAndScreenshotsCallableWithCatch = async (request) => {
   try {
     return await refreshSiteMetadataAndScreenshotsCallable(request);
   } catch (e) {
     if (e?.code && e?.message && typeof e.code === 'string') {
-      throw e; // 既に HttpsError
+      throw e;
     }
     logger.error('[refreshSiteMetadataAndScreenshots] 未処理エラー', { error: e?.message, stack: e?.stack });
     throw new HttpsError('internal', e?.message || 'メタデータ・スクリーンショットの取得に失敗しました');

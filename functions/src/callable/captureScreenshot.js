@@ -83,8 +83,21 @@ export async function captureScreenshotCallable(request) {
 
     const page = await browser.newPage();
 
+    // デバイスタイプに応じたUser-Agentを設定（WAFボット判定回避）
+    const userAgent = deviceType === 'mobile'
+      ? 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1'
+      : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+    await page.setUserAgent(userAgent);
+
     // 言語設定
-    await page.setExtraHTTPHeaders({ 'Accept-Language': 'ja-JP,ja;q=0.9' });
+    await page.setExtraHTTPHeaders({
+      'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7',
+      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+      'Sec-Fetch-Dest': 'document',
+      'Sec-Fetch-Mode': 'navigate',
+      'Sec-Fetch-Site': 'none',
+      'Sec-Fetch-User': '?1',
+    });
 
     // ビューポート設定
     const viewport = SCREENSHOT_VIEWPORT[deviceType];
@@ -118,18 +131,33 @@ export async function captureScreenshotCallable(request) {
     // ─── ページ読み込み（networkidle2 でネットワーク静止を待つ） ───
     console.log(`[captureScreenshot] Navigating to ${siteUrl}...`);
 
+    let navStatus = 200;
     try {
       const response = await page.goto(siteUrl, {
         waitUntil: 'networkidle2',
         timeout: NAV_TIMEOUT_MS,
       });
-      console.log(`[captureScreenshot] Navigation done: status=${response?.status()} in ${Date.now() - startTime}ms`);
+      navStatus = response?.status() || 200;
+      console.log(`[captureScreenshot] Navigation done: status=${navStatus} in ${Date.now() - startTime}ms`);
     } catch (navErr) {
       if (navErr?.name === 'TimeoutError' || navErr?.message?.includes('timeout')) {
         console.log(`[captureScreenshot] Navigation timeout at ${Date.now() - startTime}ms, continuing with loaded content...`);
       } else {
         throw navErr;
       }
+    }
+
+    // 403/503等のブロックを検知 → PageSpeed Insights APIにフォールバック
+    if (navStatus === 403 || navStatus === 503) {
+      console.log(`[captureScreenshot] Status ${navStatus} detected, trying PageSpeed Insights API fallback...`);
+      await page.close().catch(() => {});
+      await browser.close().catch(() => {});
+      browser = null;
+
+      const psiResult = await _fetchScreenshotFromPSI(siteUrl, deviceType, userId);
+      if (psiResult) return psiResult;
+      // PSI も失敗した場合は通常フローに戻さず例外
+      throw new Error(`Site returned ${navStatus} and PSI fallback also failed`);
     }
 
     // 3秒待機（JS アニメーション完了を待つ）
@@ -210,5 +238,69 @@ export async function captureScreenshotCallable(request) {
       await browser.close();
       console.log('[captureScreenshot] Browser closed');
     }
+  }
+}
+
+/**
+ * PageSpeed Insights API でスクリーンショットを取得（403等のフォールバック用）
+ * GoogleのLighthouseクローラーはWAFにブロックされにくい
+ */
+async function _fetchScreenshotFromPSI(siteUrl, deviceType, userId) {
+  try {
+    const psiApiKey = process.env.PSI_API_KEY;
+    if (!psiApiKey) {
+      console.warn('[captureScreenshot] PSI_API_KEY not set, skipping PSI fallback');
+      return null;
+    }
+
+    const strategy = deviceType === 'mobile' ? 'mobile' : 'desktop';
+    const psiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?url=${encodeURIComponent(siteUrl)}&strategy=${strategy}&category=performance&key=${psiApiKey}`;
+
+    console.log(`[captureScreenshot] PSI fallback: fetching ${strategy}...`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
+
+    const res = await fetch(psiUrl, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      console.warn(`[captureScreenshot] PSI fallback failed: ${res.status}`);
+      return null;
+    }
+
+    const data = await res.json();
+    const base64Data = data.lighthouseResult?.audits?.['final-screenshot']?.details?.data;
+    if (!base64Data) {
+      console.warn('[captureScreenshot] PSI fallback: no screenshot in response');
+      return null;
+    }
+
+    // base64 → Buffer（"data:image/jpeg;base64,..." 形式）
+    const base64Str = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    const imageBuffer = Buffer.from(base64Str, 'base64');
+
+    console.log(`[captureScreenshot] PSI fallback: got ${imageBuffer.length} bytes, uploading...`);
+
+    // Firebase Storage にアップロード
+    const { getStorage } = await import('firebase-admin/storage');
+    const bucket = getStorage().bucket();
+    const fileName = `screenshots/${userId}/${deviceType}_${Date.now()}.jpg`;
+    const file = bucket.file(fileName);
+
+    await file.save(imageBuffer, {
+      metadata: {
+        contentType: 'image/jpeg',
+        cacheControl: 'public, max-age=31536000',
+      },
+      resumable: false,
+    });
+    await file.makePublic();
+
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    console.log(`[captureScreenshot] PSI fallback success: ${publicUrl}`);
+    return { imageUrl: publicUrl };
+  } catch (e) {
+    console.warn(`[captureScreenshot] PSI fallback error: ${e.message}`);
+    return null;
   }
 }

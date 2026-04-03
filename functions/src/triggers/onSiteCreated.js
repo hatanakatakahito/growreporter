@@ -29,10 +29,6 @@ export async function onSiteCreatedTrigger(event) {
     const isNowCompleted = afterData?.setupCompleted === true;
 
     if (!wasNotCompleted || !isNowCompleted) {
-      logger.info('[onSiteCreated] setupCompletedの変更がないためスキップ', {
-        wasNotCompleted,
-        isNowCompleted,
-      });
       return null;
     }
 
@@ -168,6 +164,43 @@ export async function onSiteCreatedTrigger(event) {
         stack: scrapingError.stack,
         timestamp: new Date(),
       });
+    }
+
+    // スクリーンショット即時取得（ダッシュボード表示を早めるため）
+    // スクレイピング完了後のonScrapingJobCreatedでも取得するが、既存チェックでスキップされる
+    if (siteData.siteUrl) {
+      try {
+        const { captureScreenshotCallable } = await import('../callable/captureScreenshot.js');
+        const ownerUid = siteData.userId || null;
+        const ssUpdate = {};
+
+        try {
+          const pcResult = await captureScreenshotCallable({
+            data: { siteUrl: siteData.siteUrl, deviceType: 'pc' },
+            auth: ownerUid ? { uid: ownerUid } : undefined,
+          });
+          if (pcResult?.imageUrl) ssUpdate.pcScreenshotUrl = pcResult.imageUrl;
+        } catch (e) {
+          logger.warn('[onSiteCreated] PCスクショ取得エラー', { siteId, error: e.message });
+        }
+
+        try {
+          const mobileResult = await captureScreenshotCallable({
+            data: { siteUrl: siteData.siteUrl, deviceType: 'mobile' },
+            auth: ownerUid ? { uid: ownerUid } : undefined,
+          });
+          if (mobileResult?.imageUrl) ssUpdate.mobileScreenshotUrl = mobileResult.imageUrl;
+        } catch (e) {
+          logger.warn('[onSiteCreated] モバイルスクショ取得エラー', { siteId, error: e.message });
+        }
+
+        if (Object.keys(ssUpdate).length > 0) {
+          await db.collection('sites').doc(siteId).update(ssUpdate);
+          logger.info('[onSiteCreated] スクショ保存完了', { siteId, fields: Object.keys(ssUpdate) });
+        }
+      } catch (importError) {
+        logger.warn('[onSiteCreated] スクショモジュール読み込みエラー', { siteId, error: importError.message });
+      }
     }
 
     // サイト登録完了メール送信

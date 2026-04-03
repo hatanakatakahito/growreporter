@@ -295,6 +295,31 @@ export default function SiteDetail() {
               )}
             </div>
           </div>
+          {/* メタデータ・スクショ再取得 */}
+          <div className="mt-4 border-t border-stroke pt-4 dark:border-dark-3">
+            <button
+              onClick={async () => {
+                try {
+                  toast.loading('メタデータ・スクリーンショットを再取得中...', { id: 'refresh-meta' });
+                  const refresh = httpsCallable(functions, 'refreshSiteMetadataAndScreenshots', { timeout: 120_000 });
+                  const result = await refresh({ siteId });
+                  const fields = result.data?.updatedFields || [];
+                  if (fields.length > 0) {
+                    toast.success(`再取得完了（${fields.length}件更新）`, { id: 'refresh-meta' });
+                  } else {
+                    toast.success('再取得完了（更新なし）', { id: 'refresh-meta' });
+                  }
+                  refetch();
+                } catch (e) {
+                  toast.error(`再取得に失敗しました: ${e.message}`, { id: 'refresh-meta' });
+                }
+              }}
+              className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              メタデータ・スクリーンショットを再取得
+            </button>
+          </div>
         </div>
 
         {/* AI使用状況 */}
@@ -469,11 +494,11 @@ export default function SiteDetail() {
           )}
         </div>
 
-        {/* サイト削除 */}
-        <div className="mt-8 border-t border-gray-200 pt-6 dark:border-dark-3">
+        {/* サイト削除（最下部に控えめに配置） */}
+        <div className="mt-16 flex justify-center pb-8">
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="text-sm text-gray-400 hover:text-red-500 transition dark:text-dark-6"
+            className="text-xs text-gray-400 hover:text-red-500 transition dark:text-dark-6"
           >
             このサイトを削除する
           </button>
