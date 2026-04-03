@@ -284,15 +284,16 @@ ${metricsText}
 
 以下の2セクションを出力してください。マークダウン記法は一切使わないでください。
 
-■ 状況の整理
+## 状況の整理
 ${periodName}のデータを3〜4文で簡潔にまとめてください。
 - 前期比で目立つ変化とその意味を述べる
 - 良い傾向と悪い傾向の両方に触れる
 - 推測ではなくデータから読み取れる事実を述べる
 
-■ 注目ポイント
-サイト運営者が確認・対応すべきことを3つ、優先度順で書いてください。
-- 各項目は具体的な行動指示にする
+## 確認すべきこと
+サイト運営者が次にとるべき具体的な確認アクションを3つ、優先度順で書いてください。
+- 各項目は「〜を確認してください」という行動指示にする
+- 各項目の下に → で1文の補足説明をつける
 - 番号と本文のみ。前置き・挨拶・マークダウン記法は書かない`;
 
   try {
@@ -336,12 +337,12 @@ function parseReportAnalysis(rawText) {
     .replace(/`([^`]+)`/g, '$1')
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
 
-  const summaryMatch = clean.match(/■?\s*状況の整理\s*\n([\s\S]*?)(?=■?\s*注目ポイント|■?\s*確認すべきこと|$)/);
+  const summaryMatch = clean.match(/(?:■|##)?\s*状況の整理\s*\n([\s\S]*?)(?=(?:■|##)?\s*確認すべきこと|$)/);
   if (summaryMatch) {
     result.summary = summaryMatch[1].trim();
   }
 
-  const actionsMatch = clean.match(/■?\s*(?:注目ポイント|確認すべきこと)\s*\n([\s\S]*?)$/);
+  const actionsMatch = clean.match(/(?:■|##)?\s*確認すべきこと\s*\n([\s\S]*?)$/);
   if (actionsMatch) {
     const actionsText = actionsMatch[1].trim();
     const actionBlocks = actionsText.split(/\n(?=\d+[\.\)]\s)/);

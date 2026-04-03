@@ -230,24 +230,34 @@ export function generateEmailTemplate(reportType, siteData, dateRange, options =
           ${renderKpiSection()}
 
           ${options.aiAnalysis?.summary ? `
-          <!-- AI分析 -->
+          <!-- 状況の整理 -->
           <tr>
             <td style="padding: 0 30px 20px 30px;">
-              <div style="background-color: #f0f4ff; border-radius: 8px; padding: 20px; border-left: 4px solid #3758F9;">
-                <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 15px; font-weight: 700;">■ AI分析</h3>
-                <p style="margin: 0 0 16px 0; color: #374151; font-size: 14px; line-height: 1.7;">${stripMarkdown(options.aiAnalysis.summary)}</p>
-                ${options.aiAnalysis.actions?.length > 0 ? `
-                <h4 style="margin: 0 0 8px 0; color: #1f2937; font-size: 14px; font-weight: 700;">■ 注目ポイント</h4>
-                <table cellpadding="0" cellspacing="0" border="0" width="100%">
-                  ${options.aiAnalysis.actions.map((action, i) => `
-                  <tr>
-                    <td style="padding: 6px 0; vertical-align: top; width: 24px; color: #3758F9; font-weight: bold; font-size: 14px;">${i + 1}.</td>
-                    <td style="padding: 6px 0; color: #374151; font-size: 14px; line-height: 1.6;">${stripMarkdown(action)}</td>
-                  </tr>`).join('')}
-                </table>` : ''}
+              <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 15px; font-weight: 700;">■ 状況の整理</h3>
+              <div style="background-color: #f9fafb; border-radius: 8px; padding: 16px; margin: 0;">
+                <p style="margin: 0; font-size: 14px; color: #374151; line-height: 1.7;">${stripMarkdown(options.aiAnalysis.summary).replace(/\n/g, '<br>')}</p>
               </div>
             </td>
+          </tr>
+          ${options.aiAnalysis.actions?.length > 0 ? `
+          <!-- 確認すべきこと -->
+          <tr>
+            <td style="padding: 0 30px 20px 30px;">
+              <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 15px; font-weight: 700;">■ 確認すべきこと</h3>
+              <table cellpadding="0" cellspacing="0" border="0" width="100%">
+                ${options.aiAnalysis.actions.map((action, i) => {
+                  const escaped = stripMarkdown(action).replace(/</g, '&lt;').replace(/\n/g, '<br>');
+                  return `<tr>
+                    <td style="padding: 0 0 12px 0; vertical-align: top;">
+                      <span style="display: inline-block; width: 22px; height: 22px; border-radius: 50%; background-color: #3758F9; color: #fff; font-size: 12px; font-weight: 700; text-align: center; line-height: 22px; margin-right: 8px;">${i + 1}</span>
+                    </td>
+                    <td style="padding: 0 0 12px 0; vertical-align: top; color: #374151; font-size: 14px; line-height: 1.6;">${escaped}</td>
+                  </tr>`;
+                }).join('')}
+              </table>
+            </td>
           </tr>` : ''}
+          ` : ''}
 
           <!-- アクションボタン -->
           <tr>
