@@ -55,8 +55,8 @@ export default function CommercialTransaction() {
                     <td>
                       各プランの料金は以下の通りです（税込）。<br />
                       <ul className="mt-2 list-disc pl-6 space-y-1">
-                        <li>Freeプラン: ¥0</li>
-                        <li>Businessプラン: ¥54,780/月（税抜 ¥49,800）</li>
+                        <li>無料プラン: ¥0</li>
+                        <li>ビジネスプラン: ¥54,780/月（税抜 ¥49,800）</li>
                       </ul>
                     </td>
                   </tr>

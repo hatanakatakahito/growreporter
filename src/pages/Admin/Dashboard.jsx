@@ -187,7 +187,7 @@ export default function AdminDashboard() {
             {/* Free */}
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-body-color dark:text-dark-6">Free</span>
+                <span className="text-sm font-medium text-body-color dark:text-dark-6">無料</span>
                 <span className="text-sm font-bold text-dark dark:text-white">
                   {stats.planDistribution?.free || 0}人
                 </span>
@@ -203,7 +203,7 @@ export default function AdminDashboard() {
             {/* Business */}
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-body-color dark:text-dark-6">Business</span>
+                <span className="text-sm font-medium text-body-color dark:text-dark-6">ビジネス</span>
                 <span className="text-sm font-bold text-dark dark:text-white">
                   {stats.planDistribution?.business || 0}人
                 </span>

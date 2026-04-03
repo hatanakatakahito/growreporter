@@ -339,7 +339,7 @@ function FreeUpgradePrompt() {
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500">
         <Crown className="h-8 w-8 text-white" />
       </div>
-      <h3 className="mb-2 text-xl font-bold text-dark">AI総合分析はBusinessプランでご利用いただけます</h3>
+      <h3 className="mb-2 text-xl font-bold text-dark">AI総合分析はビジネスプランでご利用いただけます</h3>
       <p className="mb-6 max-w-md text-sm text-body-color">
         全データを横断したAI分析により、サイトの現状と注目ポイントを1画面で把握できます。
       </p>

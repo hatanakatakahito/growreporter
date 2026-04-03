@@ -2,7 +2,7 @@ import { Lock, ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 /**
- * Businessプランロックオーバーレイ（統一コンポーネント）
+ * ビジネスプランロックオーバーレイ（統一コンポーネント）
  * Freeプランユーザーに対して、サンプルデータの上にボカシ+訴求を重ねる
  */
 export default function BusinessPlanLockOverlay({ children }) {
@@ -17,7 +17,7 @@ export default function BusinessPlanLockOverlay({ children }) {
             <Lock className="h-7 w-7 text-primary" />
           </div>
           <h3 className="text-lg font-bold text-dark dark:text-white mb-2">
-            Businessプランでご利用いただけます
+            ビジネスプランでご利用いただけます
           </h3>
           <p className="text-sm text-body-color dark:text-dark-6 mb-4">
             AIの力でサイト改善を本格的に推進しませんか？

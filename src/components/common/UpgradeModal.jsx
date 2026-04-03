@@ -10,8 +10,8 @@ import { Dialog, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
 
 /**
- * Businessプランアップグレードモーダル
- * Businessプラン訴求 → お問い合わせフォーム
+ * ビジネスプランアップグレードモーダル
+ * ビジネスプラン訴求 → お問い合わせフォーム
  */
 export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' }) {
   const navigate = useNavigate();
@@ -81,7 +81,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
     return (
       <Dialog open={isOpen} onClose={handleClose} size="lg">
         <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-red-400 to-pink-600 px-6 py-4 dark:border-dark-3 rounded-t-2xl">
-          <h3 className="text-xl font-semibold text-white">Businessプランのお問い合わせ</h3>
+          <h3 className="text-xl font-semibold text-white">ビジネスプランのお問い合わせ</h3>
         </div>
 
         <form id="upgrade-form" onSubmit={handleSubmit}>
@@ -120,12 +120,12 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
     );
   }
 
-  // ── Businessプラン訴求 ──
+  // ── ビジネスプラン訴求 ──
   return (
     <Dialog open={isOpen} onClose={handleClose} size="lg">
       <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-red-400 to-pink-600 px-6 py-5 dark:border-dark-3 rounded-t-2xl text-center">
         <Sparkles className="mx-auto mb-2 h-8 w-8 text-white" />
-        <h3 className="text-2xl font-bold text-white">Businessプラン</h3>
+        <h3 className="text-2xl font-bold text-white">ビジネスプラン</h3>
         <p className="mt-1 text-pink-100">AIの力でサイト改善を本格的に推進</p>
       </div>
 

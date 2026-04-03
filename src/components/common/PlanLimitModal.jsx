@@ -68,7 +68,7 @@ export default function PlanLimitModal({ onClose, type = 'summary' }) {
             <li className="flex items-start gap-2">
               <span>•</span>
               <span className="font-medium">
-                Businessプランにアップグレードすると無制限でご利用いただけます
+                ビジネスプランにアップグレードすると無制限でご利用いただけます
               </span>
             </li>
           </ul>
