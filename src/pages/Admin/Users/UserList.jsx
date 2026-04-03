@@ -260,9 +260,9 @@ export default function UserList() {
                       <td className="px-4 py-4 text-sm text-body-color dark:text-dark-6">
                         {user.company || '-'}
                       </td>
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-2">
-                          <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getPlanBadgeColor(user.plan)}`}>
+                      <td className="px-4 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`inline-block w-[7rem] text-center rounded-full px-2 py-1 text-xs font-semibold ${getPlanBadgeColor(user.plan)}`}>
                             {getPlanDisplayName(user.plan)}
                           </span>
                           {user.isMember ? (
