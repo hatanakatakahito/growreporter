@@ -180,9 +180,51 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
     );
   }
 
-  // Freeプラン: ロック画面
+  // Freeプラン: 実際のUI形式のサンプルデータ+ボカシ+ロック
   if (isFree) {
-    return <BusinessPlanLockOverlay />;
+    return (
+      <BusinessPlanLockOverlay>
+        <div className="space-y-6">
+          {/* ヘッダー */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500">
+                <Sparkles className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">AI分析結果</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">2026/04/04 01:08 生成</p>
+              </div>
+            </div>
+            <button disabled className="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <RefreshCw className="h-4 w-4" />
+              再分析
+            </button>
+          </div>
+
+          {/* AI分析サマリ */}
+          <div className="rounded-lg bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 px-10 py-8">
+            <div className="text-sm text-gray-800 dark:text-gray-200">
+              <p className="leading-relaxed">
+                当期の訪問数は6,373回、ページ閲覧数は17,484回でした。
+                <br /><span className="block h-1" />
+                総成果数は176件となり、特に「入居のお申し込み完了」と「見学のお申し込み完了」は目標を大きく上回る結果となりました。
+                <br /><span className="block h-1" />
+                一方で、「料金シュミレーション完了」や「資料請求」などの初期段階の成果が大幅に減少しており、全体的なユーザー獲得の勢いが前月と比較して低下している状況です。
+              </p>
+              <ul className="mt-4 space-y-2 list-disc pl-5">
+                <li className="leading-relaxed">ユーザー数が前月比35.8%減の4,812人となり、サイトへの訪問者全体が減少しました。</li>
+                <li className="leading-relaxed">訪問数も前月比31.9%減の6,373回となり、サイトへの来訪機会が減っています。</li>
+                <li className="leading-relaxed">総成果数は前月比41.9%減の176件となり、成果獲得の全体的な量が大きく落ち込みました。</li>
+                <li className="leading-relaxed">料金シミュレーション完了が前月比51.2%減の81件、資料請求が前月比61.2%減の19件と、特に成果の初期段階での減少が顕著です。</li>
+                <li className="leading-relaxed">前年同月比では訪問数が4,149回から6,373回へ増加し、成果数も0件から176件へと大幅に増加しました。</li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </BusinessPlanLockOverlay>
+    );
   }
 
   // ローディング中
@@ -364,7 +406,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
               const pagePath = location.pathname.replace('/analysis/', '').replace('/', '');
               navigate(`/ai-chat?from=${pagePath || 'comprehensive'}`);
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-medium text-white hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-sm font-medium text-white hover:from-blue-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
             AIに質問する
@@ -374,7 +416,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
               if (!selectedSiteId) return;
               navigate('/improve');
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-medium text-white hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-sm font-medium text-white hover:from-blue-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg"
           >
             <Sparkles className="h-4 w-4" />
             サイト改善案を生成する

@@ -615,12 +615,7 @@ export default function Improve() {
   }
 
   if (isFree) {
-    return (
-      <div className="flex flex-col h-full p-6">
-        <h2 className="mb-6 text-2xl font-bold text-dark dark:text-white">改善する</h2>
-        <BusinessPlanLockOverlay />
-      </div>
-    );
+    return <UpgradeModal isOpen={true} onClose={() => navigate('/dashboard')} />;
   }
 
   return (
@@ -642,7 +637,7 @@ export default function Improve() {
                         if (!selectedSiteId) return;
                         setIsFocusModalOpen(true);
                       }}
-                      className="relative inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-purple-600 hover:to-pink-600"
+                      className="relative inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-blue-600 hover:to-pink-600"
                     >
                       <Sparkles className="h-4 w-4" />
                       AI改善案生成
@@ -1074,7 +1069,7 @@ export default function Improve() {
                     <button
                       type="button"
                       onClick={() => setIsConsultationModalOpen(true)}
-                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-6 py-3 text-sm font-medium text-white shadow-md transition-all hover:from-blue-600 hover:to-purple-600 hover:shadow-lg"
+                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-sm font-medium text-white shadow-md transition-all hover:from-blue-600 hover:to-pink-600 hover:shadow-lg"
                     >
                       <Mail className="h-5 w-5" />
                       修正内容を制作会社に相談する
@@ -1579,7 +1574,7 @@ export default function Improve() {
                     <button
                       type="button"
                       onClick={() => setIsConsultationModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-purple-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:from-blue-600 hover:to-purple-600 hover:shadow-md"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:from-blue-600 hover:to-pink-600 hover:shadow-md"
                     >
                       <Mail className="h-4 w-4" />
                       制作会社に相談する

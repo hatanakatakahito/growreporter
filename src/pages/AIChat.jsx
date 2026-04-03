@@ -408,15 +408,13 @@ export default function AIChat() {
     ? sessions.filter(s => (s.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase()))
     : sessions;
 
-  // Freeプラン: ロック画面
+  // Freeプラン: UpgradeModal直接表示（URL直接入力対策）
   if (isFree) {
-    const BusinessPlanLockOverlay = React.lazy(() => import('../components/common/BusinessPlanLockOverlay'));
+    const UpgradeModalLazy = React.lazy(() => import('../components/common/UpgradeModal'));
     return (
-      <div className="flex h-full items-center justify-center p-6">
-        <React.Suspense fallback={null}>
-          <BusinessPlanLockOverlay />
-        </React.Suspense>
-      </div>
+      <React.Suspense fallback={null}>
+        <UpgradeModalLazy isOpen={true} onClose={() => window.location.href = '/dashboard'} />
+      </React.Suspense>
     );
   }
 
@@ -685,7 +683,7 @@ function ImprovementCard({ data, onAdd }) {
           className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium text-white shadow-sm transition ${
             added
               ? 'bg-green-500 cursor-default'
-              : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 hover:shadow-md'
+              : 'bg-gradient-to-r from-blue-500 to-pink-500 hover:from-blue-600 hover:to-pink-600 hover:shadow-md'
           }`}>
           {added ? (
             <><Check className="h-3.5 w-3.5" /> 追加しました</>

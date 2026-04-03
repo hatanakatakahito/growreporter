@@ -20,9 +20,11 @@ import {
 import { FilterBar, PendingDetail, ActionButtons, ChangeIndicator } from './ReportsMockup/ReportsA';
 import EvaluationDialog from '../components/Reports/EvaluationDialog';
 import { usePlan } from '../hooks/usePlan';
-import BusinessPlanLockOverlay from '../components/common/BusinessPlanLockOverlay';
+import UpgradeModal from '../components/common/UpgradeModal';
+import { useNavigate } from 'react-router-dom';
 
 export default function Reports() {
+  const navigate = useNavigate();
   const {
     selectedSite, selectedSiteId, isLoading,
     completedImprovements, filteredItems, summary,
@@ -55,7 +57,7 @@ export default function Reports() {
           </div>
 
           {isFree ? (
-            <BusinessPlanLockOverlay />
+            <UpgradeModal isOpen={true} onClose={() => navigate('/dashboard')} />
           ) : isLoading ? <LoadingSpinner message="評価データを読み込んでいます..." /> : completedImprovements.length === 0 ? (
             <div className="rounded-xl border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
               <p className="text-body-color">評価待ちの完了課題はありません</p>
