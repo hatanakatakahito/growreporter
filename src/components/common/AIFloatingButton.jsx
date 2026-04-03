@@ -54,8 +54,8 @@ export default function AIFloatingButton({ pageType, onScrollToAI }) {
           <span className="mt-1 text-[11px] font-medium">AI分析</span>
         </div>
 
-        {/* 残り回数バッジ — 無料プランのsummaryは1回限りのためバッジ非表示 */}
-        {remaining !== null && !(planId === 'free' && type === 'summary') && (
+        {/* 残り回数バッジ — FreeプランではAI不可のためバッジ非表示 */}
+        {remaining !== null && planId !== 'free' && (
           <span
             className="absolute -top-2 -right-2 flex h-6 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-md whitespace-nowrap"
             title={`${plan?.displayName || 'プラン'}：AI分析の今月の残り回数`}

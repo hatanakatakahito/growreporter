@@ -68,7 +68,7 @@ export default function PlanLimitModal({ onClose, type = 'summary' }) {
             <li className="flex items-start gap-2">
               <span>•</span>
               <span className="font-medium">
-                無料プランは週1回（月4回）が目安です
+                Businessプランにアップグレードすると無制限でご利用いただけます
               </span>
             </li>
           </ul>
