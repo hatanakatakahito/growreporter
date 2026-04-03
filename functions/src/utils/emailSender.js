@@ -59,9 +59,10 @@ export async function sendEmailDirect({ to, subject, html, text, attachments }) 
 export async function sendPlanChangeEmail({ toEmail, userName, oldPlan, newPlan, reason }) {
   try {
     const planNames = {
-      free: '無料プラン',
-      standard: 'スタンダードプラン',
-      premium: 'プレミアムプラン',
+      free: 'Free',
+      business: 'Business',
+      standard: 'Business', // 後方互換
+      premium: 'Business',  // 後方互換
     };
     const emailSubject = `【グローレポータ】プラン変更のお知らせ`;
     const emailBody = `
@@ -184,7 +185,7 @@ ${message ? `<br><strong>■ メッセージ：</strong><br>${message.trim().rep
  */
 export async function sendUpgradeInquiryEmail({ selectedPlan, companyName = '', userName = '', userEmail = '', message = '' }) {
   try {
-    const planNames = { standard: 'スタンダードプラン', premium: 'プレミアムプラン' };
+    const planNames = { business: 'Businessプラン', standard: 'Businessプラン', premium: 'Businessプラン' };
     const planName = planNames[selectedPlan] || selectedPlan;
     const subject = `【グローレポータ】プランアップグレードのお問い合わせ（${planName}）`;
     const body = `

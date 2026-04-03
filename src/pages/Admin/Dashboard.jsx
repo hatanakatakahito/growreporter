@@ -187,59 +187,31 @@ export default function AdminDashboard() {
             {/* Free */}
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-body-color dark:text-dark-6">
-                  無料プラン
-                </span>
+                <span className="text-sm font-medium text-body-color dark:text-dark-6">Free</span>
                 <span className="text-sm font-bold text-dark dark:text-white">
                   {stats.planDistribution?.free || 0}人
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
-                <div 
+                <div
                   className="h-full rounded-full bg-gradient-to-r from-blue-400 to-blue-600"
-                  style={{ 
-                    width: `${((stats.planDistribution?.free || 0) / stats.totalUsers * 100)}%` 
-                  }}
+                  style={{ width: `${((stats.planDistribution?.free || 0) / Math.max(stats.totalUsers, 1) * 100)}%` }}
                 />
               </div>
             </div>
 
-            {/* Standard */}
+            {/* Business */}
             <div>
               <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-body-color dark:text-dark-6">
-                  スタンダード
-                </span>
+                <span className="text-sm font-medium text-body-color dark:text-dark-6">Business</span>
                 <span className="text-sm font-bold text-dark dark:text-white">
-                  {stats.planDistribution?.standard || 0}人
-                </span>
-              </div>
-              <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
-                <div 
-                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500"
-                  style={{
-                    width: `${((stats.planDistribution?.standard || 0) / stats.totalUsers * 100)}%`
-                  }}
-                />
-              </div>
-            </div>
-
-            {/* Premium */}
-            <div>
-              <div className="mb-2 flex items-center justify-between">
-                <span className="text-sm font-medium text-body-color dark:text-dark-6">
-                  プレミアム
-                </span>
-                <span className="text-sm font-bold text-dark dark:text-white">
-                  {stats.planDistribution?.premium || 0}人
+                  {stats.planDistribution?.business || 0}人
                 </span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-red-400 to-pink-600"
-                  style={{ 
-                    width: `${((stats.planDistribution?.premium || 0) / stats.totalUsers * 100)}%` 
-                  }}
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-600"
+                  style={{ width: `${((stats.planDistribution?.business || 0) / Math.max(stats.totalUsers, 1) * 100)}%` }}
                 />
               </div>
             </div>

@@ -26,7 +26,7 @@ export const submitUpgradeInquiryCallable = async (request) => {
   } = request.data || {};
   const authEmail = request.auth.token.email || '';
 
-  if (!selectedPlan || !['standard', 'premium'].includes(selectedPlan)) {
+  if (!selectedPlan || !['business', 'standard', 'premium'].includes(selectedPlan)) {
     throw new HttpsError('invalid-argument', '希望プランを選択してください');
   }
 

@@ -44,8 +44,8 @@ export const adminCreateUserCallable = async (request) => {
     throw new HttpsError('invalid-argument', 'パスワードは6文字以上で指定してください');
   }
 
-  if (!['free', 'standard', 'premium'].includes(plan)) {
-    throw new HttpsError('invalid-argument', 'プランはfree、standard、premiumのいずれかを指定してください');
+  if (!['free', 'business', 'standard', 'premium'].includes(plan)) {
+    throw new HttpsError('invalid-argument', 'プランはfreeまたはbusinessを指定してください');
   }
 
   try {
