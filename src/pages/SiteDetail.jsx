@@ -489,7 +489,7 @@ export default function SiteDetail() {
           </div>
           {siteDetail?.lastAutoImprovementAt && (
             <div className="mt-3 text-xs text-body-color">
-              最終自動生成: {site.lastAutoImprovementAt.toDate ? site.lastAutoImprovementAt.toDate().toLocaleDateString('ja-JP') : new Date(site.lastAutoImprovementAt).toLocaleDateString('ja-JP')}
+              最終自動生成: {siteDetail.lastAutoImprovementAt.toDate ? siteDetail.lastAutoImprovementAt.toDate().toLocaleDateString('ja-JP') : new Date(siteDetail.lastAutoImprovementAt).toLocaleDateString('ja-JP')}
             </div>
           )}
         </div>
