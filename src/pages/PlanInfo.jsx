@@ -50,7 +50,7 @@ export default function PlanInfo() {
 
   const features = [
     { label: '登録サイト数', getValue: (p) => `${p.features.maxSites}サイト` },
-    { label: 'メンバー招待', getValue: (p) => p.features.maxMembers <= 1 ? '不可' : `${p.features.maxMembers}人` },
+    { label: 'メンバー招待', getValue: (p) => isUnlimited(p.features.maxMembers) ? '無制限' : `${p.features.maxMembers}人` },
     { label: 'AI分析サマリー', getValue: (p) => p.features.aiSummaryMonthly === 0 ? '不可' : fmt(p.features.aiSummaryMonthly) },
     { label: 'AI改善提案', getValue: (p) => p.features.aiImprovementMonthly === 0 ? '不可' : fmt(p.features.aiImprovementMonthly) },
     { label: 'AIチャット', getValue: (p) => p.features.aiChatMonthly === 0 ? '不可' : fmt(p.features.aiChatMonthly) },

@@ -143,7 +143,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
             '改善タスク管理・効果測定',
             'PPTX・Excelレポート',
             `最大${businessPlan.features.maxSites}サイト登録`,
-            `メンバー${businessPlan.features.maxMembers}人まで招待`,
+            'メンバー招待（無制限）',
             'アラート通知（AI仮説付き）',
             '週次・月次レポートメール',
             `サポート: ${businessPlan.features.support}`,

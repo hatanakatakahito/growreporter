@@ -185,7 +185,7 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
                       {planInfo.price}
                     </p>
                     <ul className="space-y-1 text-xs text-body-color dark:text-dark-6">
-                      <li>• サイト: {planInfo.features.maxSites}個</li>
+                      <li>• サイト: {planInfo.features.maxSites}個 / メンバー: {isUnlimited(planInfo.features.maxMembers) ? '無制限' : `${planInfo.features.maxMembers}人`}</li>
                       <li>• AI分析: {planInfo.features.aiSummaryMonthly === 0 ? '不可' : isUnlimited(planInfo.features.aiSummaryMonthly) ? '無制限' : `${planInfo.features.aiSummaryMonthly}回/月`}</li>
                       <li>• AI改善: {planInfo.features.aiImprovementMonthly === 0 ? '不可' : isUnlimited(planInfo.features.aiImprovementMonthly) ? '無制限' : `${planInfo.features.aiImprovementMonthly}回/月`}</li>
                       <li>• AIチャット: {planInfo.features.aiChatMonthly === 0 ? '不可' : isUnlimited(planInfo.features.aiChatMonthly) ? '無制限' : `${planInfo.features.aiChatMonthly}回/月`}</li>

@@ -55,7 +55,7 @@ export default function InviteMemberModal({ onClose, currentMemberCount, maxMemb
           {/* メンバー数表示 */}
           <div className="mb-4 rounded-lg bg-gray-50 p-3 dark:bg-dark-3">
             <div className="text-sm text-gray-600 dark:text-gray-400">
-              現在のメンバー数: <span className="font-semibold">{currentMemberCount} / {maxMembers}人</span>
+              現在のメンバー数: <span className="font-semibold">{currentMemberCount} / {maxMembers >= 999999 ? '無制限' : `${maxMembers}人`}</span>
             </div>
             {!canInvite && (
               <div className="mt-2 text-sm text-red-600">

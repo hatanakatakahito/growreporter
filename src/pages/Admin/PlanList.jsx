@@ -17,8 +17,8 @@ export default function PlanList() {
   const fmt = (v) => (isUnlimited(v) ? '無制限' : v);
 
   const rows = [
-    { label: '登録サイト数', key: 'maxSites' },
-    { label: 'メンバー数', key: 'maxMembers' },
+    { label: '登録サイト数', render: (f) => isUnlimited(f.maxSites) ? '無制限' : f.maxSites },
+    { label: 'メンバー数', render: (f) => isUnlimited(f.maxMembers) ? '無制限' : f.maxMembers },
     {
       label: 'AI分析サマリー',
       render: (f) => f.aiSummaryMonthly === 0 ? '不可' : fmt(f.aiSummaryMonthly),
