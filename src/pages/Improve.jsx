@@ -1160,10 +1160,10 @@ export default function Improve() {
             <div className="absolute inset-0 bg-black/30" onClick={closeDrawer} />
 
             {/* ドロワー本体（オーバーレイの前面） */}
-            <div className="absolute top-0 bottom-0 right-0 w-[85vw] max-w-[1400px] bg-white dark:bg-dark-2 shadow-2xl flex flex-col">
+            <div className="absolute top-0 bottom-0 right-0 w-full sm:w-[85vw] max-w-[1400px] bg-white dark:bg-dark-2 shadow-2xl flex flex-col">
 
               {/* ドロワーヘッダー */}
-              <div className="px-10 py-5 border-b border-gray-200 dark:border-dark-3 shrink-0">
+              <div className="px-4 sm:px-10 py-5 border-b border-gray-200 dark:border-dark-3 shrink-0">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-lg font-bold text-dark dark:text-white flex-1 min-w-0 mr-4 line-clamp-2">{item.title}</h2>
                   <button onClick={closeDrawer} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3 shrink-0">
@@ -1268,7 +1268,7 @@ export default function Improve() {
 
                     <hr className="border-gray-200 dark:border-dark-3 mb-6" />
 
-                    <div className="grid grid-cols-2 gap-4 mb-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                       <div className="bg-gray-50 dark:bg-dark-3 rounded-xl p-5">
                         <div className="text-sm font-bold text-gray-800 dark:text-white mb-1.5 flex items-center gap-1.5">
                           <span className="text-green-600 text-base font-bold">¥</span>
@@ -1309,7 +1309,7 @@ export default function Improve() {
                   {item.mockupHtml ? (
                     <>
                       {/* タブ（sticky） */}
-                      <div className="sticky top-0 z-10 bg-gray-50/95 dark:bg-dark/95 backdrop-blur px-8 pt-5 pb-3 flex items-center justify-between">
+                      <div className="sticky top-0 z-10 bg-gray-50/95 dark:bg-dark/95 backdrop-blur px-4 sm:px-8 pt-5 pb-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm font-bold text-gray-800 dark:text-white">改善モックアップ</h3>
                           <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-[9px] font-bold text-green-700 dark:text-green-400">AI生成</span>
@@ -1333,8 +1333,8 @@ export default function Improve() {
 
                       {/* 並べて比較 */}
                       {drawerTab === 'compare' && (
-                        <div className="px-8 pb-8">
-                          <div className="grid grid-cols-2 gap-4">
+                        <div className="px-4 sm:px-8 pb-8">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <div className="text-xs font-semibold text-gray-400 mb-2">Before（現在）</div>
                               {/* ブラウザフレーム */}
@@ -1394,7 +1394,7 @@ export default function Improve() {
 
                       {/* Before単体 */}
                       {drawerTab === 'before' && (
-                        <div className="px-8 pb-8">
+                        <div className="px-4 sm:px-8 pb-8">
                           <div className="text-xs font-semibold text-gray-400 mb-2">Before（現在）</div>
                           {/* ブラウザフレーム */}
                           <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-dark-3 shadow-lg">
@@ -1422,7 +1422,7 @@ export default function Improve() {
 
                       {/* After単体 */}
                       {drawerTab === 'after' && (
-                        <div className="px-8 pb-8">
+                        <div className="px-4 sm:px-8 pb-8">
                           <div className="text-xs font-semibold text-primary mb-2">After（改善案適用後）</div>
                           {/* ブラウザフレーム */}
                           <div className="rounded-xl overflow-hidden border border-primary/30 shadow-lg">
@@ -1456,14 +1456,14 @@ export default function Improve() {
                   ) : item.targetPageUrl && !item.mockupHtml && !item.mockupSkipped ? (
                     <>
                       {/* ヘッダー（sticky） */}
-                      <div className="sticky top-0 z-10 bg-gray-50/95 dark:bg-dark/95 backdrop-blur px-8 pt-5 pb-3 flex items-center">
+                      <div className="sticky top-0 z-10 bg-gray-50/95 dark:bg-dark/95 backdrop-blur px-4 sm:px-8 pt-5 pb-3 flex items-center">
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm font-bold text-gray-800 dark:text-white">改善モックアップ</h3>
                         </div>
                       </div>
                       {/* 並べて比較レイアウト: Before + After(未生成) */}
-                      <div className="px-8 pb-8">
-                        <div className="grid grid-cols-2 gap-4">
+                      <div className="px-4 sm:px-8 pb-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {/* Before */}
                           <div>
                             <div className="text-xs font-semibold text-gray-400 mb-2">Before（現在）</div>
