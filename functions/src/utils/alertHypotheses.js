@@ -240,3 +240,116 @@ async function updateAlertHypotheses(db, siteId, alertId, hypotheses) {
     hypothesesUpdatedAt: FieldValue.serverTimestamp(),
   });
 }
+
+/**
+ * 週次/月次レポート用のAI考察を生成
+ * @param {string} reportType - 'weekly' | 'monthly'
+ * @param {string} siteName
+ * @param {object} metrics - 当期メトリクス
+ * @param {object} previousMetrics - 前期メトリクス
+ * @param {string} periodLabel - 例: '2026-03-01 〜 2026-03-31'
+ * @returns {Promise<{summary: string, actions: string[]}>}
+ */
+export async function generateReportAnalysis(reportType, siteName, metrics, previousMetrics, periodLabel) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) return { summary: '', actions: [] };
+
+  const periodName = reportType === 'weekly' ? '今週' : '今月';
+  const prevName = reportType === 'weekly' ? '前週' : '前月';
+
+  const fmt = (v) => v == null || isNaN(v) ? '—' : Number(v).toLocaleString();
+  const pct = (cur, prev) => {
+    if (!prev || prev === 0) return '—';
+    const change = ((cur - prev) / prev) * 100;
+    return `${change >= 0 ? '+' : ''}${change.toFixed(1)}%`;
+  };
+
+  const metricsText = [
+    `セッション数: ${fmt(metrics.sessions)}（${prevName}比 ${pct(metrics.sessions, previousMetrics.sessions)}）`,
+    `ユーザー数: ${fmt(metrics.totalUsers || metrics.users)}（${prevName}比 ${pct(metrics.totalUsers || metrics.users, previousMetrics.totalUsers || previousMetrics.users)}）`,
+    `表示回数: ${fmt(metrics.screenPageViews || metrics.pageviews)}（${prevName}比 ${pct(metrics.screenPageViews || metrics.pageviews, previousMetrics.screenPageViews || previousMetrics.pageviews)}）`,
+    `エンゲージメント率: ${metrics.engagementRate != null ? (metrics.engagementRate * 100).toFixed(1) + '%' : '—'}（${prevName}比 ${pct(metrics.engagementRate, previousMetrics.engagementRate)}）`,
+    `コンバージョン数: ${fmt(metrics.conversions)}（${prevName}比 ${pct(metrics.conversions, previousMetrics.conversions)}）`,
+    `直帰率: ${metrics.bounceRate != null ? (metrics.bounceRate * 100).toFixed(1) + '%' : '—'}（${prevName}比 ${pct(metrics.bounceRate, previousMetrics.bounceRate)}）`,
+  ].join('\n');
+
+  const prompt = `あなたはWebサイトのアクセス解析コンサルタントです。
+以下のサイトの${periodName}のアクセスデータを分析してください。
+
+サイト名: ${siteName || '（不明）'}
+対象期間: ${periodLabel}
+
+【主要指標】
+${metricsText}
+
+以下の2セクションを出力してください。マークダウン記法は一切使わないでください。
+
+■ 状況の整理
+${periodName}のデータを3〜4文で簡潔にまとめてください。
+- 前期比で目立つ変化とその意味を述べる
+- 良い傾向と悪い傾向の両方に触れる
+- 推測ではなくデータから読み取れる事実を述べる
+
+■ 注目ポイント
+サイト運営者が確認・対応すべきことを3つ、優先度順で書いてください。
+- 各項目は具体的な行動指示にする
+- 番号と本文のみ。前置き・挨拶・マークダウン記法は書かない`;
+
+  try {
+    const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.3, maxOutputTokens: 800 },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      console.error('[generateReportAnalysis] Gemini error', response.status);
+      return { summary: '', actions: [] };
+    }
+
+    const data = await response.json();
+    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return parseReportAnalysis(rawText);
+  } catch (err) {
+    console.error('[generateReportAnalysis] Error', err.message);
+    return { summary: '', actions: [] };
+  }
+}
+
+/**
+ * レポートAIレスポンスをパース
+ */
+function parseReportAnalysis(rawText) {
+  const result = { summary: '', actions: [] };
+
+  // マークダウン記法を除去
+  const clean = rawText
+    .replace(/#{1,6}\s*/g, '')
+    .replace(/\*{1,3}([^*]+)\*{1,3}/g, '$1')
+    .replace(/`([^`]+)`/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+
+  const summaryMatch = clean.match(/■?\s*状況の整理\s*\n([\s\S]*?)(?=■?\s*注目ポイント|■?\s*確認すべきこと|$)/);
+  if (summaryMatch) {
+    result.summary = summaryMatch[1].trim();
+  }
+
+  const actionsMatch = clean.match(/■?\s*(?:注目ポイント|確認すべきこと)\s*\n([\s\S]*?)$/);
+  if (actionsMatch) {
+    const actionsText = actionsMatch[1].trim();
+    const actionBlocks = actionsText.split(/\n(?=\d+[\.\)]\s)/);
+    result.actions = actionBlocks
+      .map(block => block.replace(/^\d+[\.\)]\s*/, '').trim())
+      .filter(a => a.length > 0)
+      .slice(0, 3);
+  }
+
+  return result;
+}

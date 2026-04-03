@@ -4,6 +4,7 @@ import { ja } from 'date-fns/locale';
 import { generateEmailTemplate, normalizePlan } from '../utils/emailTemplates.js';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { getGA4MetricsForSite } from '../utils/ga4ServerHelper.js';
+import { generateReportAnalysis } from '../utils/alertHypotheses.js';
 
 /**
  * 週次レポートを送信
@@ -121,7 +122,18 @@ export async function sendWeeklyReportsHandler(event) {
         };
 
         const isFree = normalizePlan(userData.plan) === 'free';
-        const { subject, html, text } = generateEmailTemplate('weekly', emailData, dateRange, { isFree });
+
+        // ビジネスプランのみAI考察を生成
+        let aiAnalysis = null;
+        if (!isFree && currentMetrics && previousMetrics) {
+          try {
+            aiAnalysis = await generateReportAnalysis('weekly', siteData.siteName, currentMetrics, previousMetrics, `${ga4CurrentStart} 〜 ${ga4CurrentEnd}`);
+          } catch (e) {
+            console.warn('週次AI考察生成エラー:', e.message);
+          }
+        }
+
+        const { subject, html, text } = generateEmailTemplate('weekly', emailData, dateRange, { isFree, aiAnalysis });
 
         sendPromises.push(
           sendEmailDirect({ to: userEmail, subject, html, text })
