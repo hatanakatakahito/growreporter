@@ -67,32 +67,20 @@ export default function CommercialTransaction() {
                   <tr>
                     <td className="pr-4 font-semibold">支払方法</td>
                     <td>
-                      <ul className="list-disc pl-6 space-y-1">
-                        <li>クレジットカード決済（Visa、Mastercard、American Express、JCB）</li>
-                        <li>請求書払い（銀行振込）</li>
-                      </ul>
+                      請求書払い（銀行振込）
                     </td>
                   </tr>
                   <tr>
                     <td className="pr-4 font-semibold">支払時期</td>
-                    <td>
-                      <ul className="list-disc pl-6 space-y-1">
-                        <li>クレジットカード: 有料プラン申込時に初回決済、以降毎月（または毎年）自動決済</li>
-                        <li>請求書払い: 請求書発行日から30日以内</li>
-                      </ul>
-                    </td>
+                    <td>請求書発行日から30日以内</td>
                   </tr>
                   <tr>
                     <td className="pr-4 font-semibold">サービス提供時期</td>
-                    <td>利用登録完了後、ただちにご利用いただけます。有料プランは決済確認後にプランが適用されます。</td>
+                    <td>利用登録完了後、ただちにご利用いただけます。有料プランは入金確認後にプランが適用されます。</td>
                   </tr>
                   <tr>
                     <td className="pr-4 font-semibold">契約期間</td>
-                    <td>
-                      <ul className="list-disc pl-6 space-y-1">
-                        <li>月額払い: 1ヶ月単位（自動更新）</li>
-                        <li>年額払い: 1年単位（自動更新）</li>
-                      </ul>
+                    <td>月額払い: 1ヶ月単位（自動更新）
                     </td>
                   </tr>
                   <tr>

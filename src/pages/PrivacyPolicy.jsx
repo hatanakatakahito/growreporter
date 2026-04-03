@@ -55,7 +55,6 @@ export default function PrivacyPolicy() {
 
               <h3>1-4. 決済に関する情報</h3>
               <ul>
-                <li>有料プランの決済情報（クレジットカード情報は当社では保持せず、決済代行サービスが安全に管理します）</li>
                 <li>請求書払いに必要な情報（請求先名称、住所等）</li>
               </ul>
 
@@ -89,7 +88,6 @@ export default function PrivacyPolicy() {
                 <li><strong>Google Analytics 4 / Google Search Console</strong>: ウェブサイトのアクセスデータ取得のため、OAuth 2.0 による認証連携を行います。取得したアクセストークンおよびリフレッシュトークンは暗号化して保存されます。</li>
                 <li><strong>Firebase (Google Cloud)</strong>: ユーザー認証、データベース、ファイルストレージ、ホスティングに利用しています。</li>
                 <li><strong>Anthropic Claude / Google Gemini</strong>: AI分析機能の提供に利用しています。分析に使用するデータは匿名化された統計データおよびサイト構造データであり、個人を特定できる情報は送信しません。</li>
-                <li><strong>Stripe</strong>: クレジットカード決済処理に利用します。クレジットカード情報は当社では保持せず、Stripeが PCI DSS に準拠して安全に管理します。</li>
                 <li><strong>Google アカウント認証</strong>: Google SSO によるユーザー認証に利用しています。</li>
                 <li><strong>Microsoft アカウント認証</strong>: Microsoft SSO によるユーザー認証に利用しています。</li>
               </ul>
