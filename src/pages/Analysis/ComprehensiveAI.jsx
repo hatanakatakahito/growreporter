@@ -333,27 +333,7 @@ export default function ComprehensiveAI() {
 }
 
 function FreeUpgradePrompt() {
-  const [showModal, setShowModal] = useState(false);
-  return (
-    <>
-      <div className="flex flex-col items-center justify-center rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
-        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500">
-          <Crown className="h-8 w-8 text-white" />
-        </div>
-        <h3 className="mb-2 text-xl font-bold text-dark dark:text-white">AI総合分析はビジネスプランでご利用いただけます</h3>
-        <p className="mb-6 max-w-md text-sm text-body-color">
-          全データを横断したAI分析により、サイトの現状と注目ポイントを1画面で把握できます。
-        </p>
-        <button
-          onClick={() => setShowModal(true)}
-          className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white shadow-md transition-all hover:bg-primary/90"
-        >
-          プランを確認する
-        </button>
-      </div>
-      {showModal && <UpgradeModal isOpen={showModal} onClose={() => setShowModal(false)} />}
-    </>
-  );
+  return <UpgradeModal isOpen={true} onClose={() => window.location.href = '/dashboard'} />;
 }
 
 function parseSections(summary) {
@@ -563,7 +543,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
         {/* ヘッダー */}
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-gradient-to-br from-blue-500 to-purple-500">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-gradient-to-br from-blue-500 to-pink-500">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>

@@ -95,7 +95,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
   if (step === 'form') {
     return (
       <Dialog open={isOpen} onClose={handleClose} size="lg">
-        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-red-400 to-pink-600 px-6 py-4 dark:border-dark-3 rounded-t-2xl">
+        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-4 dark:border-dark-3 rounded-t-2xl">
           <h3 className="text-xl font-semibold text-white">ビジネスプランのお問い合わせ</h3>
           <p className="mt-1 text-sm text-white/80">担当者より折り返しご連絡いたします</p>
         </div>
@@ -127,7 +127,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
           </DialogBody>
           <DialogActions>
             <Button plain onClick={handleClose}>キャンセル</Button>
-            <Button type="submit" form="upgrade-form" color="pink" disabled={isSending}>
+            <Button type="submit" form="upgrade-form" color="blue" disabled={isSending}>
               <Send className="h-4 w-4" />
               {isSending ? '送信中...' : '送信する'}
             </Button>
@@ -140,7 +140,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
   // ── ステップ1: プラン比較表 ──
   return (
     <Dialog open={isOpen} onClose={handleClose} size="2xl">
-      <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-red-400 to-pink-600 p-6 dark:border-dark-3 rounded-t-2xl">
+      <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 p-6 dark:border-dark-3 rounded-t-2xl">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
             <Sparkles className="h-5 w-5 text-white" />
@@ -193,12 +193,12 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
           </div>
 
           {/* ビジネスプラン */}
-          <div className="rounded-lg border-2 border-pink-500 bg-pink-50/50 p-5 dark:bg-pink-900/10">
+          <div className="rounded-lg border-2 border-primary bg-blue-50/50 p-5 dark:bg-pink-900/10">
             <div className="mb-3 text-center">
               <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getPlanBadgeColor('business')}`}>
                 {businessPlan.displayName}
               </span>
-              <span className="ml-2 inline-block rounded-full bg-pink-100 px-2 py-0.5 text-[10px] font-medium text-pink-600 dark:bg-pink-900/30 dark:text-pink-300">
+              <span className="ml-2 inline-block rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
                 おすすめ
               </span>
             </div>
@@ -223,11 +223,13 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
         </div>
       </DialogBody>
 
-      <DialogActions className="!justify-center">
-        <Button plain onClick={handleClose}>閉じる</Button>
-        <Button color="pink" onClick={() => { initFormFields(); setStep('form'); }}>
+      <DialogActions className="!justify-center !pb-6">
+        <button
+          onClick={() => { initFormFields(); setStep('form'); }}
+          className="rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-10 py-3.5 text-base font-semibold text-white shadow-md transition hover:shadow-lg"
+        >
           ビジネスプランのお問い合わせ
-        </Button>
+        </button>
       </DialogActions>
     </Dialog>
   );

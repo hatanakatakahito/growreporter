@@ -271,7 +271,7 @@ export default function AdminDashboard() {
           <button
             onClick={handleBatchGenerateAI}
             disabled={batchRunning}
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-3 text-sm font-medium text-white transition hover:from-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-sm font-medium text-white transition hover:from-blue-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Zap className={`h-4 w-4 ${batchRunning ? 'animate-pulse' : ''}`} />
             {batchRunning ? '生成中...' : '一括生成'}

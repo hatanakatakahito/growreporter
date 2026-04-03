@@ -5,6 +5,8 @@ import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
 import { getPlanBadgeColor, getPlanDisplayName } from '../../constants/plans';
+import { usePlan } from '../../hooks/usePlan';
+import UpgradeModal from '../common/UpgradeModal';
 import { Badge } from '../ui/badge';
 import { Avatar } from '../ui/avatar';
 import logoImg from '../../assets/img/logo.svg';
@@ -70,6 +72,8 @@ export default function Sidebar() {
   const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
   const [isEngagementOpen, setIsEngagementOpen] = useState(false);
   const [isConversionOpen, setIsConversionOpen] = useState(false);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const { isFree } = usePlan();
 
   // テーマオブジェクト
   const t = SIDEBAR_THEMES[isDarkSidebar ? 'dark' : 'white'];
@@ -148,6 +152,7 @@ export default function Sidebar() {
       ),
       label: 'AIチャット',
       path: '/ai-chat',
+      lockedForFree: true,
     },
     {
       icon: (
@@ -200,7 +205,7 @@ export default function Sidebar() {
             { label: '逆算フロー', path: '/analysis/reverse-flow' },
           ]
         },
-        { label: 'AI総合分析', path: '/analysis/comprehensive' },
+        { label: 'AI総合分析', path: '/analysis/comprehensive', lockedForFree: true },
       ],
     },
     {
@@ -211,6 +216,7 @@ export default function Sidebar() {
       ),
       label: '改善する',
       path: '/improve',
+      lockedForFree: true,
     },
     {
       icon: (
@@ -220,6 +226,7 @@ export default function Sidebar() {
       ),
       label: '評価する',
       path: '/reports',
+      lockedForFree: true,
     },
     {
       icon: (
@@ -349,8 +356,15 @@ export default function Sidebar() {
                                 </ul>
                               )}
                             </>
+                          ) : subItem.lockedForFree && isFree ? (
+                            <button
+                              onClick={() => setShowUpgradeModal(true)}
+                              className={`block w-full text-left rounded-lg px-4 py-2 text-sm transition-all duration-200 ${t.subText} ${t.subHover} opacity-60`}
+                            >
+                              {subItem.label} 🔒
+                            </button>
                           ) : (
-                            /* 直リンク（全体サマリー・ユーザー属性） */
+                            /* 直リンク */
                             <Link
                               to={subItem.path}
                               className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
@@ -367,6 +381,18 @@ export default function Sidebar() {
                     </ul>
                   )}
                 </>
+              ) : item.lockedForFree && isFree ? (
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                    isSidebarOpen ? 'gap-3' : 'justify-center'
+                  } ${t.menuText} ${t.menuHover} opacity-60`}
+                  title={!isSidebarOpen ? item.label : ''}
+                >
+                  {item.icon}
+                  {isSidebarOpen && <span>{item.label}</span>}
+                  {isSidebarOpen && <svg className="ml-auto h-3.5 w-3.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>}
+                </button>
               ) : (
                 <Link
                   to={item.path}
@@ -432,9 +458,9 @@ export default function Sidebar() {
                   <p className={`truncate text-sm font-medium ${t.userName}`}>
                     {getUserName()}
                   </p>
-                  <Badge color={userPlan === 'free' ? 'zinc' : 'pink'} className={`mt-1 ${isDarkSidebar ? 'bg-white/10 !text-white/80' : ''}`}>
+                  <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${planBadgeColor}`}>
                     {planLabel}
-                  </Badge>
+                  </span>
                 </div>
               </div>
             ) : (
@@ -445,9 +471,9 @@ export default function Sidebar() {
                   alt={getUserName()}
                   className="size-8 bg-primary text-white"
                 />
-                <Badge color={userPlan === 'free' ? 'zinc' : 'pink'} className="text-[8px]">
+                <span className={`inline-block rounded-full px-2 py-0.5 text-[8px] font-semibold ${planBadgeColor}`}>
                   {planLabel}
-                </Badge>
+                </span>
               </div>
             )}
           </button>
@@ -496,6 +522,7 @@ export default function Sidebar() {
       )}
     </button>
 
+    {showUpgradeModal && <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />}
     </>
   );
 }
