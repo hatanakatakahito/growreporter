@@ -175,18 +175,20 @@ export function usePlan() {
     if (!userProfile) return false;
 
     const maxMembers = plan.features?.maxMembers || 1;
+    if (isUnlimited(maxMembers)) return true;
     return currentMemberCount < maxMembers;
   };
 
   /**
    * 残り招待可能人数を取得
    * @param {number} currentMemberCount - 現在のメンバー数
-   * @returns {number} 残り招待可能人数
+   * @returns {number} 残り招待可能人数（-1は無制限）
    */
   const getRemainingMembers = (currentMemberCount = 0) => {
     if (!userProfile) return 0;
 
     const maxMembers = plan.features?.maxMembers || 1;
+    if (isUnlimited(maxMembers)) return -1;
     return Math.max(0, maxMembers - currentMemberCount);
   };
 

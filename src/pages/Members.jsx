@@ -212,7 +212,7 @@ export default function Members() {
         <div className="mt-4 flex items-center gap-4">
           <div className="text-sm text-gray-600">
             <span className="font-semibold text-gray-900">{activeMemberCount}</span>
-            <span> / {maxMembers}人使用中</span>
+            <span> / {maxMembers >= 999999 ? '無制限' : `${maxMembers}人`}使用中</span>
           </div>
           
           {!canInvite && isOwner && (
@@ -359,7 +359,7 @@ export default function Members() {
               現在のプラン: {plan.displayName}
             </h3>
             <div className="mt-2 text-sm text-blue-700">
-              <p>最大メンバー数: {maxMembers}人（オーナー含む）</p>
+              <p>最大メンバー数: {maxMembers >= 999999 ? '無制限' : `${maxMembers}人（オーナー含む）`}</p>
               <p className="mt-1">AI生成回数はアカウント全体で共有されます</p>
               {combinedList.some((item) => item.type === 'invitation' && !item.isExpired) && (
                 <p className="mt-2 pt-2 border-t border-blue-200">

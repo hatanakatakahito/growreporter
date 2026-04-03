@@ -17,7 +17,7 @@ export const PLANS = {
     priceWithTax: 0,
     features: {
       maxSites: 1,
-      maxMembers: 1,
+      maxMembers: 3,
       aiSummaryMonthly: 0,
       aiImprovementMonthly: 0,
       aiChatMonthly: 0,
@@ -38,7 +38,7 @@ export const PLANS = {
     priceWithTax: 54780,
     features: {
       maxSites: 3,
-      maxMembers: 3,
+      maxMembers: 999999,
       aiSummaryMonthly: 999999,
       aiImprovementMonthly: 999999,
       aiChatMonthly: 999999,

@@ -209,8 +209,8 @@ export default function AccountSettings() {
               {plan?.displayName ?? '無料プラン'}
             </span>
             <p className="mt-2 text-xs text-gray-500">
-              最大{maxSites}サイト・{maxMembers}人
-              {aiSummaryMonthly >= 999999 ? '・AI無制限' : `・AI月${aiSummaryMonthly}回`}
+              最大{maxSites}サイト・メンバー{maxMembers >= 999999 ? '無制限' : `${maxMembers}人`}
+              {aiSummaryMonthly >= 999999 ? '・AI無制限' : aiSummaryMonthly === 0 ? '・AI不可' : `・AI月${aiSummaryMonthly}回`}
             </p>
             {userProfile?.memberRole === 'owner' && (
               <div className="mt-4">
@@ -335,7 +335,7 @@ export default function AccountSettings() {
                 <div className="flex flex-wrap items-center gap-3 text-sm">
                   <span className="text-gray-700">
                     <span className="font-semibold text-gray-900">{activeMemberCount}</span>
-                    <span> / {maxMembers}人使用中</span>
+                    <span> / {maxMembers >= 999999 ? '無制限' : `${maxMembers}人`}使用中</span>
                   </span>
                   <span className="inline-flex items-center px-2 py-1 rounded-full bg-primary/20 text-primary text-xs font-medium">
                     あなたの権限: {userProfile?.memberRole === 'owner' ? 'オーナー' : userProfile?.memberRole === 'editor' ? '編集者' : '閲覧者'}
