@@ -19,16 +19,7 @@ export default function AIFloatingButton({ pageType, onScrollToAI }) {
   const type = pageType === 'comprehensive_improvement' ? 'improvement' : 'summary';
   const remaining = getRemainingByType(type);
   
-  // 閲覧者の場合は表示しない
   const memberRole = userProfile?.memberRole || 'owner';
-  if (memberRole === 'viewer') {
-    return null;
-  }
-
-  // planがロード中の場合は何も表示しない
-  if (!plan) {
-    return null;
-  }
 
   // 5秒ごとにアニメーションを実行
   useEffect(() => {
@@ -39,6 +30,11 @@ export default function AIFloatingButton({ pageType, onScrollToAI }) {
 
     return () => clearInterval(interval);
   }, []);
+
+  // 閲覧者またはplanロード中は表示しない（全Hooksの後に配置）
+  if (memberRole === 'viewer' || !plan) {
+    return null;
+  }
 
   const handleClick = () => {
     if (onScrollToAI) {

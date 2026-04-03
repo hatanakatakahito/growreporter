@@ -41,15 +41,6 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
-  // 必要なデータがない場合は早期リターン
-  if (!selectedSiteId || !pageType) {
-    return (
-      <div className="text-center py-8 text-gray-500">
-        データを読み込み中...
-      </div>
-    );
-  }
-
   // 既存のタスクを取得
   const { data: existingTasks = [] } = useQuery({
     queryKey: ['improvements', selectedSiteId],
@@ -178,6 +169,15 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
       alert(`タスクの追加に失敗しました。\nエラー: ${error.message}`);
     },
   });
+
+  // 必要なデータがない場合は早期リターン（全Hooksの後に配置）
+  if (!selectedSiteId || !pageType) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        データを読み込み中...
+      </div>
+    );
+  }
 
   // ローディング中
   if (isLoading) {
