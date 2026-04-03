@@ -279,7 +279,7 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
             <label className="mb-3 block text-sm font-medium text-dark dark:text-white">
               プラン
             </label>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               {plans.map((plan) => {
                 const planInfo = getPlanInfo(plan);
                 const isSelected = formData.plan === plan;

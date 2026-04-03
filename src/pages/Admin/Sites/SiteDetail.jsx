@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { setPageTitle } from '../../../utils/pageTitle';
 import { useAdminSiteDetail } from '../../../hooks/useAdminSiteDetail';
+import { getPlanDisplayName, getPlanBadgeColor } from '../../../constants/plans';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import { functions } from '../../../config/firebase';
@@ -343,10 +344,9 @@ export default function AdminSiteDetail() {
               <div>
                 <div className="text-sm text-body-color dark:text-dark-6">プラン</div>
                 <div className="text-dark dark:text-white">
-                  {siteDetail.user.plan === 'free' && '無料プラン'}
-                  {siteDetail.user.plan === 'standard' && 'スタンダードプラン'}
-                  {siteDetail.user.plan === 'premium' && 'プレミアムプラン'}
-                  {!['free', 'standard', 'premium'].includes(siteDetail.user.plan) && siteDetail.user.plan}
+                  <span className={`inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold ${getPlanBadgeColor(siteDetail.user.plan)}`}>
+                    {getPlanDisplayName(siteDetail.user.plan)}
+                  </span>
                 </div>
               </div>
               <div className="pt-3">

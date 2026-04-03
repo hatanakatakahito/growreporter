@@ -73,6 +73,7 @@ export function usePlan() {
           setAccountUsage({
             aiSummaryUsage: userProfile.aiSummaryUsage || 0,
             aiImprovementUsage: userProfile.aiImprovementUsage || 0,
+            aiChatUsage: userProfile.aiChatUsage || 0,
             diagnosisUsage: userProfile.diagnosisUsage || 0,
             excelExportUsage: userProfile.excelExportUsage || 0,
             pptxExportUsage: userProfile.pptxExportUsage || 0,
