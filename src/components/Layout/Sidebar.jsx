@@ -359,9 +359,10 @@ export default function Sidebar() {
                           ) : subItem.lockedForFree && isFree ? (
                             <button
                               onClick={() => setShowUpgradeModal(true)}
-                              className={`block w-full text-left rounded-lg px-4 py-2 text-sm transition-all duration-200 ${t.subText} ${t.subHover} opacity-60`}
+                              className={`flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm transition-all duration-200 ${t.subText} ${t.subHover} opacity-60`}
                             >
-                              {subItem.label} 🔒
+                              <span>{subItem.label}</span>
+                              <svg className="h-3.5 w-3.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
                             </button>
                           ) : (
                             /* 直リンク */
