@@ -20,29 +20,34 @@ export default function PlanList() {
     { label: '登録サイト数', key: 'maxSites' },
     { label: 'メンバー数', key: 'maxMembers' },
     {
-      label: 'AI分析（自動生成）',
-      render: (f, plan) =>
-        plan.id === PLAN_TYPES.FREE
-          ? '各画面 月1回'
-          : fmt(f.aiSummaryMonthly),
+      label: 'AI分析サマリー',
+      render: (f) => f.aiSummaryMonthly === 0 ? '不可' : fmt(f.aiSummaryMonthly),
     },
     {
-      label: 'AI分析（再分析）',
-      render: (_f, plan) => (canRegenerate(plan.id) ? '可能' : '不可'),
+      label: 'AI改善提案',
+      render: (f) => f.aiImprovementMonthly === 0 ? '不可' : fmt(f.aiImprovementMonthly),
     },
     {
-      label: 'AI改善案 / 月',
-      render: (f) => fmt(f.aiImprovementMonthly),
+      label: 'AIチャット',
+      render: (f) => f.aiChatMonthly === 0 ? '不可' : fmt(f.aiChatMonthly),
     },
-    { label: 'データ保持期間', key: 'dataRetention' },
+    {
+      label: '改善タスク管理',
+      render: (f) => f.improvementTask ? '可能' : '不可',
+    },
+    {
+      label: '効果測定（評価する）',
+      render: (f) => f.reportEvaluation ? '可能' : '不可',
+    },
     {
       label: 'Excel エクスポート / 月',
-      render: (f) => fmt(f.excelExportMonthly),
+      render: (f) => f.excelExportMonthly === 0 ? '不可' : fmt(f.excelExportMonthly),
     },
     {
       label: 'PowerPoint エクスポート / 月',
-      render: (f) => fmt(f.pptxExportMonthly),
+      render: (f) => f.pptxExportMonthly === 0 ? '不可' : fmt(f.pptxExportMonthly),
     },
+    { label: 'データ保持期間', key: 'dataRetention' },
     { label: 'サポート', key: 'support' },
   ];
 

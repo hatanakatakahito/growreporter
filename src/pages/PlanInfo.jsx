@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan } from '../hooks/usePlan';
 import { PLANS, PLAN_TYPES, getPlanBadgeColor, isUnlimited } from '../constants/plans';
-import { Check, ArrowLeft } from 'lucide-react';
+import { Check, X, ArrowLeft } from 'lucide-react';
 import UpgradeModal from '../components/common/UpgradeModal';
 import { setPageTitle } from '../utils/pageTitle';
 import { Button } from '@/components/ui/button';
@@ -50,10 +50,13 @@ export default function PlanInfo() {
 
   const features = [
     { label: '登録サイト数', getValue: (p) => `${p.features.maxSites}サイト` },
-    { label: 'メンバー数', getValue: (p) => `${p.features.maxMembers}人` },
-    { label: 'AI分析（再分析）', getValue: (p) => p.id === 'free' ? '自動生成のみ' : '可能' },
-    { label: 'AI改善案 / 月', getValue: (p) => fmt(p.features.aiImprovementMonthly) },
-    { label: 'エクスポート / 月', getValue: (p) => fmt(p.features.excelExportMonthly) },
+    { label: 'メンバー招待', getValue: (p) => p.features.maxMembers <= 1 ? '不可' : `${p.features.maxMembers}人` },
+    { label: 'AI分析サマリー', getValue: (p) => p.features.aiSummaryMonthly === 0 ? '不可' : fmt(p.features.aiSummaryMonthly) },
+    { label: 'AI改善提案', getValue: (p) => p.features.aiImprovementMonthly === 0 ? '不可' : fmt(p.features.aiImprovementMonthly) },
+    { label: 'AIチャット', getValue: (p) => p.features.aiChatMonthly === 0 ? '不可' : fmt(p.features.aiChatMonthly) },
+    { label: '改善タスク管理', getValue: (p) => p.features.improvementTask ? '可能' : '不可' },
+    { label: '効果測定（評価する）', getValue: (p) => p.features.reportEvaluation ? '可能' : '不可' },
+    { label: 'Excel / PPTXエクスポート', getValue: (p) => p.features.excelExportMonthly === 0 ? '不可' : fmt(p.features.excelExportMonthly) },
     { label: 'サポート', getValue: (p) => p.features.support || 'なし' },
   ];
 
@@ -126,15 +129,22 @@ export default function PlanInfo() {
 
                 {/* 機能一覧 */}
                 <ul className="space-y-3">
-                  {features.map((feature) => (
-                    <li key={feature.label} className="flex items-start gap-2.5 text-sm">
-                      <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
-                      <span className="text-gray-700 dark:text-gray-300">
-                        <span className="text-gray-500 dark:text-gray-400">{feature.label}: </span>
-                        <span className="font-medium text-gray-900 dark:text-white">{feature.getValue(p)}</span>
-                      </span>
-                    </li>
-                  ))}
+                  {features.map((feature) => {
+                    const val = feature.getValue(p);
+                    const isDisabled = val === '不可';
+                    return (
+                      <li key={feature.label} className={`flex items-start gap-2.5 text-sm ${isDisabled ? 'opacity-50' : ''}`}>
+                        {isDisabled
+                          ? <X className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />
+                          : <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                        }
+                        <span className="text-gray-700 dark:text-gray-300">
+                          <span className="text-gray-500 dark:text-gray-400">{feature.label}: </span>
+                          <span className="font-medium text-gray-900 dark:text-white">{val}</span>
+                        </span>
+                      </li>
+                    );
+                  })}
                 </ul>
 
                 {/* アクション */}
