@@ -65,7 +65,7 @@ export default function Reports() {
           ) : (
             <>
               {/* サマリーカード */}
-              <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   { label: '完了タスク', value: summary.total, sub: '件' },
                   { label: '計測完了', value: summary.measured, sub: `/ ${summary.total}件` },
@@ -147,7 +147,7 @@ function FullCard({ item, siteId, onRefresh, onEvaluate, onDelete, expanded, onT
         <>
           {hasMetrics ? (
             <>
-            <div className="border-t border-stroke dark:border-dark-3 grid grid-cols-3 divide-x divide-gray-100 dark:divide-dark-3">
+            <div className="border-t border-stroke dark:border-dark-3 grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100 dark:divide-dark-3">
               {/* 左: タスク情報 */}
               <div className="p-5 space-y-3">
                 {item.description && (

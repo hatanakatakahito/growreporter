@@ -10,7 +10,7 @@ export default function BusinessPlanLockOverlay({ children }) {
   const [showModal, setShowModal] = useState(false);
 
   return (
-    <div className="relative min-h-[400px]">
+    <div className="relative min-h-[300px] md:min-h-[400px]">
       {children && (
         <div className="pointer-events-none select-none opacity-50 blur-[1.5px]" aria-hidden="true">
           {children}
