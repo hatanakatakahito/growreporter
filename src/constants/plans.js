@@ -70,7 +70,7 @@ export const getPlanBadgeColor = (planType) => {
   const normalized = normalizePlanId(planType);
   switch (normalized) {
     case 'business':
-      return 'bg-gradient-to-r from-emerald-400 to-teal-600 text-white shadow-md';
+      return 'bg-gradient-to-r from-red-400 to-pink-600 text-white shadow-md';
     case 'free':
     default:
       return 'bg-gradient-to-r from-blue-400 to-blue-600 text-white shadow-md';

@@ -432,7 +432,7 @@ export default function Sidebar() {
                   <p className={`truncate text-sm font-medium ${t.userName}`}>
                     {getUserName()}
                   </p>
-                  <Badge color={userPlan === 'free' ? 'zinc' : 'emerald'} className={`mt-1 ${isDarkSidebar ? 'bg-white/10 !text-white/80' : ''}`}>
+                  <Badge color={userPlan === 'free' ? 'zinc' : 'pink'} className={`mt-1 ${isDarkSidebar ? 'bg-white/10 !text-white/80' : ''}`}>
                     {planLabel}
                   </Badge>
                 </div>
@@ -445,7 +445,7 @@ export default function Sidebar() {
                   alt={getUserName()}
                   className="size-8 bg-primary text-white"
                 />
-                <Badge color={userPlan === 'free' ? 'zinc' : 'emerald'} className="text-[8px]">
+                <Badge color={userPlan === 'free' ? 'zinc' : 'pink'} className="text-[8px]">
                   {planLabel}
                 </Badge>
               </div>
