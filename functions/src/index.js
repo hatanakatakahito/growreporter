@@ -266,7 +266,7 @@ export const resetMonthlyLimits = onSchedule({
   timeoutSeconds: 300,
 }, async (event) => {
   const m = await import('./scheduled/resetMonthlyLimits.js');
-  return m.resetMonthlyLimitsScheduled(event);
+  return m.resetMonthlyLimitsHandler(event);
 });
 
 /**
@@ -532,6 +532,7 @@ export const measureImprovementEffects = onSchedule({
   region: 'asia-northeast1',
   memory: '512MiB',
   timeoutSeconds: 540,
+  secrets: ['GEMINI_API_KEY'],
 }, async (event) => {
   const m = await import('./scheduled/measureImprovementEffects.js');
   return m.measureImprovementEffectsHandler(event);
