@@ -80,7 +80,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
   if (step === 'form') {
     return (
       <Dialog open={isOpen} onClose={handleClose} size="lg">
-        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-4 dark:border-dark-3 rounded-t-2xl">
+        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-red-400 to-pink-600 px-6 py-4 dark:border-dark-3 rounded-t-2xl">
           <h3 className="text-xl font-semibold text-white">Businessプランのお問い合わせ</h3>
         </div>
 
@@ -111,7 +111,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
           </DialogBody>
           <DialogActions>
             <Button plain onClick={handleClose}>キャンセル</Button>
-            <Button type="submit" form="upgrade-form" color="emerald" disabled={isSending}>
+            <Button type="submit" form="upgrade-form" color="pink" disabled={isSending}>
               {isSending ? '送信中...' : <><Send className="h-4 w-4" /> 送信する</>}
             </Button>
           </DialogActions>
@@ -123,10 +123,10 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
   // ── Businessプラン訴求 ──
   return (
     <Dialog open={isOpen} onClose={handleClose} size="lg">
-      <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-5 dark:border-dark-3 rounded-t-2xl text-center">
+      <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-red-400 to-pink-600 px-6 py-5 dark:border-dark-3 rounded-t-2xl text-center">
         <Sparkles className="mx-auto mb-2 h-8 w-8 text-white" />
         <h3 className="text-2xl font-bold text-white">Businessプラン</h3>
-        <p className="mt-1 text-emerald-100">AIの力でサイト改善を本格的に推進</p>
+        <p className="mt-1 text-pink-100">AIの力でサイト改善を本格的に推進</p>
       </div>
 
       <DialogBody>
@@ -149,7 +149,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
             `サポート: ${businessPlan.features.support}`,
           ].map((feature, i) => (
             <div key={i} className="flex items-center gap-3">
-              <Check className="h-5 w-5 shrink-0 text-emerald-500" />
+              <Check className="h-5 w-5 shrink-0 text-pink-500" />
               <span className="text-sm text-dark dark:text-white">{feature}</span>
             </div>
           ))}
@@ -158,7 +158,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
 
       <DialogActions>
         <Button plain onClick={handleClose}>閉じる</Button>
-        <Button color="emerald" onClick={() => { initFormFields(); setStep('form'); }}>
+        <Button color="pink" onClick={() => { initFormFields(); setStep('form'); }}>
           <Send className="h-4 w-4" /> お問い合わせ
         </Button>
         <Button outline onClick={() => navigate('/plan-info')}>

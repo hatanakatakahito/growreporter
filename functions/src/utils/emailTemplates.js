@@ -24,10 +24,10 @@ export function normalizePlan(planId) {
  */
 export function getBusinessUpsellHtml() {
   return `
-    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; padding: 24px; margin-top: 32px; text-align: center;">
+    <div style="background: linear-gradient(135deg, #f87171 0%, #ec4899 100%); border-radius: 12px; padding: 24px; margin-top: 32px; text-align: center;">
       <p style="color: white; font-size: 16px; font-weight: bold; margin: 0 0 8px;">AIの力でサイト改善を加速しませんか？</p>
       <p style="color: rgba(255,255,255,0.9); font-size: 13px; margin: 0 0 16px;">Businessプランなら、この数値の背景や改善策をAIが自動で分析します。</p>
-      <a href="https://growgroupreporter.web.app/plan-info" style="display: inline-block; background: white; color: #059669; font-weight: bold; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 14px;">Businessプランを詳しく見る</a>
+      <a href="https://growgroupreporter.web.app/plan-info" style="display: inline-block; background: white; color: #ec4899; font-weight: bold; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 14px;">Businessプランを詳しく見る</a>
     </div>`;
 }
 

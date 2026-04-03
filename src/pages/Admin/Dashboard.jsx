@@ -210,7 +210,7 @@ export default function AdminDashboard() {
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-dark-3">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-teal-600"
+                  className="h-full rounded-full bg-gradient-to-r from-red-400 to-pink-600"
                   style={{ width: `${((stats.planDistribution?.business || 0) / Math.max(stats.totalUsers, 1) * 100)}%` }}
                 />
               </div>
