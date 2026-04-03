@@ -142,7 +142,7 @@ export default function AlertCards({ siteId }) {
                 <div className="mt-3">
                   {isFree ? (
                     <Link to="/plan-info" className="text-xs font-medium text-primary hover:underline">
-                      詳細な分析はBusinessプランで →
+                      詳細な分析はビジネスプランで →
                     </Link>
                   ) : (
                     <>

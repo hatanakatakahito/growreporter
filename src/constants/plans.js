@@ -12,7 +12,7 @@ export const PLANS = {
   [PLAN_TYPES.FREE]: {
     id: PLAN_TYPES.FREE,
     name: '無料プラン',
-    displayName: 'Free',
+    displayName: '無料プラン',
     price: 0,
     priceWithTax: 0,
     features: {
@@ -33,7 +33,7 @@ export const PLANS = {
   [PLAN_TYPES.BUSINESS]: {
     id: PLAN_TYPES.BUSINESS,
     name: 'ビジネスプラン',
-    displayName: 'Business',
+    displayName: 'ビジネスプラン',
     price: 49800,
     priceWithTax: 54780,
     features: {
@@ -83,7 +83,7 @@ export const getPlanBadgeColor = (planType) => {
 export const getPlanDisplayName = (planType) => {
   const normalized = normalizePlanId(planType);
   const plan = PLANS[normalized];
-  return plan ? plan.displayName : 'Free';
+  return plan ? plan.displayName : '無料プラン';
 };
 
 /**
