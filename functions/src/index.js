@@ -98,7 +98,7 @@ export const fetchGSCData = lazyCallable('./callable/fetchGSCData.js', 'fetchGSC
  * スクリーンショット取得 Callable Function
  * サイトのスクリーンショットを自動取得
  */
-export const captureScreenshot = lazyCallable('./callable/captureScreenshot.js', 'captureScreenshotCallable', { memory: '2GiB', timeoutSeconds: 300 });
+export const captureScreenshot = lazyCallable('./callable/captureScreenshot.js', 'captureScreenshotCallable', { memory: '2GiB', timeoutSeconds: 300, secrets: ['PSI_API_KEY'] });
 
 /**
  * AI要約生成 Callable Function
@@ -115,8 +115,8 @@ export const incrementExportUsage = lazyCallable('./callable/incrementExportUsag
  * メタデータ取得 Callable Function（遅延読み込み）
  */
 export const fetchMetadata = onCall({
-  memory: '256MiB',
-  timeoutSeconds: 60,
+  memory: '2GiB',
+  timeoutSeconds: 120,
   region: 'asia-northeast1',
   cors: true,
 }, async (request) => {
@@ -132,6 +132,7 @@ export const refreshSiteMetadataAndScreenshots = onCall({
   timeoutSeconds: 300,
   region: 'asia-northeast1',
   cors: true,
+  secrets: ['PSI_API_KEY'],
 }, async (request) => {
   const { refreshSiteMetadataAndScreenshotsCallableWithCatch } = await import('./callable/refreshSiteMetadataAndScreenshots.js');
   return refreshSiteMetadataAndScreenshotsCallableWithCatch(request);
@@ -189,27 +190,15 @@ export const siteCreatedSheetsExport = onDocumentWritten({
   region: 'asia-northeast1',
   memory: '2GiB',
   timeoutSeconds: 540,
+  secrets: ['PSI_API_KEY'],
 }, async (event) => {
   const m = await import('./triggers/onSiteCreated.js');
   return m.onSiteCreatedTrigger(event);
 });
 
-/**
- * サイトメタデータ自動取得トリガー（遅延読み込み）
- * サイト作成・URL更新時にメタデータとスクリーンショットを自動取得
- */
-export const onSiteChanged = onDocumentWritten(
-  {
-    document: 'sites/{siteId}',
-    region: 'asia-northeast1',
-    memory: '2GiB',
-    timeoutSeconds: 540,
-  },
-  async (event) => {
-    const { onSiteChangedHandler } = await import('./triggers/onSiteChanged.js');
-    return onSiteChangedHandler(event);
-  }
-);
+// onSiteChanged は廃止（v5.6.1）
+// メタデータ・スクショ取得は onScrapingJobCreated に統合済み
+// 手動再取得は refreshSiteMetadataAndScreenshots で対応
 
 /**
  * スクレイピングジョブ作成トリガー（遅延読み込み）
@@ -224,6 +213,7 @@ export const onScrapingJobCreated = onDocumentCreated(
     timeoutSeconds: 540,
     maxInstances: 3,
     concurrency: 1,
+    secrets: ['PSI_API_KEY'],
   },
   async (event) => {
     const { onScrapingJobCreatedHandler } = await import('./triggers/onScrapingJobCreated.js');
