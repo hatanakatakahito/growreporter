@@ -1,18 +1,35 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkles, Check, Send, ArrowRight } from 'lucide-react';
+import { Sparkles, Check, X, Send } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { PLANS, PLAN_TYPES, getPlanBadgeColor } from '../../constants/plans';
+import { PLANS, PLAN_TYPES, getPlanBadgeColor, isUnlimited } from '../../constants/plans';
 import toast from 'react-hot-toast';
 import { Dialog, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
 
-/**
- * ビジネスプランアップグレードモーダル
- * ビジネスプラン訴求 → お問い合わせフォーム
- */
+const freePlan = PLANS[PLAN_TYPES.FREE];
+const businessPlan = PLANS[PLAN_TYPES.BUSINESS];
+
+const fmt = (v) => {
+  if (v === 0) return '不可';
+  return isUnlimited(v) ? '無制限' : `${v}回`;
+};
+
+const features = [
+  { label: '登録サイト数', getValue: (p) => `${p.features.maxSites}サイト` },
+  { label: 'メンバー招待', getValue: (p) => isUnlimited(p.features.maxMembers) ? '無制限' : `${p.features.maxMembers}人` },
+  { label: 'AI分析サマリー', getValue: (p) => fmt(p.features.aiSummaryMonthly) },
+  { label: 'AI改善提案', getValue: (p) => fmt(p.features.aiImprovementMonthly) },
+  { label: 'AIチャット', getValue: (p) => fmt(p.features.aiChatMonthly) },
+  { label: '改善タスク管理', getValue: (p) => p.features.improvementTask ? '可能' : '不可' },
+  { label: '効果測定', getValue: (p) => p.features.reportEvaluation ? '可能' : '不可' },
+  { label: 'Excel/PPTXエクスポート', getValue: (p) => fmt(p.features.excelExportMonthly) },
+  { label: 'アラート通知（AI分析付き）', getValue: (p) => p.features.aiSummaryMonthly > 0 ? '可能' : '数値のみ' },
+  { label: 'サポート', getValue: (p) => p.features.support || 'なし' },
+];
+
 export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' }) {
   const navigate = useNavigate();
   const { userProfile, currentUser } = useAuth();
@@ -23,8 +40,6 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
   const [message, setMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
-
-  const businessPlan = PLANS[PLAN_TYPES.BUSINESS];
 
   const initFormFields = () => {
     if (!formInitialized && userProfile) {
@@ -72,23 +87,24 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
     onClose();
   };
 
-  if (isOpen && step === 'form' && !formInitialized) {
+  if (isOpen && initialStep === 'form' && !formInitialized) {
     initFormFields();
   }
 
-  // ── お問い合わせフォーム ──
+  // ── ステップ2: お問い合わせフォーム ──
   if (step === 'form') {
     return (
       <Dialog open={isOpen} onClose={handleClose} size="lg">
         <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-red-400 to-pink-600 px-6 py-4 dark:border-dark-3 rounded-t-2xl">
           <h3 className="text-xl font-semibold text-white">ビジネスプランのお問い合わせ</h3>
+          <p className="mt-1 text-sm text-white/80">担当者より折り返しご連絡いたします</p>
         </div>
 
         <form id="upgrade-form" onSubmit={handleSubmit}>
           <DialogBody>
             <div className="space-y-4">
               <div>
-                <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">会社名</label>
+                <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">組織名</label>
                 <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)}
                   className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white" placeholder="株式会社〇〇" />
               </div>
@@ -112,7 +128,8 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
           <DialogActions>
             <Button plain onClick={handleClose}>キャンセル</Button>
             <Button type="submit" form="upgrade-form" color="pink" disabled={isSending}>
-              {isSending ? '送信中...' : <><Send className="h-4 w-4" /> 送信する</>}
+              <Send className="h-4 w-4" />
+              {isSending ? '送信中...' : '送信する'}
             </Button>
           </DialogActions>
         </form>
@@ -120,49 +137,96 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
     );
   }
 
-  // ── ビジネスプラン訴求 ──
+  // ── ステップ1: プラン比較表 ──
   return (
-    <Dialog open={isOpen} onClose={handleClose} size="lg">
-      <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-red-400 to-pink-600 px-6 py-5 dark:border-dark-3 rounded-t-2xl text-center">
-        <Sparkles className="mx-auto mb-2 h-8 w-8 text-white" />
-        <h3 className="text-2xl font-bold text-white">ビジネスプラン</h3>
-        <p className="mt-1 text-pink-100">AIの力でサイト改善を本格的に推進</p>
+    <Dialog open={isOpen} onClose={handleClose} size="2xl">
+      <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-red-400 to-pink-600 p-6 dark:border-dark-3 rounded-t-2xl">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">
+              AIの力でサイト改善を加速しましょう
+            </h2>
+            <p className="mt-1 text-sm text-white/80">
+              ビジネスプランで全機能をフル活用
+            </p>
+          </div>
+        </div>
       </div>
 
       <DialogBody>
-        <div className="text-center mb-6">
-          <span className="text-3xl font-bold text-dark dark:text-white">¥{businessPlan.price.toLocaleString()}</span>
-          <span className="text-sm text-body-color"> / 月（税別）</span>
-        </div>
-
-        <div className="space-y-3">
-          {[
-            'AI分析サマリー（無制限）',
-            'AI改善提案（無制限）',
-            'AIチャット（無制限）',
-            '改善タスク管理・効果測定',
-            'PPTX・Excelレポート',
-            `最大${businessPlan.features.maxSites}サイト登録`,
-            'メンバー招待（無制限）',
-            'アラート通知（AI仮説付き）',
-            '週次・月次レポートメール',
-            `サポート: ${businessPlan.features.support}`,
-          ].map((feature, i) => (
-            <div key={i} className="flex items-center gap-3">
-              <Check className="h-5 w-5 shrink-0 text-pink-500" />
-              <span className="text-sm text-dark dark:text-white">{feature}</span>
+        <div className="grid grid-cols-2 gap-4">
+          {/* 無料プラン */}
+          <div className="rounded-lg border-2 border-stroke p-5 dark:border-dark-3">
+            <div className="mb-3 text-center">
+              <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getPlanBadgeColor('free')}`}>
+                {freePlan.displayName}
+              </span>
+              <span className="ml-2 inline-block rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium text-body-color dark:bg-dark-3">
+                現在のプラン
+              </span>
             </div>
-          ))}
+            <div className="mb-4 text-center">
+              <span className="text-2xl font-bold text-dark dark:text-white">¥0</span>
+              <span className="text-sm text-body-color"> / 月</span>
+            </div>
+            <ul className="space-y-2.5">
+              {features.map((feature) => {
+                const val = feature.getValue(freePlan);
+                const disabled = val === '不可' || val === 'なし' || val === '数値のみ';
+                return (
+                  <li key={feature.label} className={`flex items-start gap-2 text-sm ${disabled ? 'opacity-40' : ''}`}>
+                    {disabled
+                      ? <X className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />
+                      : <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                    }
+                    <span className="text-dark dark:text-white">
+                      <span className="text-body-color dark:text-dark-6">{feature.label}: </span>
+                      {val}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {/* ビジネスプラン */}
+          <div className="rounded-lg border-2 border-pink-500 bg-pink-50/50 p-5 dark:bg-pink-900/10">
+            <div className="mb-3 text-center">
+              <span className={`inline-block rounded-full px-3 py-1 text-xs font-semibold ${getPlanBadgeColor('business')}`}>
+                {businessPlan.displayName}
+              </span>
+              <span className="ml-2 inline-block rounded-full bg-pink-100 px-2 py-0.5 text-[10px] font-medium text-pink-600 dark:bg-pink-900/30 dark:text-pink-300">
+                おすすめ
+              </span>
+            </div>
+            <div className="mb-4 text-center">
+              <span className="text-2xl font-bold text-dark dark:text-white">
+                ¥{businessPlan.price.toLocaleString()}
+              </span>
+              <span className="text-sm text-body-color"> / 月（税別）</span>
+            </div>
+            <ul className="space-y-2.5">
+              {features.map((feature) => (
+                <li key={feature.label} className="flex items-start gap-2 text-sm">
+                  <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                  <span className="text-dark dark:text-white">
+                    <span className="text-body-color dark:text-dark-6">{feature.label}: </span>
+                    {feature.getValue(businessPlan)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       </DialogBody>
 
-      <DialogActions>
+      <DialogActions className="!justify-center">
         <Button plain onClick={handleClose}>閉じる</Button>
         <Button color="pink" onClick={() => { initFormFields(); setStep('form'); }}>
-          <Send className="h-4 w-4" /> お問い合わせ
-        </Button>
-        <Button outline onClick={() => navigate('/plan-info')}>
-          <ArrowRight className="h-4 w-4" /> プラン詳細
+          ビジネスプランのお問い合わせ
         </Button>
       </DialogActions>
     </Dialog>
