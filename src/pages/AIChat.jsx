@@ -412,22 +412,62 @@ export default function AIChat() {
   if (isFree) {
     const BusinessPlanLockOverlay = React.lazy(() => import('../components/common/BusinessPlanLockOverlay'));
     return (
-      <div className="flex h-full p-6">
+      <div className="flex h-full">
         <React.Suspense fallback={null}>
           <BusinessPlanLockOverlay>
-            <div className="flex h-[500px] w-full flex-col rounded-xl border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
-              <div className="border-b border-stroke p-4 dark:border-dark-3">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-primary" />
-                  <span className="font-semibold text-dark dark:text-white">AIチャット</span>
+            <div className="flex h-[600px] w-full">
+              {/* 左パネル */}
+              <div className="w-72 shrink-0 border-r border-stroke bg-white dark:border-dark-3 dark:bg-dark-2 flex flex-col">
+                <div className="p-4 border-b border-stroke dark:border-dark-3">
+                  <div className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white">
+                    <Plus className="h-4 w-4" /> 新しいチャット
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                  {['先月のアクセス減少の原因分析', 'コンバージョン改善の提案', 'SEO対策の優先順位について'].map((t, i) => (
+                    <div key={i} className={`rounded-lg px-3 py-2.5 text-sm cursor-pointer ${i === 0 ? 'bg-primary/10 text-primary font-medium' : 'text-body-color hover:bg-gray-50'}`}>
+                      <div className="truncate">{t}</div>
+                      <div className="text-xs text-body-color mt-0.5">3月{28 - i}日</div>
+                    </div>
+                  ))}
                 </div>
               </div>
-              <div className="flex-1 space-y-4 p-6">
-                <div className="flex justify-end"><div className="max-w-xs rounded-xl bg-primary/10 px-4 py-2 text-sm text-dark dark:text-white">先月のアクセスが減少した原因を教えてください</div></div>
-                <div className="flex justify-start"><div className="max-w-md rounded-xl bg-gray-100 px-4 py-3 text-sm text-body-color dark:bg-dark-3 dark:text-dark-6">先月のアクセス減少の主な要因は、オーガニック検索からの流入が前月比-18%減少したことです。特に主要キーワード「社員寮 東京」の順位が5位→12位に下落しています。改善策として...</div></div>
-              </div>
-              <div className="border-t border-stroke p-4 dark:border-dark-3">
-                <div className="flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 dark:border-dark-3"><span className="flex-1 text-sm text-body-color">メッセージを入力...</span><Send className="h-4 w-4 text-body-color" /></div>
+              {/* 右パネル */}
+              <div className="flex-1 flex flex-col bg-gray-50 dark:bg-dark">
+                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                  <div className="flex justify-end">
+                    <div className="max-w-md rounded-2xl bg-primary/10 px-4 py-3 text-sm text-dark dark:text-white">
+                      先月のアクセスが減少した原因を教えてください
+                    </div>
+                  </div>
+                  <div className="flex justify-start gap-3">
+                    <div className="shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                      <Sparkles className="h-4 w-4 text-white" />
+                    </div>
+                    <div className="max-w-lg rounded-2xl bg-white px-5 py-4 text-sm text-dark shadow-sm dark:bg-dark-2 dark:text-white leading-relaxed">
+                      <p>先月のアクセス減少の主な要因を分析しました。</p>
+                      <p className="mt-3 font-semibold">主な原因：</p>
+                      <ul className="mt-1 space-y-1 text-body-color">
+                        <li>・オーガニック検索の流入が前月比-18%減少</li>
+                        <li>・主要キーワード「社員寮 東京」の順位が5位→12位に下落</li>
+                        <li>・モバイルからのセッションが-22%と大幅減</li>
+                      </ul>
+                      <p className="mt-3 font-semibold">推奨アクション：</p>
+                      <ul className="mt-1 space-y-1 text-body-color">
+                        <li>1. 順位が下がったキーワードのコンテンツを更新</li>
+                        <li>2. モバイル表示速度の改善（Core Web Vitals確認）</li>
+                        <li>3. 内部リンク構造の見直しでクローラビリティ向上</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+                <div className="border-t border-stroke p-4 bg-white dark:bg-dark-2 dark:border-dark-3">
+                  <div className="flex items-center gap-2 rounded-xl border border-stroke px-4 py-3 dark:border-dark-3">
+                    <Paperclip className="h-4 w-4 text-body-color" />
+                    <span className="flex-1 text-sm text-body-color">メッセージを入力...</span>
+                    <Send className="h-4 w-4 text-body-color" />
+                  </div>
+                </div>
               </div>
             </div>
           </BusinessPlanLockOverlay>
