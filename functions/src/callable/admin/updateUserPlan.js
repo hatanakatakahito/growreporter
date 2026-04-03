@@ -26,7 +26,7 @@ export const updateUserPlanCallable = async (request) => {
     throw new HttpsError('invalid-argument', '対象ユーザーIDが必要です');
   }
 
-  if (!newPlan || !['free', 'standard', 'premium'].includes(newPlan)) {
+  if (!newPlan || !['free', 'business'].includes(newPlan)) {
     throw new HttpsError('invalid-argument', '有効なプランを指定してください');
   }
 
@@ -162,8 +162,9 @@ export const updateUserPlanCallable = async (request) => {
 function getPlanPriority(plan) {
   const priorities = {
     free: 1,
-    standard: 2,
-    premium: 3,
+    business: 2,
+    standard: 2, // 後方互換
+    premium: 2,  // 後方互換
   };
   return priorities[plan] || 0;
 }

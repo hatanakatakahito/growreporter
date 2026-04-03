@@ -4,6 +4,8 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useSite } from '../../contexts/SiteContext';
 import { Settings, ChevronDown, LogOut, User as UserIcon, Globe, Bell, Download } from 'lucide-react';
 import DotWaveSpinner from '../common/DotWaveSpinner';
+import { usePlan } from '../../hooks/usePlan';
+import UpgradeModal from '../common/UpgradeModal';
 import DateRangePicker from './DateRangePicker';
 
 const ExcelIcon = ({ className, disabled }) => (
@@ -85,8 +87,12 @@ export default function AnalysisHeader({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isDownloadMenuOpen]);
 
+  const { isFree } = usePlan();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const onExportExcel = async () => {
     setIsDownloadMenuOpen(false);
+    if (isFree) { setShowUpgradeModal(true); return; }
     try {
       await handleExportExcel();
       toast.success('Excelダウンロードが完了しました');
@@ -98,6 +104,7 @@ export default function AnalysisHeader({
 
   const onExportPptx = async () => {
     setIsDownloadMenuOpen(false);
+    if (isFree) { setShowUpgradeModal(true); return; }
     try {
       await handleExportPptx();
       toast.success('PowerPointダウンロードが完了しました');
@@ -384,6 +391,9 @@ export default function AnalysisHeader({
         </div>
       )}
       
+      {showUpgradeModal && (
+        <UpgradeModal isOpen={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
+      )}
     </>
   );
 }

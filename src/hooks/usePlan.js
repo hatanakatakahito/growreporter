@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { PLANS, isUnlimited } from '../constants/plans';
+import { PLANS, isUnlimited, normalizePlanId } from '../constants/plans';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
 
@@ -44,7 +44,7 @@ export function usePlan() {
         (ownerDoc) => {
           if (ownerDoc.exists()) {
             const ownerData = ownerDoc.data();
-            setPlanId(ownerData.plan || 'free');
+            setPlanId(normalizePlanId(ownerData.plan));
             setAccountUsage({
               aiSummaryUsage: ownerData.aiSummaryUsage || 0,
               aiImprovementUsage: ownerData.aiImprovementUsage || 0,
@@ -55,7 +55,7 @@ export function usePlan() {
             });
           } else {
             // オーナーのドキュメントが見つからない場合は自分のプランを使用
-            setPlanId(userProfile.plan || 'free');
+            setPlanId(normalizePlanId(userProfile.plan));
             setAccountUsage({
               aiSummaryUsage: userProfile.aiSummaryUsage || 0,
               aiImprovementUsage: userProfile.aiImprovementUsage || 0,
@@ -69,7 +69,7 @@ export function usePlan() {
         },
         (error) => {
           console.error('Error listening to account owner:', error);
-          setPlanId(userProfile.plan || 'free');
+          setPlanId(normalizePlanId(userProfile.plan));
           setAccountUsage({
             aiSummaryUsage: userProfile.aiSummaryUsage || 0,
             aiImprovementUsage: userProfile.aiImprovementUsage || 0,
@@ -84,7 +84,7 @@ export function usePlan() {
       return () => unsubscribe();
     } else {
       // オーナー: 自分のプランと使用回数を使用
-      setPlanId(userProfile.plan || 'free');
+      setPlanId(normalizePlanId(userProfile.plan));
       setAccountUsage({
         aiSummaryUsage: userProfile.aiSummaryUsage || 0,
         aiImprovementUsage: userProfile.aiImprovementUsage || 0,
@@ -197,9 +197,12 @@ export function usePlan() {
     return plan.features?.maxMembers || 1;
   };
 
+  const isFree = planId === 'free';
+
   return {
     plan,
     planId,
+    isFree,
     checkCanGenerate,
     getRemainingByType,
     getUsedByType,

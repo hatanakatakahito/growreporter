@@ -3,12 +3,15 @@ import { collection, query, orderBy, onSnapshot, doc, setDoc } from 'firebase/fi
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { AlertTriangle, ChevronDown, ChevronUp, X } from 'lucide-react';
+import { usePlan } from '../../hooks/usePlan';
+import { Link } from 'react-router-dom';
 
 /**
  * 現在選択中のサイトの未読アラートをカード形式で表示し、既読にできる
  */
 export default function AlertCards({ siteId }) {
   const { currentUser } = useAuth();
+  const { isFree } = usePlan();
   const [alerts, setAlerts] = useState([]);
   const [readIds, setReadIds] = useState(new Set());
   const [expandedId, setExpandedId] = useState(null);
@@ -137,29 +140,37 @@ export default function AlertCards({ siteId }) {
               </div>
               {hypotheses.length > 0 && (
                 <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedId(isExpanded ? null : alert.id)}
-                    className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
-                  >
-                    {isExpanded ? (
-                      <>
-                        <ChevronUp className="h-4 w-4" />
-                        仮説を閉じる
-                      </>
-                    ) : (
-                      <>
-                        <ChevronDown className="h-4 w-4" />
-                        仮説を見る
-                      </>
-                    )}
-                  </button>
-                  {isExpanded && (
-                    <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-body-color">
-                      {hypotheses.map((h, i) => (
-                        <li key={i}>{typeof h === 'object' ? h.text : h}</li>
-                      ))}
-                    </ul>
+                  {isFree ? (
+                    <Link to="/plan-info" className="text-xs font-medium text-primary hover:underline">
+                      詳細な分析はBusinessプランで →
+                    </Link>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedId(isExpanded ? null : alert.id)}
+                        className="flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+                      >
+                        {isExpanded ? (
+                          <>
+                            <ChevronUp className="h-4 w-4" />
+                            仮説を閉じる
+                          </>
+                        ) : (
+                          <>
+                            <ChevronDown className="h-4 w-4" />
+                            仮説を見る
+                          </>
+                        )}
+                      </button>
+                      {isExpanded && (
+                        <ul className="mt-2 list-inside list-disc space-y-1 text-xs text-body-color">
+                          {hypotheses.map((h, i) => (
+                            <li key={i}>{typeof h === 'object' ? h.text : h}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </>
                   )}
                 </div>
               )}

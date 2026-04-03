@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
-import { getPlanBadgeColor } from '../../constants/plans';
+import { getPlanBadgeColor, getPlanDisplayName } from '../../constants/plans';
 import { Badge } from '../ui/badge';
 import { Avatar } from '../ui/avatar';
 import logoImg from '../../assets/img/logo.svg';
@@ -85,7 +85,7 @@ export default function Sidebar() {
 
   const userPlan = userProfile?.plan || 'free';
   const planBadgeColor = getPlanBadgeColor(userPlan);
-  const planLabel = userPlan === 'premium' ? 'プレミアム' : userPlan === 'standard' ? 'スタンダード' : '無料';
+  const planLabel = getPlanDisplayName(userPlan);
 
   // 現在のパスに基づいてメニューを開く
   useEffect(() => {
@@ -432,7 +432,7 @@ export default function Sidebar() {
                   <p className={`truncate text-sm font-medium ${t.userName}`}>
                     {getUserName()}
                   </p>
-                  <Badge color={userPlan === 'premium' ? 'purple' : userPlan === 'standard' ? 'blue' : 'zinc'} className={`mt-1 ${isDarkSidebar ? 'bg-white/10 !text-white/80' : ''}`}>
+                  <Badge color={userPlan === 'free' ? 'zinc' : 'emerald'} className={`mt-1 ${isDarkSidebar ? 'bg-white/10 !text-white/80' : ''}`}>
                     {planLabel}
                   </Badge>
                 </div>
@@ -445,7 +445,7 @@ export default function Sidebar() {
                   alt={getUserName()}
                   className="size-8 bg-primary text-white"
                 />
-                <Badge color={userPlan === 'premium' ? 'purple' : userPlan === 'standard' ? 'blue' : 'zinc'} className="text-[8px]">
+                <Badge color={userPlan === 'free' ? 'zinc' : 'emerald'} className="text-[8px]">
                   {planLabel}
                 </Badge>
               </div>

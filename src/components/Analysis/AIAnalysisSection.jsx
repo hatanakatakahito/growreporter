@@ -10,6 +10,7 @@ import { format } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 import DotWaveSpinner from '../common/DotWaveSpinner';
 import UpgradeModal from '../common/UpgradeModal';
+import BusinessPlanLockOverlay from '../common/BusinessPlanLockOverlay';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
@@ -25,7 +26,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
  */
 export default function AIAnalysisSection({ pageType, rawData, metrics, period, comparisonRawData, comparisonPeriod, onLimitExceeded }) {
   const { selectedSiteId, selectedSite } = useSite();
-  const { checkCanGenerate, planId } = usePlan();
+  const { checkCanGenerate, planId, isFree } = usePlan();
   const { currentUser } = useAuth();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -176,6 +177,34 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
       <div className="text-center py-8 text-gray-500">
         データを読み込み中...
       </div>
+    );
+  }
+
+  // Freeプラン: サンプルデータ+ロック表示
+  if (isFree) {
+    return (
+      <BusinessPlanLockOverlay>
+        <div className="p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-purple-500" />
+            <span className="text-sm font-semibold text-dark dark:text-white">AI分析サマリー</span>
+          </div>
+          <div className="rounded-lg border border-stroke bg-gray-1 p-5 dark:border-dark-3 dark:bg-dark-2">
+            <p className="text-sm leading-relaxed text-body-color">
+              当期のセッション数は前年同期比+15.2%と堅調に推移しています。特にオーガニック検索からの流入が増加しており、SEO施策の効果が表れています。一方でコンバージョン率は微減傾向にあるため、フォーム改善やCTAの最適化を検討することをお勧めします。
+            </p>
+          </div>
+          <div className="mt-4 space-y-3">
+            <h4 className="text-sm font-semibold text-dark dark:text-white">改善提案</h4>
+            {['コンバージョン率改善 — フォームの入力項目を削減し、離脱率を低下させる', 'モバイルUXの最適化 — モバイルでの表示速度とタップ操作性を改善する', 'CTAボタンの見直し — 目立つ位置にCTAを配置しクリック率を向上させる'].map((item, i) => (
+              <div key={i} className="flex items-start gap-3 rounded-lg border border-stroke p-3 dark:border-dark-3">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{i + 1}</span>
+                <p className="text-sm text-body-color">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </BusinessPlanLockOverlay>
     );
   }
 

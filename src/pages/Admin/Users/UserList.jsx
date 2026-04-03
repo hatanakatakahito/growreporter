@@ -144,7 +144,7 @@ export default function UserList() {
 
           {/* プランフィルタ */}
           <div className="flex gap-2">
-            {['all', 'free', 'standard', 'premium'].map((plan) => (
+            {['all', 'free', 'business'].map((plan) => (
               <button
                 key={plan}
                 onClick={() => handlePlanFilter(plan)}

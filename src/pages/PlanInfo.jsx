@@ -45,7 +45,7 @@ export default function PlanInfo() {
     );
   }
 
-  const allPlans = [PLANS[PLAN_TYPES.FREE], PLANS[PLAN_TYPES.STANDARD], PLANS[PLAN_TYPES.PREMIUM]];
+  const allPlans = [PLANS[PLAN_TYPES.FREE], PLANS[PLAN_TYPES.BUSINESS]];
   const fmt = (v) => (isUnlimited(v) ? '無制限' : `${v}回`);
 
   const features = [
@@ -77,7 +77,7 @@ export default function PlanInfo() {
         </div>
 
         {/* プラン比較カード */}
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 max-w-3xl mx-auto">
           {allPlans.map((p) => {
             const isCurrent = p.id === planId;
             return (

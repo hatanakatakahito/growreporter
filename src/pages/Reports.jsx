@@ -19,6 +19,8 @@ import {
 } from './ReportsMockup/useReportsData';
 import { FilterBar, PendingDetail, ActionButtons, ChangeIndicator } from './ReportsMockup/ReportsA';
 import EvaluationDialog from '../components/Reports/EvaluationDialog';
+import { usePlan } from '../hooks/usePlan';
+import BusinessPlanLockOverlay from '../components/common/BusinessPlanLockOverlay';
 
 export default function Reports() {
   const {
@@ -33,6 +35,8 @@ export default function Reports() {
     next.has(id) ? next.delete(id) : next.add(id);
     return next;
   });
+
+  const { isFree } = usePlan();
 
   useEffect(() => { setPageTitle('評価する'); }, []);
 
@@ -50,7 +54,27 @@ export default function Reports() {
             <p className="text-sm text-body-color">{selectedSite?.siteName} の改善効果を自動計測し、成果を確認・評価</p>
           </div>
 
-          {isLoading ? <LoadingSpinner message="評価データを読み込んでいます..." /> : completedImprovements.length === 0 ? (
+          {isFree ? (
+            <BusinessPlanLockOverlay>
+              <div className="space-y-4">
+                {[
+                  { title: 'トップページのファーストビュー改善', score: '+28.5', level: '期待超え' },
+                  { title: 'フォーム入力項目の最適化', score: '+12.3', level: '達成' },
+                  { title: 'ページ読み込み速度の改善', score: '-3.1', level: '未達' },
+                ].map((item, i) => (
+                  <div key={i} className="rounded-xl border border-stroke bg-white p-5 dark:border-dark-3 dark:bg-dark-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-dark dark:text-white">{item.title}</span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-sm font-bold ${item.score.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>{item.score}</span>
+                        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs dark:bg-dark-3">{item.level}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </BusinessPlanLockOverlay>
+          ) : isLoading ? <LoadingSpinner message="評価データを読み込んでいます..." /> : completedImprovements.length === 0 ? (
             <div className="rounded-xl border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
               <p className="text-body-color">評価待ちの完了課題はありません</p>
             </div>

@@ -20,6 +20,7 @@ import AIGenerationModal from '../components/Improve/AIGenerationModal';
 import ImprovementFocusModal from '../components/Improve/ImprovementFocusModal';
 import ConsultationFormModal from '../components/Improve/ConsultationFormModal';
 import UpgradeModal from '../components/common/UpgradeModal';
+import BusinessPlanLockOverlay from '../components/common/BusinessPlanLockOverlay';
 import { usePlan } from '../hooks/usePlan';
 import { useAuth } from '../contexts/AuthContext';
 import { generateAndAddImprovements } from '../utils/generateAndAddImprovements';
@@ -62,7 +63,7 @@ export default function Improve() {
   const { selectedSite, selectedSiteId, isLoading: isSiteLoading } = useSite();
   const { isSidebarOpen } = useSidebar();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { plan, getRemainingByType, checkCanGenerate } = usePlan();
+  const { plan, getRemainingByType, checkCanGenerate, isFree } = usePlan();
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
 
@@ -609,6 +610,36 @@ export default function Improve() {
         <div className="flex-1 flex items-center justify-center">
           <LoadingSpinner message="サイト情報を読み込んでいます..." />
         </div>
+      </div>
+    );
+  }
+
+  if (isFree) {
+    return (
+      <div className="flex flex-col h-full p-6">
+        <h2 className="mb-6 text-2xl font-bold text-dark dark:text-white">改善する</h2>
+        <BusinessPlanLockOverlay>
+          <div className="space-y-3">
+            {[
+              { title: 'トップページのファーストビュー改善', category: 'デザイン', priority: '高', status: '進行中' },
+              { title: 'フォーム入力項目の最適化', category: '機能', priority: '高', status: '起案' },
+              { title: 'ページ読み込み速度の改善', category: 'コンテンツ', priority: '中', status: '完了' },
+              { title: 'モバイルナビゲーションの改善', category: 'デザイン', priority: '中', status: '起案' },
+              { title: 'FAQ充実によるお問い合わせ削減', category: 'コンテンツ', priority: '低', status: '起案' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center justify-between rounded-lg border border-stroke p-4 dark:border-dark-3">
+                <div className="flex items-center gap-3">
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${item.status === '進行中' ? 'bg-blue-100 text-blue-700' : item.status === '完了' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}`}>{item.status}</span>
+                  <span className="text-sm font-medium text-dark dark:text-white">{item.title}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="rounded bg-gray-100 px-2 py-0.5 text-xs text-body-color dark:bg-dark-3">{item.category}</span>
+                  <span className={`rounded px-2 py-0.5 text-xs ${item.priority === '高' ? 'bg-red-100 text-red-600' : item.priority === '中' ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-500'}`}>{item.priority}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </BusinessPlanLockOverlay>
       </div>
     );
   }

@@ -25,7 +25,7 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
   const [showConfirm, setShowConfirm] = useState(false);
   const [createdUser, setCreatedUser] = useState(null);
 
-  const plans = ['free', 'standard', 'premium'];
+  const plans = ['free', 'business'];
 
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));

@@ -339,15 +339,15 @@ function FreeUpgradePrompt() {
       <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500">
         <Crown className="h-8 w-8 text-white" />
       </div>
-      <h3 className="mb-2 text-xl font-bold text-dark">AI総合分析はStandard以上のプランで利用可能です</h3>
+      <h3 className="mb-2 text-xl font-bold text-dark">AI総合分析はBusinessプランでご利用いただけます</h3>
       <p className="mb-6 max-w-md text-sm text-body-color">
         全データを横断したAI分析により、サイトの現状と注目ポイントを1画面で把握できます。
       </p>
       <button
-        onClick={() => navigate('/account/plan')}
-        className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 px-6 py-3 text-sm font-medium text-white shadow-md transition-all hover:from-blue-700 hover:to-purple-700"
+        onClick={() => navigate('/plan-info')}
+        className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white shadow-md transition-all hover:bg-primary/90"
       >
-        プランをアップグレード
+        詳しく見る
         <ArrowRight className="h-4 w-4" />
       </button>
     </div>

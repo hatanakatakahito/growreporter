@@ -1,7 +1,7 @@
 import { getFirestore } from 'firebase-admin/firestore';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
-import { generateEmailTemplate } from '../utils/emailTemplates.js';
+import { generateEmailTemplate, normalizePlan } from '../utils/emailTemplates.js';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { getGA4MetricsForSite } from '../utils/ga4ServerHelper.js';
 
@@ -120,7 +120,8 @@ export async function sendMonthlyReportsHandler(event) {
           kpiSettings,
         };
 
-        const { subject, html, text } = generateEmailTemplate('monthly', emailData, dateRange);
+        const isFree = normalizePlan(userData.plan) === 'free';
+        const { subject, html, text } = generateEmailTemplate('monthly', emailData, dateRange, { isFree });
 
         sendPromises.push(
           sendEmailDirect({ to: userEmail, subject, html, text })

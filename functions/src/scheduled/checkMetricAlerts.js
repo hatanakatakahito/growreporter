@@ -2,7 +2,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { format, subDays } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { getGA4MetricsForSite } from '../utils/ga4ServerHelper.js';
-import { generateBatchedAlertEmailTemplate } from '../utils/emailTemplates.js';
+import { generateBatchedAlertEmailTemplate, normalizePlan } from '../utils/emailTemplates.js';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { generateBatchedAlertHypotheses } from '../utils/alertHypotheses.js';
 
@@ -216,14 +216,20 @@ async function runCheckMetricAlerts() {
         };
       });
 
-      // AI分析を一括生成（状況整理 + 確認アクション）
+      // サイトオーナーのプランを取得
+      const ownerDoc = await db.collection('users').doc(siteData.userId).get();
+      const isFree = normalizePlan(ownerDoc.data()?.plan) === 'free';
+
+      // AI分析を一括生成（Freeプランはスキップ — コスト削減）
       let aiAnalysis = { summary: '', actions: [] };
-      try {
-        aiAnalysis = await generateBatchedAlertHypotheses(
-          db, siteId, collectedAlerts, siteName, siteUrl, allMetricsSummary
-        );
-      } catch (err) {
-        console.error('[checkMetricAlerts] batched hypotheses error', err.message);
+      if (!isFree) {
+        try {
+          aiAnalysis = await generateBatchedAlertHypotheses(
+            db, siteId, collectedAlerts, siteName, siteUrl, allMetricsSummary
+          );
+        } catch (err) {
+          console.error('[checkMetricAlerts] batched hypotheses error', err.message);
+        }
       }
 
       // メール送信（1サイト1通）
@@ -236,7 +242,8 @@ async function runCheckMetricAlerts() {
         siteName,
         siteUrl,
         periodCurrentLabel,
-        dashboardUrl
+        dashboardUrl,
+        { isFree }
       );
 
       for (const { email } of recipients) {

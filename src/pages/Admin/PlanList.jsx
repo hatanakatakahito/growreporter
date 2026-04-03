@@ -11,8 +11,7 @@ export default function PlanList() {
 
   const plans = [
     PLANS[PLAN_TYPES.FREE],
-    PLANS[PLAN_TYPES.STANDARD],
-    PLANS[PLAN_TYPES.PREMIUM],
+    PLANS[PLAN_TYPES.BUSINESS],
   ];
 
   const fmt = (v) => (isUnlimited(v) ? '無制限' : v);

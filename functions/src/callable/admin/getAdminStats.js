@@ -141,12 +141,12 @@ async function getPlanDistribution() {
 
   const distribution = {
     free: 0,
-    standard: 0,
-    premium: 0,
+    business: 0,
   };
 
   usersSnapshot.forEach((doc) => {
-    const plan = doc.data().plan || 'free';
+    const rawPlan = doc.data().plan || 'free';
+    const plan = (rawPlan === 'standard' || rawPlan === 'premium' || rawPlan === 'paid') ? 'business' : rawPlan;
     if (distribution.hasOwnProperty(plan)) {
       distribution[plan]++;
     }
