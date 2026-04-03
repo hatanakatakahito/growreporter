@@ -326,7 +326,7 @@ export function SiteProvider({ children }) {
   // プラン制限に基づくサイトフィルタリング
   const needsSiteSelection = useMemo(() => {
     if (isLoading || isPlanLoading) return false;
-    if (isAdminViewing) return false;
+    if (isAdminViewing || adminRole) return false;
     if (rawSites.length <= maxSites) return false;
     // activeSiteIdsが保存されていて有効なら選択不要
     if (activeSiteIds && activeSiteIds.length > 0) {
@@ -334,19 +334,19 @@ export function SiteProvider({ children }) {
       if (validIds.length > 0 && validIds.length <= maxSites) return false;
     }
     return true;
-  }, [rawSites, maxSites, activeSiteIds, isLoading, isPlanLoading, isAdminViewing, currentPlan]);
+  }, [rawSites, maxSites, activeSiteIds, isLoading, isPlanLoading, isAdminViewing, adminRole, currentPlan]);
 
   // フィルタ済みサイト一覧（プラン制限適用後）
   const sites = useMemo(() => {
     if (isPlanLoading) return rawSites;
-    if (isAdminViewing) return rawSites;
+    if (isAdminViewing || adminRole) return rawSites;
     if (rawSites.length <= maxSites) return rawSites;
     if (activeSiteIds && activeSiteIds.length > 0) {
       const filtered = rawSites.filter(s => activeSiteIds.includes(s.id));
       if (filtered.length > 0 && filtered.length <= maxSites) return filtered;
     }
     return rawSites;
-  }, [rawSites, maxSites, activeSiteIds, isAdminViewing, isPlanLoading]);
+  }, [rawSites, maxSites, activeSiteIds, isAdminViewing, adminRole, isPlanLoading]);
 
   // サイト選択確定（ダウングレード時のサイト選択モーダル用）
   const confirmSiteSelection = useCallback(async (selectedIds) => {

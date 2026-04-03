@@ -3,6 +3,7 @@ import { setPageTitle } from '../utils/pageTitle';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useSite } from '../contexts/SiteContext';
+import { useAdmin } from '../hooks/useAdmin';
 import { db, functions } from '../config/firebase';
 import { collection, query, where, getDocs, deleteDoc, doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -23,9 +24,11 @@ export default function SiteList() {
   const memberRole = userProfile?.memberRole || 'owner';
   const isOwner = memberRole === 'owner';
 
-  // サイト上限チェック（setupCompleted済みサイトのみカウント）
+  const { isAdmin } = useAdmin();
+
+  // サイト上限チェック（管理者は無制限、setupCompleted済みサイトのみカウント）
   const completedSitesCount = sites.filter(s => s.setupCompleted === true).length;
-  const canAddSite = completedSitesCount < maxSites;
+  const canAddSite = isAdmin || completedSitesCount < maxSites;
 
   const handleNewSite = (e) => {
     if (!canAddSite) {

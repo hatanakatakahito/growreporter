@@ -85,8 +85,6 @@ export default function AdminSettings() {
         return 'bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400';
       case 'editor':
         return 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400';
-      case 'viewer':
-        return 'bg-gray-100 text-body-color dark:bg-dark-3 dark:text-dark-6';
       default:
         return 'bg-gray-100 text-body-color dark:bg-dark-3 dark:text-dark-6';
     }
@@ -304,34 +302,33 @@ export default function AdminSettings() {
                     <th className="py-3 pr-4 text-left font-semibold text-dark dark:text-white">権限</th>
                     <th className="px-4 py-3 text-center font-semibold text-red-600">管理者</th>
                     <th className="px-4 py-3 text-center font-semibold text-blue-600">編集者</th>
-                    <th className="px-4 py-3 text-center font-semibold text-body-color">閲覧者</th>
                   </tr>
                 </thead>
                 <tbody>
                   {[
                     { category: 'ユーザー管理' },
-                    { label: 'ユーザー一覧閲覧', admin: true, editor: true, viewer: true },
-                    { label: 'プラン変更', admin: true, editor: true, viewer: false },
-                    { label: 'カスタム制限設定', admin: true, editor: true, viewer: false },
+                    { label: 'ユーザー一覧閲覧', admin: true, editor: true },
+                    { label: 'プラン変更', admin: true, editor: true },
+                    { label: 'カスタム制限設定', admin: true, editor: true },
                     { category: 'サイト管理' },
-                    { label: 'サイト一覧閲覧', admin: true, editor: true, viewer: true },
-                    { label: 'サイト編集', admin: true, editor: true, viewer: false },
-                    { label: 'サイト削除', admin: true, editor: false, viewer: false },
+                    { label: 'サイト一覧閲覧', admin: true, editor: true },
+                    { label: 'サイト編集', admin: true, editor: true },
+                    { label: 'サイト削除', admin: true, editor: false },
                     { category: '管理者管理' },
-                    { label: '管理者一覧閲覧', admin: true, editor: true, viewer: true },
-                    { label: '管理者追加', admin: true, editor: false, viewer: false },
-                    { label: '管理者権限変更', admin: true, editor: false, viewer: false },
-                    { label: '管理者削除', admin: true, editor: false, viewer: false },
+                    { label: '管理者一覧閲覧', admin: true, editor: true },
+                    { label: '管理者追加', admin: true, editor: false },
+                    { label: '管理者権限変更', admin: true, editor: false },
+                    { label: '管理者削除', admin: true, editor: false },
                     { category: 'ログ・統計' },
-                    { label: 'ログ閲覧', admin: true, editor: true, viewer: true },
-                    { label: '統計閲覧', admin: true, editor: true, viewer: true },
+                    { label: 'ログ閲覧', admin: true, editor: true },
+                    { label: '統計閲覧', admin: true, editor: true },
                     { category: '設定' },
                   ].map((row, idx) => {
                     if (row.category) {
                       return (
                         <tr key={idx}>
                           <td
-                            colSpan={4}
+                            colSpan={3}
                             className="pt-4 pb-2 text-xs font-bold uppercase tracking-wider text-body-color dark:text-dark-6"
                           >
                             {row.category}
@@ -350,7 +347,6 @@ export default function AdminSettings() {
                         <td className="py-2.5 pr-4 text-dark dark:text-white">{row.label}</td>
                         <td className="px-4 py-2.5 text-center"><PermIcon allowed={row.admin} /></td>
                         <td className="px-4 py-2.5 text-center"><PermIcon allowed={row.editor} /></td>
-                        <td className="px-4 py-2.5 text-center"><PermIcon allowed={row.viewer} /></td>
                       </tr>
                     );
                   })}
