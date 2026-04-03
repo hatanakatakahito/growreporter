@@ -333,24 +333,26 @@ export default function ComprehensiveAI() {
 }
 
 function FreeUpgradePrompt() {
-  const navigate = useNavigate();
+  const [showModal, setShowModal] = useState(false);
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-stroke bg-white p-12 text-center">
-      <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500">
-        <Crown className="h-8 w-8 text-white" />
+    <>
+      <div className="flex flex-col items-center justify-center rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-500">
+          <Crown className="h-8 w-8 text-white" />
+        </div>
+        <h3 className="mb-2 text-xl font-bold text-dark dark:text-white">AI総合分析はビジネスプランでご利用いただけます</h3>
+        <p className="mb-6 max-w-md text-sm text-body-color">
+          全データを横断したAI分析により、サイトの現状と注目ポイントを1画面で把握できます。
+        </p>
+        <button
+          onClick={() => setShowModal(true)}
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white shadow-md transition-all hover:bg-primary/90"
+        >
+          プランを確認する
+        </button>
       </div>
-      <h3 className="mb-2 text-xl font-bold text-dark">AI総合分析はビジネスプランでご利用いただけます</h3>
-      <p className="mb-6 max-w-md text-sm text-body-color">
-        全データを横断したAI分析により、サイトの現状と注目ポイントを1画面で把握できます。
-      </p>
-      <button
-        onClick={() => navigate('/plan-info')}
-        className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white shadow-md transition-all hover:bg-primary/90"
-      >
-        詳しく見る
-        <ArrowRight className="h-4 w-4" />
-      </button>
-    </div>
+      {showModal && <UpgradeModal isOpen={showModal} onClose={() => setShowModal(false)} />}
+    </>
   );
 }
 
