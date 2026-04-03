@@ -64,8 +64,9 @@ export const inviteMemberCallable = async (request) => {
       }
     });
     
-    const plan = userData.plan || 'free';
-    const limits = { free: 1, standard: 3, premium: 10 };
+    const rawPlan = userData.plan || 'free';
+    const plan = (rawPlan === 'standard' || rawPlan === 'premium') ? 'business' : rawPlan;
+    const limits = { free: 1, business: 3 };
     
     if (currentMemberCount >= limits[plan]) {
       throw new HttpsError('resource-exhausted', 

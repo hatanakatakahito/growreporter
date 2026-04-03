@@ -27,7 +27,7 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
     return user.displayName || user.email;
   };
 
-  const plans = ['free', 'standard', 'premium'];
+  const plans = ['free', 'business'];
   const currentPlan = user.plan || 'free';
 
   // プラン変更を実行
@@ -153,7 +153,7 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
             <label className="mb-3 block text-sm font-medium text-dark dark:text-white">
               新しいプラン
             </label>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               {plans.map((plan) => {
                 const planInfo = getPlanInfo(plan);
                 const isSelected = selectedPlan === plan;

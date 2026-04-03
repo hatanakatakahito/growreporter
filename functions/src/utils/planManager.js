@@ -1,41 +1,40 @@
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 
-// デフォルトのプラン設定（フォールバック用）
+/**
+ * プランIDを正規化（後方互換: standard/premium → business）
+ */
+function normalizePlan(planId) {
+  const id = (planId || 'free').toLowerCase();
+  if (id === 'standard' || id === 'premium' || id === 'paid') return 'business';
+  if (id === 'business') return 'business';
+  return 'free';
+}
+
+// デフォルトのプラン設定（v5.7.0: Free / Business の2プラン）
+const BUSINESS_CONFIG = {
+  maxSites: 3,
+  aiSummaryLimit: -1,
+  aiImprovementLimit: -1,
+  aiChatLimit: -1,
+  excelExportLimit: -1,
+  pptxExportLimit: -1,
+};
+
 const DEFAULT_PLANS = {
   free: {
     maxSites: 1,
-    aiSummaryLimit: -1, // 無制限（再分析はgenerateAISummary.js内で制限）
-    aiImprovementLimit: 1,
-    aiChatLimit: 10, // AIチャット10回/月
-    excelExportLimit: 1,
-    pptxExportLimit: 1,
+    aiSummaryLimit: 0,
+    aiImprovementLimit: 0,
+    aiChatLimit: 0,
+    excelExportLimit: 0,
+    pptxExportLimit: 0,
   },
-  standard: {
-    maxSites: 3,
-    aiSummaryLimit: 4, // 再分析4回/月（週1回相当）
-    aiImprovementLimit: 4, // AI改善4回/月（週1回相当）
-    aiChatLimit: 50, // AIチャット50回/月
-    excelExportLimit: -1,
-    pptxExportLimit: -1,
-  },
-  premium: {
-    maxSites: 10,
-    aiSummaryLimit: -1, // 無制限
-    aiImprovementLimit: -1, // 無制限
-    aiChatLimit: -1, // AIチャット無制限
-    excelExportLimit: -1,
-    pptxExportLimit: -1,
-  },
-  // 旧システム互換
-  paid: {
-    maxSites: 999999,
-    aiSummaryLimit: -1,
-    aiImprovementLimit: -1,
-    aiChatLimit: -1,
-    excelExportLimit: -1,
-    pptxExportLimit: -1,
-  },
+  business: BUSINESS_CONFIG,
+  // 後方互換（standard/premium/paid → businessと同じ制限）
+  standard: BUSINESS_CONFIG,
+  premium: BUSINESS_CONFIG,
+  paid: BUSINESS_CONFIG,
 };
 
 /**
@@ -108,7 +107,7 @@ export async function getEffectiveLimit(userId, type = 'summary') {
       return 0; // デフォルトは使用不可
     }
 
-    const plan = userData.plan || 'free';
+    const plan = normalizePlan(userData.plan);
     const planConfig = DEFAULT_PLANS[plan] || DEFAULT_PLANS.free;
 
     const limitMap = {

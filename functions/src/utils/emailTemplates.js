@@ -10,7 +10,28 @@ import { ja } from 'date-fns/locale';
  * @param {Object} dateRange - 期間情報
  * @returns {Object} { subject, html, text }
  */
-export function generateEmailTemplate(reportType, siteData, dateRange) {
+/**
+ * プランIDを正規化（後方互換）
+ */
+export function normalizePlan(planId) {
+  const id = (planId || 'free').toLowerCase();
+  if (id === 'standard' || id === 'premium' || id === 'paid' || id === 'business') return 'business';
+  return 'free';
+}
+
+/**
+ * Business訴求HTMLブロック
+ */
+export function getBusinessUpsellHtml() {
+  return `
+    <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 12px; padding: 24px; margin-top: 32px; text-align: center;">
+      <p style="color: white; font-size: 16px; font-weight: bold; margin: 0 0 8px;">AIの力でサイト改善を加速しませんか？</p>
+      <p style="color: rgba(255,255,255,0.9); font-size: 13px; margin: 0 0 16px;">Businessプランなら、この数値の背景や改善策をAIが自動で分析します。</p>
+      <a href="https://growgroupreporter.web.app/plan-info" style="display: inline-block; background: white; color: #059669; font-weight: bold; padding: 10px 24px; border-radius: 8px; text-decoration: none; font-size: 14px;">Businessプランを詳しく見る</a>
+    </div>`;
+}
+
+export function generateEmailTemplate(reportType, siteData, dateRange, options = {}) {
   const { siteName, siteUrl, siteId, metrics, previousMetrics } = siteData;
   const conversionDetails = siteData.conversionDetails || [];
   const previousConversionDetails = siteData.previousConversionDetails || [];
@@ -199,6 +220,8 @@ export function generateEmailTemplate(reportType, siteData, dateRange) {
               <a href="${dashboardUrl}" style="display: inline-block; background-color: #3758F9; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 6px; font-size: 16px; font-weight: 600; box-shadow: 0 4px 6px rgba(55, 88, 249, 0.3);">詳細を確認する</a>
             </td>
           </tr>
+
+          ${options.isFree ? `<tr><td style="padding: 0 30px 20px;">${getBusinessUpsellHtml()}</td></tr>` : ''}
 
           <!-- フッター -->
           <tr>
@@ -564,7 +587,7 @@ export function generateAlertEmailTemplate(alert, siteName, siteUrl, dashboardUr
  * @param {string} dashboardUrl - ダッシュボードURL
  * @returns {Object} { subject, html, text }
  */
-export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetricsSummary, siteName, siteUrl, periodLabel, dashboardUrl = '') {
+export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetricsSummary, siteName, siteUrl, periodLabel, dashboardUrl = '', options = {}) {
   const displaySiteName = (siteName != null && siteName !== '') ? String(siteName) : '（サイト名なし）';
   const displaySiteUrl = (siteUrl != null && siteUrl !== '') ? String(siteUrl) : '';
   const alertCount = alerts.length;
@@ -675,6 +698,7 @@ export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetrics
             </td>
           </tr>
 
+          ${options.isFree ? '' : `
           <!-- 状況の整理 -->
           ${summaryHtml ? `
           <tr>
@@ -694,6 +718,9 @@ export function generateBatchedAlertEmailTemplate(alerts, aiAnalysis, allMetrics
               </table>
             </td>
           </tr>` : ''}
+          `}
+
+          ${options.isFree ? `<tr><td style="padding: 0 30px 20px;">${getBusinessUpsellHtml()}</td></tr>` : ''}
 
           <!-- アクションボタン -->
           ${dashboardUrl ? `

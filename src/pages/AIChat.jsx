@@ -138,7 +138,7 @@ const PAGE_SUGGEST_QUESTIONS = {
 export default function AIChat() {
   const { selectedSite, selectedSiteId } = useSite();
   const { currentUser } = useAuth();
-  const { plan, getRemainingByType } = usePlan();
+  const { plan, getRemainingByType, isFree } = usePlan();
   const [searchParams] = useSearchParams();
 
   const [sessions, setSessions] = useState([]);
@@ -407,6 +407,34 @@ export default function AIChat() {
   const filteredSessions = searchQuery
     ? sessions.filter(s => (s.title || '').toLowerCase().includes(searchQuery.toLowerCase()) || (s.lastMessage || '').toLowerCase().includes(searchQuery.toLowerCase()))
     : sessions;
+
+  // Freeプラン: ダミーチャット+ロック
+  if (isFree) {
+    const BusinessPlanLockOverlay = React.lazy(() => import('../components/common/BusinessPlanLockOverlay'));
+    return (
+      <div className="flex h-full p-6">
+        <React.Suspense fallback={null}>
+          <BusinessPlanLockOverlay>
+            <div className="flex h-[500px] w-full flex-col rounded-xl border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+              <div className="border-b border-stroke p-4 dark:border-dark-3">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <span className="font-semibold text-dark dark:text-white">AIチャット</span>
+                </div>
+              </div>
+              <div className="flex-1 space-y-4 p-6">
+                <div className="flex justify-end"><div className="max-w-xs rounded-xl bg-primary/10 px-4 py-2 text-sm text-dark dark:text-white">先月のアクセスが減少した原因を教えてください</div></div>
+                <div className="flex justify-start"><div className="max-w-md rounded-xl bg-gray-100 px-4 py-3 text-sm text-body-color dark:bg-dark-3 dark:text-dark-6">先月のアクセス減少の主な要因は、オーガニック検索からの流入が前月比-18%減少したことです。特に主要キーワード「社員寮 東京」の順位が5位→12位に下落しています。改善策として...</div></div>
+              </div>
+              <div className="border-t border-stroke p-4 dark:border-dark-3">
+                <div className="flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 dark:border-dark-3"><span className="flex-1 text-sm text-body-color">メッセージを入力...</span><Send className="h-4 w-4 text-body-color" /></div>
+              </div>
+            </div>
+          </BusinessPlanLockOverlay>
+        </React.Suspense>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full bg-gray-50 dark:bg-dark">
