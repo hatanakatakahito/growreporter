@@ -250,7 +250,7 @@ export default function Sidebar() {
 
   return (
     <>
-    <aside className={`fixed left-0 top-0 z-40 h-screen border-r ${t.border} ${t.aside} transition-all duration-300 ${
+    <aside className={`fixed left-0 top-0 z-40 h-screen border-r ${t.border} ${t.aside} transition-all duration-300 hidden md:block ${
       isSidebarOpen ? 'w-64' : 'w-16'
     }`}>
       {/* ロゴ */}
@@ -508,10 +508,10 @@ export default function Sidebar() {
       </div>
     </aside>
 
-    {/* サイドバー開閉ボタン（境界線の中央に円形で表示） */}
+    {/* サイドバー開閉ボタン（境界線の中央に円形で表示） - スマホ非表示 */}
     <button
       onClick={toggleSidebar}
-      className={`fixed top-1/2 z-40 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border shadow-md transition-all duration-300 ${t.toggleBtnBg} ${
+      className={`fixed top-1/2 z-40 hidden md:flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border shadow-md transition-all duration-300 ${t.toggleBtnBg} ${
         isSidebarOpen ? 'left-64' : 'left-16'
       }`}
       title={isSidebarOpen ? 'サイドバーを閉じる' : 'サイドバーを開く'}

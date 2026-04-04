@@ -186,7 +186,7 @@ export default function AnalysisNavigation() {
         />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         {/* コンテンツ */}
-        <div className="mx-auto max-w-content px-6 py-10">
+        <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           {/* ページタイトル */}
           <div className="mb-8">
             <h2 className="mb-2 text-3xl font-bold text-dark dark:text-white">分析する</h2>

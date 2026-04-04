@@ -62,7 +62,7 @@ export default function PlanInfo() {
 
   return (
     <div className="w-full min-w-0 flex justify-center">
-      <div className="w-full max-w-[1100px] mx-auto px-6 py-10 box-border">
+      <div className="w-full max-w-[1100px] mx-auto px-3 sm:px-6 py-6 sm:py-10 box-border">
         {/* ヘッダー */}
         <div className="mb-8 flex items-center gap-4">
           <Button

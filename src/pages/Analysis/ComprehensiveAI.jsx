@@ -285,7 +285,7 @@ export default function ComprehensiveAI() {
         hideComparison={true}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
-        <div className="mx-auto max-w-content px-6 py-10">
+        <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4">
             <h2 className="text-lg font-bold text-dark dark:text-white">分析する - AI総合分析</h2>
             <p className="mt-0.5 text-sm text-body-color">
