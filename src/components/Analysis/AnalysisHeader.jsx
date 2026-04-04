@@ -153,8 +153,8 @@ export default function AnalysisHeader({
   return (
     <>
       {/* ヘッダーセクション */}
-      <div className="bg-white border-b border-gray-200 min-h-[56px] md:h-20 glass-header sticky top-0 z-40">
-        <div className="mx-auto max-w-content px-3 md:px-6 h-full flex items-center py-2 md:py-0">
+      <div className="bg-white border-b border-gray-200 glass-header sticky top-14 md:top-0 z-30">
+        <div className="mx-auto max-w-content px-3 md:px-6 py-3 md:py-5 flex items-center">
           <div className="flex items-center justify-between w-full gap-2">
             {/* サイト選択 */}
             <div className="relative flex items-center shrink-0">
@@ -183,9 +183,9 @@ export default function AnalysisHeader({
               {/* カスタムダウンロード（改善画面など） */}
               {customDownload}
 
-              {/* ダウンロードメニュー（ダッシュボード・分析画面のみ） */}
+              {/* ダウンロードメニュー（ダッシュボード・分析画面のみ、スマホ非表示） */}
               {showExport && (
-                <div className="relative" ref={downloadMenuRef}>
+                <div className="relative hidden sm:block" ref={downloadMenuRef}>
                   <button
                     onClick={() => !isExporting && selectedSiteId && setIsDownloadMenuOpen(!isDownloadMenuOpen)}
                     disabled={isExporting || !selectedSiteId}

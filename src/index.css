@@ -104,9 +104,11 @@ html {
    ============================================================ */
 
 /* セクション間の余白バランス最適化 */
-.main-content .mx-auto.max-w-content {
-  padding-top: 2.75rem;
-  padding-bottom: 3rem;
+@media (max-width: 767px) {
+  .main-content .mx-auto.max-w-content {
+    padding-top: 0.25rem;
+    padding-bottom: 0.5rem;
+  }
 }
 /* カード系セクション間に少しゆとりを追加（grid内は除外） */
 .main-content .rounded-lg.border + .rounded-lg.border:not(:is(.grid > *)) {
