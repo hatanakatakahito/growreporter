@@ -50,7 +50,7 @@ export default function Reports() {
     <div className="flex flex-col h-full">
       <AnalysisHeader dateRange={null} setDateRange={null} showDateRange={false} showSiteInfo={false} showExport={false} />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
-        <div className="mx-auto max-w-content px-6 py-10">
+        <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-6">
             <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">評価する</h2>
             <p className="text-sm text-body-color">{selectedSite?.siteName} の改善効果を自動計測し、成果を確認・評価</p>

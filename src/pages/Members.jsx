@@ -179,7 +179,7 @@ export default function Members() {
 
   return (
     <div className="w-full min-w-0">
-      <div className="w-full !max-w-[1400px] mx-auto px-6 py-10 box-border" style={{ maxWidth: '1400px' }}>
+      <div className="w-full !max-w-[1400px] mx-auto px-3 sm:px-6 py-6 sm:py-10 box-border" style={{ maxWidth: '1400px' }}>
       {/* ヘッダー */}
       <div className="mb-8">
         <div className="flex items-center justify-between">

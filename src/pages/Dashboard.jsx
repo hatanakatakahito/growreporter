@@ -119,8 +119,8 @@ export default function Dashboard() {
           <div className="relative overflow-hidden border-b border-slate-200/40">
             <div className="absolute inset-0" style={{ background: 'linear-gradient(135deg, rgba(224, 242, 254, 0.7), rgba(237, 233, 254, 0.5), rgba(254, 249, 195, 0.4))' }} />
             <div className="absolute inset-0 backdrop-blur-sm" />
-            <div className="relative mx-auto px-8 py-8" style={{ maxWidth: 1400 }}>
-              <div className="flex items-center justify-between gap-10">
+            <div className="relative mx-auto px-4 sm:px-8 py-6 sm:py-8" style={{ maxWidth: 1400 }}>
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-10">
                 <div className="min-w-0 flex-1">
                   <div className="mb-1 flex items-center gap-2.5">
                     <Globe className="h-5 w-5 shrink-0 text-primary" />
@@ -141,7 +141,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 {/* スクリーンショット重ね配置 */}
-                <div className="relative shrink-0" style={{ width: 320, height: 190 }}>
+                <div className="relative shrink-0 hidden md:block" style={{ width: 320, height: 190 }}>
                   {/* PC */}
                   {selectedSite.pcScreenshotUrl ? (
                     <div
@@ -186,7 +186,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        <div className="mx-auto max-w-content px-6 py-10">
+        <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="space-y-8">
             {/* クイックアクション */}
             <QuickActions />
