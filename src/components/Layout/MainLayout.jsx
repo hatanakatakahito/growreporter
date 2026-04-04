@@ -49,8 +49,8 @@ function MobileDrawer({ isOpen, onClose }) {
   };
 
   const menuItems = [
-    { label: 'ダッシュボード', path: '/dashboard', icon: '🏠' },
-    { label: 'AIチャット', path: '/ai-chat', icon: '💬', locked: true },
+    { label: 'ダッシュボード', path: '/dashboard' },
+    { label: 'AIチャット', path: '/ai-chat', locked: true },
     { divider: true, label: '分析する' },
     { label: '全体サマリー', path: '/analysis/summary', indent: true },
     { label: 'ユーザー属性', path: '/analysis/users', indent: true },
@@ -68,11 +68,11 @@ function MobileDrawer({ isOpen, onClose }) {
     { label: '逆算フロー', path: '/analysis/reverse-flow', indent: true },
     { label: 'AI総合分析', path: '/analysis/comprehensive', indent: true, locked: true },
     { divider: true },
-    { label: '改善する', path: '/improve', icon: '⚡', locked: true },
-    { label: '評価する', path: '/reports', icon: '⭐', locked: true },
+    { label: '改善する', path: '/improve', locked: true },
+    { label: '評価する', path: '/reports', locked: true },
     { divider: true },
-    { label: 'サイト管理', path: '/sites', icon: '🖥️' },
-    { label: 'アカウント設定', path: '/account/settings', icon: '👤' },
+    { label: 'サイト管理', path: '/sites' },
+    { label: 'アカウント設定', path: '/account/settings' },
   ];
 
   return (
@@ -80,13 +80,13 @@ function MobileDrawer({ isOpen, onClose }) {
       {/* オーバーレイ */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-[9998] bg-black/30 md:hidden"
           onClick={onClose}
         />
       )}
 
       {/* ドロワー */}
-      <div className={`fixed left-0 top-0 z-50 h-full w-72 bg-white dark:bg-dark-2 shadow-2xl transform transition-transform duration-300 md:hidden ${
+      <div className={`fixed left-0 top-0 z-[9999] h-full w-72 bg-white dark:bg-dark-2 shadow-2xl transform transition-transform duration-300 md:hidden ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         {/* ドロワーヘッダー */}
@@ -126,7 +126,6 @@ function MobileDrawer({ isOpen, onClose }) {
                       : 'text-dark dark:text-white hover:bg-gray-50 dark:hover:bg-dark-3'
                 }`}
               >
-                {item.icon && <span className="text-base">{item.icon}</span>}
                 <span className="flex-1 text-left">{item.label}</span>
                 {locked && <Lock className="h-3.5 w-3.5 text-body-color/40" />}
                 {!locked && !item.indent && <ChevronRight className="h-3.5 w-3.5 text-body-color/30" />}
@@ -201,7 +200,7 @@ export default function MainLayout() {
       <Sidebar />
 
       {/* メインコンテンツエリア */}
-      <div className={`main-content flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden transition-[margin-left] duration-300 pb-16 md:pb-0 ${
+      <div className={`main-content flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden transition-[margin-left] duration-300 ${
         isSidebarOpen ? 'ml-0 md:ml-64' : 'ml-0 md:ml-16'
       }`}>
         {/* スマホ: モバイルヘッダー */}
@@ -220,8 +219,6 @@ export default function MainLayout() {
         onClose={() => setIsMobileMenuOpen(false)}
       />
 
-      {/* スマホ: ボトムナビ */}
-      <MobileBottomNav />
 
       {/* サイト選択モーダル */}
       <SiteSelectionModal />
