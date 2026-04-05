@@ -157,7 +157,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
       </div>
 
       <DialogBody>
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {/* 無料プラン */}
           <div className="rounded-lg border-2 border-stroke p-5 dark:border-dark-3">
             <div className="mb-3 text-center">

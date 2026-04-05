@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FileText, Globe, Bell, AlertTriangle, CheckCircle } from 'lucide-react';
+import { FileText, Globe, Bell, AlertTriangle, CheckCircle, X } from 'lucide-react';
 import { getPageTypeLabel } from '../../constants/pageTypes';
 import { useSite } from '../../contexts/SiteContext';
 import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
@@ -114,7 +114,12 @@ export default function GlobalMemoNotificationModal({
 
   return (
     <Dialog open={isOpen} onClose={onClose} size="md">
-      <DialogTitle>通知</DialogTitle>
+      <div className="flex items-center justify-between">
+        <DialogTitle className="!mb-0">通知</DialogTitle>
+        <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-body-color hover:bg-gray-100 dark:hover:bg-dark-3 -mr-2 -mt-2">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
 
       {/* タブ */}
       <div className="-mx-(--gutter) mt-4 flex border-b border-stroke dark:border-dark-3">

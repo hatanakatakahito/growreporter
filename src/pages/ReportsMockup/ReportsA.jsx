@@ -324,7 +324,7 @@ export function PendingDetail({ em, effectiveDate }) {
       </div>
       <p className="text-sm text-body-color mb-4">改善後 期間の終了日（{afterEndDate}）以降に自動的に指標を取得し、効果を計測します。</p>
       {em?.before && (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {[
             { l: 'セッション', v: em.before.sessions?.toLocaleString() },
             { l: 'ユーザー', v: em.before.totalUsers?.toLocaleString() },

@@ -280,7 +280,7 @@ export default function AdminDashboard() {
 
         {batchResult && (
           <div className="mt-4 rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
-            <div className="mb-2 grid grid-cols-4 gap-3 text-center text-sm">
+            <div className="mb-2 grid grid-cols-2 sm:grid-cols-4 gap-3 text-center text-sm">
               <div>
                 <div className="text-lg font-bold text-dark dark:text-white">{batchResult.summary.total}</div>
                 <div className="text-xs text-body-color">合計</div>

@@ -602,7 +602,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
 
         {/* ミニKPIサマリー（5枚カード） - クリックで対応セクションへスクロール */}
         {miniKpis.length > 0 && (
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
             {miniKpis.map((kpi, i) => {
               const sectionIds = ['section-access', 'section-visitor', 'section-channel', 'section-content', 'section-conversion'];
               return (

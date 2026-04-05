@@ -107,7 +107,7 @@ function MonthNav({ label, month, onPrev, onNext }) {
 /**
  * 日付範囲選択カレンダーコンポーネント
  */
-export default function DateRangePicker({ dateRange, onDateRangeChange, hideComparison = false }) {
+export default function DateRangePicker({ dateRange, onDateRangeChange, hideComparison = false, compact = false }) {
   const { comparisonMode, setComparisonMode, comparisonDateRange, setCustomComparisonRange } = useSite();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedRange, setSelectedRange] = useState(null);
@@ -228,23 +228,28 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
           setIsOpen(!isOpen);
           setShowCustomCalendar(false);
         }}
-        className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-3.5 py-2 shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:outline-none"
+        className={compact
+          ? "flex h-9 w-9 items-center justify-center rounded-lg text-body-color hover:bg-gray-100"
+          : "flex items-center gap-2 rounded-lg border border-stroke bg-white px-3.5 py-2 shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:outline-none"
+        }
       >
-        <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
-        <div className="flex flex-col items-start">
-          {dateRange?.from && dateRange?.to ? (
-            <span className="text-sm font-medium text-dark leading-tight">
-              {format(new Date(dateRange.from), 'yyyy-MM-dd')} - {format(new Date(dateRange.to), 'yyyy-MM-dd')}
-            </span>
-          ) : (
-            <span className="text-sm font-medium text-dark">期間を選択</span>
-          )}
-          {!hideComparison && comparisonMode !== 'none' && comparisonDateRange && (
-            <span className="text-xs leading-tight text-blue-500">
-              比較:{comparisonDateRange.from} ~ {comparisonDateRange.to}
-            </span>
-          )}
-        </div>
+        <Calendar className={compact ? "h-5 w-5" : "h-4 w-4 text-gray-400 shrink-0"} />
+        {!compact && (
+          <div className="flex flex-col items-start">
+            {dateRange?.from && dateRange?.to ? (
+              <span className="text-sm font-medium text-dark leading-tight">
+                {format(new Date(dateRange.from), 'yyyy-MM-dd')} - {format(new Date(dateRange.to), 'yyyy-MM-dd')}
+              </span>
+            ) : (
+              <span className="text-sm font-medium text-dark">期間を選択</span>
+            )}
+            {!hideComparison && comparisonMode !== 'none' && comparisonDateRange && (
+              <span className="text-xs leading-tight text-blue-500">
+                比較:{comparisonDateRange.from} ~ {comparisonDateRange.to}
+              </span>
+            )}
+          </div>
+        )}
       </button>
 
       {/* メインカレンダードロップダウン */}

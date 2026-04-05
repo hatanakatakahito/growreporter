@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { Outlet, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, BarChart3, Sparkles, Settings, Menu, X, ChevronRight, Lock, Bell, Calendar } from 'lucide-react';
+import { Home, Menu, X, ChevronRight, Lock, Bell } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useSite } from '../../contexts/SiteContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { usePlan } from '../../hooks/usePlan';
+import { useGlobalMemoNotifications } from '../../hooks/useGlobalMemoNotifications';
+import { useGlobalAlertNotifications } from '../../hooks/useGlobalAlertNotifications';
+import GlobalNotificationModal from './GlobalMemoNotificationModal';
+import DateRangePicker from '../Analysis/DateRangePicker';
 import SiteSelectionModal from '../common/SiteSelectionModal';
 import UpgradeModal from '../common/UpgradeModal';
 import logoImg from '../../assets/img/logo.svg';
@@ -13,33 +18,60 @@ import logoImg from '../../assets/img/logo.svg';
  * スマホ用モバイルヘッダー（ロゴ + ハンバーガー）
  */
 function MobileHeader({ onMenuToggle, isMenuOpen }) {
-  const { selectedSiteId, sites, selectSite } = useSite();
-  const [showNotification, setShowNotification] = useState(false);
+  const { selectedSiteId, sites, selectSite, isAdminViewing, dateRange, updateDateRange } = useSite();
+  const { currentUser } = useAuth();
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+
+  const { unreadMemos, unreadCount: memoUnreadCount, markAllAsRead } = useGlobalMemoNotifications(
+    currentUser?.uid, sites, isAdminViewing
+  );
+  const { unreadAlerts, unreadAlertCount, markAllAlertsAsRead } = useGlobalAlertNotifications(
+    currentUser?.uid, sites, isAdminViewing
+  );
+  const totalUnreadCount = memoUnreadCount + unreadAlertCount;
 
   return (
     <div className="sticky top-0 z-50 flex md:hidden items-center justify-between px-3 py-[10px] bg-white border-b border-stroke dark:bg-dark-2 dark:border-dark-3">
       <Link to="/dashboard" className="shrink-0">
         <img src={logoImg} alt="GROW REPORTER" className="h-7 w-auto" />
       </Link>
-      <div className="flex items-center gap-0.5">
-        {/* サイト選択（コンパクト） */}
+      <div className="flex items-center gap-1">
+        {/* サイト選択 */}
         <div className="relative">
           <select
             value={selectedSiteId || ''}
             onChange={(e) => selectSite(e.target.value)}
-            className="h-9 w-9 cursor-pointer appearance-none rounded-lg bg-transparent text-transparent focus:outline-none"
+            className="h-9 w-9 cursor-pointer appearance-none rounded-lg bg-transparent text-transparent absolute inset-0 z-10 opacity-0"
             title="サイト切替"
-          />
-          <Home className="pointer-events-none absolute inset-0 m-auto h-4.5 w-4.5 text-body-color" />
+          >
+            {sites.map((site) => (
+              <option key={site.id} value={site.id}>{site.siteName}</option>
+            ))}
+          </select>
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg text-body-color">
+            <Home className="h-5 w-5" />
+          </div>
         </div>
         {/* 通知 */}
-        <Link to="/dashboard" className="flex h-9 w-9 items-center justify-center rounded-lg text-body-color hover:bg-gray-100">
-          <Bell className="h-4.5 w-4.5" />
-        </Link>
-        {/* 日付（ダッシュボードへ遷移） */}
-        <Link to="/dashboard" className="flex h-9 w-9 items-center justify-center rounded-lg text-body-color hover:bg-gray-100">
-          <Calendar className="h-4.5 w-4.5" />
-        </Link>
+        <button
+          onClick={() => setIsNotificationOpen(true)}
+          className="relative flex h-9 w-9 items-center justify-center rounded-lg text-body-color hover:bg-gray-100"
+        >
+          <Bell className="h-5 w-5" />
+          {totalUnreadCount > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+              {totalUnreadCount > 99 ? '99+' : totalUnreadCount}
+            </span>
+          )}
+        </button>
+        {/* 日付 */}
+        {/* 日付 */}
+        <DateRangePicker
+          dateRange={dateRange}
+          onDateRangeChange={updateDateRange}
+          hideComparison
+          compact
+        />
         {/* ハンバーガー */}
         <button
           onClick={onMenuToggle}
@@ -48,6 +80,14 @@ function MobileHeader({ onMenuToggle, isMenuOpen }) {
           {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </div>
+      <GlobalNotificationModal
+        isOpen={isNotificationOpen}
+        onClose={() => setIsNotificationOpen(false)}
+        unreadMemos={unreadMemos}
+        onMarkAllAsRead={markAllAsRead}
+        unreadAlerts={unreadAlerts}
+        onMarkAllAlertsAsRead={markAllAlertsAsRead}
+      />
     </div>
   );
 }
@@ -72,31 +112,36 @@ function MobileDrawer({ isOpen, onClose }) {
     onClose();
   };
 
+  const iconClass = "h-5 w-5 shrink-0";
   const menuItems = [
-    { label: 'ダッシュボード', path: '/dashboard' },
-    { label: 'AIチャット', path: '/ai-chat', locked: true },
-    { divider: true, label: '分析する' },
+    { label: 'ダッシュボード', path: '/dashboard', icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
+    { label: 'AIチャット', path: '/ai-chat', locked: true, icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg> },
+    { divider: true, label: '分析する', icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
     { label: '全体サマリー', path: '/analysis/summary', indent: true },
     { label: 'ユーザー属性', path: '/analysis/users', indent: true },
-    { label: '月別', path: '/analysis/month', indent: true },
-    { label: '日別', path: '/analysis/day', indent: true },
-    { label: '曜日別', path: '/analysis/week', indent: true },
-    { label: '時間帯別', path: '/analysis/hour', indent: true },
-    { label: '集客チャネル', path: '/analysis/channels', indent: true },
-    { label: '流入キーワード', path: '/analysis/keywords', indent: true },
-    { label: '被リンク元', path: '/analysis/referrals', indent: true },
-    { label: 'ページ別', path: '/analysis/pages', indent: true },
-    { label: 'ページ分類別', path: '/analysis/page-categories', indent: true },
-    { label: 'ランディングページ', path: '/analysis/landing-pages', indent: true },
-    { label: 'コンバージョン一覧', path: '/analysis/conversions', indent: true },
-    { label: '逆算フロー', path: '/analysis/reverse-flow', indent: true },
+    { groupLabel: '時系列' },
+    { label: '月別', path: '/analysis/month', indent: 2 },
+    { label: '日別', path: '/analysis/day', indent: 2 },
+    { label: '曜日別', path: '/analysis/week', indent: 2 },
+    { label: '時間帯別', path: '/analysis/hour', indent: 2 },
+    { groupLabel: '集客' },
+    { label: '集客チャネル', path: '/analysis/channels', indent: 2 },
+    { label: '流入キーワード', path: '/analysis/keywords', indent: 2 },
+    { label: '被リンク元', path: '/analysis/referrals', indent: 2 },
+    { groupLabel: 'ページ' },
+    { label: 'ページ別', path: '/analysis/pages', indent: 2 },
+    { label: 'ページ分類別', path: '/analysis/page-categories', indent: 2 },
+    { label: 'ランディングページ', path: '/analysis/landing-pages', indent: 2 },
+    { groupLabel: 'コンバージョン' },
+    { label: 'コンバージョン一覧', path: '/analysis/conversions', indent: 2 },
+    { label: '逆算フロー', path: '/analysis/reverse-flow', indent: 2 },
     { label: 'AI総合分析', path: '/analysis/comprehensive', indent: true, locked: true },
     { divider: true },
-    { label: '改善する', path: '/improve', locked: true },
-    { label: '評価する', path: '/reports', locked: true },
+    { label: '改善する', path: '/improve', locked: true, icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> },
+    { label: '評価する', path: '/reports', locked: true, icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg> },
     { divider: true },
-    { label: 'サイト管理', path: '/sites' },
-    { label: 'アカウント設定', path: '/account/settings' },
+    { label: 'サイト管理', path: '/sites', icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" /></svg> },
+    { label: 'アカウント設定', path: '/account/settings', icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" /></svg> },
   ];
 
   return (
@@ -124,11 +169,25 @@ function MobileDrawer({ isOpen, onClose }) {
         {/* メニュー */}
         <nav className="flex-1 overflow-y-auto py-2">
           {menuItems.map((item, i) => {
+            if (item.groupLabel) {
+              return (
+                <div key={i} className="pl-8 pt-3 pb-1">
+                  <p className="text-[11px] font-semibold text-body-color/60">{item.groupLabel}</p>
+                </div>
+              );
+            }
+
             if (item.divider) {
               return (
                 <div key={i} className="px-4 pt-4 pb-1">
-                  {item.label && <p className="text-xs font-semibold uppercase tracking-wider text-body-color">{item.label}</p>}
-                  {!item.label && <div className="border-t border-stroke dark:border-dark-3" />}
+                  {item.label ? (
+                    <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-body-color">
+                      {item.icon && item.icon}
+                      {item.label}
+                    </div>
+                  ) : (
+                    <div className="border-t border-stroke dark:border-dark-3" />
+                  )}
                 </div>
               );
             }
@@ -141,7 +200,7 @@ function MobileDrawer({ isOpen, onClose }) {
                 key={i}
                 onClick={() => handleNav(item.path, item.locked)}
                 className={`flex w-full items-center gap-3 px-4 py-2.5 text-sm transition ${
-                  item.indent ? 'pl-8' : ''
+                  item.indent === 2 ? 'pl-12' : item.indent ? 'pl-8' : ''
                 } ${
                   active
                     ? 'bg-primary/10 text-primary font-medium'
@@ -150,6 +209,7 @@ function MobileDrawer({ isOpen, onClose }) {
                       : 'text-dark dark:text-white hover:bg-gray-50 dark:hover:bg-dark-3'
                 }`}
               >
+                {item.icon && item.icon}
                 <span className="flex-1 text-left">{item.label}</span>
                 {locked && <Lock className="h-3.5 w-3.5 text-body-color/40" />}
                 {!locked && !item.indent && <ChevronRight className="h-3.5 w-3.5 text-body-color/30" />}
@@ -167,38 +227,6 @@ function MobileDrawer({ isOpen, onClose }) {
 /**
  * スマホ用ボトムナビ
  */
-function MobileBottomNav() {
-  const location = useLocation();
-  const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
-
-  const items = [
-    { icon: Home, label: 'ホーム', path: '/dashboard' },
-    { icon: BarChart3, label: '分析', path: '/analysis/summary' },
-    { icon: Sparkles, label: 'AI', path: '/ai-chat' },
-    { icon: Settings, label: '管理', path: '/sites' },
-  ];
-
-  return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 flex md:hidden border-t border-stroke bg-white dark:bg-dark-2 dark:border-dark-3" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-      {items.map((item) => {
-        const active = isActive(item.path);
-        return (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`flex flex-1 flex-col items-center justify-center py-2 text-[10px] font-medium transition ${
-              active ? 'text-primary' : 'text-body-color'
-            }`}
-          >
-            <item.icon className={`h-5 w-5 mb-0.5 ${active ? 'text-primary' : ''}`} />
-            {item.label}
-          </Link>
-        );
-      })}
-    </nav>
-  );
-}
-
 /**
  * メインレイアウト
  */

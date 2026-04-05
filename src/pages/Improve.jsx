@@ -1246,7 +1246,7 @@ export default function Improve() {
               <div className="flex-1 overflow-hidden flex">
 
                 {/* 左カラム: テキスト情報 */}
-                <div className={`shrink-0 border-r border-gray-100 dark:border-dark-3 overflow-y-auto p-8 ${item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped) ? 'w-[400px]' : 'w-full border-r-0'}`}>
+                <div className={`shrink-0 border-r border-gray-100 dark:border-dark-3 overflow-y-auto p-8 ${item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped) ? 'w-full sm:w-[400px]' : 'w-full border-r-0'}`}>
                   <div className={`${!item.mockupHtml && (!item.targetPageUrl || item.mockupSkipped) ? 'max-w-3xl mx-auto' : ''}`}>
                     <div className="mb-6">
                       <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-2 flex items-center gap-1.5">

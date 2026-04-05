@@ -110,6 +110,42 @@ html {
     padding-bottom: 0.5rem;
   }
 }
+/* スマホ用: モーダルのサイズ制限 */
+@media (max-width: 639px) {
+  [data-headlessui-state] [role="dialog"] {
+    max-height: 75vh;
+    overflow-y: auto;
+  }
+  /* DialogPanelの幅制限・内側余白縮小 */
+  .row-start-2.w-full {
+    max-width: calc(100vw - 32px) !important;
+    margin-left: 16px !important;
+    margin-right: 16px !important;
+    border-radius: 16px !important;
+    --gutter: 12px !important;
+    padding: 12px !important;
+  }
+  /* モーダル内の見出し・余白をスマホ最適化 */
+  .row-start-2.w-full h2 {
+    font-size: 1rem !important;
+    margin-bottom: 0 !important;
+  }
+  .row-start-2.w-full .mt-4 {
+    margin-top: 0 !important;
+  }
+  .row-start-2.w-full .mt-6 {
+    margin-top: 0.75rem !important;
+  }
+  .row-start-2.w-full .mt-8 {
+    margin-top: 1rem !important;
+  }
+  .row-start-2.w-full .space-y-3 > * + * {
+    margin-top: 0.5rem !important;
+  }
+  .row-start-2.w-full .p-3 {
+    padding: 0.5rem !important;
+  }
+}
 /* カード系セクション間に少しゆとりを追加（grid内は除外） */
 .main-content .rounded-lg.border + .rounded-lg.border:not(:is(.grid > *)) {
   margin-top: 0.25rem;
