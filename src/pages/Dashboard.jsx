@@ -189,7 +189,7 @@ export default function Dashboard() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="space-y-8">
             {/* クイックアクション */}
-            <QuickActions />
+            <div className="hidden md:block"><QuickActions /></div>
 
             {/* アラート通知 */}
             <AlertCards siteId={selectedSiteId} />
