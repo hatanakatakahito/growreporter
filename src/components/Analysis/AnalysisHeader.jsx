@@ -153,17 +153,17 @@ export default function AnalysisHeader({
   return (
     <>
       {/* ヘッダーセクション */}
-      <div className="bg-white border-b border-gray-200 glass-header sticky top-14 md:top-0 z-30">
-        <div className="mx-auto max-w-content px-2 md:px-6 py-1.5 md:py-5 flex items-center">
+      <div className="bg-white border-b border-gray-200 glass-header sticky top-0 z-30 hidden md:block">
+        <div className="mx-auto max-w-content px-6 py-5 flex items-center">
           <div className="flex items-center justify-between w-full gap-2">
             {/* サイト選択 */}
-            <div className="relative flex items-center shrink min-w-0">
+            <div className="relative flex items-center shrink-0">
               <Globe className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-gray-400" />
               <ChevronDown className="pointer-events-none absolute right-3 z-10 h-3.5 w-3.5 text-gray-400" />
               <select
                 value={selectedSiteId || ''}
                 onChange={(e) => handleSiteChange(e.target.value)}
-                className="h-auto w-auto min-w-[100px] sm:min-w-[200px] max-w-[400px] cursor-pointer appearance-none [background-image:none] rounded-lg border border-stroke bg-white py-2 pl-9 pr-8 text-xs sm:text-sm font-medium text-dark shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:border-primary focus:outline-none"
+                className="h-auto w-auto min-w-[200px] max-w-[400px] cursor-pointer appearance-none [background-image:none] rounded-lg border border-stroke bg-white py-2 pl-9 pr-8 text-xs sm:text-sm font-medium text-dark shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:border-primary focus:outline-none"
               >
                 <option value="">サイトを選択</option>
                 {sites.map((site) => (
@@ -175,7 +175,7 @@ export default function AnalysisHeader({
             </div>
 
             {/* 期間選択とベル通知 */}
-            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
+            <div className="flex items-center gap-3">
               {/* 改善画面専用アクション */}
               {improveActions && improveActions}
 
@@ -185,7 +185,7 @@ export default function AnalysisHeader({
 
               {/* ダウンロードメニュー（ダッシュボード・分析画面のみ、スマホ非表示） */}
               {showExport && (
-                <div className="relative hidden sm:block" ref={downloadMenuRef}>
+                <div className="relative" ref={downloadMenuRef}>
                   <button
                     onClick={() => !isExporting && selectedSiteId && setIsDownloadMenuOpen(!isDownloadMenuOpen)}
                     disabled={isExporting || !selectedSiteId}
@@ -197,7 +197,7 @@ export default function AnalysisHeader({
                     ) : (
                       <Download className="h-4 w-4" />
                     )}
-                    <span className="hidden sm:inline">ダウンロード</span>
+                    <span>ダウンロード</span>
                   </button>
 
                   {isDownloadMenuOpen && (

@@ -106,7 +106,7 @@ html {
 /* セクション間の余白バランス最適化 */
 @media (max-width: 767px) {
   .main-content .mx-auto.max-w-content {
-    padding-top: 0.25rem;
+    padding-top: 10px;
     padding-bottom: 0.5rem;
   }
 }
