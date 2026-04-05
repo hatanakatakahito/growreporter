@@ -203,7 +203,7 @@ export default function Login() {
                   to="/register"
                   className="flex-1 rounded-md px-4 py-2.5 text-center text-sm font-medium transition-all text-body-color hover:text-dark dark:text-dark-6 dark:hover:text-white"
                 >
-                  新規ユーザー登録
+                  新規登録
                 </Link>
               </div>
 
