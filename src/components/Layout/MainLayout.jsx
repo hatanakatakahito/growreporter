@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, BarChart3, Sparkles, Settings, Menu, X, ChevronRight, Lock } from 'lucide-react';
+import { Home, BarChart3, Sparkles, Settings, Menu, X, ChevronRight, Lock, Bell, Calendar } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useSite } from '../../contexts/SiteContext';
@@ -14,15 +14,15 @@ import logoImg from '../../assets/img/logo.svg';
  */
 function MobileHeader({ onMenuToggle, isMenuOpen }) {
   return (
-    <div className="sticky top-0 z-50 flex md:hidden items-center justify-between h-14 px-4 py-2 bg-white border-b border-stroke dark:bg-dark-2 dark:border-dark-3">
-      <Link to="/dashboard">
-        <img src={logoImg} alt="GROW REPORTER" className="h-8 w-auto" />
+    <div className="sticky top-0 z-50 flex md:hidden items-center justify-between h-14 px-4 bg-white border-b border-stroke dark:bg-dark-2 dark:border-dark-3">
+      <Link to="/dashboard" className="shrink-0">
+        <img src={logoImg} alt="GROW REPORTER" className="h-7 w-auto" />
       </Link>
       <button
         onClick={onMenuToggle}
-        className="flex h-10 w-10 items-center justify-center rounded-lg text-dark hover:bg-gray-100 dark:text-white dark:hover:bg-dark-3"
+        className="flex h-9 w-9 items-center justify-center rounded-lg text-dark hover:bg-gray-100 dark:text-white"
       >
-        {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </button>
     </div>
   );
@@ -86,7 +86,7 @@ function MobileDrawer({ isOpen, onClose }) {
       )}
 
       {/* ドロワー */}
-      <div className={`fixed left-0 top-0 z-[9999] h-full w-72 bg-white dark:bg-dark-2 shadow-2xl transform transition-transform duration-300 md:hidden ${
+      <div className={`fixed left-0 top-0 z-[9999] h-screen w-72 bg-white dark:bg-dark-2 shadow-2xl transform transition-transform duration-300 md:hidden flex flex-col ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         {/* ドロワーヘッダー */}

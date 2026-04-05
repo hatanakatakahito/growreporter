@@ -43,7 +43,7 @@ export default function AIFloatingButton({ pageType, onScrollToAI }) {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-30">
+    <div className="fixed bottom-6 right-6 z-30 hidden md:block">
       <button
         onClick={handleClick}
         className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl ${shouldAnimate ? 'animate-bounce-once' : ''}`}
