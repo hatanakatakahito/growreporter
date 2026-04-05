@@ -143,7 +143,7 @@ export default function SiteList() {
   if (isLoading) {
     return (
       <div className="w-full min-w-0">
-        <div className="w-full !max-w-[1400px] mx-auto px-6 py-10 box-border" style={{ maxWidth: '1400px' }}>
+        <div className="w-full !max-w-[1400px] mx-auto px-3 sm:px-6 py-6 sm:py-10 box-border" style={{ maxWidth: '1400px' }}>
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">サイト管理</h1>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">分析対象のサイトを登録・管理します</p>
@@ -162,7 +162,7 @@ export default function SiteList() {
   return (
     <>
     <div className="w-full min-w-0">
-      <div className="w-full !max-w-[1400px] mx-auto px-6 py-10 box-border" style={{ maxWidth: '1400px' }}>
+      <div className="w-full !max-w-[1400px] mx-auto px-3 sm:px-6 py-6 sm:py-10 box-border" style={{ maxWidth: '1400px' }}>
         {/* ヘッダー（アカウント設定ページと同一構成） */}
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>

@@ -533,7 +533,7 @@ export default function AIChat() {
                 <h3 className="text-xl font-bold text-dark dark:text-white mb-2">AIに質問する</h3>
                 <p className="text-sm text-body-color">{selectedSite?.siteName || 'サイト'}のアクセスデータに基づいて回答します</p>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {suggestQuestions.map((q, i) => (
                   <button key={i} onClick={() => { setInputText(q); inputRef.current?.focus(); }}
                     className="rounded-lg border border-stroke p-3 text-left text-sm text-dark hover:bg-white dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 transition"

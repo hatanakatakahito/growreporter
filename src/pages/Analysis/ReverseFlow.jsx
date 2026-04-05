@@ -676,7 +676,7 @@ export default function ReverseFlow() {
                               </button>
                             </div>
                           </div>
-                          <div className="mt-4 grid grid-cols-3 gap-4">
+                          <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
                               <p className="text-sm text-body-color">起点ページパス</p>
                               <p className="font-semibold text-dark dark:text-white">{selectedFlow.entry_page_path || '全ページ'}</p>

@@ -181,7 +181,7 @@ export default function SiteDetail() {
 
   return (
     <div className="w-full min-w-0">
-      <div className="w-full !max-w-[1400px] mx-auto px-6 py-10 box-border" style={{ maxWidth: '1400px' }}>
+      <div className="w-full !max-w-[1400px] mx-auto px-3 sm:px-6 py-6 sm:py-10 box-border" style={{ maxWidth: '1400px' }}>
         {/* ヘッダー（アカウント設定ページと同一構成） */}
         <div className="mb-8">
           <div className="flex items-start justify-between gap-4">
@@ -416,7 +416,7 @@ export default function SiteDetail() {
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <div className="text-sm text-body-color dark:text-dark-6">最終スクレイピング日時</div>
             <div className="mt-1 text-dark dark:text-white">
