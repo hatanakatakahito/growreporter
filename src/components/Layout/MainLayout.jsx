@@ -13,17 +13,41 @@ import logoImg from '../../assets/img/logo.svg';
  * スマホ用モバイルヘッダー（ロゴ + ハンバーガー）
  */
 function MobileHeader({ onMenuToggle, isMenuOpen }) {
+  const { selectedSiteId, sites, selectSite } = useSite();
+  const [showNotification, setShowNotification] = useState(false);
+
   return (
-    <div className="sticky top-0 z-50 flex md:hidden items-center justify-between h-14 px-4 bg-white border-b border-stroke dark:bg-dark-2 dark:border-dark-3">
+    <div className="sticky top-0 z-50 flex md:hidden items-center justify-between px-3 py-[10px] bg-white border-b border-stroke dark:bg-dark-2 dark:border-dark-3">
       <Link to="/dashboard" className="shrink-0">
         <img src={logoImg} alt="GROW REPORTER" className="h-7 w-auto" />
       </Link>
-      <button
-        onClick={onMenuToggle}
-        className="flex h-9 w-9 items-center justify-center rounded-lg text-dark hover:bg-gray-100 dark:text-white"
-      >
-        {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-      </button>
+      <div className="flex items-center gap-0.5">
+        {/* サイト選択（コンパクト） */}
+        <div className="relative">
+          <select
+            value={selectedSiteId || ''}
+            onChange={(e) => selectSite(e.target.value)}
+            className="h-9 w-9 cursor-pointer appearance-none rounded-lg bg-transparent text-transparent focus:outline-none"
+            title="サイト切替"
+          />
+          <Home className="pointer-events-none absolute inset-0 m-auto h-4.5 w-4.5 text-body-color" />
+        </div>
+        {/* 通知 */}
+        <Link to="/dashboard" className="flex h-9 w-9 items-center justify-center rounded-lg text-body-color hover:bg-gray-100">
+          <Bell className="h-4.5 w-4.5" />
+        </Link>
+        {/* 日付（ダッシュボードへ遷移） */}
+        <Link to="/dashboard" className="flex h-9 w-9 items-center justify-center rounded-lg text-body-color hover:bg-gray-100">
+          <Calendar className="h-4.5 w-4.5" />
+        </Link>
+        {/* ハンバーガー */}
+        <button
+          onClick={onMenuToggle}
+          className="flex h-9 w-9 items-center justify-center rounded-lg text-dark hover:bg-gray-100 dark:text-white"
+        >
+          {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+        </button>
+      </div>
     </div>
   );
 }

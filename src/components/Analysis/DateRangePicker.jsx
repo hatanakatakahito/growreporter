@@ -231,7 +231,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
         className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-3.5 py-2 shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:outline-none"
       >
         <Calendar className="h-4 w-4 text-gray-400 shrink-0" />
-        <div className="hidden sm:flex flex-col items-start">
+        <div className="flex flex-col items-start">
           {dateRange?.from && dateRange?.to ? (
             <span className="text-sm font-medium text-dark leading-tight">
               {format(new Date(dateRange.from), 'yyyy-MM-dd')} - {format(new Date(dateRange.to), 'yyyy-MM-dd')}
