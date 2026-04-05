@@ -101,7 +101,7 @@ export default function MetricTabSection({
                 : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
             }`}
           >
-            主要指標サマリ
+            主要サマリー
           </button>
           <button
             onClick={() => {
@@ -117,7 +117,7 @@ export default function MetricTabSection({
                 : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
             } flex items-center justify-center gap-2`}
           >
-            コンバージョン内訳
+            CV内訳
             {!hasConversionSettings && (
               <span className="inline-flex items-center gap-1" title="コンバージョン設定が未設定です。クリックして設定してください。">
                 <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
@@ -141,7 +141,7 @@ export default function MetricTabSection({
                 : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
             } flex items-center justify-center gap-2`}
           >
-            KPI予実
+            KPI
             {!hasKpiSettings && (
               <span className="inline-flex items-center gap-1" title="KPI設定が未設定です。クリックして設定してください。">
                 <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
@@ -228,7 +228,7 @@ export default function MetricTabSection({
         {activeTab === 'conversion' && (
           <div className="space-y-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-dark dark:text-white">コンバージョン内訳</h3>
+              <h3 className="text-lg font-semibold text-dark dark:text-white">CV内訳</h3>
               <Link to={`/sites/${selectedSiteId}/edit?step=4`} className="text-sm text-primary hover:underline">
                 設定を編集 →
               </Link>
@@ -324,7 +324,7 @@ export default function MetricTabSection({
         {activeTab === 'kpi' && (
           <div className="space-y-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-dark dark:text-white">KPI予実</h3>
+              <h3 className="text-lg font-semibold text-dark dark:text-white">KPI</h3>
               <Link to={`/sites/${selectedSiteId}/edit?step=5`} className="text-sm text-primary hover:underline">
                 設定を編集 →
               </Link>

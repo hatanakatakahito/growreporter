@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import { Target, Settings } from 'lucide-react';
 
 /**
- * コンバージョン内訳
+ * CV内訳
  */
 export default function ConversionBreakdown({ conversionEvents, conversionsData, isLoading }) {
   if (isLoading) {
     return (
       <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">コンバージョン内訳</h3>
+        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">CV内訳</h3>
         <div className="space-y-3">
           {[1, 2, 3].map((i) => (
             <div key={i} className="animate-pulse">
@@ -29,7 +29,7 @@ export default function ConversionBreakdown({ conversionEvents, conversionsData,
   if (events.length === 0) {
     return (
       <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">コンバージョン内訳</h3>
+        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">CV内訳</h3>
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <Target className="h-10 w-10 text-body-color/40" />
           <p className="text-sm text-body-color">コンバージョンが設定されていません</p>
@@ -54,7 +54,7 @@ export default function ConversionBreakdown({ conversionEvents, conversionsData,
 
   return (
     <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-      <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">コンバージョン内訳</h3>
+      <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">CV内訳</h3>
       <div className="space-y-3">
         {items.map((item, idx) => (
           <div key={idx}>
