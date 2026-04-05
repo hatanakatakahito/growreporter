@@ -46,7 +46,7 @@ export default function AnalysisNavigation() {
             {
               icon: <BarChart3 className="h-6 w-6" />,
               title: '全体サマリー',
-              description: 'サイト全体の主要指標、コンバージョン内訳、KPI予実を確認できます。',
+              description: 'サイト全体の主要サマリー、CV内訳、KPIを確認できます。',
               path: '/analysis/summary',
             },
             {
