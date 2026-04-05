@@ -245,7 +245,7 @@ export default function Register() {
                     type="button"
                     className="flex-1 rounded-md px-4 py-2.5 text-sm font-medium transition-all bg-white text-dark shadow-sm dark:bg-dark-2 dark:text-white"
                   >
-                    新規ユーザー登録
+                    新規登録
                   </button>
                 </div>
               )}
