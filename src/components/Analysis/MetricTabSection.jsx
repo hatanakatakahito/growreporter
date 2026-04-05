@@ -92,10 +92,10 @@ export default function MetricTabSection({
     <>
       <div className="space-y-6">
         {/* タブナビゲーション */}
-        <div className="flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
+        <div className="flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('summary')}
-            className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
+            className={`flex-1 shrink-0 rounded-md px-4 sm:px-8 py-2 text-sm whitespace-nowrap font-medium transition-all duration-200 ${
               activeTab === 'summary'
                 ? 'bg-primary text-white transition hover:bg-opacity-90'
                 : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
@@ -111,7 +111,7 @@ export default function MetricTabSection({
                 setActiveTab('conversion');
               }
             }}
-            className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
+            className={`flex-1 shrink-0 rounded-md px-4 sm:px-8 py-2 text-sm whitespace-nowrap font-medium transition-all duration-200 ${
               activeTab === 'conversion'
                 ? 'bg-primary text-white transition hover:bg-opacity-90'
                 : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
@@ -135,7 +135,7 @@ export default function MetricTabSection({
                 setActiveTab('kpi');
               }
             }}
-            className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
+            className={`flex-1 shrink-0 rounded-md px-4 sm:px-8 py-2 text-sm whitespace-nowrap font-medium transition-all duration-200 ${
               activeTab === 'kpi'
                 ? 'bg-primary text-white transition hover:bg-opacity-90'
                 : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'

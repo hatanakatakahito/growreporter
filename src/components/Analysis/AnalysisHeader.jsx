@@ -153,8 +153,8 @@ export default function AnalysisHeader({
   return (
     <>
       {/* ヘッダーセクション */}
-      <div className="bg-white border-b border-gray-200 glass-header sticky top-14 md:top-0 z-30 mb-[15px] md:mb-0">
-        <div className="mx-auto max-w-content px-3 md:px-6 py-3 md:py-5 flex items-center">
+      <div className="bg-white border-b border-gray-200 glass-header sticky top-14 md:top-0 z-30">
+        <div className="mx-auto max-w-content px-2 md:px-6 py-1.5 md:py-5 flex items-center">
           <div className="flex items-center justify-between w-full gap-2">
             {/* サイト選択 */}
             <div className="relative flex items-center shrink min-w-0">
