@@ -63,6 +63,7 @@ import ActivityLogs from './pages/Admin/Logs/ActivityLogs';
 import AdminSettings from './pages/Admin/Settings/AdminSettings';
 import EmailNotifications from './pages/Admin/Settings/EmailNotifications';
 import PlanList from './pages/Admin/PlanList';
+import InquiryList from './pages/Admin/Inquiries/InquiryList';
 
 
 function App() {
@@ -227,6 +228,7 @@ function App() {
               <Route path="sites" element={<AdminSiteList />} />
               <Route path="sites/:siteId" element={<AdminSiteDetail />} />
               <Route path="plans" element={<PlanList />} />
+              <Route path="inquiries" element={<InquiryList />} />
               <Route path="logs" element={<ActivityLogs />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="mail" element={<EmailNotifications />} />

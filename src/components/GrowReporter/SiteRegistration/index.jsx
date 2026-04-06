@@ -28,6 +28,7 @@ import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, whe
 import { httpsCallable } from 'firebase/functions';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import logoImg from '../../../assets/img/logo.svg';
+import toast from 'react-hot-toast';
 import UpgradeModal from '../../common/UpgradeModal';
 import DotWaveSpinner from '../../common/DotWaveSpinner';
 import StepIndicator from './StepIndicator';
@@ -47,6 +48,14 @@ export default function SiteRegistration({ mode = 'new' }) {
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const stepParam = parseInt(searchParams.get('step')) || 1;
+
+  // ビジネスプラン申込後のトースト表示
+  useEffect(() => {
+    if (searchParams.get('business_inquiry') === '1') {
+      toast.success('ビジネスプランのお申し込みを受け付けました。担当者より折り返しご連絡いたします。', { duration: 8000 });
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, [searchParams]);
   // 編集モードの場合はURLパラメータから、新規作成の場合はクエリパラメータから取得
   const siteIdParam = mode === 'edit' ? siteIdFromParams : searchParams.get('siteId');
 

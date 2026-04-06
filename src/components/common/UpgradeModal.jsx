@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sparkles, Check, X, Send } from 'lucide-react';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -7,7 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PLANS, PLAN_TYPES, getPlanBadgeColor, isUnlimited } from '../../constants/plans';
 import toast from 'react-hot-toast';
 import { Dialog, DialogBody, DialogActions } from '../ui/dialog';
-import { Button } from '../ui/button';
+import BusinessPlanFormFields, { BUSINESS_FORM_INITIAL } from './BusinessPlanFormFields';
 
 const freePlan = PLANS[PLAN_TYPES.FREE];
 const businessPlan = PLANS[PLAN_TYPES.BUSINESS];
@@ -30,25 +30,38 @@ const features = [
   { label: 'サポート', getValue: (p) => p.features.support || 'なし' },
 ];
 
+const inputClass = 'w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white';
+const labelClass = 'mb-1.5 block text-sm font-medium text-dark dark:text-white';
+const requiredMark = <span className="text-red-500">*</span>;
+
+const INITIAL_FORM = {
+  companyName: '',
+  phone: '',
+  email: '',
+  ...BUSINESS_FORM_INITIAL,
+};
+
 export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' }) {
   const navigate = useNavigate();
   const { userProfile, currentUser } = useAuth();
   const [step, setStep] = useState(initialStep);
-  const [companyName, setCompanyName] = useState('');
-  const [userName, setUserName] = useState('');
-  const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
+  const [form, setForm] = useState(INITIAL_FORM);
   const [isSending, setIsSending] = useState(false);
   const [formInitialized, setFormInitialized] = useState(false);
 
+  const updateField = useCallback((field, value) => {
+    setForm(prev => ({ ...prev, [field]: value }));
+  }, []);
+
   const initFormFields = () => {
     if (!formInitialized && userProfile) {
-      const name = (userProfile.lastName && userProfile.firstName)
-        ? `${userProfile.lastName} ${userProfile.firstName}`
-        : (userProfile.displayName || '');
-      setCompanyName(userProfile.company || '');
-      setUserName(name);
-      setEmail(currentUser?.email || userProfile.email || '');
+      setForm({
+        ...INITIAL_FORM,
+        companyName: userProfile.company || '',
+        lastName: userProfile.lastName || '',
+        firstName: userProfile.firstName || '',
+        email: currentUser?.email || userProfile.email || '',
+      });
       setFormInitialized(true);
     }
   };
@@ -60,10 +73,22 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
       await addDoc(collection(db, 'upgradeInquiries'), {
         uid: currentUser?.uid || null,
         selectedPlan: 'business',
-        companyName: companyName.trim(),
-        userName: userName.trim(),
-        email: email.trim() || currentUser?.email || '',
-        message: message.trim(),
+        companyName: form.companyName.trim(),
+        department: form.department.trim(),
+        lastName: form.lastName.trim(),
+        firstName: form.firstName.trim(),
+        phone: form.phone.trim(),
+        email: form.email.trim() || currentUser?.email || '',
+        zipCode: form.zipCode.trim(),
+        prefecture: form.prefecture.trim(),
+        city: form.city.trim(),
+        building: form.building.trim(),
+        paymentTiming: form.paymentTiming,
+        startDatePref: form.startDatePref,
+        startMonth: form.startDatePref === 'preferred' && form.startMonth
+          ? form.startMonth
+          : null,
+        message: form.message.trim(),
         status: 'new',
         createdAt: serverTimestamp(),
       });
@@ -79,10 +104,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
 
   const handleClose = () => {
     setStep(initialStep);
-    setCompanyName('');
-    setUserName('');
-    setEmail('');
-    setMessage('');
+    setForm(INITIAL_FORM);
     setFormInitialized(false);
     onClose();
   };
@@ -94,44 +116,49 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
   // ── ステップ2: お問い合わせフォーム ──
   if (step === 'form') {
     return (
-      <Dialog open={isOpen} onClose={handleClose} size="lg">
-        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-4 dark:border-dark-3 rounded-t-2xl">
+      <Dialog open={isOpen} onClose={handleClose} size="2xl">
+        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-4 dark:border-dark-3 rounded-t-2xl shrink-0">
           <h3 className="text-xl font-semibold text-white">ビジネスプランのお問い合わせ</h3>
-          <p className="mt-1 text-sm text-white/80">担当者より折り返しご連絡いたします</p>
+          <p className="mt-1 text-sm text-white/80">以下の情報をご入力ください。担当者より折り返しご連絡いたします。</p>
         </div>
 
         <form id="upgrade-form" onSubmit={handleSubmit}>
-          <DialogBody>
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">組織名</label>
-                <input type="text" value={companyName} onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white" placeholder="株式会社〇〇" />
+          <DialogBody className="!overflow-y-auto scrollbar-hide" style={{ maxHeight: 'calc(90vh - 120px)' }}>
+            <div className="space-y-5">
+              {/* 組織情報 */}
+              <div className="space-y-3">
+                <div>
+                  <label className={labelClass}>組織名 {requiredMark}</label>
+                  <input type="text" value={form.companyName} onChange={(e) => updateField('companyName', e.target.value)} required
+                    className={inputClass} placeholder="株式会社〇〇" />
+                </div>
               </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">お名前 <span className="text-red-500">*</span></label>
-                <input type="text" value={userName} onChange={(e) => setUserName(e.target.value)} required
-                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white" placeholder="山田 太郎" />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">メールアドレス <span className="text-red-500">*</span></label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required
-                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white" placeholder="example@company.com" />
-              </div>
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-dark dark:text-white">ご質問・ご要望</label>
-                <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3}
-                  className="w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white" placeholder="ご不明点があればお気軽にお書きください" />
+
+              {/* 担当者情報〜住所〜契約条件〜質問（共用コンポーネント） */}
+              <BusinessPlanFormFields
+                form={form}
+                updateField={updateField}
+                setForm={setForm}
+                inputClass={inputClass}
+                labelClass={labelClass}
+                showNameFields={true}
+                showPhoneField={true}
+                showEmailField={true}
+                radioNamePrefix="upgrade_"
+              />
+              {/* 送信ボタン */}
+              <div className="flex justify-center">
+                <button
+                  type="submit"
+                  disabled={isSending}
+                  className="flex items-center gap-2 rounded-lg bg-primary px-10 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-opacity-90 disabled:opacity-50"
+                >
+                  <Send className="h-5 w-5" />
+                  {isSending ? '送信中...' : '送信する'}
+                </button>
               </div>
             </div>
           </DialogBody>
-          <DialogActions>
-            <Button plain onClick={handleClose}>キャンセル</Button>
-            <Button type="submit" form="upgrade-form" color="blue" disabled={isSending}>
-              <Send className="h-4 w-4" />
-              {isSending ? '送信中...' : '送信する'}
-            </Button>
-          </DialogActions>
         </form>
       </Dialog>
     );

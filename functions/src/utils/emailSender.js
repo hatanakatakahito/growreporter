@@ -183,19 +183,66 @@ ${message ? `<br><strong>■ メッセージ：</strong><br>${message.trim().rep
 /**
  * プランアップグレードお問い合わせメールを送信（SMTP 直接送信・宛先: info@grow-reporter.com）
  */
-export async function sendUpgradeInquiryEmail({ selectedPlan, companyName = '', userName = '', userEmail = '', message = '' }) {
+export async function sendUpgradeInquiryEmail({
+  selectedPlan, companyName = '', department = '',
+  lastName = '', firstName = '', userName = '',
+  phone = '', userEmail = '',
+  zipCode = '', prefecture = '', city = '', building = '',
+  paymentTiming = '', startDatePref = '', startDate = '', startMonth = '',
+  message = '',
+}) {
   try {
     const planNames = { business: 'ビジネスプラン', standard: 'ビジネスプラン', premium: 'ビジネスプラン' };
     const planName = planNames[selectedPlan] || selectedPlan;
     const subject = `【グローレポータ】プランアップグレードのお問い合わせ（${planName}）`;
-    const body = `
-このメールはグローレポータ（https://grow-reporter.com/）の「プランアップグレード」フォームから送信されました。
 
-■ 希望プラン：${planName}
+    // 担当者名の組み立て（姓名分離 or 旧形式のuserName）
+    const contactName = (lastName || firstName)
+      ? `${(lastName || '').trim()} ${(firstName || '').trim()}`.trim()
+      : (userName || '').trim();
+
+    // 支払い方法の表示
+    const paymentLabel = paymentTiming === 'bulk'
+      ? '一括請求（年額597,600円 税別）'
+      : paymentTiming === 'recurring'
+        ? '定期請求（月額49,800円 税別）'
+        : '（未選択）';
+
+    // 利用開始希望月
+    let startDateLabel = '希望なし（翌月1日から）';
+    if (startDatePref === 'preferred') {
+      const month = startMonth || (startDate ? startDate.substring(0, 7) : '');
+      if (month) {
+        const [y, m] = month.split('-');
+        startDateLabel = `${y}年${parseInt(m)}月`;
+      }
+    }
+
+    // 住所の組み立て
+    const zipLabel = zipCode ? `〒${zipCode.trim()}` : '';
+    const addressParts = [prefecture, city, building].filter(Boolean).map(s => s.trim()).join(' ');
+    const addressLine = [zipLabel, addressParts].filter(Boolean).join(' ');
+
+    const appBaseUrl = process.env.APP_BASE_URL || process.env.APP_URL || 'https://grow-reporter.com';
+
+    const body = `このメールはグローレポータ（${appBaseUrl}/）の「プランアップグレード」フォームから送信されました。
+
 ■ 組織名：${(companyName || '').trim() || '（未入力）'}
-■ 氏名：${(userName || '').trim() || '（未入力）'}
+■ 部署名：${(department || '').trim() || '（未入力）'}
+■ 担当者名：${contactName || '（未入力）'}
+■ 電話番号：${(phone || '').trim() || '（未入力）'}
 ■ メールアドレス：${(userEmail || '').trim() || '（未入力）'}
-${message ? `\n■ メッセージ：\n${message.trim()}\n` : ''}
+■ 住所：${addressLine || '（未入力）'}
+${message ? `■ ご質問・ご要望：${message.trim()}\n` : ''}
+━━ ご契約条件 ━━
+■ 希望プラン：${planName}
+■ 支払い方法：${paymentLabel}
+■ 利用開始希望月：${startDateLabel}
+
+━━━━━━━━━━━━━━━━━━
+問い合わせ管理画面で確認する
+${appBaseUrl}/admin/inquiries
+
 送信日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 `;
 
@@ -205,10 +252,42 @@ ${message ? `\n■ メッセージ：\n${message.trim()}\n` : ''}
       text: body,
       html: body.replace(/\n/g, '<br>'),
     });
-    logger.info('プランアップグレードお問い合わせメール送信', { selectedPlan, companyName, userName, userEmail });
+    logger.info('プランアップグレードお問い合わせメール送信', { selectedPlan, companyName, contactName, userEmail });
     return { success: true };
   } catch (error) {
     logger.error('プランアップグレードお問い合わせメール送信エラー', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * board連携失敗時の管理者通知メール
+ */
+export async function sendBoardErrorNotificationEmail({ inquiryId, companyName, errorMessage }) {
+  try {
+    const appBaseUrl = process.env.APP_BASE_URL || process.env.APP_URL || 'https://grow-reporter.com';
+    const subject = '【グローレポータ】board連携エラー - プランアップグレード問い合わせ';
+    const body = `board APIとの連携でエラーが発生しました。管理画面から手動で対応してください。
+
+■ 問い合わせID：${inquiryId}
+■ 組織名：${companyName || '（不明）'}
+■ エラー内容：${errorMessage}
+
+▶ 問い合わせ管理画面で確認する
+${appBaseUrl}/admin/inquiries
+
+発生日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+`;
+    await sendEmailDirect({
+      to: CONSULTATION_TO_EMAIL,
+      subject,
+      text: body,
+      html: body.replace(/\n/g, '<br>'),
+    });
+    logger.info('board連携エラー通知メール送信', { inquiryId, companyName });
+    return { success: true };
+  } catch (error) {
+    logger.error('board連携エラー通知メール送信失敗', { error: error.message });
     return { success: false, error: error.message };
   }
 }

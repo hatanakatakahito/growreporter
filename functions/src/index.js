@@ -230,7 +230,8 @@ export const onUpgradeInquiryCreated = onDocumentCreated(
     document: 'upgradeInquiries/{inquiryId}',
     region: 'asia-northeast1',
     memory: '256MiB',
-    timeoutSeconds: 30,
+    timeoutSeconds: 60,
+    secrets: ['BOARD_API_KEY', 'BOARD_API_TOKEN'],
   },
   async (event) => {
     const { onUpgradeInquiryCreatedHandler } = await import('./triggers/onUpgradeInquiryCreated.js');
@@ -281,6 +282,31 @@ export { monthlyRescrapeAllSites } from './scheduled/monthlyRescrapeAllSites.js'
  * 管理者のみアクセス可能
  */
 export const getAdminStats = lazyCallable('./callable/admin/getAdminStats.js', 'getAdminStatsCallable', { memory: '512MiB', timeoutSeconds: 60 });
+
+/**
+ * 管理者用問い合わせ一覧取得
+ */
+export const getUpgradeInquiries = lazyCallable('./callable/admin/getUpgradeInquiries.js', 'getUpgradeInquiriesCallable', { memory: '512MiB', timeoutSeconds: 60 });
+
+/**
+ * 問い合わせステータス更新（active時にプラン自動変更）
+ */
+export const updateInquiryStatus = lazyCallable('./callable/admin/updateInquiryStatus.js', 'updateInquiryStatusCallable');
+
+/**
+ * board見積作成リトライ
+ */
+export const retryBoardEstimate = lazyCallable('./callable/admin/retryBoardEstimate.js', 'retryBoardEstimateCallable', { timeoutSeconds: 60, secrets: ['BOARD_API_KEY', 'BOARD_API_TOKEN'] });
+
+/**
+ * 問い合わせ削除（admin権限のみ）
+ */
+export const deleteUpgradeInquiries = lazyCallable('./callable/admin/deleteUpgradeInquiries.js', 'deleteUpgradeInquiriesCallable');
+
+/**
+ * board同期（手動ボタン用）
+ */
+export const syncBoardInquiry = lazyCallable('./callable/admin/syncBoardInquiry.js', 'syncBoardInquiryCallable', { timeoutSeconds: 60, secrets: ['BOARD_API_KEY', 'BOARD_API_TOKEN'] });
 
 /**
  * 管理者用ユーザー一覧取得 Callable Function
@@ -505,6 +531,38 @@ export const sendMonthlyReports = onSchedule({
 }, async (event) => {
   const m = await import('./scheduled/sendMonthlyReports.js');
   return m.sendMonthlyReportsHandler(event);
+});
+
+/**
+ * 契約更新リマインダー Scheduled Function
+ * 毎月1日 午前9時半（JST）に実行
+ * active契約の終了2ヶ月前/1ヶ月前にメール通知
+ */
+/**
+ * board自動同期 Scheduled Function
+ * 毎日0時（JST）に実行 - active/estimate_createdの案件をboard APIから同期
+ */
+export const syncBoardData = onSchedule({
+  schedule: '0 0 * * *',
+  timeZone: 'Asia/Tokyo',
+  region: 'asia-northeast1',
+  memory: '256MiB',
+  timeoutSeconds: 300,
+  secrets: ['BOARD_API_KEY', 'BOARD_API_TOKEN'],
+}, async (event) => {
+  const m = await import('./scheduled/syncBoardData.js');
+  return m.syncBoardDataHandler(event);
+});
+
+export const checkContractRenewals = onSchedule({
+  schedule: '30 9 1 * *',
+  timeZone: 'Asia/Tokyo',
+  region: 'asia-northeast1',
+  memory: '256MiB',
+  timeoutSeconds: 60,
+}, async (event) => {
+  const m = await import('./scheduled/checkContractRenewals.js');
+  return m.checkContractRenewalsHandler(event);
 });
 
 /**

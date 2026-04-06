@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Menu, X, ChevronRight, Lock, Bell } from 'lucide-react';
+import { Globe, Menu, X, ChevronRight, Lock, Bell } from 'lucide-react';
 import Sidebar from './Sidebar';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useSite } from '../../contexts/SiteContext';
@@ -49,7 +49,7 @@ function MobileHeader({ onMenuToggle, isMenuOpen }) {
             ))}
           </select>
           <div className="flex h-9 w-9 items-center justify-center rounded-lg text-body-color">
-            <Home className="h-5 w-5" />
+            <Globe className="h-5 w-5" />
           </div>
         </div>
         {/* 通知 */}
