@@ -58,8 +58,16 @@ export async function createBoardEstimateFromInquiry(inquiryId, inquiryData, opt
   const formatPhone = (p) => {
     if (!p) return undefined;
     const digits = p.replace(/[^0-9]/g, '');
+    // 既にハイフン付きならそのまま返す
+    if (p.includes('-') && digits.length >= 10) return p.replace(/[^0-9-]/g, '');
+    // 11桁（携帯/IP電話）: 090-1234-5678
     if (digits.length === 11) return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
-    if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+    // 10桁（固定電話）: 先頭2桁が02-09の場合は2-4-4、それ以外は3-3-4
+    if (digits.length === 10) {
+      const prefix2 = digits.slice(0, 2);
+      if (['03', '04', '06'].includes(prefix2)) return `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6)}`;
+      return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+    }
     return digits || undefined;
   };
 

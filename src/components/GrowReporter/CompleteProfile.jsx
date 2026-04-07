@@ -126,7 +126,7 @@ export default function CompleteProfile() {
       // ユーザー登録ログ
       try {
         const logUserRegistration = httpsCallable(functions, 'logUserRegistration');
-        await logUserRegistration({ displayName, plan: 'free' });
+        await logUserRegistration({ displayName, plan: 'free', selectedPlan });
       } catch (logError) {
         console.error('Log registration error:', logError);
       }

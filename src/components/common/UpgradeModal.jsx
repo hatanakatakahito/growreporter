@@ -90,6 +90,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
           : null,
         message: form.message.trim(),
         status: 'new',
+        source: 'upgrade_modal',
         createdAt: serverTimestamp(),
       });
       handleClose();
