@@ -143,7 +143,7 @@ export default function CompleteProfile() {
   return (
     <section className="relative z-10 flex min-h-screen items-center justify-center bg-gray-50 py-12 lg:py-20">
       <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-[600px] overflow-hidden rounded-2xl bg-white shadow-lg dark:bg-dark-2">
+        <div className="mx-auto max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-lg dark:bg-dark-2">
           <div className="bg-gradient-primary px-8 py-6 text-center">
             <div className="mb-3 flex items-center justify-center">
               <img src={logoImg} alt="GROW REPORTER" className="h-10 w-auto brightness-0 invert" />
@@ -152,7 +152,8 @@ export default function CompleteProfile() {
             <p className="mt-2 text-sm text-white/90">サービスをご利用いただくために、以下の情報をご入力ください</p>
           </div>
 
-          <div className="px-8 py-8">
+          <div className="flex w-full items-center justify-center px-20 py-10">
+            <div className="w-full">
             {/* ユーザー情報 */}
             <div className="mb-6 rounded-lg bg-gray-100 p-4 dark:bg-dark-3">
               <div className="flex items-center gap-3">
@@ -174,21 +175,15 @@ export default function CompleteProfile() {
             {/* プラン選択カード */}
             <div className="mb-6 grid grid-cols-2 gap-3">
               <button type="button" onClick={() => setSelectedPlan('free')}
-                className={`relative rounded-xl border-2 px-4 py-3 text-left transition ${selectedPlan === 'free' ? 'border-blue-500' : 'border-stroke hover:border-gray-300 dark:border-dark-3'}`}>
-                <div className="flex items-center gap-2">
-                  <div className={`h-3 w-3 rounded-full border-4 ${selectedPlan === 'free' ? 'border-blue-500' : 'border-gray-300 dark:border-dark-4'}`} />
-                  <span className="text-sm font-semibold text-dark dark:text-white">無料プラン</span>
-                </div>
-                <div className="mt-0.5 pl-5 text-xs text-body-color dark:text-dark-6">¥0 / データ閲覧</div>
+                className={`rounded-xl border-2 px-4 py-3 text-center transition ${selectedPlan === 'free' ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/10' : 'border-stroke bg-white hover:border-gray-300 dark:border-dark-3 dark:bg-dark-2'}`}>
+                <div className={`text-sm font-bold ${selectedPlan === 'free' ? 'text-blue-600' : 'text-dark dark:text-white'}`}>無料プラン</div>
+                <div className="text-[11px] text-body-color dark:text-dark-6">¥0 / データ閲覧</div>
               </button>
               <button type="button" onClick={() => setSelectedPlan('business')}
-                className={`relative rounded-xl border-2 px-4 py-3 text-left transition ${selectedPlan === 'business' ? 'border-pink-500' : 'border-stroke hover:border-gray-300 dark:border-dark-3'}`}>
+                className={`relative rounded-xl border-2 px-4 py-3 text-center transition ${selectedPlan === 'business' ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/10' : 'border-stroke bg-white hover:border-gray-300 dark:border-dark-3 dark:bg-dark-2'}`}>
                 <span className="absolute -top-2 right-3 rounded-full bg-gradient-to-r from-blue-500 to-pink-500 px-2 py-0.5 text-[9px] font-bold text-white">おすすめ</span>
-                <div className="flex items-center gap-2">
-                  <div className={`h-3 w-3 rounded-full border-4 ${selectedPlan === 'business' ? 'border-pink-500' : 'border-gray-300 dark:border-dark-4'}`} />
-                  <span className="text-sm font-semibold text-dark dark:text-white">ビジネスプラン</span>
-                </div>
-                <div className="mt-0.5 pl-5 text-xs text-body-color dark:text-dark-6">¥49,800/月 / 全機能</div>
+                <div className={`text-sm font-bold ${selectedPlan === 'business' ? 'text-pink-600' : 'text-dark dark:text-white'}`}>ビジネスプラン</div>
+                <div className="text-[11px] text-body-color dark:text-dark-6">¥49,800/月 / 全機能</div>
               </button>
             </div>
 
@@ -266,6 +261,7 @@ export default function CompleteProfile() {
                 {isSubmitting ? '保存中...' : selectedPlan === 'business' ? 'ビジネスプランに申し込む' : 'サイト登録へ'}
               </Button>
             </form>
+            </div>
           </div>
         </div>
       </div>
