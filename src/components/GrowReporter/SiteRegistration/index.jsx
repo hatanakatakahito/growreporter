@@ -49,13 +49,14 @@ export default function SiteRegistration({ mode = 'new' }) {
 
   const stepParam = parseInt(searchParams.get('step')) || 1;
 
-  // ビジネスプラン申込後のトースト表示
+  // ビジネスプラン申込後のトースト表示（1回のみ）
   useEffect(() => {
-    if (searchParams.get('business_inquiry') === '1') {
-      toast.success('ビジネスプランのお申し込みを受け付けました。担当者より折り返しご連絡いたします。', { duration: 8000 });
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('business_inquiry') === '1') {
       window.history.replaceState({}, '', window.location.pathname);
+      toast.success('ビジネスプランのお申し込みを受け付けました。担当者より折り返しご連絡いたします。', { duration: 8000, id: 'business-inquiry-toast' });
     }
-  }, [searchParams]);
+  }, []);
   // 編集モードの場合はURLパラメータから、新規作成の場合はクエリパラメータから取得
   const siteIdParam = mode === 'edit' ? siteIdFromParams : searchParams.get('siteId');
 

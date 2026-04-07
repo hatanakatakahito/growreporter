@@ -5,23 +5,23 @@ export default function StepIndicator({ currentStep, onStepClick }) {
   const steps = [
     { number: 1, title: 'サイト情報', subtitle: '', required: true },
     { number: 2, title: 'GA4連携', subtitle: '', required: true },
-    { number: 3, title: 'Search Console', subtitle: '（任意）', required: false },
+    { number: 3, title: 'Search\nConsole', subtitle: '（任意）', required: false },
     { number: 4, title: 'コンバージョン', subtitle: '（任意）', required: false },
     { number: 5, title: 'KPI設定', subtitle: '（任意）', required: false },
   ];
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-between">
+      {/* アイコン行 + 接続線 */}
+      <div className="flex items-center">
         {steps.map((step, index) => (
           <React.Fragment key={step.number}>
-            {/* ステップ */}
-            <div className="flex flex-col items-center flex-1">
+            <div className="flex flex-shrink-0 justify-center" style={{ width: 48 }}>
               <button
                 onClick={() => onStepClick && step.number <= currentStep && onStepClick(step.number)}
                 disabled={step.number > currentStep}
                 className={`
-                  mb-2 flex h-12 w-12 items-center justify-center rounded-full font-semibold transition-all
+                  flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold transition-all
                   ${
                     step.number === currentStep
                       ? 'bg-primary text-white shadow-md scale-110'
@@ -32,31 +32,37 @@ export default function StepIndicator({ currentStep, onStepClick }) {
                 `}
               >
                 {step.number < currentStep ? (
-                  <Check className="h-6 w-6" />
+                  <Check className="h-5 w-5" />
                 ) : (
                   <span>{step.number}</span>
                 )}
               </button>
-              <div className="text-center">
-                <p className={`text-xs font-medium ${
+            </div>
+            {index < steps.length - 1 && (
+              <div className={`h-0.5 flex-1 ${
+                step.number < currentStep ? 'bg-primary' : 'bg-gray-200 dark:bg-dark-3'
+              }`} />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
+      {/* ラベル行 */}
+      <div className="mt-2 flex">
+        {steps.map((step, index) => (
+          <React.Fragment key={step.number}>
+            <div className="flex flex-shrink-0 justify-center" style={{ width: 48 }}>
+              <div className="text-center" style={{ width: 72 }}>
+                <p className={`whitespace-pre-line text-[10px] font-medium leading-tight ${
                   step.number <= currentStep ? 'text-dark dark:text-white' : 'text-gray-400'
                 }`}>
                   {step.title}
                 </p>
                 {step.subtitle && (
-                  <p className="text-xs text-gray-400">
-                    {step.subtitle}
-                  </p>
+                  <p className="text-[10px] leading-tight text-gray-400">{step.subtitle}</p>
                 )}
               </div>
             </div>
-            
-            {/* 接続線 */}
-            {index < steps.length - 1 && (
-              <div className={`h-0.5 flex-1 mx-2 mb-8 ${
-                step.number < currentStep ? 'bg-primary' : 'bg-gray-200 dark:bg-dark-3'
-              }`} />
-            )}
+            {index < steps.length - 1 && <div className="flex-1" />}
           </React.Fragment>
         ))}
       </div>

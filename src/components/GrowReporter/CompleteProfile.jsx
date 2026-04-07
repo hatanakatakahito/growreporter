@@ -19,7 +19,7 @@ function getInitials(displayName, email) {
 }
 
 export default function CompleteProfile() {
-  const [formData, setFormData] = useState({ company: '', name: '', phoneNumber: '' });
+  const [formData, setFormData] = useState({ company: '', lastName: '', firstName: '', phoneNumber: '' });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photoLoadError, setPhotoLoadError] = useState(false);
@@ -48,10 +48,16 @@ export default function CompleteProfile() {
     if (userProfile?.company && userProfile?.phoneNumber) {
       navigate('/sites/new');
     }
-    if (currentUser?.displayName && !formData.name) {
-      setFormData(prev => ({ ...prev, name: currentUser.displayName.trim() }));
+    // displayNameを姓・名に分割して自動入力
+    if (currentUser?.displayName && !formData.lastName) {
+      const parts = currentUser.displayName.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        setFormData(prev => ({ ...prev, lastName: parts[0], firstName: parts.slice(1).join(' ') }));
+      } else {
+        setFormData(prev => ({ ...prev, lastName: parts[0] || '' }));
+      }
     }
-  }, [userProfile, navigate, currentUser, formData.name]);
+  }, [userProfile, navigate, currentUser, formData.lastName]);
 
   const handleChange = (e) => {
     const { id, value } = e.target;
@@ -69,37 +75,21 @@ export default function CompleteProfile() {
     setError('');
     setIsSubmitting(true);
 
-    if (!formData.company || !formData.phoneNumber) {
+    if (!formData.company || !formData.lastName || !formData.firstName || !formData.phoneNumber) {
       setError('必須項目を入力してください');
       setIsSubmitting(false);
       return;
     }
 
-    if (selectedPlan === 'free' && !formData.name) {
-      setError('氏名を入力してください');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (selectedPlan === 'business' && (!businessForm.lastName || !businessForm.firstName)) {
-      setError('姓・名を入力してください');
-      setIsSubmitting(false);
-      return;
-    }
-
     try {
-      const displayName = selectedPlan === 'business'
-        ? `${businessForm.lastName} ${businessForm.firstName}`
-        : formData.name;
+      const displayName = `${formData.lastName} ${formData.firstName}`;
 
       await updateUserProfile(currentUser.uid, {
         company: formData.company,
         name: displayName,
+        lastName: formData.lastName,
+        firstName: formData.firstName,
         phoneNumber: formData.phoneNumber,
-        ...(selectedPlan === 'business' && {
-          lastName: businessForm.lastName,
-          firstName: businessForm.firstName,
-        }),
       });
 
       // ビジネスプラン: upgradeInquiries作成
@@ -110,8 +100,8 @@ export default function CompleteProfile() {
             selectedPlan: 'business',
             companyName: formData.company.trim(),
             department: businessForm.department.trim(),
-            lastName: businessForm.lastName.trim(),
-            firstName: businessForm.firstName.trim(),
+            lastName: formData.lastName.trim(),
+            firstName: formData.firstName.trim(),
             phone: formData.phoneNumber.trim(),
             email: currentUser.email,
             zipCode: businessForm.zipCode.trim(),
@@ -181,15 +171,24 @@ export default function CompleteProfile() {
               </div>
             </div>
 
-            {/* プラン選択サブタブ */}
-            <div className="mb-6 flex gap-1 rounded-md bg-gray-50 p-0.5 dark:bg-dark-3">
+            {/* プラン選択カード */}
+            <div className="mb-6 grid grid-cols-2 gap-3">
               <button type="button" onClick={() => setSelectedPlan('free')}
-                className={`flex-1 rounded px-3 py-2 text-xs font-medium transition-all ${selectedPlan === 'free' ? 'bg-white text-dark shadow-sm dark:bg-dark-2 dark:text-white' : 'text-body-color hover:text-dark dark:text-dark-6'}`}>
-                無料プラン
+                className={`relative rounded-xl border-2 px-4 py-3 text-left transition ${selectedPlan === 'free' ? 'border-blue-500' : 'border-stroke hover:border-gray-300 dark:border-dark-3'}`}>
+                <div className="flex items-center gap-2">
+                  <div className={`h-3 w-3 rounded-full border-4 ${selectedPlan === 'free' ? 'border-blue-500' : 'border-gray-300 dark:border-dark-4'}`} />
+                  <span className="text-sm font-semibold text-dark dark:text-white">無料プラン</span>
+                </div>
+                <div className="mt-0.5 pl-5 text-xs text-body-color dark:text-dark-6">¥0 / データ閲覧</div>
               </button>
               <button type="button" onClick={() => setSelectedPlan('business')}
-                className={`flex-1 rounded px-3 py-2 text-xs font-medium transition-all ${selectedPlan === 'business' ? 'bg-gradient-to-r from-blue-500 to-pink-500 text-white shadow-sm' : 'text-body-color hover:text-dark dark:text-dark-6'}`}>
-                ビジネスプラン <span className="text-[10px]">¥49,800/月</span>
+                className={`relative rounded-xl border-2 px-4 py-3 text-left transition ${selectedPlan === 'business' ? 'border-pink-500' : 'border-stroke hover:border-gray-300 dark:border-dark-3'}`}>
+                <span className="absolute -top-2 right-3 rounded-full bg-gradient-to-r from-blue-500 to-pink-500 px-2 py-0.5 text-[9px] font-bold text-white">おすすめ</span>
+                <div className="flex items-center gap-2">
+                  <div className={`h-3 w-3 rounded-full border-4 ${selectedPlan === 'business' ? 'border-pink-500' : 'border-gray-300 dark:border-dark-4'}`} />
+                  <span className="text-sm font-semibold text-dark dark:text-white">ビジネスプラン</span>
+                </div>
+                <div className="mt-0.5 pl-5 text-xs text-body-color dark:text-dark-6">¥49,800/月 / 全機能</div>
               </button>
             </div>
 
@@ -211,38 +210,28 @@ export default function CompleteProfile() {
                   placeholder="組織名を入力" className={inputClass} required />
               </div>
 
-              {/* ビジネス: 部署名 */}
-              {selectedPlan === 'business' && (
-                <div className="mb-5">
-                  <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">部署名</label>
-                  <input type="text" value={businessForm.department} onChange={(e) => updateBusinessField('department', e.target.value)}
-                    placeholder="マーケティング部" className={inputClass} />
-                </div>
-              )}
+              {/* 部署名 */}
+              <div className="mb-5">
+                <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">部署名</label>
+                <input type="text" value={businessForm.department} onChange={(e) => updateBusinessField('department', e.target.value)}
+                  placeholder="マーケティング部" className={inputClass} />
+              </div>
 
-              {/* 氏名 or 姓・名 */}
-              {selectedPlan === 'business' ? (
-                <div className="mb-5 grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">姓 <span className="text-red-500">*</span></label>
-                    <input type="text" value={businessForm.lastName} onChange={(e) => updateBusinessField('lastName', e.target.value)}
-                      placeholder="山田" required className={inputClass} />
-                  </div>
-                  <div>
-                    <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">名 <span className="text-red-500">*</span></label>
-                    <input type="text" value={businessForm.firstName} onChange={(e) => updateBusinessField('firstName', e.target.value)}
-                      placeholder="太郎" required className={inputClass} />
-                  </div>
+              {/* 姓・名（全プラン共通） */}
+              <div className="mb-5 grid grid-cols-2 gap-3">
+                <div>
+                  <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">姓 <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.lastName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                    placeholder="山田" required className={inputClass} />
                 </div>
-              ) : (
-                <div className="mb-5">
-                  <label htmlFor="name" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
-                    氏名 <span className="text-red-500">*</span>
-                  </label>
-                  <input type="text" id="name" value={formData.name} onChange={handleChange}
-                    placeholder="例: 山田 太郎" className={inputClass} required />
+                <div>
+                  <label className="mb-2.5 block text-sm font-medium text-dark dark:text-white">名 <span className="text-red-500">*</span></label>
+                  <input type="text" value={formData.firstName}
+                    onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                    placeholder="太郎" required className={inputClass} />
                 </div>
-              )}
+              </div>
 
               {/* 電話番号 */}
               <div className="mb-5">
@@ -264,6 +253,7 @@ export default function CompleteProfile() {
                     setForm={setBusinessForm}
                     inputClass={inputClass}
                     labelClass="mb-1.5 block text-sm font-medium text-dark dark:text-white"
+                    showDepartmentField={false}
                     showNameFields={false}
                     showPhoneField={false}
                     showEmailField={false}

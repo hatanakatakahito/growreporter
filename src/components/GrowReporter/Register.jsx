@@ -15,7 +15,6 @@ export default function Register() {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [companyName, setCompanyName] = useState('');
-  const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -83,13 +82,7 @@ export default function Register() {
       return;
     }
 
-    if (selectedPlan === 'free' && !name) {
-      setError('氏名を入力してください');
-      setIsSubmitting(false);
-      return;
-    }
-
-    if (selectedPlan === 'business' && (!businessForm.lastName || !businessForm.firstName)) {
+    if (!businessForm.lastName || !businessForm.firstName) {
       setError('姓・名を入力してください');
       setIsSubmitting(false);
       return;
@@ -108,19 +101,15 @@ export default function Register() {
     }
 
     try {
-      const displayName = selectedPlan === 'business'
-        ? `${businessForm.lastName} ${businessForm.firstName}`
-        : name;
+      const displayName = `${businessForm.lastName} ${businessForm.firstName}`;
 
       await signup(email, password, {
         displayName,
         name: displayName,
         company: companyName,
         phoneNumber,
-        ...(selectedPlan === 'business' && {
-          lastName: businessForm.lastName,
-          firstName: businessForm.firstName,
-        }),
+        lastName: businessForm.lastName,
+        firstName: businessForm.firstName,
       });
 
       // ビジネスプラン: upgradeInquiries作成
@@ -265,30 +254,39 @@ export default function Register() {
                 </div>
               )}
 
-              {/* プラン選択サブタブ（招待経由は非表示） */}
+              {/* プラン選択カード（招待経由は非表示） */}
               {!isFromInvitation && (
-                <div className="mb-6 flex gap-1 rounded-md bg-gray-50 p-0.5 dark:bg-dark-3">
+                <div className="mb-6 grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setSelectedPlan('free')}
-                    className={`flex-1 rounded px-3 py-2 text-xs font-medium transition-all ${
+                    className={`relative rounded-xl border-2 px-4 py-3 text-left transition ${
                       selectedPlan === 'free'
-                        ? 'bg-white text-dark shadow-sm dark:bg-dark-2 dark:text-white'
-                        : 'text-body-color hover:text-dark dark:text-dark-6'
+                        ? 'border-blue-500'
+                        : 'border-stroke hover:border-gray-300 dark:border-dark-3'
                     }`}
                   >
-                    無料プラン
+                    <div className="flex items-center gap-2">
+                      <div className={`h-3 w-3 rounded-full border-4 ${selectedPlan === 'free' ? 'border-blue-500' : 'border-gray-300 dark:border-dark-4'}`} />
+                      <span className="text-sm font-semibold text-dark dark:text-white">無料プラン</span>
+                    </div>
+                    <div className="mt-0.5 pl-5 text-xs text-body-color dark:text-dark-6">¥0 / データ閲覧</div>
                   </button>
                   <button
                     type="button"
                     onClick={() => setSelectedPlan('business')}
-                    className={`flex-1 rounded px-3 py-2 text-xs font-medium transition-all ${
+                    className={`relative rounded-xl border-2 px-4 py-3 text-left transition ${
                       selectedPlan === 'business'
-                        ? 'bg-gradient-to-r from-blue-500 to-pink-500 text-white shadow-sm'
-                        : 'text-body-color hover:text-dark dark:text-dark-6'
+                        ? 'border-pink-500'
+                        : 'border-stroke hover:border-gray-300 dark:border-dark-3'
                     }`}
                   >
-                    ビジネスプラン <span className="text-[10px]">¥49,800/月</span>
+                    <span className="absolute -top-2 right-3 rounded-full bg-gradient-to-r from-blue-500 to-pink-500 px-2 py-0.5 text-[9px] font-bold text-white">おすすめ</span>
+                    <div className="flex items-center gap-2">
+                      <div className={`h-3 w-3 rounded-full border-4 ${selectedPlan === 'business' ? 'border-pink-500' : 'border-gray-300 dark:border-dark-4'}`} />
+                      <span className="text-sm font-semibold text-dark dark:text-white">ビジネスプラン</span>
+                    </div>
+                    <div className="mt-0.5 pl-5 text-xs text-body-color dark:text-dark-6">¥49,800/月 / 全機能</div>
                   </button>
                 </div>
               )}
@@ -316,16 +314,18 @@ export default function Register() {
               {/* SSOボタン（招待経由は非表示） */}
               {!isFromInvitation && (
                 <>
-                  <button type="button" onClick={handleGoogleSignIn} disabled={isSubmitting}
-                    className="mb-2 flex w-full items-center justify-center gap-3 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50">
-                    <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><g clipPath="url(#clip0_google_reg)"><path d="M19.9895 10.1871C19.9895 9.36767 19.9214 8.76973 19.7742 8.14966H10.1992V11.848H15.8195C15.7062 12.7671 15.0943 14.1512 13.7346 15.0813L13.7155 15.2051L16.7429 17.4969L16.9527 17.5174C18.879 15.7789 19.9895 13.221 19.9895 10.1871Z" fill="#4285F4"/><path d="M10.1993 19.9313C12.9527 19.9313 15.2643 19.0454 16.9527 17.5174L13.7346 15.0813C12.8734 15.6682 11.7176 16.0779 10.1993 16.0779C7.50243 16.0779 5.21352 14.3395 4.39759 11.9366L4.27799 11.9465L1.13003 14.3273L1.08887 14.4391C2.76588 17.6945 6.21061 19.9313 10.1993 19.9313Z" fill="#34A853"/><path d="M4.39748 11.9366C4.18219 11.3166 4.05759 10.6521 4.05759 9.96565C4.05759 9.27909 4.18219 8.61473 4.38615 7.99466L4.38045 7.8626L1.19304 5.44366L1.08875 5.49214C0.397576 6.84305 0.000976562 8.36008 0.000976562 9.96565C0.000976562 11.5712 0.397576 13.0882 1.08875 14.4391L4.39748 11.9366Z" fill="#FBBC05"/><path d="M10.1993 3.85336C12.1142 3.85336 13.406 4.66168 14.1425 5.33718L17.0207 2.59107C15.253 0.985496 12.9527 0 10.1993 0C6.2106 0 2.76588 2.23672 1.08887 5.49214L4.38626 7.99466C5.21352 5.59183 7.50242 3.85336 10.1993 3.85336Z" fill="#EB4335"/></g><defs><clipPath id="clip0_google_reg"><rect width="20" height="20" fill="white"/></clipPath></defs></svg>
-                    Googleから登録
-                  </button>
-                  <button type="button" onClick={handleMicrosoftSignIn} disabled={isSubmitting}
-                    className="mb-0 flex w-full items-center justify-center gap-3 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50">
-                    <svg width="20" height="20" viewBox="0 0 21 21" fill="none"><path d="M0 0H10V10H0V0Z" fill="#F25022"/><path d="M11 0H21V10H11V0Z" fill="#7FBA00"/><path d="M0 11H10V21H0V11Z" fill="#00A4EF"/><path d="M11 11H21V21H11V11Z" fill="#FFB900"/></svg>
-                    Microsoftから登録
-                  </button>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={handleGoogleSignIn} disabled={isSubmitting}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50">
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><g clipPath="url(#clip0_google_reg)"><path d="M19.9895 10.1871C19.9895 9.36767 19.9214 8.76973 19.7742 8.14966H10.1992V11.848H15.8195C15.7062 12.7671 15.0943 14.1512 13.7346 15.0813L13.7155 15.2051L16.7429 17.4969L16.9527 17.5174C18.879 15.7789 19.9895 13.221 19.9895 10.1871Z" fill="#4285F4"/><path d="M10.1993 19.9313C12.9527 19.9313 15.2643 19.0454 16.9527 17.5174L13.7346 15.0813C12.8734 15.6682 11.7176 16.0779 10.1993 16.0779C7.50243 16.0779 5.21352 14.3395 4.39759 11.9366L4.27799 11.9465L1.13003 14.3273L1.08887 14.4391C2.76588 17.6945 6.21061 19.9313 10.1993 19.9313Z" fill="#34A853"/><path d="M4.39748 11.9366C4.18219 11.3166 4.05759 10.6521 4.05759 9.96565C4.05759 9.27909 4.18219 8.61473 4.38615 7.99466L4.38045 7.8626L1.19304 5.44366L1.08875 5.49214C0.397576 6.84305 0.000976562 8.36008 0.000976562 9.96565C0.000976562 11.5712 0.397576 13.0882 1.08875 14.4391L4.39748 11.9366Z" fill="#FBBC05"/><path d="M10.1993 3.85336C12.1142 3.85336 13.406 4.66168 14.1425 5.33718L17.0207 2.59107C15.253 0.985496 12.9527 0 10.1993 0C6.2106 0 2.76588 2.23672 1.08887 5.49214L4.38626 7.99466C5.21352 5.59183 7.50242 3.85336 10.1993 3.85336Z" fill="#EB4335"/></g><defs><clipPath id="clip0_google_reg"><rect width="20" height="20" fill="white"/></clipPath></defs></svg>
+                      Google
+                    </button>
+                    <button type="button" onClick={handleMicrosoftSignIn} disabled={isSubmitting}
+                      className="flex flex-1 items-center justify-center gap-2 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50">
+                      <svg width="20" height="20" viewBox="0 0 21 21" fill="none"><path d="M0 0H10V10H0V0Z" fill="#F25022"/><path d="M11 0H21V10H11V0Z" fill="#7FBA00"/><path d="M0 11H10V21H0V11Z" fill="#00A4EF"/><path d="M11 11H21V21H11V11Z" fill="#FFB900"/></svg>
+                      Microsoft
+                    </button>
+                  </div>
                   <div className="my-6 border-t border-gray-200 dark:border-dark-3"></div>
                 </>
               )}
@@ -350,44 +350,43 @@ export default function Register() {
                     className={`${inputClass} ${isFromInvitation ? 'bg-gray-100 dark:bg-gray-800 cursor-not-allowed' : ''}`} />
                 </div>
 
-                {/* ビジネス: 部署名 */}
-                {selectedPlan === 'business' && (
-                  <div className="mb-4">
-                    <label className={labelClass}>部署名</label>
-                    <input type="text" value={businessForm.department} onChange={(e) => updateBusinessField('department', e.target.value)}
-                      placeholder="マーケティング部" className={inputClass} />
-                  </div>
-                )}
+                {/* 部署名 */}
+                <div className="mb-4">
+                  <label className={labelClass}>部署名</label>
+                  <input type="text" value={businessForm.department} onChange={(e) => updateBusinessField('department', e.target.value)}
+                    placeholder="マーケティング部" className={inputClass} />
+                </div>
 
-                {/* 氏名 or 姓・名 */}
-                {selectedPlan === 'business' ? (
-                  <div className="mb-4 grid grid-cols-2 gap-3">
-                    <div>
-                      <label className={labelClass}>姓 <span className="text-red-500">*</span></label>
-                      <input type="text" value={businessForm.lastName} onChange={(e) => updateBusinessField('lastName', e.target.value)}
-                        placeholder="山田" required className={inputClass} />
-                    </div>
-                    <div>
-                      <label className={labelClass}>名 <span className="text-red-500">*</span></label>
-                      <input type="text" value={businessForm.firstName} onChange={(e) => updateBusinessField('firstName', e.target.value)}
-                        placeholder="太郎" required className={inputClass} />
-                    </div>
+                {/* 姓・名（全プラン共通） */}
+                <div className="mb-4 grid grid-cols-2 gap-3">
+                  <div>
+                    <label className={labelClass}>姓 <span className="text-red-500">*</span></label>
+                    <input type="text" value={businessForm.lastName} onChange={(e) => updateBusinessField('lastName', e.target.value)}
+                      placeholder="山田" required className={inputClass} />
                   </div>
-                ) : (
-                  <div className="mb-4">
-                    <label className={labelClass}>氏名 <span className="text-red-500">*</span></label>
-                    <input type="text" value={name} onChange={(e) => setName(e.target.value)}
-                      placeholder="例: 山田 太郎" required className={inputClass} />
+                  <div>
+                    <label className={labelClass}>名 <span className="text-red-500">*</span></label>
+                    <input type="text" value={businessForm.firstName} onChange={(e) => updateBusinessField('firstName', e.target.value)}
+                      placeholder="太郎" required className={inputClass} />
                   </div>
-                )}
+                </div>
 
                 {/* 電話番号 */}
                 <div className="mb-6">
                   <label className={labelClass}>電話番号 <span className="text-red-500">*</span></label>
                   <input type="tel" value={phoneNumber}
-                    onChange={(e) => setPhoneNumber(e.target.value.replace(/[-\s()]/g, ''))}
-                    placeholder="09012345678（ハイフンなし）" required className={inputClass} />
-                  <p className="mt-1 text-xs text-body-color">※ハイフンは自動で削除されます</p>
+                    onChange={(e) => {
+                      // 全角→半角変換 + ハイフン自動付与
+                      let v = e.target.value
+                        .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+                        .replace(/[ー−‐―]/g, '-')
+                        .replace(/[^0-9-]/g, '');
+                      const digits = v.replace(/-/g, '');
+                      if (digits.length === 11) v = `${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7)}`;
+                      else if (digits.length === 10) v = `${digits.slice(0,2)}-${digits.slice(2,6)}-${digits.slice(6)}`;
+                      setPhoneNumber(v);
+                    }}
+                    placeholder="090-1234-5678" required className={inputClass} />
                 </div>
 
                 {/* メールアドレス */}
@@ -433,6 +432,7 @@ export default function Register() {
                       setForm={setBusinessForm}
                       inputClass={inputClass}
                       labelClass="mb-1.5 block text-sm font-medium text-dark dark:text-white"
+                      showDepartmentField={false}
                       showNameFields={false}
                       showPhoneField={false}
                       showEmailField={false}

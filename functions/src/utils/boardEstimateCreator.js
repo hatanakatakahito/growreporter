@@ -54,6 +54,15 @@ export async function createBoardEstimateFromInquiry(inquiryId, inquiryData, opt
     startMonth,
   } = inquiryData;
 
+  // 電話番号をハイフン付きに整形（boardのバリデーション対応）
+  const formatPhone = (p) => {
+    if (!p) return undefined;
+    const digits = p.replace(/[^0-9]/g, '');
+    if (digits.length === 11) return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`;
+    if (digits.length === 10) return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+    return digits || undefined;
+  };
+
   logger.info('[boardEstimate] 見積作成開始', { inquiryId, companyName, paymentTiming });
 
   // ── 1. 顧客の確認・作成 ──
@@ -87,7 +96,7 @@ export async function createBoardEstimateFromInquiry(inquiryId, inquiryData, opt
       pref: prefecture || undefined,
       address1,
       address2,
-      tel: phone || undefined,
+      tel: formatPhone(phone),
       email: email || undefined,
     });
     boardClientId = newClient.id;

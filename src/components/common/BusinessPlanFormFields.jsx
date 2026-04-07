@@ -77,6 +77,7 @@ export default function BusinessPlanFormFields({
   inputClass = 'w-full rounded-lg border border-stroke bg-transparent px-4 py-2.5 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white',
   labelClass = 'mb-1.5 block text-sm font-medium text-dark dark:text-white',
   showNameFields = true,
+  showDepartmentField = true,
   showPhoneField = false,
   showEmailField = false,
   radioNamePrefix = '',
@@ -106,11 +107,13 @@ export default function BusinessPlanFormFields({
   return (
     <>
       {/* 部署名 */}
-      <div>
-        <label className={labelClass}>部署名</label>
-        <input type="text" value={form.department} onChange={(e) => updateField('department', e.target.value)}
-          className={inputClass} placeholder="マーケティング部" />
-      </div>
+      {showDepartmentField && (
+        <div>
+          <label className={labelClass}>部署名</label>
+          <input type="text" value={form.department} onChange={(e) => updateField('department', e.target.value)}
+            className={inputClass} placeholder="マーケティング部" />
+        </div>
+      )}
 
       {/* 姓・名 */}
       {showNameFields && (
@@ -148,7 +151,7 @@ export default function BusinessPlanFormFields({
 
       {/* 住所 */}
       <div className="space-y-3">
-        <h4 className="text-sm font-semibold text-dark dark:text-white border-b border-stroke pb-2 dark:border-dark-3">ご住所</h4>
+        <h4 className="mt-8 text-sm font-medium text-dark dark:text-white border-b border-stroke pb-2 dark:border-dark-3">ご住所</h4>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className={labelClass}>郵便番号 {requiredMark}</label>
@@ -183,7 +186,7 @@ export default function BusinessPlanFormFields({
 
       {/* 契約条件 */}
       <div className="space-y-3">
-        <h4 className="text-sm font-semibold text-dark dark:text-white border-b border-stroke pb-2 dark:border-dark-3">ご契約条件</h4>
+        <h4 className="mt-8 text-sm font-medium text-dark dark:text-white border-b border-stroke pb-2 dark:border-dark-3">ご契約条件</h4>
         <div>
           <label className={labelClass}>お支払い方法 {requiredMark}</label>
           <div className="grid grid-cols-2 gap-3">
@@ -245,7 +248,7 @@ export default function BusinessPlanFormFields({
       </div>
 
       {/* 質問・要望 */}
-      <div>
+      <div className="mt-8">
         <label className={labelClass}>ご質問・ご要望</label>
         <textarea value={form.message} onChange={(e) => updateField('message', e.target.value)} rows={3}
           className={inputClass} placeholder="ご不明点があればお気軽にお書きください" />
