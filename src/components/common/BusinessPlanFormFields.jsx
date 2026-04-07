@@ -249,7 +249,7 @@ export default function BusinessPlanFormFields({
 
       {/* 質問・要望 */}
       <div className="mt-8">
-        <label className={labelClass}>ご質問・ご要望</label>
+        <h4 className="mt-8 text-sm font-medium text-dark dark:text-white border-b border-stroke pb-2 dark:border-dark-3">ご質問・ご要望</h4>
         <textarea value={form.message} onChange={(e) => updateField('message', e.target.value)} rows={3}
           className={inputClass} placeholder="ご不明点があればお気軽にお書きください" />
       </div>

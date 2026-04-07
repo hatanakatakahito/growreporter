@@ -1,0 +1,2285 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Planet eCommerce Template by TailGrids</title>
+    <link
+      rel="shortcut icon"
+      href="./assets/images/favicon.png"
+      type="image/x-icon"
+    />
+    <link rel="stylesheet" href="./assets/css/output.css" />
+  </head>
+  <body>
+    <!-- ====== preloader Section Start -->
+    <div
+      x-show="loaded"
+      x-init="window.addEventListener('DOMContentLoaded', () => {setTimeout(() => loaded = false, 500)})"
+      class="dark:bg-dark fixed top-0 left-0 z-[999999] flex h-screen w-screen items-center justify-center bg-white"
+    >
+      <div
+        class="border-primary h-16 w-16 animate-spin rounded-full border-4 border-solid border-t-transparent"
+      ></div>
+    </div>
+    <!-- ====== preloader Section End -->
+
+    <!-- ====== Navbar Section Start -->
+    <header
+      x-data="
+        {
+          navbarOpen: false,
+          searchForm: false,
+          wishlistOpen: false,
+          cartOpen: false,
+          submenuOpen: false,
+          categories: false,
+          categoryOne: true,
+        }
+      "
+      class="dark:bg-dark w-full bg-white"
+    >
+      <div class="border-stroke dark:border-dark-3 hidden border-b sm:block">
+        <div class="container mx-auto">
+          <div class="-mx-4 flex flex-wrap items-center">
+            <div class="w-full px-4 md:w-2/3 lg:w-1/2">
+              <ul class="-mx-3 flex items-center">
+                <li>
+                  <a
+                    href="javascript:void(0)"
+                    class="text-body-color hover:text-primary dark:text-dark-6 inline-block px-3 py-4 text-sm font-medium"
+                  >
+                    About Us
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="order-summary.html"
+                    class="text-body-color hover:text-primary dark:text-dark-6 inline-block px-3 py-4 text-sm font-medium"
+                  >
+                    Order Tracking
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="support.html"
+                    class="text-body-color hover:text-primary dark:text-dark-6 inline-block px-3 py-4 text-sm font-medium"
+                  >
+                    Contact Us
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="javascript:void(0)"
+                    class="text-body-color hover:text-primary dark:text-dark-6 inline-block px-3 py-4 text-sm font-medium"
+                  >
+                    FAQs
+                  </a>
+                </li>
+              </ul>
+            </div>
+            <div class="w-full px-4 md:w-1/3 lg:w-1/2">
+              <div class="hidden items-center justify-end md:flex">
+                <div>
+                  <div class="relative">
+                    <select
+                      class="text-body-color dark:text-dark-6 w-full appearance-none rounded-lg bg-transparent py-3 pr-5 pl-3 text-sm font-medium transition outline-none"
+                    >
+                      <option value="" class="dark:bg-dark-2">English</option>
+                      <option value="" class="dark:bg-dark-2">Urdu</option>
+                      <option value="" class="dark:bg-dark-2">Hindi</option>
+                    </select>
+                    <span
+                      class="text-body-color dark:text-dark-6 pointer-events-none absolute top-1/2 right-0 -translate-y-1/2"
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="fill-current"
+                      >
+                        <path
+                          d="M7.00001 9.97501C6.86876 9.97501 6.75938 9.93126 6.65001 9.84376L1.61876 4.90001C1.42188 4.70314 1.42188 4.39689 1.61876 4.20001C1.81563 4.00314 2.12188 4.00314 2.31876 4.20001L7.00001 8.77189L11.6813 4.15626C11.8781 3.95939 12.1844 3.95939 12.3813 4.15626C12.5781 4.35314 12.5781 4.65939 12.3813 4.85626L7.35001 9.80001C7.24063 9.90939 7.13126 9.97501 7.00001 9.97501Z"
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+                <div>
+                  <div class="relative">
+                    <select
+                      class="text-body-color dark:text-dark-6 w-full appearance-none rounded-lg bg-transparent py-3 pr-5 pl-3 text-sm font-medium transition outline-none"
+                    >
+                      <option value="" class="dark:bg-dark-2">USD</option>
+                      <option value="" class="dark:bg-dark-2">INR</option>
+                      <option value="" class="dark:bg-dark-2">ERU</option>
+                    </select>
+                    <span
+                      class="text-body-color dark:text-dark-6 pointer-events-none absolute top-1/2 right-0 -translate-y-1/2"
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 14 14"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="fill-current"
+                      >
+                        <path
+                          d="M7.00001 9.97501C6.86876 9.97501 6.75938 9.93126 6.65001 9.84376L1.61876 4.90001C1.42188 4.70314 1.42188 4.39689 1.61876 4.20001C1.81563 4.00314 2.12188 4.00314 2.31876 4.20001L7.00001 8.77189L11.6813 4.15626C11.8781 3.95939 12.1844 3.95939 12.3813 4.15626C12.5781 4.35314 12.5781 4.65939 12.3813 4.85626L7.35001 9.80001C7.24063 9.90939 7.13126 9.97501 7.00001 9.97501Z"
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div class="container mx-auto">
+          <div
+            class="relative -mx-4 flex items-center justify-center sm:justify-between"
+          >
+            <div class="w-60 max-w-full px-4 lg:w-48">
+              <a href="index.html" class="block w-full py-5 lg:py-3">
+                <img
+                  src="./assets/images/logo/logo-primary.svg"
+                  alt="logo"
+                  class="w-full dark:hidden"
+                />
+                <img
+                  src="./assets/images/logo/logo-white.svg"
+                  alt="logo"
+                  class="hidden w-full dark:block"
+                />
+              </a>
+            </div>
+            <div
+              class="flex w-full items-center justify-end px-4 lg:justify-between"
+            >
+              <div class="flex w-full items-center justify-between px-4">
+                <div class="w-full">
+                  <button
+                    @click="navbarOpen = !navbarOpen"
+                    :class="navbarOpen && 'navbarTogglerActive' "
+                    id="navbarToggler"
+                    class="ring-primary absolute top-1/2 right-4 block -translate-y-1/2 rounded-lg px-3 py-[6px] focus:ring-2 lg:hidden"
+                  >
+                    <span
+                      class="bg-body-color dark:bg-dark-6 relative my-[6px] block h-[2px] w-[30px]"
+                    ></span>
+                    <span
+                      class="bg-body-color dark:bg-dark-6 relative my-[6px] block h-[2px] w-[30px]"
+                    ></span>
+                    <span
+                      class="bg-body-color dark:bg-dark-6 relative my-[6px] block h-[2px] w-[30px]"
+                    ></span>
+                  </button>
+                  <nav
+                    :class="!navbarOpen && 'hidden' "
+                    id="navbarCollapse"
+                    class="dark:bg-dark-2 absolute top-full right-4 z-40 w-full max-w-[250px] justify-center rounded-lg bg-white px-6 py-5 shadow lg:static lg:flex lg:w-full lg:max-w-full lg:justify-end lg:bg-transparent lg:px-0 lg:py-0 lg:shadow-none dark:lg:bg-transparent"
+                  >
+                    <ul class="block items-center lg:flex">
+                      <li>
+                        <a
+                          href="index.html"
+                          class="text-dark hover:text-primary flex justify-between py-2 text-base font-medium lg:mx-5 lg:inline-flex lg:py-6 2xl:mx-[18px] dark:text-white"
+                        >
+                          Home
+                        </a>
+                      </li>
+                      <li>
+                        <a
+                          href="filters.html"
+                          class="text-dark hover:text-primary flex justify-between py-2 text-base font-medium lg:mx-5 lg:inline-flex lg:py-6 2xl:mx-[18px] dark:text-white"
+                        >
+                          Shop
+                        </a>
+                      </li>
+                      <li class="group relative lg:py-4">
+                        <a
+                          href="javascript:void(0)"
+                          @click="submenuOpen = !submenuOpen "
+                          class="text-dark hover:text-primary group-hover:text-primary flex items-center justify-between py-2 text-base font-medium lg:mx-6 lg:inline-flex lg:py-2 2xl:mx-[18px] dark:text-white"
+                        >
+                          Products
+                          <span class="pl-[6px]">
+                            <svg
+                              width="15"
+                              height="15"
+                              viewBox="0 0 15 15"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              class="fill-current"
+                            >
+                              <path
+                                d="M7.39258 10.475C7.26133 10.475 7.15196 10.4313 7.04258 10.3438L2.01133 5.40001C1.81446 5.20314 1.81446 4.89689 2.01133 4.70001C2.20821 4.50314 2.51446 4.50314 2.71133 4.70001L7.39258 9.27189L12.0738 4.65626C12.2707 4.45939 12.577 4.45939 12.7738 4.65626C12.9707 4.85314 12.9707 5.15939 12.7738 5.35626L7.74258 10.3C7.63321 10.4094 7.52383 10.475 7.39258 10.475Z"
+                              />
+                            </svg>
+                          </span>
+                        </a>
+
+                        <div
+                          :class="!submenuOpen ? 'hidden lg:block' : 'block' "
+                          class="dark:bg-dark-2 lg:border-stroke dark:lg:border-dark-3 relative top-full left-0 z-10 z-50 rounded-[5px] bg-white px-2 transition-all group-hover:opacity-100 lg:invisible lg:absolute lg:top-[115%] lg:w-[600px] lg:border-[.5px] lg:px-[50px] lg:pt-9 lg:pb-7 lg:opacity-0 lg:group-hover:visible lg:group-hover:top-full xl:w-[700px]"
+                        >
+                          <span
+                            class="border-stroke dark:border-dark-3 dark:bg-dark-2 absolute -top-[6px] left-8 -z-10 hidden h-3 w-3 rotate-45 rounded-sm border-[.5px] border-r-0 border-b-0 bg-white lg:block xl:left-10"
+                          ></span>
+                          <div class="-mx-4 flex flex-wrap lg:justify-center">
+                            <div class="w-full px-4 lg:w-1/3">
+                              <div>
+                                <h3
+                                  class="text-dark mb-[14px] text-base font-semibold dark:text-white"
+                                >
+                                  New Arrivals
+                                </h3>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Dresses
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Jackets
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Sweatshirts
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Tops & Tees
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Party Dresses
+                                </a>
+                              </div>
+                            </div>
+                            <div class="w-full px-4 lg:w-1/3">
+                              <div>
+                                <h3
+                                  class="text-dark mb-[14px] text-base font-semibold dark:text-white"
+                                >
+                                  New Arrivals
+                                </h3>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Dresses
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Jackets
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Sweatshirts
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Tops & Tees
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Party Dresses
+                                </a>
+                              </div>
+                            </div>
+                            <div class="w-full px-4 lg:w-1/3">
+                              <div>
+                                <h3
+                                  class="text-dark mb-[14px] text-base font-semibold dark:text-white"
+                                >
+                                  New Arrivals
+                                </h3>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Dresses
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Jackets
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Sweatshirts
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Tops & Tees
+                                </a>
+                                <a
+                                  href="filters.html"
+                                  class="text-body-color hover:text-primary dark:text-dark-6 block py-[6px] text-base"
+                                >
+                                  Party Dresses
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                      <li>
+                        <a
+                          href="filters.html"
+                          class="text-dark hover:text-primary flex justify-between py-2 text-base font-medium lg:mx-5 lg:inline-flex lg:py-6 2xl:mx-[18px] dark:text-white"
+                        >
+                          Accessories
+                        </a>
+                      </li>
+                      <li>
+                        <a
+                          href="support.html"
+                          class="text-dark hover:text-primary flex justify-between py-2 text-base font-medium lg:mx-5 lg:inline-flex lg:py-6 2xl:mx-[18px] dark:text-white"
+                        >
+                          Contact
+                        </a>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+              </div>
+              <div
+                class="hidden w-full items-center justify-end space-x-4 pr-[70px] sm:flex lg:pr-0"
+              >
+                <div class="hidden items-center pr-1 xl:flex">
+                  <div
+                    class="border-stroke bg-gray-2 text-dark dark:border-dark-3 dark:bg-dark-2 mr-3 flex h-[42px] w-[42px] items-center justify-center rounded-full border-[.5px] dark:text-white"
+                  >
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 22 22"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="fill-current"
+                    >
+                      <path
+                        d="M20.6937 18.975L20.075 12.7531C19.9719 11.6187 19.0094 10.7594 17.875 10.7594H4.125C2.99062 10.7594 2.0625 11.6187 1.925 12.7531L1.30625 18.975C1.2375 19.5937 1.44375 20.2125 1.85625 20.6594C2.26875 21.1062 2.85312 21.3812 3.47187 21.3812H18.4594C19.0781 21.3812 19.6625 21.1062 20.075 20.6594C20.5562 20.2125 20.7281 19.5937 20.6937 18.975ZM18.975 19.6281C18.8375 19.7656 18.6656 19.8344 18.4937 19.8344H3.50625C3.33437 19.8344 3.1625 19.7656 3.025 19.6281C2.8875 19.4906 2.85312 19.3187 2.85312 19.1125L3.47187 12.8906C3.50625 12.5469 3.78125 12.3062 4.125 12.3062H17.875C18.2187 12.3062 18.4937 12.5469 18.5281 12.8906L19.1469 19.1125C19.1469 19.3187 19.1125 19.4906 18.975 19.6281Z"
+                      />
+                      <path
+                        d="M11 13.5094C9.59063 13.5094 8.42188 14.6781 8.42188 16.0875C8.42188 17.5312 9.59063 18.6656 11 18.6656C12.4437 18.6656 13.5781 17.4969 13.5781 16.0875C13.5781 14.6781 12.4437 13.5094 11 13.5094ZM11 17.1187C10.4156 17.1187 9.96875 16.6375 9.96875 16.0875C9.96875 15.5031 10.45 15.0562 11 15.0562C11.5844 15.0562 12.0312 15.5375 12.0312 16.0875C12.0312 16.6719 11.5844 17.1187 11 17.1187Z"
+                      />
+                      <path
+                        d="M2.09687 7.08124C2.16562 8.59374 3.47187 9.38437 4.36562 9.38437H6.77187H6.80625C7.90625 9.31562 9.00625 8.59374 9.00625 7.08124V6.42812C10.175 6.42812 12.4094 6.42812 13.5437 6.42812V7.08124C13.5437 8.59374 14.6437 9.31562 15.7437 9.38437H18.1844C19.1125 9.38437 20.3844 8.59374 20.4531 7.08124C20.4531 6.97812 20.4531 5.74062 20.4531 5.67187C20.4531 5.63749 20.4531 5.60312 20.4531 5.56874C20.35 4.57187 20.0062 3.74687 19.3875 3.09374L19.3531 3.05937C18.4594 2.23437 17.4281 1.78749 16.6375 1.51249C14.3 0.618744 11.3781 0.618744 11.2406 0.618744C9.17812 0.653119 7.87187 0.824994 5.87812 1.51249C5.05312 1.82187 4.02187 2.26874 3.12812 3.05937L3.09375 3.09374C2.475 3.74687 2.13125 4.57187 2.02812 5.56874C2.02812 5.60312 2.02812 5.63749 2.02812 5.67187C2.0625 5.74062 2.09687 6.94374 2.09687 7.08124ZM4.22812 4.19374C4.91562 3.57499 5.74062 3.23124 6.42812 2.95624C8.21562 2.30312 9.35 2.19999 11.275 2.13124C11.4469 2.13124 14.0594 2.16562 16.1219 2.95624C16.8437 3.23124 17.6687 3.57499 18.3219 4.19374C18.6656 4.57187 18.8719 5.08749 18.9406 5.67187C18.9406 5.77499 18.9406 6.90937 18.9406 7.01249C18.9062 7.73437 18.2187 7.83749 18.2187 7.83749H15.8469C15.5031 7.80312 15.125 7.66562 15.125 7.08124V5.67187C15.125 5.32812 14.9187 5.01874 14.575 4.94999C14.3344 4.81249 8.25 4.81249 8.00937 4.91562C7.7 5.01874 7.45937 5.32812 7.45937 5.63749V7.08124C7.45937 7.66562 7.08125 7.80312 6.7375 7.83749H4.36562C4.36562 7.83749 3.67812 7.73437 3.64375 7.04687C3.64375 6.94374 3.64375 6.56562 3.64375 6.22187C3.64375 5.98124 3.64375 5.80937 3.64375 5.70624C3.67812 5.05312 3.88437 4.57187 4.22812 4.19374Z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <p class="text-dark text-sm font-medium dark:text-white">
+                      Need Help?
+                      <br />
+                      +001 123 456 789
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <button
+                    class="border-stroke bg-gray-2 text-dark dark:border-dark-3 dark:bg-dark-2 relative flex h-[42px] w-[42px] items-center justify-center rounded-full border-[.5px] dark:text-white"
+                  >
+                    <svg
+                      width="22"
+                      height="22"
+                      viewBox="0 0 22 22"
+                      fill="none"
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="fill-current"
+                    >
+                      <path
+                        d="M11 9.62499C8.42188 9.62499 6.35938 7.59687 6.35938 5.12187C6.35938 2.64687 8.42188 0.618744 11 0.618744C13.5781 0.618744 15.6406 2.64687 15.6406 5.12187C15.6406 7.59687 13.5781 9.62499 11 9.62499ZM11 2.16562C9.28125 2.16562 7.90625 3.50624 7.90625 5.12187C7.90625 6.73749 9.28125 8.07812 11 8.07812C12.7188 8.07812 14.0938 6.73749 14.0938 5.12187C14.0938 3.50624 12.7188 2.16562 11 2.16562Z"
+                      />
+                      <path
+                        d="M18.2531 21.4156C17.8406 21.4156 17.4625 21.0719 17.4625 20.625V19.6281C17.4625 16.0531 14.575 13.1656 11 13.1656C7.42499 13.1656 4.53749 16.0531 4.53749 19.6281V20.625C4.53749 21.0375 4.19374 21.4156 3.74686 21.4156C3.29999 21.4156 2.95624 21.0719 2.95624 20.625V19.6281C2.95624 15.1937 6.56561 11.6187 10.9656 11.6187C15.3656 11.6187 18.975 15.2281 18.975 19.6281V20.625C19.0094 21.0375 18.6656 21.4156 18.2531 21.4156Z"
+                      />
+                    </svg>
+                  </button>
+                </div>
+                <div class="relative z-20">
+                  <div class="flex max-w-[200px] justify-end">
+                    <button
+                      @click="wishlistOpen = !wishlistOpen"
+                      class="border-stroke bg-gray-2 text-dark dark:border-dark-3 dark:bg-dark-2 relative flex h-[42px] w-[42px] items-center justify-center rounded-full border-[.5px] dark:text-white"
+                    >
+                      <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 22 22"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="fill-current"
+                      >
+                        <path
+                          d="M11 20.2812C10.5531 20.2812 10.1062 20.1094 9.7625 19.8C8.97187 19.1125 8.24999 18.4937 7.59687 17.9438C5.63749 16.2594 3.91874 14.85 2.71562 13.4062C1.30624 11.6875 0.618744 10.0719 0.618744 8.25C0.618744 6.49687 1.23749 4.84688 2.33749 3.64375C3.47187 2.40625 5.05312 1.71875 6.73749 1.71875C8.00937 1.71875 9.21249 2.13125 10.2437 2.92188C10.5187 3.12812 10.7594 3.33438 11 3.60938C11.2406 3.36875 11.4812 3.12812 11.7562 2.92188C12.7875 2.13125 13.9562 1.71875 15.2625 1.71875C16.9812 1.71875 18.5281 2.40625 19.6625 3.64375C20.7969 4.84688 21.3812 6.49687 21.3812 8.25C21.3812 10.0719 20.7281 11.6875 19.2844 13.4062C18.0812 14.85 16.3625 16.2937 14.4031 17.9438C13.75 18.4937 12.9937 19.1469 12.2031 19.8C11.8937 20.1094 11.4469 20.2812 11 20.2812ZM6.73749 3.26562C5.46562 3.26562 4.29687 3.78125 3.43749 4.675C2.61249 5.60313 2.16562 6.875 2.16562 8.25C2.16562 9.65938 2.71562 11 3.88437 12.4094C5.01874 13.75 6.66874 15.1594 8.55937 16.775C9.21249 17.325 9.96874 17.9781 10.7594 18.6656C10.8969 18.7687 11.1031 18.7687 11.2406 18.6656C12.0312 17.9781 12.7875 17.3594 13.4406 16.775C15.3656 15.125 17.0156 13.75 18.1156 12.4094C19.2844 11 19.8344 9.65938 19.8344 8.25C19.8344 6.875 19.3531 5.60312 18.5281 4.70937C17.6687 3.78125 16.5 3.26562 15.2625 3.26562C14.3344 3.26562 13.475 3.575 12.7187 4.125C12.4094 4.36562 12.1344 4.64062 11.8594 4.95C11.6531 5.19062 11.3437 5.3625 11 5.3625C10.6562 5.3625 10.3812 5.225 10.1406 4.95C9.86562 4.64062 9.59062 4.36562 9.28125 4.125C8.55937 3.575 7.7 3.26562 6.73749 3.26562Z"
+                        />
+                      </svg>
+
+                      <span
+                        class="bg-primary absolute -top-1 -right-1 h-[18px] w-[18px] rounded-full text-[10px] leading-[18px] font-semibold text-white"
+                      >
+                        3
+                      </span>
+                    </button>
+                  </div>
+                  <div
+                    x-show="wishlistOpen"
+                    @click.outside="wishlistOpen = false"
+                    class="absolute top-full right-0 mt-3 w-[330px]"
+                  >
+                    <div
+                      class="border-stroke shadow-1 dark:border-dark-3 dark:bg-dark-2 dark:shadow-box-dark overflow-hidden rounded-lg border bg-white px-6 py-8"
+                    >
+                      <div
+                        class="border-stroke dark:border-dark-3 border-b pb-3"
+                      >
+                        <div
+                          class="-mx-1 flex items-center justify-between pb-4"
+                        >
+                          <div class="flex items-center px-1">
+                            <div
+                              class="mr-3 h-10 w-full max-w-[40px] overflow-hidden rounded"
+                            >
+                              <img
+                                src="./assets/ecom-images/checkout/checkout-02/image-02.jpg"
+                                alt="product image"
+                                class="w-full"
+                              />
+                            </div>
+                            <div>
+                              <a
+                                href="product-details.html"
+                                class="text-dark hover:text-primary text-sm font-medium dark:text-white"
+                              >
+                                Circular Sienna
+                              </a>
+                              <p
+                                class="text-body-color dark:text-dark-6 truncate text-xs font-medium"
+                              >
+                                Awesome white shirt
+                              </p>
+                            </div>
+                          </div>
+                          <div class="px-1">
+                            <p
+                              class="text-dark text-base font-semibold dark:text-white"
+                            >
+                              $36.00
+                            </p>
+                          </div>
+                        </div>
+                        <div
+                          class="-mx-1 flex items-center justify-between py-4"
+                        >
+                          <div class="flex items-center px-1">
+                            <div
+                              class="mr-3 h-10 w-full max-w-[40px] overflow-hidden rounded"
+                            >
+                              <img
+                                src="./assets/ecom-images/checkout/checkout-02/image-03.jpg"
+                                alt="product image"
+                                class="w-full"
+                              />
+                            </div>
+                            <div>
+                              <a
+                                href="product-details.html"
+                                class="text-dark hover:text-primary text-sm font-medium dark:text-white"
+                              >
+                                Black T-shirt
+                              </a>
+                              <p
+                                class="text-body-color dark:text-dark-6 truncate text-xs font-medium"
+                              >
+                                It's a nice black t-shirt
+                              </p>
+                            </div>
+                          </div>
+                          <div class="px-1">
+                            <p
+                              class="text-dark text-base font-semibold dark:text-white"
+                            >
+                              $36.00
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <a
+                          href="wishlist.html"
+                          class="bg-primary hover:bg-blue-dark flex w-full items-center justify-center rounded-md px-10 py-[10px] text-center text-base font-medium text-white"
+                        >
+                          Go to Wishlist
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="relative z-20">
+                  <div class="flex max-w-[200px] justify-end">
+                    <button
+                      @click="cartOpen = !cartOpen"
+                      class="border-stroke bg-gray-2 text-dark dark:border-dark-3 dark:bg-dark-2 relative flex h-[42px] w-[42px] items-center justify-center rounded-full border-[.5px] dark:text-white"
+                    >
+                      <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 22 22"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="fill-current"
+                      >
+                        <path
+                          d="M19.3875 6.7375H18.5625L16.3281 1.1C16.1562 0.687499 15.7094 0.515624 15.3312 0.653124C14.9187 0.824999 14.7469 1.27187 14.8844 1.65L16.8781 6.7375H5.12187L7.11562 1.68437C7.28749 1.27187 7.08124 0.824999 6.66874 0.687499C6.29062 0.515624 5.84374 0.687499 5.67187 1.1L3.43749 6.7375H2.61249C1.99374 6.7375 1.47812 7.25312 1.47812 7.87187V10.6562C1.47812 11.2406 1.89062 11.6875 2.47499 11.7562L3.33437 19.25C3.47187 20.4875 4.50312 21.4156 5.74062 21.4156H16.2594C17.4969 21.4156 18.5281 20.4875 18.6656 19.25L19.525 11.7562C20.075 11.6875 20.5219 11.2062 20.5219 10.6562V7.8375C20.5219 7.21875 20.0062 6.7375 19.3875 6.7375ZM3.02499 8.28437H18.975V10.2437H3.02499V8.28437ZM16.2594 19.8687H5.74062C5.29374 19.8687 4.91562 19.525 4.84687 19.0781L4.02187 11.7906H17.9781L17.1531 19.0781C17.0844 19.525 16.7062 19.8687 16.2594 19.8687Z"
+                        />
+                        <path
+                          d="M7.49375 13.3375C7.08125 13.3375 6.70312 13.6812 6.70312 14.1281V16.7062C6.70312 17.1187 7.04687 17.4969 7.49375 17.4969C7.94062 17.4969 8.28438 17.1531 8.28438 16.7062V14.0937C8.28438 13.6812 7.94062 13.3375 7.49375 13.3375Z"
+                        />
+                        <path
+                          d="M14.5062 13.3375C14.0937 13.3375 13.7156 13.6812 13.7156 14.1281V16.7062C13.7156 17.1187 14.0594 17.4969 14.5062 17.4969C14.9531 17.4969 15.2969 17.1531 15.2969 16.7062V14.0937C15.2625 13.6812 14.9187 13.3375 14.5062 13.3375Z"
+                        />
+                      </svg>
+
+                      <span
+                        class="bg-primary absolute -top-1 -right-1 h-[18px] w-[18px] rounded-full text-[10px] leading-[18px] font-semibold text-white"
+                      >
+                        1
+                      </span>
+                    </button>
+                  </div>
+                  <div
+                    x-show="cartOpen"
+                    @click.outside="cartOpen = false"
+                    class="absolute top-full right-0 mt-3 w-[330px]"
+                  >
+                    <div
+                      class="shadow-1 dark:bg-dark-2 dark:shadow-box-dark overflow-hidden rounded-lg bg-white p-8"
+                    >
+                      <div
+                        class="border-stroke dark:border-dark-3 mb-5 border-b pb-3"
+                      >
+                        <div
+                          class="-mx-1 flex items-center justify-between pb-4"
+                        >
+                          <div class="flex items-center px-1">
+                            <div
+                              class="mr-3 h-10 w-full max-w-[40px] overflow-hidden rounded"
+                            >
+                              <img
+                                src="./assets/ecom-images/checkout/checkout-02/image-02.jpg"
+                                alt="product image"
+                                class="w-full"
+                              />
+                            </div>
+                            <div>
+                              <a
+                                href="product-details.html"
+                                class="text-dark hover:text-primary text-sm font-medium dark:text-white"
+                              >
+                                Circular Sienna
+                              </a>
+                              <p
+                                class="text-body-color dark:text-dark-6 truncate text-xs font-medium"
+                              >
+                                Awesome white shirt
+                              </p>
+                            </div>
+                          </div>
+                          <div class="px-1">
+                            <p
+                              class="text-dark text-base font-semibold dark:text-white"
+                            >
+                              $36.00
+                            </p>
+                          </div>
+                        </div>
+                        <div
+                          class="-mx-1 flex items-center justify-between py-4"
+                        >
+                          <div class="flex items-center px-1">
+                            <div
+                              class="mr-3 h-10 w-full max-w-[40px] overflow-hidden rounded"
+                            >
+                              <img
+                                src="./assets/ecom-images/checkout/checkout-02/image-03.jpg"
+                                alt="product image"
+                                class="w-full"
+                              />
+                            </div>
+                            <div>
+                              <a
+                                href="product-details.html"
+                                class="text-dark hover:text-primary text-sm font-medium dark:text-white"
+                              >
+                                Black T-shirt
+                              </a>
+                              <p
+                                class="text-body-color dark:text-dark-6 truncate text-xs font-medium"
+                              >
+                                It's a nice black t-shirt
+                              </p>
+                            </div>
+                          </div>
+                          <div class="px-1">
+                            <p
+                              class="text-dark text-base font-semibold dark:text-white"
+                            >
+                              $36.00
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        class="border-stroke dark:border-dark-3 -mx-1 border-b pb-5"
+                      >
+                        <div class="mb-3 flex items-center justify-between">
+                          <div class="px-1">
+                            <p class="text-dark text-base dark:text-white">
+                              Subtotal
+                            </p>
+                          </div>
+                          <div class="px-1">
+                            <p
+                              class="text-dark text-base font-medium dark:text-white"
+                            >
+                              $108
+                            </p>
+                          </div>
+                        </div>
+                        <div class="mb-3 flex items-center justify-between">
+                          <div class="px-1">
+                            <p class="text-dark text-base dark:text-white">
+                              Shipping Cost (+)
+                            </p>
+                          </div>
+                          <div class="px-1">
+                            <p
+                              class="text-dark text-base font-medium dark:text-white"
+                            >
+                              $10.85
+                            </p>
+                          </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                          <div class="px-1">
+                            <p class="text-dark text-base dark:text-white">
+                              Discount (-)
+                            </p>
+                          </div>
+                          <div class="px-1">
+                            <p
+                              class="text-dark text-base font-medium dark:text-white"
+                            >
+                              $9.00
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      <div
+                        class="-mx-1 flex items-center justify-between pt-5 pb-6"
+                      >
+                        <div class="px-1">
+                          <p class="text-dark text-base dark:text-white">
+                            Total Payable
+                          </p>
+                        </div>
+                        <div class="px-1">
+                          <p
+                            class="text-dark text-base font-medium dark:text-white"
+                          >
+                            $88.15
+                          </p>
+                        </div>
+                      </div>
+
+                      <div>
+                        <a
+                          href="shopping-cart.html"
+                          class="bg-primary hover:bg-blue-dark flex w-full items-center justify-center rounded-md px-10 py-[13px] text-center text-base font-medium text-white"
+                        >
+                          Go to Cart
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <!-- ====== Navbar Section End -->
+
+    <!-- ====== Breadcrumb Start ====== -->
+    <section class="bg-tg-bg dark:bg-dark pt-10">
+      <div class="container mx-auto">
+        <div
+          class="border-light shadow-1 dark:border-dark-3 dark:bg-dark-2 dark:shadow-card rounded-lg border bg-white px-4 py-4 sm:px-6 md:px-8 md:py-5"
+        >
+          <ul class="flex items-center">
+            <li class="flex items-center">
+              <a
+                href="index.html"
+                class="text-dark hover:text-primary dark:hover:text-primary text-base font-medium dark:text-white"
+              >
+                Home
+              </a>
+              <span class="text-body-color dark:text-dark-6 px-3">
+                <svg
+                  width="7"
+                  height="12"
+                  viewBox="0 0 7 12"
+                  class="fill-current"
+                >
+                  <path
+                    d="M0.879233 11.4351C0.808625 11.4351 0.720364 11.3998 0.667408 11.3469C0.543844 11.2233 0.543844 11.0291 0.649756 10.9056L5.09807 6.17483C5.18633 6.08657 5.18633 5.92771 5.09807 5.82179L0.649756 1.09105C0.526192 0.967487 0.543844 0.773315 0.667408 0.649751C0.790972 0.526187 0.985145 0.543839 1.10871 0.667403L5.55702 5.39815C5.85711 5.73353 5.85711 6.26309 5.55702 6.58083L1.10871 11.3292C1.0381 11.3998 0.967493 11.4351 0.879233 11.4351Z"
+                  />
+                  <path
+                    fill-rule="evenodd"
+                    clip-rule="evenodd"
+                    d="M0.229332 10.5281L4.48868 5.99831L0.24288 1.48294C-0.133119 1.09849 -0.0312785 0.549591 0.267983 0.25033C0.652758 -0.134445 1.2069 -0.0332381 1.50812 0.267982L1.52041 0.280272L5.9781 5.02138C6.46442 5.56491 6.47872 6.42661 5.96853 6.96778V6.96778L1.50834 11.7289C1.36051 11.8767 1.15353 12 0.879227 12C0.660517 12 0.428074 11.9064 0.267983 11.7463C-0.0719543 11.4064 -0.0699959 10.8773 0.220873 10.538L0.229332 10.5281ZM5.55702 6.58083C5.85711 6.26309 5.85711 5.73353 5.55702 5.39815L1.10871 0.667403C0.985145 0.543839 0.790972 0.526187 0.667408 0.649751C0.543844 0.773315 0.526192 0.967487 0.649756 1.09105L5.09807 5.82179C5.18633 5.92771 5.18633 6.08657 5.09807 6.17483L0.649756 10.9056C0.543844 11.0291 0.543844 11.2233 0.667408 11.3469C0.720364 11.3998 0.808625 11.4351 0.879233 11.4351C0.967493 11.4351 1.0381 11.3998 1.10871 11.3292L5.55702 6.58083Z"
+                  />
+                </svg>
+              </span>
+            </li>
+
+            <li class="text-primary text-base font-medium">Support</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Breadcrumb End ====== -->
+
+    <!-- ====== Contact Section Start -->
+    <section
+      class="bg-tg-bg dark:bg-dark relative z-10 overflow-hidden pt-24 pb-[120px]"
+    >
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[770px] text-center">
+              <h2
+                class="text-dark mb-3 text-center text-3xl leading-tight font-bold md:text-4xl md:leading-tight xl:text-[45px] xl:leading-tight dark:text-white"
+              >
+                Need Help? Open a Ticket
+              </h2>
+              <p
+                class="text-body-color dark:text-dark-6 text-base leading-relaxed md:text-lg md:leading-relaxed"
+              >
+                Submit Your Support Ticket, We will be with you as soon as we
+                are able.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="-mx-4 flex">
+          <div class="w-full px-4">
+            <div
+              class="border-form-stroke dark:border-dark-3 dark:bg-dark-2 relative mx-auto w-full max-w-[770px] border bg-white px-6 py-10 shadow-[0px_0px_40px_0px_rgba(0,0,0,0.05)] sm:px-[65px] sm:py-[60px] md:p-10 lg:px-[65px] lg:py-[60px]"
+            >
+              <form>
+                <div class="-mx-4 flex flex-wrap">
+                  <div class="w-full px-4 md:w-1/2">
+                    <div class="mb-7">
+                      <label
+                        for="firstName"
+                        class="text-dark mb-2.5 block text-base font-medium dark:text-white"
+                      >
+                        First Name
+                      </label>
+                      <input
+                        id="firstName"
+                        type="text"
+                        name="firstName"
+                        placeholder="Enter your first name"
+                        class="border-stroke text-body-color placeholder-secondary-color focus:border-primary dark:border-dark-3 dark:text-dark-6 w-full border bg-transparent px-6 py-4 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div class="w-full px-4 md:w-1/2">
+                    <div class="mb-7">
+                      <label
+                        for="lastName"
+                        class="text-dark mb-2.5 block text-base font-medium dark:text-white"
+                      >
+                        Last Name
+                      </label>
+                      <input
+                        id="lastName"
+                        type="text"
+                        name="lastName"
+                        placeholder="Enter your last Name"
+                        class="border-stroke text-body-color placeholder-secondary-color focus:border-primary dark:border-dark-3 dark:text-dark-6 w-full border bg-transparent px-6 py-4 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div class="w-full px-4 md:w-1/2">
+                    <div class="mb-7">
+                      <label
+                        for="email"
+                        class="text-dark mb-2.5 block text-base font-medium dark:text-white"
+                      >
+                        Business Email
+                      </label>
+                      <input
+                        id="email"
+                        type="email"
+                        name="email"
+                        placeholder="Enter your Email"
+                        class="border-stroke text-body-color placeholder-secondary-color focus:border-primary dark:border-dark-3 dark:text-dark-6 w-full border bg-transparent px-6 py-4 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div class="w-full px-4 md:w-1/2">
+                    <div class="mb-7">
+                      <label
+                        for="number"
+                        class="text-dark mb-2.5 block text-base font-medium dark:text-white"
+                      >
+                        Phone number
+                      </label>
+                      <input
+                        id="number"
+                        type="text"
+                        name="number"
+                        placeholder="Enter your number"
+                        class="border-stroke text-body-color placeholder-secondary-color focus:border-primary dark:border-dark-3 dark:text-dark-6 w-full border bg-transparent px-6 py-4 outline-none"
+                      />
+                    </div>
+                  </div>
+                  <div class="w-full px-4">
+                    <div class="mb-7">
+                      <label
+                        for="message"
+                        class="text-dark mb-2.5 block text-base font-medium dark:text-white"
+                      >
+                        What are you looking for?
+                      </label>
+                      <textarea
+                        id="message"
+                        name="message"
+                        placeholder="Type your message here"
+                        rows="6"
+                        class="border-stroke text-body-color placeholder-secondary-color focus:border-primary dark:border-dark-3 dark:text-dark-6 w-full resize-none border bg-transparent px-6 py-4 outline-none"
+                      ></textarea>
+                    </div>
+                  </div>
+
+                  <div class="w-full px-4">
+                    <div class="text-center">
+                      <button
+                        type="submit"
+                        class="bg-primary hover:bg-primary/90 inline-flex items-center justify-center border border-transparent px-7 py-3 text-base font-medium text-white"
+                      >
+                        Submit Ticket
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <div>
+                <span class="absolute -top-5 -right-5 -z-10">
+                  <svg
+                    width="57"
+                    height="121"
+                    viewBox="0 0 57 121"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <circle
+                      cx="23.0992"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                  </svg>
+                </span>
+
+                <span class="absolute -bottom-5 -left-5 -z-10">
+                  <svg
+                    width="57"
+                    height="121"
+                    viewBox="0 0 57 121"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <circle
+                      cx="23.0992"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3649"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="23.0992"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="12.3629"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="1.62854"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="33.8571"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="44.6149"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="1.62854"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="12.3864"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="23.1422"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="33.9005"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="44.6515"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="55.4049"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="66.1559"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="76.6744"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="87.193"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="97.7111"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="108.227"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                    <circle
+                      cx="55.3707"
+                      cy="118.746"
+                      r="1.62854"
+                      fill="#3056D3"
+                    />
+                  </svg>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Contact Section End -->
+
+    <!-- ====== eCommerce Footer Section Start -->
+    <footer class="dark:bg-dark-2 bg-white">
+      <div class="border-stroke dark:border-dark-3 border-b pt-[60px] md:pt-0">
+        <div class="container mx-auto">
+          <div class="-mx-4 flex flex-wrap">
+            <div class="w-full px-4 md:w-1/3">
+              <div class="mb-[60px] text-center md:mt-[60px]">
+                <div
+                  class="shadow-1 dark:bg-dark-2 mx-auto mb-7 flex h-[70px] w-[70px] items-center justify-center rounded-full bg-white dark:shadow-none"
+                >
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 32 32"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M29.085 5.5H13.46C12.8195 5.5 12.2052 5.75444 11.7523 6.20734C11.2994 6.66024 11.045 7.2745 11.045 7.915V8.135H4.295C4.04953 8.13619 3.80922 8.20554 3.60086 8.33532C3.39251 8.4651 3.2243 8.65021 3.115 8.87L0.64 13.92C0.549844 14.1002 0.501964 14.2985 0.5 14.5V22.325C0.5 22.5902 0.605357 22.8446 0.792893 23.0321C0.98043 23.2196 1.23478 23.325 1.5 23.325H2.855C3.00737 24.2132 3.46881 25.0189 4.15778 25.5997C4.84674 26.1805 5.71886 26.4991 6.62 26.4991C7.52114 26.4991 8.39326 26.1805 9.08222 25.5997C9.77119 25.0189 10.2326 24.2132 10.385 23.325H20.885C21.0374 24.2132 21.4988 25.0189 22.1878 25.5997C22.8767 26.1805 23.7489 26.4991 24.65 26.4991C25.5511 26.4991 26.4233 26.1805 27.1122 25.5997C27.8012 25.0189 28.2626 24.2132 28.415 23.325H30.15C30.5038 23.3251 30.8434 23.1863 31.0959 22.9385C31.3483 22.6907 31.4934 22.3537 31.5 22V7.925C31.5013 7.60702 31.4398 7.2919 31.319 6.99775C31.1983 6.70359 31.0206 6.43618 30.7962 6.21087C30.5718 5.98556 30.3052 5.80677 30.0115 5.68478C29.7178 5.56279 29.403 5.5 29.085 5.5V5.5ZM4.725 10.145H11.045V13.42H3.115L4.725 10.145ZM6.62 24.5C6.25764 24.501 5.90314 24.3944 5.60143 24.1937C5.29972 23.993 5.06439 23.7072 4.92526 23.3726C4.78614 23.038 4.74948 22.6697 4.81993 22.3142C4.89038 21.9588 5.06477 21.6322 5.321 21.376C5.57723 21.1198 5.90377 20.9454 6.25922 20.8749C6.61467 20.8045 6.98303 20.8411 7.31762 20.9803C7.65222 21.1194 7.93797 21.3547 8.13867 21.6564C8.33938 21.9581 8.44599 22.3126 8.445 22.675C8.44368 23.1586 8.25098 23.622 7.90901 23.964C7.56704 24.306 7.10361 24.4987 6.62 24.5V24.5ZM6.62 18.845C5.83948 18.8467 5.07815 19.0871 4.43821 19.534C3.79828 19.9808 3.31038 20.6128 3.04 21.345H2.5V15.42H11.045V21.325H10.2C9.928 20.5947 9.43939 19.9649 8.7996 19.5199C8.1598 19.0749 7.39934 18.8359 6.62 18.835V18.845ZM24.645 24.5C24.2826 24.501 23.9281 24.3944 23.6264 24.1937C23.3247 23.993 23.0894 23.7072 22.9503 23.3726C22.8111 23.038 22.7745 22.6697 22.8449 22.3142C22.9154 21.9588 23.0898 21.6322 23.346 21.376C23.6022 21.1198 23.9288 20.9454 24.2842 20.8749C24.6397 20.8045 25.008 20.8411 25.3426 20.9803C25.6772 21.1194 25.963 21.3547 26.1637 21.6564C26.3644 21.9581 26.471 22.3126 26.47 22.675C26.4687 23.1586 26.276 23.622 25.934 23.964C25.592 24.306 25.1286 24.4987 24.645 24.5V24.5ZM29.5 21.325H28.225C27.9541 20.5931 27.4656 19.9617 26.8251 19.5159C26.1846 19.07 25.4229 18.8309 24.6425 18.8309C23.8621 18.8309 23.1004 19.07 22.4599 19.5159C21.8194 19.9617 21.3309 20.5931 21.06 21.325H13.06V7.925C13.0613 7.81534 13.1054 7.71053 13.183 7.63299C13.2605 7.55544 13.3653 7.5113 13.475 7.51H29.085C29.1947 7.5113 29.2995 7.55544 29.377 7.63299C29.4546 7.71053 29.4987 7.81534 29.5 7.925V21.325Z"
+                      fill="#3758F9"
+                    />
+                  </svg>
+                </div>
+
+                <div>
+                  <h3
+                    class="text-dark mb-[10px] text-xl font-semibold xl:text-2xl dark:text-white"
+                  >
+                    Free delivery
+                  </h3>
+                  <p
+                    class="text-body-color dark:text-dark-6 mx-auto max-w-[275px] text-base"
+                  >
+                    Lorem ipsum dolor sit amet, consect adipiscing eliteget
+                    lorem.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div
+              class="md:border-stroke md:dark:border-dark-3 w-full px-4 md:w-1/3 md:border-x"
+            >
+              <div class="mb-[60px] text-center md:mt-[60px]">
+                <div
+                  class="shadow-1 dark:bg-dark-2 mx-auto mb-7 flex h-[70px] w-[70px] items-center justify-center rounded-full bg-white dark:shadow-none"
+                >
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 32 32"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M27.6 9.50001H26.1C26.25 9.10001 26.35 8.65001 26.35 8.15001V6.45001C26.35 4.45001 24.75 2.85001 22.75 2.85001H4.5C2.5 2.85001 0.9 4.45001 0.9 6.45001V8.15001V25.6C0.9 27.55 2.45 29.1 4.4 29.1H27.65C29.6 29.1 31.15 27.55 31.15 25.6V13C31.1 11.1 29.55 9.50001 27.6 9.50001ZM28.85 22.05H24.3C24.1 22.05 23.9 21.85 23.9 21.65V17C23.9 16.8 24.1 16.6 24.3 16.6H28.85V22.05ZM3.15 6.45001C3.15 5.70001 3.75 5.10001 4.5 5.10001H22.8C23.55 5.10001 24.15 5.70001 24.15 6.45001V8.15001C24.15 8.90001 23.55 9.50001 22.8 9.50001H4.5C3.75 9.50001 3.15 8.90001 3.15 8.15001V6.45001ZM27.6 26.9H4.4C3.7 26.9 3.15 26.35 3.15 25.65V11.5C3.55 11.65 4 11.75 4.5 11.75H27.65C28.35 11.75 28.9 12.3 28.9 13V14.35H24.35C22.9 14.35 21.7 15.55 21.7 17V21.6C21.7 23.05 22.9 24.25 24.35 24.25H28.9V25.6C28.85 26.3 28.3 26.9 27.6 26.9Z"
+                      fill="#3758F9"
+                    />
+                    <path
+                      d="M26.5 20.25C27.0247 20.25 27.45 19.8247 27.45 19.3C27.45 18.7753 27.0247 18.35 26.5 18.35C25.9753 18.35 25.55 18.7753 25.55 19.3C25.55 19.8247 25.9753 20.25 26.5 20.25Z"
+                      fill="#3758F9"
+                    />
+                  </svg>
+                </div>
+
+                <div>
+                  <h3
+                    class="text-dark mb-[10px] text-xl font-semibold xl:text-2xl dark:text-white"
+                  >
+                    Online Payment
+                  </h3>
+                  <p
+                    class="text-body-color dark:text-dark-6 mx-auto max-w-[275px] text-base"
+                  >
+                    Lorem ipsum dolor sit amet, consect adipiscing eliteget
+                    lorem.
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div class="w-full px-4 md:w-1/3">
+              <div class="mb-[60px] text-center md:mt-[60px]">
+                <div
+                  class="shadow-1 dark:bg-dark-2 mx-auto mb-7 flex h-[70px] w-[70px] items-center justify-center rounded-full bg-white dark:shadow-none"
+                >
+                  <svg
+                    width="32"
+                    height="32"
+                    viewBox="0 0 32 32"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M4.2 14.5C4.35 14.5 4.55 14.45 4.7 14.4L10.25 12.45C10.85 12.25 11.15 11.6 10.95 11C10.75 10.4 10.1 10.1 9.5 10.3L6.05 11.5C7.7 7.19999 11.9 4.29999 16.7 4.29999C21.95 4.29999 26.5 7.79999 27.8 12.8C27.95 13.4 28.55 13.75 29.15 13.6C29.75 13.45 30.1 12.85 29.95 12.25C28.4 6.24999 22.95 2.04999 16.65 2.04999C11.05 2.04999 6.1 5.34999 4.05 10.3L3 7.29999C2.8 6.69999 2.15 6.39999 1.55 6.59999C0.950004 6.79999 0.650004 7.44999 0.850004 8.04999L2.75 13.5C3.05 14.15 3.6 14.5 4.2 14.5Z"
+                      fill="#3758F9"
+                    />
+                    <path
+                      d="M31.05 24.85L29 19.5C28.85 19.15 28.6 18.85 28.25 18.7C27.9 18.55 27.5 18.55 27.15 18.7L21.65 20.8C21.05 21 20.8 21.65 21 22.25C21.2 22.85 21.85 23.1 22.45 22.9L25.9 21.6C23.9 25.25 20 27.65 15.65 27.65C10.7 27.65 6.35001 24.55 4.80001 19.95C4.60001 19.35 3.95001 19.05 3.40001 19.25C2.80001 19.45 2.50001 20.1 2.70001 20.65C4.55001 26.15 9.75001 29.85 15.65 29.85C20.8 29.85 25.45 27 27.8 22.6L28.95 25.65C29.1 26.1 29.55 26.35 30 26.35C30.15 26.35 30.25 26.35 30.4 26.25C31 26.1 31.25 25.45 31.05 24.85Z"
+                      fill="#3758F9"
+                    />
+                  </svg>
+                </div>
+
+                <div>
+                  <h3
+                    class="text-dark mb-[10px] text-xl font-semibold xl:text-2xl dark:text-white"
+                  >
+                    Easy Return.
+                  </h3>
+                  <p
+                    class="text-body-color dark:text-dark-6 mx-auto max-w-[275px] text-base"
+                  >
+                    Lorem ipsum dolor sit amet, consect adipiscing eliteget
+                    lorem.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-[70px]">
+        <div class="container mx-auto">
+          <div class="-mx-4 flex flex-wrap">
+            <div class="w-full px-4 md:w-1/2 lg:w-5/12 xl:w-4/12">
+              <div class="mb-16 max-w-[270px]">
+                <a href="javascript:void(0)" class="mb-8 inline-block">
+                  <img
+                    src="./assets/images/logo/logo.svg"
+                    alt="logo"
+                    class="max-w-full dark:hidden"
+                  />
+                  <img
+                    src="./assets/images/logo/logo-white.svg"
+                    alt="logo"
+                    class="hidden max-w-full dark:block"
+                  />
+                </a>
+
+                <div class="space-y-4">
+                  <p class="text-body-color dark:text-dark-6 flex text-base">
+                    <span class="mt-1 pr-5">
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M20.7 7.12501H19.575C19.6875 6.82501 19.7625 6.48751 19.7625 6.11251V4.83751C19.7625 3.33751 18.5625 2.13751 17.0625 2.13751H3.37499C1.87499 2.13751 0.674988 3.33751 0.674988 4.83751V6.11251V19.2C0.674988 20.6625 1.83749 21.825 3.29999 21.825H20.7375C22.2 21.825 23.3625 20.6625 23.3625 19.2V9.75001C23.325 8.32501 22.1625 7.12501 20.7 7.12501ZM21.6375 16.5375H18.225C18.075 16.5375 17.925 16.3875 17.925 16.2375V12.75C17.925 12.6 18.075 12.45 18.225 12.45H21.6375V16.5375ZM2.36249 4.83751C2.36249 4.27501 2.81249 3.82501 3.37499 3.82501H17.1C17.6625 3.82501 18.1125 4.27501 18.1125 4.83751V6.11251C18.1125 6.67501 17.6625 7.12501 17.1 7.12501H3.37499C2.81249 7.12501 2.36249 6.67501 2.36249 6.11251V4.83751ZM20.7 20.175H3.29999C2.77499 20.175 2.36249 19.7625 2.36249 19.2375V8.62501C2.66249 8.73751 2.99999 8.81251 3.37499 8.81251H20.7375C21.2625 8.81251 21.675 9.22501 21.675 9.75001V10.7625H18.2625C17.175 10.7625 16.275 11.6625 16.275 12.75V16.2C16.275 17.2875 17.175 18.1875 18.2625 18.1875H21.675V19.2C21.6375 19.725 21.225 20.175 20.7 20.175Z"
+                          fill="#3758F9"
+                        />
+                        <path
+                          d="M19.875 15.1875C20.2685 15.1875 20.5875 14.8685 20.5875 14.475C20.5875 14.0815 20.2685 13.7625 19.875 13.7625C19.4815 13.7625 19.1625 14.0815 19.1625 14.475C19.1625 14.8685 19.4815 15.1875 19.875 15.1875Z"
+                          fill="#3758F9"
+                        />
+                      </svg>
+                    </span>
+
+                    <span>
+                      Shop 009A, Level 4, Block A, Demo Park, Ottawa
+                    </span>
+                  </p>
+                  <p
+                    class="text-body-color dark:text-dark-6 flex items-center text-base"
+                  >
+                    <span class="pr-5">
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <g clip-path="url(#clip0_1006_31131)">
+                          <path
+                            d="M18.225 23.3625C17.2125 23.3625 16.05 23.1 14.775 22.6125C12.225 21.6 9.41252 19.65 6.90002 17.1375C4.38752 14.625 2.43752 11.8125 1.42502 9.22502C0.300023 6.45002 0.412523 4.16252 1.72502 2.88752C1.76252 2.85002 1.83752 2.81252 1.87502 2.77502L5.02502 0.900018C5.81252 0.450018 6.82502 0.675018 7.35002 1.42502L9.56252 4.72502C10.0875 5.51252 9.86252 6.56252 9.11252 7.08752L7.76252 8.02502C8.73752 9.60002 11.5125 13.4625 15.9375 16.2375L16.7625 15.0375C17.4 14.1375 18.4125 13.875 19.2375 14.4375L22.5375 16.65C23.2875 17.175 23.5125 18.1875 23.0625 18.975L21.1875 22.125C21.15 22.2 21.1125 22.2375 21.075 22.275C20.4 22.9875 19.425 23.3625 18.225 23.3625ZM2.85002 4.16252C2.13752 4.95002 2.17502 6.56252 3.00002 8.62502C3.93752 10.9875 5.73752 13.575 8.10002 15.9375C10.425 18.2625 13.05 20.0625 15.375 21C17.4 21.825 19.0125 21.8625 19.8375 21.15L21.6375 18.075C21.6375 18.0375 21.6375 18.0375 21.6375 18L18.3375 15.7875C18.3375 15.7875 18.2625 15.825 18.1875 15.9375L17.3625 17.1375C16.8375 17.8875 15.825 18.1125 15.075 17.625C10.35 14.7 7.42502 10.6125 6.37502 8.96252C5.88752 8.17502 6.07502 7.16252 6.82502 6.63752L8.17502 5.70002V5.66252L5.96252 2.36252C5.96252 2.32502 5.92502 2.32502 5.88752 2.36252L2.85002 4.16252Z"
+                            fill="#3758F9"
+                          />
+                          <path
+                            d="M21.975 10.6875C21.525 10.6875 21.1875 10.35 21.15 9.90003C20.85 6.11253 17.7375 3.07503 13.9125 2.81253C13.4625 2.77503 13.0875 2.40003 13.125 1.91253C13.1625 1.46253 13.5375 1.08753 14.025 1.12503C18.675 1.42503 22.4625 5.10003 22.8375 9.75003C22.875 10.2 22.5375 10.6125 22.05 10.65C22.05 10.6875 22.0125 10.6875 21.975 10.6875Z"
+                            fill="#3758F9"
+                          />
+                          <path
+                            d="M18.2625 11.025C17.85 11.025 17.475 10.725 17.4375 10.275C17.2125 8.25001 15.6375 6.67501 13.6125 6.41251C13.1625 6.37501 12.825 5.92501 12.8625 5.47501C12.9 5.02501 13.35 4.68751 13.8 4.72501C16.6125 5.06251 18.7875 7.23751 19.125 10.05C19.1625 10.5 18.8625 10.9125 18.375 10.9875C18.3 11.025 18.2625 11.025 18.2625 11.025Z"
+                            fill="#3758F9"
+                          />
+                        </g>
+                        <defs>
+                          <clipPath id="clip0_1006_31131">
+                            <rect width="24" height="24" fill="white" />
+                          </clipPath>
+                        </defs>
+                      </svg>
+                    </span>
+
+                    <span> +1-613-555-0182 </span>
+                  </p>
+                  <p
+                    class="text-body-color dark:text-dark-6 flex items-center text-base"
+                  >
+                    <span class="pr-5">
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M21 3.59998H3.00001C1.72501 3.59998 0.637512 4.64998 0.637512 5.96248V18.1125C0.637512 19.3875 1.68751 20.475 3.00001 20.475H21C22.275 20.475 23.3625 19.425 23.3625 18.1125V5.92498C23.3625 4.64998 22.275 3.59998 21 3.59998ZM21 5.28748C21.0375 5.28748 21.075 5.28748 21.1125 5.28748L12 11.1375L2.88751 5.28748C2.92501 5.28748 2.96251 5.28748 3.00001 5.28748H21ZM21 18.7125H3.00001C2.62501 18.7125 2.32501 18.4125 2.32501 18.0375V6.93748L11.1 12.5625C11.3625 12.75 11.6625 12.825 11.9625 12.825C12.2625 12.825 12.5625 12.75 12.825 12.5625L21.6 6.93748V18.075C21.675 18.45 21.375 18.7125 21 18.7125Z"
+                          fill="#3758F9"
+                        />
+                      </svg>
+                    </span>
+
+                    <span> contact@yourmail.com </span>
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="w-full px-4 sm:w-1/2 md:w-1/2 lg:w-3/12 xl:w-2/12">
+              <div class="mb-16">
+                <h3
+                  class="text-dark mb-9 text-2xl font-semibold dark:text-white"
+                >
+                  My Account
+                </h3>
+
+                <ul class="space-y-3">
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-primary dark:text-dark-6 inline-block text-base"
+                    >
+                      My Profile
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-primary dark:text-dark-6 inline-block text-base"
+                    >
+                      My Order History
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-primary dark:text-dark-6 inline-block text-base"
+                    >
+                      Order Tracking
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-primary dark:text-dark-6 inline-block text-base"
+                    >
+                      Shopping Cart
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="w-full px-4 sm:w-1/2 md:w-1/2 lg:w-4/12 xl:w-3/12">
+              <div class="mb-16">
+                <h3
+                  class="text-dark mb-9 text-2xl font-semibold dark:text-white"
+                >
+                  Shop Departments
+                </h3>
+
+                <ul class="space-y-3">
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-primary dark:text-dark-6 inline-block text-base"
+                    >
+                      Computers & Accessories
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-primary dark:text-dark-6 inline-block text-base"
+                    >
+                      Smartphones & Tablets
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-primary dark:text-dark-6 inline-block text-base"
+                    >
+                      TV, Video & Audio
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-primary dark:text-dark-6 inline-block text-base"
+                    >
+                      Cameras, Photo & Video
+                    </a>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="w-full px-4 md:w-1/2 lg:w-6/12 xl:w-3/12">
+              <div class="mb-16">
+                <h3
+                  class="text-dark mb-10 text-2xl font-semibold dark:text-white"
+                >
+                  Download App
+                </h3>
+
+                <div class="sm:flex md:block lg:flex xl:block">
+                  <a
+                    href="javascript:void(0)"
+                    class="bg-primary hover:bg-blue-dark mr-3 mb-3 flex w-full max-w-[230px] items-center rounded-[5px] px-5 py-2"
+                  >
+                    <span class="block pr-[10px]">
+                      <svg
+                        width="36"
+                        height="36"
+                        viewBox="0 0 36 36"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M23.7663 3C23.8353 3 23.9043 3 23.9772 3C24.1464 4.83165 23.3484 6.20025 22.3785 7.19136C21.4269 8.17562 20.1238 9.13022 18.016 8.98536C17.8755 7.17995 18.6748 5.91285 19.6434 4.92404C20.5417 4.00251 22.1884 3.18248 23.7663 3Z"
+                          fill="white"
+                        />
+                        <path
+                          d="M30 25.1139C30 25.1348 30 25.1531 30 25.1726C29.4118 26.9667 28.5729 28.5044 27.549 29.9313C26.6145 31.2267 25.4691 32.97 23.4242 32.97C21.657 32.97 20.4833 31.8257 18.6722 31.7943C16.7565 31.7631 15.7029 32.7513 13.9513 33C13.7509 33 13.5506 33 13.3541 33C12.0679 32.8125 11.0298 31.7865 10.2736 30.8622C8.04374 28.1307 6.32058 24.6023 6 20.0871C6 19.6445 6 19.203 6 18.7604C6.13573 15.5289 7.69471 12.9015 9.76689 11.6282C10.8605 10.9511 12.3639 10.3744 14.0379 10.6322C14.7554 10.7441 15.4882 10.9915 16.1308 11.2363C16.7397 11.4719 17.501 11.8899 18.2223 11.8677C18.711 11.8534 19.197 11.5969 19.6896 11.416C21.1322 10.8913 22.5463 10.2897 24.4104 10.5723C26.6506 10.9134 28.2406 11.9159 29.2231 13.4626C27.328 14.6774 25.8298 16.508 26.0857 19.634C26.3133 22.4736 27.9523 24.1349 30 25.1139Z"
+                          fill="white"
+                        />
+                      </svg>
+                    </span>
+
+                    <span class="text-white">
+                      <span class="text-sm">Download from</span>
+                      <span class="block text-base font-semibold">
+                        Apple App Store
+                      </span>
+                    </span>
+                  </a>
+                  <a
+                    href="javascript:void(0)"
+                    class="bg-dark hover:bg-dark/90 dark:bg-dark-2 mr-3 mb-3 flex w-full max-w-[230px] items-center rounded-[5px] px-[22px] py-2"
+                  >
+                    <span class="block pr-[14px]">
+                      <svg
+                        width="30"
+                        height="30"
+                        viewBox="0 0 30 30"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M4.81556 0.46875L17.6221 13.2729L20.9268 9.96825C16.4111 7.22845 10.363 3.55305 7.64302 1.90054L5.8207 0.796566C5.49862 0.600342 5.15372 0.494667 4.81556 0.46875ZM2.86071 2.00178C2.83479 2.14247 2.8125 2.28386 2.8125 2.43566V27.7403C2.8125 27.8464 2.83385 27.9452 2.84865 28.0464L15.877 15.0181L2.86071 2.00178ZM23.0986 11.2867L19.3673 15.0181L23.0336 18.6843C24.9761 17.507 26.3215 16.6894 26.4708 16.5993C27.1311 16.1957 27.504 15.5869 27.4928 14.9217C27.483 14.2688 27.11 13.6851 26.4757 13.326C26.3337 13.2445 25.0066 12.4431 23.0986 11.2867ZM17.6221 16.7633L4.85414 29.5312C5.1022 29.4881 5.34994 29.4141 5.58689 29.2709C5.9152 29.071 14.7836 23.6904 20.8618 20.0028L17.6221 16.7633Z"
+                          fill="white"
+                        />
+                      </svg>
+                    </span>
+
+                    <span class="text-white">
+                      <span class="text-sm">Get It On</span>
+                      <span class="block text-base font-semibold">
+                        Google Play Store
+                      </span>
+                    </span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="border-stroke dark:border-dark-3 border-t py-8">
+        <div class="container mx-auto">
+          <div class="text-center">
+            <div class="mb-5">
+              <img
+                src="./assets/ecom-images/footers/footer-04/payment.svg"
+                alt="payment"
+                class="mx-auto max-w-full"
+              />
+            </div>
+            <p class="text-body-color dark:text-dark-6 text-base">
+              © 2024 TailGrids. All Rights Reserved.
+            </p>
+          </div>
+        </div>
+      </div>
+    </footer>
+    <!-- ====== eCommerce Footer Section End -->
+
+    <!-- Theme Switcher Start -->
+    <button
+      id="theme-toggle"
+      class="shadow-1 dark:bg-dark-3 dark:shadow-box-dark fixed right-10 bottom-10 flex h-11 w-11 items-center justify-center rounded bg-white"
+    >
+      <span class="text-body-color block dark:hidden">
+        <svg
+          class="fill-current"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M13.3125 1.50001C12.675 1.31251 12.0375 1.16251 11.3625 1.05001C10.875 0.975006 10.35 1.23751 10.1625 1.68751C9.93751 2.13751 10.05 2.70001 10.425 3.00001C13.0875 5.47501 14.0625 9.11251 12.975 12.525C11.775 16.3125 8.25001 18.975 4.16251 19.0875C3.63751 19.0875 3.22501 19.425 3.07501 19.9125C2.92501 20.4 3.15001 20.925 3.56251 21.1875C4.50001 21.75 5.43751 22.2 6.37501 22.5C7.46251 22.8375 8.58751 22.9875 9.71251 22.9875C11.625 22.9875 13.5 22.5 15.1875 21.5625C17.85 20.1 19.725 17.7375 20.55 14.8875C22.1625 9.26251 18.975 3.37501 13.3125 1.50001ZM18.9375 14.4C18.2625 16.8375 16.6125 18.825 14.4 20.0625C12.075 21.3375 9.41251 21.6 6.90001 20.85C6.63751 20.775 6.33751 20.6625 6.07501 20.55C10.05 19.7625 13.35 16.9125 14.5875 13.0125C15.675 9.56251 15 5.92501 12.7875 3.07501C17.5875 4.68751 20.2875 9.67501 18.9375 14.4Z"
+          />
+        </svg>
+      </span>
+      <span class="hidden text-white dark:block">
+        <svg
+          class="fill-current"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <g clip-path="url(#clip0_2172_3070)">
+            <path
+              d="M12 6.89999C9.18752 6.89999 6.90002 9.18749 6.90002 12C6.90002 14.8125 9.18752 17.1 12 17.1C14.8125 17.1 17.1 14.8125 17.1 12C17.1 9.18749 14.8125 6.89999 12 6.89999ZM12 15.4125C10.125 15.4125 8.58752 13.875 8.58752 12C8.58752 10.125 10.125 8.58749 12 8.58749C13.875 8.58749 15.4125 10.125 15.4125 12C15.4125 13.875 13.875 15.4125 12 15.4125Z"
+            />
+            <path
+              d="M12 4.2375C12.45 4.2375 12.8625 3.8625 12.8625 3.375V1.5C12.8625 1.05 12.4875 0.637497 12 0.637497C11.55 0.637497 11.1375 1.0125 11.1375 1.5V3.4125C11.175 3.8625 11.55 4.2375 12 4.2375Z"
+            />
+            <path
+              d="M12 19.7625C11.55 19.7625 11.1375 20.1375 11.1375 20.625V22.5C11.1375 22.95 11.5125 23.3625 12 23.3625C12.45 23.3625 12.8625 22.9875 12.8625 22.5V20.5875C12.8625 20.1375 12.45 19.7625 12 19.7625Z"
+            />
+            <path
+              d="M18.1125 6.74999C18.3375 6.74999 18.5625 6.67499 18.7125 6.48749L19.9125 5.28749C20.25 4.94999 20.25 4.42499 19.9125 4.08749C19.575 3.74999 19.05 3.74999 18.7125 4.08749L17.5125 5.28749C17.175 5.62499 17.175 6.14999 17.5125 6.48749C17.6625 6.67499 17.8875 6.74999 18.1125 6.74999Z"
+            />
+            <path
+              d="M5.32501 17.5125L4.12501 18.675C3.78751 19.0125 3.78751 19.5375 4.12501 19.875C4.27501 20.025 4.50001 20.1375 4.72501 20.1375C4.95001 20.1375 5.17501 20.0625 5.32501 19.875L6.52501 18.675C6.86251 18.3375 6.86251 17.8125 6.52501 17.475C6.18751 17.175 5.62501 17.175 5.32501 17.5125Z"
+            />
+            <path
+              d="M22.5 11.175H20.5875C20.1375 11.175 19.725 11.55 19.725 12.0375C19.725 12.4875 20.1 12.9 20.5875 12.9H22.5C22.95 12.9 23.3625 12.525 23.3625 12.0375C23.3625 11.55 22.95 11.175 22.5 11.175Z"
+            />
+            <path
+              d="M4.23751 12C4.23751 11.55 3.86251 11.1375 3.37501 11.1375H1.50001C1.05001 11.1375 0.637512 11.5125 0.637512 12C0.637512 12.45 1.01251 12.8625 1.50001 12.8625H3.41251C3.86251 12.8625 4.23751 12.45 4.23751 12Z"
+            />
+            <path
+              d="M18.675 17.5125C18.3375 17.175 17.8125 17.175 17.475 17.5125C17.1375 17.85 17.1375 18.375 17.475 18.7125L18.675 19.9125C18.825 20.0625 19.05 20.175 19.275 20.175C19.5 20.175 19.725 20.1 19.875 19.9125C20.2125 19.575 20.2125 19.05 19.875 18.7125L18.675 17.5125Z"
+            />
+            <path
+              d="M5.32501 4.125C4.98751 3.7875 4.46251 3.7875 4.12501 4.125C3.78751 4.4625 3.78751 4.9875 4.12501 5.325L5.32501 6.525C5.47501 6.675 5.70001 6.7875 5.92501 6.7875C6.15001 6.7875 6.37501 6.7125 6.52501 6.525C6.86251 6.1875 6.86251 5.6625 6.52501 5.325L5.32501 4.125Z"
+            />
+          </g>
+          <defs>
+            <clipPath id="clip0_2172_3070">
+              <rect width="24" height="24" fill="white" />
+            </clipPath>
+          </defs>
+        </svg>
+      </span>
+    </button>
+    <!-- Theme Switcher End -->
+
+    <script defer src="./assets/js/alpine.min.js"></script>
+    <script defer src="./assets/js/theme-toggle.js"></script>
+  </body>
+</html>

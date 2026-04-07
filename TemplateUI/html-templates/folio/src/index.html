@@ -1,0 +1,2850 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <!--====== Required meta tags ======-->
+    <meta charset="utf-8" />
+    <meta http-equiv="x-ua-compatible" content="ie=edge" />
+    <meta name="description" content="" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Folio - Personal Portfolio Landing Page Template</title>
+    <link
+      rel="shortcut icon"
+      href="assets/images/favicon.png"
+      type="image/x-icon"
+    />
+
+    <link rel="stylesheet" href="./assets/css/output.css" />
+  </head>
+
+  <body
+    x-data="
+      {
+        scrolledFromTop: false
+      }
+    "
+    x-init="window.pageYOffset >= 50 ? scrolledFromTop = true : scrolledFromTop = false"
+    @scroll.window="window.pageYOffset >= 50 ? scrolledFromTop = true : scrolledFromTop = false"
+  >
+    <!-- ====== Navbar Section Start -->
+    <header
+      x-data="
+        {
+          navbarOpen: false,
+        }
+      "
+      :class="scrolledFromTop ? 'fixed bg-white/80 backdrop-blur dark:bg-dark/80 py-2 border-b border-stroke dark:border-dark-3' : 'absolute' "
+      class="top-0 left-0 z-50 w-full"
+    >
+      <div class="container mx-auto">
+        <div class="relative z-40 -mx-4 flex items-center justify-between">
+          <div class="w-60 max-w-full px-4">
+            <a
+              href="javascript:void(0)"
+              :class="scrolledFromTop ? 'py-2' : 'py-5'"
+              class="block"
+            >
+              <img
+                src="./assets/images/logo/logo.svg"
+                alt="logo"
+                class="block w-full max-w-[90px] dark:hidden"
+              />
+              <img
+                src="./assets/images/logo/logo-white.svg"
+                alt="logo"
+                class="hidden w-full max-w-[90px] dark:block"
+              />
+            </a>
+          </div>
+          <div class="flex w-full items-center justify-between px-4">
+            <div>
+              <button
+                @click="navbarOpen = !navbarOpen"
+                :class="navbarOpen && 'navbarTogglerActive'"
+                id="navbarToggler"
+                class="ring-primary absolute top-1/2 right-4 block -translate-y-1/2 rounded-lg px-3 py-[6px] focus:ring-2 lg:hidden"
+              >
+                <span
+                  class="bg-body-color relative my-[6px] block h-[2px] w-[30px] dark:bg-white"
+                ></span>
+                <span
+                  class="bg-body-color relative my-[6px] block h-[2px] w-[30px] dark:bg-white"
+                ></span>
+                <span
+                  class="bg-body-color relative my-[6px] block h-[2px] w-[30px] dark:bg-white"
+                ></span>
+              </button>
+              <nav
+                :class="!navbarOpen && 'hidden' "
+                id="navbarCollapse"
+                class="dark:bg-dark-2 absolute top-full right-4 z-40 w-full max-w-[250px] rounded-lg bg-white px-6 py-5 shadow lg:static lg:block lg:w-full lg:max-w-full lg:bg-transparent lg:shadow-none xl:ml-11 dark:lg:bg-transparent"
+              >
+                <ul class="block lg:flex">
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-dark dark:text-dark-6 flex py-2 text-base font-medium lg:ml-10 lg:inline-flex dark:hover:text-white"
+                    >
+                      About Us
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-dark dark:text-dark-6 flex py-2 text-base font-medium lg:ml-10 lg:inline-flex dark:hover:text-white"
+                    >
+                      Features
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-dark dark:text-dark-6 flex py-2 text-base font-medium lg:ml-10 lg:inline-flex dark:hover:text-white"
+                    >
+                      Pricing
+                    </a>
+                  </li>
+                  <li>
+                    <a
+                      href="javascript:void(0)"
+                      class="text-body-color hover:text-dark dark:text-dark-6 flex py-2 text-base font-medium lg:ml-10 lg:inline-flex dark:hover:text-white"
+                    >
+                      Support
+                    </a>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+            <div class="hidden justify-end pr-16 sm:flex lg:pr-0">
+              <button
+                class="border-primary text-primary hover:bg-primary inline-flex h-12 items-center justify-center gap-2 rounded-lg border px-6 py-3 text-base font-medium duration-200 hover:text-white"
+              >
+                <span>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M18.625 9.2814C18.5 9.06265 18.3125 8.9064 18.0937 8.7814L3.6875 0.718901C3.4375 0.593901 3.15625 0.531401 2.875 0.562651C2.59375 0.593901 2.34375 0.687651 2.125 0.875151C1.90625 1.06265 1.75 1.31265 1.6875 1.56265C1.59375 1.8439 1.625 2.12515 1.71875 2.4064L4.40625 10.0002L1.71875 17.5939C1.625 17.8751 1.625 18.1564 1.6875 18.4064C1.75 18.6876 1.90625 18.9064 2.125 19.0939C2.34375 19.2814 2.59375 19.3751 2.875 19.4064C2.90625 19.4064 2.96875 19.4064 3 19.4064C3.21875 19.4064 3.46875 19.3439 3.6875 19.2189L18.0937 11.1564C18.3125 11.0314 18.5 10.8751 18.625 10.6564C18.75 10.4376 18.8125 10.1876 18.8125 9.9689C18.8125 9.75015 18.75 9.50015 18.625 9.2814ZM3.0625 1.9689L16.125 9.2814H5.65625L3.0625 1.9689ZM3.0625 18.0314L5.6875 10.7189H16.1562L3.0625 18.0314Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </span>
+                Let's talk
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <!-- ====== Navbar Section End -->
+
+    <!-- ====== Hero Section Start -->
+    <div class="dark:bg-dark relative bg-white px-4 pt-[105px] pb-10 md:px-10">
+      <div
+        class="dark:bg-dark-2 rounded-[20px] bg-[#F6F8FC] px-2 py-14 sm:px-6"
+      >
+        <div class="container">
+          <div class="-mx-4 flex flex-wrap items-center">
+            <div class="w-full px-4 lg:w-1/2">
+              <div class="w-full max-w-[480px] max-lg:mb-12">
+                <span
+                  class="text-dark mb-6 block text-lg font-semibold dark:text-white"
+                >
+                  Hello Welcome
+                </span>
+                <h2
+                  class="text-dark mb-5 text-3xl font-bold sm:text-4xl md:text-5xl dark:text-white"
+                >
+                  I'm Edward <br />
+                  Product Designer
+                </h2>
+                <p class="text-body-color dark:text-dark-6 mb-9 text-base">
+                  I Create bold and modern interface design with UX knowledge
+                  for companies all around the world.
+                </p>
+
+                <div class="mb-[70px] flex flex-wrap items-center gap-6">
+                  <button
+                    class="bg-primary hover:bg-primary/90 inline-flex h-12 items-center justify-center gap-2 rounded-lg px-6 py-3 text-base font-medium text-white duration-200"
+                  >
+                    <span>
+                      <svg
+                        width="20"
+                        height="21"
+                        viewBox="0 0 20 21"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M17.5 3.95752H2.5C1.4375 3.95752 0.53125 4.83252 0.53125 5.92627V16.0513C0.53125 17.1138 1.40625 18.02 2.5 18.02H17.5C18.5625 18.02 19.4687 17.145 19.4687 16.0513V5.89502C19.4687 4.83252 18.5625 3.95752 17.5 3.95752ZM17.5 5.36377C17.5312 5.36377 17.5625 5.36377 17.5937 5.36377L10 10.2388L2.40625 5.36377C2.4375 5.36377 2.46875 5.36377 2.5 5.36377H17.5ZM17.5 16.5513H2.5C2.1875 16.5513 1.9375 16.3013 1.9375 15.9888V6.73877L9.25 11.4263C9.46875 11.5825 9.71875 11.645 9.96875 11.645C10.2187 11.645 10.4687 11.5825 10.6875 11.4263L18 6.73877V16.02C18.0625 16.3325 17.8125 16.5513 17.5 16.5513Z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                    </span>
+                    Hire Me
+                  </button>
+                  <a
+                    href="javascript:void(0)"
+                    class="text-dark hover:text-primary text-base font-medium underline dark:text-white"
+                  >
+                    See Portfolio
+                  </a>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-4">
+                  <p class="text-dark-3 dark:text-dark-6 text-base font-medium">
+                    Follow Me:
+                  </p>
+                  <div class="flex flex-wrap items-center gap-3">
+                    <button
+                      class="text-dark hover:bg-dark dark:hover:text-dark flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-xs duration-200 hover:text-white dark:bg-white/5 dark:text-white dark:hover:bg-white"
+                    >
+                      <svg
+                        width="20"
+                        height="21"
+                        viewBox="0 0 20 21"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M11 10.4972V7.70918C11 6.6299 11.8954 5.75497 13 5.75497H15V2.82365L12.285 2.63416C9.9695 2.47256 8 4.26442 8 6.53266V10.4972H5V13.4285H8V19.2907H11V13.4285H14L15 10.4972H11Z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="text-dark hover:bg-dark dark:hover:text-dark flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-xs duration-200 hover:text-white dark:bg-white/5 dark:text-white dark:hover:bg-white"
+                    >
+                      <svg
+                        width="20"
+                        height="21"
+                        viewBox="0 0 20 21"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <g clip-path="url(#clip0_2140_21027)">
+                          <path
+                            d="M10.0005 6.45752C7.53174 6.45752 5.50049 8.45752 5.50049 10.9575C5.50049 13.4263 7.50049 15.4575 10.0005 15.4575C12.4692 15.4575 14.4692 13.4575 14.4692 10.9575C14.4692 8.48877 12.4692 6.45752 10.0005 6.45752ZM10.0005 14.0513C8.31299 14.0513 6.90674 12.6763 6.90674 10.9575C6.90674 9.27002 8.28174 7.86377 10.0005 7.86377C11.688 7.86377 13.063 9.23877 13.063 10.9575C13.063 12.645 11.688 14.0513 10.0005 14.0513Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M14.6875 4.58252C14.0625 4.58252 13.5938 5.08252 13.5938 5.67627C13.5938 6.27002 14.0938 6.77002 14.6875 6.77002C15.2812 6.77002 15.7812 6.27002 15.7812 5.67627C15.7812 5.08252 15.3125 4.58252 14.6875 4.58252Z"
+                            fill="currentColor"
+                          />
+                          <path
+                            d="M14.6565 1.52002H5.344C2.68774 1.52002 0.562744 3.64502 0.562744 6.30127V15.645C0.562744 18.27 2.71899 20.4263 5.344 20.4263H14.6877C17.3127 20.4263 19.469 18.27 19.469 15.645V6.30127C19.469 3.64502 17.3127 1.52002 14.6565 1.52002ZM18.0627 15.6138C18.0627 17.4888 16.5627 18.9888 14.6877 18.9888H5.344C3.469 18.9888 1.96899 17.4888 1.96899 15.6138V6.30127C1.96899 4.42627 3.50025 2.92627 5.344 2.92627H14.6565C16.5315 2.92627 18.0315 4.45752 18.0315 6.30127V15.6138H18.0627Z"
+                            fill="currentColor"
+                          />
+                        </g>
+                        <defs>
+                          <clipPath id="clip0_2140_21027">
+                            <rect
+                              width="20"
+                              height="20"
+                              fill="white"
+                              transform="translate(0 0.95752)"
+                            />
+                          </clipPath>
+                        </defs>
+                      </svg>
+                    </button>
+                    <button
+                      class="text-dark hover:bg-dark dark:hover:text-dark flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-xs duration-200 hover:text-white dark:bg-white/5 dark:text-white dark:hover:bg-white"
+                    >
+                      <svg
+                        width="20"
+                        height="21"
+                        viewBox="0 0 20 21"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          fill-rule="evenodd"
+                          clip-rule="evenodd"
+                          d="M12.7119 18.4575L8.92813 13.0644L4.19144 18.4575H2.1875L8.03909 11.7969L2.1875 3.45752H7.33247L10.8986 8.54049L15.3667 3.45752H17.3707L11.7906 9.80968L17.8568 18.4575H12.7119ZM14.9435 16.937H13.5943L5.05681 4.97799H6.40613L9.82547 9.76652L10.4167 10.5975L14.9435 16.937Z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                    </button>
+                    <button
+                      class="text-dark hover:bg-dark dark:hover:text-dark flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-xs duration-200 hover:text-white dark:bg-white/5 dark:text-white dark:hover:bg-white"
+                    >
+                      <svg
+                        width="20"
+                        height="21"
+                        viewBox="0 0 20 21"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <g clip-path="url(#clip0_2140_21031)">
+                          <path
+                            d="M10.0003 1.52002C4.7815 1.52002 0.562744 5.73877 0.562744 10.9575C0.562744 16.1763 4.7815 20.4263 10.0003 20.4263C15.219 20.4263 19.469 16.1763 19.469 10.9575C19.469 5.73877 15.219 1.52002 10.0003 1.52002ZM18.0315 11.2388C16.1878 11.1138 14.2502 11.3013 12.344 11.77C12.0628 11.02 11.7815 10.3013 11.469 9.58252C13.4378 8.92627 15.2815 7.95752 16.8752 6.80127C17.6252 8.02002 18.0315 9.45752 18.0315 10.9888C18.0627 11.0513 18.0315 11.145 18.0315 11.2388ZM16.0315 5.64502C14.5315 6.77002 12.7503 7.67627 10.844 8.27002C9.844 6.27002 8.719 4.58252 7.5315 3.27002C8.31275 3.02002 9.12525 2.89502 10.0003 2.89502C12.4065 2.92627 14.5627 3.98877 16.0315 5.64502ZM6.1565 3.89502C7.344 5.08252 8.469 6.70752 9.469 8.67627C7.00025 9.27002 4.469 9.36377 2.18774 8.95752C2.78149 6.77002 4.219 4.95752 6.1565 3.89502ZM1.96899 10.3325C3.00024 10.5513 4.06275 10.645 5.12525 10.645C6.75025 10.645 8.43775 10.4263 10.094 9.98877C10.4065 10.6763 10.719 11.395 10.969 12.145C8.219 13.02 5.7815 14.395 3.844 16.1763C2.68774 14.7388 1.96899 12.9263 1.96899 10.9575C1.96899 10.7388 1.96899 10.5513 1.96899 10.3325ZM4.844 17.145C6.62525 15.52 8.9065 14.2388 11.4377 13.4575C11.5315 13.77 11.6252 14.0825 11.719 14.3638C12.1252 15.77 12.4378 17.1763 12.6565 18.52C11.8127 18.8013 10.9378 18.9888 10.0003 18.9888C8.0315 19.02 6.25025 18.3013 4.844 17.145ZM14.0002 17.9263C13.7815 16.645 13.469 15.3013 13.094 13.9575C13.0002 13.645 12.9065 13.3638 12.8127 13.0513C14.5003 12.645 16.2503 12.4888 17.8752 12.5825C17.4065 14.895 15.9377 16.8013 14.0002 17.9263Z"
+                            fill="currentColor"
+                          />
+                        </g>
+                        <defs>
+                          <clipPath id="clip0_2140_21031">
+                            <rect
+                              width="20"
+                              height="20"
+                              fill="white"
+                              transform="translate(0 0.95752)"
+                            />
+                          </clipPath>
+                        </defs>
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="w-full px-4 lg:w-1/2">
+              <div
+                class="relative z-10 mx-auto aspect-[432/578] max-w-[432px] rounded-full lg:mr-0"
+              >
+                <div
+                  class="bg-primary absolute top-0 left-0 -z-20 h-full w-full rounded-full"
+                ></div>
+                <div
+                  class="border-primary absolute top-0 left-0 z-10 aspect-[432/595] h-full w-full -rotate-[8deg] rounded-full border bg-transparent"
+                ></div>
+                <div
+                  class="absolute inset-0 -z-10 flex h-full w-full items-end overflow-hidden rounded-full"
+                >
+                  <img
+                    src="./assets/images/hero/hero-14/image-01.png"
+                    alt="hero image"
+                  />
+                </div>
+                <div
+                  class="absolute top-0 left-0 -z-20 h-full w-full overflow-hidden rounded-full"
+                >
+                  <img
+                    src="./assets/images/hero/hero-14/dots-shape.svg"
+                    alt="dots-shape"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- ====== Hero Section End -->
+
+    <!-- ====== About Section Start -->
+    <section class="dark:bg-dark overflow-hidden bg-white pt-20 lg:pt-[120px]">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap items-end justify-between">
+          <div class="w-full px-4 lg:w-1/2 xl:w-6/12">
+            <div class="mb-10 lg:mb-0">
+              <span
+                class="text-primary mb-2 block text-lg font-semibold uppercase sm:text-xl"
+              >
+                ABOUT ME
+              </span>
+              <h2
+                class="text-dark mb-5 max-w-[400px] text-3xl leading-tight font-bold sm:text-4xl sm:leading-tight md:text-[40px]/[48px] dark:text-white"
+              >
+                Better design, better experience
+              </h2>
+              <p class="text-body-color dark:text-dark-6 mb-9 text-base">
+                Lorem ipsum dolor sit amet, consectetur adipiscing elit. Quisque
+                dui ligula, malesuada vel convallis in, tincidunt ut mi
+                Vestibulum sit amet.
+              </p>
+              <div class="-mx-4 flex flex-wrap">
+                <div class="w-full px-4 md:w-1/2 lg:w-full xl:w-7/12">
+                  <div
+                    class="dark:bg-dark-2 mb-8 inline-flex items-center rounded-lg bg-white p-5 shadow-[0px_1px_4px_0px_rgba(0,0,0,0.12)] xl:mb-0"
+                  >
+                    <div
+                      class="bg-primary/5 text-primary mr-4 flex h-11 w-full max-w-[44px] items-center justify-center rounded-lg dark:bg-white/5"
+                    >
+                      <svg
+                        width="22"
+                        height="22"
+                        viewBox="0 0 22 22"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                      >
+                        <path
+                          d="M19.25 3.30005H2.74998C1.58123 3.30005 0.584351 4.26255 0.584351 5.46567V16.6032C0.584351 17.7719 1.54685 18.7688 2.74998 18.7688H19.25C20.4187 18.7688 21.4156 17.8063 21.4156 16.6032V5.4313C21.4156 4.26255 20.4187 3.30005 19.25 3.30005ZM19.25 4.84692C19.2843 4.84692 19.3187 4.84692 19.3531 4.84692L11 10.2094L2.64685 4.84692C2.68123 4.84692 2.7156 4.84692 2.74998 4.84692H19.25ZM19.25 17.1532H2.74998C2.40623 17.1532 2.13123 16.8782 2.13123 16.5344V6.35942L10.175 11.5157C10.4156 11.6875 10.6906 11.7563 10.9656 11.7563C11.2406 11.7563 11.5156 11.6875 11.7562 11.5157L19.8 6.35942V16.5688C19.8687 16.9125 19.5937 17.1532 19.25 17.1532Z"
+                          fill="currentColor"
+                        />
+                      </svg>
+                    </div>
+                    <div class="w-full">
+                      <span
+                        class="text-body-color dark:text-dark-6 text-sm font-medium"
+                      >
+                        Email address
+                      </span>
+                      <a
+                        href="javascript:void(0)"
+                        class="text-primary text-base font-semibold"
+                      >
+                        contact@tailgrids.com
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="w-full px-4 md:w-1/2 lg:w-full xl:w-5/12">
+                  <div class="mb-8 xl:mb-0">
+                    <h5
+                      class="text-body-color dark:text-dark-6 mb-3 text-base font-medium"
+                    >
+                      Follow Me On:
+                    </h5>
+                    <div class="flex items-center space-x-3">
+                      <a
+                        href="javascript:void(0)"
+                        class="border-stroke text-body-color hover:border-primary hover:bg-primary dark:border-dark-3 dark:text-dark-6 flex h-9 w-9 items-center justify-center rounded-md border hover:text-white"
+                      >
+                        <svg
+                          width="7"
+                          height="14"
+                          viewBox="0 0 7 14"
+                          class="fill-current"
+                        >
+                          <path
+                            d="M6.50914 5.6H5.42429H5.03684V5.14839V3.74839V3.29677H5.42429H6.23793C6.45103 3.29677 6.62538 3.11613 6.62538 2.84516V0.451613C6.62538 0.203226 6.4704 0 6.23793 0H4.82374C3.29332 0 2.22783 1.26452 2.22783 3.13871V5.10323V5.55484H1.84038H0.523056C0.251842 5.55484 0 5.80323 0 6.16452V7.79032C0 8.10645 0.213097 8.4 0.523056 8.4H1.80164H2.18909V8.85161V13.3903C2.18909 13.7065 2.40218 14 2.71214 14H4.53315C4.64939 14 4.74625 13.9323 4.82374 13.8419C4.90123 13.7516 4.95935 13.5935 4.95935 13.4581V8.87419V8.42258H5.36617H6.23793C6.48977 8.42258 6.6835 8.24194 6.72224 7.97097V7.94839V7.92581L6.99346 6.36774C7.01283 6.20968 6.99345 6.02903 6.87722 5.84839C6.83848 5.73548 6.66412 5.62258 6.50914 5.6Z"
+                          />
+                        </svg>
+                      </a>
+                      <a
+                        href="javascript:void(0)"
+                        class="border-stroke text-body-color hover:border-primary hover:bg-primary dark:border-dark-3 dark:text-dark-6 flex h-9 w-9 items-center justify-center rounded-md border hover:text-white"
+                      >
+                        <svg
+                          width="19"
+                          height="14"
+                          viewBox="0 0 19 14"
+                          class="fill-current"
+                        >
+                          <path
+                            d="M16.5892 2.41096L17.7333 1.09589C18.0645 0.739726 18.1548 0.465753 18.1849 0.328767C17.2817 0.821918 16.4387 0.986301 15.8968 0.986301H15.686L15.5656 0.876712C14.843 0.30137 13.9398 0 12.9763 0C10.8688 0 9.2129 1.58904 9.2129 3.42466C9.2129 3.53425 9.2129 3.69863 9.24301 3.80822L9.33333 4.35616L8.70107 4.32877C4.84731 4.21918 1.68602 1.20548 1.17419 0.684932C0.331183 2.05479 0.812903 3.36986 1.32473 4.19178L2.34839 5.72603L0.722581 4.90411C0.752688 6.05479 1.23441 6.9589 2.16774 7.61644L2.98064 8.16438L2.16774 8.46575C2.67957 9.86301 3.82366 10.4384 4.66667 10.6575L5.78064 10.9315L4.72688 11.589C3.04086 12.6849 0.933333 12.6027 0 12.5205C1.89677 13.726 4.15484 14 5.72043 14C6.89462 14 7.76774 13.8904 7.97849 13.8082C16.4086 12 16.8 5.15068 16.8 3.78082V3.58904L16.9806 3.47945C18.0043 2.60274 18.4258 2.13699 18.6667 1.86301C18.5763 1.89041 18.4559 1.94521 18.3355 1.9726L16.5892 2.41096Z"
+                          />
+                        </svg>
+                      </a>
+                      <a
+                        href="javascript:void(0)"
+                        class="border-stroke text-body-color hover:border-primary hover:bg-primary dark:border-dark-3 dark:text-dark-6 flex h-9 w-9 items-center justify-center rounded-md border hover:text-white"
+                      >
+                        <svg
+                          width="19"
+                          height="14"
+                          viewBox="0 0 19 14"
+                          class="fill-current"
+                        >
+                          <path
+                            d="M18.2753 2.19355C18.0645 1.32258 17.4323 0.645161 16.6194 0.419355C15.1742 7.69092e-08 9.33333 0 9.33333 0C9.33333 0 3.49247 7.69092e-08 2.04731 0.419355C1.23441 0.645161 0.60215 1.32258 0.391398 2.19355C0 3.77419 0 7 0 7C0 7 0 10.2581 0.391398 11.8065C0.60215 12.6774 1.23441 13.3548 2.04731 13.5806C3.49247 14 9.33333 14 9.33333 14C9.33333 14 15.1742 14 16.6194 13.5806C17.4323 13.3548 18.0645 12.6774 18.2753 11.8065C18.6667 10.2581 18.6667 7 18.6667 7C18.6667 7 18.6667 3.77419 18.2753 2.19355ZM7.46667 10V4L12.314 7L7.46667 10Z"
+                          />
+                        </svg>
+                      </a>
+                      <a
+                        href="javascript:void(0)"
+                        class="border-stroke text-body-color hover:border-primary hover:bg-primary dark:border-dark-3 dark:text-dark-6 flex h-9 w-9 items-center justify-center rounded-md border hover:text-white"
+                      >
+                        <svg
+                          width="14"
+                          height="14"
+                          viewBox="0 0 14 14"
+                          class="fill-current"
+                        >
+                          <path
+                            d="M13.0214 0H1.02084C0.453707 0 0 0.451613 0 1.01613V12.9839C0 13.5258 0.453707 14 1.02084 14H12.976C13.5432 14 13.9969 13.5484 13.9969 12.9839V0.993548C14.0422 0.451613 13.5885 0 13.0214 0ZM4.15142 11.9H2.08705V5.23871H4.15142V11.9ZM3.10789 4.3129C2.42733 4.3129 1.90557 3.77097 1.90557 3.11613C1.90557 2.46129 2.45002 1.91935 3.10789 1.91935C3.76577 1.91935 4.31022 2.46129 4.31022 3.11613C4.31022 3.77097 3.81114 4.3129 3.10789 4.3129ZM11.9779 11.9H9.9135V8.67097C9.9135 7.90323 9.89082 6.8871 8.82461 6.8871C7.73571 6.8871 7.57691 7.74516 7.57691 8.60322V11.9H5.51254V5.23871H7.53154V6.16452H7.55423C7.84914 5.62258 8.50701 5.08065 9.52785 5.08065C11.6376 5.08065 12.0232 6.43548 12.0232 8.2871V11.9H11.9779Z"
+                          />
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="w-full px-4 lg:w-1/2 xl:w-5/12">
+            <div class="space-y-8">
+              <div>
+                <h5
+                  class="text-dark mb-5 text-lg font-semibold dark:text-white"
+                >
+                  Design
+                </h5>
+                <div
+                  class="bg-stroke dark:bg-dark-3 relative h-2 w-full rounded-2xl"
+                >
+                  <div
+                    class="bg-primary absolute top-0 left-0 h-full w-[80%] rounded-2xl"
+                  ></div>
+                </div>
+              </div>
+              <div>
+                <h5
+                  class="text-dark mb-5 text-lg font-semibold dark:text-white"
+                >
+                  Branding
+                </h5>
+                <div
+                  class="bg-stroke dark:bg-dark-3 relative h-2 w-full rounded-2xl"
+                >
+                  <div
+                    class="bg-primary absolute top-0 left-0 h-full w-[70%] rounded-2xl"
+                  ></div>
+                </div>
+              </div>
+              <div>
+                <h5
+                  class="text-dark mb-5 text-lg font-semibold dark:text-white"
+                >
+                  Web Design
+                </h5>
+                <div
+                  class="bg-stroke dark:bg-dark-3 relative h-2 w-full rounded-2xl"
+                >
+                  <div
+                    class="bg-primary absolute top-0 left-0 h-full w-[92%] rounded-2xl"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== About Section End -->
+
+    <!-- ====== Services Section Start -->
+    <section class="dark:bg-dark py-20 lg:py-[120px]">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div
+              class="mx-auto mb-[60px] max-w-[510px] text-center lg:mb-[90px]"
+            >
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                Core Features
+              </span>
+              <h2
+                class="text-dark mb-3 text-3xl leading-[1.2] font-bold sm:text-4xl md:text-[40px] dark:text-white"
+              >
+                Our Awesome Features
+              </h2>
+              <p class="text-body-color dark:text-dark-6 text-base">
+                There are many variations of passages of Lorem Ipsum available
+                but the majority have suffered alteration in some form.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4 md:w-1/2 xl:w-1/4">
+            <div class="relative mx-auto mb-10 max-w-[370px] text-center">
+              <div
+                class="border-primary absolute top-12 -right-4 hidden h-1 w-16 border-t-2 border-dashed xl:block 2xl:w-[75px]"
+              ></div>
+              <div
+                class="bg-primary relative mx-auto mb-8 flex h-[100px] w-[100px] items-center justify-center rounded-[20px] text-white"
+              >
+                <svg
+                  width="44"
+                  height="44"
+                  viewBox="0 0 44 44"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="fill-current"
+                >
+                  <g clip-path="url(#clip0_1697_2534)">
+                    <path
+                      d="M31.8312 24.2688H12.1687C11.6875 24.2688 11.2062 24.475 10.9312 24.8875C10.6562 25.3 10.5187 25.7813 10.6562 26.2625C12.1 31.35 16.775 34.925 22 34.925C27.3625 34.925 31.9 31.4875 33.3437 26.2625C33.4812 25.7813 33.4125 25.3 33.0687 24.8875C32.7937 24.475 32.3125 24.2688 31.8312 24.2688ZM22 31.7625C18.8375 31.7625 16.0187 30.0438 14.4375 27.3625H29.5625C28.05 30.0438 25.2312 31.7625 22 31.7625Z"
+                      fill="white"
+                    />
+                    <path
+                      d="M22 0.550049C10.175 0.550049 0.549988 10.175 0.549988 22C0.549988 33.825 10.175 43.5188 22.0687 43.5188C33.9625 43.5188 43.5875 33.8938 43.5875 22C43.5875 10.1063 33.825 0.550049 22 0.550049ZM22 40.425C11.825 40.425 3.57499 32.175 3.57499 22C3.57499 11.825 11.8937 3.6438 22 3.6438C32.1062 3.6438 40.425 11.8938 40.425 22.0688C40.425 32.2438 32.175 40.425 22 40.425Z"
+                      fill="white"
+                    />
+                    <path
+                      d="M13.75 18.425C15.2688 18.425 16.5 17.1938 16.5 15.675C16.5 14.1563 15.2688 12.925 13.75 12.925C12.2312 12.925 11 14.1563 11 15.675C11 17.1938 12.2312 18.425 13.75 18.425Z"
+                      fill="white"
+                    />
+                    <path
+                      d="M30.25 18.425C31.7688 18.425 33 17.1938 33 15.675C33 14.1563 31.7688 12.925 30.25 12.925C28.7312 12.925 27.5 14.1563 27.5 15.675C27.5 17.1938 28.7312 18.425 30.25 18.425Z"
+                      fill="white"
+                    />
+                  </g>
+                  <defs>
+                    <clipPath id="clip0_1697_2534">
+                      <rect width="44" height="44" fill="white" />
+                    </clipPath>
+                  </defs>
+                </svg>
+              </div>
+              <h3 class="text-dark mb-5 text-2xl font-semibold dark:text-white">
+                Easy To Use
+              </h3>
+              <p class="text-body-color dark:text-dark-6 text-base">
+                Lorem ipsum dolor sit amet sitim consectetur elit. Vestibulum
+                tincidunt rutrum.
+              </p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 xl:w-1/4">
+            <div class="relative mx-auto mb-10 max-w-[370px] text-center">
+              <div
+                class="border-primary absolute top-12 -left-4 hidden h-1 w-16 border-t-2 border-dashed xl:block 2xl:w-[75px]"
+              ></div>
+              <div
+                class="border-primary absolute top-12 right-[-14px] hidden h-1 w-16 border-t-2 border-dashed xl:block 2xl:w-[75px]"
+              ></div>
+              <div
+                class="bg-primary mx-auto mb-8 flex h-[100px] w-[100px] items-center justify-center rounded-[20px] text-white"
+              >
+                <svg
+                  width="44"
+                  height="44"
+                  viewBox="0 0 44 44"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="fill-current"
+                >
+                  <path
+                    d="M37.7437 6.46255H37.5375V5.50005C37.5375 3.16255 35.6125 1.23755 33.275 1.23755H14.2312C11.8937 1.23755 9.96874 3.16255 9.96874 5.50005V6.46255H7.56249C5.98124 6.46255 4.67499 7.7688 4.67499 9.35005V18.9751C4.67499 20.5563 5.98124 21.8626 7.56249 21.8626H25.7125V24.0626C23.7187 24.4063 22.2062 26.1938 22.2062 28.2563V38.5001C22.2062 40.8376 24.1312 42.7626 26.4687 42.7626H27.9812C30.3187 42.7626 32.2437 40.8376 32.2437 38.5001V28.2563C32.2437 26.1938 30.7312 24.4063 28.7375 24.0626V21.5876C28.7375 20.0063 27.4312 18.7001 25.85 18.7001H7.76874V9.5563H9.89999V10.5188C9.89999 12.8563 11.825 14.7813 14.1625 14.7813H33.1375C35.475 14.7813 37.4 12.8563 37.4 10.5188V9.5563H37.6062C38.4312 9.5563 39.1187 8.8688 39.1187 8.0438C39.1187 7.2188 38.6375 6.46255 37.7437 6.46255ZM29.2187 28.2563V38.5001C29.2187 39.1876 28.6687 39.7376 27.9812 39.7376H26.4687C25.7812 39.7376 25.2312 39.1876 25.2312 38.5001V28.2563C25.2312 27.5688 25.7812 27.0188 26.4687 27.0188H27.9812C28.6687 27.0188 29.2187 27.5688 29.2187 28.2563ZM34.4437 10.5188C34.4437 11.2063 33.8937 11.7563 33.2062 11.7563H14.2312C13.5437 11.7563 12.9937 11.2063 12.9937 10.5188V5.50005C12.9937 4.81255 13.5437 4.26255 14.2312 4.26255H33.2062C33.8937 4.26255 34.4437 4.81255 34.4437 5.50005V10.5188V10.5188Z"
+                    fill="white"
+                  />
+                </svg>
+              </div>
+              <h3 class="text-dark mb-5 text-2xl font-semibold dark:text-white">
+                Awesome Design
+              </h3>
+              <p class="text-body-color dark:text-dark-6 text-base">
+                Lorem ipsum dolor sit amet sitim consectetur elit. Vestibulum
+                tincidunt rutrum.
+              </p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 xl:w-1/4">
+            <div class="relative mx-auto mb-10 max-w-[370px] text-center">
+              <div
+                class="border-primary absolute top-12 -left-4 hidden h-1 w-16 border-t-2 border-dashed xl:block 2xl:w-[75px]"
+              ></div>
+              <div
+                class="border-primary absolute top-12 right-[-14px] hidden h-1 w-16 border-t-2 border-dashed xl:block 2xl:w-[75px]"
+              ></div>
+              <div
+                class="bg-primary mx-auto mb-8 flex h-[100px] w-[100px] items-center justify-center rounded-[20px] text-white"
+              >
+                <svg
+                  width="44"
+                  height="44"
+                  viewBox="0 0 44 44"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="fill-current"
+                >
+                  <path
+                    d="M14.9188 2.3374H6.1875C3.85 2.3374 1.925 4.2624 1.925 6.5999V15.3312C1.925 17.6687 3.85 19.5937 6.1875 19.5937H14.9188C17.2563 19.5937 19.1813 17.6687 19.1813 15.3312V6.66865C19.25 4.2624 17.325 2.3374 14.9188 2.3374ZM16.1563 15.3999C16.1563 16.0874 15.6063 16.6374 14.9188 16.6374H6.1875C5.5 16.6374 4.95 16.0874 4.95 15.3999V6.66865C4.95 5.98115 5.5 5.43115 6.1875 5.43115H14.9188C15.6063 5.43115 16.1563 5.98115 16.1563 6.66865V15.3999Z"
+                    fill="white"
+                  />
+                  <path
+                    d="M37.8125 2.3374H29.0813C26.7438 2.3374 24.8188 4.2624 24.8188 6.5999V15.3312C24.8188 17.6687 26.7438 19.5937 29.0813 19.5937H37.8125C40.15 19.5937 42.075 17.6687 42.075 15.3312V6.66865C42.075 4.2624 40.15 2.3374 37.8125 2.3374ZM39.05 15.3999C39.05 16.0874 38.5 16.6374 37.8125 16.6374H29.0813C28.3938 16.6374 27.8438 16.0874 27.8438 15.3999V6.66865C27.8438 5.98115 28.3938 5.43115 29.0813 5.43115H37.8125C38.5 5.43115 39.05 5.98115 39.05 6.66865V15.3999Z"
+                    fill="white"
+                  />
+                  <path
+                    d="M14.9188 24.2686H6.1875C3.85 24.2686 1.925 26.1936 1.925 28.5311V37.2623C1.925 39.5998 3.85 41.5248 6.1875 41.5248H14.9188C17.2563 41.5248 19.1813 39.5998 19.1813 37.2623V28.5998C19.25 26.1936 17.325 24.2686 14.9188 24.2686ZM16.1563 37.3311C16.1563 38.0186 15.6063 38.5686 14.9188 38.5686H6.1875C5.5 38.5686 4.95 38.0186 4.95 37.3311V28.5998C4.95 27.9123 5.5 27.3623 6.1875 27.3623H14.9188C15.6063 27.3623 16.1563 27.9123 16.1563 28.5998V37.3311Z"
+                    fill="white"
+                  />
+                  <path
+                    d="M37.8125 24.2686H29.0813C26.7438 24.2686 24.8188 26.1936 24.8188 28.5311V37.2623C24.8188 39.5998 26.7438 41.5248 29.0813 41.5248H37.8125C40.15 41.5248 42.075 39.5998 42.075 37.2623V28.5998C42.075 26.1936 40.15 24.2686 37.8125 24.2686ZM39.05 37.3311C39.05 38.0186 38.5 38.5686 37.8125 38.5686H29.0813C28.3938 38.5686 27.8438 38.0186 27.8438 37.3311V28.5998C27.8438 27.9123 28.3938 27.3623 29.0813 27.3623H37.8125C38.5 27.3623 39.05 27.9123 39.05 28.5998V37.3311Z"
+                    fill="white"
+                  />
+                </svg>
+              </div>
+              <h3 class="text-dark mb-5 text-2xl font-semibold dark:text-white">
+                Easy To Customize
+              </h3>
+              <p class="text-body-color dark:text-dark-6 text-base">
+                Lorem ipsum dolor sit amet sitim consectetur elit. Vestibulum
+                tincidunt rutrum.
+              </p>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 xl:w-1/4">
+            <div class="relative mx-auto mb-10 max-w-[370px] text-center">
+              <div
+                class="border-primary absolute top-12 left-[-14px] hidden h-1 w-16 border-t-2 border-dashed xl:block 2xl:w-[75px]"
+              ></div>
+              <div
+                class="bg-primary mx-auto mb-8 flex h-[100px] w-[100px] items-center justify-center rounded-[20px] text-white"
+              >
+                <svg
+                  width="44"
+                  height="44"
+                  viewBox="0 0 44 44"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  class="fill-current"
+                >
+                  <path
+                    d="M36.4375 7.35627C32.1062 2.95627 26.0562 0.82502 19.9375 1.51252C10.3813 2.47502 2.81875 10.1063 1.7875 19.5938C1.375 23.9938 2.26875 28.2563 4.46875 31.9688L1.71875 39.1188C1.30625 40.0813 1.58125 41.25 2.40625 41.9375C2.8875 42.35 3.50625 42.625 4.125 42.625C4.5375 42.625 4.88125 42.5563 5.29375 42.35L11.55 39.1875C15.3312 41.4563 19.5937 42.4188 24.0625 42.0063C33.6875 41.1125 41.3875 33.4813 42.35 23.7875C42.9687 17.6688 40.8375 11.6875 36.4375 7.35627ZM39.2562 23.5125C38.4312 31.6938 31.9 38.1563 23.7187 38.9125C19.6625 39.325 15.8125 38.2938 12.4438 36.0938C12.1688 35.8875 11.8938 35.8188 11.6187 35.8188C11.4125 35.8188 11.1375 35.8875 10.9312 35.9563L5.0875 38.8438L7.63125 32.2438C7.8375 31.7625 7.76875 31.2813 7.49375 30.8688C5.3625 27.5688 4.46875 23.7188 4.88125 19.7313C5.70625 11.825 12.1688 5.43127 20.2125 4.60627C25.4375 4.05627 30.5937 5.84377 34.2375 9.55627C37.95 13.2 39.8062 18.2875 39.2562 23.5125Z"
+                    fill="white"
+                  />
+                  <path
+                    d="M16.2937 16.4313H26.4687C27.2937 16.4313 28.05 15.7438 28.05 14.8501C28.05 13.9563 27.3625 13.2688 26.4687 13.2688H16.2937C15.4687 13.2688 14.7125 13.9563 14.7125 14.8501C14.7125 15.7438 15.4687 16.4313 16.2937 16.4313Z"
+                    fill="white"
+                  />
+                  <path
+                    d="M30.525 20.4187H16.2937C15.4687 20.4187 14.7125 21.1062 14.7125 22C14.7125 22.8937 15.4 23.5125 16.2937 23.5125H30.525C31.35 23.5125 32.1062 22.825 32.1062 22C32.1062 21.175 31.35 20.4187 30.525 20.4187Z"
+                    fill="white"
+                  />
+                  <path
+                    d="M23.4437 27.5688H16.2937C15.4687 27.5688 14.7125 28.2563 14.7125 29.1501C14.7125 30.0438 15.4 30.7313 16.2937 30.7313H23.375C24.2 30.7313 24.9562 30.0438 24.9562 29.1501C24.9562 28.2563 24.2687 27.5688 23.4437 27.5688Z"
+                    fill="white"
+                  />
+                </svg>
+              </div>
+              <h3 class="text-dark mb-5 text-2xl font-semibold dark:text-white">
+                Any Time Support
+              </h3>
+              <p class="text-body-color dark:text-dark-6 text-base">
+                Lorem ipsum dolor sit amet sitim consectetur elit. Vestibulum
+                tincidunt rutrum.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Services Section End -->
+
+    <!-- ====== Portfolio Section Start -->
+    <section
+      x-data="
+        {
+          activeItem: 1,
+          activeButton: 'w-[30px] bg-primary',
+          button: 'w-[10px] bg-stroke dark:bg-dark-3'
+        }
+      "
+      class="dark:bg-dark-2 bg-gray-1 py-20 lg:py-[120px]"
+    >
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap justify-center">
+          <div class="w-full px-4 lg:w-10/12 xl:w-8/12">
+            <div x-show="activeItem === 1" class="transition-all">
+              <div
+                style="
+                  background: url(&quot;./assets/images/portfolio/portfolio-06/portfolio-01.jpg&quot;);
+                "
+                class="bg-portfolio-01 relative w-full bg-cover bg-center bg-no-repeat px-10 py-12 sm:p-[60px]"
+              >
+                <div class="w-full">
+                  <div
+                    class="dark:bg-dark-2 relative ml-auto w-full max-w-[330px] bg-white px-8 py-[56px] sm:px-10"
+                  >
+                    <span
+                      class="bg-primary absolute top-0 right-0 rounded-bl-2xl p-4 text-2xl font-semibold text-white"
+                    >
+                      01
+                    </span>
+                    <span
+                      class="text-dark mb-2 inline-block text-2xl font-bold sm:text-[26px] sm:leading-7 dark:text-white"
+                    >
+                      Digital
+                    </span>
+                    <h3
+                      class="text-body-color dark:text-dark-6 mb-5 text-base font-medium"
+                    >
+                      Marketing Solutions
+                    </h3>
+                    <p class="text-body-color dark:text-dark-6 mb-9 text-sm">
+                      Lorem ipsum dolor consectetur adipiscing mod tempor
+                      incididunt labore dolore magna ut veniam.
+                    </p>
+
+                    <a
+                      href="javascript:void(0)"
+                      class="text-dark hover:text-primary inline-flex items-center text-sm font-medium dark:text-white"
+                    >
+                      View Details
+                      <span class="ml-2">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 18 18"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="fill-current"
+                        >
+                          <path
+                            d="M16.2 8.54995L10.3781 2.6437C10.125 2.39058 9.73125 2.39058 9.47812 2.6437C9.225 2.89683 9.225 3.29058 9.47812 3.5437L14.2031 8.35308H2.25C1.9125 8.35308 1.63125 8.63433 1.63125 8.97183C1.63125 9.30933 1.9125 9.6187 2.25 9.6187H14.2594L9.47812 14.4843C9.225 14.7375 9.225 15.1312 9.47812 15.3843C9.59062 15.4968 9.75937 15.5531 9.92812 15.5531C10.0969 15.5531 10.2656 15.4968 10.3781 15.3562L16.2 9.44995C16.4531 9.19683 16.4531 8.80308 16.2 8.54995Z"
+                            fill=""
+                          />
+                        </svg>
+                      </span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div x-show="activeItem === 2" class="transition-all">
+              <div
+                style="
+                  background: url(&quot;./assets/images/portfolio/portfolio-06/portfolio-02.jpg&quot;);
+                "
+                class="bg-portfolio-02 relative w-full bg-cover bg-center bg-no-repeat px-10 py-12 sm:p-[60px]"
+              >
+                <div class="w-full">
+                  <div
+                    class="dark:bg-dark-2 relative ml-auto w-full max-w-[330px] bg-white px-8 py-[56px] sm:px-10"
+                  >
+                    <span
+                      class="bg-primary absolute top-0 right-0 rounded-bl-2xl p-4 text-2xl font-semibold text-white"
+                    >
+                      02
+                    </span>
+                    <span
+                      class="text-dark mb-2 inline-block text-2xl font-bold sm:text-[26px] sm:leading-7 dark:text-white"
+                    >
+                      Design
+                    </span>
+                    <h3
+                      class="text-body-color dark:text-dark-6 mb-5 text-base font-medium"
+                    >
+                      Marketing Solutions
+                    </h3>
+                    <p class="text-body-color dark:text-dark-6 mb-9 text-sm">
+                      Lorem ipsum dolor consectetur adipiscing mod tempor
+                      incididunt labore dolore magna ut veniam.
+                    </p>
+
+                    <a
+                      href="javascript:void(0)"
+                      class="text-dark hover:text-primary inline-flex items-center text-sm font-medium dark:text-white"
+                    >
+                      View Details
+                      <span class="ml-2">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 18 18"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="fill-current"
+                        >
+                          <path
+                            d="M16.2 8.54995L10.3781 2.6437C10.125 2.39058 9.73125 2.39058 9.47812 2.6437C9.225 2.89683 9.225 3.29058 9.47812 3.5437L14.2031 8.35308H2.25C1.9125 8.35308 1.63125 8.63433 1.63125 8.97183C1.63125 9.30933 1.9125 9.6187 2.25 9.6187H14.2594L9.47812 14.4843C9.225 14.7375 9.225 15.1312 9.47812 15.3843C9.59062 15.4968 9.75937 15.5531 9.92812 15.5531C10.0969 15.5531 10.2656 15.4968 10.3781 15.3562L16.2 9.44995C16.4531 9.19683 16.4531 8.80308 16.2 8.54995Z"
+                            fill=""
+                          />
+                        </svg>
+                      </span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div x-show="activeItem === 3" class="transition-all">
+              <div
+                style="
+                  background: url(&quot;./assets/images/portfolio/portfolio-06/portfolio-03.jpg&quot;);
+                "
+                class="bg-portfolio-03 relative w-full bg-cover bg-center bg-no-repeat px-10 py-12 sm:p-[60px]"
+              >
+                <div class="w-full">
+                  <div
+                    class="dark:bg-dark-2 relative ml-auto w-full max-w-[330px] bg-white px-8 py-[56px] sm:px-10"
+                  >
+                    <span
+                      class="bg-primary absolute top-0 right-0 rounded-bl-2xl p-4 text-2xl font-semibold text-white"
+                    >
+                      03
+                    </span>
+                    <span
+                      class="text-dark mb-2 inline-block text-2xl font-bold sm:text-[26px] sm:leading-7 dark:text-white"
+                    >
+                      Development
+                    </span>
+                    <h3
+                      class="text-body-color dark:text-dark-6 mb-5 text-base font-medium"
+                    >
+                      Marketing Solutions
+                    </h3>
+                    <p class="text-body-color dark:text-dark-6 mb-9 text-sm">
+                      Lorem ipsum dolor consectetur adipiscing mod tempor
+                      incididunt labore dolore magna ut veniam.
+                    </p>
+
+                    <a
+                      href="javascript:void(0)"
+                      class="text-dark hover:text-primary inline-flex items-center text-sm font-medium dark:text-white"
+                    >
+                      View Details
+                      <span class="ml-2">
+                        <svg
+                          width="18"
+                          height="18"
+                          viewBox="0 0 18 18"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          class="fill-current"
+                        >
+                          <path
+                            d="M16.2 8.54995L10.3781 2.6437C10.125 2.39058 9.73125 2.39058 9.47812 2.6437C9.225 2.89683 9.225 3.29058 9.47812 3.5437L14.2031 8.35308H2.25C1.9125 8.35308 1.63125 8.63433 1.63125 8.97183C1.63125 9.30933 1.9125 9.6187 2.25 9.6187H14.2594L9.47812 14.4843C9.225 14.7375 9.225 15.1312 9.47812 15.3843C9.59062 15.4968 9.75937 15.5531 9.92812 15.5531C10.0969 15.5531 10.2656 15.4968 10.3781 15.3562L16.2 9.44995C16.4531 9.19683 16.4531 8.80308 16.2 8.54995Z"
+                            fill=""
+                          />
+                        </svg>
+                      </span>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="w-full pt-12">
+          <div class="flex items-center justify-center gap-3">
+            <button
+              @click="activeItem = 1"
+              :class="activeItem === 1 ? activeButton : button "
+              class="h-[10px] rounded-xl transition-all"
+            ></button>
+            <button
+              @click="activeItem = 2"
+              :class="activeItem === 2 ? activeButton : button "
+              class="h-[10px] rounded-xl transition-all"
+            ></button>
+            <button
+              @click="activeItem = 3"
+              :class="activeItem === 3 ? activeButton : button "
+              class="h-[10px] rounded-xl transition-all"
+            ></button>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Portfolio Section End -->
+
+    <!-- ====== Pricing Section Start -->
+    <section
+      class="dark:bg-dark relative z-20 overflow-hidden bg-white pt-20 pb-12 lg:pt-[120px] lg:pb-[90px]"
+    >
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[510px] text-center">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                Pricing Table
+              </span>
+              <h2
+                class="text-dark mb-3 text-3xl font-bold sm:text-4xl md:text-[40px] dark:text-white"
+              >
+                Awesome Pricing Plan
+              </h2>
+              <p class="text-body-color dark:text-dark-6 text-base">
+                There are many variations of passages of Lorem Ipsum available
+                but the majority have suffered alteration in some form.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="-mx-4 flex flex-wrap justify-center">
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div
+              class="shadow-pricing-2 dark:bg-dark-2 relative z-10 mb-10 overflow-hidden rounded-xl bg-white px-8 py-10 sm:p-12 lg:px-6 lg:py-10 xl:p-14"
+            >
+              <span
+                class="text-dark mb-5 block text-xl font-medium dark:text-white"
+              >
+                Starter
+              </span>
+
+              <h2
+                class="text-dark mb-11 text-4xl font-semibold xl:text-[42px] dark:text-white"
+              >
+                <span class="text-xl font-medium">$</span>
+                <span class="px-0.5">25.00</span>
+                <span class="text-body-color dark:text-dark-6 text-base">
+                  Per Month
+                </span>
+              </h2>
+
+              <div class="mb-[50px]">
+                <h5 class="text-dark mb-5 text-lg font-medium dark:text-white">
+                  Features
+                </h5>
+
+                <div class="flex flex-col gap-[14px]">
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    Up to 1 User
+                  </p>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    All UI components
+                  </p>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    Lifetime access
+                  </p>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    Free updates
+                  </p>
+                </div>
+              </div>
+              <a
+                href="javascript:void(0)"
+                class="bg-primary hover:bg-blue-dark inline-block rounded-md px-7 py-3 text-center text-base font-medium text-white transition"
+              >
+                Purchase Now
+              </a>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div
+              class="shadow-pricing-2 dark:bg-dark-2 relative z-10 mb-10 overflow-hidden rounded-xl bg-white px-8 py-10 sm:p-12 lg:px-6 lg:py-10 xl:p-14"
+            >
+              <p
+                class="bg-primary absolute top-[60px] right-[-50px] inline-block -rotate-90 rounded-tl-md rounded-bl-md px-5 py-2 text-base font-medium text-white"
+              >
+                Recommended
+              </p>
+              <span
+                class="text-dark mb-5 block text-xl font-medium dark:text-white"
+              >
+                Basic
+              </span>
+
+              <h2
+                class="text-dark mb-11 text-4xl font-semibold xl:text-[42px] dark:text-white"
+              >
+                <span class="text-xl font-medium">$</span>
+                <span class="px-0.5">59.00</span>
+                <span class="text-body-color dark:text-dark-6 text-base">
+                  Per Month
+                </span>
+              </h2>
+
+              <div class="mb-[50px]">
+                <h5 class="text-dark mb-5 text-lg font-medium dark:text-white">
+                  Features
+                </h5>
+
+                <div class="flex flex-col gap-[14px]">
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    Up to 1 User
+                  </p>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    All UI components
+                  </p>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    Lifetime access
+                  </p>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    Free updates
+                  </p>
+                </div>
+              </div>
+              <a
+                href="javascript:void(0)"
+                class="bg-primary hover:bg-blue-dark inline-block rounded-md px-7 py-3 text-center text-base font-medium text-white transition"
+              >
+                Purchase Now
+              </a>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div
+              class="shadow-pricing-2 dark:bg-dark-2 relative z-10 mb-10 overflow-hidden rounded-xl bg-white px-8 py-10 sm:p-12 lg:px-6 lg:py-10 xl:p-14"
+            >
+              <span
+                class="text-dark mb-5 block text-xl font-medium dark:text-white"
+              >
+                Premium
+              </span>
+
+              <h2
+                class="text-dark mb-11 text-4xl font-semibold xl:text-[42px] dark:text-white"
+              >
+                <span class="text-xl font-medium">$</span>
+                <span class="px-0.5">99.00</span>
+                <span class="text-body-color dark:text-dark-6 text-base">
+                  Per Month
+                </span>
+              </h2>
+
+              <div class="mb-[50px]">
+                <h5 class="text-dark mb-5 text-lg font-medium dark:text-white">
+                  Features
+                </h5>
+
+                <div class="flex flex-col gap-[14px]">
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    Up to 1 User
+                  </p>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    All UI components
+                  </p>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    Lifetime access
+                  </p>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    Free updates
+                  </p>
+                </div>
+              </div>
+              <a
+                href="javascript:void(0)"
+                class="bg-primary hover:bg-blue-dark inline-block rounded-md px-7 py-3 text-center text-base font-medium text-white transition"
+              >
+                Purchase Now
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Pricing Section End -->
+
+    <!-- ====== Testimonials Section Start -->
+    <section class="bg-gray-1 dark:bg-dark-3 py-20 lg:py-[120px]">
+      <div class="container">
+        <div class="mx-auto mb-[60px] w-full max-w-[510px] text-center">
+          <span class="text-primary mb-2 block text-lg font-semibold">
+            Testimonials
+          </span>
+          <h2
+            class="text-dark mb-3 text-3xl leading-[1.2] font-bold sm:text-4xl md:text-[40px] dark:text-white"
+          >
+            What our Clients Says
+          </h2>
+          <p class="text-body-color dark:text-dark-6 text-base">
+            There are many variations of passages of Lorem Ipsum available but
+            the majority have suffered alteration in some form.
+          </p>
+        </div>
+
+        <div>
+          <div class="gap-8 md:columns-2 lg:columns-3">
+            <div class="dark:bg-dark-2 mb-8 rounded-xl bg-white p-10 shadow-lg">
+              <div class="mb-6 flex items-center gap-4">
+                <div
+                  class="aspect-square w-[52px] overflow-hidden rounded-full"
+                >
+                  <img
+                    src="./assets/images/testimonials/testimonial-06/image-1.png"
+                    alt="testimonial image"
+                    class="w-full overflow-hidden rounded-full object-cover object-center"
+                  />
+                </div>
+                <div>
+                  <h5 class="text-base font-medium text-black dark:text-white">
+                    Melissa Hart
+                  </h5>
+                  <p class="text-body-color dark:text-dark-6 text-sm">
+                    Software Engineer
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p class="text-body-color dark:text-dark-6 text-base">
+                  “I believe in lifelong learning and learn is a great place to
+                  learn from erts. I've learned a lot it to all my friends and
+                  familys and more.”
+                </p>
+              </div>
+            </div>
+            <div class="dark:bg-dark-2 mb-8 rounded-xl bg-white p-10 shadow-lg">
+              <div class="mb-6 flex items-center gap-4">
+                <div
+                  class="aspect-square w-[52px] overflow-hidden rounded-full"
+                >
+                  <img
+                    src="./assets/images/testimonials/testimonial-06/image-2.png"
+                    alt="testimonial image"
+                    class="w-full overflow-hidden rounded-full object-cover object-center"
+                  />
+                </div>
+                <div>
+                  <h5 class="text-base font-medium text-black dark:text-white">
+                    Maria Baptista
+                  </h5>
+                  <p class="text-body-color dark:text-dark-6 text-sm">
+                    Software Engineer
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p class="text-body-color dark:text-dark-6 text-base">
+                  “I believe in lifelong learning and learn is a great place to
+                  learn from erts. I've learned a lot it to all my friends and
+                  familys and more.” lot it to all my friends and familys and
+                  more.”
+                </p>
+              </div>
+            </div>
+            <div class="dark:bg-dark-2 mb-8 rounded-xl bg-white p-10 shadow-lg">
+              <div class="mb-6 flex items-center gap-4">
+                <div
+                  class="aspect-square w-[52px] overflow-hidden rounded-full"
+                >
+                  <img
+                    src="./assets/images/testimonials/testimonial-06/image-3.png"
+                    alt="testimonial image"
+                    class="w-full overflow-hidden rounded-full object-cover object-center"
+                  />
+                </div>
+                <div>
+                  <h5 class="text-base font-medium text-black dark:text-white">
+                    Giana Franci
+                  </h5>
+                  <p class="text-body-color dark:text-dark-6 text-sm">
+                    Software Engineer
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p class="text-body-color dark:text-dark-6 text-base">
+                  “I believe in lifelong learning and learn is a great place to
+                  learn from erts. I've learned a lot it to all my friends and
+                  familys and more.”
+                </p>
+              </div>
+            </div>
+            <div class="dark:bg-dark-2 mb-8 rounded-xl bg-white p-10 shadow-lg">
+              <div class="mb-6 flex items-center gap-4">
+                <div
+                  class="aspect-square w-[52px] overflow-hidden rounded-full"
+                >
+                  <img
+                    src="./assets/images/testimonials/testimonial-06/image-4.png"
+                    alt="testimonial image"
+                    class="w-full overflow-hidden rounded-full object-cover object-center"
+                  />
+                </div>
+                <div>
+                  <h5 class="text-base font-medium text-black dark:text-white">
+                    Maren Press
+                  </h5>
+                  <p class="text-body-color dark:text-dark-6 text-sm">
+                    Software Engineer
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p class="text-body-color dark:text-dark-6 text-base">
+                  “I believe in lifelong learning and learn is a great place to
+                  learn from erts. I've learned a lot it to all my friends and
+                  familys and more lot it to all my friends and familys and
+                  more.”
+                </p>
+              </div>
+            </div>
+            <div class="dark:bg-dark-2 mb-8 rounded-xl bg-white p-10 shadow-lg">
+              <div class="mb-6 flex items-center gap-4">
+                <div
+                  class="aspect-square w-[52px] overflow-hidden rounded-full"
+                >
+                  <img
+                    src="./assets/images/testimonials/testimonial-06/image-6.png"
+                    alt="testimonial image"
+                    class="w-full overflow-hidden rounded-full object-cover object-center"
+                  />
+                </div>
+                <div>
+                  <h5 class="text-base font-medium text-black dark:text-white">
+                    Ryan Donin
+                  </h5>
+                  <p class="text-body-color dark:text-dark-6 text-sm">
+                    Software Engineer
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p class="text-body-color dark:text-dark-6 text-base">
+                  “I believe in lifelong learning and learn is a great place to
+                  learn from erts. I've learned a lot it to all my friends and
+                  familys and more lot it to all my friends ve learned a lot it
+                  and familys and more.”
+                </p>
+              </div>
+            </div>
+            <div class="dark:bg-dark-2 mb-8 rounded-xl bg-white p-10 shadow-lg">
+              <div class="mb-6 flex items-center gap-4">
+                <div
+                  class="aspect-square w-[52px] overflow-hidden rounded-full"
+                >
+                  <img
+                    src="./assets/images/testimonials/testimonial-06/image-5.png"
+                    alt="testimonial image"
+                    class="w-full overflow-hidden rounded-full object-cover object-center"
+                  />
+                </div>
+                <div>
+                  <h5 class="text-base font-medium text-black dark:text-white">
+                    Jakob Press
+                  </h5>
+                  <p class="text-body-color dark:text-dark-6 text-sm">
+                    Software Engineer
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p class="text-body-color dark:text-dark-6 text-base">
+                  “I believe in lifelong learning and learn is a great place to
+                  learn from erts. I've learned a lot it to all my friends and
+                  familys and more.”
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Testimonials Section End -->
+
+    <!-- ====== FAQ Section Start -->
+    <section
+      class="dark:bg-dark relative z-20 overflow-hidden bg-white pt-20 pb-8 lg:pt-[120px] lg:pb-[50px]"
+    >
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] max-w-[510px] text-center lg:mb-20">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                FAQ
+              </span>
+              <h2
+                class="text-dark text-3xl font-bold sm:text-[40px]/[48px] dark:text-white"
+              >
+                Frequently ask questions
+              </h2>
+            </div>
+          </div>
+        </div>
+
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4 lg:w-1/2">
+            <div class="mb-12 flex lg:mb-[70px]">
+              <div
+                class="bg-primary mr-4 flex h-[50px] w-full max-w-[50px] items-center justify-center rounded-xl text-white sm:mr-6 sm:h-[60px] sm:max-w-[60px]"
+              >
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 34 34"
+                  class="fill-current"
+                >
+                  <path
+                    d="M17.0008 0.690674C7.96953 0.690674 0.691406 7.9688 0.691406 17C0.691406 26.0313 7.96953 33.3625 17.0008 33.3625C26.032 33.3625 33.3633 26.0313 33.3633 17C33.3633 7.9688 26.032 0.690674 17.0008 0.690674ZM17.0008 31.5032C9.03203 31.5032 2.55078 24.9688 2.55078 17C2.55078 9.0313 9.03203 2.55005 17.0008 2.55005C24.9695 2.55005 31.5039 9.0313 31.5039 17C31.5039 24.9688 24.9695 31.5032 17.0008 31.5032Z"
+                  />
+                  <path
+                    d="M17.9039 6.32194C16.3633 6.05631 14.8227 6.48131 13.707 7.43756C12.5383 8.39381 11.8477 9.82819 11.8477 11.3688C11.8477 11.9532 11.9539 12.5376 12.1664 13.0688C12.3258 13.5469 12.857 13.8126 13.3352 13.6532C13.8133 13.4938 14.0789 12.9626 13.9195 12.4844C13.8133 12.1126 13.707 11.7938 13.707 11.3688C13.707 10.4126 14.132 9.50944 14.8758 8.87194C15.6195 8.23444 16.5758 7.96881 17.5852 8.18131C18.9133 8.39381 19.9758 9.50944 20.1883 10.7844C20.4539 12.3251 19.657 13.8126 18.2227 14.3969C16.8945 14.9282 16.0445 16.2563 16.0445 17.7969V21.1969C16.0445 21.7282 16.4695 22.1532 17.0008 22.1532C17.532 22.1532 17.957 21.7282 17.957 21.1969V17.7969C17.957 17.0532 18.382 16.3626 18.9664 16.1501C21.1977 15.2469 22.4727 12.9094 22.0477 10.4657C21.6758 8.39381 19.9758 6.69381 17.9039 6.32194Z"
+                  />
+                  <path
+                    d="M17.0531 24.8625H16.8937C16.3625 24.8625 15.9375 25.2875 15.9375 25.8188C15.9375 26.35 16.3625 26.7751 16.8937 26.7751H17.0531C17.5844 26.7751 18.0094 26.35 18.0094 25.8188C18.0094 25.2875 17.5844 24.8625 17.0531 24.8625Z"
+                  />
+                </svg>
+              </div>
+              <div class="w-full">
+                <h3
+                  class="text-dark mb-6 text-xl font-semibold sm:text-2xl lg:text-xl xl:text-2xl dark:text-white"
+                >
+                  Is TailGrids Well-documented?
+                </h3>
+                <p
+                  class="text-body-color dark:text-dark-6 text-base leading-relaxed"
+                >
+                  It takes 2-3 weeks to get your first blog post ready. That
+                  includes the in-depth research & creation of your monthly
+                  content ui/ux strategy that we do writing your first blog
+                  post.
+                </p>
+              </div>
+            </div>
+            <div class="mb-12 flex lg:mb-[70px]">
+              <div
+                class="bg-primary mr-4 flex h-[50px] w-full max-w-[50px] items-center justify-center rounded-xl text-white sm:mr-6 sm:h-[60px] sm:max-w-[60px]"
+              >
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 34 34"
+                  class="fill-current"
+                >
+                  <path
+                    d="M17.0008 0.690674C7.96953 0.690674 0.691406 7.9688 0.691406 17C0.691406 26.0313 7.96953 33.3625 17.0008 33.3625C26.032 33.3625 33.3633 26.0313 33.3633 17C33.3633 7.9688 26.032 0.690674 17.0008 0.690674ZM17.0008 31.5032C9.03203 31.5032 2.55078 24.9688 2.55078 17C2.55078 9.0313 9.03203 2.55005 17.0008 2.55005C24.9695 2.55005 31.5039 9.0313 31.5039 17C31.5039 24.9688 24.9695 31.5032 17.0008 31.5032Z"
+                  />
+                  <path
+                    d="M17.9039 6.32194C16.3633 6.05631 14.8227 6.48131 13.707 7.43756C12.5383 8.39381 11.8477 9.82819 11.8477 11.3688C11.8477 11.9532 11.9539 12.5376 12.1664 13.0688C12.3258 13.5469 12.857 13.8126 13.3352 13.6532C13.8133 13.4938 14.0789 12.9626 13.9195 12.4844C13.8133 12.1126 13.707 11.7938 13.707 11.3688C13.707 10.4126 14.132 9.50944 14.8758 8.87194C15.6195 8.23444 16.5758 7.96881 17.5852 8.18131C18.9133 8.39381 19.9758 9.50944 20.1883 10.7844C20.4539 12.3251 19.657 13.8126 18.2227 14.3969C16.8945 14.9282 16.0445 16.2563 16.0445 17.7969V21.1969C16.0445 21.7282 16.4695 22.1532 17.0008 22.1532C17.532 22.1532 17.957 21.7282 17.957 21.1969V17.7969C17.957 17.0532 18.382 16.3626 18.9664 16.1501C21.1977 15.2469 22.4727 12.9094 22.0477 10.4657C21.6758 8.39381 19.9758 6.69381 17.9039 6.32194Z"
+                  />
+                  <path
+                    d="M17.0531 24.8625H16.8937C16.3625 24.8625 15.9375 25.2875 15.9375 25.8188C15.9375 26.35 16.3625 26.7751 16.8937 26.7751H17.0531C17.5844 26.7751 18.0094 26.35 18.0094 25.8188C18.0094 25.2875 17.5844 24.8625 17.0531 24.8625Z"
+                  />
+                </svg>
+              </div>
+              <div class="w-full">
+                <h3
+                  class="text-dark mb-6 text-xl font-semibold sm:text-2xl lg:text-xl xl:text-2xl dark:text-white"
+                >
+                  Is TailGrids Well-documented?
+                </h3>
+                <p
+                  class="text-body-color dark:text-dark-6 text-base leading-relaxed"
+                >
+                  It takes 2-3 weeks to get your first blog post ready. That
+                  includes the in-depth research & creation of your monthly
+                  content ui/ux strategy that we do writing your first blog
+                  post.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="w-full px-4 lg:w-1/2">
+            <div class="mb-12 flex lg:mb-[70px]">
+              <div
+                class="bg-primary mr-4 flex h-[50px] w-full max-w-[50px] items-center justify-center rounded-xl text-white sm:mr-6 sm:h-[60px] sm:max-w-[60px]"
+              >
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 34 34"
+                  class="fill-current"
+                >
+                  <path
+                    d="M17.0008 0.690674C7.96953 0.690674 0.691406 7.9688 0.691406 17C0.691406 26.0313 7.96953 33.3625 17.0008 33.3625C26.032 33.3625 33.3633 26.0313 33.3633 17C33.3633 7.9688 26.032 0.690674 17.0008 0.690674ZM17.0008 31.5032C9.03203 31.5032 2.55078 24.9688 2.55078 17C2.55078 9.0313 9.03203 2.55005 17.0008 2.55005C24.9695 2.55005 31.5039 9.0313 31.5039 17C31.5039 24.9688 24.9695 31.5032 17.0008 31.5032Z"
+                  />
+                  <path
+                    d="M17.9039 6.32194C16.3633 6.05631 14.8227 6.48131 13.707 7.43756C12.5383 8.39381 11.8477 9.82819 11.8477 11.3688C11.8477 11.9532 11.9539 12.5376 12.1664 13.0688C12.3258 13.5469 12.857 13.8126 13.3352 13.6532C13.8133 13.4938 14.0789 12.9626 13.9195 12.4844C13.8133 12.1126 13.707 11.7938 13.707 11.3688C13.707 10.4126 14.132 9.50944 14.8758 8.87194C15.6195 8.23444 16.5758 7.96881 17.5852 8.18131C18.9133 8.39381 19.9758 9.50944 20.1883 10.7844C20.4539 12.3251 19.657 13.8126 18.2227 14.3969C16.8945 14.9282 16.0445 16.2563 16.0445 17.7969V21.1969C16.0445 21.7282 16.4695 22.1532 17.0008 22.1532C17.532 22.1532 17.957 21.7282 17.957 21.1969V17.7969C17.957 17.0532 18.382 16.3626 18.9664 16.1501C21.1977 15.2469 22.4727 12.9094 22.0477 10.4657C21.6758 8.39381 19.9758 6.69381 17.9039 6.32194Z"
+                  />
+                  <path
+                    d="M17.0531 24.8625H16.8937C16.3625 24.8625 15.9375 25.2875 15.9375 25.8188C15.9375 26.35 16.3625 26.7751 16.8937 26.7751H17.0531C17.5844 26.7751 18.0094 26.35 18.0094 25.8188C18.0094 25.2875 17.5844 24.8625 17.0531 24.8625Z"
+                  />
+                </svg>
+              </div>
+              <div class="w-full">
+                <h3
+                  class="text-dark mb-6 text-xl font-semibold sm:text-2xl lg:text-xl xl:text-2xl dark:text-white"
+                >
+                  Is TailGrids Well-documented?
+                </h3>
+                <p
+                  class="text-body-color dark:text-dark-6 text-base leading-relaxed"
+                >
+                  It takes 2-3 weeks to get your first blog post ready. That
+                  includes the in-depth research & creation of your monthly
+                  content ui/ux strategy that we do writing your first blog
+                  post.
+                </p>
+              </div>
+            </div>
+            <div class="mb-12 flex lg:mb-[70px]">
+              <div
+                class="bg-primary mr-4 flex h-[50px] w-full max-w-[50px] items-center justify-center rounded-xl text-white sm:mr-6 sm:h-[60px] sm:max-w-[60px]"
+              >
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 34 34"
+                  class="fill-current"
+                >
+                  <path
+                    d="M17.0008 0.690674C7.96953 0.690674 0.691406 7.9688 0.691406 17C0.691406 26.0313 7.96953 33.3625 17.0008 33.3625C26.032 33.3625 33.3633 26.0313 33.3633 17C33.3633 7.9688 26.032 0.690674 17.0008 0.690674ZM17.0008 31.5032C9.03203 31.5032 2.55078 24.9688 2.55078 17C2.55078 9.0313 9.03203 2.55005 17.0008 2.55005C24.9695 2.55005 31.5039 9.0313 31.5039 17C31.5039 24.9688 24.9695 31.5032 17.0008 31.5032Z"
+                  />
+                  <path
+                    d="M17.9039 6.32194C16.3633 6.05631 14.8227 6.48131 13.707 7.43756C12.5383 8.39381 11.8477 9.82819 11.8477 11.3688C11.8477 11.9532 11.9539 12.5376 12.1664 13.0688C12.3258 13.5469 12.857 13.8126 13.3352 13.6532C13.8133 13.4938 14.0789 12.9626 13.9195 12.4844C13.8133 12.1126 13.707 11.7938 13.707 11.3688C13.707 10.4126 14.132 9.50944 14.8758 8.87194C15.6195 8.23444 16.5758 7.96881 17.5852 8.18131C18.9133 8.39381 19.9758 9.50944 20.1883 10.7844C20.4539 12.3251 19.657 13.8126 18.2227 14.3969C16.8945 14.9282 16.0445 16.2563 16.0445 17.7969V21.1969C16.0445 21.7282 16.4695 22.1532 17.0008 22.1532C17.532 22.1532 17.957 21.7282 17.957 21.1969V17.7969C17.957 17.0532 18.382 16.3626 18.9664 16.1501C21.1977 15.2469 22.4727 12.9094 22.0477 10.4657C21.6758 8.39381 19.9758 6.69381 17.9039 6.32194Z"
+                  />
+                  <path
+                    d="M17.0531 24.8625H16.8937C16.3625 24.8625 15.9375 25.2875 15.9375 25.8188C15.9375 26.35 16.3625 26.7751 16.8937 26.7751H17.0531C17.5844 26.7751 18.0094 26.35 18.0094 25.8188C18.0094 25.2875 17.5844 24.8625 17.0531 24.8625Z"
+                  />
+                </svg>
+              </div>
+              <div class="w-full">
+                <h3
+                  class="text-dark mb-6 text-xl font-semibold sm:text-2xl lg:text-xl xl:text-2xl dark:text-white"
+                >
+                  Is TailGrids Well-documented?
+                </h3>
+                <p
+                  class="text-body-color dark:text-dark-6 text-base leading-relaxed"
+                >
+                  It takes 2-3 weeks to get your first blog post ready. That
+                  includes the in-depth research & creation of your monthly
+                  content ui/ux strategy that we do writing your first blog
+                  post.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <span class="absolute top-4 left-4 z-[-1]">
+          <svg
+            width="48"
+            height="134"
+            viewBox="0 0 48 134"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="45.6673"
+              cy="132"
+              r="1.66667"
+              transform="rotate(180 45.6673 132)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="117.333"
+              r="1.66667"
+              transform="rotate(180 45.6673 117.333)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="102.667"
+              r="1.66667"
+              transform="rotate(180 45.6673 102.667)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="88.0001"
+              r="1.66667"
+              transform="rotate(180 45.6673 88.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="73.3335"
+              r="1.66667"
+              transform="rotate(180 45.6673 73.3335)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="45.0001"
+              r="1.66667"
+              transform="rotate(180 45.6673 45.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="16.0001"
+              r="1.66667"
+              transform="rotate(180 45.6673 16.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="59.0001"
+              r="1.66667"
+              transform="rotate(180 45.6673 59.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="30.6668"
+              r="1.66667"
+              transform="rotate(180 45.6673 30.6668)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="1.66683"
+              r="1.66667"
+              transform="rotate(180 45.6673 1.66683)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="132"
+              r="1.66667"
+              transform="rotate(180 31.0013 132)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="117.333"
+              r="1.66667"
+              transform="rotate(180 31.0013 117.333)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="102.667"
+              r="1.66667"
+              transform="rotate(180 31.0013 102.667)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="88.0001"
+              r="1.66667"
+              transform="rotate(180 31.0013 88.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="73.3335"
+              r="1.66667"
+              transform="rotate(180 31.0013 73.3335)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="45.0001"
+              r="1.66667"
+              transform="rotate(180 31.0013 45.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="16.0001"
+              r="1.66667"
+              transform="rotate(180 31.0013 16.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="59.0001"
+              r="1.66667"
+              transform="rotate(180 31.0013 59.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="30.6668"
+              r="1.66667"
+              transform="rotate(180 31.0013 30.6668)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="1.66683"
+              r="1.66667"
+              transform="rotate(180 31.0013 1.66683)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="132"
+              r="1.66667"
+              transform="rotate(180 16.3333 132)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="117.333"
+              r="1.66667"
+              transform="rotate(180 16.3333 117.333)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="102.667"
+              r="1.66667"
+              transform="rotate(180 16.3333 102.667)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="88.0001"
+              r="1.66667"
+              transform="rotate(180 16.3333 88.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="73.3335"
+              r="1.66667"
+              transform="rotate(180 16.3333 73.3335)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="45.0001"
+              r="1.66667"
+              transform="rotate(180 16.3333 45.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="16.0001"
+              r="1.66667"
+              transform="rotate(180 16.3333 16.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="59.0001"
+              r="1.66667"
+              transform="rotate(180 16.3333 59.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="30.6668"
+              r="1.66667"
+              transform="rotate(180 16.3333 30.6668)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="1.66683"
+              r="1.66667"
+              transform="rotate(180 16.3333 1.66683)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="132"
+              r="1.66667"
+              transform="rotate(180 1.66732 132)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="117.333"
+              r="1.66667"
+              transform="rotate(180 1.66732 117.333)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="102.667"
+              r="1.66667"
+              transform="rotate(180 1.66732 102.667)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="88.0001"
+              r="1.66667"
+              transform="rotate(180 1.66732 88.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="73.3335"
+              r="1.66667"
+              transform="rotate(180 1.66732 73.3335)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="45.0001"
+              r="1.66667"
+              transform="rotate(180 1.66732 45.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="16.0001"
+              r="1.66667"
+              transform="rotate(180 1.66732 16.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="59.0001"
+              r="1.66667"
+              transform="rotate(180 1.66732 59.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="30.6668"
+              r="1.66667"
+              transform="rotate(180 1.66732 30.6668)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="1.66683"
+              r="1.66667"
+              transform="rotate(180 1.66732 1.66683)"
+              fill="#13C296"
+            />
+          </svg>
+        </span>
+        <span class="absolute right-4 bottom-4 z-[-1]">
+          <svg
+            width="48"
+            height="134"
+            viewBox="0 0 48 134"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <circle
+              cx="45.6673"
+              cy="132"
+              r="1.66667"
+              transform="rotate(180 45.6673 132)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="117.333"
+              r="1.66667"
+              transform="rotate(180 45.6673 117.333)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="102.667"
+              r="1.66667"
+              transform="rotate(180 45.6673 102.667)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="88.0001"
+              r="1.66667"
+              transform="rotate(180 45.6673 88.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="73.3335"
+              r="1.66667"
+              transform="rotate(180 45.6673 73.3335)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="45.0001"
+              r="1.66667"
+              transform="rotate(180 45.6673 45.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="16.0001"
+              r="1.66667"
+              transform="rotate(180 45.6673 16.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="59.0001"
+              r="1.66667"
+              transform="rotate(180 45.6673 59.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="30.6668"
+              r="1.66667"
+              transform="rotate(180 45.6673 30.6668)"
+              fill="#13C296"
+            />
+            <circle
+              cx="45.6673"
+              cy="1.66683"
+              r="1.66667"
+              transform="rotate(180 45.6673 1.66683)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="132"
+              r="1.66667"
+              transform="rotate(180 31.0013 132)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="117.333"
+              r="1.66667"
+              transform="rotate(180 31.0013 117.333)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="102.667"
+              r="1.66667"
+              transform="rotate(180 31.0013 102.667)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="88.0001"
+              r="1.66667"
+              transform="rotate(180 31.0013 88.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="73.3335"
+              r="1.66667"
+              transform="rotate(180 31.0013 73.3335)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="45.0001"
+              r="1.66667"
+              transform="rotate(180 31.0013 45.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="16.0001"
+              r="1.66667"
+              transform="rotate(180 31.0013 16.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="59.0001"
+              r="1.66667"
+              transform="rotate(180 31.0013 59.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="30.6668"
+              r="1.66667"
+              transform="rotate(180 31.0013 30.6668)"
+              fill="#13C296"
+            />
+            <circle
+              cx="31.0013"
+              cy="1.66683"
+              r="1.66667"
+              transform="rotate(180 31.0013 1.66683)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="132"
+              r="1.66667"
+              transform="rotate(180 16.3333 132)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="117.333"
+              r="1.66667"
+              transform="rotate(180 16.3333 117.333)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="102.667"
+              r="1.66667"
+              transform="rotate(180 16.3333 102.667)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="88.0001"
+              r="1.66667"
+              transform="rotate(180 16.3333 88.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="73.3335"
+              r="1.66667"
+              transform="rotate(180 16.3333 73.3335)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="45.0001"
+              r="1.66667"
+              transform="rotate(180 16.3333 45.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="16.0001"
+              r="1.66667"
+              transform="rotate(180 16.3333 16.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="59.0001"
+              r="1.66667"
+              transform="rotate(180 16.3333 59.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="30.6668"
+              r="1.66667"
+              transform="rotate(180 16.3333 30.6668)"
+              fill="#13C296"
+            />
+            <circle
+              cx="16.3333"
+              cy="1.66683"
+              r="1.66667"
+              transform="rotate(180 16.3333 1.66683)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="132"
+              r="1.66667"
+              transform="rotate(180 1.66732 132)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="117.333"
+              r="1.66667"
+              transform="rotate(180 1.66732 117.333)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="102.667"
+              r="1.66667"
+              transform="rotate(180 1.66732 102.667)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="88.0001"
+              r="1.66667"
+              transform="rotate(180 1.66732 88.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="73.3335"
+              r="1.66667"
+              transform="rotate(180 1.66732 73.3335)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="45.0001"
+              r="1.66667"
+              transform="rotate(180 1.66732 45.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="16.0001"
+              r="1.66667"
+              transform="rotate(180 1.66732 16.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="59.0001"
+              r="1.66667"
+              transform="rotate(180 1.66732 59.0001)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="30.6668"
+              r="1.66667"
+              transform="rotate(180 1.66732 30.6668)"
+              fill="#13C296"
+            />
+            <circle
+              cx="1.66732"
+              cy="1.66683"
+              r="1.66667"
+              transform="rotate(180 1.66732 1.66683)"
+              fill="#13C296"
+            />
+          </svg>
+        </span>
+      </div>
+    </section>
+    <!-- ====== FAQ Section End -->
+
+    <!-- ====== Call To Action Section Start -->
+    <section
+      class="dark:bg-dark relative z-10 overflow-hidden bg-white py-20 lg:py-[120px]"
+    >
+      <div class="container">
+        <div class="mx-auto w-full max-w-[790px] text-center">
+          <h2
+            class="text-dark mx-auto mb-6 w-full max-w-[550px] text-3xl !leading-tight font-bold -tracking-[.72px] sm:text-4xl dark:text-white"
+          >
+            Have a Project Idea In Mind? Let’s Work Together.
+          </h2>
+          <p class="text-body-color dark:text-dark-6 mb-8 text-base sm:text-lg">
+            There are many variations of passages of Lorem Ipsum available but
+            the majority have suffered alteration in some form, by more and more
+            injected humour.
+          </p>
+          <button
+            class="bg-primary hover:bg-primary/90 inline-flex items-center justify-center rounded-lg px-6 py-3 text-base font-medium text-white duration-200"
+          >
+            Get Started for Free
+          </button>
+        </div>
+      </div>
+
+      <div class="absolute top-0 left-20 -z-10">
+        <svg
+          width="605"
+          height="237"
+          viewBox="0 0 605 237"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <g opacity="0.2" filter="url(#filter0_f_2651_11432)">
+            <path
+              d="M341.26 -146.484L393.515 -99.0466L172.361 136.563L84.3048 136.563L341.26 -146.484Z"
+              fill="#8646F4"
+            />
+            <path
+              d="M452.745 -208.391L505 -160.953L283.846 74.6569L195.79 74.6569L452.745 -208.391Z"
+              fill="#18BFFF"
+            />
+          </g>
+          <defs>
+            <filter
+              id="filter0_f_2651_11432"
+              x="-15.6953"
+              y="-308.391"
+              width="620.695"
+              height="544.954"
+              filterUnits="userSpaceOnUse"
+              color-interpolation-filters="sRGB"
+            >
+              <feFlood flood-opacity="0" result="BackgroundImageFix" />
+              <feBlend
+                mode="normal"
+                in="SourceGraphic"
+                in2="BackgroundImageFix"
+                result="shape"
+              />
+              <feGaussianBlur
+                stdDeviation="50"
+                result="effect1_foregroundBlur_2651_11432"
+              />
+            </filter>
+          </defs>
+        </svg>
+      </div>
+      <div class="absolute right-6 bottom-0 -z-10">
+        <svg
+          width="531"
+          height="197"
+          viewBox="0 0 531 197"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <g opacity="0.2" filter="url(#filter0_f_2651_11493)">
+            <path
+              d="M264.045 383.485L211.79 336.048L432.944 100.438L521 100.438L264.045 383.485Z"
+              fill="#8646F4"
+            />
+            <path
+              d="M152.56 445.392L100.305 397.954L321.459 162.344L409.515 162.344L152.56 445.392Z"
+              fill="#18BFFF"
+            />
+          </g>
+          <defs>
+            <filter
+              id="filter0_f_2651_11493"
+              x="0.304688"
+              y="0.437744"
+              width="620.695"
+              height="544.954"
+              filterUnits="userSpaceOnUse"
+              color-interpolation-filters="sRGB"
+            >
+              <feFlood flood-opacity="0" result="BackgroundImageFix" />
+              <feBlend
+                mode="normal"
+                in="SourceGraphic"
+                in2="BackgroundImageFix"
+                result="shape"
+              />
+              <feGaussianBlur
+                stdDeviation="50"
+                result="effect1_foregroundBlur_2651_11493"
+              />
+            </filter>
+          </defs>
+        </svg>
+      </div>
+    </section>
+    <!-- ====== Call To Action Section End -->
+
+    <!-- ====== Contact Section Start -->
+    <section
+      class="bg-gray-2 dark:bg-dark relative z-10 overflow-hidden py-20 lg:py-[120px]"
+    >
+      <div class="container">
+        <div class="flex flex-wrap gap-10 lg:flex-nowrap">
+          <div class="w-full">
+            <div
+              class="dark:bg-dark-2 rounded-[20px] bg-white p-8 shadow-xs sm:p-[52px] lg:p-8 xl:p-[52px]"
+            >
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                Get in Touch
+              </span>
+              <h3 class="text-dark mb-3 text-3xl font-bold dark:text-white">
+                Let’s Chat, Contact with Us
+              </h3>
+              <p class="text-body-color dark:text-dark-6 mb-10 text-lg">
+                Have any questions or feedback? We’re here to help. Send us a
+                message, We’ll get back to you within 24 hours.
+              </p>
+
+              <div class="-mx-4 flex flex-wrap">
+                <div class="w-full px-4 sm:w-1/2">
+                  <div class="mb-6">
+                    <label
+                      for=""
+                      class="text-dark mb-2.5 block text-base font-medium dark:text-white"
+                    >
+                      First name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="First name"
+                      class="border-stroke text-dark placeholder-dark-5 focus:border-primary dark:border-dark-3 dark:focus:border-primary w-full rounded-lg border bg-transparent px-5 py-3 duration-200 outline-none dark:text-white"
+                    />
+                  </div>
+                </div>
+                <div class="w-full px-4 sm:w-1/2">
+                  <div class="mb-6">
+                    <label
+                      for=""
+                      class="text-dark mb-2.5 block text-base font-medium dark:text-white"
+                    >
+                      Last name
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Last name"
+                      class="border-stroke text-dark placeholder-dark-5 focus:border-primary dark:border-dark-3 dark:focus:border-primary h-[50px] w-full rounded-lg border bg-transparent px-5 py-3 duration-200 outline-none dark:text-white"
+                    />
+                  </div>
+                </div>
+                <div class="w-full px-4">
+                  <div class="mb-6">
+                    <label
+                      for=""
+                      class="text-dark mb-2.5 block text-base font-medium dark:text-white"
+                    >
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      placeholder="yourname@company.com"
+                      class="border-stroke text-dark placeholder-dark-5 focus:border-primary dark:border-dark-3 dark:focus:border-primary h-[50px] w-full rounded-lg border bg-transparent px-5 py-3 duration-200 outline-none dark:text-white"
+                    />
+                  </div>
+                </div>
+                <div class="w-full px-4">
+                  <div class="mb-6">
+                    <label
+                      for=""
+                      class="text-dark mb-2.5 block text-base font-medium dark:text-white"
+                    >
+                      Phone number
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="+1 (555) 444-0000"
+                      class="border-stroke text-dark placeholder-dark-5 focus:border-primary dark:border-dark-3 dark:focus:border-primary h-[50px] w-full rounded-lg border bg-transparent px-5 py-3 duration-200 outline-none dark:text-white"
+                    />
+                  </div>
+                </div>
+                <div class="w-full px-4">
+                  <div class="mb-6">
+                    <label
+                      for=""
+                      class="text-dark mb-2.5 block text-base font-medium dark:text-white"
+                    >
+                      Message
+                    </label>
+                    <textarea
+                      type="text"
+                      rows="5"
+                      placeholder="Type your message"
+                      class="border-stroke text-dark placeholder-dark-5 focus:border-primary dark:border-dark-3 dark:focus:border-primary w-full rounded-lg border bg-transparent p-5 duration-200 outline-none dark:text-white"
+                    ></textarea>
+                  </div>
+                </div>
+                <div class="w-full px-4">
+                  <button
+                    class="bg-primary hover:bg-primary/90 flex h-[52px] w-full items-center justify-center rounded-lg px-5 py-3 text-base font-medium text-white duration-200"
+                  >
+                    Send Message
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex w-full flex-col gap-8 lg:max-w-[530px]">
+            <div
+              class="relative z-10 aspect-[530/450] overflow-hidden rounded-[20px] bg-[#CCDDF6]"
+            >
+              <img
+                src="./assets/images/contact/contact-14/person.png"
+                alt="person image"
+                class="w-full"
+              />
+              <div
+                class="border-primary/20 absolute -bottom-[140px] -left-[140px] -z-10 aspect-square w-[290px] rounded-full border-2 bg-transparent"
+              ></div>
+              <div
+                class="border-primary/20 absolute -top-[164px] -right-[40px] -z-10 aspect-square w-[390px] rounded-full border-2 bg-transparent"
+              ></div>
+            </div>
+
+            <div class="bg-dark-4 space-y-5 rounded-[20px] p-6 shadow-xs">
+              <div
+                class="bg-dark-2 flex w-full items-center gap-5 rounded-[20px] p-5"
+              >
+                <div
+                  class="flex aspect-square w-full max-w-[60px] items-center justify-center rounded-full bg-white/10 text-white"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M24.5 4.2002H3.5C2.0125 4.2002 0.743752 5.42519 0.743752 6.95644V21.1314C0.743752 22.6189 1.96875 23.8877 3.5 23.8877H24.5C25.9875 23.8877 27.2563 22.6627 27.2563 21.1314V6.9127C27.2563 5.4252 25.9875 4.2002 24.5 4.2002ZM24.5 6.16895C24.5438 6.16895 24.5875 6.16895 24.6313 6.16895L14 12.9939L3.36875 6.16895C3.4125 6.16895 3.45625 6.16895 3.5 6.16895H24.5ZM24.5 21.8314H3.5C3.0625 21.8314 2.7125 21.4814 2.7125 21.0439V8.09395L12.95 14.6564C13.2563 14.8752 13.6063 14.9627 13.9563 14.9627C14.3063 14.9627 14.6563 14.8752 14.9625 14.6564L25.2 8.09395V21.0877C25.2875 21.5252 24.9375 21.8314 24.5 21.8314Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h6 class="mb-1 text-lg font-semibold text-white">Email</h6>
+                  <p class="text-gray-7 text-base">techsupport@yourmail.com</p>
+                </div>
+              </div>
+
+              <div
+                class="bg-dark-2 flex w-full items-center gap-5 rounded-[20px] p-5"
+              >
+                <div
+                  class="flex aspect-square w-full max-w-[60px] items-center justify-center rounded-full bg-white/10 text-white"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M26.3375 24.1496L25.55 16.2309C25.4188 14.7871 24.1938 13.6934 22.75 13.6934H5.25C3.80625 13.6934 2.625 14.7871 2.45 16.2309L1.6625 24.1496C1.575 24.9371 1.8375 25.7246 2.3625 26.2934C2.8875 26.8621 3.63125 27.2121 4.41875 27.2121H23.4938C24.2813 27.2121 25.025 26.8621 25.55 26.2934C26.1625 25.7246 26.3813 24.9371 26.3375 24.1496ZM24.15 24.9809C23.975 25.1559 23.7563 25.2434 23.5375 25.2434H4.4625C4.24375 25.2434 4.025 25.1559 3.85 24.9809C3.675 24.8059 3.63125 24.5871 3.63125 24.3246L4.41875 16.4059C4.4625 15.9684 4.8125 15.6621 5.25 15.6621H22.75C23.1875 15.6621 23.5375 15.9684 23.5813 16.4059L24.3688 24.3246C24.3688 24.5871 24.325 24.8059 24.15 24.9809Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M14 17.1934C12.2063 17.1934 10.7188 18.6809 10.7188 20.4746C10.7188 22.3121 12.2063 23.7559 14 23.7559C15.8375 23.7559 17.2812 22.2684 17.2812 20.4746C17.2812 18.6809 15.8375 17.1934 14 17.1934ZM14 21.7871C13.2562 21.7871 12.6875 21.1746 12.6875 20.4746C12.6875 19.7309 13.3 19.1621 14 19.1621C14.7438 19.1621 15.3125 19.7746 15.3125 20.4746C15.3125 21.2184 14.7438 21.7871 14 21.7871Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M2.66875 9.01211C2.75625 10.9371 4.41875 11.9434 5.55625 11.9434H8.61875H8.6625C10.0625 11.8559 11.4625 10.9371 11.4625 9.01211V8.18086C12.95 8.18086 15.7938 8.18086 17.2375 8.18086V9.01211C17.2375 10.9371 18.6375 11.8559 20.0375 11.9434H23.1438C24.325 11.9434 25.9438 10.9371 26.0313 9.01211C26.0313 8.88086 26.0313 7.30586 26.0313 7.21836C26.0313 7.17461 26.0313 7.13086 26.0313 7.08711C25.9 5.81836 25.4625 4.76836 24.675 3.93711L24.6313 3.89336C23.4938 2.84336 22.1813 2.27461 21.175 1.92461C18.2 0.787109 14.4813 0.787109 14.3063 0.787109C11.6813 0.830859 10.0188 1.04961 7.48125 1.92461C6.43125 2.31836 5.11875 2.88711 3.98125 3.89336L3.9375 3.93711C3.15 4.76836 2.7125 5.81836 2.58125 7.08711C2.58125 7.13086 2.58125 7.17461 2.58125 7.21836C2.625 7.30586 2.66875 8.83711 2.66875 9.01211ZM5.38125 5.33711C6.25625 4.54961 7.30625 4.11211 8.18125 3.76211C10.4563 2.93086 11.9 2.79961 14.35 2.71211C14.5688 2.71211 17.8938 2.75586 20.5188 3.76211C21.4375 4.11211 22.4875 4.54961 23.3188 5.33711C23.7563 5.81836 24.0188 6.47461 24.1063 7.21836C24.1063 7.34961 24.1063 8.79336 24.1063 8.92461C24.0625 9.84336 23.1875 9.97461 23.1875 9.97461H20.1688C19.7313 9.93086 19.25 9.75586 19.25 9.01211V7.21836C19.25 6.78086 18.9875 6.38711 18.55 6.29961C18.2438 6.12461 10.5 6.12461 10.1938 6.25586C9.8 6.38711 9.49375 6.78086 9.49375 7.17461V9.01211C9.49375 9.75586 9.0125 9.93086 8.575 9.97461H5.55625C5.55625 9.97461 4.68125 9.84336 4.6375 8.96836C4.6375 8.83711 4.6375 8.35586 4.6375 7.91836C4.6375 7.61211 4.6375 7.39336 4.6375 7.26211C4.68125 6.43086 4.94375 5.81836 5.38125 5.33711Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h6 class="mb-1 text-lg font-semibold text-white">Phone</h6>
+                  <p class="text-gray-7 text-base">(+005) 432 986 450</p>
+                </div>
+              </div>
+
+              <div
+                class="bg-dark-2 flex w-full items-center gap-5 rounded-[20px] p-5"
+              >
+                <div
+                  class="flex aspect-square w-full max-w-[60px] items-center justify-center rounded-full bg-white/10 text-white"
+                >
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 28 28"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M17.675 9.66797C17.675 7.48047 15.925 5.73047 13.7375 5.73047C11.55 5.73047 9.8 7.48047 9.8 9.66797C9.8 11.8555 11.55 13.6055 13.7375 13.6055C15.925 13.6055 17.675 11.8555 17.675 9.66797ZM11.7688 9.66797C11.7688 8.57422 12.6438 7.69922 13.7375 7.69922C14.8313 7.69922 15.7063 8.57422 15.7063 9.66797C15.7063 10.7617 14.8313 11.6367 13.7375 11.6367C12.6438 11.6367 11.7688 10.7617 11.7688 9.66797Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M27.2125 25.7684L25.4188 17.6746C25.3313 17.2809 25.025 16.9746 24.5875 16.9309L19.3813 16.1871C21.0438 13.8246 22.4 11.3309 22.4 9.40586C22.4 4.76836 18.5063 1.00586 13.7375 1.00586C8.96875 1.00586 5.075 4.76836 5.075 9.40586C5.075 11.3309 6.43125 13.8246 8.09375 16.1871L2.84375 16.9309C2.40625 16.9746 2.1 17.3246 2.0125 17.7621L0.787504 25.8559C0.743754 26.2059 0.875004 26.5559 1.1375 26.7746C1.4 26.9934 1.75 27.0809 2.1 26.9496L7.875 24.9371L13.6938 26.9059C13.9125 26.9934 14.1313 26.9934 14.3063 26.9059L20.125 24.9371L25.9438 26.9059C26.0313 26.9496 26.1625 26.9496 26.25 26.9496C26.4688 26.9496 26.7313 26.8621 26.9063 26.6871C27.1688 26.5121 27.3 26.1184 27.2125 25.7684ZM13.7375 2.97461C17.4563 2.97461 20.4313 5.86211 20.4313 9.40586C20.4313 11.8121 16.975 16.4059 13.7375 19.9496C10.5 16.4496 7.04375 11.8121 7.04375 9.40586C7.04375 5.86211 10.0188 2.97461 13.7375 2.97461ZM20.4313 22.9684C20.2125 22.8809 19.9938 22.8809 19.8188 22.9684L14 24.9371L8.18125 22.9684C7.9625 22.8809 7.74375 22.8809 7.56875 22.9684L2.975 24.5434L3.85 18.8121L9.40625 17.9809C10.4125 19.2496 11.4625 20.4309 12.2938 21.3496C12.6438 21.7434 13.1688 21.9621 13.6938 21.9621C14.2188 21.9621 14.7438 21.7434 15.0938 21.3496C15.925 20.4309 16.975 19.2496 17.9813 17.9809L23.6688 18.8121L24.9375 24.4996L20.4313 22.9684Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h6 class="mb-1 text-lg font-semibold text-white">Address</h6>
+                  <p class="text-gray-7 text-base">
+                    230 Norman Street New York, H8R 1A1
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Contact Section End -->
+
+    <!-- ====== Blog Section Start -->
+    <section class="dark:bg-dark bg-white py-20 lg:py-[120px]">
+      <div class="container">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-8">
+              <div class="mb-7">
+                <img
+                  src="./assets/images/blogs/blog-07/image-1.jpg"
+                  alt="blog image"
+                  class="w-full object-cover object-center"
+                />
+              </div>
+              <div class="flex gap-6">
+                <div class="bg-dark mt-3 h-0.5 w-8 dark:bg-white"></div>
+                <div>
+                  <div class="mb-5 flex items-center gap-3">
+                    <span class="text-dark text-base uppercase dark:text-white">
+                      tech
+                    </span>
+                    <span
+                      class="bg-stroke dark:bg-dark-3 block h-1.5 w-1.5 rounded-full"
+                    ></span>
+
+                    <span class="text-body-color dark:text-dark-6 text-base">
+                      March 20, 2028
+                    </span>
+                  </div>
+                  <a
+                    href="javascript:void(0)"
+                    class="text-dark hover:text-primary dark:hover:text-primary line-clamp-2 cursor-pointer text-xl font-bold dark:text-white"
+                  >
+                    How to use Facebook ads to sell online courses
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-8">
+              <div class="mb-7">
+                <img
+                  src="./assets/images/blogs/blog-07/image-2.jpg"
+                  alt="blog image"
+                  class="w-full object-cover object-center"
+                />
+              </div>
+              <div class="flex gap-6">
+                <div class="bg-dark mt-3 h-0.5 w-8 dark:bg-white"></div>
+                <div>
+                  <div class="mb-5 flex items-center gap-3">
+                    <span class="text-dark text-base uppercase dark:text-white">
+                      MODERN
+                    </span>
+                    <span
+                      class="bg-stroke dark:bg-dark-3 block h-1.5 w-1.5 rounded-full"
+                    ></span>
+
+                    <span class="text-body-color dark:text-dark-6 text-base">
+                      March 20, 2028
+                    </span>
+                  </div>
+                  <a
+                    href="javascript:void(0)"
+                    class="text-dark hover:text-primary dark:hover:text-primary line-clamp-2 cursor-pointer text-xl font-bold dark:text-white"
+                  >
+                    What to do if template do not work properly
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-8">
+              <div class="mb-7">
+                <img
+                  src="./assets/images/blogs/blog-07/image-3.jpg"
+                  alt="blog image"
+                  class="w-full object-cover object-center"
+                />
+              </div>
+              <div class="flex gap-6">
+                <div class="bg-dark mt-3 h-0.5 w-8 dark:bg-white"></div>
+                <div>
+                  <div class="mb-5 flex items-center gap-3">
+                    <span class="text-dark text-base uppercase dark:text-white">
+                      tools
+                    </span>
+                    <span
+                      class="bg-stroke dark:bg-dark-3 block h-1.5 w-1.5 rounded-full"
+                    ></span>
+
+                    <span class="text-body-color dark:text-dark-6 text-base">
+                      March 20, 2028
+                    </span>
+                  </div>
+                  <a
+                    href="javascript:void(0)"
+                    class="text-dark hover:text-primary dark:hover:text-primary line-clamp-2 cursor-pointer text-xl font-bold dark:text-white"
+                  >
+                    Meet AutoManage, the best AI management tools
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Blog Section End -->
+
+    <!-- ====== Brands Section Start -->
+    <section class="bg-gray-1 dark:bg-dark-2 py-10 lg:py-20">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="flex flex-wrap items-center justify-center">
+              <a
+                href="javascript:void(0)"
+                class="mx-4 flex w-[150px] items-center justify-center py-5 2xl:w-[180px]"
+              >
+                <img
+                  src="./assets/images/brands/graygrids.svg"
+                  alt="image"
+                  class="h-10 w-full dark:hidden"
+                />
+                <img
+                  src="./assets/images/brands/graygrids-white.svg"
+                  alt="image"
+                  class="hidden h-10 w-full dark:block"
+                />
+              </a>
+              <a
+                href="javascript:void(0)"
+                class="mx-4 flex w-[150px] items-center justify-center py-5 2xl:w-[180px]"
+              >
+                <img
+                  src="./assets/images/brands/lineiconsnew.svg"
+                  alt="image"
+                  class="h-10 w-full dark:hidden"
+                />
+                <img
+                  src="./assets/images/brands/lineicons-white.svg"
+                  alt="image"
+                  class="hidden h-10 w-full dark:block"
+                />
+              </a>
+              <a
+                href="javascript:void(0)"
+                class="mx-4 flex w-[150px] items-center justify-center py-5 2xl:w-[180px]"
+              >
+                <img
+                  src="./assets/images/brands/uidecknew.svg"
+                  alt="image"
+                  class="h-10 w-full dark:hidden"
+                />
+                <img
+                  src="./assets/images/brands/uideck-white.svg"
+                  alt="image"
+                  class="hidden h-10 w-full dark:block"
+                />
+              </a>
+              <a
+                href="javascript:void(0)"
+                class="mx-4 flex w-[150px] items-center justify-center py-5 2xl:w-[180px]"
+              >
+                <img
+                  src="./assets/images/brands/ayroui.svg"
+                  alt="image"
+                  class="h-10 w-full dark:hidden"
+                />
+                <img
+                  src="./assets/images/brands/ayroui-white.svg"
+                  alt="image"
+                  class="hidden h-10 w-full dark:block"
+                />
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Brands Section End -->
+
+    <!-- ====== Footer Section Start -->
+    <footer class="dark:bg-dark relative z-10 bg-white pt-20 lg:pt-[120px]">
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap lg:mb-14">
+          <div class="w-full px-4 md:w-2/3 lg:w-1/3">
+            <div class="mb-12 w-full">
+              <h4
+                class="text-dark text-3xl font-medium xl:text-[32px] dark:text-white"
+              >
+                Please feel free to get in touch with us
+              </h4>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-12 w-full">
+              <div class="flex">
+                <div class="text-primary mr-6 h-9 w-9">
+                  <svg
+                    width="35"
+                    height="35"
+                    viewBox="0 0 35 35"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M17.5 0.984375C9.95312 0.984375 3.82812 6.89063 3.82812 14.1641C3.82812 19.6875 11.1562 28.4375 15.4766 33.1406C16.0234 33.7422 16.7344 34.0156 17.5 34.0156C18.2656 34.0156 18.9766 33.6875 19.5234 33.1406C23.8438 28.4375 31.1719 19.6875 31.1719 14.1641C31.1719 6.89063 25.0469 0.984375 17.5 0.984375ZM17.7188 31.5C17.6094 31.6094 17.4453 31.6094 17.2812 31.5C11.9766 25.7031 6.28906 18.1563 6.28906 14.1641C6.28906 8.25781 11.3203 3.44531 17.5 3.44531C23.6797 3.44531 28.7109 8.25781 28.7109 14.1641C28.7109 18.1563 23.0234 25.7031 17.7188 31.5Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M17.5 8.58594C14.2187 8.58594 11.5391 11.2656 11.5391 14.5469C11.5391 17.8281 14.2187 20.5625 17.5 20.5625C20.7812 20.5625 23.4609 17.8828 23.4609 14.6016C23.4609 11.3203 20.7812 8.58594 17.5 8.58594ZM17.5 18.1016C15.5312 18.1016 14 16.5156 14 14.6016C14 12.6875 15.5859 11.1016 17.5 11.1016C19.4141 11.1016 21 12.6875 21 14.6016C21 16.5156 19.4687 18.1016 17.5 18.1016Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h5
+                    class="text-dark mb-4 text-lg font-semibold dark:text-white"
+                  >
+                    Our Location
+                  </h5>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    401 Broadway, 24th Floor, Orchard Cloud View, London
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="w-full px-4 md:w-1/2 lg:w-1/3">
+            <div class="mb-12 w-full">
+              <div class="flex">
+                <div class="text-primary mr-6 h-9 w-9">
+                  <svg
+                    width="35"
+                    height="35"
+                    viewBox="0 0 35 35"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M30.625 5.25H4.375C2.51562 5.25 0.929688 6.78125 0.929688 8.69531V26.4141C0.929688 28.2734 2.46094 29.8594 4.375 29.8594H30.625C32.4844 29.8594 34.0703 28.3281 34.0703 26.4141V8.64062C34.0703 6.78125 32.4844 5.25 30.625 5.25ZM30.625 7.71094C30.6797 7.71094 30.7344 7.71094 30.7891 7.71094L17.5 16.2422L4.21094 7.71094C4.26562 7.71094 4.32031 7.71094 4.375 7.71094H30.625ZM30.625 27.2891H4.375C3.82812 27.2891 3.39062 26.8516 3.39062 26.3047V10.1172L16.1875 18.3203C16.5703 18.5938 17.0078 18.7031 17.4453 18.7031C17.8828 18.7031 18.3203 18.5938 18.7031 18.3203L31.5 10.1172V26.3594C31.6094 26.9062 31.1719 27.2891 30.625 27.2891Z"
+                      fill="currentColor"
+                    />
+                  </svg>
+                </div>
+                <div>
+                  <h5
+                    class="text-dark mb-4 text-lg font-semibold dark:text-white"
+                  >
+                    How Can We Help?
+                  </h5>
+                  <p class="text-body-color dark:text-dark-6 mb-2 text-base">
+                    info@yourdomain.com
+                  </p>
+                  <p class="text-body-color dark:text-dark-6 text-base">
+                    contact@yourdomain.com
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="border-stroke dark:border-dark-3 border-t py-8">
+        <div class="container mx-auto">
+          <div class="-mx-4 flex flex-wrap items-center">
+            <div class="w-full px-4 lg:w-3/12 xl:w-1/3">
+              <div class="w-full py-3 text-center lg:text-left">
+                <a href="javascript:void(0)" class="inline-block max-w-[160px]">
+                  <img
+                    src="./assets/images/logo/logo.svg"
+                    alt="logo"
+                    class="max-w-full dark:hidden"
+                  />
+                  <img
+                    src="./assets/images/logo/logo-white.svg"
+                    alt="logo"
+                    class="hidden max-w-full dark:block"
+                  />
+                </a>
+              </div>
+            </div>
+            <div class="w-full px-4 md:w-1/2 lg:w-5/12 xl:w-1/3">
+              <div class="py-3 text-center">
+                <p class="text-body-color dark:text-dark-6 text-base">
+                  &copy; 2025 TailGrids | All Rights Reserved
+                </p>
+              </div>
+            </div>
+            <div class="w-full px-4 md:w-1/2 lg:w-4/12 xl:w-1/3">
+              <div class="w-full py-3">
+                <div
+                  class="-mx-3 flex items-center justify-center lg:justify-end"
+                >
+                  <a
+                    href="javascript:void(0)"
+                    class="text-dark-7 hover:text-primary px-3 dark:text-white/40"
+                  >
+                    <svg
+                      width="10"
+                      height="18"
+                      viewBox="0 0 10 18"
+                      class="fill-current"
+                    >
+                      <path
+                        d="M9.00007 6.82105H7.50006H6.96434V6.27097V4.56571V4.01562H7.50006H8.62507C8.91971 4.01562 9.16078 3.79559 9.16078 3.46554V0.550085C9.16078 0.247538 8.9465 0 8.62507 0H6.66969C4.55361 0 3.08038 1.54024 3.08038 3.82309V6.21596V6.76605H2.54466H0.72322C0.348217 6.76605 0 7.06859 0 7.50866V9.48897C0 9.87402 0.294645 10.2316 0.72322 10.2316H2.49109H3.02681V10.7817V16.31C3.02681 16.6951 3.32145 17.0526 3.75003 17.0526H6.26791C6.42862 17.0526 6.56255 16.9701 6.66969 16.8601C6.77684 16.7501 6.8572 16.5576 6.8572 16.3925V10.8092V10.2591H7.4197H8.62507C8.97328 10.2591 9.24114 10.0391 9.29471 9.709V9.6815V9.65399L9.66972 7.7562C9.6965 7.56367 9.66972 7.34363 9.509 7.1236C9.45543 6.98608 9.21436 6.84856 9.00007 6.82105Z"
+                      />
+                    </svg>
+                  </a>
+                  <a
+                    href="javascript:void(0)"
+                    class="text-dark-7 hover:text-primary px-3 dark:text-white/40"
+                  >
+                    <svg
+                      width="19"
+                      height="15"
+                      viewBox="0 0 19 15"
+                      class="fill-current"
+                    >
+                      <path
+                        d="M16.2622 3.17878L17.33 1.93293C17.6391 1.59551 17.7234 1.33595 17.7515 1.20618C16.9085 1.67337 16.1217 1.82911 15.6159 1.82911H15.4192L15.3068 1.72528C14.6324 1.18022 13.7894 0.894714 12.8902 0.894714C10.9233 0.894714 9.37779 2.40012 9.37779 4.13913C9.37779 4.24295 9.37779 4.39868 9.40589 4.5025L9.49019 5.02161L8.90009 4.99565C5.30334 4.89183 2.35288 2.03675 1.87518 1.5436C1.08839 2.84136 1.53799 4.08722 2.01568 4.86587L2.97107 6.31937L1.45369 5.54071C1.48179 6.63084 1.93138 7.48736 2.80247 8.11029L3.56116 8.62939L2.80247 8.9149C3.28017 10.2386 4.34795 10.7837 5.13474 10.9913L6.17443 11.2509L5.19094 11.8738C3.61736 12.912 1.65039 12.8342 0.779297 12.7563C2.54957 13.8983 4.65705 14.1579 6.11823 14.1579C7.21412 14.1579 8.02901 14.0541 8.2257 13.9762C16.0936 12.2631 16.4589 5.77431 16.4589 4.47655V4.29486L16.6275 4.19104C17.5829 3.36047 17.9763 2.91923 18.2011 2.65967C18.1168 2.68563 18.0044 2.73754 17.892 2.7635L16.2622 3.17878Z"
+                      />
+                    </svg>
+                  </a>
+                  <a
+                    href="javascript:void(0)"
+                    class="text-dark-7 hover:text-primary px-3 dark:text-white/40"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 18 18"
+                      class="fill-current"
+                    >
+                      <path
+                        d="M8.91688 12.4995C10.6918 12.4995 12.1306 11.0911 12.1306 9.35385C12.1306 7.61655 10.6918 6.20819 8.91688 6.20819C7.14197 6.20819 5.70312 7.61655 5.70312 9.35385C5.70312 11.0911 7.14197 12.4995 8.91688 12.4995Z"
+                      />
+                      <path
+                        d="M12.4078 0.947388H5.37075C2.57257 0.947388 0.300781 3.17104 0.300781 5.90993V12.7436C0.300781 15.5367 2.57257 17.7604 5.37075 17.7604H12.3524C15.2059 17.7604 17.4777 15.5367 17.4777 12.7978V5.90993C17.4777 3.17104 15.2059 0.947388 12.4078 0.947388ZM8.91696 13.4758C6.56206 13.4758 4.70584 11.6047 4.70584 9.35389C4.70584 7.10312 6.58976 5.23199 8.91696 5.23199C11.2165 5.23199 13.1004 7.10312 13.1004 9.35389C13.1004 11.6047 11.2442 13.4758 8.91696 13.4758ZM14.735 5.61164C14.4579 5.90993 14.0423 6.07264 13.5714 6.07264C13.1558 6.07264 12.7402 5.90993 12.4078 5.61164C12.103 5.31334 11.9368 4.9337 11.9368 4.47269C11.9368 4.01169 12.103 3.65916 12.4078 3.33375C12.7125 3.00834 13.1004 2.84563 13.5714 2.84563C13.9869 2.84563 14.4302 3.00834 14.735 3.30663C15.012 3.65916 15.2059 4.06593 15.2059 4.49981C15.1782 4.9337 15.012 5.31334 14.735 5.61164Z"
+                      />
+                      <path
+                        d="M13.5985 3.82184C13.2383 3.82184 12.9336 4.12013 12.9336 4.47266C12.9336 4.82519 13.2383 5.12349 13.5985 5.12349C13.9587 5.12349 14.2634 4.82519 14.2634 4.47266C14.2634 4.12013 13.9864 3.82184 13.5985 3.82184Z"
+                      />
+                    </svg>
+                  </a>
+                  <a
+                    href="javascript:void(0)"
+                    class="text-dark-7 hover:text-primary px-3 dark:text-white/40"
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 18 18"
+                      class="fill-current"
+                    >
+                      <path
+                        d="M16.7821 0.947388H1.84847C1.14272 0.947388 0.578125 1.49747 0.578125 2.18508V16.7623C0.578125 17.4224 1.14272 18 1.84847 18H16.7257C17.4314 18 17.996 17.4499 17.996 16.7623V2.15757C18.0525 1.49747 17.4879 0.947388 16.7821 0.947388ZM5.7442 15.4421H3.17528V7.32837H5.7442V15.4421ZM4.44563 6.2007C3.59873 6.2007 2.94944 5.5406 2.94944 4.74297C2.94944 3.94535 3.62696 3.28525 4.44563 3.28525C5.26429 3.28525 5.94181 3.94535 5.94181 4.74297C5.94181 5.5406 5.32075 6.2007 4.44563 6.2007ZM15.4835 15.4421H12.9146V11.509C12.9146 10.5739 12.8864 9.33618 11.5596 9.33618C10.2045 9.33618 10.0069 10.3813 10.0069 11.4265V15.4421H7.438V7.32837H9.95046V8.45605H9.9787C10.3457 7.79594 11.1644 7.13584 12.4347 7.13584C15.0601 7.13584 15.54 8.7861 15.54 11.0414V15.4421H15.4835Z"
+                      />
+                    </svg>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+    <!-- ====== Footer Section End -->
+
+    <!-- Theme Switcher Start -->
+    <button
+      id="theme-toggle"
+      class="shadow-1 dark:bg-dark-3 dark:shadow-box-dark fixed right-10 bottom-10 flex h-11 w-11 items-center justify-center rounded bg-white"
+    >
+      <span class="text-body-color block dark:hidden">
+        <svg
+          class="fill-current"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M13.3125 1.50001C12.675 1.31251 12.0375 1.16251 11.3625 1.05001C10.875 0.975006 10.35 1.23751 10.1625 1.68751C9.93751 2.13751 10.05 2.70001 10.425 3.00001C13.0875 5.47501 14.0625 9.11251 12.975 12.525C11.775 16.3125 8.25001 18.975 4.16251 19.0875C3.63751 19.0875 3.22501 19.425 3.07501 19.9125C2.92501 20.4 3.15001 20.925 3.56251 21.1875C4.50001 21.75 5.43751 22.2 6.37501 22.5C7.46251 22.8375 8.58751 22.9875 9.71251 22.9875C11.625 22.9875 13.5 22.5 15.1875 21.5625C17.85 20.1 19.725 17.7375 20.55 14.8875C22.1625 9.26251 18.975 3.37501 13.3125 1.50001ZM18.9375 14.4C18.2625 16.8375 16.6125 18.825 14.4 20.0625C12.075 21.3375 9.41251 21.6 6.90001 20.85C6.63751 20.775 6.33751 20.6625 6.07501 20.55C10.05 19.7625 13.35 16.9125 14.5875 13.0125C15.675 9.56251 15 5.92501 12.7875 3.07501C17.5875 4.68751 20.2875 9.67501 18.9375 14.4Z"
+          />
+        </svg>
+      </span>
+      <span class="hidden text-white dark:block">
+        <svg
+          class="fill-current"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <g clip-path="url(#clip0_2172_3070)">
+            <path
+              d="M12 6.89999C9.18752 6.89999 6.90002 9.18749 6.90002 12C6.90002 14.8125 9.18752 17.1 12 17.1C14.8125 17.1 17.1 14.8125 17.1 12C17.1 9.18749 14.8125 6.89999 12 6.89999ZM12 15.4125C10.125 15.4125 8.58752 13.875 8.58752 12C8.58752 10.125 10.125 8.58749 12 8.58749C13.875 8.58749 15.4125 10.125 15.4125 12C15.4125 13.875 13.875 15.4125 12 15.4125Z"
+            />
+            <path
+              d="M12 4.2375C12.45 4.2375 12.8625 3.8625 12.8625 3.375V1.5C12.8625 1.05 12.4875 0.637497 12 0.637497C11.55 0.637497 11.1375 1.0125 11.1375 1.5V3.4125C11.175 3.8625 11.55 4.2375 12 4.2375Z"
+            />
+            <path
+              d="M12 19.7625C11.55 19.7625 11.1375 20.1375 11.1375 20.625V22.5C11.1375 22.95 11.5125 23.3625 12 23.3625C12.45 23.3625 12.8625 22.9875 12.8625 22.5V20.5875C12.8625 20.1375 12.45 19.7625 12 19.7625Z"
+            />
+            <path
+              d="M18.1125 6.74999C18.3375 6.74999 18.5625 6.67499 18.7125 6.48749L19.9125 5.28749C20.25 4.94999 20.25 4.42499 19.9125 4.08749C19.575 3.74999 19.05 3.74999 18.7125 4.08749L17.5125 5.28749C17.175 5.62499 17.175 6.14999 17.5125 6.48749C17.6625 6.67499 17.8875 6.74999 18.1125 6.74999Z"
+            />
+            <path
+              d="M5.32501 17.5125L4.12501 18.675C3.78751 19.0125 3.78751 19.5375 4.12501 19.875C4.27501 20.025 4.50001 20.1375 4.72501 20.1375C4.95001 20.1375 5.17501 20.0625 5.32501 19.875L6.52501 18.675C6.86251 18.3375 6.86251 17.8125 6.52501 17.475C6.18751 17.175 5.62501 17.175 5.32501 17.5125Z"
+            />
+            <path
+              d="M22.5 11.175H20.5875C20.1375 11.175 19.725 11.55 19.725 12.0375C19.725 12.4875 20.1 12.9 20.5875 12.9H22.5C22.95 12.9 23.3625 12.525 23.3625 12.0375C23.3625 11.55 22.95 11.175 22.5 11.175Z"
+            />
+            <path
+              d="M4.23751 12C4.23751 11.55 3.86251 11.1375 3.37501 11.1375H1.50001C1.05001 11.1375 0.637512 11.5125 0.637512 12C0.637512 12.45 1.01251 12.8625 1.50001 12.8625H3.41251C3.86251 12.8625 4.23751 12.45 4.23751 12Z"
+            />
+            <path
+              d="M18.675 17.5125C18.3375 17.175 17.8125 17.175 17.475 17.5125C17.1375 17.85 17.1375 18.375 17.475 18.7125L18.675 19.9125C18.825 20.0625 19.05 20.175 19.275 20.175C19.5 20.175 19.725 20.1 19.875 19.9125C20.2125 19.575 20.2125 19.05 19.875 18.7125L18.675 17.5125Z"
+            />
+            <path
+              d="M5.32501 4.125C4.98751 3.7875 4.46251 3.7875 4.12501 4.125C3.78751 4.4625 3.78751 4.9875 4.12501 5.325L5.32501 6.525C5.47501 6.675 5.70001 6.7875 5.92501 6.7875C6.15001 6.7875 6.37501 6.7125 6.52501 6.525C6.86251 6.1875 6.86251 5.6625 6.52501 5.325L5.32501 4.125Z"
+            />
+          </g>
+          <defs>
+            <clipPath id="clip0_2172_3070">
+              <rect width="24" height="24" fill="white" />
+            </clipPath>
+          </defs>
+        </svg>
+      </span>
+    </button>
+    <!-- Theme Switcher End -->
+
+    <script defer src="./assets/js/alpine.min.js"></script>
+    <script src="./assets/js/theme-toggle.js"></script>
+  </body>
+</html>

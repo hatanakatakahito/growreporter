@@ -256,7 +256,9 @@ export default function Register() {
 
               {/* プラン選択カード（招待経由は非表示） */}
               {!isFromInvitation && (
-                <div className="mb-6 grid grid-cols-2 gap-3">
+                <div className="mb-6">
+                <p className="mb-2 text-xs text-body-color dark:text-dark-6">プランを選択</p>
+                <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setSelectedPlan('free')}
@@ -289,6 +291,7 @@ export default function Register() {
                     <div className="mt-0.5 pl-5 text-xs text-body-color dark:text-dark-6">¥49,800/月 / 全機能</div>
                   </button>
                 </div>
+                </div>
               )}
 
               {/* エラーメッセージ */}
@@ -314,6 +317,7 @@ export default function Register() {
               {/* SSOボタン（招待経由は非表示） */}
               {!isFromInvitation && (
                 <>
+                  <p className="mb-2 text-xs text-body-color dark:text-dark-6">外部アカウントで登録</p>
                   <div className="flex gap-2">
                     <button type="button" onClick={handleGoogleSignIn} disabled={isSubmitting}
                       className="flex flex-1 items-center justify-center gap-2 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50">
@@ -326,7 +330,11 @@ export default function Register() {
                       Microsoft
                     </button>
                   </div>
-                  <div className="my-6 border-t border-gray-200 dark:border-dark-3"></div>
+                  {/* 区切り線 */}
+                  <div className="relative my-6">
+                    <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200 dark:border-dark-3"></div></div>
+                    <div className="relative flex justify-center"><span className="bg-white px-3 text-xs text-body-color dark:bg-dark-2">または</span></div>
+                  </div>
                 </>
               )}
 
@@ -456,7 +464,7 @@ export default function Register() {
                 </div>
 
                 {/* 送信ボタン */}
-                <Button type="submit" color="blue" disabled={isSubmitting} className="mb-4 w-full">
+                <Button type="submit" color="blue" disabled={isSubmitting} className="mt-[10px] mb-4 w-full">
                   {isSubmitting ? '処理中...' : selectedPlan === 'business' ? 'ビジネスプランに申し込む' : 'アカウントを作成'}
                 </Button>
               </form>
