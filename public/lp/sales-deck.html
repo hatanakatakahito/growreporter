@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GrowReporter サービス紹介資料</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & Base ── */
+*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: 'Inter', 'Noto Sans JP', sans-serif; color: #333D4B; background: #f0f0f0; }
+
+/* ── A4 Landscape Slide ── */
+.slide {
+  width: 297mm; height: 210mm;
+  padding: 12mm 16mm;
+  background: #fff;
+  position: relative;
+  overflow: hidden;
+  page-break-after: always;
+  margin: 10px auto;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+}
+.slide:last-child { page-break-after: auto; }
+
+/* ── Tokens ── */
+:root {
+  --primary: #3758F9;
+  --primary-dark: #2A42C8;
+  --primary-light: #EBF0FE;
+  --secondary: #13C296;
+  --dark: #1B2336;
+  --text: #333D4B;
+  --sub: #637381;
+  --light-bg: #F8FAFC;
+  --border: #E5E7EB;
+  --purple: #7C3AED;
+  --red: #EF4444;
+  --gradient: linear-gradient(135deg, #1e40af, #3b82f6, #6366f1, #8b5cf6, #7c3aed, #3b82f6, #1e40af);
+}
+
+/* ── Typography ── */
+h1 { font-size: 36px; font-weight: 800; line-height: 1.3; color: var(--dark); }
+h2 { font-size: 26px; font-weight: 700; line-height: 1.35; color: var(--dark); }
+h3 { font-size: 18px; font-weight: 700; line-height: 1.4; color: var(--dark); }
+h4 { font-size: 15px; font-weight: 700; line-height: 1.4; color: var(--dark); }
+.sub { font-size: 13px; color: var(--sub); line-height: 1.7; }
+.small { font-size: 11px; color: var(--sub); }
+
+/* ── Accent bar at top of each slide ── */
+.slide::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: var(--primary);
+}
+
+/* ── Footer ── */
+.slide-footer {
+  position: absolute; bottom: 7mm; left: 16mm; right: 16mm;
+  display: flex; justify-content: space-between; align-items: center;
+  font-size: 9px; color: #9CA3AF;
+}
+
+/* ── Utilities ── */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.gap-16 { gap: 16px; }
+.gap-20 { gap: 20px; }
+.gap-24 { gap: 24px; }
+.gap-32 { gap: 32px; }
+.flex-1 { flex: 1; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-20 { margin-top: 20px; }
+.mt-24 { margin-top: 24px; }
+.mt-32 { margin-top: 32px; }
+
+/* ── Components ── */
+.card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+}
+.card-shadow {
+  box-shadow: 0 0 40px rgba(0,0,0,0.06);
+  border: none;
+}
+.badge {
+  display: inline-block;
+  background: var(--primary);
+  color: #fff;
+  font-size: 10px; font-weight: 700;
+  padding: 3px 12px;
+  border-radius: 20px;
+}
+.badge-outline {
+  background: transparent;
+  border: 1.5px solid var(--primary);
+  color: var(--primary);
+}
+.num-circle {
+  width: 44px; height: 44px;
+  background: var(--primary);
+  color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 800;
+  flex-shrink: 0;
+}
+.img-screenshot {
+  width: 100%; height: auto;
+  border-radius: 10px;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+}
+.divider {
+  width: 40px; height: 3px;
+  background: var(--primary);
+  border-radius: 2px;
+  margin: 10px 0;
+}
+.check { color: var(--secondary); font-weight: 700; margin-right: 6px; }
+.cross { color: var(--red); margin-right: 6px; }
+
+/* ── Table ── */
+.comp-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.comp-table th, .comp-table td {
+  padding: 16px 20px;
+  border: 1px solid var(--border);
+  text-align: center;
+  vertical-align: middle;
+}
+.comp-table th {
+  background: var(--dark);
+  color: #fff;
+  font-weight: 600;
+}
+.comp-table th.highlight {
+  background: var(--primary);
+}
+.comp-table td.highlight {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+.comp-table td:first-child {
+  text-align: left;
+  font-weight: 600;
+  background: var(--light-bg);
+  color: var(--dark);
+}
+
+/* ── Cover special ── */
+.slide-cover {
+  background: var(--gradient);
+  background-size: 300% 300%;
+  color: #fff;
+  padding: 0;
+}
+.slide-cover::before { background: rgba(255,255,255,0.3); }
+.slide-cover .cover-inner {
+  display: flex;
+  height: 100%;
+  padding: 18mm 20mm;
+}
+.slide-cover h1 { color: #fff; font-size: 38px; }
+
+/* ── CTA special ── */
+.slide-cta {
+  background: var(--dark);
+  color: #fff;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+}
+.slide-cta::before { background: var(--primary); }
+.slide-cta h2 { color: #fff; font-size: 32px; }
+
+.btn {
+  display: inline-block;
+  padding: 12px 32px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  color: #fff;
+}
+.btn-primary { background: var(--primary); }
+.btn-secondary { background: var(--secondary); }
+
+/* ── Print ── */
+@media print {
+  body { background: #fff; }
+  .slide {
+    margin: 0; box-shadow: none;
+    width: 297mm; height: 210mm;
+  }
+  @page { size: A4 landscape; margin: 0; }
+}
+</style>
+</head>
+<body>
+<!-- SVG gradient definition for icons -->
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <linearGradient id="ig" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 1: Cover (D+F ハイブリッド) -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="background:linear-gradient(135deg, #3758F9 0%, #7C3AED 100%); padding:0; overflow:hidden;">
+  <div style="height:45%; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:0 20mm;">
+    <div style="font-size:12px; font-weight:600; color:rgba(255,255,255,0.5); letter-spacing:3px; margin-bottom:12px;">SERVICE INTRODUCTION</div>
+    <h1 style="font-size:36px; font-weight:900; color:#fff; line-height:1.35; margin-bottom:12px;">アクセス解析 × AI で<br>Webサイトに次の打ち手を。</h1>
+    <p style="font-size:13px; color:rgba(255,255,255,0.65); line-height:1.8;">GA4 / Search Console のデータを AI が自動で分析。<br>改善提案からモックアップ、効果測定まで一気通貫。</p>
+    <div style="font-size:13px; color:rgba(255,255,255,0.3); margin-top:30px;">Grow Group 株式会社</div>
+  </div>
+  <div style="position:absolute; bottom:0; left:0; right:0; height:55%; display:flex; justify-content:center; overflow:hidden;">
+    <img src="assets/images/about.png" alt="GrowReporter"
+         style="width:88%; border-radius:14px 14px 0 0; box-shadow:0 -8px 40px rgba(0,0,0,0.25); object-fit:cover; object-position:top; height:auto; min-height:100%;">
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 2: 課題提起 (LP完全準拠) -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="display:flex; flex-direction:column; justify-content:center;">
+  <div style="text-align:center; margin-bottom:30px;">
+    <span style="color:var(--primary); font-size:16px; font-weight:600;">よくあるお悩み</span>
+    <h2 style="text-align:center; font-size:31px; margin-top:12px; margin-bottom:16px;">こんなお悩み、ありませんか？</h2>
+  </div>
+
+  <!-- 4列チェックリスト (LP準拠) -->
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px;">
+    <div style="background:#f5f6f8; border-radius:12px; padding:20px 18px;">
+      <ul style="list-style:none; padding:0; margin:0; font-size:16px; line-height:2; font-weight:600; color:#1B2336;">
+        <li style="display:flex; align-items:baseline; gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>GA4の画面が複雑でどこを見ればいいかわからない</li>
+        <li style="display:flex; align-items:baseline; gap:6px; margin-top:4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>結局アクセス数だけ見て終わってしまう</li>
+      </ul>
+    </div>
+    <div style="background:#f5f6f8; border-radius:12px; padding:20px 18px;">
+      <ul style="list-style:none; padding:0; margin:0; font-size:16px; line-height:2; font-weight:600; color:#1B2336;">
+        <li style="display:flex; align-items:baseline; gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>数値を見ても具体的な改善策が浮かばない</li>
+        <li style="display:flex; align-items:baseline; gap:6px; margin-top:4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>レポート作成に毎回半日かかる</li>
+      </ul>
+    </div>
+    <div style="background:#f5f6f8; border-radius:12px; padding:20px 18px;">
+      <ul style="list-style:none; padding:0; margin:0; font-size:16px; line-height:2; font-weight:600; color:#1B2336;">
+        <li style="display:flex; align-items:baseline; gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>外注すると月数十万、コストが見合わない</li>
+        <li style="display:flex; align-items:baseline; gap:6px; margin-top:4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>Webの成果が見えにくい</li>
+      </ul>
+    </div>
+    <div style="background:#f5f6f8; border-radius:12px; padding:20px 18px;">
+      <ul style="list-style:none; padding:0; margin:0; font-size:16px; line-height:2; font-weight:600; color:#1B2336;">
+        <li style="display:flex; align-items:baseline; gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>改善のPDCAが続かない</li>
+        <li style="display:flex; align-items:baseline; gap:6px; margin-top:4px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0; position:relative; top:2px;"><polyline points="20 6 9 17 4 12"/></svg>サイトの異変に気づけない</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ペルソナ行 (LP準拠: イラスト+ラベル) -->
+  <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:30px;">
+    <div style="text-align:center;">
+      <img src="assets/images/problem-illust02.svg" alt="Web担当者" style="width:91px; height:91px; margin:0 auto 8px; object-fit:contain;">
+      <div style="font-size:17px; font-weight:700; color:#1B2336;">Web担当者</div>
+    </div>
+    <div style="text-align:center;">
+      <img src="assets/images/problem-illust08.svg" alt="マーケター" style="width:91px; height:91px; margin:0 auto 8px; object-fit:contain;">
+      <div style="font-size:17px; font-weight:700; color:#1B2336;">マーケター</div>
+    </div>
+    <div style="text-align:center;">
+      <img src="assets/images/problem-illust05.svg" alt="経営者" style="width:91px; height:91px; margin:0 auto 8px; object-fit:contain;">
+      <div style="font-size:17px; font-weight:700; color:#1B2336;">経営者</div>
+    </div>
+    <div style="text-align:center;">
+      <img src="assets/images/problem-illust06.svg" alt="制作会社" style="width:91px; height:91px; margin:0 auto 8px; object-fit:contain;">
+      <div style="font-size:17px; font-weight:700; color:#1B2336;">制作会社</div>
+    </div>
+  </div>
+
+  <!-- CTA帯 (LP準拠: グラデーション) -->
+  <div style="background:linear-gradient(135deg, #3758F9 0%, #7C3AED 100%); border-radius:12px; padding:28px 20px; text-align:center; position:relative; overflow:hidden; margin-top:20px;">
+    <p style="color:rgba(255,255,255,0.7); font-size:19px; margin-bottom:10px; letter-spacing:0.1em;">＼ ご安心ください ／</p>
+    <h3 style="color:#fff; font-size:35px; font-weight:800; margin:0;">
+      グローレポーターなら <span style="color:#FACC15; border-bottom:3px solid #FACC15; padding-bottom:1px;">すべて解決</span> いたします！
+    </h3>
+  </div>
+
+  <div class="slide-footer">
+    <span>© Grow Group株式会社</span><span>2</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 3: GrowReporterとは -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <h2 style="font-size:31px; text-align:center;">GrowReporter とは</h2>
+  <p class="sub mt-8" style="font-size:15px; text-align:center; margin-bottom:30px;">GA4やSearch Consoleのデータに、AIを掛け合わせて"次の打ち手"まで導く。<br>分析・改善・評価のサイクルで、サイトを着実に成長させます。</p>
+
+  <div style="margin-top:28px; text-align:center;">
+    <img src="assets/images/about.png" alt="GrowReporter" class="img-screenshot" style="max-height:138mm;">
+  </div>
+
+  <div class="slide-footer">
+    <span>© Grow Group株式会社</span><span>3</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 4: 特長① -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="padding:0; display:flex;">
+  <div style="flex:5; padding:14mm 0 14mm 16mm; display:flex; flex-direction:column; justify-content:center;">
+    <div class="flex items-center gap-16">
+      <div class="num-circle" style="width:57px; height:57px; font-size:26px;">01</div>
+      <div style="font-size:16px; color:var(--primary); font-weight:600;">STRENGTH</div>
+    </div>
+    <h2 style="margin-top:16px; font-size:31px;">アクセス解析を見に行かなくていい。<br>AIが届けてくれる。</h2>
+    <p class="sub" style="margin-top:16px; font-size:17px; line-height:1.85;">
+      GA4を開いてデータを読み解く必要はありません。<br>
+      サイトを登録するだけで、AIが自動で分析し、<br>
+      変化があればメールで通知。<br>
+      必要な情報は向こうから届きます。
+    </p>
+    <p style="margin-top:16px; font-size:14px; color:var(--sub); font-style:italic;">
+      ※ GA4やLooker Studioは自分でデータを見に行く必要があり、<br>専門知識がないと読み解けません。
+    </p>
+  </div>
+  <div style="flex:5; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--light-bg);">
+    <img src="assets/images/about01.png" alt="AI分析" style="max-width:92%; max-height:88%; object-fit:contain; border-radius:8px; ">
+  </div>
+  <div class="slide-footer" style="left:16mm;">
+    <span>© Grow Group株式会社</span><span>4</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 5: 特長② -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="padding:0; display:flex;">
+  <div style="flex:5; padding:14mm 0 14mm 16mm; display:flex; flex-direction:column; justify-content:center;">
+    <div class="flex items-center gap-16">
+      <div class="num-circle" style="width:57px; height:57px; font-size:26px;">02</div>
+      <div style="font-size:16px; color:var(--primary); font-weight:600;">STRENGTH</div>
+    </div>
+    <h2 style="margin-top:16px; font-size:31px;">「次に何をすべきか」まで<br>改善を提案。</h2>
+    <p class="sub" style="margin-top:16px; font-size:17px; line-height:1.85;">
+      一般的なツールはデータを見せるだけ。<br>
+      GrowReporter はAIが考察・改善提案・<br>
+      モックアップ画像まで一気通貫で生成。<br>
+      「数字は見た、で、どうすれば？」に答えます。
+    </p>
+    <p style="margin-top:16px; font-size:14px; color:var(--sub); font-style:italic;">
+      ※ GA4やLooker Studioでは改善提案はできません。
+    </p>
+  </div>
+  <div style="flex:5; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--light-bg);">
+    <img src="assets/images/about02.png" alt="改善提案" style="max-width:92%; max-height:88%; object-fit:contain; border-radius:8px; ">
+  </div>
+  <div class="slide-footer" style="left:16mm;">
+    <span>© Grow Group株式会社</span><span>5</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 6: 特長③ -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="padding:0; display:flex;">
+  <div style="flex:5; padding:14mm 0 14mm 16mm; display:flex; flex-direction:column; justify-content:center;">
+    <div class="flex items-center gap-16">
+      <div class="num-circle" style="width:57px; height:57px; font-size:26px;">03</div>
+      <div style="font-size:16px; color:var(--primary); font-weight:600;">STRENGTH</div>
+    </div>
+    <h2 style="margin-top:16px; font-size:31px;">分析→改善→評価の<br>サイクルが途切れない。</h2>
+    <p class="sub" style="margin-top:16px; font-size:17px; line-height:1.85;">
+      分析して終わり、改善して終わりにさせません。<br>
+      改善施策の効果測定までをひとつのツールで完結。<br>
+      担当者が継続的に成果を積み上げていける<br>
+      仕組みを提供します。
+    </p>
+    <p style="margin-top:16px; font-size:14px; color:var(--sub); font-style:italic;">
+      ※ 他のツールでは分析と改善が別々になり、<br>PDCAサイクルが途切れがちです。
+    </p>
+  </div>
+  <div style="flex:5; display:flex; align-items:center; justify-content:center; overflow:hidden; background:var(--light-bg);">
+    <img src="assets/images/about03.png" alt="効果測定" style="max-width:92%; max-height:88%; object-fit:contain; border-radius:8px; ">
+  </div>
+  <div class="slide-footer" style="left:16mm;">
+    <span>© Grow Group株式会社</span><span>6</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 7: 主要機能 -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="display:flex; flex-direction:column; justify-content:center;">
+  <h2 style="font-size:31px; text-align:center;">主要な機能</h2>
+  <p class="sub mt-8" style="font-size:15px; text-align:center; margin-bottom:30px;">分析から改善、効果測定まで。サイト運用を「続けられるもの」に変える機能群。</p>
+
+  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:20px;">
+    <div class="card" style="padding:14px 16px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+      <div style="margin-bottom:10px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="13" y2="12"/></svg></div>
+      <h4 style="font-size:15px;">AIチャット</h4>
+      <p class="small mt-8" style="font-size:11.5px; line-height:1.6;">「先月のCV減少の原因は？」と聞くだけ。ChatGPT型UIでサイトデータを対話形式で分析できます。</p>
+    </div>
+    <div class="card" style="padding:14px 16px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+      <div style="margin-bottom:10px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg></div>
+      <h4 style="font-size:15px;">AI総合分析</h4>
+      <p class="small mt-8" style="font-size:11.5px; line-height:1.6;">GA4やSearch Consoleの複雑なデータをAIが自動で読み解き、日本語レポートにまとめます。</p>
+    </div>
+    <div class="card" style="padding:14px 16px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+      <div style="margin-bottom:10px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="2" y1="8" x2="22" y2="8"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M6 12l2 2 4-4"/></svg></div>
+      <h4 style="font-size:15px;">AI改善提案+モックアップ</h4>
+      <p class="small mt-8" style="font-size:11.5px; line-height:1.6;">目的を選ぶだけでAIが改善内容と改善前後のモックアップ画像まで自動生成します。</p>
+    </div>
+    <div class="card" style="padding:14px 16px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+      <div style="margin-bottom:10px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/><circle cx="18" cy="4" r="3" fill="url(#ig)" stroke="none"/></svg></div>
+      <h4 style="font-size:15px;">異変の自動通知+定期レポート</h4>
+      <p class="small mt-8" style="font-size:11.5px; line-height:1.6;">大きな変化をAIが原因仮説つきでメール通知。週次・月次レポートも自動で届きます。</p>
+    </div>
+    <div class="card" style="padding:14px 16px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+      <div style="margin-bottom:10px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="M12 6v6l4 2"/><path d="M16 2.5A10 10 0 0 1 22 12" stroke-width="2"/></svg></div>
+      <h4 style="font-size:15px;">改善の効果測定</h4>
+      <p class="small mt-8" style="font-size:11.5px; line-height:1.6;">完了した施策に星評価でフィードバック。どの施策が効果的だったかを振り返り、次の精度を高めます。</p>
+    </div>
+    <div class="card" style="padding:14px 16px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+      <div style="margin-bottom:10px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="12" y2="17"/></svg></div>
+      <h4 style="font-size:15px;">レポート出力</h4>
+      <p class="small mt-8" style="font-size:11.5px; line-height:1.6;">Excel・PowerPoint形式にワンクリックで変換。グラフやAIコメント入りの報告資料が数秒で完成。</p>
+    </div>
+    <div class="card" style="padding:14px 16px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+      <div style="margin-bottom:10px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
+      <h4 style="font-size:15px;">15以上の分析ビュー</h4>
+      <p class="small mt-8" style="font-size:11.5px; line-height:1.6;">日別・チャネル別・キーワード別・ページ別など多角的に可視化。各ビューにAI考察がつきます。</p>
+    </div>
+    <div class="card" style="padding:14px 16px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+      <div style="margin-bottom:10px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/><circle cx="5" cy="19" r="1.5" fill="url(#ig)" stroke="none"/></svg></div>
+      <h4 style="font-size:15px;">コンバージョン逆引き分析</h4>
+      <p class="small mt-8" style="font-size:11.5px; line-height:1.6;">成果に至ったユーザーの直前行動を逆引きで可視化。改善すべきページの優先順位が明確に。</p>
+    </div>
+    <div class="card" style="padding:14px 16px; display:flex; flex-direction:column; align-items:center; text-align:center;">
+      <div style="margin-bottom:10px;"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="url(#ig)" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <h4 style="font-size:15px;">チーム管理・複数サイト対応</h4>
+      <p class="small mt-8" style="font-size:11.5px; line-height:1.6;">メンバー招待と権限設定に対応。制作会社が複数クライアントをまとめて管理する運用にも。</p>
+    </div>
+  </div>
+  <p style="margin-top:12px; font-size:11px; color:#9CA3AF;">※ AIチャット・AI総合分析・AI改善提案・改善の効果測定・レポート出力はビジネスプランのみの機能です。</p>
+  <div class="slide-footer">
+    <span>© Grow Group株式会社</span><span>7</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 8: 競合比較 (LP完全準拠) -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="display:flex; flex-direction:column; justify-content:center;">
+  <h2 style="font-size:31px; text-align:center;">他のツールとの違い</h2>
+  <p class="sub mt-8" style="font-size:15px; text-align:center; margin-bottom:30px;">GA4やLooker Studioでは実現できない、AIによる分析・改善・評価の一気通貫を実現します。</p>
+
+  <div style="display:grid; grid-template-columns:110px 1fr 1fr 1fr; font-size:12px;">
+    <!-- ヘッダー -->
+    <div style="padding:12px;"></div>
+    <div style="background:#fff; padding:14px 10px; text-align:center; display:flex; align-items:center; justify-content:center;"><img src="assets/images/GA4.svg" alt="GA4" style="height:32px;"></div>
+    <div style="background:#fff; padding:14px 10px; text-align:center; display:flex; align-items:center; justify-content:center;"><img src="assets/images/Looker.svg" alt="Looker Studio" style="height:20px;"></div>
+    <div style="background:linear-gradient(135deg, #3758F9 0%, #7C3AED 100%); padding:14px 10px; text-align:center; display:flex; align-items:center; justify-content:center;"><img src="assets/images/logo.svg" alt="グローレポーター" style="height:24px; filter:brightness(0) invert(1);"></div>
+
+    <!-- AI分析・考察 -->
+    <div style="background:#4A6CF7; color:#fff; padding:10px 8px; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; border-top:3px solid rgba(255,255,255,0.25);">AI分析・考察</div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">データ表示のみ</div><div style="font-size:9px; color:#9ca3af; line-height:1.4;">読み解きは自分で行う必要がある</div></div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">可視化のみ</div><div style="font-size:9px; color:#9ca3af; line-height:1.4;">考察・分析はできない</div></div>
+    <div style="background:rgba(55,88,249,0.04); padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#3758F9" stroke-width="2.5" fill="none"/><circle cx="20" cy="20" r="12" stroke="#3758F9" stroke-width="2.5" fill="none"/></svg><div style="font-size:12px; font-weight:700; color:#1B2336; margin-top:2px;">AIが自動で読み解き</div><div style="font-size:9px; color:#637381; line-height:1.4;">複雑なデータを日本語で自動考察</div></div>
+
+    <!-- 改善提案 -->
+    <div style="background:#4A6CF7; color:#fff; padding:10px 8px; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; border-top:3px solid rgba(255,255,255,0.25);">改善提案</div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">非対応</div></div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">非対応</div></div>
+    <div style="background:rgba(55,88,249,0.04); padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#3758F9" stroke-width="2.5" fill="none"/><circle cx="20" cy="20" r="12" stroke="#3758F9" stroke-width="2.5" fill="none"/></svg><div style="font-size:12px; font-weight:700; color:#1B2336; margin-top:2px;">提案+モックアップ</div><div style="font-size:9px; color:#637381; line-height:1.4;">改善前後のイメージまで自動生成</div></div>
+
+    <!-- AIチャット -->
+    <div style="background:#4A6CF7; color:#fff; padding:10px 8px; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; border-top:3px solid rgba(255,255,255,0.25);">AIチャット</div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">非対応</div></div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">非対応</div></div>
+    <div style="background:rgba(55,88,249,0.04); padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#3758F9" stroke-width="2.5" fill="none"/><circle cx="20" cy="20" r="12" stroke="#3758F9" stroke-width="2.5" fill="none"/></svg><div style="font-size:12px; font-weight:700; color:#1B2336; margin-top:2px;">対話形式で質問</div><div style="font-size:9px; color:#637381; line-height:1.4;">サイトデータについて自由に質問</div></div>
+
+    <!-- 効果測定 -->
+    <div style="background:#4A6CF7; color:#fff; padding:10px 8px; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; border-top:3px solid rgba(255,255,255,0.25);">効果測定</div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">非対応</div></div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">非対応</div></div>
+    <div style="background:rgba(55,88,249,0.04); padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#3758F9" stroke-width="2.5" fill="none"/><circle cx="20" cy="20" r="12" stroke="#3758F9" stroke-width="2.5" fill="none"/></svg><div style="font-size:12px; font-weight:700; color:#1B2336; margin-top:2px;">施策の振り返り</div><div style="font-size:9px; color:#637381; line-height:1.4;">改善効果を自動計測し次の精度を向上</div></div>
+
+    <!-- 異変の自動通知 -->
+    <div style="background:#4A6CF7; color:#fff; padding:10px 8px; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; border-top:3px solid rgba(255,255,255,0.25);">異変の自動通知</div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><polygon points="20,6 34,32 6,32" stroke="#374151" stroke-width="2.5" fill="none" stroke-linejoin="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">設定が複雑</div><div style="font-size:9px; color:#9ca3af; line-height:1.4;">使いこなせないケースが多い</div></div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">なし</div></div>
+    <div style="background:rgba(55,88,249,0.04); padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#3758F9" stroke-width="2.5" fill="none"/><circle cx="20" cy="20" r="12" stroke="#3758F9" stroke-width="2.5" fill="none"/></svg><div style="font-size:12px; font-weight:700; color:#1B2336; margin-top:2px;">AI原因仮説つき</div><div style="font-size:9px; color:#637381; line-height:1.4;">大きな変化を原因仮説つきでメール通知</div></div>
+
+    <!-- 専門知識 -->
+    <div style="background:#4A6CF7; color:#fff; padding:10px 8px; font-size:11px; font-weight:600; display:flex; align-items:center; justify-content:center; text-align:center; border-top:3px solid rgba(255,255,255,0.25);">専門知識</div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">必要</div><div style="font-size:9px; color:#9ca3af; line-height:1.4;">GA4の操作・分析スキルが必要</div></div>
+    <div style="background:#fff; padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><line x1="12" y1="12" x2="28" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/><line x1="28" y1="12" x2="12" y2="28" stroke="#374151" stroke-width="2.5" stroke-linecap="round"/></svg><div style="font-size:11px; font-weight:600; color:#6b7280; margin-top:2px;">必要</div><div style="font-size:9px; color:#9ca3af; line-height:1.4;">接続設定やクエリの知識が必要</div></div>
+    <div style="background:rgba(55,88,249,0.04); padding:12px 8px; text-align:center; border-top:3px solid #e5e7eb; display:flex; flex-direction:column; align-items:center; justify-content:center;"><svg width="28" height="28" viewBox="0 0 40 40" fill="none"><circle cx="20" cy="20" r="18" stroke="#3758F9" stroke-width="2.5" fill="none"/><circle cx="20" cy="20" r="12" stroke="#3758F9" stroke-width="2.5" fill="none"/></svg><div style="font-size:12px; font-weight:700; color:#1B2336; margin-top:2px;">不要</div><div style="font-size:9px; color:#637381; line-height:1.4;">AIがわかりやすい日本語ですべて解説</div></div>
+  </div>
+
+  <div class="slide-footer">
+    <span>© Grow Group株式会社</span><span>8</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 9: 導入効果 (B案: 横3段バー) -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="display:flex; flex-direction:column; justify-content:center;">
+  <h2 style="font-size:31px; text-align:center;">導入効果</h2>
+  <p class="sub mt-8" style="font-size:15px; text-align:center; margin-bottom:30px;">GrowReporterを導入すると、日々のサイト運用がこう変わります。</p>
+
+  <div style="display:flex; flex-direction:column; gap:16px;">
+    <div style="display:flex; align-items:center; background:var(--light-bg); border-radius:14px; padding:28px 32px; gap:28px;">
+      <div style="flex-shrink:0; text-align:center; width:120px;">
+        <div style="font-size:11px; font-weight:600; color:#EF4444; margin-bottom:4px;">Before</div>
+        <div style="font-size:32px; font-weight:900; color:var(--dark); text-decoration:line-through; text-decoration-color:#EF4444;">4時間</div>
+      </div>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+      <div style="flex-shrink:0; text-align:center; width:120px;">
+        <div style="font-size:11px; font-weight:600; color:var(--secondary); margin-bottom:4px;">After</div>
+        <div style="font-size:32px; font-weight:900; color:var(--secondary);">数秒</div>
+      </div>
+      <div style="flex:1; border-left:2px solid var(--border); padding-left:24px;">
+        <div style="font-size:18px; font-weight:700; color:var(--dark); margin-bottom:4px;">レポート作成時間を99%削減</div>
+        <div style="font-size:13px; color:var(--sub); line-height:1.6;">GA4の読み解き不要。AIが自動で分析し、Excel/PPTXレポートもワンクリック出力。</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; background:var(--light-bg); border-radius:14px; padding:28px 32px; gap:28px;">
+      <div style="flex-shrink:0; text-align:center; width:120px;">
+        <div style="font-size:11px; font-weight:600; color:#EF4444; margin-bottom:4px;">Before</div>
+        <div style="font-size:32px; font-weight:900; color:var(--dark); text-decoration:line-through; text-decoration-color:#EF4444;">月1回</div>
+      </div>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+      <div style="flex-shrink:0; text-align:center; width:120px;">
+        <div style="font-size:11px; font-weight:600; color:var(--secondary); margin-bottom:4px;">After</div>
+        <div style="font-size:32px; font-weight:900; color:var(--secondary);">毎日</div>
+      </div>
+      <div style="flex:1; border-left:2px solid var(--border); padding-left:24px;">
+        <div style="font-size:18px; font-weight:700; color:var(--dark); margin-bottom:4px;">改善サイクルが30倍に加速</div>
+        <div style="font-size:13px; color:var(--sub); line-height:1.6;">AIが改善提案+モックアップを即時生成。効果測定もセットで、PDCAが途切れない。</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; background:var(--light-bg); border-radius:14px; padding:28px 32px; gap:28px;">
+      <div style="flex-shrink:0; text-align:center; width:120px;">
+        <div style="font-size:11px; font-weight:600; color:#EF4444; margin-bottom:4px;">Before</div>
+        <div style="font-size:32px; font-weight:900; color:var(--dark); text-decoration:line-through; text-decoration-color:#EF4444;">数日後</div>
+      </div>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--secondary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+      <div style="flex-shrink:0; text-align:center; width:120px;">
+        <div style="font-size:11px; font-weight:600; color:var(--secondary); margin-bottom:4px;">After</div>
+        <div style="font-size:32px; font-weight:900; color:var(--secondary);">即日</div>
+      </div>
+      <div style="flex:1; border-left:2px solid var(--border); padding-left:24px;">
+        <div style="font-size:18px; font-weight:700; color:var(--dark); margin-bottom:4px;">異変への対応が即日に</div>
+        <div style="font-size:13px; color:var(--sub); line-height:1.6;">大きな変化をAIが検知し、原因仮説つきで即日メール通知。もう見落としません。</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; background:var(--light-bg); border-radius:14px; padding:28px 32px; gap:28px;">
+      <div style="flex-shrink:0; text-align:center; width:120px;">
+        <div style="font-size:11px; font-weight:600; color:#EF4444; margin-bottom:4px;">Before</div>
+        <div style="font-size:32px; font-weight:900; color:var(--dark); text-decoration:line-through; text-decoration-color:#EF4444;">必要</div>
+      </div>
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--secondary)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M5 12h14"/><path d="M12 5l7 7-7 7"/></svg>
+      <div style="flex-shrink:0; text-align:center; width:120px;">
+        <div style="font-size:11px; font-weight:600; color:var(--secondary); margin-bottom:4px;">After</div>
+        <div style="font-size:32px; font-weight:900; color:var(--secondary);">ゼロ</div>
+      </div>
+      <div style="flex:1; border-left:2px solid var(--border); padding-left:24px;">
+        <div style="font-size:18px; font-weight:700; color:var(--dark); margin-bottom:4px;">専門知識が一切不要に</div>
+        <div style="font-size:13px; color:var(--sub); line-height:1.6;">GA4の操作スキルも分析の知識も不要。AIがすべて日本語でわかりやすく解説してくれます。</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>© Grow Group株式会社</span><span>9</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 10: 料金プラン (LP完全準拠) -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide">
+  <h2 style="font-size:31px; text-align:center;">シンプルな料金体系</h2>
+  <p class="sub mt-8" style="font-size:15px; text-align:center; margin-bottom:30px;">無料プランでアクセスデータを確認。ビジネスプランでAIの力を最大限活用。<br><span style="color:var(--primary); font-weight:600;">お申し込み月は無料。</span>翌月1日から課金開始。</p>
+
+  <div class="flex gap-20 mt-12" style="justify-content:center; flex:1;">
+    <!-- 無料プラン -->
+    <div style="flex:1; max-width:340px; background:#fff; border-radius:16px; padding:32px 28px; border:3px solid #e5e7eb;">
+      <div style="display:inline-block; background:linear-gradient(to right,#3b82f6,#2563eb); color:#fff; font-size:11px; font-weight:600; padding:5px 14px; border-radius:20px; margin-bottom:12px;">まずはデータを確認</div>
+      <h3 style="font-size:18px; font-weight:700; color:#1B2336;">無料プラン</h3>
+      <div style="margin:16px 0 20px;"><span style="font-size:40px; font-weight:800; color:#1B2336;">¥0</span><span style="font-size:13px; color:#637381;"> / 月</span></div>
+      <div style="border-top:1px solid #e5e7eb; padding-top:18px;">
+        <p style="font-size:13px; font-weight:600; color:#1B2336; margin-bottom:12px;">含まれる機能</p>
+        <ul style="list-style:none; padding:0; margin:0; font-size:13px; line-height:2.2;">
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> サイト登録 1件</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> メンバー 3名</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> GA4/GSCデータ閲覧</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> 分析画面（15以上のビュー）</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> アラート通知（数値のみ）</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#d1d5db;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#f3f4f6"/><line x1="5.5" y1="5.5" x2="10.5" y2="10.5" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/><line x1="10.5" y1="5.5" x2="5.5" y2="10.5" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/></svg> AI分析サマリー</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#d1d5db;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#f3f4f6"/><line x1="5.5" y1="5.5" x2="10.5" y2="10.5" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/><line x1="10.5" y1="5.5" x2="5.5" y2="10.5" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/></svg> AI改善提案・AIチャット</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#d1d5db;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#f3f4f6"/><line x1="5.5" y1="5.5" x2="10.5" y2="10.5" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/><line x1="10.5" y1="5.5" x2="5.5" y2="10.5" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/></svg> 効果測定・レポート出力</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#d1d5db;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#f3f4f6"/><line x1="5.5" y1="5.5" x2="10.5" y2="10.5" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/><line x1="10.5" y1="5.5" x2="5.5" y2="10.5" stroke="#d1d5db" stroke-width="1.5" stroke-linecap="round"/></svg> 週次/月次レポートメール</li>
+        </ul>
+      </div>
+    </div>
+    <!-- ビジネスプラン -->
+    <div style="flex:1; max-width:340px; background:#fff; border-radius:16px; padding:32px 28px; position:relative; border:3px solid #3758F9; box-shadow:0 8px 30px rgba(55,88,249,0.12);">
+      <div style="position:absolute; top:-14px; left:50%; transform:translateX(-50%); background:linear-gradient(to right,#f87171,#db2777); color:#fff; font-size:12px; font-weight:700; padding:6px 22px; border-radius:20px; white-space:nowrap;">おすすめ</div>
+      <div style="display:inline-block; background:linear-gradient(to right,#f87171,#db2777); color:#fff; font-size:11px; font-weight:600; padding:5px 14px; border-radius:20px; margin-bottom:12px;">AIの力でサイト改善を加速</div>
+      <h3 style="font-size:18px; font-weight:700; color:#1B2336;">ビジネスプラン</h3>
+      <div style="margin:16px 0 20px;"><span style="font-size:40px; font-weight:800; color:#1B2336;">¥49,800</span><span style="font-size:13px; color:#637381;"> / 月（税別）</span></div>
+      <div style="border-top:1px solid #e5e7eb; padding-top:18px;">
+        <p style="font-size:13px; font-weight:600; color:#1B2336; margin-bottom:12px;">含まれる機能</p>
+        <ul style="list-style:none; padding:0; margin:0; font-size:13px; line-height:2.2;">
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> サイト登録 <strong>3件</strong></li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> メンバー <strong>無制限</strong></li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> GA4/GSCデータ閲覧</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> 分析画面（15以上のビュー）</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> アラート通知（<strong>AI分析付き</strong>）</li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> AI分析サマリー <strong>無制限</strong></li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> AI改善提案・AIチャット <strong>無制限</strong></li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> 効果測定・レポート出力 <strong>無制限</strong></li>
+          <li style="display:flex; align-items:center; gap:7px; color:#374151;"><svg width="15" height="15" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="8" fill="#dbeafe"/><path d="M5 8l2 2 4-4" stroke="#3b82f6" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> 週次/月次レポートメール</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>© Grow Group株式会社</span><span>10</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 11: ご利用の流れ (A案: 全幅3段カード) -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="display:flex; flex-direction:column; justify-content:center;">
+  <h2 style="font-size:31px; text-align:center;">ご利用の流れ</h2>
+  <p class="sub mt-8" style="font-size:15px; text-align:center; margin-bottom:30px;">アカウント・サイト登録まで最短5分。過去データもその日から分析が可能です。</p>
+
+  <div style="display:flex; flex-direction:column; gap:14px;">
+    <div style="display:flex; align-items:stretch; border-radius:14px; overflow:hidden;">
+      <div style="width:100px; background:var(--primary); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; flex-shrink:0;">
+        <div style="font-size:10px; font-weight:600; opacity:0.7; letter-spacing:1px;">STEP</div>
+        <div style="font-size:36px; font-weight:900; line-height:1;">01</div>
+      </div>
+      <div style="flex:1; background:var(--light-bg); padding:24px 32px; display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div style="font-size:20px; font-weight:700; color:var(--dark); margin-bottom:6px;">無料アカウント登録</div>
+          <div style="font-size:14px; color:var(--sub); line-height:1.6;">メールアドレスまたはGoogleアカウントで簡単に登録できます。<br>クレジットカードの入力は不要。すぐに始められます。</div>
+        </div>
+        <div style="width:110px; text-align:center; background:var(--primary-light); color:var(--primary); font-size:15px; font-weight:700; padding:8px 0; border-radius:24px; flex-shrink:0; margin-left:24px;">約1分</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:stretch; border-radius:14px; overflow:hidden;">
+      <div style="width:100px; background:var(--purple); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; flex-shrink:0;">
+        <div style="font-size:10px; font-weight:600; opacity:0.7; letter-spacing:1px;">STEP</div>
+        <div style="font-size:36px; font-weight:900; line-height:1;">02</div>
+      </div>
+      <div style="flex:1; background:var(--light-bg); padding:24px 32px; display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div style="font-size:20px; font-weight:700; color:var(--dark); margin-bottom:6px;">サイト情報を入力・GA4/GSCを連携</div>
+          <div style="font-size:14px; color:var(--sub); line-height:1.6;">サイトのURLを入力し、Googleアカウントでワンクリック連携。<br>難しい設定は一切不要です。</div>
+        </div>
+        <div style="width:110px; text-align:center; background:var(--primary-light); color:var(--primary); font-size:15px; font-weight:700; padding:8px 0; border-radius:24px; flex-shrink:0; margin-left:24px;">約3分</div>
+      </div>
+    </div>
+    <div style="display:flex; align-items:stretch; border-radius:14px; overflow:hidden;">
+      <div style="width:100px; background:var(--secondary); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; flex-shrink:0;">
+        <div style="font-size:10px; font-weight:600; opacity:0.7; letter-spacing:1px;">STEP</div>
+        <div style="font-size:36px; font-weight:900; line-height:1;">03</div>
+      </div>
+      <div style="flex:1; background:var(--light-bg); padding:24px 32px; display:flex; align-items:center; justify-content:space-between;">
+        <div>
+          <div style="font-size:20px; font-weight:700; color:var(--dark); margin-bottom:6px;">分析スタート！</div>
+          <div style="font-size:14px; color:var(--sub); line-height:1.6;">過去データが即座に反映。AIによる分析・考察・改善提案を<br>すぐにお試しいただけます。</div>
+        </div>
+        <div style="width:110px; text-align:center; background:var(--secondary); color:#fff; font-size:15px; font-weight:700; padding:8px 0; border-radius:24px; flex-shrink:0; margin-left:24px;">即日利用可</div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>© Grow Group株式会社</span><span>11</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 12: FAQ -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="display:flex; flex-direction:column; justify-content:center;">
+  <h2 style="font-size:31px; text-align:center;">よくあるご質問</h2>
+  <p class="sub mt-8" style="font-size:15px; text-align:center; margin-bottom:30px;">グローレポーターに関するよくあるご質問にお答えします。</p>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <div class="card" style="padding:14px 18px;">
+      <div class="flex items-center gap-16">
+        <div style="background:var(--primary); color:#fff; width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;">Q</div>
+        <h4 style="font-size:15px;">GA4の専門知識がなくても使えますか？</h4>
+      </div>
+      <p class="sub" style="margin-left:46px; margin-top:4px; font-size:13px;">はい。サイトURLを登録してGoogleアカウントで接続するだけ。AIがわかりやすい日本語で教えてくれます。</p>
+    </div>
+    <div class="card" style="padding:14px 18px;">
+      <div class="flex items-center gap-16">
+        <div style="background:var(--primary); color:#fff; width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;">Q</div>
+        <h4 style="font-size:15px;">無料プランと有料プランの違いは？</h4>
+      </div>
+      <p class="sub" style="margin-left:46px; margin-top:4px; font-size:13px;">無料プランはデータ閲覧+アラート。ビジネスプランでAI分析・改善提案・チャットが無制限に使えます。</p>
+    </div>
+    <div class="card" style="padding:14px 18px;">
+      <div class="flex items-center gap-16">
+        <div style="background:var(--primary); color:#fff; width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;">Q</div>
+        <h4 style="font-size:15px;">データのセキュリティは大丈夫ですか？</h4>
+      </div>
+      <p class="sub" style="margin-left:46px; margin-top:4px; font-size:13px;">Googleのセキュリティ基盤上で動作。データは暗号化保管。GA4のパスワードをお預かりすることは一切ありません。</p>
+    </div>
+    <div class="card" style="padding:14px 18px;">
+      <div class="flex items-center gap-16">
+        <div style="background:var(--primary); color:#fff; width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;">Q</div>
+        <h4 style="font-size:15px;">外部コンサルタントとの違いは？</h4>
+      </div>
+      <p class="sub" style="margin-left:46px; margin-top:4px; font-size:13px;">コンサルは月10万円〜で月1回レポート。本サービスは月49,800円で好きなときにAI分析+改善提案+モックアップまで。</p>
+    </div>
+    <div class="card" style="padding:14px 18px;">
+      <div class="flex items-center gap-16">
+        <div style="background:var(--primary); color:#fff; width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;">Q</div>
+        <h4 style="font-size:15px;">解約はいつでもできますか？</h4>
+      </div>
+      <p class="sub" style="margin-left:46px; margin-top:4px; font-size:13px;">はい、いつでも即日解約可能。その月の末日までご利用いただけます。</p>
+    </div>
+    <div class="card" style="padding:14px 18px;">
+      <div class="flex items-center gap-16">
+        <div style="background:var(--primary); color:#fff; width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;">Q</div>
+        <h4 style="font-size:15px;">チームで利用できますか？</h4>
+      </div>
+      <p class="sub" style="margin-left:46px; margin-top:4px; font-size:13px;">メール招待で共有可能。閲覧/編集の権限分けも対応。ビジネスプランはメンバー無制限です。</p>
+    </div>
+    <div class="card" style="padding:14px 18px;">
+      <div class="flex items-center gap-16">
+        <div style="background:var(--primary); color:#fff; width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;">Q</div>
+        <h4 style="font-size:15px;">AIチャットではどんなことが聞けますか？</h4>
+      </div>
+      <p class="sub" style="margin-left:46px; margin-top:4px; font-size:13px;">アクセスデータに基づいて自由に質問できます。グラフや表を交えて回答してくれるので、レポート作成にもそのまま活用できます。</p>
+    </div>
+    <div class="card" style="padding:14px 18px;">
+      <div class="flex items-center gap-16">
+        <div style="background:var(--primary); color:#fff; width:30px; height:30px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:14px; flex-shrink:0;">Q</div>
+        <h4 style="font-size:15px;">導入にどれくらい時間がかかりますか？</h4>
+      </div>
+      <p class="sub" style="margin-left:46px; margin-top:4px; font-size:13px;">最短5分です。アカウント登録後、GA4/Search Consoleを連携するだけ。過去データもその日から分析可能です。</p>
+    </div>
+  </div>
+  <div class="slide-footer">
+    <span>© Grow Group株式会社</span><span>12</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 13: 会社概要 (D-5: ストライプ行+左写真) -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="padding:0; display:flex;">
+  <div style="flex:4; overflow:hidden;">
+    <img src="https://grow-group.jp/wp-content/uploads/2023/07/img-company-office-03.jpg" style="width:100%; height:100%; object-fit:cover;">
+  </div>
+  <div style="flex:6; padding:14mm 16mm 14mm 32px; display:flex; flex-direction:column; justify-content:center;">
+    <h2 style="font-size:31px; color:var(--dark); font-weight:800;">会社概要</h2>
+    <div style="font-size:12px; color:var(--primary); font-weight:600; letter-spacing:2px; margin-top:4px; margin-bottom:24px;">About Us</div>
+
+    <div style="border-radius:12px; overflow:hidden; font-size:13px;">
+      <div style="display:flex; background:var(--light-bg); padding:14px 20px;">
+        <div style="width:120px; font-weight:700; color:var(--dark); flex-shrink:0;">会社名</div>
+        <div style="color:var(--sub);">Grow Group 株式会社（Grow Group Co.,Ltd.）</div>
+      </div>
+      <div style="display:flex; background:#fff; padding:14px 20px;">
+        <div style="width:120px; font-weight:700; color:var(--dark); flex-shrink:0;">名古屋本社</div>
+        <div style="color:var(--sub);">〒464-0850　愛知県名古屋市千種区今池3-12-20 KAビル 6F<br>TEL: 052-753-6413</div>
+      </div>
+      <div style="display:flex; background:var(--light-bg); padding:14px 20px;">
+        <div style="width:120px; font-weight:700; color:var(--dark); flex-shrink:0;">東京オフィス</div>
+        <div style="color:var(--sub);">〒141-0022　東京都品川区東五反田5-22-37 2F<br>TEL: 03-5404-6921</div>
+      </div>
+      <div style="display:flex; background:#fff; padding:14px 20px;">
+        <div style="width:120px; font-weight:700; color:var(--dark); flex-shrink:0;">代表</div>
+        <div style="color:var(--sub);">代表取締役　畑中 孝仁</div>
+      </div>
+      <div style="display:flex; background:var(--light-bg); padding:14px 20px;">
+        <div style="width:120px; font-weight:700; color:var(--dark); flex-shrink:0;">設立</div>
+        <div style="color:var(--sub);">2012年6月</div>
+      </div>
+      <div style="display:flex; background:#fff; padding:14px 20px;">
+        <div style="width:120px; font-weight:700; color:var(--dark); flex-shrink:0;">資本金</div>
+        <div style="color:var(--sub);">5,000万円</div>
+      </div>
+      <div style="display:flex; background:var(--light-bg); padding:14px 20px;">
+        <div style="width:120px; font-weight:700; color:var(--dark); flex-shrink:0;">事業内容</div>
+        <div style="color:var(--sub);">Web制作、グラフィックデザイン、広告宣伝・販売促進の企画・制作、システム開発、ネットワーク構築・運用・保守</div>
+      </div>
+      <div style="display:flex; background:#fff; padding:14px 20px;">
+        <div style="width:120px; font-weight:700; color:var(--dark); flex-shrink:0;">URL</div>
+        <div><a href="https://grow-group.jp/" style="color:var(--primary); font-weight:600; text-decoration:none;">https://grow-group.jp/</a></div>
+      </div>
+    </div>
+  </div>
+  <div class="slide-footer" style="left:16mm; right:16mm;">
+    <span>© Grow Group株式会社</span><span>13</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════ -->
+<!-- SLIDE 14: CTA (裏表紙B: グラデーション全面 + ロゴ) -->
+<!-- ══════════════════════════════════════════════════════ -->
+<div class="slide" style="background:linear-gradient(135deg, #3758F9 0%, #7C3AED 100%); display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20mm;">
+  <img src="assets/images/logo-white.svg" alt="GrowReporter" style="width:260px; margin-bottom:28px;">
+  <h2 style="font-size:32px; font-weight:800; color:#fff; margin-bottom:14px;">無料登録で今すぐ試そう</h2>
+  <p style="font-size:14px; color:rgba(255,255,255,0.7); line-height:1.8; margin-bottom:32px;">アカウント・サイト登録まで最短5分。<br>過去データもその日から分析やサイト改善が可能です。</p>
+  <div style="display:flex; gap:16px; margin-bottom:36px;">
+    <a href="https://grow-reporter.com/register" style="background:#fff; color:#3758F9; padding:14px 40px; border-radius:10px; font-size:16px; font-weight:700; text-decoration:none;">無料で登録</a>
+    <a href="https://grow-reporter.com/register?plan=business" style="background:linear-gradient(to right, #f87171, #db2777); color:#fff; padding:14px 40px; border-radius:10px; font-size:16px; font-weight:700; text-decoration:none;">ビジネスプランに申し込む</a>
+  </div>
+  <div style="font-size:13px; color:rgba(255,255,255,0.5);"><a href="https://grow-reporter.com" style="color:rgba(255,255,255,0.7); text-decoration:none;">https://grow-reporter.com</a>　|　<a href="https://grow-group.jp" style="color:rgba(255,255,255,0.5); text-decoration:none;">Grow Group 株式会社</a></div>
+</div>
+
+</body>
+</html>
