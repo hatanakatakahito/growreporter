@@ -500,44 +500,65 @@ export default function SiteDetail() {
             GTM連携（詳細行動分析）
           </h3>
           <p className="mb-4 text-xs text-body-color dark:text-dark-6">
-            Googleタグマネージャーにテンプレートをインポートすると、スクロール深度（25/50/75/100%）とCTAクリックの詳細データが取得でき、コンテンツ分析の精度が向上します。
+            Googleタグマネージャーで以下を設定すると、スクロール深度（25/50/75/100%）とCTAクリックの詳細データが取得でき、コンテンツ分析の精度が向上します。
           </p>
 
           <div className="mb-4 rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
             <div className="mb-3 text-sm font-semibold text-dark dark:text-white">セットアップ手順</div>
-            <ol className="space-y-3 text-sm text-body-color dark:text-dark-6">
+            <ol className="space-y-4 text-sm text-body-color dark:text-dark-6">
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
                 <div>
-                  <span className="font-medium text-dark dark:text-white">テンプレートをダウンロード</span>
-                  <div className="mt-1">
-                    <a
-                      href="/gtm/growreporter-gtm-template.json"
-                      download="growreporter-gtm-template.json"
-                      className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-opacity-90 transition"
-                    >
-                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                      GTMテンプレートをダウンロード
-                    </a>
+                  <span className="font-medium text-dark dark:text-white">トリガーを作成（スクロール深度）</span>
+                  <div className="mt-1 text-xs">
+                    GTM管理画面 → トリガー → 新規 → トリガーのタイプ「スクロール距離」を選択<br />
+                    ・縦方向スクロール距離「割合」にチェック → <strong className="text-dark dark:text-white">25, 50, 75, 100</strong> を入力<br />
+                    ・「1ページにつき1回」を選択 → トリガー名「GR - スクロール深度」で保存
                   </div>
                 </div>
               </li>
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
                 <div>
-                  <span className="font-medium text-dark dark:text-white">GTMにインポート</span>
-                  <div className="mt-0.5 text-xs">GTM管理画面 → 管理 → コンテナをインポート → ダウンロードしたJSONを選択 → <strong className="text-dark dark:text-white">必ず「統合」を選択</strong>して送信（「上書き」を選ぶと既存設定が消えるのでご注意ください）</div>
+                  <span className="font-medium text-dark dark:text-white">トリガーを作成（CTAクリック）</span>
+                  <div className="mt-1 text-xs">
+                    トリガー → 新規 → トリガーのタイプ「リンクのみ」を選択<br />
+                    ・「一部のリンククリック」→ Click Classes → 正規表現に一致 → <strong className="text-dark dark:text-white">(cta|btn|button|submit|contact|inquiry|download)</strong><br />
+                    ・トリガー名「GR - CTAクリック」で保存
+                  </div>
                 </div>
               </li>
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">3</span>
                 <div>
-                  <span className="font-medium text-dark dark:text-white">GA4測定IDを設定</span>
-                  <div className="mt-0.5 text-xs">インポート後、タグ「GR - GA4設定」を開き、測定IDの「G-XXXXXXXXXX」をサイトのGA4測定IDに変更してください。他のタグは自動で連携されます</div>
+                  <span className="font-medium text-dark dark:text-white">GA4イベントタグを作成（スクロール深度）</span>
+                  <div className="mt-1 text-xs">
+                    タグ → 新規 → タグの種類「Googleアナリティクス: GA4イベント」<br />
+                    ・測定ID: サイトのGA4測定ID（G-XXXXXXXXXX）<br />
+                    ・イベント名: <strong className="text-dark dark:text-white">gr_scroll_depth</strong><br />
+                    ・イベントパラメータ: 名前 <strong>scroll_percentage</strong> 値 <strong>{'{{Scroll Depth Threshold}}'}</strong><br />
+                    ・イベントパラメータ: 名前 <strong>page_path</strong> 値 <strong>{'{{Page Path}}'}</strong><br />
+                    ・トリガー: Step 1で作成した「GR - スクロール深度」→ タグ名「GR - スクロール深度」で保存
+                  </div>
                 </div>
               </li>
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">4</span>
+                <div>
+                  <span className="font-medium text-dark dark:text-white">GA4イベントタグを作成（CTAクリック）</span>
+                  <div className="mt-1 text-xs">
+                    タグ → 新規 → タグの種類「Googleアナリティクス: GA4イベント」<br />
+                    ・測定ID: サイトのGA4測定ID（G-XXXXXXXXXX）<br />
+                    ・イベント名: <strong className="text-dark dark:text-white">gr_cta_click</strong><br />
+                    ・イベントパラメータ: 名前 <strong>click_text</strong> 値 <strong>{'{{Click Text}}'}</strong><br />
+                    ・イベントパラメータ: 名前 <strong>click_url</strong> 値 <strong>{'{{Click URL}}'}</strong><br />
+                    ・イベントパラメータ: 名前 <strong>page_path</strong> 値 <strong>{'{{Page Path}}'}</strong><br />
+                    ・トリガー: Step 2で作成した「GR - CTAクリック」→ タグ名「GR - CTAクリック」で保存
+                  </div>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">5</span>
                 <div>
                   <span className="font-medium text-dark dark:text-white">プレビュー＆公開</span>
                   <div className="mt-0.5 text-xs">GTMのプレビューモードで動作確認し、問題なければ公開してください。データは翌日からコンテンツ分析画面に反映されます。</div>
