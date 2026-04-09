@@ -546,9 +546,9 @@ export default function SiteDetail() {
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
                 <div>
-                  <span className="font-medium text-dark dark:text-white">GA4測定IDを確認・変更</span>
+                  <span className="font-medium text-dark dark:text-white">GA4測定IDを変更</span>
                   <div className="mt-0.5 text-xs">
-                    テンプレートに測定IDが自動設定されていない場合は、インポート後にタグを開いて「G-XXXXXXXXXX」をサイトのGA4測定IDに変更してください。
+                    インポート後、タグ「GR - スクロール深度イベント」と「GR - CTAクリックイベント」を開き、測定IDの「G-XXXXXXXXXX」をサイトのGA4測定IDに変更してください。
                     <span className="text-body-color"><br />※ 測定IDはGA4管理画面 → 管理 → データストリーム → ウェブ で確認できます</span>
                   </div>
                 </div>
@@ -556,18 +556,6 @@ export default function SiteDetail() {
               )}
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">{siteDetail?.ga4MeasurementId ? '2' : '3'}</span>
-                <div>
-                  <span className="font-medium text-dark dark:text-white">トリガーを作成して紐づけ</span>
-                  <div className="mt-1 text-xs">
-                    <strong className="text-dark dark:text-white">スクロール深度トリガー:</strong> トリガー → 新規 → 「スクロール距離」→ 縦方向スクロール距離「割合」→ <strong>25, 50, 75, 100</strong> → 保存<br />
-                    → タグ「GR - スクロール深度イベント」を開き、このトリガーを配信トリガーに設定<br /><br />
-                    <strong className="text-dark dark:text-white">CTAクリックトリガー:</strong> トリガー → 新規 → 「リンクのみ」→ 一部のリンククリック → Click Classes 正規表現に一致 <strong>(cta|btn|button|submit|contact|inquiry|download)</strong> → 保存<br />
-                    → タグ「GR - CTAクリックイベント」を開き、このトリガーを配信トリガーに設定
-                  </div>
-                </div>
-              </li>
-              <li className="flex gap-3">
-                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">{siteDetail?.ga4MeasurementId ? '3' : '4'}</span>
                 <div>
                   <span className="font-medium text-dark dark:text-white">プレビュー＆公開</span>
                   <div className="mt-0.5 text-xs">GTMのプレビューモードで動作確認し、問題なければ公開してください。データは翌日からコンテンツ分析画面に反映されます。</div>

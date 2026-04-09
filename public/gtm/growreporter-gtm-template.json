@@ -1,6 +1,6 @@
 {
     "exportFormatVersion": 2,
-    "exportTime": "2026-04-09 00:00:00",
+    "exportTime": "2026-04-10 00:00:00",
     "containerVersion": {
         "path": "accounts/0/containers/0/versions/0",
         "accountId": "0",
@@ -98,6 +98,9 @@
                     }
                 ],
                 "fingerprint": "1000000001",
+                "firingTriggerId": [
+                    "121"
+                ],
                 "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
                     "type": "MAP"
@@ -181,6 +184,9 @@
                     }
                 ],
                 "fingerprint": "1000000002",
+                "firingTriggerId": [
+                    "122"
+                ],
                 "tagFiringOption": "ONCE_PER_EVENT",
                 "monitoringMetadata": {
                     "type": "MAP"
@@ -190,12 +196,112 @@
                 }
             }
         ],
+        "trigger": [
+            {
+                "accountId": "0",
+                "containerId": "0",
+                "triggerId": "121",
+                "name": "スクロール深度",
+                "type": "SCROLL_DEPTH",
+                "fingerprint": "2000000001",
+                "parameter": [
+                    {
+                        "type": "TEMPLATE",
+                        "key": "verticalThresholdUnits",
+                        "value": "PERCENT"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "verticalThresholdsPercent",
+                        "value": "25,50,75,100"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "verticalThresholdOn",
+                        "value": "true"
+                    },
+                    {
+                        "type": "TEMPLATE",
+                        "key": "triggerStartOption",
+                        "value": "WINDOW_LOAD"
+                    },
+                    {
+                        "type": "BOOLEAN",
+                        "key": "horizontalThresholdOn",
+                        "value": "false"
+                    }
+                ]
+            },
+            {
+                "accountId": "0",
+                "containerId": "0",
+                "triggerId": "122",
+                "name": "CTAクリック",
+                "type": "LINK_CLICK",
+                "filter": [
+                    {
+                        "type": "MATCH_REGEX",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{Click Classes}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": "(cta|btn|button|submit|contact|inquiry|download)"
+                            }
+                        ]
+                    }
+                ],
+                "autoEventFilter": [
+                    {
+                        "type": "MATCH_REGEX",
+                        "parameter": [
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg0",
+                                "value": "{{Page URL}}"
+                            },
+                            {
+                                "type": "TEMPLATE",
+                                "key": "arg1",
+                                "value": ".*"
+                            }
+                        ]
+                    }
+                ],
+                "waitForTags": {
+                    "type": "BOOLEAN",
+                    "value": "true"
+                },
+                "checkValidation": {
+                    "type": "BOOLEAN",
+                    "value": "false"
+                },
+                "waitForTagsTimeout": {
+                    "type": "TEMPLATE",
+                    "value": "2000"
+                },
+                "uniqueTriggerId": {
+                    "type": "TEMPLATE"
+                },
+                "fingerprint": "2000000002"
+            }
+        ],
         "builtInVariable": [
             {
                 "accountId": "0",
                 "containerId": "0",
                 "type": "PAGE_PATH",
                 "name": "Page Path"
+            },
+            {
+                "accountId": "0",
+                "containerId": "0",
+                "type": "PAGE_URL",
+                "name": "Page URL"
             },
             {
                 "accountId": "0",
