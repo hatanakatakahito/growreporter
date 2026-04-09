@@ -6,8 +6,8 @@
     "accountId": "0",
     "containerId": "0",
     "containerVersionId": "0",
-    "name": "GrowReporter - スクロール深度 CTAクリック計測",
-    "description": "GrowReporterのコンテンツ分析に必要なスクロール深度（25/50/75/100%）とCTAクリックのGA4イベント計測テンプレートです。インポート後、GA4測定IDを設定してください。",
+    "name": "GrowReporter スクロール深度 CTAクリック計測",
+    "description": "GrowReporterのコンテンツ分析用テンプレート。インポート後、GA4設定タグの測定IDを変更してください。",
     "container": {
       "path": "accounts/0/containers/0",
       "accountId": "0",
@@ -197,12 +197,26 @@
       {
         "accountId": "0",
         "containerId": "0",
+        "tagId": "99",
+        "name": "GR - GA4設定",
+        "type": "googtag",
+        "parameter": [
+          { "type": "TEMPLATE", "key": "tagId", "value": "G-XXXXXXXXXX" }
+        ],
+        "fingerprint": "1000000000",
+        "firingTriggerId": ["2147479553"],
+        "tagFiringOption": "ONCE_PER_EVENT"
+      },
+      {
+        "accountId": "0",
+        "containerId": "0",
         "tagId": "100",
         "name": "GR - GA4 スクロール深度 25%",
         "type": "gaawe",
         "parameter": [
           { "type": "BOOLEAN", "key": "sendEcommerceData", "value": "false" },
           { "type": "TEMPLATE", "key": "eventName", "value": "gr_scroll_depth" },
+          { "type": "TAG_REFERENCE", "key": "measurementId", "value": "GR - GA4設定" },
           {
             "type": "LIST",
             "key": "eventParameters",
@@ -222,13 +236,11 @@
                 ]
               }
             ]
-          },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "G-XXXXXXXXXX" }
+          }
         ],
         "fingerprint": "1000000001",
         "firingTriggerId": ["100"],
-        "tagFiringOption": "ONCE_PER_EVENT",
-        "monitoringMetadataTagNameKey": ""
+        "tagFiringOption": "ONCE_PER_EVENT"
       },
       {
         "accountId": "0",
@@ -239,6 +251,7 @@
         "parameter": [
           { "type": "BOOLEAN", "key": "sendEcommerceData", "value": "false" },
           { "type": "TEMPLATE", "key": "eventName", "value": "gr_scroll_depth" },
+          { "type": "TAG_REFERENCE", "key": "measurementId", "value": "GR - GA4設定" },
           {
             "type": "LIST",
             "key": "eventParameters",
@@ -258,13 +271,11 @@
                 ]
               }
             ]
-          },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "G-XXXXXXXXXX" }
+          }
         ],
         "fingerprint": "1000000002",
         "firingTriggerId": ["101"],
-        "tagFiringOption": "ONCE_PER_EVENT",
-        "monitoringMetadataTagNameKey": ""
+        "tagFiringOption": "ONCE_PER_EVENT"
       },
       {
         "accountId": "0",
@@ -275,6 +286,7 @@
         "parameter": [
           { "type": "BOOLEAN", "key": "sendEcommerceData", "value": "false" },
           { "type": "TEMPLATE", "key": "eventName", "value": "gr_scroll_depth" },
+          { "type": "TAG_REFERENCE", "key": "measurementId", "value": "GR - GA4設定" },
           {
             "type": "LIST",
             "key": "eventParameters",
@@ -294,13 +306,11 @@
                 ]
               }
             ]
-          },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "G-XXXXXXXXXX" }
+          }
         ],
         "fingerprint": "1000000003",
         "firingTriggerId": ["102"],
-        "tagFiringOption": "ONCE_PER_EVENT",
-        "monitoringMetadataTagNameKey": ""
+        "tagFiringOption": "ONCE_PER_EVENT"
       },
       {
         "accountId": "0",
@@ -311,6 +321,7 @@
         "parameter": [
           { "type": "BOOLEAN", "key": "sendEcommerceData", "value": "false" },
           { "type": "TEMPLATE", "key": "eventName", "value": "gr_scroll_depth" },
+          { "type": "TAG_REFERENCE", "key": "measurementId", "value": "GR - GA4設定" },
           {
             "type": "LIST",
             "key": "eventParameters",
@@ -330,13 +341,11 @@
                 ]
               }
             ]
-          },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "G-XXXXXXXXXX" }
+          }
         ],
         "fingerprint": "1000000004",
         "firingTriggerId": ["103"],
-        "tagFiringOption": "ONCE_PER_EVENT",
-        "monitoringMetadataTagNameKey": ""
+        "tagFiringOption": "ONCE_PER_EVENT"
       },
       {
         "accountId": "0",
@@ -347,6 +356,7 @@
         "parameter": [
           { "type": "BOOLEAN", "key": "sendEcommerceData", "value": "false" },
           { "type": "TEMPLATE", "key": "eventName", "value": "gr_cta_click" },
+          { "type": "TAG_REFERENCE", "key": "measurementId", "value": "GR - GA4設定" },
           {
             "type": "LIST",
             "key": "eventParameters",
@@ -373,13 +383,11 @@
                 ]
               }
             ]
-          },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "G-XXXXXXXXXX" }
+          }
         ],
         "fingerprint": "1000000005",
         "firingTriggerId": ["104"],
-        "tagFiringOption": "ONCE_PER_EVENT",
-        "monitoringMetadataTagNameKey": ""
+        "tagFiringOption": "ONCE_PER_EVENT"
       }
     ],
     "fingerprint": "0"
