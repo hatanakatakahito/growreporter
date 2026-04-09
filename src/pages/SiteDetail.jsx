@@ -527,7 +527,7 @@ export default function SiteDetail() {
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
                 <div>
                   <span className="font-medium text-dark dark:text-white">GA4測定IDを変更</span>
-                  <div className="mt-0.5 text-xs">インポートされた2つのタグ（GR - スクロール深度イベント、GR - CTAクリックイベント）をそれぞれ開き、測定IDの「G-XXXXXXXXXX」をサイトのGA4測定IDに変更</div>
+                  <div className="mt-0.5 text-xs">インポートされた2つのタグ（GR - スクロール深度イベント、GR - CTAクリックイベント）をそれぞれ開き、測定IDの「G-XXXXXXXXXX」をサイトのGA4測定IDに変更<br /><span className="text-body-color">※ 測定IDはGA4管理画面 → 管理 → データストリーム → ウェブ で確認できます（G-から始まるID）</span></div>
                 </div>
               </li>
               <li className="flex gap-3">
