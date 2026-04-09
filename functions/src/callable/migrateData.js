@@ -6,6 +6,7 @@ import { migrateToSubcollections } from '../scripts/migrateToSubcollections.js';
 import { migrateUserCollectionsToUsers } from '../scripts/migrateUserCollectionsToUsers.js';
 import { backfillAlertEmail } from '../scripts/backfillAlertEmail.js';
 import { enableAllNotifications } from '../scripts/enableAllNotifications.js';
+import { backfillGA4MeasurementId } from '../scripts/backfillGA4MeasurementId.js';
 
 /**
  * データマイグレーション実行用 Callable Function
@@ -56,6 +57,9 @@ export const migrateDataCallable = async (request) => {
         break;
       case 'enableAllNotifications':
         result = await enableAllNotifications();
+        break;
+      case 'backfillGA4MeasurementId':
+        result = await backfillGA4MeasurementId();
         break;
       default:
         throw new HttpsError('invalid-argument', `不明なマイグレーションタイプ: ${migrationType}`);
