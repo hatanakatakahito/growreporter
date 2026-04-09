@@ -108,6 +108,72 @@ export default function Pages() {
     staleTime: 5 * 60 * 1000,
   });
 
+  // ページ別スクロールイベント取得（GA4拡張計測のscrollイベント = 90%到達）
+  const { data: scrollData } = useQuery({
+    queryKey: ['ga4-page-scroll', selectedSiteId, dateRange.from, dateRange.to, ga4DimensionFilter],
+    queryFn: async () => {
+      const fetchGA4 = httpsCallable(functions, 'fetchGA4Data');
+      const result = await fetchGA4({
+        siteId: selectedSiteId,
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+        metrics: ['eventCount'],
+        dimensions: ['pagePath'],
+        dimensionFilter: ga4DimensionFilter
+          ? {
+              andGroup: {
+                expressions: [
+                  { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'scroll' } } },
+                  ga4DimensionFilter,
+                ],
+              },
+            }
+          : { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'scroll' } } },
+      });
+      const map = {};
+      (result.data?.rows || []).forEach(row => {
+        const path = row.pagePath;
+        map[path] = (map[path] || 0) + (row.eventCount || 0);
+      });
+      return map;
+    },
+    enabled: !!selectedSiteId && !!dateRange.from && !!dateRange.to,
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // 比較期間スクロールデータ
+  const { data: compScrollData } = useQuery({
+    queryKey: ['ga4-page-scroll', selectedSiteId, comparisonDateRange?.from, comparisonDateRange?.to, ga4DimensionFilter],
+    queryFn: async () => {
+      const fetchGA4 = httpsCallable(functions, 'fetchGA4Data');
+      const result = await fetchGA4({
+        siteId: selectedSiteId,
+        startDate: comparisonDateRange.from,
+        endDate: comparisonDateRange.to,
+        metrics: ['eventCount'],
+        dimensions: ['pagePath'],
+        dimensionFilter: ga4DimensionFilter
+          ? {
+              andGroup: {
+                expressions: [
+                  { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'scroll' } } },
+                  ga4DimensionFilter,
+                ],
+              },
+            }
+          : { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'scroll' } } },
+      });
+      const map = {};
+      (result.data?.rows || []).forEach(row => {
+        const path = row.pagePath;
+        map[path] = (map[path] || 0) + (row.eventCount || 0);
+      });
+      return map;
+    },
+    enabled: !!selectedSiteId && !!comparisonDateRange?.from && !!comparisonDateRange?.to && comparisonMode !== 'none',
+    staleTime: 5 * 60 * 1000,
+  });
+
   // 比較期間データ（pageTitleを含めるとパス重複で比較値が壊れるためpagePathのみ）
   const { data: compPageData } = useGA4Data(
     comparisonDateRange ? selectedSiteId : null,
@@ -129,6 +195,14 @@ export default function Pages() {
     return url;
   };
 
+  // scrollデータの信頼性チェック: GTM未設定の場合scrollDataは空or極端に少ない
+  const isScrollDataReliable = useMemo(() => {
+    if (!scrollData || Object.keys(scrollData).length === 0) return false;
+    const totalPages = pageData?.rows?.length || 0;
+    const scrollPages = Object.keys(scrollData).length;
+    return totalPages > 0 && scrollPages / totalPages >= 0.05;
+  }, [scrollData, pageData]);
+
   // テーブル用のデータ整形（ページビュー数降順）
   const tableData = useMemo(() => {
     if (!pageData?.rows) return [];
@@ -136,39 +210,83 @@ export default function Pages() {
       .map((row) => {
         const path = row.pagePath || '/';
         const sessions = row.sessions || 0;
+        const pageViews = row.screenPageViews || 0;
         const conversions = conversionData?.[path] || 0;
+        const engRate = (row.engagementRate || 0);
+        const bRate = (row.bounceRate || 0);
+        const avgDur = row.averageSessionDuration || 0;
+        const scrollCount = isScrollDataReliable ? scrollData?.[path] : undefined;
+        const hasScrollData = scrollCount !== undefined && scrollCount !== null;
+
+        // スクロール完読率（scrollイベント / PV）- GTM未設定の場合はnull
+        const scrollRate = hasScrollData && pageViews > 0 ? Math.min(scrollCount / pageViews, 1) : null;
+
+        // コンテンツ興味度スコア（0-100）
+        // scrollデータがある場合: 4指標均等配分（各25%）
+        // scrollデータがない場合: 3指標均等配分（各33.3%）
+        const engScore = engRate * 100;
+        const durationScore = Math.min(avgDur / 180, 1) * 100;
+        const nonBounceScore = (1 - bRate) * 100;
+        let interestScore;
+        if (hasScrollData) {
+          const scrollScore = scrollRate * 100;
+          interestScore = engScore * 0.25 + scrollScore * 0.25 + durationScore * 0.25 + nonBounceScore * 0.25;
+        } else {
+          interestScore = engScore / 3 + durationScore / 3 + nonBounceScore / 3;
+        }
+
         return {
           path,
           title: row.pageTitle || '(タイトルなし)',
           shortUrl: shortenUrl(path),
-          pageViews: row.screenPageViews || 0,
+          pageViews,
           sessions,
           users: row.activeUsers || 0,
           newUsers: row.newUsers || 0,
-          engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
-          bounceRate: ((row.bounceRate || 0) * 100).toFixed(1),
-          avgDuration: row.averageSessionDuration || 0,
+          engagementRate: (engRate * 100).toFixed(1),
+          bounceRate: (bRate * 100).toFixed(1),
+          avgDuration: avgDur,
           conversions,
           conversionRate: sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : '0.00',
+          scrollRate: scrollRate !== null ? (scrollRate * 100).toFixed(1) : null,
+          interestScore: parseFloat(interestScore.toFixed(1)),
         };
       })
       .sort((a, b) => b.pageViews - a.pageViews);
-  }, [pageData, conversionData]);
+  }, [pageData, conversionData, scrollData]);
 
   const mergedTableData = useMemo(() => {
     if (!isComparing || !compPageData?.rows) return tableData;
-    const compTable = compPageData.rows.map((row) => ({
-      path: row.pagePath || '/',
-      pageViews: row.screenPageViews || 0,
-      sessions: row.sessions || 0,
-      users: row.activeUsers || 0,
-      newUsers: row.newUsers || 0,
-      engagementRate: ((row.engagementRate || 0) * 100).toFixed(1),
-      bounceRate: ((row.bounceRate || 0) * 100).toFixed(1),
-      avgDuration: row.averageSessionDuration || 0,
-    }));
-    return mergeComparisonRows(tableData, compTable, 'path', ['pageViews', 'sessions', 'users', 'newUsers', 'engagementRate', 'bounceRate', 'avgDuration']);
-  }, [tableData, isComparing, compPageData]);
+    const compTable = compPageData.rows.map((row) => {
+      const path = row.pagePath || '/';
+      const pageViews = row.screenPageViews || 0;
+      const engRate = (row.engagementRate || 0);
+      const bRate = (row.bounceRate || 0);
+      const avgDur = row.averageSessionDuration || 0;
+      const scrollCount = isScrollDataReliable ? compScrollData?.[path] : undefined;
+      const hasScrollData = scrollCount !== undefined && scrollCount !== null;
+      const scrollRate = hasScrollData && pageViews > 0 ? Math.min(scrollCount / pageViews, 1) : null;
+      const engScore = engRate * 100;
+      const durationScore = Math.min(avgDur / 180, 1) * 100;
+      const nonBounceScore = (1 - bRate) * 100;
+      const interestScore = hasScrollData
+        ? engScore * 0.25 + scrollRate * 100 * 0.25 + durationScore * 0.25 + nonBounceScore * 0.25
+        : engScore / 3 + durationScore / 3 + nonBounceScore / 3;
+      return {
+        path,
+        pageViews,
+        sessions: row.sessions || 0,
+        users: row.activeUsers || 0,
+        newUsers: row.newUsers || 0,
+        engagementRate: (engRate * 100).toFixed(1),
+        bounceRate: (bRate * 100).toFixed(1),
+        avgDuration: avgDur,
+        scrollRate: scrollRate !== null ? (scrollRate * 100).toFixed(1) : null,
+        interestScore: parseFloat(interestScore.toFixed(1)),
+      };
+    });
+    return mergeComparisonRows(tableData, compTable, 'path', ['pageViews', 'sessions', 'users', 'newUsers', 'engagementRate', 'bounceRate', 'avgDuration', 'scrollRate', 'interestScore']);
+  }, [tableData, isComparing, compPageData, compScrollData]);
 
   // グラフ用のデータ（上位10件）
   const chartData = [...tableData].slice(0, 10);
@@ -447,6 +565,29 @@ export default function Pages() {
                       render: (value) => `${value}%`,
                       defaultVisible: false,
                       comparison: true,
+                    },
+                    {
+                      key: 'interestScore',
+                      label: '興味スコア',
+                      align: 'right',
+                      tooltip: 'interestScore',
+                      sortable: true,
+                      comparison: true,
+                      render: (value) => {
+                        const v = parseFloat(value);
+                        const color = v >= 70 ? 'text-primary' : v >= 40 ? 'text-dark dark:text-white' : 'text-body-color';
+                        return <span className={`font-semibold ${color}`}>{value}</span>;
+                      },
+                    },
+                    {
+                      key: 'scrollRate',
+                      label: '完読率',
+                      align: 'right',
+                      tooltip: 'scrollRate',
+                      sortable: true,
+                      defaultVisible: false,
+                      comparison: true,
+                      render: (value) => value !== null ? `${value}%` : <span className="text-body-color">-</span>,
                     },
                   ]}
                   data={mergedTableData}

@@ -1461,9 +1461,30 @@ function formatRawDataToMetrics(rawData, pageType) {
       };
 
     case 'pages':
-      // ページ別分析：useGA4Data (pagePath, pageTitle) の結果
+    case 'contentAnalysis': {
+      // ページ別分析 / コンテンツ分析：useGA4Data (pagePath, pageTitle) の結果
       const pagesRows = rawData.rows || [];
+      const scrollDataMap = rawData.scrollData || {};
       const pagesTotalPageViews = pagesRows.reduce((sum, row) => sum + (row.screenPageViews || 0), 0);
+
+      // 興味度スコア計算ヘルパー（scrollデータがない場合は3指標で計算）
+      const hasAnyScrollData = Object.keys(scrollDataMap).length > 0;
+      const calcScore = (row) => {
+        const pv = row.screenPageViews || 0;
+        const engRate = row.engagementRate || 0;
+        const bRate = row.bounceRate || 0;
+        const avgDur = row.averageSessionDuration || 0;
+        const engScore = engRate * 100;
+        const durationScore = Math.min(avgDur / 180, 1) * 100;
+        const nonBounceScore = (1 - bRate) * 100;
+        if (hasAnyScrollData) {
+          const scrollCount = scrollDataMap[row.pagePath] || 0;
+          const scrollRate = pv > 0 ? Math.min(scrollCount / pv, 1) : 0;
+          return parseFloat((engScore * 0.25 + scrollRate * 100 * 0.25 + durationScore * 0.25 + nonBounceScore * 0.25).toFixed(1));
+        }
+        return parseFloat((engScore / 3 + durationScore / 3 + nonBounceScore / 3).toFixed(1));
+      };
+
       const topPagesText = pagesRows
         .sort((a, b) => (b.screenPageViews || 0) - (a.screenPageViews || 0))
         .slice(0, 10)
@@ -1473,9 +1494,23 @@ function formatRawDataToMetrics(rawData, pageType) {
           const avgDuration = row.averageSessionDuration || 0;
           const durationMin = Math.floor(avgDuration / 60);
           const durationSec = Math.floor(avgDuration % 60);
-          return `${row.pagePath || row.pageTitle}: ${pv}PV, ENG率 ${engRate}%, 滞在時間 ${durationMin}分${durationSec}秒`;
+          const score = calcScore(row);
+          let scrollText = '';
+          if (hasAnyScrollData) {
+            const scrollCount = scrollDataMap[row.pagePath] || 0;
+            const scrollRate = pv > 0 ? ((scrollCount / pv) * 100).toFixed(1) : '0.0';
+            scrollText = `, 完読率 ${scrollRate}%`;
+          }
+          return `${row.pagePath || row.pageTitle}: ${pv}PV, ENG率 ${engRate}%, 滞在時間 ${durationMin}分${durationSec}秒${scrollText}, 興味スコア ${score}`;
         })
         .join('\n');
+
+      // 興味度スコア統計
+      const allScores = pagesRows.map(r => calcScore(r));
+      const avgScore = allScores.length > 0 ? (allScores.reduce((a, b) => a + b, 0) / allScores.length).toFixed(1) : '0';
+      const highScoreCount = allScores.filter(s => s >= 70).length;
+      const lowScoreCount = allScores.filter(s => s < 40).length;
+
       return {
         totalPageViews: pagesTotalPageViews,
         pageCount: pagesRows.length,
@@ -1483,7 +1518,10 @@ function formatRawDataToMetrics(rawData, pageType) {
         pagesData: pagesRows,
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
+        hasScrollData: Object.keys(scrollDataMap).length > 0,
+        interestScoreStats: { avgScore, highScoreCount, lowScoreCount },
       };
+    }
 
     case 'pageCategories':
       // ページ分類別分析：categoryDataの結果

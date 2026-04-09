@@ -140,6 +140,7 @@ export const PAGE_TYPES = {
   KEYWORDS: 'keywords',
   REFERRALS: 'referrals',
   PAGES: 'pages',
+  CONTENT_ANALYSIS: 'contentAnalysis',
   PAGE_CATEGORIES: 'pageCategories',
   LANDING_PAGES: 'landingPages',
   FILE_DOWNLOADS: 'fileDownloads',

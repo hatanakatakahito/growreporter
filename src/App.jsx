@@ -26,6 +26,7 @@ import AcquisitionChannels from './pages/Analysis/AcquisitionChannels';
 import Keywords from './pages/Analysis/Keywords';
 import Referrals from './pages/Analysis/Referrals';
 import Pages from './pages/Analysis/Pages';
+import ContentAnalysis from './pages/Analysis/ContentAnalysis';
 import PageCategories from './pages/Analysis/PageCategories';
 import LandingPages from './pages/Analysis/LandingPages';
 import FileDownloads from './pages/Analysis/FileDownloads';
@@ -166,6 +167,7 @@ function App() {
               <Route path="/analysis/keywords" element={<Keywords />} />
               <Route path="/analysis/referrals" element={<Referrals />} />
               <Route path="/analysis/pages" element={<Pages />} />
+              <Route path="/analysis/content" element={<ContentAnalysis />} />
               <Route path="/analysis/page-categories" element={<PageCategories />} />
               <Route path="/analysis/landing-pages" element={<LandingPages />} />
               <Route path="/analysis/file-downloads" element={<FileDownloads />} />

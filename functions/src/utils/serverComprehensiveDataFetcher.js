@@ -71,6 +71,7 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
     referralsResult,
     fileDownloadsResult,
     externalLinksResult,
+    scrollEventsResult,
     scrapingDataResult,
     diagnosisDataResult,
     aiAnalysisResult,
@@ -105,6 +106,8 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
     ga4Client ? fetchGA4FileDownloads(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
     // 外部リンク
     ga4Client ? fetchGA4ExternalLinks(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
+    // スクロールイベント（ページ別完読率用）
+    ga4Client ? fetchGA4ScrollEvents(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
     // スクレイピングデータ
     fetchScrapingData(db, siteId),
     // サイト診断キャッシュ
@@ -165,6 +168,7 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
     pageCategories: resolve(pageCategoriesResult) || [],
     fileDownloads: resolve(fileDownloadsResult) || [],
     externalLinks: resolve(externalLinksResult) || [],
+    scrollEvents: resolve(scrollEventsResult) || {},
     pageFlow: pageFlowData,
     monthlyConversions: resolve(monthlyConversionsResult),
     reverseFlow: reverseFlowData,
@@ -391,6 +395,26 @@ async function fetchGA4FileDownloads(auth, propertyId, startDate, endDate) {
       users: parseInt(row.metricValues[1]?.value || '0'),
     }));
   } catch { return []; }
+}
+
+async function fetchGA4ScrollEvents(auth, propertyId, startDate, endDate) {
+  try {
+    const data = await runGA4Report(auth, propertyId, {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'pagePath' }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        filter: { fieldName: 'eventName', stringFilter: { value: 'scroll', matchType: 'EXACT' } },
+      },
+      limit: 50,
+    });
+    const map = {};
+    (data.rows || []).forEach(row => {
+      const path = row.dimensionValues[0]?.value || '';
+      map[path] = parseInt(row.metricValues[0]?.value || '0');
+    });
+    return map;
+  } catch { return {}; }
 }
 
 async function fetchGA4ExternalLinks(auth, propertyId, startDate, endDate) {

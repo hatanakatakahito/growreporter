@@ -190,6 +190,7 @@ export default function Sidebar() {
           hasSubmenu: true,
           submenu: [
             { label: 'ページ別', path: '/analysis/pages' },
+            { label: 'コンテンツ分析', path: '/analysis/content' },
             { label: 'ページ分類別', path: '/analysis/page-categories' },
             { label: 'ランディングページ', path: '/analysis/landing-pages' },
             { label: 'ファイルダウンロード', path: '/analysis/file-downloads' },

@@ -140,6 +140,7 @@ export function getPromptTemplate(pageType, period, metrics, startDate, endDate,
     referrals: getReferralsPrompt,
     landingPages: getLandingPagesPrompt,
     pages: getPagesPrompt,
+    contentAnalysis: getContentAnalysisPrompt,
     pageCategories: getPageCategoriesPrompt,
     keywords: getKeywordsPrompt,
     conversions: getConversionsPrompt,
@@ -609,13 +610,57 @@ function getPagesPrompt(period, metrics) {
     pagesDetailText = `\n\n【ページ別内訳（上位10）】\n${metrics.topPagesText}`;
   }
 
+  // 興味度スコア統計
+  let interestScoreText = '';
+  if (metrics.interestScoreStats) {
+    const s = metrics.interestScoreStats;
+    interestScoreText = `\n- 平均興味スコア: ${s.avgScore}/100\n- 高興味ページ数（70以上）: ${s.highScoreCount}ページ\n- 低興味ページ数（40未満）: ${s.lowScoreCount}ページ`;
+  }
+
   return `
 あなたはWebサイト分析の専門家です。${period}のページ別データを分析してください。
 上位ページの閲覧数変化や、急増・急減したページに注目して分析してください。
+${metrics.hasScrollData ? '興味スコアが低いページの原因を分析し、高スコアページとの差異にも注目してください。完読率（90%到達率）が低いページはコンテンツの前半で離脱している可能性があります。' : ''}
 
 【当期データ】
 - ページ閲覧数合計: ${metrics.totalPageViews?.toLocaleString() || 0}回
-- ページ数: ${metrics.pageCount || 0}ページ${pagesDetailText}
+- ページ数: ${metrics.pageCount || 0}ページ${interestScoreText}${pagesDetailText}
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
+}
+
+// ==================== コンテンツ分析 ====================
+
+function getContentAnalysisPrompt(period, metrics) {
+  let pagesDetailText = '';
+  if (metrics.topPagesText) {
+    pagesDetailText = `\n\n【ページ別内訳（上位10）】\n${metrics.topPagesText}`;
+  }
+
+  const s = metrics.interestScoreStats || {};
+
+  return `
+あなたはWebサイトのコンテンツ分析の専門家です。${period}のページ別コンテンツ興味度データを分析してください。
+
+興味度スコアは以下4指標の均等配分（各25%）で算出されています：
+・エンゲージメント率: ユーザーが積極的に操作した割合
+・完読率: ページの90%以上までスクロールしたユーザーの割合
+・滞在時間スコア: 平均滞在時間（3分で満点）
+・非直帰率: 直帰しなかったユーザーの割合
+
+以下の観点で分析してください：
+1. 興味スコアが高いページの共通点と、なぜユーザーに支持されているか
+2. 興味スコアが低いページの問題点と、改善すべき優先順位
+3. 完読率が低いページ（コンテンツ前半で離脱している可能性）の対策
+4. PVは多いが興味スコアが低いページ（改善インパクトが大きい）の特定
+
+【当期データ】
+- ページ閲覧数合計: ${metrics.totalPageViews?.toLocaleString() || 0}回
+- ページ数: ${metrics.pageCount || 0}ページ
+- 平均興味スコア: ${s.avgScore || 0}/100
+- 高興味ページ数（70以上）: ${s.highScoreCount || 0}ページ
+- 低興味ページ数（40未満）: ${s.lowScoreCount || 0}ページ${pagesDetailText}
 ${getComparisonContextBlock(metrics)}
 ${getCommonOutputRules(!!metrics.comparisonMetrics)}
 ${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
@@ -1969,12 +2014,31 @@ export function getChatSystemPrompt(metrics, siteData) {
   }
 
   let pagesText = '';
+  const scrollEventsMap = metrics.scrollEvents || {};
+  const hasAnyScrollEvents = Object.keys(scrollEventsMap).length > 0;
   if (metrics.pages?.length > 0) {
     pagesText = '\n\n【ページ別データ（直近30日、トップ15）】\n';
     metrics.pages.slice(0, 15).forEach(p => {
       const pagePath = p.path || p.page || p.pagePath || '不明';
       const pageTitle = p.title || '';
-      pagesText += `- ${pagePath}${pageTitle ? `（${pageTitle}）` : ''}: PV${(p.pageViews || p.screenPageViews || 0).toLocaleString()}, ユーザー${(p.users || p.totalUsers || 0).toLocaleString()}, CV${(p.conversions || 0).toLocaleString()}\n`;
+      const pv = p.pageViews || p.screenPageViews || 0;
+      const avgDur = p.averageSessionDuration || 0;
+      const engR = p.engagementRate || 0;
+      const bR = p.bounceRate || 0;
+      const engScore = engR * 100;
+      const durationScore = Math.min(avgDur / 180, 1) * 100;
+      const nonBounceScore = (1 - bR) * 100;
+      let scrollText = '';
+      let interestScore;
+      if (hasAnyScrollEvents) {
+        const scrollCount = scrollEventsMap[pagePath] || 0;
+        const scrollRate = pv > 0 ? Math.min(scrollCount / pv, 1) : 0;
+        scrollText = `, 完読率${(scrollRate * 100).toFixed(1)}%`;
+        interestScore = (engScore * 0.25 + scrollRate * 100 * 0.25 + durationScore * 0.25 + nonBounceScore * 0.25).toFixed(1);
+      } else {
+        interestScore = (engScore / 3 + durationScore / 3 + nonBounceScore / 3).toFixed(1);
+      }
+      pagesText += `- ${pagePath}${pageTitle ? `（${pageTitle}）` : ''}: PV${pv.toLocaleString()}, ユーザー${(p.users || p.totalUsers || 0).toLocaleString()}, CV${(p.conversions || 0).toLocaleString()}${scrollText}, 興味スコア${interestScore}\n`;
     });
   }
 
