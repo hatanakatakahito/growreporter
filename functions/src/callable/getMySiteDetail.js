@@ -88,6 +88,7 @@ export const getMySiteDetailCallable = async (request) => {
       aiUsage,
       hasGA4: !!siteData.ga4PropertyId,
       hasGSC: !!siteData.gscSiteUrl,
+      ga4MeasurementId: siteData.ga4MeasurementId || '',
     };
 
     return {
