@@ -356,12 +356,34 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
   };
 
   // プロパティを選択（react-select用）
-  const handlePropertySelect = (selectedOption) => {
+  const handlePropertySelect = async (selectedOption) => {
     if (selectedOption) {
       console.log('[GA4Connect] プロパティ選択:', selectedOption);
-      
+
       const propertyName = selectedOption.label.split(' (')[0]; // "名前 (アカウント)" から名前を抽出
-      
+
+      // GA4測定ID（G-XXXXXXXXXX）をData Streams APIから取得
+      let ga4MeasurementId = null;
+      try {
+        const tokenData = token;
+        if (tokenData?.access_token) {
+          const streamsUrl = `https://analyticsadmin.googleapis.com/v1beta/properties/${selectedOption.value}/dataStreams`;
+          const streamsRes = await fetch(streamsUrl, {
+            headers: { 'Authorization': `Bearer ${tokenData.access_token}` },
+          });
+          if (streamsRes.ok) {
+            const streamsData = await streamsRes.json();
+            const webStream = (streamsData.dataStreams || []).find(s => s.type === 'WEB_DATA_STREAM');
+            if (webStream?.webStreamData?.measurementId) {
+              ga4MeasurementId = webStream.webStreamData.measurementId;
+              console.log('[GA4Connect] 測定ID取得:', ga4MeasurementId);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[GA4Connect] 測定ID取得失敗（無視して続行）:', err);
+      }
+
       setSiteData(prev => {
         const newData = {
           ...prev,
@@ -369,6 +391,7 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
           ga4PropertyName: propertyName,
           ga4AccountId: selectedOption.accountId,
           ga4AccountName: selectedOption.account,
+          ...(ga4MeasurementId ? { ga4MeasurementId } : {}),
         };
         console.log('[GA4Connect] siteData更新:', newData);
         return newData;
