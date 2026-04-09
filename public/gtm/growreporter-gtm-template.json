@@ -27,23 +27,7 @@
       { "type": "PAGE_PATH" },
       { "type": "PAGE_URL" }
     ],
-    "variable": [
-      {
-        "accountId": "0",
-        "containerId": "0",
-        "variableId": "100",
-        "name": "GR - GA4 Measurement ID",
-        "type": "c",
-        "parameter": [
-          {
-            "type": "TEMPLATE",
-            "key": "value",
-            "value": "G-XXXXXXXXXX"
-          }
-        ],
-        "fingerprint": "3000000001"
-      }
-    ],
+    "variable": [],
     "trigger": [
       {
         "accountId": "0",
@@ -239,7 +223,7 @@
               }
             ]
           },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{GR - GA4 Measurement ID}}" }
+          { "type": "TEMPLATE", "key": "measurementId", "value": "G-XXXXXXXXXX" }
         ],
         "fingerprint": "1000000001",
         "firingTriggerId": ["100"],
@@ -275,7 +259,7 @@
               }
             ]
           },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{GR - GA4 Measurement ID}}" }
+          { "type": "TEMPLATE", "key": "measurementId", "value": "G-XXXXXXXXXX" }
         ],
         "fingerprint": "1000000002",
         "firingTriggerId": ["101"],
@@ -311,7 +295,7 @@
               }
             ]
           },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{GR - GA4 Measurement ID}}" }
+          { "type": "TEMPLATE", "key": "measurementId", "value": "G-XXXXXXXXXX" }
         ],
         "fingerprint": "1000000003",
         "firingTriggerId": ["102"],
@@ -347,7 +331,7 @@
               }
             ]
           },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{GR - GA4 Measurement ID}}" }
+          { "type": "TEMPLATE", "key": "measurementId", "value": "G-XXXXXXXXXX" }
         ],
         "fingerprint": "1000000004",
         "firingTriggerId": ["103"],
@@ -390,7 +374,7 @@
               }
             ]
           },
-          { "type": "TEMPLATE", "key": "measurementId", "value": "{{GR - GA4 Measurement ID}}" }
+          { "type": "TEMPLATE", "key": "measurementId", "value": "G-XXXXXXXXXX" }
         ],
         "fingerprint": "1000000005",
         "firingTriggerId": ["104"],

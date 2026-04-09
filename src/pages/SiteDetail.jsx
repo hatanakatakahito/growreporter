@@ -533,7 +533,7 @@ export default function SiteDetail() {
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">3</span>
                 <div>
                   <span className="font-medium text-dark dark:text-white">GA4測定IDを設定</span>
-                  <div className="mt-0.5 text-xs">インポート後、変数「GR - GA4 Measurement ID」の値を「G-XXXXXXXXXX」からサイトのGA4測定IDに変更してください</div>
+                  <div className="mt-0.5 text-xs">インポート後、追加された5つのタグ（GR - GA4 スクロール深度 25/50/75/100%、GR - GA4 CTAクリック）を開き、測定IDの「G-XXXXXXXXXX」をサイトのGA4測定IDに変更してください</div>
                 </div>
               </li>
               <li className="flex gap-3">
