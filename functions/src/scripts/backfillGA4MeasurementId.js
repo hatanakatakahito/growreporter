@@ -33,7 +33,7 @@ export async function backfillGA4MeasurementId() {
     }
 
     // トークン情報を取得
-    const tokenOwnerId = site.ga4TokenOwner || site.ownerId;
+    const tokenOwnerId = site.ga4TokenOwner || site.ownerId || site.userId;
     const tokenId = site.ga4OauthTokenId;
     if (!tokenOwnerId || !tokenId) {
       skipped++;
