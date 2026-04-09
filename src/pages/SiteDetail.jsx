@@ -526,7 +526,7 @@ export default function SiteDetail() {
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
                 <div>
                   <span className="font-medium text-dark dark:text-white">GTMにインポート</span>
-                  <div className="mt-0.5 text-xs">GTM管理画面 → 管理 → コンテナをインポート → ダウンロードしたJSONを選択 → 「結合」を選択して送信</div>
+                  <div className="mt-0.5 text-xs">GTM管理画面 → 管理 → コンテナをインポート → ダウンロードしたJSONを選択 → <strong className="text-dark dark:text-white">必ず「統合」を選択</strong>して送信（「上書き」を選ぶと既存設定が消えるのでご注意ください）</div>
                 </div>
               </li>
               <li className="flex gap-3">
