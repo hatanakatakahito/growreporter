@@ -514,37 +514,48 @@ export default function SiteDetail() {
                 <div>
                   <span className="font-medium text-dark dark:text-white">テンプレートをダウンロード＆インポート</span>
                   <div className="mt-1 mb-2">
-                    <a
-                      href="/gtm/growreporter-gtm-template.json"
-                      download="growreporter-gtm-template.json"
+                    <button
+                      onClick={async () => {
+                        try {
+                          const res = await fetch('/gtm/growreporter-gtm-template.json');
+                          const template = await res.json();
+                          // 測定IDを自動埋め込み
+                          const mid = siteDetail?.ga4MeasurementId || 'G-XXXXXXXXXX';
+                          const json = JSON.stringify(template, null, 4).replace(/G-XXXXXXXXXX/g, mid);
+                          const blob = new Blob([json], { type: 'application/json' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `growreporter-gtm-${mid}.json`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                        } catch (err) {
+                          console.error('GTMテンプレートDLエラー:', err);
+                        }
+                      }}
                       className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-opacity-90 transition"
                     >
                       <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                      GTMテンプレートをダウンロード
-                    </a>
+                      GTMテンプレートをダウンロード{siteDetail?.ga4MeasurementId ? `（${siteDetail.ga4MeasurementId}設定済み）` : ''}
+                    </button>
                   </div>
                   <div className="text-xs">GTM管理画面 → 管理 → コンテナをインポート → <strong className="text-dark dark:text-white">必ず「統合」を選択</strong>して送信</div>
                 </div>
               </li>
+              {!siteDetail?.ga4MeasurementId && (
               <li className="flex gap-3">
                 <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
                 <div>
-                  <span className="font-medium text-dark dark:text-white">GA4測定IDを変更</span>
+                  <span className="font-medium text-dark dark:text-white">GA4測定IDを確認・変更</span>
                   <div className="mt-0.5 text-xs">
-                    インポートされた2つのタグ（GR - スクロール深度イベント、GR - CTAクリックイベント）をそれぞれ開き、測定IDの「G-XXXXXXXXXX」をサイトのGA4測定IDに変更
-                    {siteDetail?.ga4MeasurementId ? (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-body-color">このサイトの測定ID:</span>
-                        <code className="rounded bg-gray-100 px-2 py-0.5 font-mono text-sm font-semibold text-primary dark:bg-dark-3">{siteDetail.ga4MeasurementId}</code>
-                      </div>
-                    ) : (
-                      <span className="text-body-color"><br />※ 測定IDはGA4管理画面 → 管理 → データストリーム → ウェブ で確認できます（G-から始まるID）</span>
-                    )}
+                    テンプレートに測定IDが自動設定されていない場合は、インポート後にタグを開いて「G-XXXXXXXXXX」をサイトのGA4測定IDに変更してください。
+                    <span className="text-body-color"><br />※ 測定IDはGA4管理画面 → 管理 → データストリーム → ウェブ で確認できます</span>
                   </div>
                 </div>
               </li>
+              )}
               <li className="flex gap-3">
-                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">3</span>
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">{siteDetail?.ga4MeasurementId ? '2' : '3'}</span>
                 <div>
                   <span className="font-medium text-dark dark:text-white">トリガーを作成して紐づけ</span>
                   <div className="mt-1 text-xs">
@@ -556,7 +567,7 @@ export default function SiteDetail() {
                 </div>
               </li>
               <li className="flex gap-3">
-                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">4</span>
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">{siteDetail?.ga4MeasurementId ? '3' : '4'}</span>
                 <div>
                   <span className="font-medium text-dark dark:text-white">プレビュー＆公開</span>
                   <div className="mt-0.5 text-xs">GTMのプレビューモードで動作確認し、問題なければ公開してください。データは翌日からコンテンツ分析画面に反映されます。</div>
