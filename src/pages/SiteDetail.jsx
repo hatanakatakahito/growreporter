@@ -494,6 +494,69 @@ export default function SiteDetail() {
           )}
         </div>
 
+        {/* GTM連携（詳細スクロール深度+CTAクリック計測） */}
+        <div className="mt-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+          <h3 className="mb-2 text-lg font-semibold text-dark dark:text-white">
+            GTM連携（詳細行動分析）
+          </h3>
+          <p className="mb-4 text-xs text-body-color dark:text-dark-6">
+            Googleタグマネージャーにテンプレートをインポートすると、スクロール深度（25/50/75/100%）とCTAクリックの詳細データが取得でき、コンテンツ分析の精度が向上します。
+          </p>
+
+          <div className="mb-4 rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
+            <div className="mb-3 text-sm font-semibold text-dark dark:text-white">セットアップ手順</div>
+            <ol className="space-y-3 text-sm text-body-color dark:text-dark-6">
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
+                <div>
+                  <span className="font-medium text-dark dark:text-white">テンプレートをダウンロード</span>
+                  <div className="mt-1">
+                    <a
+                      href="/gtm/growreporter-gtm-template.json"
+                      download="growreporter-gtm-template.json"
+                      className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-opacity-90 transition"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                      GTMテンプレートをダウンロード
+                    </a>
+                  </div>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
+                <div>
+                  <span className="font-medium text-dark dark:text-white">GTMにインポート</span>
+                  <div className="mt-0.5 text-xs">GTM管理画面 → 管理 → コンテナをインポート → ダウンロードしたJSONを選択 → 「結合」を選択して送信</div>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">3</span>
+                <div>
+                  <span className="font-medium text-dark dark:text-white">GA4測定IDを設定</span>
+                  <div className="mt-0.5 text-xs">インポート後、変数「GR - GA4 Measurement ID」の値を「G-XXXXXXXXXX」からサイトのGA4測定IDに変更してください</div>
+                </div>
+              </li>
+              <li className="flex gap-3">
+                <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">4</span>
+                <div>
+                  <span className="font-medium text-dark dark:text-white">プレビュー＆公開</span>
+                  <div className="mt-0.5 text-xs">GTMのプレビューモードで動作確認し、問題なければ公開してください。データは翌日からコンテンツ分析画面に反映されます。</div>
+                </div>
+              </li>
+            </ol>
+          </div>
+
+          <div className="rounded-lg border border-blue-100 bg-blue-50 p-3 dark:border-blue-900/30 dark:bg-blue-900/10">
+            <div className="flex gap-2">
+              <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+              <div className="text-xs text-body-color dark:text-dark-6">
+                <span className="font-medium text-dark dark:text-white">GTM未設定でも利用可能です。</span>
+                GA4のデフォルトのスクロールイベント（90%到達）でコンテンツ分析は動作します。GTMを設定すると25/50/75/100%の詳細な深度とCTAクリックが追加で分析できるようになります。
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* サイト削除（最下部に控えめに配置） */}
         <div className="mt-16 flex justify-center pb-8">
           <button

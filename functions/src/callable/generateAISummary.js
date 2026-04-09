@@ -1519,6 +1519,7 @@ function formatRawDataToMetrics(rawData, pageType) {
         hasConversionDefinitions: rawData.hasConversionEvents || false,
         conversionEventNames: rawData.conversionEventNames || [],
         hasScrollData: Object.keys(scrollDataMap).length > 0,
+        hasGTMScrollData: rawData.gtmScrollData && Object.keys(rawData.gtmScrollData).length > 0,
         interestScoreStats: { avgScore, highScoreCount, lowScoreCount },
       };
     }

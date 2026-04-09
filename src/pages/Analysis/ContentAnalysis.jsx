@@ -22,18 +22,32 @@ import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * 興味度スコア計算
- * scrollデータあり: 4指標均等配分（各25%）
+ * GTMデータあり (V2): 5指標（ENG率20% + スクロール深度25% + 滞在時間20% + 非直帰率15% + CTAクリック率20%）
+ * scrollデータあり (V1): 4指標均等配分（各25%）
  * scrollデータなし: 3指標均等配分（各33.3%）
  */
-function calcInterestScore(engagementRate, scrollCount, pageViews, avgDuration, bounceRate) {
-  const hasScrollData = scrollCount !== undefined && scrollCount !== null;
+function calcInterestScore(engagementRate, scrollCount, pageViews, avgDuration, bounceRate, gtmScrollDepth, ctaClicks) {
   const engScore = engagementRate * 100;
   const durationScore = Math.min(avgDuration / 180, 1) * 100;
   const nonBounceScore = (1 - bounceRate) * 100;
+
+  // V2: GTMスクロール深度データがある場合
+  if (gtmScrollDepth && Object.keys(gtmScrollDepth).length > 0) {
+    const total = (gtmScrollDepth['25'] || 0) + (gtmScrollDepth['50'] || 0) + (gtmScrollDepth['75'] || 0) + (gtmScrollDepth['100'] || 0);
+    const maxPossible = pageViews * 4;
+    const scrollDepthScore = maxPossible > 0 ? (total / maxPossible) * 100 : 0;
+    const ctaRate = pageViews > 0 ? Math.min((ctaClicks || 0) / pageViews, 1) * 100 : 0;
+    return parseFloat((engScore * 0.20 + scrollDepthScore * 0.25 + durationScore * 0.20 + nonBounceScore * 0.15 + ctaRate * 0.20).toFixed(1));
+  }
+
+  // V1: GA4デフォルトscrollデータあり
+  const hasScrollData = scrollCount !== undefined && scrollCount !== null;
   if (hasScrollData) {
     const scrollRate = pageViews > 0 ? Math.min(scrollCount / pageViews, 1) : 0;
     return parseFloat((engScore * 0.25 + scrollRate * 100 * 0.25 + durationScore * 0.25 + nonBounceScore * 0.25).toFixed(1));
   }
+
+  // scrollデータなし
   return parseFloat((engScore / 3 + durationScore / 3 + nonBounceScore / 3).toFixed(1));
 }
 
@@ -102,6 +116,73 @@ export default function ContentAnalysis() {
     enabled: !!selectedSiteId && !!dateRange.from && !!dateRange.to,
     staleTime: 5 * 60 * 1000,
   });
+
+  // GTMカスタムイベント: gr_scroll_depth（25/50/75/100%の詳細スクロール深度）
+  const { data: gtmScrollData } = useQuery({
+    queryKey: ['ga4-gtm-scroll-depth', selectedSiteId, dateRange.from, dateRange.to, ga4DimensionFilter],
+    queryFn: async () => {
+      const fetchGA4 = httpsCallable(functions, 'fetchGA4Data');
+      const result = await fetchGA4({
+        siteId: selectedSiteId,
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+        metrics: ['eventCount'],
+        dimensions: ['pagePath', 'customEvent:scroll_percentage'],
+        dimensionFilter: ga4DimensionFilter
+          ? { andGroup: { expressions: [
+              { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'gr_scroll_depth' } } },
+              ga4DimensionFilter,
+            ] } }
+          : { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'gr_scroll_depth' } } },
+      });
+      // { [pagePath]: { 25: count, 50: count, 75: count, 100: count } }
+      const map = {};
+      (result.data?.rows || []).forEach(row => {
+        const path = row.pagePath;
+        const pct = row['customEvent:scroll_percentage'];
+        if (!map[path]) map[path] = {};
+        map[path][pct] = (map[path][pct] || 0) + (row.eventCount || 0);
+      });
+      return map;
+    },
+    enabled: !!selectedSiteId && !!dateRange.from && !!dateRange.to,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  // GTMカスタムイベント: gr_cta_click（CTAクリック）
+  const { data: gtmCtaData } = useQuery({
+    queryKey: ['ga4-gtm-cta-click', selectedSiteId, dateRange.from, dateRange.to, ga4DimensionFilter],
+    queryFn: async () => {
+      const fetchGA4 = httpsCallable(functions, 'fetchGA4Data');
+      const result = await fetchGA4({
+        siteId: selectedSiteId,
+        startDate: dateRange.from,
+        endDate: dateRange.to,
+        metrics: ['eventCount'],
+        dimensions: ['pagePath'],
+        dimensionFilter: ga4DimensionFilter
+          ? { andGroup: { expressions: [
+              { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'gr_cta_click' } } },
+              ga4DimensionFilter,
+            ] } }
+          : { filter: { fieldName: 'eventName', stringFilter: { matchType: 'EXACT', value: 'gr_cta_click' } } },
+      });
+      const map = {};
+      (result.data?.rows || []).forEach(row => {
+        map[row.pagePath] = (map[row.pagePath] || 0) + (row.eventCount || 0);
+      });
+      return map;
+    },
+    enabled: !!selectedSiteId && !!dateRange.from && !!dateRange.to,
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  // GTMデータの存在チェック
+  const hasGTMData = useMemo(() => {
+    return gtmScrollData && Object.keys(gtmScrollData).length > 0;
+  }, [gtmScrollData]);
 
   // 比較期間データ
   const { data: compPageData } = useGA4Data(
@@ -176,7 +257,12 @@ export default function ContentAnalysis() {
         const scrollCount = isScrollDataReliable ? scrollData?.[path] : undefined;
         const hasScroll = scrollCount !== undefined && scrollCount !== null;
         const scrollRate = hasScroll && pageViews > 0 ? Math.min(scrollCount / pageViews, 1) : null;
-        const interestScore = calcInterestScore(engRate, hasScroll ? scrollCount : undefined, pageViews, avgDur, bRate);
+        const gtmDepth = hasGTMData ? (gtmScrollData?.[path] || {}) : undefined;
+        const ctaClicks = hasGTMData ? (gtmCtaData?.[path] || 0) : undefined;
+        const interestScore = calcInterestScore(engRate, hasScroll ? scrollCount : undefined, pageViews, avgDur, bRate, gtmDepth, ctaClicks);
+
+        // CTAクリック率
+        const ctaRate = hasGTMData && pageViews > 0 ? ((ctaClicks || 0) / pageViews * 100) : null;
 
         return {
           path,
@@ -188,6 +274,12 @@ export default function ContentAnalysis() {
           engagementRate: (engRate * 100).toFixed(1),
           bounceRate: (bRate * 100).toFixed(1),
           avgDuration: avgDur,
+          ctaRate: ctaRate !== null ? ctaRate.toFixed(1) : null,
+          // GTMスクロール深度（25/50/75/100%到達率）
+          scrollDepth25: gtmDepth?.['25'] !== undefined && pageViews > 0 ? ((gtmDepth['25'] / pageViews) * 100).toFixed(1) : null,
+          scrollDepth50: gtmDepth?.['50'] !== undefined && pageViews > 0 ? ((gtmDepth['50'] / pageViews) * 100).toFixed(1) : null,
+          scrollDepth75: gtmDepth?.['75'] !== undefined && pageViews > 0 ? ((gtmDepth['75'] / pageViews) * 100).toFixed(1) : null,
+          scrollDepth100: gtmDepth?.['100'] !== undefined && pageViews > 0 ? ((gtmDepth['100'] / pageViews) * 100).toFixed(1) : null,
           scrollRate: scrollRate !== null ? (scrollRate * 100).toFixed(1) : null,
           interestScore,
         };
@@ -264,6 +356,17 @@ export default function ContentAnalysis() {
             </div>
           ) : (
             <>
+              {/* スコアモード表示 */}
+              {hasGTMData && (
+                <div className="mb-3 flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
+                    <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                    拡張スコア (GTM)
+                  </span>
+                  <span className="text-xs text-body-color">GTMのスクロール深度+CTAクリックデータを含む5指標で算出</span>
+                </div>
+              )}
+
               {/* データテーブル */}
               <DataTable
                 columns={[
@@ -364,6 +467,47 @@ export default function ContentAnalysis() {
                     defaultVisible: false,
                     comparison: true,
                   },
+                  ...(hasGTMData ? [
+                    {
+                      key: 'ctaRate',
+                      label: 'CTAクリック率',
+                      align: 'right',
+                      sortable: true,
+                      render: (value) => value !== null ? `${value}%` : <span className="text-body-color">-</span>,
+                    },
+                    {
+                      key: 'scrollDepth25',
+                      label: '25%到達率',
+                      align: 'right',
+                      sortable: true,
+                      defaultVisible: false,
+                      render: (value) => value !== null ? `${value}%` : <span className="text-body-color">-</span>,
+                    },
+                    {
+                      key: 'scrollDepth50',
+                      label: '50%到達率',
+                      align: 'right',
+                      sortable: true,
+                      defaultVisible: false,
+                      render: (value) => value !== null ? `${value}%` : <span className="text-body-color">-</span>,
+                    },
+                    {
+                      key: 'scrollDepth75',
+                      label: '75%到達率',
+                      align: 'right',
+                      sortable: true,
+                      defaultVisible: false,
+                      render: (value) => value !== null ? `${value}%` : <span className="text-body-color">-</span>,
+                    },
+                    {
+                      key: 'scrollDepth100',
+                      label: '100%到達率',
+                      align: 'right',
+                      sortable: true,
+                      defaultVisible: false,
+                      render: (value) => value !== null ? `${value}%` : <span className="text-body-color">-</span>,
+                    },
+                  ] : []),
                 ]}
                 tableKey="analysis-content"
                 data={mergedTableData}
@@ -392,7 +536,7 @@ export default function ContentAnalysis() {
                   !isLoading && pageData ? (
                     <AIAnalysisSection
                       pageType={PAGE_TYPES.CONTENT_ANALYSIS}
-                      rawData={{ ...pageData, scrollData: scrollData || {} }}
+                      rawData={{ ...pageData, scrollData: scrollData || {}, gtmScrollData: gtmScrollData || {}, gtmCtaData: gtmCtaData || {} }}
                       period={{
                         startDate: dateRange?.from,
                         endDate: dateRange?.to,
