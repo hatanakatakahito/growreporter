@@ -291,7 +291,7 @@ export default function ContentAnalysis() {
         };
       })
       .sort((a, b) => b.pageViews - a.pageViews);
-  }, [pageData, scrollData]);
+  }, [pageData, scrollData, isScrollDataReliable, hasGTMData, gtmScrollData, gtmCtaData]);
 
   // 比較データマージ
   const mergedTableData = useMemo(() => {

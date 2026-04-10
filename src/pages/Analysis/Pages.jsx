@@ -253,7 +253,7 @@ export default function Pages() {
         };
       })
       .sort((a, b) => b.pageViews - a.pageViews);
-  }, [pageData, conversionData, scrollData]);
+  }, [pageData, conversionData, scrollData, isScrollDataReliable]);
 
   const mergedTableData = useMemo(() => {
     if (!isComparing || !compPageData?.rows) return tableData;
@@ -286,7 +286,7 @@ export default function Pages() {
       };
     });
     return mergeComparisonRows(tableData, compTable, 'path', ['pageViews', 'sessions', 'users', 'newUsers', 'engagementRate', 'bounceRate', 'avgDuration', 'scrollRate', 'interestScore']);
-  }, [tableData, isComparing, compPageData, compScrollData]);
+  }, [tableData, isComparing, compPageData, compScrollData, isScrollDataReliable]);
 
   // グラフ用のデータ（上位10件）
   const chartData = [...tableData].slice(0, 10);
