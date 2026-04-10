@@ -130,6 +130,7 @@ function MobileDrawer({ isOpen, onClose }) {
     { label: '被リンク元', path: '/analysis/referrals', indent: 2 },
     { groupLabel: 'ページ' },
     { label: 'ページ別', path: '/analysis/pages', indent: 2 },
+    { label: 'コンテンツ分析', path: '/analysis/content', indent: 2 },
     { label: 'ページ分類別', path: '/analysis/page-categories', indent: 2 },
     { label: 'ランディングページ', path: '/analysis/landing-pages', indent: 2 },
     { groupLabel: 'コンバージョン' },
