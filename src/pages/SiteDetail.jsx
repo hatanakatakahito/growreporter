@@ -460,7 +460,7 @@ export default function SiteDetail() {
         </div>
 
         {/* AI改善提案 */}
-        <div className="mt-8 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+        <div className="mt-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
           <div className="flex items-center gap-2 mb-4">
             <Sparkles className="h-5 w-5 text-primary" />
             <h3 className="text-lg font-semibold text-dark dark:text-white">AI改善提案</h3>
@@ -576,7 +576,7 @@ export default function SiteDetail() {
         </div>
 
         {/* サイト削除（最下部に控えめに配置） */}
-        <div className="mt-16 flex justify-center pb-8">
+        <div className="mt-16 flex justify-start pb-8">
           <button
             onClick={() => setShowDeleteConfirm(true)}
             className="text-xs text-gray-400 hover:text-red-500 transition dark:text-dark-6"

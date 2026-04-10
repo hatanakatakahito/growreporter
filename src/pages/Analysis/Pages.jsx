@@ -576,7 +576,7 @@ export default function Pages() {
                       render: (value) => {
                         const v = parseFloat(value);
                         const color = v >= 70 ? 'text-primary' : v >= 40 ? 'text-dark dark:text-white' : 'text-body-color';
-                        return <span className={`font-semibold ${color}`}>{value}</span>;
+                        return <span className={`font-semibold ${color}`}>{v.toFixed(1)}</span>;
                       },
                     },
                     {

@@ -19,6 +19,7 @@ import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
+import { useSiteDetail } from '../../hooks/useSiteDetail';
 
 /**
  * 興味度スコア計算
@@ -58,7 +59,12 @@ function calcInterestScore(engagementRate, scrollCount, pageViews, avgDuration, 
 export default function ContentAnalysis() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  const { siteDetail } = useSiteDetail(selectedSiteId);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [isGTMBannerDismissed, setIsGTMBannerDismissed] = useState(() => {
+    try { return localStorage.getItem('gr_gtm_banner_dismissed') === 'true'; } catch { return false; }
+  });
+  const [isGTMModalOpen, setIsGTMModalOpen] = useState(false);
   const [dimensionFilters, setDimensionFilters] = useState({});
   const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
 
@@ -344,6 +350,35 @@ export default function ContentAnalysis() {
             </div>
           </div>
 
+          {/* GTM未設定バナー */}
+          {!hasGTMData && !isGTMBannerDismissed && !isLoading && tableData.length > 0 && (
+            <div className="mb-4 flex items-start gap-3 rounded-lg border border-indigo-200 bg-gradient-to-r from-indigo-50 to-purple-50 p-4 relative dark:border-indigo-900/30 dark:from-indigo-900/10 dark:to-purple-900/10">
+              <div className="flex-1">
+                <div className="text-sm font-bold text-dark dark:text-white mb-1">より詳細なコンテンツ分析が可能です</div>
+                <div className="text-xs text-body-color dark:text-dark-6 leading-relaxed">
+                  GTMテンプレートを導入すると、スクロール深度（25/50/75/100%）とCTAクリック率の詳細データが取得でき、興味度スコアの精度が向上します。
+                </div>
+                <div className="mt-2">
+                  <button
+                    onClick={() => setIsGTMModalOpen(true)}
+                    className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:bg-opacity-90 transition"
+                  >
+                    サイト設定で導入する →
+                  </button>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsGTMBannerDismissed(true);
+                  try { localStorage.setItem('gr_gtm_banner_dismissed', 'true'); } catch {}
+                }}
+                className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              >
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              </button>
+            </div>
+          )}
+
           {isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />
           ) : isError ? (
@@ -407,7 +442,7 @@ export default function ContentAnalysis() {
                     render: (value) => {
                       const v = parseFloat(value);
                       const color = v >= 70 ? 'text-primary' : v >= 40 ? 'text-dark dark:text-white' : 'text-body-color';
-                      return <span className={`font-semibold ${color}`}>{value}</span>;
+                      return <span className={`font-semibold ${color}`}>{v.toFixed(1)}</span>;
                     },
                   },
                   {
@@ -516,6 +551,7 @@ export default function ContentAnalysis() {
                 emptyMessage="表示するデータがありません。"
                 showTotals
               />
+
             </>
           )}
 
@@ -570,6 +606,88 @@ export default function ContentAnalysis() {
             onClose={() => setIsLimitModalOpen(false)}
             type="summary"
           />
+        )}
+
+        {/* GTMセットアップモーダル */}
+        {isGTMModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" onClick={() => setIsGTMModalOpen(false)}>
+            <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl dark:bg-dark-2" onClick={e => e.stopPropagation()}>
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-lg font-bold text-dark dark:text-white">GTM連携（詳細行動分析）</h3>
+                <button onClick={() => setIsGTMModalOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
+              <p className="mb-4 text-xs text-body-color dark:text-dark-6">
+                Googleタグマネージャーにテンプレートをインポートすると、スクロール深度（25/50/75/100%）とCTAクリックの詳細データが取得でき、コンテンツ分析の精度が向上します。
+              </p>
+              <div className="rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
+                <div className="mb-3 text-sm font-semibold text-dark dark:text-white">セットアップ手順</div>
+                <ol className="space-y-3 text-sm text-body-color dark:text-dark-6">
+                  <li className="flex gap-3">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">1</span>
+                    <div>
+                      <span className="font-medium text-dark dark:text-white">テンプレートをダウンロード＆インポート</span>
+                      <div className="mt-1 mb-2">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/gtm/growreporter-gtm-template.json');
+                              const template = await res.json();
+                              const mid = siteDetail?.ga4MeasurementId || 'G-XXXXXXXXXX';
+                              const json = JSON.stringify(template, null, 4).replace(/G-XXXXXXXXXX/g, mid);
+                              const blob = new Blob([json], { type: 'application/json' });
+                              const url = URL.createObjectURL(blob);
+                              const a = document.createElement('a');
+                              a.href = url;
+                              a.download = `growreporter-gtm-${mid}.json`;
+                              a.click();
+                              URL.revokeObjectURL(url);
+                            } catch (err) {
+                              console.error('GTMテンプレートDLエラー:', err);
+                            }
+                          }}
+                          className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-opacity-90 transition"
+                        >
+                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          GTMテンプレートをダウンロード
+                        </button>
+                      </div>
+                      <div className="text-xs">GTM管理画面 → 管理 → コンテナをインポート → <strong className="text-dark dark:text-white">必ず「統合」を選択</strong>して送信</div>
+                    </div>
+                  </li>
+                  {!siteDetail?.ga4MeasurementId && (
+                  <li className="flex gap-3">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">2</span>
+                    <div>
+                      <span className="font-medium text-dark dark:text-white">GA4測定IDを変更</span>
+                      <div className="mt-0.5 text-xs">
+                        インポート後、タグ「GR - スクロール深度イベント」と「GR - CTAクリックイベント」を開き、測定IDの「G-XXXXXXXXXX」をサイトのGA4測定IDに変更してください。
+                        <span className="text-body-color"><br />※ 測定IDはGA4管理画面 → 管理 → データストリーム → ウェブ で確認できます</span>
+                      </div>
+                    </div>
+                  </li>
+                  )}
+                  <li className="flex gap-3">
+                    <span className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">{siteDetail?.ga4MeasurementId ? '2' : '3'}</span>
+                    <div>
+                      <span className="font-medium text-dark dark:text-white">プレビュー＆公開</span>
+                      <div className="mt-0.5 text-xs">GTMのプレビューモードで動作確認し、問題なければ公開してください。データは翌日からコンテンツ分析画面に反映されます。</div>
+                    </div>
+                  </li>
+                </ol>
+              </div>
+              <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 p-2.5 dark:border-blue-900/30 dark:bg-blue-900/10">
+                <div className="flex gap-2">
+                  <svg className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                  <div className="text-xs text-body-color dark:text-dark-6">
+                    <span className="font-medium text-dark dark:text-white">GTM未設定でも利用可能です。</span>
+                    GA4のデフォルトのスクロールイベント（90%到達）でコンテンツ分析は動作します。
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
       </main>
     </div>

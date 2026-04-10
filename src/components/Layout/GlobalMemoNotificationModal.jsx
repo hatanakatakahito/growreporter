@@ -113,7 +113,7 @@ export default function GlobalMemoNotificationModal({
   const hasItems = displayMemos.length > 0 || displayAlerts.length > 0;
 
   return (
-    <Dialog open={isOpen} onClose={onClose} size="md">
+    <Dialog open={isOpen} onClose={onClose} size="xl">
       <div className="flex items-center justify-between">
         <DialogTitle className="!mb-0">通知</DialogTitle>
         <button onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-lg text-body-color hover:bg-gray-100 dark:hover:bg-dark-3 -mr-2 -mt-2">
@@ -289,8 +289,7 @@ export default function GlobalMemoNotificationModal({
         )}
       </DialogBody>
 
-      <DialogActions>
-        <Button plain onClick={onClose}>閉じる</Button>
+      <DialogActions className="!justify-center">
         {totalCount > 0 && (
           <Button color="blue" onClick={handleMarkAllAsRead}>
             すべて既読にする
