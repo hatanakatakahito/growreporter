@@ -156,7 +156,7 @@ function MobileDrawer({ isOpen, onClose }) {
       )}
 
       {/* ドロワー */}
-      <div className={`fixed left-0 top-0 z-[9999] h-screen w-72 bg-white dark:bg-dark-2 shadow-2xl transform transition-transform duration-300 md:hidden flex flex-col ${
+      <div style={{ height: '100dvh' }} className={`fixed left-0 top-0 z-[9999] w-72 bg-white dark:bg-dark-2 shadow-2xl transform transition-transform duration-300 md:hidden flex flex-col ${
         isOpen ? 'translate-x-0' : '-translate-x-full'
       }`}>
         {/* ドロワーヘッダー */}
@@ -168,7 +168,7 @@ function MobileDrawer({ isOpen, onClose }) {
         </div>
 
         {/* メニュー */}
-        <nav className="flex-1 overflow-y-auto py-2">
+        <nav className="flex-1 overflow-y-auto py-2 pb-[env(safe-area-inset-bottom,16px)]">
           {menuItems.map((item, i) => {
             if (item.groupLabel) {
               return (
