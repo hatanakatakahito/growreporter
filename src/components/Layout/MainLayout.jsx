@@ -241,7 +241,7 @@ export default function MainLayout() {
   }
 
   return (
-    <div className="relative flex h-screen overflow-hidden bg-[#f0f2f8]">
+    <div className="relative flex overflow-hidden bg-[#f0f2f8]" style={{ height: '100dvh' }}>
       {/* アンビエントグラデーション背景 */}
       <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <div className="absolute -top-40 right-20 h-[500px] w-[500px] rounded-full bg-indigo-200/40 blur-[100px]" />
