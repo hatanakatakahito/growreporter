@@ -255,7 +255,7 @@ export default function MainLayout() {
       {/* メインコンテンツエリア */}
       <div className={`main-content flex min-w-0 flex-1 flex-col overflow-y-auto overflow-x-hidden transition-[margin-left] duration-300 ${
         isSidebarOpen ? 'ml-0 md:ml-64' : 'ml-0 md:ml-16'
-      }`}>
+      }`} style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}>
         {/* スマホ: モバイルヘッダー */}
         <MobileHeader
           isMenuOpen={isMobileMenuOpen}
