@@ -23,6 +23,7 @@ class StepErrorBoundary extends Component {
 import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useSite } from '../../../contexts/SiteContext';
+import { useAdmin } from '../../../hooks/useAdmin';
 import { db, functions } from '../../../config/firebase';
 import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
@@ -45,6 +46,7 @@ export default function SiteRegistration({ mode = 'new' }) {
   const { siteId: siteIdFromParams } = useParams();
   const { currentUser, userProfile } = useAuth();
   const { maxSites, allSites, isLoading: isSiteLoading } = useSite();
+  const { isAdmin, loading: isAdminLoading } = useAdmin();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const stepParam = parseInt(searchParams.get('step')) || 1;
@@ -106,15 +108,16 @@ export default function SiteRegistration({ mode = 'new' }) {
     setupCompleted: false,
   });
 
-  // 新規作成時のサイト上限チェック（読み込み完了後のみ判定）
+  // 新規作成時のサイト上限チェック（読み込み完了後のみ判定／運営側管理者は無制限）
   useEffect(() => {
-    if (mode !== 'new' || isSiteLoading) return;
+    if (mode !== 'new' || isSiteLoading || isAdminLoading) return;
+    if (isAdmin) return;
     // setupCompleted === true のサイトだけカウント（登録途中は除外）
     const completedSites = allSites.filter(s => s.setupCompleted === true);
     if (completedSites.length >= maxSites) {
       setIsUpgradeModalOpen(true);
     }
-  }, [mode, allSites, maxSites, isSiteLoading]);
+  }, [mode, allSites, maxSites, isSiteLoading, isAdmin, isAdminLoading]);
 
   // URLパラメータの変更を監視
   useEffect(() => {
@@ -594,6 +597,7 @@ export default function SiteRegistration({ mode = 'new' }) {
         onClose={() => {
           setIsUpgradeModalOpen(false);
           // モーダルを閉じたらサイト一覧に戻す
+          if (isAdmin) return;
           const completedSites = allSites.filter(s => s.setupCompleted === true);
           if (mode === 'new' && completedSites.length >= maxSites) {
             navigate('/sites/list');
