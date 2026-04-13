@@ -1,0 +1,69 @@
+PPTX DESIGN SYSTEM SPECIFICATIONS
+File: c-slide_営業資料テンプレート.pptx
+
+1. COLOR PALETTE
+════════════════════════════════════
+  Primary Brand (Accent 1)     #4472C4 | RGB(68, 114, 196)
+  Secondary (Accent 2)         #ED7D31 | RGB(237, 125, 49)
+  Accent 3                     #A5A5A5 | RGB(165, 165, 165)
+  Accent 4                     #FFC000 | RGB(255, 192, 0)
+  Accent 5                     #5B9BD5 | RGB(91, 155, 213)
+  Accent 6                     #70AD47 | RGB(112, 173, 71)
+  Dark Text (Dark 2)           #44546A | RGB(68, 84, 106)
+  Light Bg (Light 2)           #E7E6E6 | RGB(231, 230, 230)
+  Hyperlink                    #0563C1 | RGB(5, 99, 193)
+  Followed Hyperlink           #954F72 | RGB(149, 79, 114)
+
+2. TYPOGRAPHY
+════════════════════════════════════
+  Heading Font:  游ゴシック Light (Yu Gothic Light)
+  Body Font:     游ゴシック (Yu Gothic)
+  Secondary:     Futura Medium, Century Gothic
+
+3. COMMON FONT SIZES
+════════════════════════════════════
+  Title Slides:        32pt (bold)
+  Slide Numbers:       16pt
+  Content Headings:    14-16pt (bold)
+  Body Content:        12-14pt
+  Small/Footer Text:   10pt
+
+4. SHAPE & DESIGN PATTERNS
+════════════════════════════════════
+  Rounded Rectangles:  Content pills, feature boxes
+  Regular Rectangles:  Text containers, backgrounds
+  Pentagon Shapes:     Comparison/matrix elements
+
+5. SLIDE SPECIFICATIONS (Sample Slides)
+════════════════════════════════════
+
+SLIDE 1:
+  Shapes: 2
+  - "〇〇における"
+  - "“"
+  - "サービス名"
+
+SLIDE 4:
+  Shapes: 13
+  - "〇〇業務における課題"
+  - "© 2022 CONE inc."
+  - "4"
+
+SLIDE 5:
+  Shapes: 10
+  - "〇〇サービスの紹介"
+  - "〇〇〇〇によってコスト削減を行い、〇〇〇〇との相乗効果により生産性を向上。"
+  - "さらに、〇〇〇〇により受注率まで向上させ、売上の最大化を図ります。"
+
+SLIDE 9:
+  Shapes: 46
+  - "競合カテゴリ"
+  - "競合カテゴリ"
+  - "自社サービス名"
+
+SLIDE 12:
+  Shapes: 5
+  - "料金"
+  - "© 2022 CONE inc."
+  - "12"
+

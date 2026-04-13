@@ -435,7 +435,11 @@ function createDataSheet(headers, rows, colWidths, aiData, memos) {
     const { values: totalVals, styles: totalStyles } = computeTotalsRow(headers, rows);
     for (let C = 0; C < headers.length; C++) {
       const addr = XLSX.utils.encode_cell({ r: nextRow, c: C });
-      ws[addr] = { v: totalVals[C], s: totalStyles[C] };
+      const v = totalVals[C];
+      const cell = { v, s: totalStyles[C] };
+      if (typeof v === 'number') cell.t = 'n';
+      else if (typeof v === 'string') cell.t = 's';
+      ws[addr] = cell;
     }
     ws['!rows'][nextRow] = { hpt: 24 };
     // 範囲を拡張

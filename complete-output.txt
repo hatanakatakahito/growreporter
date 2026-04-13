@@ -1,0 +1,228 @@
+=== DESIGN SYSTEM - COMPLETE ANALYSIS ===
+
+1. THEME COLORS
+──────────────────────────────────────
+  Dark 2               #44546A
+  Light 2              #E7E6E6
+  Accent 1             #4472C4
+  Accent 2             #ED7D31
+  Accent 3             #A5A5A5
+  Accent 4             #FFC000
+  Accent 5             #5B9BD5
+  Accent 6             #70AD47
+  Hyperlink            #0563C1
+  Followed Hyperlink   #954F72
+
+2. THEME FONTS
+──────────────────────────────────────
+  Heading Font (Major):  游ゴシック Light
+  Body Font (Minor):     游ゴシック
+
+3. SLIDE-BY-SLIDE DESIGN SPECS
+──────────────────────────────────────
+
+SLIDE 1
+──────────────────────────────────────────────────
+Total Shapes: 2
+
+  Shape 1: (unnamed)
+    Type: rect
+    Fill: tx1 (scheme)
+    Text: "〇〇における“サービス名”のご提案"
+    Font: Century Gothic
+    Size: 32pt
+    Bold: yes
+    Text Color: tx1
+
+  Shape 2: (unnamed)
+    Type: rect
+    Fill: tx1 (scheme)
+    Text: "〇〇株式会社 〇〇さま 202X. XX.XX"
+    Font: Century Gothic
+    Size: 16pt
+    Bold: yes
+    Text Color: tx1
+
+SLIDE 4
+──────────────────────────────────────────────────
+Total Shapes: 8
+
+  Shape 1: (unnamed)
+    Text: "〇〇業務における課題"
+
+  Shape 2: (unnamed)
+    Text: "© 2022 CONE inc."
+
+  Shape 3: (unnamed)
+    Text: "4"
+
+  Shape 4: (unnamed)
+    Text: "解決しようとしている課題、業務担当者が直面している課題を挙げる。ここではより具体的に「どんな課題」「どんな状況」などを説"
+
+  Shape 5: (unnamed)
+    Type: roundRect
+    Fill: bg1 (scheme)
+    Text: "〇〇によって各人に任せきりで生産性が悪い"
+    Font: FUTURA MEDIUM
+    Size: 16pt
+    Bold: yes
+    Text Color: tx1
+
+  Shape 6: (unnamed)
+    Type: roundRect
+    Fill: bg1 (scheme)
+    Text: "〇〇によってコストがかかってしまっている"
+    Font: FUTURA MEDIUM
+    Size: 16pt
+    Bold: yes
+    Text Color: tx1
+
+  Shape 7: (unnamed)
+    Type: roundRect
+    Fill: bg1 (scheme)
+    Text: "〇〇によって受注率が低くなっている"
+    Font: FUTURA MEDIUM
+    Size: 16pt
+    Bold: yes
+    Text Color: tx1
+
+  Shape 8: (unnamed)
+    Type: roundRect
+    Fill: tx1 (scheme)
+    Border: 2pt
+    Text: "上記課題の詳細説明を記載"
+    Font: FUTURA MEDIUM
+    Size: 14pt
+    Bold: yes
+    Text Color: tx1
+
+SLIDE 5
+──────────────────────────────────────────────────
+Total Shapes: 8
+
+  Shape 1: (unnamed)
+    Text: "〇〇サービスの紹介"
+
+  Shape 2: (unnamed)
+    Text: "〇〇〇〇によってコスト削減を行い、〇〇〇〇との相乗効果により生産性を向上。さらに、〇〇〇〇により受注率まで向上させ、売上"
+
+  Shape 3: (unnamed)
+    Text: "© 2022 CONE inc."
+
+  Shape 4: (unnamed)
+    Text: "5"
+
+  Shape 5: (unnamed)
+    Type: roundRect
+    Fill: bg1 (scheme)
+    Text: "〇〇〇〇によるコスト削減"
+    Font: FUTURA MEDIUM
+    Size: 14pt
+    Bold: yes
+    Text Color: tx1
+
+  Shape 6: (unnamed)
+    Type: roundRect
+    Fill: tx1 (scheme)
+    Border: 2pt
+    Text: "上記、サービスの特徴の詳細の説明をここに記載する。商談で説明する補足説明を簡単に示す。"
+    Font: FUTURA MEDIUM
+    Size: 12pt
+    Bold: yes
+    Text Color: tx1
+
+  Shape 7: (unnamed)
+    Type: roundRect
+    Fill: bg1 (scheme)
+    Text: "〇〇〇〇による生産性向上"
+    Font: FUTURA MEDIUM
+    Size: 14pt
+    Bold: yes
+    Text Color: tx1
+
+  Shape 8: (unnamed)
+    Type: roundRect
+    Fill: bg1 (scheme)
+    Text: "〇〇〇〇による受注率向上"
+    Font: FUTURA MEDIUM
+    Size: 14pt
+    Bold: yes
+    Text Color: tx1
+
+SLIDE 9
+──────────────────────────────────────────────────
+Total Shapes: 8
+
+  Shape 1: (unnamed)
+    Type: roundRect
+    Fill: bg1 (scheme)
+    Text: "競合カテゴリ"
+    Font: FUTURA MEDIUM
+    Size: 12pt
+    Bold: yes
+    Text Color: tx1
+
+  Shape 2: (unnamed)
+    Type: pentagon
+    Fill: bg1 (scheme)
+    Font: FUTURA MEDIUM
+    Bold: yes
+
+  Shape 3: (unnamed)
+    Type: roundRect
+    Fill: bg1 (scheme)
+    Text: "競合カテゴリ"
+    Font: FUTURA MEDIUM
+    Size: 12pt
+    Bold: yes
+    Text Color: tx1
+
+  Shape 4: (unnamed)
+    Type: pentagon
+    Fill: bg1 (scheme)
+    Font: FUTURA MEDIUM
+    Bold: yes
+
+  Shape 5: (unnamed)
+    Type: roundRect
+    Fill: bg1 (scheme)
+    Text: "自社サービス名"
+    Font: FUTURA MEDIUM
+    Size: 14pt
+    Bold: yes
+    Text Color: #1A96F0
+
+  Shape 6: (unnamed)
+    Text: "競合比較"
+
+  Shape 7: (unnamed)
+    Text: "© 2022 CONE inc."
+
+  Shape 8: (unnamed)
+    Text: "9"
+
+SLIDE 12
+──────────────────────────────────────────────────
+Total Shapes: 5
+
+  Shape 1: (unnamed)
+    Text: "料金"
+
+  Shape 2: (unnamed)
+    Text: "© 2022 CONE inc."
+
+  Shape 3: (unnamed)
+    Text: "12"
+
+  Shape 4: (unnamed)
+    Text: "支援する内容によって、契約期間と料金が変わります。基本的には3ヶ月単位でのご契約となっておりますが、ニーズに合わせて対応"
+
+  Shape 5: (unnamed)
+    Type: rect
+    Fill: tx1 (scheme)
+    Text: "12"
+    Font: Futura Medium
+    Size: 10pt
+
+
+=== END OF ANALYSIS ===
