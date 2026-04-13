@@ -741,9 +741,9 @@ function createUsersSheet(demographics, aiData, memos) {
     row++;
 
     for (const item of section.data) {
-      ws[XLSX.utils.encode_cell({ r: row, c: 0 })] = { v: item.name || '', s: DATA_CELL_STYLE };
-      ws[XLSX.utils.encode_cell({ r: row, c: 1 })] = { v: fmtNum(item.value), s: NUMBER_CELL_STYLE };
-      ws[XLSX.utils.encode_cell({ r: row, c: 2 })] = { v: item.percentage != null ? `${Number(item.percentage).toFixed(1)}%` : '-', s: NUMBER_CELL_STYLE };
+      ws[XLSX.utils.encode_cell({ r: row, c: 0 })] = { v: item.name || '', t: 's', s: DATA_CELL_STYLE };
+      ws[XLSX.utils.encode_cell({ r: row, c: 1 })] = { v: fmtNum(item.value), t: 'n', s: NUMBER_CELL_STYLE };
+      ws[XLSX.utils.encode_cell({ r: row, c: 2 })] = { v: item.percentage != null ? `${Number(item.percentage).toFixed(1)}%` : '-', t: 's', s: NUMBER_CELL_STYLE };
       ws['!rows'][row] = { hpt: 22 };
       row++;
     }
