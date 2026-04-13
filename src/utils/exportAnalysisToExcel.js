@@ -59,6 +59,27 @@ const MEMO_CONTENT_STYLE = {
   alignment: { vertical: 'top', horizontal: 'left', wrapText: true },
 };
 
+/** 合計/平均行（薄いグレー背景・太字） */
+const TOTAL_LABEL_STYLE = {
+  fill: { fgColor: { rgb: 'E7E6E6' } },
+  font: { ...FONT_BASE, bold: true, color: { rgb: '000000' } },
+  alignment: { horizontal: 'left', vertical: 'center' },
+  border: thinBorder(),
+};
+const TOTAL_NUMBER_STYLE = {
+  fill: { fgColor: { rgb: 'E7E6E6' } },
+  font: { ...FONT_BASE, bold: true, color: { rgb: '000000' } },
+  alignment: { horizontal: 'right', vertical: 'center' },
+  border: thinBorder(),
+  numFmt: '#,##0',
+};
+const TOTAL_TEXT_STYLE = {
+  fill: { fgColor: { rgb: 'E7E6E6' } },
+  font: { ...FONT_BASE, bold: true, color: { rgb: '000000' } },
+  alignment: { horizontal: 'right', vertical: 'center' },
+  border: thinBorder(),
+};
+
 /** 比較ヘッダー（オレンジ背景） */
 const COMP_HEADER_STYLE = {
   fill: { fgColor: { rgb: 'F59E0B' } },
@@ -303,6 +324,76 @@ function appendAIAndMemoSections(ws, startRow, numCols, colWidths, aiData, memos
   return row;
 }
 
+// ─── 合計/平均行の計算 ─────────────────────────────────────
+/**
+ * 各列の値を走査して合計または平均を算出する。
+ * - 数値列 → 合計（SUM）
+ * - "X.XX%" 文字列列 → 平均（AVG）
+ * - "X秒" 文字列列 → 平均秒数
+ * - "変化率"/"前期"を含むヘッダー、"-"のみの列 → 空欄
+ * 戻り値: { values: [...], styles: [...] }
+ */
+function computeTotalsRow(headers, rows) {
+  const numCols = headers.length;
+  const values = new Array(numCols).fill('');
+  const styles = new Array(numCols).fill(TOTAL_TEXT_STYLE);
+
+  // 1列目: ラベル
+  values[0] = '合計 / 平均';
+  styles[0] = TOTAL_LABEL_STYLE;
+
+  if (!rows || rows.length === 0) {
+    return { values, styles };
+  }
+
+  const pctRe = /^(-?\d+(?:\.\d+)?)%$/;
+  const secRe = /^(\d+(?:\.\d+)?)秒$/;
+
+  for (let c = 1; c < numCols; c++) {
+    const header = String(headers[c] || '');
+    // 変化率列はスキップ（意味のある集計ができない）
+    if (header.includes('変化率')) continue;
+
+    const colVals = rows.map(r => r[c]).filter(v => v !== null && v !== undefined && v !== '' && v !== '-');
+    if (colVals.length === 0) continue;
+
+    // 全て数値 → 合計
+    if (colVals.every(v => typeof v === 'number' && !isNaN(v))) {
+      const sum = colVals.reduce((a, b) => a + b, 0);
+      values[c] = sum;
+      styles[c] = TOTAL_NUMBER_STYLE;
+      continue;
+    }
+
+    // 全てパーセンテージ文字列 → 平均
+    if (colVals.every(v => typeof v === 'string' && pctRe.test(v))) {
+      const nums = colVals.map(v => parseFloat(v.match(pctRe)[1]));
+      const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+      values[c] = `${avg.toFixed(2)}%`;
+      styles[c] = TOTAL_TEXT_STYLE;
+      continue;
+    }
+
+    // 全て秒数文字列 → 平均
+    if (colVals.every(v => typeof v === 'string' && secRe.test(v))) {
+      const nums = colVals.map(v => parseFloat(v.match(secRe)[1]));
+      const avg = nums.reduce((a, b) => a + b, 0) / nums.length;
+      values[c] = `${Math.round(avg)}秒`;
+      styles[c] = TOTAL_TEXT_STYLE;
+      continue;
+    }
+
+    // 数値混在（一部が "-" 等）→ 数値のみで合計を試みる
+    const nums = colVals.filter(v => typeof v === 'number' && !isNaN(v));
+    if (nums.length > 0 && nums.length === colVals.length) {
+      values[c] = nums.reduce((a, b) => a + b, 0);
+      styles[c] = TOTAL_NUMBER_STYLE;
+    }
+  }
+
+  return { values, styles };
+}
+
 // ─── シート作成ヘルパー ─────────────────────────────────────
 function createDataSheet(headers, rows, colWidths, aiData, memos) {
   const data = [headers, ...rows];
@@ -338,8 +429,23 @@ function createDataSheet(headers, rows, colWidths, aiData, memos) {
     ws['!rows'][R] = { hpt: calcRowHeight(ws, R, colWidths) };
   }
 
+  // 合計/平均行を追記（データ行が1行以上ある場合のみ）
+  let nextRow = range.e.r + 1;
+  if (rows && rows.length > 0) {
+    const { values: totalVals, styles: totalStyles } = computeTotalsRow(headers, rows);
+    for (let C = 0; C < headers.length; C++) {
+      const addr = XLSX.utils.encode_cell({ r: nextRow, c: C });
+      ws[addr] = { v: totalVals[C], s: totalStyles[C] };
+    }
+    ws['!rows'][nextRow] = { hpt: 24 };
+    // 範囲を拡張
+    range.e.r = nextRow;
+    ws['!ref'] = XLSX.utils.encode_range(range);
+    nextRow++;
+  }
+
   // AI分析 + メモ追記
-  appendAIAndMemoSections(ws, range.e.r + 1, headers.length, colWidths, aiData, memos);
+  appendAIAndMemoSections(ws, nextRow, headers.length, colWidths, aiData, memos);
 
   return ws;
 }
