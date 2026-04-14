@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { Dialog } from '../ui/dialog';
 import ChecklistBody from './ChecklistBody';
 import { useOnboarding } from '../../hooks/useOnboarding';
+import './driverTheme.css';
 
 /**
  * 初回モーダル（操作方法のガイド）
@@ -53,7 +54,10 @@ export default function OnboardingModal({ open, onClose, onStart }) {
         </button>
       </div>
 
-      <div className="py-5 max-h-[60vh] overflow-y-auto">
+      <div
+        className="py-5 max-h-[60vh] overflow-y-auto scrollbar-hide"
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+      >
         <ChecklistBody />
       </div>
 
