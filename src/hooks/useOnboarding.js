@@ -126,12 +126,20 @@ export function useOnboarding() {
   }, [updateOnboarding]);
 
   const restart = useCallback(async () => {
+    // 既に登録済みのサイトは自動完了のため siteRegistered は保持
+    const defaults = getDefaultOnboarding();
+    const resetSteps = {
+      ...defaults.steps,
+      siteRegistered: steps.siteRegistered === true,
+    };
     await updateOnboarding({
       'onboarding.dismissed': false,
-      'onboarding.seenTours': getDefaultOnboarding().seenTours,
+      'onboarding.steps': resetSteps,
+      'onboarding.seenTours': defaults.seenTours,
       'onboarding.tourVersion': TOUR_TARGET_VERSION,
+      'onboarding.completedAt': null,
     });
-  }, [updateOnboarding]);
+  }, [updateOnboarding, steps]);
 
   return {
     isVisible,
