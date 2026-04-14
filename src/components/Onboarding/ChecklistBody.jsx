@@ -14,10 +14,11 @@ import { useOnboarding } from '../../hooks/useOnboarding';
  * - カテゴリグルーピング
  * - ステップ番号 / 所要時間 / サブ説明 / 「次におすすめ」バッジ
  * - 項目ホバーで対応する Sidebar メニューを一時ハイライト
+ * @param {function} onBeforeNavigate - 項目クリック時、画面遷移前に呼ばれる（モーダルを閉じる用）
  */
-export default function ChecklistBody() {
+export default function ChecklistBody({ onBeforeNavigate }) {
   const navigate = useNavigate();
-  const { steps, requiredStepKeys, progress, isDesktop, markStep } = useOnboarding();
+  const { steps, requiredStepKeys, progress, isDesktop } = useOnboarding();
 
   // 表示対象のステップ配列（カテゴリ順）
   const orderedItems = useMemo(() => {
@@ -69,15 +70,19 @@ export default function ChecklistBody() {
   };
 
   const handleItemClick = (item) => {
+    // siteRegistered は自動完了専用、クリックしても何もしない
+    if (!item.to) return;
     // Sidebar ハイライトを外す
     handleItemHover(item.sidebarNavId, false);
+    // モーダルを閉じる（親から渡された場合）
+    if (onBeforeNavigate) onBeforeNavigate();
+    // 該当ページに対応するツアーID（あれば）をリセットして毎回見られるように
+    // seenTours クリア処理はカスタムイベント経由で MainLayout に委譲
+    window.dispatchEvent(
+      new CustomEvent('onboarding:force-tour', { detail: { stepKey: item.key } })
+    );
     // 遷移
-    if (item.to) navigate(item.to);
-    // 訪問で markStep（遷移先ページでも呼ぶが保険で即時マーク）
-    if (!item.done) {
-      // 自動完了系（siteRegistered）以外
-      if (item.to) markStep(item.key);
-    }
+    navigate(item.to);
   };
 
   return (

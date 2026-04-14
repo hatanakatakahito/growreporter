@@ -244,7 +244,7 @@ export default function MainLayout() {
   // 操作方法のガイド（オンボーディング）
   const { isVisible: isOnboardingVisible, isFirstVisit, isAdmin } = useOnboarding();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [dashboardTourEnabled, setDashboardTourEnabled] = useState(false); // 「はじめる」押下時のみ true
+  const [forcedTourId, setForcedTourId] = useState(null); // 項目クリックで強制起動したいツアーID
 
   // Dashboard 初訪問時にモーダルを自動表示（SiteSelectionModal が出ている間は待つ）
   useEffect(() => {
@@ -268,6 +268,34 @@ export default function MainLayout() {
     window.addEventListener('onboarding:open-modal', handleOpenRequest);
     return () => window.removeEventListener('onboarding:open-modal', handleOpenRequest);
   }, [isAdmin]);
+
+  // チェックリスト項目クリック時のツアー強制起動要求を購読
+  useEffect(() => {
+    const handleForceTour = (e) => {
+      const stepKey = e?.detail?.stepKey;
+      if (!stepKey) return;
+      // stepKey → tourId マッピング
+      const stepToTourId = {
+        dashboardViewed: 'dashboard',
+        analysisViewed: 'analysisDay',
+        aiTried: 'analysisSummary',
+        exported: 'analysisDay',
+        memberInvited: 'members',
+        notificationsConfigured: 'accountSettings',
+      };
+      const tid = stepToTourId[stepKey];
+      if (tid) setForcedTourId(tid);
+    };
+    window.addEventListener('onboarding:force-tour', handleForceTour);
+    return () => window.removeEventListener('onboarding:force-tour', handleForceTour);
+  }, []);
+
+  // ルート変更時に forcedTourId をクリア（一度使ったら破棄）
+  useEffect(() => {
+    if (!forcedTourId) return;
+    const timer = setTimeout(() => setForcedTourId(null), 2000);
+    return () => clearTimeout(timer);
+  }, [forcedTourId, location.pathname]);
 
   // 現在ルートに対応する tourId
   const tourId = getTourIdFromPath(location.pathname);
@@ -316,14 +344,13 @@ export default function MainLayout() {
       <OnboardingModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        onStart={() => setDashboardTourEnabled(true)}
       />
 
       {/* 操作方法のガイド: 各画面ミニツアー */}
       {isOnboardingVisible && !isModalOpen && tourId && (
         <OnboardingTour
           tourId={tourId}
-          autoStart={tourId !== 'dashboard' || dashboardTourEnabled || !isFirstVisit}
+          forceStart={forcedTourId === tourId}
         />
       )}
     </div>

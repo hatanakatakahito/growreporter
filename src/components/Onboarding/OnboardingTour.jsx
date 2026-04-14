@@ -13,17 +13,19 @@ import { TOUR_STEPS_BY_ID, TOUR_STEP_COMPLETION_KEY } from './tourSteps';
  * - モバイルではスキップ
  * - onDestroyed で markTourSeen + markStep + トースト
  */
-export default function OnboardingTour({ tourId, autoStart = true }) {
-  const { isVisible, isDesktop, seenTours, markTourSeen, markStep, progress } =
+export default function OnboardingTour({ tourId, forceStart = false }) {
+  const { isVisible, isDesktop, seenTours, markTourSeen, markStep } =
     useOnboarding();
   const driverRef = useRef(null);
 
   useEffect(() => {
     if (!tourId) return undefined;
-    if (!isVisible) return undefined;
     if (!isDesktop) return undefined;
-    if (!autoStart) return undefined;
-    if (seenTours[tourId]) return undefined;
+    // 強制起動でない場合は通常のガード
+    if (!forceStart) {
+      if (!isVisible) return undefined;
+      if (seenTours[tourId]) return undefined;
+    }
 
     const steps = TOUR_STEPS_BY_ID[tourId];
     if (!steps || steps.length === 0) return undefined;
@@ -109,7 +111,7 @@ export default function OnboardingTour({ tourId, autoStart = true }) {
       driverRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tourId, isVisible, isDesktop, autoStart]);
+  }, [tourId, isVisible, isDesktop, forceStart]);
 
   return null;
 }

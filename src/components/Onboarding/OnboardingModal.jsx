@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { Dialog } from '../ui/dialog';
 import ChecklistBody from './ChecklistBody';
 import { useOnboarding } from '../../hooks/useOnboarding';
+import { STEP_DEFINITIONS, STEP_ORDER } from '../../constants/onboarding';
 import './driverTheme.css';
 
 /**
  * 初回モーダル（操作方法のガイド）
- * - 「はじめる」→ モーダル閉じる + Dashboard ツアー自動起動フラグ
+ * - 「はじめる」→ 最初の未完了ステップの画面へ遷移＋ツアー起動
  * - 「あとで」「×」→ モーダル閉じるのみ（インラインカードに切替）
  * - 「今後このガイドを表示しない」→ dismiss()
  */
-export default function OnboardingModal({ open, onClose, onStart }) {
-  const { dismiss } = useOnboarding();
+export default function OnboardingModal({ open, onClose }) {
+  const navigate = useNavigate();
+  const { dismiss, steps, requiredStepKeys } = useOnboarding();
   const [neverShow, setNeverShow] = useState(false);
 
   const handleClose = async () => {
@@ -27,7 +30,19 @@ export default function OnboardingModal({ open, onClose, onStart }) {
       await dismiss();
     }
     onClose?.();
-    onStart?.();
+    // 最初の未完了ステップを探して該当画面へ遷移＋ツアー起動
+    const firstUnfinishedKey = STEP_ORDER.find(
+      (key) => requiredStepKeys.includes(key) && steps[key] !== true
+    );
+    if (firstUnfinishedKey) {
+      const def = STEP_DEFINITIONS[firstUnfinishedKey];
+      if (def?.to) {
+        window.dispatchEvent(
+          new CustomEvent('onboarding:force-tour', { detail: { stepKey: firstUnfinishedKey } })
+        );
+        navigate(def.to);
+      }
+    }
   };
 
   return (
@@ -58,7 +73,7 @@ export default function OnboardingModal({ open, onClose, onStart }) {
         className="py-5 max-h-[60vh] overflow-y-auto scrollbar-hide"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        <ChecklistBody />
+        <ChecklistBody onBeforeNavigate={onClose} />
       </div>
 
       <div className="-mx-(--gutter) -mb-(--gutter) flex flex-col gap-3 rounded-b-2xl border-t border-stroke px-6 py-4 sm:flex-row sm:items-center sm:justify-between dark:border-dark-3">
