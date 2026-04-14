@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { AlertCircle } from 'lucide-react';
-import LoadingSpinner from '../common/LoadingSpinner';
+import DotWaveSpinner from '../common/DotWaveSpinner';
 import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
 
@@ -182,7 +182,7 @@ export default function CustomLimitsModal({ user, currentLimits, onClose, onSave
           キャンセル
         </Button>
         <Button color="blue" type="submit" form="custom-limits-form" disabled={loading}>
-          {loading && <LoadingSpinner />}
+          {loading && <DotWaveSpinner size="xs" variant="white" />}
           {loading ? '保存中...' : '保存'}
         </Button>
       </DialogActions>

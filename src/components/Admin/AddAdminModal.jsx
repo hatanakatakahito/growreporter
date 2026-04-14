@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { AlertCircle, Shield, UserPlus } from 'lucide-react';
 import { ADMIN_ROLES, getAdminRoleLabel, getAdminRoleDescription } from '../../constants/adminRoles';
 import { useAdminManagement } from '../../hooks/useAdminManagement';
-import LoadingSpinner from '../common/LoadingSpinner';
+import DotWaveSpinner from '../common/DotWaveSpinner';
 import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
 
@@ -135,7 +135,7 @@ export default function AddAdminModal({ onClose, onSuccess }) {
           キャンセル
         </Button>
         <Button color="blue" type="submit" form="add-admin-form" disabled={loading}>
-          {loading && <LoadingSpinner />}
+          {loading && <DotWaveSpinner size="xs" variant="white" />}
           {loading ? '追加中...' : '追加'}
         </Button>
       </DialogActions>

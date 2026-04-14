@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { AlertCircle, Shield } from 'lucide-react';
 import { ADMIN_ROLES, getAdminRoleLabel, getAdminRoleDescription } from '../../constants/adminRoles';
-import LoadingSpinner from '../common/LoadingSpinner';
+import DotWaveSpinner from '../common/DotWaveSpinner';
 import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
 
@@ -131,7 +131,7 @@ export default function AdminRoleModal({ admin, onClose, onSave }) {
           キャンセル
         </Button>
         <Button color="blue" type="submit" form="admin-role-form" disabled={loading}>
-          {loading && <LoadingSpinner />}
+          {loading && <DotWaveSpinner size="xs" variant="white" />}
           {loading ? '変更中...' : '変更'}
         </Button>
       </DialogActions>
