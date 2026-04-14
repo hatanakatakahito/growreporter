@@ -128,6 +128,8 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   const hasComparison = !!comparisonRawData;
 
   useEffect(() => {
+    // Freeプランはロックオーバーレイで覆われるため自動生成しない（制限モーダル誤発火を防ぐ）
+    if (isFree) return;
     // 必要なデータが揃っている場合のみ実行
     // rawData/metricsはオブジェクト参照が毎回変わるためdepsに含めない
     // 比較ON/OFF切替・比較期間変更時は自動で再分析
@@ -135,7 +137,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
       loadAnalysis(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSiteId, pageType, hasComparison, compStartDate, compEndDate]);
+  }, [isFree, selectedSiteId, pageType, hasComparison, compStartDate, compEndDate]);
 
   // タスク追加
   const addTaskMutation = useMutation({
