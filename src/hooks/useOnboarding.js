@@ -15,7 +15,7 @@ import {
  * 操作方法のガイド（オンボーディング）状態管理フック
  */
 export function useOnboarding() {
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser, userProfile, refreshUserProfile } = useAuth();
   const { planId, isLoading: isPlanLoading } = usePlan();
   const { isAdmin, loading: isAdminLoading } = useAdmin();
 
@@ -94,11 +94,13 @@ export function useOnboarding() {
           ...partial,
           updatedAt: serverTimestamp(),
         });
+        // ローカルの userProfile を最新化（再描画トリガ）
+        if (refreshUserProfile) await refreshUserProfile();
       } catch (e) {
         console.error('[useOnboarding] 更新エラー:', e);
       }
     },
-    [currentUser?.uid]
+    [currentUser?.uid, refreshUserProfile]
   );
 
   const markStep = useCallback(

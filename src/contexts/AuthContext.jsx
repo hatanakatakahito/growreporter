@@ -337,6 +337,14 @@ export const AuthProvider = ({ children }) => {
     return unsubscribe;
   }, []);
 
+  // userProfile をサーバーから再取得してローカル state を更新
+  const refreshUserProfile = async () => {
+    if (!currentUser?.uid) return null;
+    const fresh = await fetchUserProfile(currentUser.uid);
+    if (fresh) setUserProfile(fresh);
+    return fresh;
+  };
+
   const value = {
     currentUser,
     userProfile,
@@ -349,6 +357,7 @@ export const AuthProvider = ({ children }) => {
     resetPassword,
     updateUserProfile,
     fetchUserProfile,
+    refreshUserProfile,
   };
 
   return (
