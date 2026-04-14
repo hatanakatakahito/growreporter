@@ -242,7 +242,7 @@ export default function MainLayout() {
   const location = useLocation();
 
   // 操作方法のガイド（オンボーディング）
-  const { isVisible: isOnboardingVisible, isFirstVisit } = useOnboarding();
+  const { isVisible: isOnboardingVisible, isFirstVisit, isAdmin } = useOnboarding();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [dashboardTourEnabled, setDashboardTourEnabled] = useState(false); // 「はじめる」押下時のみ true
 
@@ -258,6 +258,16 @@ export default function MainLayout() {
     if (otherDialog) return;
     setIsModalOpen(true);
   }, [isOnboardingVisible, needsSiteSelection, isFirstVisit, location.pathname]);
+
+  // サイドバーの「操作方法ガイドを再開」から明示的に開く要求を購読
+  useEffect(() => {
+    const handleOpenRequest = () => {
+      if (isAdmin) return;
+      setIsModalOpen(true);
+    };
+    window.addEventListener('onboarding:open-modal', handleOpenRequest);
+    return () => window.removeEventListener('onboarding:open-modal', handleOpenRequest);
+  }, [isAdmin]);
 
   // 現在ルートに対応する tourId
   const tourId = getTourIdFromPath(location.pathname);

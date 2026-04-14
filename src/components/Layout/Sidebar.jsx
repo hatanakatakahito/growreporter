@@ -4,7 +4,6 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useOnboarding } from '../../hooks/useOnboarding';
-import toast from 'react-hot-toast';
 import { ChevronLeft, ChevronRight, Sun, Moon, RefreshCw } from 'lucide-react';
 import { getPlanBadgeColor, getPlanDisplayName } from '../../constants/plans';
 import { usePlan } from '../../hooks/usePlan';
@@ -80,11 +79,13 @@ export default function Sidebar() {
 
   const handleRestartOnboarding = async () => {
     await restartOnboarding();
-    navigate('/dashboard');
-    toast.success('操作方法のガイドを再開しました', {
-      duration: 3000,
-      style: { border: '1px solid #DFE4EA', borderRadius: '8px', fontSize: '13px' },
-    });
+    if (location.pathname !== '/dashboard' && location.pathname !== '/') {
+      navigate('/dashboard');
+    }
+    // 少し遅延させて MainLayout の useEffect が最新 userProfile で再計算された後に発火
+    setTimeout(() => {
+      window.dispatchEvent(new CustomEvent('onboarding:open-modal'));
+    }, 50);
   };
 
   // テーマオブジェクト
