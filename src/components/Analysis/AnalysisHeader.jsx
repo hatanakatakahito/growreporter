@@ -185,7 +185,7 @@ export default function AnalysisHeader({
 
               {/* ダウンロードメニュー（ダッシュボード・分析画面のみ、スマホ非表示） */}
               {showExport && (
-                <div className="relative" ref={downloadMenuRef}>
+                <div data-tour="analysis-export" className="relative" ref={downloadMenuRef}>
                   <button
                     onClick={() => !isExporting && selectedSiteId && setIsDownloadMenuOpen(!isDownloadMenuOpen)}
                     disabled={isExporting || !selectedSiteId}
@@ -241,11 +241,13 @@ export default function AnalysisHeader({
 
               {/* 期間選択 */}
               {showDateRange && dateRange && setDateRange && (
-                <DateRangePicker
-                  dateRange={dateRange}
-                  onDateRangeChange={setDateRange}
-                  hideComparison={hideComparison}
-                />
+                <div data-tour="analysis-period">
+                  <DateRangePicker
+                    dateRange={dateRange}
+                    onDateRangeChange={setDateRange}
+                    hideComparison={hideComparison}
+                  />
+                </div>
               )}
               
             </div>

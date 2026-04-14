@@ -90,7 +90,7 @@ export default function MetricTabSection({
 
   return (
     <>
-      <div className="space-y-6">
+      <div data-tour="analysis-kpi-card" className="space-y-6">
         {/* タブナビゲーション */}
         <div className="flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2 overflow-x-auto">
           <button

@@ -22,9 +22,13 @@ import EvaluationDialog from '../components/Reports/EvaluationDialog';
 import { usePlan } from '../hooks/usePlan';
 import UpgradeModal from '../components/common/UpgradeModal';
 import { useNavigate } from 'react-router-dom';
+import { useOnboarding } from '../hooks/useOnboarding';
 
 export default function Reports() {
   const navigate = useNavigate();
+  const { isFree } = usePlan();
+  const { markStep } = useOnboarding();
+  useEffect(() => { if (!isFree) markStep('reportsViewed'); }, [markStep, isFree]);
   const {
     selectedSite, selectedSiteId, isLoading,
     completedImprovements, filteredItems, summary,
@@ -37,8 +41,6 @@ export default function Reports() {
     next.has(id) ? next.delete(id) : next.add(id);
     return next;
   });
-
-  const { isFree } = usePlan();
 
   useEffect(() => { setPageTitle('評価する'); }, []);
 

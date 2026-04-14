@@ -13,6 +13,7 @@ import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, Copy, Check,
 import toast from 'react-hot-toast';
 import { SITE_TYPES, SITE_PURPOSES } from '../constants/siteOptions';
 import { Button } from '@/components/ui/button';
+import { useOnboarding } from '../hooks/useOnboarding';
 
 /**
  * サイト詳細画面（ユーザー向け・オーナーまたは同一アカウントメンバー）
@@ -20,6 +21,8 @@ import { Button } from '@/components/ui/button';
  */
 export default function SiteDetail() {
   const { siteId } = useParams();
+  const { markStep } = useOnboarding();
+  useEffect(() => { markStep('siteEdited'); }, [markStep]);
   const navigate = useNavigate();
   const { siteDetail, loading, error, refetch } = useSiteDetail(siteId);
   const [scrapingStatus, setScrapingStatus] = useState(null);

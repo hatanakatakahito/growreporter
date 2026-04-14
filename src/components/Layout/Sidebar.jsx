@@ -3,7 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
-import { ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
+import { useOnboarding } from '../../hooks/useOnboarding';
+import toast from 'react-hot-toast';
+import { ChevronLeft, ChevronRight, Sun, Moon, RefreshCw } from 'lucide-react';
 import { getPlanBadgeColor, getPlanDisplayName } from '../../constants/plans';
 import { usePlan } from '../../hooks/usePlan';
 import UpgradeModal from '../common/UpgradeModal';
@@ -74,6 +76,16 @@ export default function Sidebar() {
   const [isConversionOpen, setIsConversionOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { isFree } = usePlan();
+  const { restart: restartOnboarding } = useOnboarding();
+
+  const handleRestartOnboarding = async () => {
+    await restartOnboarding();
+    navigate('/dashboard');
+    toast.success('操作方法のガイドを再開しました', {
+      duration: 3000,
+      style: { border: '1px solid #DFE4EA', borderRadius: '8px', fontSize: '13px' },
+    });
+  };
 
   // テーマオブジェクト
   const t = SIDEBAR_THEMES[isDarkSidebar ? 'dark' : 'white'];
@@ -136,6 +148,7 @@ export default function Sidebar() {
 
   const menuItems = [
     {
+      navId: 'nav-dashboard',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
@@ -145,6 +158,7 @@ export default function Sidebar() {
       path: '/dashboard',
     },
     {
+      navId: 'nav-aichat',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -155,6 +169,8 @@ export default function Sidebar() {
       lockedForFree: true,
     },
     {
+      navId: 'nav-analysis',
+      tourTarget: 'sidebar-analysis',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -210,6 +226,7 @@ export default function Sidebar() {
       ],
     },
     {
+      navId: 'nav-improve',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -220,6 +237,7 @@ export default function Sidebar() {
       lockedForFree: true,
     },
     {
+      navId: 'nav-reports',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -230,6 +248,7 @@ export default function Sidebar() {
       lockedForFree: true,
     },
     {
+      navId: 'nav-sites',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
@@ -239,6 +258,7 @@ export default function Sidebar() {
       path: '/sites/list',
     },
     {
+      navId: 'nav-account-settings',
       icon: (
         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998-3.5A7.5 7.5 0 0 1 19.5 19.5H4.5Z" />
@@ -281,6 +301,8 @@ export default function Sidebar() {
               {item.hasSubmenu ? (
                 <>
                   <button
+                    id={item.navId}
+                    data-tour={item.tourTarget}
                     onClick={() => isSidebarOpen && setIsAnalysisOpen(!isAnalysisOpen)}
                     className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
                       isSidebarOpen ? 'justify-between' : 'justify-center'
@@ -385,6 +407,7 @@ export default function Sidebar() {
                 </>
               ) : item.lockedForFree && isFree ? (
                 <button
+                  id={item.navId}
                   onClick={() => setShowUpgradeModal(true)}
                   className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
                     isSidebarOpen ? 'gap-3' : 'justify-center'
@@ -397,6 +420,7 @@ export default function Sidebar() {
                 </button>
               ) : (
                 <Link
+                  id={item.navId}
                   to={item.path}
                   className={`flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
                     isSidebarOpen ? 'gap-3' : 'justify-center'
@@ -479,6 +503,19 @@ export default function Sidebar() {
               </div>
             )}
           </button>
+
+          {/* 操作方法ガイドを再開 */}
+          {isSidebarOpen && (
+            <button
+              data-tour="sidebar-restart-tour"
+              onClick={handleRestartOnboarding}
+              className={`mt-2 flex w-full items-center gap-1.5 rounded-md border bg-white px-2 py-1.5 text-xs font-medium transition ${t.logoutBtn}`}
+              title="操作方法のガイドを再開"
+            >
+              <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+              操作方法ガイドを再開
+            </button>
+          )}
 
           {/* ログアウト & 管理者画面 */}
           <div className={`mt-2 flex ${isSidebarOpen ? 'gap-2' : 'flex-col gap-1.5'}`}>

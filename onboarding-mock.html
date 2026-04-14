@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>グローレポータ 操作方法のガイド モック</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        maxWidth: { content: '1400px' },
+        colors: {
+          primary: { DEFAULT: '#3758F9' },
+          secondary: { DEFAULT: '#13C296' },
+          stroke: { DEFAULT: '#DFE4EA' },
+          'body-color': '#637381',
+          dark: {
+            DEFAULT: '#111928', 2: '#1F2A37', 3: '#374151',
+            4: '#4B5563', 5: '#6B7280', 6: '#9CA3AF', 7: '#D1D5DB', 8: '#E5E7EB',
+          },
+        },
+      },
+    },
+  };
+</script>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; }
+  .panel-toggle { position: fixed; top: 12px; right: 12px; z-index: 9999; }
+  .sidebar-highlight { outline: 2px solid #3758F9; outline-offset: 2px; border-radius: 6px; }
+  @keyframes toast-in { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .toast-enter { animation: toast-in 0.3s ease-out; }
+</style>
+</head>
+<body class="bg-gray-50">
+
+<!-- View Switcher -->
+<div class="panel-toggle flex items-center gap-2 rounded-lg border border-stroke bg-white p-2 shadow-sm">
+  <span class="px-2 py-1.5 text-[11px] font-medium uppercase tracking-wider text-body-color">表示切替</span>
+  <button data-view="modal" class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white">初回モーダル</button>
+  <button data-view="card" class="rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50">インラインカード</button>
+  <button data-view="tour" class="rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50">ツアー中</button>
+  <button data-view="business" class="rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50">Business版</button>
+  <button data-view="completed" class="rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50">完了後</button>
+</div>
+
+<!-- ============ Dashboard Layout ============ -->
+<div class="flex h-screen">
+  <!-- Sidebar -->
+  <aside class="hidden w-64 shrink-0 flex-col border-r border-stroke bg-white md:flex">
+    <div class="flex h-16 items-center border-b border-stroke px-6">
+      <div class="text-lg font-bold text-dark">GrowReporter</div>
+    </div>
+    <nav class="flex-1 p-4 text-sm text-body-color">
+      <div id="nav-dashboard" class="mb-1 rounded-md bg-primary/5 px-3 py-2 font-medium text-primary">ダッシュボード</div>
+      <div id="nav-analysis" class="mb-1 rounded-md px-3 py-2 hover:bg-gray-50">分析する</div>
+      <div id="nav-improve" class="mb-1 rounded-md px-3 py-2 hover:bg-gray-50">改善する</div>
+      <div id="nav-reports" class="mb-1 rounded-md px-3 py-2 hover:bg-gray-50">評価する</div>
+      <div id="nav-aichat" class="mb-1 rounded-md px-3 py-2 hover:bg-gray-50">AIチャット</div>
+      <div id="nav-members" class="mb-1 rounded-md px-3 py-2 hover:bg-gray-50">メンバー</div>
+      <div id="nav-settings" class="mb-1 rounded-md px-3 py-2 hover:bg-gray-50">サイト設定</div>
+    </nav>
+    <div class="border-t border-stroke p-4 text-sm">
+      <div class="mb-1 rounded-md px-3 py-2 text-body-color hover:bg-gray-50">アカウント設定</div>
+      <div class="mb-1 rounded-md bg-gray-50 px-3 py-2 font-medium text-primary border border-stroke flex items-center gap-2">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4"/><path d="m16.2 7.8 2.9-2.9"/><path d="M18 12h4"/><path d="m16.2 16.2 2.9 2.9"/><path d="M12 18v4"/><path d="m4.9 19.1 2.9-2.9"/><path d="M2 12h4"/><path d="m4.9 4.9 2.9 2.9"/></svg>
+        操作方法ガイドを再開
+      </div>
+      <div class="rounded-md px-3 py-2 text-body-color hover:bg-gray-50">ログアウト</div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="flex-1 overflow-y-auto">
+    <!-- AnalysisHeader -->
+    <div class="border-b border-stroke bg-white px-6 py-4">
+      <div class="flex items-center justify-between">
+        <h1 class="text-xl font-bold text-dark">ダッシュボード</h1>
+        <div class="flex items-center gap-3">
+          <div class="rounded-md border border-stroke px-3 py-1.5 text-sm text-dark">2026/03/01 〜 2026/03/31</div>
+          <div class="rounded-md border border-stroke px-3 py-1.5 text-sm text-dark">前期比較</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Site cover -->
+    <div class="border-b border-stroke bg-gradient-to-r from-sky-50 via-indigo-50 to-yellow-50 px-6 py-6">
+      <div class="mx-auto flex max-w-content items-start gap-6">
+        <div class="flex-1">
+          <div class="mb-1 text-xs text-body-color">サイト名</div>
+          <div class="text-xl font-bold text-dark">サンプル株式会社</div>
+          <div class="text-xs text-body-color">https://example.com</div>
+          <div class="mt-3 text-sm text-dark-3">メタタイトル / メタディスクリプションが表示されます</div>
+        </div>
+        <div class="h-24 w-40 rounded-lg border border-white bg-white/50 shadow-sm"></div>
+      </div>
+    </div>
+
+    <div class="mx-auto max-w-content px-6 py-8">
+      <div class="space-y-8">
+        <!-- QuickActions -->
+        <div class="rounded-lg border border-stroke bg-white p-4">
+          <div class="flex items-center gap-4 text-sm text-body-color">
+            <div class="flex-1">QuickActions (サイト変更 / 期間選択 / データ更新)</div>
+            <button class="rounded-md border border-stroke px-3 py-1 text-xs">サイト変更</button>
+          </div>
+        </div>
+
+        <!-- Onboarding Checklist Card (inline) -->
+        <div id="inlineCard" class="rounded-lg border border-stroke bg-white shadow-sm">
+          <div class="flex items-start justify-between border-b border-stroke px-6 py-5">
+            <div>
+              <div class="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-body-color">操作方法のガイド</div>
+              <h2 class="text-lg font-bold text-dark">グローレポータ を始めよう</h2>
+              <p class="mt-1 text-xs text-body-color">主要な機能を一通り見て、本アプリを使いこなしましょう（所要時間: 約3分）</p>
+            </div>
+            <button id="cardClose" class="rounded p-1 text-dark-6 hover:bg-gray-100" title="閉じる">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </div>
+          <div class="px-6 py-5">
+            <!-- Progress -->
+            <div class="mb-5">
+              <div class="mb-1.5 flex items-center justify-between text-xs">
+                <span class="text-body-color">進捗（自動保存されます）</span>
+                <span id="cardProgressText" class="font-medium text-dark">1 / 6 完了</span>
+              </div>
+              <div class="h-1.5 w-full rounded-full bg-stroke">
+                <div id="cardProgressBar" class="h-1.5 rounded-full bg-primary transition-all" style="width: 16.6%"></div>
+              </div>
+            </div>
+            <div id="cardItems" class="space-y-5"></div>
+          </div>
+        </div>
+
+        <!-- Placeholders -->
+        <div class="rounded-lg border border-stroke bg-white p-6">
+          <h3 class="mb-3 text-base font-bold text-dark">アラート通知</h3>
+          <div class="text-sm text-body-color">前期比で大きく動いた指標がここに表示されます</div>
+        </div>
+        <div class="rounded-lg border border-stroke bg-white p-6">
+          <div class="mb-4 flex gap-2 border-b border-stroke">
+            <div class="border-b-2 border-primary px-4 py-2 text-sm font-medium text-primary">主要サマリー</div>
+            <div class="px-4 py-2 text-sm text-body-color">CV内訳</div>
+            <div class="px-4 py-2 text-sm text-body-color">KPI目標</div>
+          </div>
+          <div class="grid grid-cols-4 gap-4">
+            <div class="rounded-lg border border-stroke p-4">
+              <div class="text-xs text-body-color">セッション数</div>
+              <div class="mt-2 text-2xl font-bold text-dark">78,015</div>
+              <div class="mt-1 text-xs text-secondary">+8.8% 前月比</div>
+            </div>
+            <div class="rounded-lg border border-stroke p-4">
+              <div class="text-xs text-body-color">ユーザー数</div>
+              <div class="mt-2 text-2xl font-bold text-dark">57,059</div>
+              <div class="mt-1 text-xs text-secondary">+2.8% 前月比</div>
+            </div>
+            <div class="rounded-lg border border-stroke p-4">
+              <div class="text-xs text-body-color">PV数</div>
+              <div class="mt-2 text-2xl font-bold text-dark">184,205</div>
+              <div class="mt-1 text-xs text-red-600">-5.1% 前月比</div>
+            </div>
+            <div class="rounded-lg border border-stroke p-4">
+              <div class="text-xs text-body-color">CV数</div>
+              <div class="mt-2 text-2xl font-bold text-dark">419</div>
+              <div class="mt-1 text-xs text-secondary">+7.7% 前月比</div>
+            </div>
+          </div>
+        </div>
+        <div class="rounded-lg border border-stroke bg-white p-6">
+          <h3 class="mb-3 text-base font-bold text-dark">トレンドチャート</h3>
+          <div class="flex h-48 items-center justify-center text-sm text-body-color">（グラフ）</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ============ Onboarding Modal ============ -->
+<div id="modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-dark/50 p-4">
+  <div class="w-full max-w-xl rounded-2xl border border-stroke bg-white shadow-xl max-h-[90vh] flex flex-col">
+    <div class="flex items-start justify-between border-b border-stroke px-6 py-5 shrink-0">
+      <div>
+        <div class="mb-0.5 text-[11px] font-medium uppercase tracking-wider text-body-color">操作方法のガイド</div>
+        <h3 class="text-lg font-bold text-dark">グローレポータ へようこそ</h3>
+        <p class="mt-1 text-xs text-body-color">分析ダッシュボードの使い方をステップでご案内します（所要時間: 約3分）</p>
+      </div>
+      <button id="modalClose" class="rounded p-1 text-dark-6 hover:bg-gray-100" title="閉じる">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+
+    <div class="px-6 py-5 overflow-y-auto">
+      <div class="mb-5">
+        <div class="mb-1.5 flex items-center justify-between text-xs">
+          <span class="text-body-color">進捗（自動保存されます）</span>
+          <span id="modalProgressText" class="font-medium text-dark">1 / 6 完了</span>
+        </div>
+        <div class="h-1.5 w-full rounded-full bg-stroke">
+          <div id="modalProgressBar" class="h-1.5 rounded-full bg-primary transition-all" style="width: 16.6%"></div>
+        </div>
+      </div>
+      <div id="modalItems" class="space-y-5"></div>
+    </div>
+
+    <div class="flex items-center justify-between gap-3 border-t border-stroke px-6 py-4 shrink-0">
+      <label class="flex items-center gap-2 text-xs text-body-color cursor-pointer">
+        <input type="checkbox" class="h-3.5 w-3.5 rounded border-stroke text-primary" />
+        今後このガイドを表示しない
+      </label>
+      <div class="flex items-center gap-2">
+        <button id="modalLater" class="rounded-md border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-50">あとで</button>
+        <button id="modalStart" class="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90">はじめる</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ Tour Popover (driver.js mock) ============ -->
+<div id="tourPopover" class="fixed z-[70] hidden" style="top: 42%; left: 50%; transform: translate(-50%, -50%);">
+  <div class="relative w-80 rounded-lg border border-stroke bg-white shadow-2xl">
+    <div class="border-b border-stroke px-4 py-3 flex items-center justify-between">
+      <div class="text-[11px] font-medium uppercase tracking-wider text-body-color">ステップ 1 / 3</div>
+      <button class="rounded p-0.5 text-dark-6 hover:bg-gray-100">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+      </button>
+    </div>
+    <div class="px-4 py-4">
+      <h4 class="text-sm font-bold text-dark mb-1">主要指標をひと目で</h4>
+      <p class="text-xs text-body-color leading-relaxed">セッション・ユーザー・PV・CV とその前月比をタブ切替で確認できます。指標のトレンドを素早く把握しましょう。</p>
+    </div>
+    <div class="flex items-center justify-between border-t border-stroke px-4 py-3">
+      <button class="text-xs text-body-color hover:text-dark">スキップ</button>
+      <div class="flex gap-2">
+        <button class="rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50">戻る</button>
+        <button class="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90">次へ</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="tourOverlay" class="fixed inset-0 z-[65] hidden bg-dark/50"></div>
+
+<!-- ============ Toast ============ -->
+<div id="toast" class="fixed bottom-6 right-6 z-[80] hidden toast-enter">
+  <div class="flex items-start gap-3 rounded-lg border border-stroke bg-white px-4 py-3 shadow-lg max-w-sm">
+    <span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    </span>
+    <div>
+      <div class="text-sm font-medium text-dark">ダッシュボードの見方を確認しました</div>
+      <div class="mt-0.5 text-xs text-body-color">進捗: 2 / 6 完了</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const ICONS = {
+    dashboard: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
+    chart:     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 16V9"/><path d="M12 16V5"/><path d="M17 16v-3"/></svg>',
+    bell:      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>',
+    settings:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    users:     '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+    ai:        '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v1M12 20v1M3 12h1M20 12h1M5.6 5.6l.7.7M17.7 17.7l.7.7M5.6 18.4l.7-.7M17.7 6.3l.7-.7"/><circle cx="12" cy="12" r="4"/></svg>',
+    chat:      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+    download:  '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>',
+    improve:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    reports:   '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+    check:     '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+    chevron:   '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>',
+    play:      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>',
+    help:      '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+  };
+
+  // key, title, subtitle, icon, time, category, navId(for sidebar highlight)
+  const FREE_ITEMS = [
+    { key: 'siteRegistered', title: 'サイトを登録する', subtitle: '分析対象のサイトを登録しました', icon: 'settings', time: '完了', cat: 'setup', nav: 'nav-settings', done: true },
+    { key: 'dashboardViewed', title: 'ダッシュボードの見方を知る', subtitle: '主要指標・アラート・サイドバーの使い方', icon: 'dashboard', time: '約1分', cat: 'basics', nav: 'nav-dashboard', done: false },
+    { key: 'analysisViewed', title: '詳細分析画面を見る', subtitle: '日別・週別・ページ別など13種類の分析', icon: 'chart', time: '約1分', cat: 'basics', nav: 'nav-analysis', done: false },
+    { key: 'notificationsConfigured', title: '通知を設定する', subtitle: '週次レポート・月次レポート・アラート通知', icon: 'bell', time: '約30秒', cat: 'setup', nav: 'nav-settings', done: false },
+    { key: 'siteEdited', title: 'サイト設定を編集する', subtitle: 'KPI目標やコンバージョンの調整', icon: 'settings', time: '約1分', cat: 'setup', nav: 'nav-settings', done: false },
+    { key: 'memberInvited', title: 'メンバーを招待する', subtitle: 'チームと分析結果を共有（3名まで無料）', icon: 'users', time: '約30秒', cat: 'use', nav: 'nav-members', done: false },
+  ];
+
+  const BUSINESS_EXTRA = [
+    { key: 'aiTried', title: 'AI分析を試す', subtitle: '期間のデータを AI が日本語で解説', icon: 'ai', time: '約30秒', cat: 'use', nav: 'nav-analysis', done: false },
+    { key: 'aiChatTried', title: 'AIチャットを使う', subtitle: 'データについて AI に質問', icon: 'chat', time: '約1分', cat: 'use', nav: 'nav-aichat', done: false },
+    { key: 'exported', title: 'レポートをダウンロードする', subtitle: 'Excel / PowerPoint 形式で出力', icon: 'download', time: '約30秒', cat: 'use', nav: 'nav-analysis', done: false },
+    { key: 'improveViewed', title: '改善提案を見る', subtitle: 'AI が改善ポイントを提案', icon: 'improve', time: '約1分', cat: 'use', nav: 'nav-improve', done: false },
+    { key: 'reportsViewed', title: '評価機能を試す', subtitle: '改善効果の自動計測と評価', icon: 'reports', time: '約1分', cat: 'use', nav: 'nav-reports', done: false },
+  ];
+
+  const CATEGORIES = {
+    basics: { label: '基本を知る', order: 1 },
+    setup:  { label: '初期設定', order: 2 },
+    use:    { label: '活用する', order: 3 },
+  };
+
+  let currentItems = [...FREE_ITEMS];
+
+  function renderItems(containerId, items) {
+    const el = document.getElementById(containerId);
+    const firstUnfinishedKey = items.find(i => !i.done)?.key;
+
+    // Group by category
+    const groups = {};
+    items.forEach(it => {
+      if (!groups[it.cat]) groups[it.cat] = [];
+      groups[it.cat].push(it);
+    });
+    const sortedCats = Object.keys(groups).sort((a, b) => CATEGORIES[a].order - CATEGORIES[b].order);
+
+    let stepNo = 0;
+    el.innerHTML = sortedCats.map(cat => {
+      const catGroup = groups[cat];
+      const catItems = catGroup.map(it => {
+        stepNo++;
+        const isNext = it.key === firstUnfinishedKey;
+        const numStr = String(stepNo).padStart(2, '0');
+        return `
+          <button
+            data-nav="${it.nav}"
+            class="group relative flex w-full items-start gap-4 rounded-lg border ${isNext ? 'border-primary bg-primary/[0.03]' : 'border-stroke'} px-4 py-3 text-left transition hover:border-primary hover:bg-primary/5"
+          >
+            ${it.done ? `<span class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-white mt-0.5">${ICONS.check}</span>` : `<span class="h-5 w-5 shrink-0 rounded-full border border-stroke mt-0.5"></span>`}
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2">
+                <span class="text-[11px] font-mono font-semibold text-primary/60">${numStr}</span>
+                <span class="text-sm font-medium ${it.done ? 'text-dark-6 line-through' : 'text-dark'}">${it.title}</span>
+                ${isNext ? '<span class="rounded-sm border border-primary px-1.5 py-0 text-[10px] font-medium text-primary">次におすすめ</span>' : ''}
+                <span class="ml-auto text-[11px] text-body-color shrink-0">${it.time}</span>
+              </div>
+              <p class="mt-0.5 text-xs text-body-color ${it.done ? 'line-through' : ''}">${it.subtitle}</p>
+            </div>
+            <span class="text-dark-6 self-center shrink-0">${ICONS.chevron}</span>
+          </button>
+        `;
+      }).join('');
+      return `
+        <div>
+          <div class="mb-2 flex items-center gap-2">
+            <div class="text-[11px] font-medium uppercase tracking-wider text-body-color">${CATEGORIES[cat].label}</div>
+            <div class="h-px flex-1 bg-stroke"></div>
+          </div>
+          <div class="space-y-2">${catItems}</div>
+        </div>
+      `;
+    }).join('');
+
+    // Sidebar hover highlight
+    el.querySelectorAll('[data-nav]').forEach(btn => {
+      btn.addEventListener('mouseenter', () => {
+        const navId = btn.dataset.nav;
+        document.getElementById(navId)?.classList.add('sidebar-highlight');
+      });
+      btn.addEventListener('mouseleave', () => {
+        const navId = btn.dataset.nav;
+        document.getElementById(navId)?.classList.remove('sidebar-highlight');
+      });
+    });
+  }
+
+  function updateProgress() {
+    const done = currentItems.filter(i => i.done).length;
+    const total = currentItems.length;
+    const pct = (done / total) * 100;
+    ['modalProgressText', 'cardProgressText'].forEach(id => {
+      const e = document.getElementById(id);
+      if (e) e.textContent = `${done} / ${total} 完了`;
+    });
+    ['modalProgressBar', 'cardProgressBar'].forEach(id => {
+      const e = document.getElementById(id);
+      if (e) e.style.width = `${pct}%`;
+    });
+  }
+
+  function renderAll() {
+    renderItems('modalItems', currentItems);
+    renderItems('cardItems', currentItems);
+    updateProgress();
+  }
+
+  function hideAll() {
+    document.getElementById('modal').style.display = 'none';
+    document.getElementById('inlineCard').style.display = 'none';
+    document.getElementById('tourPopover').style.display = 'none';
+    document.getElementById('tourOverlay').style.display = 'none';
+  }
+
+  function setView(view) {
+    hideAll();
+
+    if (view === 'modal') {
+      currentItems = [...FREE_ITEMS];
+      document.getElementById('modal').style.display = 'flex';
+    } else if (view === 'card') {
+      currentItems = [...FREE_ITEMS];
+      document.getElementById('inlineCard').style.display = 'block';
+    } else if (view === 'tour') {
+      currentItems = [...FREE_ITEMS];
+      document.getElementById('inlineCard').style.display = 'block';
+      document.getElementById('tourOverlay').style.display = 'block';
+      document.getElementById('tourPopover').style.display = 'block';
+    } else if (view === 'business') {
+      currentItems = [...FREE_ITEMS, ...BUSINESS_EXTRA];
+      document.getElementById('modal').style.display = 'flex';
+    } else if (view === 'completed') {
+      currentItems = [...FREE_ITEMS].map(i => ({ ...i, done: true }));
+    }
+
+    renderAll();
+
+    document.querySelectorAll('[data-view]').forEach(b => {
+      const active = b.dataset.view === view;
+      b.classList.toggle('bg-primary', active);
+      b.classList.toggle('text-white', active);
+      b.classList.toggle('border', !active);
+      b.classList.toggle('border-stroke', !active);
+      b.classList.toggle('text-dark', !active);
+    });
+  }
+
+  function showToast() {
+    const t = document.getElementById('toast');
+    t.style.display = 'block';
+    t.classList.remove('toast-enter');
+    void t.offsetWidth;
+    t.classList.add('toast-enter');
+    setTimeout(() => { t.style.display = 'none'; }, 3500);
+  }
+
+  document.querySelectorAll('[data-view]').forEach(b => {
+    b.addEventListener('click', () => setView(b.dataset.view));
+  });
+
+  document.getElementById('modalClose').addEventListener('click', () => setView('card'));
+  document.getElementById('modalLater').addEventListener('click', () => setView('card'));
+  document.getElementById('modalStart').addEventListener('click', () => {
+    setView('tour');
+  });
+  document.getElementById('cardClose').addEventListener('click', () => {
+    document.getElementById('inlineCard').style.display = 'none';
+    showToast();
+    document.querySelector('#toast .text-sm').textContent = 'ガイドを閉じました';
+    document.querySelector('#toast .text-xs').textContent = 'サイドバーの「操作方法ガイドを再開」から復活できます';
+  });
+
+  setView('modal');
+</script>
+</body>
+</html>

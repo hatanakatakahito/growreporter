@@ -20,6 +20,8 @@ import PlanLimitModal from '../../components/common/PlanLimitModal';
 import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { useAuth } from '../../contexts/AuthContext';
 import { mergeComparisonByIndex } from '../../utils/comparisonHelpers';
+import { useOnboarding } from '../../hooks/useOnboarding';
+import { usePlan } from '../../hooks/usePlan';
 import {
   ResponsiveContainer,
   LineChart,
@@ -38,6 +40,12 @@ import {
 export default function Day() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  const { isFree } = usePlan();
+  const { markStep } = useOnboarding();
+  useEffect(() => {
+    markStep('analysisViewed');
+    if (!isFree) markStep('exported');
+  }, [markStep, isFree]);
   const [hiddenLines, setHiddenLines] = useState({});
   const [activeTab, setActiveTab] = useState('chart');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);

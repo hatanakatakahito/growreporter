@@ -16,6 +16,8 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useOnboarding } from '../../hooks/useOnboarding';
+import { usePlan } from '../../hooks/usePlan';
 
 /**
  * 分析画面 - 全体サマリー
@@ -25,6 +27,12 @@ export default function AnalysisSummary() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const { currentUser, userProfile } = useAuth();
   const location = useLocation();
+  const { isFree } = usePlan();
+  const { markStep } = useOnboarding();
+  useEffect(() => {
+    markStep('analysisViewed');
+    if (!isFree) markStep('aiTried');
+  }, [markStep, isFree]);
 
   const memberRole = userProfile?.memberRole || 'owner';
   const isViewer = memberRole === 'viewer';

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, Navigate, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Globe, Menu, X, ChevronRight, Lock, Bell } from 'lucide-react';
 import Sidebar from './Sidebar';
@@ -12,6 +12,10 @@ import GlobalNotificationModal from './GlobalMemoNotificationModal';
 import DateRangePicker from '../Analysis/DateRangePicker';
 import SiteSelectionModal from '../common/SiteSelectionModal';
 import UpgradeModal from '../common/UpgradeModal';
+import OnboardingModal from '../Onboarding/OnboardingModal';
+import OnboardingTour from '../Onboarding/OnboardingTour';
+import { useOnboarding } from '../../hooks/useOnboarding';
+import { getTourIdFromPath } from '../../constants/onboarding';
 import logoImg from '../../assets/img/logo.svg';
 
 /**
@@ -233,8 +237,30 @@ function MobileDrawer({ isOpen, onClose }) {
  */
 export default function MainLayout() {
   const { isSidebarOpen } = useSidebar();
-  const { sites, isLoading } = useSite();
+  const { sites, isLoading, needsSiteSelection } = useSite();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const location = useLocation();
+
+  // 操作方法のガイド（オンボーディング）
+  const { isVisible: isOnboardingVisible, isFirstVisit } = useOnboarding();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [dashboardTourEnabled, setDashboardTourEnabled] = useState(false); // 「はじめる」押下時のみ true
+
+  // Dashboard 初訪問時にモーダルを自動表示（SiteSelectionModal が出ている間は待つ）
+  useEffect(() => {
+    if (!isOnboardingVisible) return;
+    if (needsSiteSelection) return;
+    if (!isFirstVisit) return;
+    const onDashboard = location.pathname === '/' || location.pathname === '/dashboard';
+    if (!onDashboard) return;
+    // 既に他モーダルが開いている場合は待機
+    const otherDialog = document.querySelector('[role="dialog"]');
+    if (otherDialog) return;
+    setIsModalOpen(true);
+  }, [isOnboardingVisible, needsSiteSelection, isFirstVisit, location.pathname]);
+
+  // 現在ルートに対応する tourId
+  const tourId = getTourIdFromPath(location.pathname);
 
   if (!isLoading && sites.length === 0) {
     return <Navigate to="/sites/new" replace />;
@@ -275,6 +301,21 @@ export default function MainLayout() {
 
       {/* サイト選択モーダル */}
       <SiteSelectionModal />
+
+      {/* 操作方法のガイド: 初回モーダル */}
+      <OnboardingModal
+        open={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onStart={() => setDashboardTourEnabled(true)}
+      />
+
+      {/* 操作方法のガイド: 各画面ミニツアー */}
+      {isOnboardingVisible && !isModalOpen && tourId && (
+        <OnboardingTour
+          tourId={tourId}
+          autoStart={tourId !== 'dashboard' || dashboardTourEnabled || !isFirstVisit}
+        />
+      )}
     </div>
   );
 }

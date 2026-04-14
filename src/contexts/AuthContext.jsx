@@ -7,8 +7,9 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, googleProvider, microsoftProvider, db } from '../config/firebase';
+import { getDefaultOnboarding, inferStepsFromExisting } from '../constants/onboarding';
 
 const AuthContext = createContext();
 
@@ -98,6 +99,7 @@ export const AuthProvider = ({ children }) => {
         createdAt: now,
         updatedAt: now,
         lastLoginAt: now,
+        onboarding: getDefaultOnboarding(),
       });
 
       return userCredential;
@@ -161,6 +163,7 @@ export const AuthProvider = ({ children }) => {
           createdAt: now,
           updatedAt: now,
           lastLoginAt: now,
+          onboarding: getDefaultOnboarding(),
         });
       } else {
         // 既存ユーザー: SSO の写真・表示名を Firestore に反映
@@ -222,6 +225,7 @@ export const AuthProvider = ({ children }) => {
           createdAt: now,
           updatedAt: now,
           lastLoginAt: now,
+          onboarding: getDefaultOnboarding(),
         });
       } else {
         // 既存ユーザー: SSO の写真・表示名を Firestore に反映
@@ -293,6 +297,21 @@ export const AuthProvider = ({ children }) => {
             }
             if (currentProfile.aiImprovementUsage === undefined) {
               updateData.aiImprovementUsage = 0;
+            }
+
+            // onboarding フィールドが未設定の既存ユーザーには実績から推定してマージ
+            if (currentProfile.onboarding === undefined) {
+              try {
+                const accountOwnerId = currentProfile.accountOwnerId || user.uid;
+                const sitesSnapshot = await getDocs(
+                  query(collection(db, 'sites'), where('userId', '==', accountOwnerId))
+                );
+                const sitesCount = sitesSnapshot.size;
+                updateData.onboarding = inferStepsFromExisting(currentProfile, sitesCount);
+              } catch (e) {
+                console.warn('[AuthContext] onboarding 推定エラー:', e);
+                updateData.onboarding = getDefaultOnboarding();
+              }
             }
 
             await setDoc(

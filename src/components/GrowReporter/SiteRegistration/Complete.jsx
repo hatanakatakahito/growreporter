@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../../contexts/AuthContext';
 import { db } from '../../../config/firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import Confetti from 'react-confetti';
 import { Check } from 'lucide-react';
 import DotWaveSpinner from '../../common/DotWaveSpinner';
@@ -67,6 +67,17 @@ export default function Complete() {
         const siteDoc = await getDoc(doc(db, 'sites', siteId));
         if (siteDoc.exists()) {
           setSiteData({ id: siteDoc.id, ...siteDoc.data() });
+          // 操作方法ガイドの「サイトを登録する」を自動完了
+          if (currentUser?.uid) {
+            try {
+              await updateDoc(doc(db, 'users', currentUser.uid), {
+                'onboarding.steps.siteRegistered': true,
+              });
+            } catch (e) {
+              // onboarding フィールドがまだ無い場合のエラーは無視（AuthContext が後で補完）
+              console.warn('[Complete] onboarding マーク失敗:', e);
+            }
+          }
         } else {
           navigate('/sites/list');
         }

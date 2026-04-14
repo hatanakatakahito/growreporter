@@ -184,7 +184,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   if (isFree) {
     return (
       <BusinessPlanLockOverlay>
-        <div className="space-y-6">
+        <div data-tour="ai-summary" className="space-y-6">
           {/* ヘッダー */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -260,7 +260,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   }
 
   return (
-    <div className="space-y-6">
+    <div data-tour="ai-summary" className="space-y-6">
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

@@ -12,6 +12,7 @@ import MetricTabSection from '../components/Analysis/MetricTabSection';
 import TrendChart from '../components/Dashboard/TrendChart';
 import ImprovementSummary from '../components/Dashboard/ImprovementSummary';
 import QuickActions from '../components/Dashboard/QuickActions';
+import OnboardingChecklistCard from '../components/Onboarding/OnboardingChecklistCard';
 import { setPageTitle } from '../utils/pageTitle';
 import { Globe } from 'lucide-react';
 import { format, sub, subDays, subMonths, startOfMonth } from 'date-fns';
@@ -191,18 +192,25 @@ export default function Dashboard() {
             {/* クイックアクション */}
             <div className="hidden md:block"><QuickActions /></div>
 
+            {/* 操作方法のガイド（オンボーディング） */}
+            <OnboardingChecklistCard />
+
             {/* アラート通知 */}
-            <AlertCards siteId={selectedSiteId} />
+            <div data-tour="dashboard-alerts">
+              <AlertCards siteId={selectedSiteId} />
+            </div>
 
             {/* 主要指標（3タブ：サマリ / CV内訳 / KPI予実） */}
-            <MetricTabSection
-              data={currentData}
-              previousMonthData={previousData}
-              yearAgoData={yearAgoData}
-              isLoading={isLoading}
-              selectedSite={selectedSite}
-              selectedSiteId={selectedSiteId}
-            />
+            <div data-tour="dashboard-kpi">
+              <MetricTabSection
+                data={currentData}
+                previousMonthData={previousData}
+                yearAgoData={yearAgoData}
+                isLoading={isLoading}
+                selectedSite={selectedSite}
+                selectedSiteId={selectedSiteId}
+              />
+            </div>
 
             {/* トレンドチャート */}
             <TrendChart

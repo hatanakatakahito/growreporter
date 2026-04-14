@@ -12,12 +12,15 @@ import { Switch } from '../components/ui/switch';
 import { setPageTitle } from '../utils/pageTitle';
 import { Button } from '@/components/ui/button';
 import DotWaveSpinner from '@/components/common/DotWaveSpinner';
+import { useOnboarding } from '../hooks/useOnboarding';
 
 /**
  * アカウント設定画面
  */
 export default function AccountSettings() {
   useEffect(() => { setPageTitle('アカウント設定'); }, []);
+  const { markStep } = useOnboarding();
+  useEffect(() => { markStep('notificationsConfigured'); }, [markStep]);
   const navigate = useNavigate();
   const { userProfile, currentUser, logout } = useAuth();
   const { sites } = useSite();
@@ -225,7 +228,7 @@ export default function AccountSettings() {
           </div>
 
           {/* メール通知 */}
-          <div className="bg-white shadow-sm rounded-lg p-6">
+          <div data-tour="account-notifications" className="bg-white shadow-sm rounded-lg p-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">メール通知</h2>
             <p className="text-sm text-gray-600 mb-4">
               週次・月次レポートをそれぞれオン・オフできます

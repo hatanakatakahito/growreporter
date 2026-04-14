@@ -9,12 +9,15 @@ import TransferOwnershipModal from '../components/Members/TransferOwnershipModal
 import { Link } from 'react-router-dom';
 import { setPageTitle } from '../utils/pageTitle';
 import { Button } from '@/components/ui/button';
+import { useOnboarding } from '../hooks/useOnboarding';
 
 /**
  * メンバー管理画面
  */
 export default function Members() {
   const { userProfile } = useAuth();
+  const { markStep } = useOnboarding();
+  useEffect(() => { markStep('memberInvited'); }, [markStep]);
   const { 
     combinedList, 
     activeMemberCount, 
@@ -191,13 +194,15 @@ export default function Members() {
           </div>
           
           {isOwner && (
-            <Button
-              color="blue"
-              onClick={() => setShowInviteModal(true)}
-              disabled={!canInvite || isProcessing}
-            >
-              メンバーを招待
-            </Button>
+            <div data-tour="members-invite">
+              <Button
+                color="blue"
+                onClick={() => setShowInviteModal(true)}
+                disabled={!canInvite || isProcessing}
+              >
+                メンバーを招待
+              </Button>
+            </div>
           )}
         </div>
 
