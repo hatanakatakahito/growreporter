@@ -14,14 +14,6 @@ export const analysisDaySteps = [
     },
   },
   {
-    element: sel(TOUR_TARGETS.ANALYSIS_KPI_CARD),
-    popover: {
-      title: 'KPIカード',
-      description:
-        'タブを切り替えて主要サマリー・CV内訳・KPI目標を見られます。',
-    },
-  },
-  {
     element: sel(TOUR_TARGETS.ANALYSIS_EXPORT),
     popover: {
       title: 'Excel / PowerPoint でダウンロード',
