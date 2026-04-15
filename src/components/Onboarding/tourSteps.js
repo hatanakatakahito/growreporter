@@ -52,6 +52,8 @@ export const analysisMonthSteps = [
       title: 'メモ機能',
       description:
         '気付きや分析結果のメモをページごとに残せます。チームメンバーとも共有可能で、後から振り返るときに便利です。',
+      side: 'bottom',
+      align: 'start',
     },
   },
 ];
