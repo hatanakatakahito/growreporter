@@ -54,7 +54,7 @@ export default function OnboardingModal({ open, onClose }) {
         <ChecklistBody onBeforeNavigate={onClose} />
       </div>
 
-      <div className="-mx-(--gutter) -mb-(--gutter) flex items-center justify-end gap-2 rounded-b-2xl border-t border-stroke px-6 py-4 dark:border-dark-3">
+      <div className="-mx-(--gutter) -mb-(--gutter) flex items-center justify-center gap-2 rounded-b-2xl border-t border-stroke px-6 py-4 dark:border-dark-3">
         <button
           type="button"
           onClick={handleClose}
