@@ -27,7 +27,7 @@ export const STEP_DEFINITIONS = {
   },
   analysisViewed: {
     title: '詳細分析画面を見る',
-    subtitle: '月別・日別・週別・ページ別など13種類の分析',
+    subtitle: '月別・日別・週別・ページ別など15種類以上の分析',
     to: '/analysis/month',
     category: 'basics',
     estimatedTime: '約1分',
