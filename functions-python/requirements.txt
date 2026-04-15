@@ -1,0 +1,5 @@
+firebase-functions>=0.4.2
+firebase-admin>=6.5.0
+xlsxwriter>=3.2.0
+python-pptx>=1.0.2
+google-cloud-storage>=2.19.0

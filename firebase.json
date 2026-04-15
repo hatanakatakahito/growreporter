@@ -45,6 +45,19 @@
         "firebase-debug.log",
         "firebase-debug.*.log"
       ]
+    },
+    {
+      "source": "functions-python",
+      "codebase": "python-export",
+      "ignore": [
+        "venv",
+        ".venv",
+        "__pycache__",
+        "*.pyc",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log"
+      ]
     }
   ]
 }
