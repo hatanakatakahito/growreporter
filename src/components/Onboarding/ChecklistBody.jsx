@@ -61,19 +61,9 @@ export default function ChecklistBody({ onBeforeNavigate }) {
     return items[0]?.key || null;
   }, [orderedItems]);
 
-  const handleItemHover = (navId, on) => {
-    if (!navId) return;
-    const el = document.getElementById(navId);
-    if (!el) return;
-    if (on) el.classList.add('onboarding-nav-highlight');
-    else el.classList.remove('onboarding-nav-highlight');
-  };
-
   const handleItemClick = (item) => {
     // siteRegistered は自動完了専用、クリックしても何もしない
     if (!item.to) return;
-    // Sidebar ハイライトを外す
-    handleItemHover(item.sidebarNavId, false);
     // モーダルを閉じる（親から渡された場合）
     if (onBeforeNavigate) onBeforeNavigate();
     // 該当ページに対応するツアーID（あれば）をリセットして毎回見られるように
@@ -140,8 +130,6 @@ export default function ChecklistBody({ onBeforeNavigate }) {
                 type="button"
                 disabled={isDisabledMobile}
                 onClick={() => handleItemClick(it)}
-                onMouseEnter={() => handleItemHover(it.sidebarNavId, true)}
-                onMouseLeave={() => handleItemHover(it.sidebarNavId, false)}
                 title={isDisabledMobile ? 'PCで実行してください' : undefined}
                 className={`group relative flex w-full items-start gap-4 rounded-lg border px-4 py-3 text-left transition cursor-pointer [&_*]:pointer-events-none ${
                   isNext
