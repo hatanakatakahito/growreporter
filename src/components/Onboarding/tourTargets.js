@@ -23,6 +23,9 @@ export const TOUR_TARGETS = {
 
   // Account / Members
   ACCOUNT_NOTIFICATIONS: 'account-notifications',
+  NOTIFICATION_WEEKLY: 'notification-weekly',
+  NOTIFICATION_MONTHLY: 'notification-monthly',
+  NOTIFICATION_ALERT: 'notification-alert',
   MEMBERS_INVITE: 'members-invite',
 
   // Site list

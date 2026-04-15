@@ -274,7 +274,7 @@ export default function Month() {
 
           {/* メモ & AI分析タブ */}
           {selectedSiteId && currentUser && monthlyData.length > 0 && (
-            <div data-tour="analysis-note" className="mt-6">
+            <div className="mt-6">
               <TabbedNoteAndAI
                 pageType="analysis/month"
                 noteContent={

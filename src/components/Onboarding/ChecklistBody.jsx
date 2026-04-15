@@ -148,7 +148,7 @@ export default function ChecklistBody({ onBeforeNavigate }) {
                 disabled={isDisabledMobile}
                 onClick={() => handleItemClick(it)}
                 title={isDisabledMobile ? 'PCで実行してください' : undefined}
-                className={`group relative flex w-full items-start gap-4 rounded-lg border px-4 py-3 text-left transition cursor-pointer [&_*]:pointer-events-none ${
+                className={`group relative flex w-full items-center gap-4 rounded-lg border px-4 py-3 text-left transition cursor-pointer [&_*]:pointer-events-none ${
                   isNext
                     ? 'border-primary bg-primary/[0.03] dark:bg-primary/10'
                     : 'border-stroke dark:border-dark-3'
@@ -159,11 +159,11 @@ export default function ChecklistBody({ onBeforeNavigate }) {
                 }`}
               >
                 {it.done ? (
-                  <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary text-white">
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                 ) : (
-                  <span className="mt-0.5 h-5 w-5 shrink-0 rounded-full border border-stroke dark:border-dark-3" />
+                  <span className="h-5 w-5 shrink-0 rounded-full border border-stroke dark:border-dark-3" />
                 )}
 
                 <div className="min-w-0 flex-1">
@@ -183,13 +183,13 @@ export default function ChecklistBody({ onBeforeNavigate }) {
                         次におすすめ
                       </span>
                     )}
-                    <span className="ml-auto shrink-0 text-[11px] text-body-color">
-                      {it.done ? '完了' : it.estimatedTime}
-                    </span>
                   </div>
                   <p className="mt-0.5 text-xs text-body-color">{it.subtitle}</p>
                 </div>
-                <ChevronRight className="mt-1 h-4 w-4 shrink-0 self-center text-dark-6" />
+                <span className="shrink-0 text-[11px] text-body-color">
+                  {it.done ? '完了' : it.estimatedTime}
+                </span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-dark-6" />
               </button>
             );
           };

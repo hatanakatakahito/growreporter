@@ -55,7 +55,7 @@ export default function TabbedNoteAndAI({ noteContent, aiContent, defaultTab = '
   return (
     <div className="mt-8 ai-gradient-border">
       {/* タブヘッダー */}
-      <div className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-2 rounded-t-lg">
+      <div data-tour="analysis-note" className="border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-dark-2 rounded-t-lg">
         <nav className="-mb-px flex" aria-label="Tabs">
           <button
             onClick={() => handleTabChange('ai')}

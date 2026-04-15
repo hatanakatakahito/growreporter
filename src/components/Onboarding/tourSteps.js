@@ -80,11 +80,27 @@ export const membersSteps = [
 
 export const accountSettingsSteps = [
   {
-    element: sel(TOUR_TARGETS.ACCOUNT_NOTIFICATIONS),
+    element: sel(TOUR_TARGETS.NOTIFICATION_WEEKLY),
     popover: {
-      title: '通知を設定',
+      title: '週次レポート通知',
       description:
-        '週次レポート・月次レポート・アラートの通知を切り替えられます。',
+        '毎週のサイトパフォーマンスサマリーをメールで受け取れます。週単位の推移を定期的に把握したい方におすすめです。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.NOTIFICATION_MONTHLY),
+    popover: {
+      title: '月次レポート通知',
+      description:
+        '毎月のサイトパフォーマンスサマリーをメールで受け取れます。月次の振り返り・報告業務に役立ちます。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.NOTIFICATION_ALERT),
+    popover: {
+      title: 'アラート通知',
+      description:
+        'セッション数やCVが前期比で大きく変動したときにメールで通知します。異常な変化をいち早くキャッチできます。',
     },
   },
 ];

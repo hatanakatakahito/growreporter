@@ -234,7 +234,7 @@ export default function AccountSettings() {
               週次・月次レポートをそれぞれオン・オフできます
             </p>
             <div className="space-y-4">
-              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div data-tour="notification-weekly" className="flex items-center justify-between py-3 border-b border-gray-100">
                 <div>
                   <p className="text-sm font-medium text-gray-900">週次レポート</p>
                   <p className="text-xs text-gray-500 mt-0.5">毎週のレポートをメールで受け取ります</p>
@@ -246,7 +246,7 @@ export default function AccountSettings() {
                   disabled={isSaving}
                 />
               </div>
-              <div className="flex items-center justify-between py-3 border-b border-gray-100">
+              <div data-tour="notification-monthly" className="flex items-center justify-between py-3 border-b border-gray-100">
                 <div>
                   <p className="text-sm font-medium text-gray-900">月次レポート</p>
                   <p className="text-xs text-gray-500 mt-0.5">毎月のレポートをメールで受け取ります</p>
@@ -258,7 +258,7 @@ export default function AccountSettings() {
                   disabled={isSaving}
                 />
               </div>
-              <div className="flex items-center justify-between py-3">
+              <div data-tour="notification-alert" className="flex items-center justify-between py-3">
                 <div>
                   <p className="text-sm font-medium text-gray-900">アラート通知</p>
                   <p className="text-xs text-gray-500 mt-0.5">急な数値変化があったときにメールで通知します</p>
