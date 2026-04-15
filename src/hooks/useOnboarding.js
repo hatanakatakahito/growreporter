@@ -105,20 +105,25 @@ export function useOnboarding() {
 
   const markStep = useCallback(
     async (key) => {
-      if (!isVisible) return;
-      if (steps[key]) return; // 既に完了
+      // 管理者・ログアウト・onboardingフィールド未存在は対象外
+      if (isAdmin) return;
+      if (!currentUser?.uid) return;
+      if (!userProfile?.onboarding) return;
+      if (userProfile.onboarding.steps?.[key]) return; // 既に完了
       await updateOnboarding({ [`onboarding.steps.${key}`]: true });
     },
-    [isVisible, steps, updateOnboarding]
+    [isAdmin, currentUser?.uid, userProfile?.onboarding, updateOnboarding]
   );
 
   const markTourSeen = useCallback(
     async (tourId) => {
-      if (!isVisible) return;
-      if (seenTours[tourId]) return;
+      if (isAdmin) return;
+      if (!currentUser?.uid) return;
+      if (!userProfile?.onboarding) return;
+      if (userProfile.onboarding.seenTours?.[tourId]) return;
       await updateOnboarding({ [`onboarding.seenTours.${tourId}`]: true });
     },
-    [isVisible, seenTours, updateOnboarding]
+    [isAdmin, currentUser?.uid, userProfile?.onboarding, updateOnboarding]
   );
 
   const dismiss = useCallback(async () => {
