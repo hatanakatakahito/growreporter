@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-import { useLocation, useSearchParams } from 'react-router-dom';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import './driverTheme.css';
@@ -10,22 +9,18 @@ import { TOUR_STEPS_BY_ID, TOUR_STEP_COMPLETION_KEY } from './tourSteps';
 /**
  * driver.js のツアーディスパッチャ
  *
- * 起動条件:
- *   - URL に ?guide=1 がある（ガイドから遷移してきた）場合のみ起動
- *
- * ?guide=1 があればツアー起動後に history.replaceState で URL から
- * 即座にパラメータを除去する。これにより
- * - リロードしても再起動しない
- * - サイドバーから普通に遷移した場合はパラメータがないので誤作動しない
- * - ガイド再表示後に同じ項目を再度クリックすれば param が付くので再生可能
+ * 設計方針:
+ *   - 起動条件: URL に ?guide=1 がある場合のみ
+ *   - useLocation/useSearchParams は使わない（re-render を避けるため）
+ *   - URL 更新は window.history.replaceState のみ（React Router を巻き込まない）
+ *   - useEffect deps は [tourId, isDesktop] のみ（URL 変更で cleanup が走って
+ *     driver が破壊されるのを防ぐ）
  */
 export default function OnboardingTour({ tourId }) {
-  const location = useLocation();
-  const [searchParams, setSearchParams] = useSearchParams();
   const { isDesktop, markTourSeen, markStep, planId } = useOnboarding();
   const isFree = planId === 'free';
   const driverRef = useRef(null);
-  const startedKeysRef = useRef(new Set()); // `${tourId}:${locationKey}` 単位の起動済みマーカー
+  const startedTourIdsRef = useRef(new Set());
 
   // markStep / markTourSeen は常に最新を呼ぶため ref で保持
   const markStepRef = useRef(markStep);
@@ -40,18 +35,15 @@ export default function OnboardingTour({ tourId }) {
   useEffect(() => {
     if (!tourId) return undefined;
     if (!isDesktop) return undefined;
+    if (startedTourIdsRef.current.has(tourId)) return undefined;
 
-    // 同じ location key で同じ tourId を既に起動していたら重複起動しない
-    const startKey = `${tourId}:${location.key}`;
-    if (startedKeysRef.current.has(startKey)) return undefined;
-
-    // ?guide=1 パラメータ判定（ガイドからの遷移時のみ起動）
-    const fromGuide = searchParams.get('guide') === '1';
+    // window.location.search を直接読む（React Router 依存しない）
+    const params = new URLSearchParams(window.location.search);
+    const fromGuide = params.get('guide') === '1';
     if (!fromGuide) return undefined;
 
     const allSteps = TOUR_STEPS_BY_ID[tourId];
     if (!allSteps || allSteps.length === 0) return undefined;
-    // Free プランは Business 限定ステップを除外
     const steps = isFree ? allSteps.filter((s) => !s.businessOnly) : allSteps;
     if (steps.length === 0) return undefined;
 
@@ -74,14 +66,16 @@ export default function OnboardingTour({ tourId }) {
         return;
       }
 
-      // 起動済みマーク & URL から guide パラメータ削除
-      // React Router の setSearchParams を使うことで useLocation にも反映される
-      // （history.replaceState だと React Router 内部 state が同期されず
-      // 再マウント時に fromGuide=true と判定されて無限ループする）
-      startedKeysRef.current.add(startKey);
-      const newParams = new URLSearchParams(searchParams);
+      // 起動済みマーク
+      startedTourIdsRef.current.add(tourId);
+
+      // URL から guide パラメータを削除（React Router に影響しない方法）
+      const newParams = new URLSearchParams(window.location.search);
       newParams.delete('guide');
-      setSearchParams(newParams, { replace: true });
+      const newSearch = newParams.toString();
+      const newUrl =
+        window.location.pathname + (newSearch ? `?${newSearch}` : '');
+      window.history.replaceState(window.history.state, '', newUrl);
 
       const drv = driver({
         showProgress: true,
@@ -101,7 +95,6 @@ export default function OnboardingTour({ tourId }) {
           driverRef.current = null;
 
           const completionKey = TOUR_STEP_COMPLETION_KEY[tourId];
-          // 常に最新 ref を呼ぶ（stale closure 回避）
           markTourSeenRef.current(tourId);
           if (completionKey) {
             markStepRef.current(completionKey);
@@ -137,7 +130,7 @@ export default function OnboardingTour({ tourId }) {
       drv.drive();
     };
 
-    // requestAnimationFrame を 2 回挟んで DOM マウント待ち
+    // DOM マウント待ち
     const raf1 = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         tryStart(0);
@@ -148,7 +141,7 @@ export default function OnboardingTour({ tourId }) {
       cancelled = true;
       cancelAnimationFrame(raf1);
       if (retryTimer) clearTimeout(retryTimer);
-      // 完了済みなら openModalTimer は残す（モーダル再表示のため）
+      // 完了済みの場合は openModalTimer を残す（モーダル再表示のため）
       if (!completed && openModalTimer) clearTimeout(openModalTimer);
       // 完了していない場合のみ destroy
       if (driverRef.current && !completed) {
@@ -160,8 +153,7 @@ export default function OnboardingTour({ tourId }) {
         driverRef.current = null;
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tourId, location.key, isDesktop]);
+  }, [tourId, isDesktop]);
 
   return null;
 }

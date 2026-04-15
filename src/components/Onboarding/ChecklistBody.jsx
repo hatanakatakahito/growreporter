@@ -65,17 +65,21 @@ export default function ChecklistBody({ onBeforeNavigate }) {
     return items[0]?.key || null;
   }, [orderedItems]);
 
-  const handleItemClick = (item) => {
+  const handleItemClick = async (item) => {
     // siteRegistered は自動完了専用、クリックしても何もしない
     if (!item.to) return;
 
     // Firestore に直接書き込み（クリック=完了を確定）
-    // onSnapshot が自動的に userProfile を更新するので await 不要
+    // 確実に保存してから navigate するため await する
     if (currentUser?.uid && !item.done) {
-      updateDoc(doc(db, 'users', currentUser.uid), {
-        [`onboarding.steps.${item.key}`]: true,
-        updatedAt: serverTimestamp(),
-      }).catch((e) => console.error('[ChecklistBody] step mark failed:', e));
+      try {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+          [`onboarding.steps.${item.key}`]: true,
+          updatedAt: serverTimestamp(),
+        });
+      } catch (e) {
+        console.error('[ChecklistBody] step mark failed:', e);
+      }
     }
 
     // モーダルを閉じる
