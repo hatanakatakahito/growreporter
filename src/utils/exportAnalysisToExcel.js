@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx-js-style';
+import { resolveVisibleColumns } from '../constants/analysisColumns';
 
 // ─── スタイル定数 ───────────────────────────────────────────
 const FONT_BASE = { name: 'MS Gothic', sz: 10 };
@@ -454,6 +455,335 @@ function createDataSheet(headers, rows, colWidths, aiData, memos) {
   return ws;
 }
 
+// ─── 動的列対応シートビルダー ─────────────────────────────
+// 画面の DataTable と完全に同じ列構成（localStorage の表示/順序設定を反映）で
+// Excel シートを生成する。比較モード時は comparison 列に「前期」「変化率」を追加する。
+
+// 列ラベルをフォーマット種別に応じたセル値に変換
+function formatCellForExport(col, value) {
+  if (value === undefined || value === null || value === '') return '-';
+
+  switch (col.format) {
+    case 'number': {
+      const n = typeof value === 'number' ? value : Number(value);
+      return isNaN(n) ? '-' : n;
+    }
+    case 'decimal': {
+      const n = typeof value === 'number' ? value : Number(value);
+      return isNaN(n) ? '-' : Number(n.toFixed(2));
+    }
+    case 'percent': {
+      // 画面側の transform 済み文字列（"12.3"）と素の 0-1 数値の両方に対応
+      const n = typeof value === 'number' ? value : Number(value);
+      if (isNaN(n)) return '-';
+      const pct = Math.abs(n) <= 1 ? n * 100 : n;
+      return `${pct.toFixed(2)}%`;
+    }
+    case 'duration': {
+      const n = typeof value === 'number' ? value : Number(value);
+      if (isNaN(n)) return '-';
+      const m = Math.floor(n / 60);
+      const s = Math.floor(n % 60);
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    }
+    default:
+      return String(value);
+  }
+}
+
+// 列のデフォルト幅をフォーマットに応じて推定
+function defaultColWidth(col) {
+  if (col.required || col.format === undefined || col.format === 'string') {
+    // 文字列系（ラベル列）は広め
+    if (col.key === 'path' || col.key === 'linkUrl' || col.key === 'fileName' || col.key === 'keyword' || col.key === 'source') return { wch: 36 };
+    if (col.key === 'channelName' || col.key === 'category') return { wch: 22 };
+    return { wch: 16 };
+  }
+  if (col.format === 'number') return { wch: 14 };
+  if (col.format === 'percent') return { wch: 12 };
+  if (col.format === 'decimal') return { wch: 12 };
+  if (col.format === 'duration') return { wch: 12 };
+  return { wch: 14 };
+}
+
+/**
+ * 動的シートビルダー
+ * @param {string} tableKey - analysisColumns.js の tableKey
+ * @param {Array} rows - 画面と同じキーでキー付けされた行オブジェクト配列（current 期間）
+ * @param {Object} opts
+ * @param {Array|null} opts.compRows - 比較期間の行配列（画面と同じ key でキー付け）
+ * @param {string}    opts.compJoinKey - 比較用のマージキー（日別=date, チャネル=channelName 等）
+ * @param {Object|null} opts.aiData
+ * @param {Array|null}  opts.memos
+ */
+function buildDynamicSheet(tableKey, rows, { compRows = null, compJoinKey = null, aiData = null, memos = null } = {}) {
+  const visibleCols = resolveVisibleColumns(tableKey);
+  if (visibleCols.length === 0) {
+    return createDataSheet(['データなし'], [], [{ wch: 20 }], aiData, memos);
+  }
+
+  const isComparing = Array.isArray(compRows);
+  // 比較行の索引（compJoinKey が指定されていれば join、なければ index 合わせ）
+  const compMap = new Map();
+  if (isComparing && compJoinKey) {
+    for (const c of compRows) {
+      const k = c?.[compJoinKey];
+      if (k != null) compMap.set(k, c);
+    }
+  }
+
+  // ヘッダ組み立て
+  const headers = [];
+  const colWidths = [];
+  // 各 "表示列" に対応する "出力列の定義" を記録して行生成時に使う
+  //   type: 'current' | 'prev' | 'delta'
+  //   col:  元の col 定義
+  const outCols = [];
+  for (const col of visibleCols) {
+    headers.push(col.label);
+    colWidths.push(defaultColWidth(col));
+    outCols.push({ type: 'current', col });
+    if (isComparing && col.comparison) {
+      headers.push('前期');
+      colWidths.push(defaultColWidth(col));
+      outCols.push({ type: 'prev', col });
+      headers.push('変化率');
+      colWidths.push({ wch: 10 });
+      outCols.push({ type: 'delta', col });
+    }
+  }
+
+  // 行生成
+  const outRows = rows.map((row, idx) => {
+    const compRow = isComparing
+      ? compJoinKey
+        ? compMap.get(row?.[compJoinKey])
+        : compRows[idx]
+      : null;
+    return outCols.map(({ type, col }) => {
+      if (type === 'current') {
+        return formatCellForExport(col, row?.[col.key]);
+      }
+      if (type === 'prev') {
+        return formatCellForExport(col, compRow?.[col.key]);
+      }
+      // delta
+      const curN = Number(row?.[col.key]);
+      const prvN = Number(compRow?.[col.key]);
+      if (isNaN(curN) || isNaN(prvN)) return '-';
+      return fmtChange(curN, prvN);
+    });
+  });
+
+  return createDataSheet(headers, outRows, colWidths, aiData, memos);
+}
+
+// ─── 画面と同じ行構造への変換（各 Cloud Function 結果 → screen-ready オブジェクト）
+
+function adaptMonthlyRows(monthlyData) {
+  const sorted = [...(monthlyData || [])].sort((a, b) => (b.label || '').localeCompare(a.label || ''));
+  return sorted.map((d) => ({
+    label: d.label || fmtYearMonth(d.month),
+    users: d.users,
+    newUsers: d.newUsers,
+    sessions: d.sessions,
+    avgPageviews: d.avgPageviews ?? (d.sessions > 0 ? d.pageViews / d.sessions : 0),
+    pageViews: d.pageViews,
+    engagementRate: d.engagementRate,
+    bounceRate: d.bounceRate,
+    averageSessionDuration: d.averageSessionDuration ?? d.avgSessionDuration,
+    conversions: d.conversions,
+    conversionRate: d.conversionRate ?? (d.sessions > 0 ? d.conversions / d.sessions : 0),
+  }));
+}
+
+function adaptDailyRows(data) {
+  const rows = (data?.rows || []).slice().sort((a, b) => (a.date > b.date ? -1 : 1));
+  return rows.map((r) => ({
+    date: fmtDate(r.date),
+    sessions: r.sessions,
+    users: r.users,
+    newUsers: r.newUsers,
+    pageViews: r.pageViews,
+    engagementRate: r.engagementRate,
+    bounceRate: r.bounceRate,
+    avgSessionDuration: r.avgSessionDuration ?? r.averageSessionDuration,
+    conversions: r.conversions,
+    conversionRate: r.sessions > 0 ? r.conversions / r.sessions : 0,
+  }));
+}
+
+function adaptWeeklyRows(data) {
+  return (data?.rows || []).map((r) => ({
+    dayName: DAY_NAMES[Number(r.dayOfWeek)] || r.dayOfWeek,
+    sessions: r.sessions,
+    users: r.users,
+    newUsers: r.newUsers,
+    pageViews: r.pageViews,
+    engagementRate: r.engagementRate,
+    bounceRate: r.bounceRate,
+    avgSessionDuration: r.avgSessionDuration ?? r.averageSessionDuration,
+    conversions: r.conversions,
+    conversionRate: r.sessions > 0 ? r.conversions / r.sessions : 0,
+  }));
+}
+
+function adaptHourlyRows(data) {
+  return (data?.rows || []).map((r) => ({
+    hour: `${r.hour}時`,
+    sessions: r.sessions,
+    users: r.users,
+    newUsers: r.newUsers,
+    pageViews: r.pageViews,
+    engagementRate: r.engagementRate,
+    bounceRate: r.bounceRate,
+    avgSessionDuration: r.avgSessionDuration ?? r.averageSessionDuration,
+    conversions: r.conversions,
+    conversionRate: r.sessions > 0 ? r.conversions / r.sessions : 0,
+  }));
+}
+
+function adaptChannelRows(data) {
+  const rows = data?.rows || [];
+  const total = rows.reduce((sum, r) => sum + (r.sessions || 0), 0);
+  return rows
+    .map((r) => ({
+      channelName: CHANNEL_MAP[r.sessionDefaultChannelGroup] || r.sessionDefaultChannelGroup || '',
+      sessions: r.sessions || 0,
+      sessionRate: total > 0 ? (r.sessions || 0) / total : 0,
+      users: r.activeUsers || r.users || 0,
+      conversions: r.conversions || 0,
+      conversionRate: r.sessions > 0 ? (r.conversions || 0) / r.sessions : 0,
+      newUsers: r.newUsers || 0,
+      pageViews: r.screenPageViews ?? r.pageViews ?? 0,
+      engagementRate: r.engagementRate || 0,
+      bounceRate: r.bounceRate || 0,
+      avgSessionDuration: r.averageSessionDuration || 0,
+    }))
+    .sort((a, b) => b.sessions - a.sessions);
+}
+
+function adaptReferralRows(data) {
+  return (data?.rows || []).map((r) => ({
+    source: r.source || '',
+    sessions: r.sessions || 0,
+    users: r.users ?? r.activeUsers ?? 0,
+    newUsers: r.newUsers || 0,
+    pageViews: r.screenPageViews ?? r.pageViews ?? 0,
+    engagementRate: r.engagementRate || 0,
+    bounceRate: r.bounceRate || 0,
+    avgSessionDuration: r.averageSessionDuration || 0,
+    conversions: r.conversions || 0,
+    conversionRate: r.sessions > 0 ? (r.conversions || 0) / r.sessions : 0,
+  }));
+}
+
+function adaptPageRows(data) {
+  return (data?.rows || []).map((r) => ({
+    path: r.pagePath || r.path || '',
+    pageViews: r.screenPageViews ?? r.pageViews ?? 0,
+    sessions: r.sessions || 0,
+    users: r.activeUsers ?? r.users ?? 0,
+    newUsers: r.newUsers || 0,
+    engagementRate: r.engagementRate || 0,
+    bounceRate: r.bounceRate || 0,
+    avgDuration: r.averageSessionDuration ?? r.avgDuration ?? 0,
+    conversions: r.conversions || 0,
+    conversionRate: r.sessions > 0 ? (r.conversions || 0) / r.sessions : 0,
+    interestScore: r.interestScore ?? null,
+    scrollRate: r.scrollRate ?? null,
+  }));
+}
+
+function adaptLandingPageRows(data) {
+  return (data?.rows || []).map((r) => ({
+    path: r.landingPagePlusQueryString || r.pagePath || r.path || '',
+    sessions: r.sessions || 0,
+    users: r.users ?? r.activeUsers ?? 0,
+    newUsers: r.newUsers || 0,
+    pageViews: r.screenPageViews ?? r.pageViews ?? 0,
+    engagementRate: r.engagementRate || 0,
+    bounceRate: r.bounceRate || 0,
+    avgSessionDuration: r.averageSessionDuration || 0,
+    conversions: r.conversions || 0,
+    conversionRate: r.sessions > 0 ? (r.conversions || 0) / r.sessions : 0,
+  }));
+}
+
+function adaptFileDownloadRows(data) {
+  return (data?.rows || []).map((r) => ({
+    fileName: r.linkUrl || r.fileName || '',
+    downloads: r.eventCount ?? r.downloads ?? 0,
+    users: r.activeUsers ?? r.users ?? 0,
+  }));
+}
+
+function adaptExternalLinkRows(data) {
+  return (data?.rows || []).map((r) => ({
+    linkUrl: r.linkUrl || '',
+    clicks: r.eventCount ?? r.clicks ?? 0,
+    users: r.activeUsers ?? r.users ?? 0,
+  }));
+}
+
+function adaptPageCategoryRows(data) {
+  const rows = data?.rows || [];
+  const categories = {};
+  for (const row of rows) {
+    const path = row.pagePath || '/';
+    const parts = path.split('/').filter(Boolean);
+    const category = parts.length > 0 ? `/${parts[0]}` : '/';
+    if (!categories[category]) {
+      categories[category] = {
+        category,
+        pageViews: 0,
+        sessions: 0,
+        users: 0,
+        newUsers: 0,
+        engagementRateSum: 0,
+        bounceRateSum: 0,
+        avgDurationSum: 0,
+        conversions: 0,
+        pages: 0,
+      };
+    }
+    categories[category].pageViews += row.screenPageViews || 0;
+    categories[category].sessions += row.sessions || 0;
+    categories[category].users += row.activeUsers || 0;
+    categories[category].newUsers += row.newUsers || 0;
+    categories[category].engagementRateSum += (row.engagementRate || 0) * (row.sessions || 0);
+    categories[category].bounceRateSum += (row.bounceRate || 0) * (row.sessions || 0);
+    categories[category].avgDurationSum += (row.averageSessionDuration || 0) * (row.sessions || 0);
+    categories[category].conversions += row.conversions || 0;
+    categories[category].pages += 1;
+  }
+  return Object.values(categories)
+    .map((c) => ({
+      category: c.category,
+      pages: c.pages,
+      pageViews: c.pageViews,
+      sessions: c.sessions,
+      users: c.users,
+      newUsers: c.newUsers,
+      engagementRate: c.sessions > 0 ? c.engagementRateSum / c.sessions : 0,
+      bounceRate: c.sessions > 0 ? c.bounceRateSum / c.sessions : 0,
+      avgDuration: c.sessions > 0 ? c.avgDurationSum / c.sessions : 0,
+      conversions: c.conversions,
+      conversionRate: c.sessions > 0 ? c.conversions / c.sessions : 0,
+    }))
+    .sort((a, b) => b.pageViews - a.pageViews);
+}
+
+function adaptKeywordRows(gscData) {
+  return (gscData?.topQueries || []).map((q) => ({
+    keyword: q.query || '',
+    clicks: q.clicks || 0,
+    impressions: q.impressions || 0,
+    ctr: q.ctr || 0,
+    position: q.position || 0,
+  }));
+}
+
 // ─── 個別シート生成関数 ──────────────────────────────────────
 
 /** 1. レポート概要（表紙） */
@@ -680,25 +1010,10 @@ function createSummarySheet(data, kpiSettings, aiData, memos, compSummary) {
   return createDataSheet(headers, rows, colWidths, aiData, memos);
 }
 
-/** 3. 月別（13ヶ月推移） — 昇順（古い→新しい） */
+/** 3. 月別（13ヶ月推移） — 動的列 */
 function createMonthlySheet(monthlyData, aiData, memos) {
-  const headers = ['月', 'セッション数', 'ユーザー数', '新規ユーザー数', 'PV数', 'エンゲージメント率', 'CV数', 'CV率'];
-  const sorted = [...(monthlyData || [])].sort((a, b) => (b.label || '').localeCompare(a.label || ''));
-  const rows = sorted.map(d => [
-    d.label || fmtYearMonth(d.month),
-    fmtNum(d.sessions),
-    fmtNum(d.users),
-    fmtNum(d.newUsers),
-    fmtNum(d.pageViews),
-    fmtPct(d.engagementRate),
-    fmtNum(d.conversions),
-    fmtPct(d.conversionRate),
-  ]);
-  const colWidths = [
-    { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 16 },
-    { wch: 12 }, { wch: 18 }, { wch: 10 }, { wch: 10 },
-  ];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptMonthlyRows(monthlyData);
+  return buildDynamicSheet('analysis-month', rows, { aiData, memos });
 }
 
 /** 4. ユーザー属性 */
@@ -754,243 +1069,75 @@ function createUsersSheet(demographics, aiData, memos) {
   return ws;
 }
 
-/** 5. 日別 — 昇順（古い→新しい）、比較対応 */
+/** 5. 日別 — 動的列、比較対応 */
 function createDailySheet(data, aiData, memos, compData) {
-  const sorted = [...(data?.rows || [])].sort((a, b) => (a.date > b.date ? -1 : 1));
-  if (compData) {
-    const compSorted = [...(compData?.rows || [])].sort((a, b) => (a.date > b.date ? -1 : 1));
-    const headers = ['日付', 'セッション数', '前期セッション', '変化率', 'CV数', '前期CV', '変化率'];
-    const rows = sorted.map((r, i) => {
-      const c = compSorted[i];
-      return [
-        fmtDate(r.date),
-        fmtNum(r.sessions), fmtNum(c?.sessions), fmtChange(r.sessions, c?.sessions),
-        fmtNum(r.conversions), fmtNum(c?.conversions), fmtChange(r.conversions, c?.conversions),
-      ];
-    });
-    const colWidths = [{ wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
-    return createDataSheet(headers, rows, colWidths, aiData, memos);
-  }
-  const headers = ['日付', 'セッション数', 'CV数'];
-  const rows = sorted.map(r => [
-    fmtDate(r.date),
-    fmtNum(r.sessions),
-    fmtNum(r.conversions),
-  ]);
-  const colWidths = [{ wch: 14 }, { wch: 14 }, { wch: 12 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptDailyRows(data);
+  const compRows = compData ? adaptDailyRows(compData) : null;
+  return buildDynamicSheet('analysis-day', rows, { compRows, compJoinKey: 'date', aiData, memos });
 }
 
-/** 6. 曜日別 */
+/** 6. 曜日別 — 動的列 */
 function createWeeklySheet(data, aiData, memos) {
-  const headers = ['曜日', 'セッション数', 'CV数'];
-  const rows = (data?.rows || []).map(r => [
-    DAY_NAMES[Number(r.dayOfWeek)] || r.dayOfWeek,
-    fmtNum(r.sessions),
-    fmtNum(r.conversions),
-  ]);
-  const colWidths = [{ wch: 14 }, { wch: 14 }, { wch: 12 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptWeeklyRows(data);
+  return buildDynamicSheet('analysis-week', rows, { aiData, memos });
 }
 
-/** 7. 時間帯別 */
+/** 7. 時間帯別 — 動的列 */
 function createHourlySheet(data, aiData, memos) {
-  const headers = ['時間帯', 'セッション数', 'CV数'];
-  const rows = (data?.rows || []).map(r => [
-    `${r.hour}時`,
-    fmtNum(r.sessions),
-    fmtNum(r.conversions),
-  ]);
-  const colWidths = [{ wch: 12 }, { wch: 14 }, { wch: 12 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptHourlyRows(data);
+  return buildDynamicSheet('analysis-hour', rows, { aiData, memos });
 }
 
-/** 8. 集客チャネル — 比較対応 */
+/** 8. 集客チャネル — 動的列、比較対応 */
 function createChannelsSheet(data, aiData, memos, compData) {
-  if (compData) {
-    const compMap = {};
-    (compData?.rows || []).forEach(r => { compMap[r.sessionDefaultChannelGroup] = r; });
-    const headers = ['チャネル', 'セッション数', '前期', '変化率', 'CV数', '前期', '変化率'];
-    const rows = (data?.rows || []).map(r => {
-      const c = compMap[r.sessionDefaultChannelGroup];
-      return [
-        CHANNEL_MAP[r.sessionDefaultChannelGroup] || r.sessionDefaultChannelGroup || '',
-        fmtNum(r.sessions), fmtNum(c?.sessions), fmtChange(r.sessions, c?.sessions),
-        fmtNum(r.conversions), fmtNum(c?.conversions), fmtChange(r.conversions, c?.conversions),
-      ];
-    });
-    const colWidths = [{ wch: 24 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
-    return createDataSheet(headers, rows, colWidths, aiData, memos);
-  }
-  const headers = ['チャネル', 'セッション数', 'ユーザー数', 'CV数'];
-  const rows = (data?.rows || []).map(r => [
-    CHANNEL_MAP[r.sessionDefaultChannelGroup] || r.sessionDefaultChannelGroup || '',
-    fmtNum(r.sessions),
-    fmtNum(r.activeUsers),
-    fmtNum(r.conversions),
-  ]);
-  const colWidths = [{ wch: 24 }, { wch: 14 }, { wch: 14 }, { wch: 12 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptChannelRows(data);
+  const compRows = compData ? adaptChannelRows(compData) : null;
+  return buildDynamicSheet('analysis-channels', rows, { compRows, compJoinKey: 'channelName', aiData, memos });
 }
 
-/** 9. 流入キーワード */
+/** 9. 流入キーワード — 動的列 */
 function createKeywordsSheet(gscData, aiData, memos) {
-  const headers = ['キーワード', 'クリック数', '表示回数', 'CTR', '平均掲載順位'];
-  const rows = (gscData?.topQueries || []).map(q => [
-    q.query || '',
-    fmtNum(q.clicks),
-    fmtNum(q.impressions),
-    fmtPctRaw(q.ctr),
-    q.position != null ? Number(q.position).toFixed(1) : '-',
-  ]);
-  const colWidths = [{ wch: 40 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 16 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptKeywordRows(gscData);
+  return buildDynamicSheet('analysis-keywords', rows, { aiData, memos });
 }
 
-/** 10. 被リンク元 — 比較対応 */
+/** 10. 被リンク元 — 動的列、比較対応 */
 function createReferralsSheet(data, aiData, memos, compData) {
-  if (compData) {
-    const compMap = {};
-    (compData?.rows || []).forEach(r => { compMap[r.source] = r; });
-    const headers = ['参照元', 'セッション数', '前期', '変化率', 'CV数', '前期', '変化率'];
-    const rows = (data?.rows || []).map(r => {
-      const c = compMap[r.source];
-      return [
-        r.source || '',
-        fmtNum(r.sessions), fmtNum(c?.sessions), fmtChange(r.sessions, c?.sessions),
-        fmtNum(r.conversions), fmtNum(c?.conversions), fmtChange(r.conversions, c?.conversions),
-      ];
-    });
-    const colWidths = [{ wch: 35 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
-    return createDataSheet(headers, rows, colWidths, aiData, memos);
-  }
-  const headers = ['参照元', 'セッション数', 'ユーザー数', 'エンゲージメント率', '平均セッション時間', 'CV数'];
-  const rows = (data?.rows || []).map(r => [
-    r.source || '',
-    fmtNum(r.sessions),
-    fmtNum(r.users),
-    fmtPct(r.engagementRate),
-    r.averageSessionDuration != null ? `${Math.round(r.averageSessionDuration)}秒` : '-',
-    fmtNum(r.conversions),
-  ]);
-  const colWidths = [{ wch: 35 }, { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 12 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptReferralRows(data);
+  const compRows = compData ? adaptReferralRows(compData) : null;
+  return buildDynamicSheet('analysis-referrals', rows, { compRows, compJoinKey: 'source', aiData, memos });
 }
 
-/** 11. ページ別 — 比較対応 */
+/** 11. ページ別 — 動的列、比較対応 */
 function createPagesSheet(data, aiData, memos, compData) {
-  if (compData) {
-    const compMap = {};
-    (compData?.rows || []).forEach(r => { compMap[r.pagePath] = r; });
-    const headers = ['ページパス', 'タイトル', 'PV数', '前期PV', '変化率', 'セッション数', '前期', '変化率'];
-    const rows = (data?.rows || []).map(r => {
-      const c = compMap[r.pagePath];
-      return [
-        r.pagePath || '', r.pageTitle || '',
-        fmtNum(r.screenPageViews), fmtNum(c?.screenPageViews), fmtChange(r.screenPageViews, c?.screenPageViews),
-        fmtNum(r.sessions), fmtNum(c?.sessions), fmtChange(r.sessions, c?.sessions),
-      ];
-    });
-    const colWidths = [{ wch: 40 }, { wch: 40 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 10 }];
-    return createDataSheet(headers, rows, colWidths, aiData, memos);
-  }
-  const headers = ['ページパス', 'タイトル', 'PV数', 'セッション数', 'ユーザー数', 'エンゲージメント率'];
-  const rows = (data?.rows || []).map(r => [
-    r.pagePath || '',
-    r.pageTitle || '',
-    fmtNum(r.screenPageViews),
-    fmtNum(r.sessions),
-    fmtNum(r.activeUsers),
-    fmtPct(r.engagementRate),
-  ]);
-  const colWidths = [{ wch: 40 }, { wch: 40 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 18 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptPageRows(data);
+  const compRows = compData ? adaptPageRows(compData) : null;
+  return buildDynamicSheet('analysis-pages', rows, { compRows, compJoinKey: 'path', aiData, memos });
 }
 
-/** 12. ページ分類別 */
+/** 12. ページ分類別 — 動的列 */
 function createPageCategoriesSheet(data, aiData, memos) {
-  const headers = ['カテゴリ', 'PV数', 'ユーザー数', 'エンゲージメント率'];
-  // データはページパスから第1階層を集計して分類
-  const categoryMap = {};
-  for (const r of (data?.rows || [])) {
-    const path = r.pagePath || '/';
-    const parts = path.split('/').filter(Boolean);
-    const category = parts.length > 0 ? `/${parts[0]}/` : '/';
-    if (!categoryMap[category]) {
-      categoryMap[category] = { pageViews: 0, users: 0, engagementSum: 0, count: 0 };
-    }
-    categoryMap[category].pageViews += fmtNum(r.screenPageViews);
-    categoryMap[category].users += fmtNum(r.activeUsers);
-    categoryMap[category].engagementSum += fmtNum(r.engagementRate) * fmtNum(r.screenPageViews);
-    categoryMap[category].count++;
-  }
-  const rows = Object.entries(categoryMap)
-    .sort((a, b) => b[1].pageViews - a[1].pageViews)
-    .map(([cat, d]) => [
-      cat,
-      d.pageViews,
-      d.users,
-      d.pageViews > 0 ? fmtPct(d.engagementSum / d.pageViews) : '-',
-    ]);
-  const colWidths = [{ wch: 30 }, { wch: 12 }, { wch: 14 }, { wch: 18 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptPageCategoryRows(data);
+  return buildDynamicSheet('analysis-page-categories', rows, { aiData, memos });
 }
 
-/** 13. ランディングページ */
+/** 13. ランディングページ — 動的列、比較対応 */
 function createLandingPagesSheet(data, aiData, memos, compData) {
-  if (compData) {
-    const compMap = {};
-    (compData?.rows || []).forEach(r => { compMap[r.landingPage] = r; });
-    const headers = ['ランディングページ', 'セッション数', '前期', '変化率', 'CV数', '前期', '変化率'];
-    const rows = (data?.rows || []).map(r => {
-      const c = compMap[r.landingPage];
-      return [
-        r.landingPage || '',
-        fmtNum(r.sessions), fmtNum(c?.sessions), fmtChange(r.sessions, c?.sessions),
-        fmtNum(r.conversions), fmtNum(c?.conversions), fmtChange(r.conversions, c?.conversions),
-      ];
-    });
-    const colWidths = [{ wch: 50 }, { wch: 14 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 10 }];
-    return createDataSheet(headers, rows, colWidths, aiData, memos);
-  }
-  const headers = ['ランディングページ', 'セッション数', 'エンゲージメント率', '平均セッション時間', 'CV数'];
-  const rows = (data?.rows || []).map(r => [
-    r.landingPage || '',
-    fmtNum(r.sessions),
-    fmtPct(r.engagementRate),
-    r.averageSessionDuration != null ? `${Math.round(r.averageSessionDuration)}秒` : '-',
-    fmtNum(r.conversions),
-  ]);
-  const colWidths = [{ wch: 50 }, { wch: 14 }, { wch: 18 }, { wch: 18 }, { wch: 12 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptLandingPageRows(data);
+  const compRows = compData ? adaptLandingPageRows(compData) : null;
+  return buildDynamicSheet('analysis-landing-pages', rows, { compRows, compJoinKey: 'path', aiData, memos });
 }
 
-/** 14. ファイルDL */
+/** 14. ファイルDL — 動的列 */
 function createFileDownloadsSheet(data, aiData, memos) {
-  const headers = ['ファイル名 / URL', 'ダウンロード数', 'ユーザー数'];
-  const rows = (data?.rows || [])
-    .filter(r => r.eventName === 'file_download')
-    .map(r => [
-      r.linkUrl || r.fileName || '',
-      fmtNum(r.eventCount),
-      fmtNum(r.activeUsers),
-    ]);
-  const colWidths = [{ wch: 60 }, { wch: 16 }, { wch: 14 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptFileDownloadRows(data);
+  return buildDynamicSheet('analysis-file-downloads', rows, { aiData, memos });
 }
 
-/** 15. 外部リンク */
+/** 15. 外部リンク — 動的列 */
 function createExternalLinksSheet(data, aiData, memos) {
-  const headers = ['リンクURL', 'クリック数', 'ユーザー数'];
-  const rows = (data?.rows || [])
-    .filter(r => r.eventName === 'click')
-    .map(r => [
-      r.linkUrl || '',
-      fmtNum(r.eventCount),
-      fmtNum(r.activeUsers),
-    ]);
-  const colWidths = [{ wch: 60 }, { wch: 14 }, { wch: 14 }];
-  return createDataSheet(headers, rows, colWidths, aiData, memos);
+  const rows = adaptExternalLinkRows(data);
+  return buildDynamicSheet('analysis-external-links', rows, { aiData, memos });
 }
 
 /** 16. コンバージョン一覧 */
