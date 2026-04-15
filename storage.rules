@@ -29,6 +29,13 @@ service firebase.storage {
       allow write: if request.auth != null && request.auth.uid == userId
                    && request.resource.size < 10 * 1024 * 1024;
     }
+
+    // エクスポート成果物（Python Cloud Function が Admin SDK で書込。本人のみ読取。
+    // 実際のダウンロードは signed URL 経由のため read ルールはフォールバック扱い）
+    match /exports/{userId}/{fileName} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if false;  // Cloud Function (Admin SDK) のみ書き込み可能
+    }
   }
 }
 

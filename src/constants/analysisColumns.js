@@ -230,3 +230,244 @@ export function formatCellValue(col, value) {
       return String(value);
   }
 }
+
+// ─── 画面と同じキーに変換する Row Adapter (Cloud Function へ送信前に実行) ───
+
+// 日本語曜日名
+const DAY_NAMES = ['日曜日', '月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日'];
+
+// チャネル名の日本語マップ
+const CHANNEL_NAME_MAP = {
+  'Organic Search': 'オーガニック検索',
+  Direct: 'ダイレクト',
+  Referral: '参照元サイト',
+  'Organic Social': 'オーガニックSNS',
+  'Paid Search': 'リスティング広告',
+  'Paid Social': 'SNS広告',
+  Email: 'メール',
+  Display: 'ディスプレイ広告',
+  Affiliates: 'アフィリエイト',
+  Unassigned: '未分類',
+  '(other)': 'その他',
+};
+
+function fmtYearMonthLocal(ym) {
+  if (!ym) return '';
+  const s = String(ym);
+  if (s.length === 6) return `${s.slice(0, 4)}年${s.slice(4)}月`;
+  if (s.includes('-')) return s.replace(/^(\d{4})-(\d{2})$/, '$1年$2月');
+  return s;
+}
+
+function fmtDateLocal(dateStr) {
+  if (!dateStr) return '';
+  const s = String(dateStr);
+  if (s.length === 8) return `${s.slice(0, 4)}/${s.slice(4, 6)}/${s.slice(6, 8)}`;
+  return s;
+}
+
+export function adaptMonthlyRows(monthlyData) {
+  const sorted = [...(monthlyData || [])].sort((a, b) =>
+    (b.label || '').localeCompare(a.label || '')
+  );
+  return sorted.map((d) => ({
+    label: d.label || fmtYearMonthLocal(d.month),
+    users: d.users,
+    newUsers: d.newUsers,
+    sessions: d.sessions,
+    avgPageviews: d.avgPageviews ?? (d.sessions > 0 ? d.pageViews / d.sessions : 0),
+    pageViews: d.pageViews,
+    engagementRate: d.engagementRate,
+    bounceRate: d.bounceRate,
+    averageSessionDuration: d.averageSessionDuration ?? d.avgSessionDuration,
+    conversions: d.conversions,
+    conversionRate: d.conversionRate ?? (d.sessions > 0 ? d.conversions / d.sessions : 0),
+  }));
+}
+
+export function adaptDailyRows(data) {
+  const rows = (data?.rows || []).slice().sort((a, b) => (a.date > b.date ? -1 : 1));
+  return rows.map((r) => ({
+    date: fmtDateLocal(r.date),
+    sessions: r.sessions,
+    users: r.users,
+    newUsers: r.newUsers,
+    pageViews: r.pageViews,
+    engagementRate: r.engagementRate,
+    bounceRate: r.bounceRate,
+    avgSessionDuration: r.avgSessionDuration ?? r.averageSessionDuration,
+    conversions: r.conversions,
+    conversionRate: r.sessions > 0 ? r.conversions / r.sessions : 0,
+  }));
+}
+
+export function adaptWeeklyRows(data) {
+  return (data?.rows || []).map((r) => ({
+    dayName: DAY_NAMES[Number(r.dayOfWeek)] || r.dayOfWeek,
+    sessions: r.sessions,
+    users: r.users,
+    newUsers: r.newUsers,
+    pageViews: r.pageViews,
+    engagementRate: r.engagementRate,
+    bounceRate: r.bounceRate,
+    avgSessionDuration: r.avgSessionDuration ?? r.averageSessionDuration,
+    conversions: r.conversions,
+    conversionRate: r.sessions > 0 ? r.conversions / r.sessions : 0,
+  }));
+}
+
+export function adaptHourlyRows(data) {
+  return (data?.rows || []).map((r) => ({
+    hour: `${r.hour}時`,
+    sessions: r.sessions,
+    users: r.users,
+    newUsers: r.newUsers,
+    pageViews: r.pageViews,
+    engagementRate: r.engagementRate,
+    bounceRate: r.bounceRate,
+    avgSessionDuration: r.avgSessionDuration ?? r.averageSessionDuration,
+    conversions: r.conversions,
+    conversionRate: r.sessions > 0 ? r.conversions / r.sessions : 0,
+  }));
+}
+
+export function adaptChannelRows(data) {
+  const rows = data?.rows || [];
+  const total = rows.reduce((sum, r) => sum + (r.sessions || 0), 0);
+  return rows
+    .map((r) => ({
+      channelName: CHANNEL_NAME_MAP[r.sessionDefaultChannelGroup] || r.sessionDefaultChannelGroup || '',
+      sessions: r.sessions || 0,
+      sessionRate: total > 0 ? (r.sessions || 0) / total : 0,
+      users: r.activeUsers || r.users || 0,
+      conversions: r.conversions || 0,
+      conversionRate: r.sessions > 0 ? (r.conversions || 0) / r.sessions : 0,
+      newUsers: r.newUsers || 0,
+      pageViews: r.screenPageViews ?? r.pageViews ?? 0,
+      engagementRate: r.engagementRate || 0,
+      bounceRate: r.bounceRate || 0,
+      avgSessionDuration: r.averageSessionDuration || 0,
+    }))
+    .sort((a, b) => b.sessions - a.sessions);
+}
+
+export function adaptReferralRows(data) {
+  return (data?.rows || []).map((r) => ({
+    source: r.source || '',
+    sessions: r.sessions || 0,
+    users: r.users ?? r.activeUsers ?? 0,
+    newUsers: r.newUsers || 0,
+    pageViews: r.screenPageViews ?? r.pageViews ?? 0,
+    engagementRate: r.engagementRate || 0,
+    bounceRate: r.bounceRate || 0,
+    avgSessionDuration: r.averageSessionDuration || 0,
+    conversions: r.conversions || 0,
+    conversionRate: r.sessions > 0 ? (r.conversions || 0) / r.sessions : 0,
+  }));
+}
+
+export function adaptPageRows(data) {
+  return (data?.rows || []).map((r) => ({
+    path: r.pagePath || r.path || '',
+    pageViews: r.screenPageViews ?? r.pageViews ?? 0,
+    sessions: r.sessions || 0,
+    users: r.activeUsers ?? r.users ?? 0,
+    newUsers: r.newUsers || 0,
+    engagementRate: r.engagementRate || 0,
+    bounceRate: r.bounceRate || 0,
+    avgDuration: r.averageSessionDuration ?? r.avgDuration ?? 0,
+    conversions: r.conversions || 0,
+    conversionRate: r.sessions > 0 ? (r.conversions || 0) / r.sessions : 0,
+    interestScore: r.interestScore ?? null,
+    scrollRate: r.scrollRate ?? null,
+  }));
+}
+
+export function adaptLandingPageRows(data) {
+  return (data?.rows || []).map((r) => ({
+    path: r.landingPagePlusQueryString || r.pagePath || r.path || '',
+    sessions: r.sessions || 0,
+    users: r.users ?? r.activeUsers ?? 0,
+    newUsers: r.newUsers || 0,
+    pageViews: r.screenPageViews ?? r.pageViews ?? 0,
+    engagementRate: r.engagementRate || 0,
+    bounceRate: r.bounceRate || 0,
+    avgSessionDuration: r.averageSessionDuration || 0,
+    conversions: r.conversions || 0,
+    conversionRate: r.sessions > 0 ? (r.conversions || 0) / r.sessions : 0,
+  }));
+}
+
+export function adaptFileDownloadRows(data) {
+  return (data?.rows || []).map((r) => ({
+    fileName: r.linkUrl || r.fileName || '',
+    downloads: r.eventCount ?? r.downloads ?? 0,
+    users: r.activeUsers ?? r.users ?? 0,
+  }));
+}
+
+export function adaptExternalLinkRows(data) {
+  return (data?.rows || []).map((r) => ({
+    linkUrl: r.linkUrl || '',
+    clicks: r.eventCount ?? r.clicks ?? 0,
+    users: r.activeUsers ?? r.users ?? 0,
+  }));
+}
+
+export function adaptKeywordRows(gscData) {
+  return (gscData?.topQueries || []).map((q) => ({
+    keyword: q.query || '',
+    clicks: q.clicks || 0,
+    impressions: q.impressions || 0,
+    ctr: q.ctr || 0,
+    position: q.position || 0,
+  }));
+}
+
+export function adaptPageCategoryRows(data) {
+  const rows = data?.rows || [];
+  const categories = {};
+  for (const row of rows) {
+    const path = row.pagePath || '/';
+    const parts = path.split('/').filter(Boolean);
+    const category = parts.length > 0 ? `/${parts[0]}` : '/';
+    if (!categories[category]) {
+      categories[category] = {
+        category,
+        pageViews: 0,
+        sessions: 0,
+        users: 0,
+        newUsers: 0,
+        engagementRateSum: 0,
+        bounceRateSum: 0,
+        avgDurationSum: 0,
+        conversions: 0,
+        pages: 0,
+      };
+    }
+    categories[category].pageViews += row.screenPageViews || 0;
+    categories[category].sessions += row.sessions || 0;
+    categories[category].users += row.activeUsers || 0;
+    categories[category].newUsers += row.newUsers || 0;
+    categories[category].engagementRateSum += (row.engagementRate || 0) * (row.sessions || 0);
+    categories[category].bounceRateSum += (row.bounceRate || 0) * (row.sessions || 0);
+    categories[category].avgDurationSum += (row.averageSessionDuration || 0) * (row.sessions || 0);
+    categories[category].conversions += row.conversions || 0;
+    categories[category].pages += 1;
+  }
+  return Object.values(categories)
+    .map((c) => ({
+      category: c.category,
+      pages: c.pages,
+      pageViews: c.pageViews,
+      sessions: c.sessions,
+      users: c.users,
+      newUsers: c.newUsers,
+      engagementRate: c.sessions > 0 ? c.engagementRateSum / c.sessions : 0,
+      bounceRate: c.sessions > 0 ? c.bounceRateSum / c.sessions : 0,
+      avgDuration: c.sessions > 0 ? c.avgDurationSum / c.sessions : 0,
+      conversions: c.conversions,
+      conversionRate: c.sessions > 0 ? c.conversions / c.sessions : 0,
+    }))
+    .sort((a, b) => b.pageViews - a.pageViews);
+}

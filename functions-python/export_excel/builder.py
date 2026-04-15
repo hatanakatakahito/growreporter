@@ -158,6 +158,7 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             ai_data=ai,
             memos=mm,
             formats=formats,
+            chart_key=key,
         )
 
     # ─── 4. ユーザー属性 (カスタムレイアウト) ───────────────

@@ -5,11 +5,120 @@ import { functions, db } from '../config/firebase';
 import { useSite } from '../contexts/SiteContext';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan } from './usePlan';
-import { downloadAnalysisExcel } from '../utils/exportAnalysisToExcel';
-import { downloadAnalysisPptx } from '../utils/exportAnalysisToPptx';
 import { format, sub, startOfMonth } from 'date-fns';
+import {
+  resolveVisibleColumns,
+  adaptMonthlyRows,
+  adaptDailyRows,
+  adaptWeeklyRows,
+  adaptHourlyRows,
+  adaptChannelRows,
+  adaptKeywordRows,
+  adaptReferralRows,
+  adaptPageRows,
+  adaptPageCategoryRows,
+  adaptLandingPageRows,
+  adaptFileDownloadRows,
+  adaptExternalLinkRows,
+} from '../constants/analysisColumns';
 
 const incrementExportUsageFn = httpsCallable(functions, 'incrementExportUsage');
+// Python Cloud Function (codebase: python-export)
+const generateExcelFn = httpsCallable(functions, 'generate_analysis_excel');
+const generatePptxFn = httpsCallable(functions, 'generate_analysis_pptx');
+
+// 画面で表示している可視列 + adapt 済みの行データをまとめた「sheets」オブジェクトを構築
+function buildSheetsPayload(allData) {
+  const comp = allData.comparison;
+  return {
+    monthly: {
+      visibleColumns: resolveVisibleColumns('analysis-month'),
+      rows: adaptMonthlyRows(allData.monthlyData),
+      compRows: comp ? adaptMonthlyRows(comp.monthlyData) : null,
+    },
+    daily: {
+      visibleColumns: resolveVisibleColumns('analysis-day'),
+      rows: adaptDailyRows(allData.daily),
+      compRows: comp ? adaptDailyRows(comp.daily) : null,
+    },
+    weekly: {
+      visibleColumns: resolveVisibleColumns('analysis-week'),
+      rows: adaptWeeklyRows(allData.weekly),
+      compRows: null,
+    },
+    hourly: {
+      visibleColumns: resolveVisibleColumns('analysis-hour'),
+      rows: adaptHourlyRows(allData.hourly),
+      compRows: null,
+    },
+    channels: {
+      visibleColumns: resolveVisibleColumns('analysis-channels'),
+      rows: adaptChannelRows(allData.channels),
+      compRows: comp ? adaptChannelRows(comp.channels) : null,
+    },
+    keywords: {
+      visibleColumns: resolveVisibleColumns('analysis-keywords'),
+      rows: adaptKeywordRows(allData.keywords),
+      compRows: null,
+    },
+    referrals: {
+      visibleColumns: resolveVisibleColumns('analysis-referrals'),
+      rows: adaptReferralRows(allData.referrals),
+      compRows: comp ? adaptReferralRows(comp.referrals) : null,
+    },
+    pages: {
+      visibleColumns: resolveVisibleColumns('analysis-pages'),
+      rows: adaptPageRows(allData.pages),
+      compRows: comp ? adaptPageRows(comp.pages) : null,
+    },
+    pageCategories: {
+      visibleColumns: resolveVisibleColumns('analysis-page-categories'),
+      rows: adaptPageCategoryRows(allData.pageCategories),
+      compRows: null,
+    },
+    landingPages: {
+      visibleColumns: resolveVisibleColumns('analysis-landing-pages'),
+      rows: adaptLandingPageRows(allData.landingPages),
+      compRows: comp ? adaptLandingPageRows(comp.landingPages) : null,
+    },
+    fileDownloads: {
+      visibleColumns: resolveVisibleColumns('analysis-file-downloads'),
+      rows: adaptFileDownloadRows(allData.fileDownloads),
+      compRows: null,
+    },
+    externalLinks: {
+      visibleColumns: resolveVisibleColumns('analysis-external-links'),
+      rows: adaptExternalLinkRows(allData.externalLinks),
+      compRows: null,
+    },
+  };
+}
+
+// カスタムシート用のペイロード (Python CF 側で独自レイアウトを生成)
+function buildCustomSheetsPayload(allData) {
+  return {
+    siteUrl: allData.siteUrl || '',
+    kpiSettings: allData.kpiSettings || null,
+    conversionEvents: allData.conversionEvents || [],
+    summary: allData.summaryMetrics,
+    compSummary: allData.comparison?.summaryMetrics || null,
+    users: allData.demographics,
+    conversions: allData.conversions,
+    reverseFlows: allData.reverseFlows || [],
+  };
+}
+
+// ダウンロード URL を開いてファイルを保存
+function triggerDownload(url, fileName) {
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 
 /**
  * 分析レポートExcel/PowerPointダウンロード用フック
@@ -28,6 +137,45 @@ export function useAnalysisExport() {
   const canExportExcel = checkCanGenerate('excelExport');
   const canExportPptx = checkCanGenerate('pptxExport');
 
+  const callGenerateExport = useCallback(
+    async (type) => {
+      const startDate = typeof dateRange.from === 'string' ? dateRange.from : format(dateRange.from, 'yyyy-MM-dd');
+      const endDate = typeof dateRange.to === 'string' ? dateRange.to : format(dateRange.to, 'yyyy-MM-dd');
+
+      setExportProgress('データ取得中...');
+      const allData = await fetchAllData(
+        selectedSiteId,
+        selectedSite,
+        dateRange,
+        currentUser,
+        isComparing ? comparisonDateRange : null
+      );
+
+      setExportProgress('サーバで生成中...');
+      const payload = {
+        siteName: selectedSite?.siteName || '',
+        dateRange: { from: startDate, to: endDate },
+        comparisonRange: allData.comparison?.dateRange || null,
+        sheets: buildSheetsPayload(allData),
+        customSheets: buildCustomSheetsPayload(allData),
+        aiAnalysis: allData.aiAnalysis || {},
+        memos: allData.memos || {},
+      };
+
+      const callable = type === 'excel' ? generateExcelFn : generatePptxFn;
+      const result = await callable(payload);
+      const { downloadUrl, fileName } = result.data || {};
+      if (!downloadUrl) {
+        throw new Error('ダウンロード URL を取得できませんでした');
+      }
+
+      setExportProgress('ダウンロード中...');
+      triggerDownload(downloadUrl, fileName || `report.${type === 'excel' ? 'xlsx' : 'pptx'}`);
+      return true;
+    },
+    [selectedSiteId, selectedSite, dateRange, currentUser, isComparing, comparisonDateRange]
+  );
+
   const handleExportExcel = useCallback(async () => {
     if (!selectedSiteId || !dateRange?.from || !dateRange?.to) return;
     if (!canExportExcel) {
@@ -35,19 +183,11 @@ export function useAnalysisExport() {
     }
 
     setIsExporting(true);
-    setExportProgress('データ取得中...');
-
     try {
-      const allData = await fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser, isComparing ? comparisonDateRange : null);
-      const startDate = typeof dateRange.from === 'string' ? dateRange.from : format(dateRange.from, 'yyyy-MM-dd');
-      const endDate = typeof dateRange.to === 'string' ? dateRange.to : format(dateRange.to, 'yyyy-MM-dd');
-
-      setExportProgress('Excel生成中...');
-      downloadAnalysisExcel(allData, selectedSite?.siteName || '', { from: startDate, to: endDate });
-
-      // 成功後にカウントをインクリメント
-      await incrementExportUsageFn({ type: 'excel' }).catch(e => console.error('[useAnalysisExport] increment failed:', e));
-
+      await callGenerateExport('excel');
+      await incrementExportUsageFn({ type: 'excel' }).catch((e) =>
+        console.error('[useAnalysisExport] increment failed:', e)
+      );
       setExportProgress('');
       return true;
     } catch (error) {
@@ -57,7 +197,7 @@ export function useAnalysisExport() {
     } finally {
       setIsExporting(false);
     }
-  }, [selectedSiteId, selectedSite, dateRange, currentUser, canExportExcel, isComparing, comparisonDateRange]);
+  }, [selectedSiteId, dateRange, canExportExcel, callGenerateExport]);
 
   const handleExportPptx = useCallback(async () => {
     if (!selectedSiteId || !dateRange?.from || !dateRange?.to) return;
@@ -66,19 +206,11 @@ export function useAnalysisExport() {
     }
 
     setIsExporting(true);
-    setExportProgress('データ取得中...');
-
     try {
-      const allData = await fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser, isComparing ? comparisonDateRange : null);
-      const startDate = typeof dateRange.from === 'string' ? dateRange.from : format(dateRange.from, 'yyyy-MM-dd');
-      const endDate = typeof dateRange.to === 'string' ? dateRange.to : format(dateRange.to, 'yyyy-MM-dd');
-
-      setExportProgress('PowerPoint生成中...');
-      await downloadAnalysisPptx(allData, selectedSite?.siteName || '', { from: startDate, to: endDate });
-
-      // 成功後にカウントをインクリメント
-      await incrementExportUsageFn({ type: 'pptx' }).catch(e => console.error('[useAnalysisExport] increment failed:', e));
-
+      await callGenerateExport('pptx');
+      await incrementExportUsageFn({ type: 'pptx' }).catch((e) =>
+        console.error('[useAnalysisExport] increment failed:', e)
+      );
       setExportProgress('');
       return true;
     } catch (error) {
@@ -88,7 +220,7 @@ export function useAnalysisExport() {
     } finally {
       setIsExporting(false);
     }
-  }, [selectedSiteId, selectedSite, dateRange, currentUser, canExportPptx, isComparing, comparisonDateRange]);
+  }, [selectedSiteId, dateRange, canExportPptx, callGenerateExport]);
 
   return {
     isExporting,
