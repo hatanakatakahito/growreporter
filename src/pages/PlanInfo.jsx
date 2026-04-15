@@ -24,7 +24,7 @@ export default function PlanInfo() {
     if (!userProfile) return;
     const role = userProfile.memberRole || 'owner';
     if (role !== 'owner') {
-      navigate('/account/settings', { replace: true });
+      navigate('/account/settings?tab=plan', { replace: true });
     }
   }, [userProfile, navigate]);
 
@@ -67,7 +67,7 @@ export default function PlanInfo() {
         <div className="mb-8 flex items-center gap-4">
           <Button
             outline
-            onClick={() => navigate('/account/settings')}
+            onClick={() => navigate('/account/settings?tab=plan')}
           >
             <ArrowLeft data-slot="icon" className="h-5 w-5" />
           </Button>

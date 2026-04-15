@@ -240,6 +240,23 @@ export const onUpgradeInquiryCreated = onDocumentCreated(
 );
 
 /**
+ * 意見箱（userFeedback）作成トリガー（遅延読み込み）
+ * userFeedback に追加されたら info@grow-reporter.com へメール送信
+ */
+export const onUserFeedbackCreated = onDocumentCreated(
+  {
+    document: 'userFeedback/{feedbackId}',
+    region: 'asia-northeast1',
+    memory: '256MiB',
+    timeoutSeconds: 60,
+  },
+  async (event) => {
+    const { onUserFeedbackCreatedHandler } = await import('./triggers/onUserFeedbackCreated.js');
+    return onUserFeedbackCreatedHandler(event);
+  }
+);
+
+/**
  * ユーザー新規登録トリガー（遅延読み込み）
  * users ドキュメント作成時にウェルカムメールを送信
  */

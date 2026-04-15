@@ -39,7 +39,7 @@ export const STEP_DEFINITIONS = {
   notificationsConfigured: {
     title: '通知を設定する',
     subtitle: '週次レポート・月次レポート・アラート通知',
-    to: '/account/settings',
+    to: '/account/settings?tab=email',
     category: 'setup',
     estimatedTime: '約30秒',
     sidebarNavId: 'nav-account-settings',

@@ -261,6 +261,55 @@ ${appBaseUrl}/admin/inquiries
 }
 
 /**
+ * 意見箱（userFeedback）の通知メールを送信
+ * 宛先: info@grow-reporter.com
+ */
+export async function sendFeedbackEmail({
+  categoryLabel = '',
+  companyName = '',
+  lastName = '',
+  firstName = '',
+  userEmail = '',
+  message = '',
+  attachmentUrl = '',
+  attachmentFileName = '',
+  feedbackId = '',
+}) {
+  try {
+    const contactName = `${(lastName || '').trim()} ${(firstName || '').trim()}`.trim() || '（未入力）';
+    const appBaseUrl = process.env.APP_BASE_URL || process.env.APP_URL || 'https://grow-reporter.com';
+    const subject = `【グローレポータ】意見箱：${categoryLabel || 'お問い合わせ'}`;
+
+    const body = `このメールはグローレポータ（${appBaseUrl}/）の「意見箱」フォームから送信されました。
+
+■ 種別：${categoryLabel || '（未選択）'}
+■ 組織名：${(companyName || '').trim() || '（未入力）'}
+■ 担当者名：${contactName}
+■ メールアドレス：${(userEmail || '').trim() || '（未入力）'}
+
+━━ お問い合わせ内容 ━━
+${(message || '').trim() || '（未入力）'}
+
+${attachmentUrl ? `━━ 添付資料 ━━\n${attachmentFileName || 'ファイル'}\n${attachmentUrl}\n` : ''}
+━━━━━━━━━━━━━━━━━━
+${feedbackId ? `フィードバックID：${feedbackId}\n` : ''}送信日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+`;
+
+    await sendEmailDirect({
+      to: CONSULTATION_TO_EMAIL,
+      subject,
+      text: body,
+      html: body.replace(/\n/g, '<br>'),
+    });
+    logger.info('意見箱メール送信', { categoryLabel, companyName, contactName, userEmail, feedbackId });
+    return { success: true };
+  } catch (error) {
+    logger.error('意見箱メール送信エラー', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
  * board連携失敗時の管理者通知メール
  */
 export async function sendBoardErrorNotificationEmail({ inquiryId, companyName, errorMessage }) {

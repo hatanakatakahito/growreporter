@@ -50,7 +50,7 @@ export default function ProfileEdit() {
         name: formData.name,
         phoneNumber: formData.phoneNumber,
       });
-      navigate('/account/settings');
+      navigate('/account/settings?tab=profile');
     } catch (err) {
       console.error('Profile update error:', err);
       setError('情報の更新に失敗しました。もう一度お試しください。');
@@ -179,7 +179,7 @@ export default function ProfileEdit() {
             <div className="flex gap-3 pt-2">
               <button
                 type="button"
-                onClick={() => navigate('/account/settings')}
+                onClick={() => navigate('/account/settings?tab=profile')}
                 className="px-4 py-2 rounded-lg border border-gray-300 dark:border-dark-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-3"
               >
                 キャンセル
