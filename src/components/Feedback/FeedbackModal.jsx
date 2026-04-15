@@ -5,7 +5,7 @@ import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
-import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
+import { Dialog, DialogTitle, DialogBody } from '../ui/dialog';
 import { Button } from '../ui/button';
 
 const CATEGORY_OPTIONS = [
@@ -59,6 +59,18 @@ export default function FeedbackModal({ isOpen, onClose }) {
     e.preventDefault();
     if (!currentUser?.uid) {
       toast.error('ログインが必要です');
+      return;
+    }
+    if (!companyName.trim()) {
+      toast.error('組織名を入力してください');
+      return;
+    }
+    if (!lastName.trim() || !firstName.trim()) {
+      toast.error('姓名を入力してください');
+      return;
+    }
+    if (!email.trim()) {
+      toast.error('メールアドレスを入力してください');
       return;
     }
     if (!category) {
@@ -122,12 +134,13 @@ export default function FeedbackModal({ isOpen, onClose }) {
         <form id="feedback-form" onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-              組織名
+              組織名 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
+              required
               className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
               placeholder="組織名"
             />
@@ -136,24 +149,26 @@ export default function FeedbackModal({ isOpen, onClose }) {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-                姓
+                姓 <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
+                required
                 className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
                 placeholder="山田"
               />
             </div>
             <div>
               <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-                名
+                名 <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
+                required
                 className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
                 placeholder="太郎"
               />
@@ -162,12 +177,13 @@ export default function FeedbackModal({ isOpen, onClose }) {
 
           <div>
             <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
-              メールアドレス
+              メールアドレス <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              required
               className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
               placeholder="sample@example.com"
             />
@@ -217,17 +233,14 @@ export default function FeedbackModal({ isOpen, onClose }) {
             </label>
           </div>
         </form>
-      </DialogBody>
 
-      <DialogActions>
-        <Button plain onClick={onClose} disabled={submitting}>
-          キャンセル
-        </Button>
-        <Button color="blue" type="submit" form="feedback-form" disabled={submitting}>
-          <Send className="h-4 w-4" data-slot="icon" />
-          {submitting ? '送信中...' : '送信する'}
-        </Button>
-      </DialogActions>
+        <div className="mt-6 flex justify-center">
+          <Button color="blue" type="submit" form="feedback-form" disabled={submitting}>
+            <Send className="h-4 w-4" data-slot="icon" />
+            {submitting ? '送信中...' : '送信する'}
+          </Button>
+        </div>
+      </DialogBody>
     </Dialog>
   );
 }
