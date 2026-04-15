@@ -80,7 +80,12 @@ export const AuthProvider = ({ children }) => {
         lastName: additionalData.lastName || '',
         firstName: additionalData.firstName || '',
         company: additionalData.company || '',
+        department: additionalData.department || '',
         phoneNumber: additionalData.phoneNumber || '',
+        zipCode: additionalData.zipCode || '',
+        prefecture: additionalData.prefecture || '',
+        city: additionalData.city || '',
+        building: additionalData.building || '',
         industry: additionalData.industry || '',
         photoURL: user.photoURL || '',
         plan: 'free',
@@ -311,6 +316,39 @@ export const AuthProvider = ({ children }) => {
               } catch (e) {
                 console.warn('[AuthContext] onboarding 推定エラー:', e);
                 updateData.onboarding = getDefaultOnboarding();
+              }
+            }
+            // 既存ユーザーの profile 遡及マージ: department/住所が未設定なら upgradeInquiries から補完
+            const needsProfileBackfill =
+              currentProfile.department === undefined ||
+              currentProfile.zipCode === undefined;
+            if (needsProfileBackfill) {
+              try {
+                const inquirySnap = await getDocs(
+                  query(
+                    collection(db, 'upgradeInquiries'),
+                    where('uid', '==', user.uid)
+                  )
+                );
+                if (!inquirySnap.empty) {
+                  // 最新の申込を採用
+                  const latest = inquirySnap.docs
+                    .map((d) => d.data())
+                    .sort((a, b) => {
+                      const ta = a.createdAt?.toMillis?.() ?? 0;
+                      const tb = b.createdAt?.toMillis?.() ?? 0;
+                      return tb - ta;
+                    })[0];
+                  if (latest) {
+                    if (currentProfile.department === undefined) updateData.department = latest.department || '';
+                    if (currentProfile.zipCode === undefined) updateData.zipCode = latest.zipCode || '';
+                    if (currentProfile.prefecture === undefined) updateData.prefecture = latest.prefecture || '';
+                    if (currentProfile.city === undefined) updateData.city = latest.city || '';
+                    if (currentProfile.building === undefined) updateData.building = latest.building || '';
+                  }
+                }
+              } catch (e) {
+                console.warn('[AuthContext] profile 遡及マージエラー:', e);
               }
             }
             await setDoc(doc(db, 'users', user.uid), updateData, { merge: true });

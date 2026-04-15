@@ -261,10 +261,13 @@ service cloud.firestore {
       allow write: if false;
     }
     
-    // アップグレードお問い合わせ（認証済みユーザーが作成可。読み取りは管理者のみ）
+    // アップグレードお問い合わせ（認証済みユーザーが作成可。読み取りは本人または管理者）
     match /upgradeInquiries/{inquiryId} {
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid;
-      allow read: if request.auth != null && isAdminUser();
+      allow read: if request.auth != null && (
+        isAdminUser() ||
+        resource.data.uid == request.auth.uid
+      );
       allow update, delete: if false;
     }
 

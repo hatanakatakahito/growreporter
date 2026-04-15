@@ -12,8 +12,14 @@ export default function ProfileEdit() {
   const [passwordResetSent, setPasswordResetSent] = useState(false);
   const [formData, setFormData] = useState({
     company: '',
-    name: '',
+    department: '',
+    lastName: '',
+    firstName: '',
     phoneNumber: '',
+    zipCode: '',
+    prefecture: '',
+    city: '',
+    building: '',
   });
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,8 +30,14 @@ export default function ProfileEdit() {
     if (userProfile) {
       setFormData({
         company: userProfile.company || '',
-        name: userProfile.name || (userProfile.lastName && userProfile.firstName ? `${userProfile.lastName} ${userProfile.firstName}` : userProfile.displayName || ''),
+        department: userProfile.department || '',
+        lastName: userProfile.lastName || '',
+        firstName: userProfile.firstName || '',
         phoneNumber: userProfile.phoneNumber || '',
+        zipCode: userProfile.zipCode || '',
+        prefecture: userProfile.prefecture || '',
+        city: userProfile.city || '',
+        building: userProfile.building || '',
       });
     }
   }, [userProfile]);
@@ -39,16 +51,25 @@ export default function ProfileEdit() {
     e.preventDefault();
     setError('');
     setIsSubmitting(true);
-    if (!formData.company || !formData.name || !formData.phoneNumber) {
+    if (!formData.company || !formData.lastName || !formData.firstName || !formData.phoneNumber) {
       setError('必須項目を入力してください');
       setIsSubmitting(false);
       return;
     }
     try {
+      const fullName = `${formData.lastName} ${formData.firstName}`.trim();
       await updateUserProfile(currentUser.uid, {
         company: formData.company,
-        name: formData.name,
+        department: formData.department,
+        lastName: formData.lastName,
+        firstName: formData.firstName,
+        name: fullName,
+        displayName: fullName,
         phoneNumber: formData.phoneNumber,
+        zipCode: formData.zipCode,
+        prefecture: formData.prefecture,
+        city: formData.city,
+        building: formData.building,
       });
       navigate('/account/settings?tab=profile');
     } catch (err) {
@@ -102,18 +123,47 @@ export default function ProfileEdit() {
               />
             </div>
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                氏名 <span className="text-red-500">*</span>
+              <label htmlFor="department" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                部署名
               </label>
               <input
                 type="text"
-                id="name"
-                value={formData.name}
+                id="department"
+                value={formData.department}
                 onChange={handleChange}
-                placeholder="例: 山田 太郎"
+                placeholder="例: マーケティング部"
                 className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
-                required
               />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="lastName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  姓 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  placeholder="山田"
+                  className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="firstName" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  名 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  id="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  placeholder="太郎"
+                  className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                  required
+                />
+              </div>
             </div>
             <div>
               <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -132,6 +182,67 @@ export default function ProfileEdit() {
                 required
               />
               <p className="mt-1 text-xs text-gray-500">※ハイフンは自動で削除されます</p>
+            </div>
+
+            {/* 住所 */}
+            <div className="border-t border-gray-200 dark:border-dark-3 pt-5 mt-6">
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">住所</h3>
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="zipCode" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    郵便番号
+                  </label>
+                  <input
+                    type="text"
+                    id="zipCode"
+                    value={formData.zipCode}
+                    onChange={handleChange}
+                    placeholder="1000001（ハイフンなし）"
+                    className="w-full max-w-[240px] rounded-md border border-stroke bg-transparent px-4 py-2.5 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label htmlFor="prefecture" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      都道府県
+                    </label>
+                    <input
+                      type="text"
+                      id="prefecture"
+                      value={formData.prefecture}
+                      onChange={handleChange}
+                      placeholder="東京都"
+                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      市区町村
+                    </label>
+                    <input
+                      type="text"
+                      id="city"
+                      value={formData.city}
+                      onChange={handleChange}
+                      placeholder="千代田区〇〇"
+                      className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label htmlFor="building" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    建物名・部屋番号
+                  </label>
+                  <input
+                    type="text"
+                    id="building"
+                    value={formData.building}
+                    onChange={handleChange}
+                    placeholder="〇〇ビル 3F"
+                    className="w-full rounded-md border border-stroke bg-transparent px-4 py-2.5 text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* メールアドレス・パスワード */}

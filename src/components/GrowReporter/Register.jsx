@@ -107,9 +107,14 @@ export default function Register() {
         displayName,
         name: displayName,
         company: companyName,
+        department: businessForm.department || '',
         phoneNumber,
         lastName: businessForm.lastName,
         firstName: businessForm.firstName,
+        zipCode: businessForm.zipCode || '',
+        prefecture: businessForm.prefecture || '',
+        city: businessForm.city || '',
+        building: businessForm.building || '',
       });
 
       // ビジネスプラン: upgradeInquiries作成
