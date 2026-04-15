@@ -1,12 +1,15 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, ChevronRight } from 'lucide-react';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import {
   STEP_DEFINITIONS,
   CATEGORIES,
   STEP_ORDER,
 } from '../../constants/onboarding';
 import { useOnboarding } from '../../hooks/useOnboarding';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * チェックリスト本体（モーダルとインラインカードで共用）
@@ -19,6 +22,7 @@ import { useOnboarding } from '../../hooks/useOnboarding';
 export default function ChecklistBody({ onBeforeNavigate }) {
   const navigate = useNavigate();
   const { steps, requiredStepKeys, progress, isDesktop } = useOnboarding();
+  const { currentUser, refreshUserProfile } = useAuth();
 
   // 表示対象のステップ配列（カテゴリ順）
   const orderedItems = useMemo(() => {
@@ -61,13 +65,28 @@ export default function ChecklistBody({ onBeforeNavigate }) {
     return items[0]?.key || null;
   }, [orderedItems]);
 
-  const handleItemClick = (item) => {
+  const handleItemClick = async (item) => {
     // siteRegistered は自動完了専用、クリックしても何もしない
     if (!item.to) return;
-    // モーダルを閉じる（親から渡された場合）
+
+    // 【重要】クリックした時点で Firestore に直接書き込む
+    // これにより React state の伝播・stale closure・ツアー完了タイミング
+    // などに依存せず、確実にステップ完了を記録できる。
+    if (currentUser?.uid && !item.done) {
+      try {
+        await updateDoc(doc(db, 'users', currentUser.uid), {
+          [`onboarding.steps.${item.key}`]: true,
+          updatedAt: serverTimestamp(),
+        });
+        if (refreshUserProfile) await refreshUserProfile();
+      } catch (e) {
+        console.error('[ChecklistBody] step mark failed:', e);
+      }
+    }
+
+    // モーダルを閉じる
     if (onBeforeNavigate) onBeforeNavigate();
-    // 該当ページに対応するツアーID（あれば）をリセットして毎回見られるように
-    // seenTours クリア処理はカスタムイベント経由で MainLayout に委譲
+    // 該当ページのツアー起動要求
     window.dispatchEvent(
       new CustomEvent('onboarding:force-tour', { detail: { stepKey: item.key } })
     );

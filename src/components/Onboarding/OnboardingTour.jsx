@@ -24,6 +24,16 @@ export default function OnboardingTour({ tourId, forceStart = false }) {
   const startedRef = useRef(new Set()); // 起動済みツアーID
   const completedRef = useRef(new Set()); // 完了済みツアーID（再起動防止）
 
+  // markStep / markTourSeen は常に最新を呼ぶため ref で保持
+  const markStepRef = useRef(markStep);
+  const markTourSeenRef = useRef(markTourSeen);
+  useEffect(() => {
+    markStepRef.current = markStep;
+  }, [markStep]);
+  useEffect(() => {
+    markTourSeenRef.current = markTourSeen;
+  }, [markTourSeen]);
+
   useEffect(() => {
     if (!tourId) return undefined;
     if (!isDesktop) return undefined;
@@ -87,9 +97,10 @@ export default function OnboardingTour({ tourId, forceStart = false }) {
           driverRef.current = null;
 
           const completionKey = TOUR_STEP_COMPLETION_KEY[tourId];
-          markTourSeen(tourId);
+          // 常に最新の ref を呼ぶ（stale closure 回避）
+          markTourSeenRef.current(tourId);
           if (completionKey) {
-            markStep(completionKey);
+            markStepRef.current(completionKey);
             const stepTitle = {
               dashboard: 'ダッシュボードの見方',
               analysisDay: '詳細分析画面',
