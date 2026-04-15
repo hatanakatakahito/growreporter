@@ -18,6 +18,7 @@ export const TOUR_TARGETS = {
   ANALYSIS_DIMENSION_FILTERS: 'analysis-dimension-filters',
   ANALYSIS_VIEW_TABS: 'analysis-view-tabs',
   ANALYSIS_COLUMN_TOGGLE: 'analysis-column-toggle',
+  ANALYSIS_NOTE: 'analysis-note',
   AI_SUMMARY: 'ai-summary',
 
   // Account / Members

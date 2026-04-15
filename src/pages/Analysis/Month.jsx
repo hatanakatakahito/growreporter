@@ -30,7 +30,7 @@ import {
 
 /**
  * 月別分析画面
- * 13ヶ月の月別推移を表形式/グラフ形式で表示
+ * 24ヶ月の月別推移を表形式/グラフ形式で表示
  */
 export default function Month() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
@@ -57,12 +57,12 @@ export default function Month() {
     setPageTitle('月別分析');
   }, []);
 
-  // 13ヶ月分の月次データを取得
+  // 24ヶ月分の月次データを取得
   const monthlyStartDate = useMemo(() => {
-    if (!dateRange.to) return format(startOfMonth(sub(new Date(), { months: 12 })), 'yyyy-MM-dd');
+    if (!dateRange.to) return format(startOfMonth(sub(new Date(), { months: 23 })), 'yyyy-MM-dd');
     const endDate = new Date(dateRange.to);
     const endMonth = startOfMonth(endDate);
-    return format(startOfMonth(sub(endMonth, { months: 12 })), 'yyyy-MM-dd');
+    return format(startOfMonth(sub(endMonth, { months: 23 })), 'yyyy-MM-dd');
   }, [dateRange.to]);
 
   const monthlyEndDate = useMemo(() => {
@@ -83,7 +83,7 @@ export default function Month() {
   // 比較期間の月別データ
   const { data: compMonthlyDataResponse } = useGA4MonthlyData(
     comparisonDateRange ? selectedSiteId : null,
-    comparisonDateRange ? format(sub(new Date(comparisonDateRange.from), { months: 11 }), 'yyyy-MM-dd') : null,
+    comparisonDateRange ? format(sub(new Date(comparisonDateRange.from), { months: 23 }), 'yyyy-MM-dd') : null,
     comparisonDateRange ? comparisonDateRange.to : null,
     ga4DimensionFilter
   );
@@ -95,6 +95,8 @@ export default function Month() {
     if (!isComparing) return monthlyData;
     return mergeComparisonRows(monthlyData, compMonthlyData, 'label', ['users', 'newUsers', 'sessions', 'avgPageviews', 'pageViews', 'engagementRate', 'bounceRate', 'averageSessionDuration', 'conversions', 'conversionRate']);
   }, [monthlyData, isComparing, compMonthlyData]);
+
+  const tableMonthlyData = useMemo(() => [...mergedMonthlyData].reverse(), [mergedMonthlyData]);
 
   // グラフ用のツールチップ
   const CustomTooltip = ({ active, payload, label }) => {
@@ -150,7 +152,7 @@ export default function Month() {
   if (isLoading && !monthlyData.length) {
     return (
       <div className="flex h-full flex-col">
-        <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} showSiteInfo={false} />
+        <AnalysisHeader dateRange={dateRange} setDateRange={updateDateRange} showDateRange={true} monthPickerMode={true} showSiteInfo={false} />
         <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
           <div className="flex min-h-[60vh] items-center justify-center">
             <LoadingSpinner message="月次データを読み込んでいます..." />
@@ -162,7 +164,13 @@ export default function Month() {
 
   return (
     <div className="flex h-full flex-col">
-      <AnalysisHeader showDateRange={false} showSiteInfo={false} />
+      <AnalysisHeader
+        dateRange={dateRange}
+        setDateRange={updateDateRange}
+        showDateRange={true}
+        monthPickerMode={true}
+        showSiteInfo={false}
+      />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4 flex items-start justify-between gap-4">
@@ -231,8 +239,8 @@ export default function Month() {
                     { key: 'conversions', label: 'CV数', format: 'number', align: 'right', tooltip: 'conversions', comparison: true },
                     { key: 'conversionRate', label: 'CVR', format: 'percent', align: 'right', tooltip: 'conversionRate', comparison: true },
                   ]}
-                  data={mergedMonthlyData}
-                  pageSize={13}
+                  data={tableMonthlyData}
+                  pageSize={24}
                   showPagination={false}
                   emptyMessage="データがありません。GA4連携を確認してください。"
                   showTotals
@@ -266,7 +274,7 @@ export default function Month() {
 
           {/* メモ & AI分析タブ */}
           {selectedSiteId && currentUser && monthlyData.length > 0 && (
-            <div className="mt-6">
+            <div data-tour="analysis-note" className="mt-6">
               <TabbedNoteAndAI
                 pageType="analysis/month"
                 noteContent={
