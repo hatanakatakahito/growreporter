@@ -17,8 +17,9 @@ import { TOUR_STEPS_BY_ID, TOUR_STEP_COMPLETION_KEY } from './tourSteps';
  *       Firestore 反映の遅延による再起動バグを防ぐ。
  */
 export default function OnboardingTour({ tourId, forceStart = false }) {
-  const { isVisible, isDesktop, seenTours, markTourSeen, markStep } =
+  const { isVisible, isDesktop, seenTours, markTourSeen, markStep, planId } =
     useOnboarding();
+  const isFree = planId === 'free';
   const driverRef = useRef(null);
   const startedRef = useRef(new Set()); // 起動済みツアーID
   const completedRef = useRef(new Set()); // 完了済みツアーID（再起動防止）
@@ -41,8 +42,11 @@ export default function OnboardingTour({ tourId, forceStart = false }) {
       }
     }
 
-    const steps = TOUR_STEPS_BY_ID[tourId];
-    if (!steps || steps.length === 0) return undefined;
+    const allSteps = TOUR_STEPS_BY_ID[tourId];
+    if (!allSteps || allSteps.length === 0) return undefined;
+    // Free プランは Business 限定ステップを除外
+    const steps = isFree ? allSteps.filter((s) => !s.businessOnly) : allSteps;
+    if (steps.length === 0) return undefined;
 
     let cancelled = false;
     let retryTimer = null;
@@ -144,7 +148,7 @@ export default function OnboardingTour({ tourId, forceStart = false }) {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tourId, isDesktop, forceStart]);
+  }, [tourId, isDesktop, forceStart, isFree]);
 
   return null;
 }

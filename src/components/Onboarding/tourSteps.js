@@ -19,6 +19,7 @@ export const analysisDaySteps = [
       title: 'Excel / PowerPoint でダウンロード',
       description: 'レポートを Excel / PowerPoint 形式でダウンロードできます。',
     },
+    businessOnly: true,
   },
 ];
 
