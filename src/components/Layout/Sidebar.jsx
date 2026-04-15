@@ -295,7 +295,7 @@ export default function Sidebar() {
 
       {/* ナビゲーション */}
       <nav className={`overflow-y-auto py-4 scrollbar-hide ${
-        isSidebarOpen ? 'h-[calc(100vh-19rem)] px-4' : 'h-[calc(100vh-20rem)] px-2'
+        isSidebarOpen ? 'h-[calc(100vh-16rem)] px-4' : 'h-[calc(100vh-17rem)] px-2'
       }`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <ul className="space-y-2">
           {menuItems.map((item, index) => (
