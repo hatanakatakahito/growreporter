@@ -244,7 +244,6 @@ export default function MainLayout() {
   // 操作方法のガイド（オンボーディング）
   const { isVisible: isOnboardingVisible, isFirstVisit, isAdmin } = useOnboarding();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [forcedTourId, setForcedTourId] = useState(null); // 項目クリックで強制起動したいツアーID
 
   // Dashboard 初訪問時にモーダルを自動表示（SiteSelectionModal が出ている間は待つ）
   useEffect(() => {
@@ -259,7 +258,7 @@ export default function MainLayout() {
     setIsModalOpen(true);
   }, [isOnboardingVisible, needsSiteSelection, isFirstVisit, location.pathname]);
 
-  // サイドバーの「操作方法ガイドを再開」から明示的に開く要求を購読
+  // ツアー完了後 / サイドバー「操作方法ガイドを再開」からの明示的な open 要求を購読
   useEffect(() => {
     const handleOpenRequest = () => {
       if (isAdmin) return;
@@ -268,37 +267,6 @@ export default function MainLayout() {
     window.addEventListener('onboarding:open-modal', handleOpenRequest);
     return () => window.removeEventListener('onboarding:open-modal', handleOpenRequest);
   }, [isAdmin]);
-
-  // チェックリスト項目クリック時のツアー強制起動要求を購読
-  useEffect(() => {
-    const handleForceTour = (e) => {
-      const stepKey = e?.detail?.stepKey;
-      if (!stepKey) return;
-      // stepKey → tourId マッピング
-      const stepToTourId = {
-        analysisViewed: 'analysisMonth',
-        aiTried: 'analysisSummary',
-        exported: 'analysisMonth',
-        memberInvited: 'members',
-        notificationsConfigured: 'accountSettings',
-        siteEdited: 'sites',
-        aiChatTried: 'aiChat',
-        improveViewed: 'improve',
-        reportsViewed: 'reports',
-      };
-      const tid = stepToTourId[stepKey];
-      if (tid) setForcedTourId(tid);
-    };
-    window.addEventListener('onboarding:force-tour', handleForceTour);
-    return () => window.removeEventListener('onboarding:force-tour', handleForceTour);
-  }, []);
-
-  // ツアー終了時に forcedTourId をクリア
-  useEffect(() => {
-    const handleConsumed = () => setForcedTourId(null);
-    window.addEventListener('onboarding:tour-consumed', handleConsumed);
-    return () => window.removeEventListener('onboarding:tour-consumed', handleConsumed);
-  }, []);
 
   // 現在ルートに対応する tourId
   const tourId = getTourIdFromPath(location.pathname);
@@ -350,11 +318,8 @@ export default function MainLayout() {
       />
 
       {/* 操作方法のガイド: 各画面ミニツアー */}
-      {isOnboardingVisible && !isModalOpen && tourId && (
-        <OnboardingTour
-          tourId={tourId}
-          forceStart={forcedTourId === tourId}
-        />
+      {!isModalOpen && tourId && !isAdmin && (
+        <OnboardingTour tourId={tourId} />
       )}
     </div>
   );

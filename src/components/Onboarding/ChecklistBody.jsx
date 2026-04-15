@@ -86,12 +86,10 @@ export default function ChecklistBody({ onBeforeNavigate }) {
 
     // モーダルを閉じる
     if (onBeforeNavigate) onBeforeNavigate();
-    // 該当ページのツアー起動要求
-    window.dispatchEvent(
-      new CustomEvent('onboarding:force-tour', { detail: { stepKey: item.key } })
-    );
-    // 遷移
-    navigate(item.to);
+    // URL クエリパラメータ ?guide=1 で「ガイドから遷移」を明示
+    // 遷移先の OnboardingTour が param を検出してツアー起動 → 起動後 param 削除
+    const sep = item.to.includes('?') ? '&' : '?';
+    navigate(`${item.to}${sep}guide=1`);
   };
 
   return (
