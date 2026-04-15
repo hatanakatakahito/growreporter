@@ -422,7 +422,7 @@ export default function AIChat() {
   }
 
   return (
-    <div className="flex h-full bg-gray-50 dark:bg-dark">
+    <div data-tour="ai-chat-input" className="flex h-full bg-gray-50 dark:bg-dark">
       {/* 左パネル: 会話一覧 */}
       <div className={`${showSidebar ? 'w-72' : 'w-0'} shrink-0 border-r border-stroke dark:border-dark-3 bg-white dark:bg-dark-2 flex flex-col transition-all overflow-hidden`}>
         {/* ヘッダー */}

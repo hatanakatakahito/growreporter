@@ -622,7 +622,7 @@ export default function Improve() {
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <div data-tour="improve-header" className="flex flex-col h-full">
       <AnalysisHeader
           dateRange={null}
           setDateRange={null}

@@ -20,6 +20,18 @@ export const TOUR_TARGETS = {
   // Account / Members
   ACCOUNT_NOTIFICATIONS: 'account-notifications',
   MEMBERS_INVITE: 'members-invite',
+
+  // Site list
+  SITE_EDIT_BUTTON: 'site-edit-button',
+
+  // AI Chat
+  AI_CHAT_INPUT: 'ai-chat-input',
+
+  // Improve
+  IMPROVE_HEADER: 'improve-header',
+
+  // Reports
+  REPORTS_HEADER: 'reports-header',
 };
 
 export const sel = (key) => `[data-tour="${key}"]`;

@@ -49,7 +49,7 @@ export default function Reports() {
   };
 
   return (
-    <div className="flex flex-col h-full">
+    <div data-tour="reports-header" className="flex flex-col h-full">
       <AnalysisHeader dateRange={null} setDateRange={null} showDateRange={false} showSiteInfo={false} showExport={false} />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">

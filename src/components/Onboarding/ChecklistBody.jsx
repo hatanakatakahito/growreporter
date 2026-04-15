@@ -168,9 +168,7 @@ export default function ChecklistBody({ onBeforeNavigate }) {
                     </span>
                     <span
                       className={`text-sm font-medium ${
-                        it.done
-                          ? 'text-body-color line-through'
-                          : 'text-dark dark:text-white'
+                        it.done ? 'text-body-color' : 'text-dark dark:text-white'
                       }`}
                     >
                       {it.title}
@@ -181,16 +179,10 @@ export default function ChecklistBody({ onBeforeNavigate }) {
                       </span>
                     )}
                     <span className="ml-auto shrink-0 text-[11px] text-body-color">
-                      {it.estimatedTime}
+                      {it.done ? '完了' : it.estimatedTime}
                     </span>
                   </div>
-                  <p
-                    className={`mt-0.5 text-xs text-body-color ${
-                      it.done ? 'line-through' : ''
-                    }`}
-                  >
-                    {it.subtitle}
-                  </p>
+                  <p className="mt-0.5 text-xs text-body-color">{it.subtitle}</p>
                 </div>
                 <ChevronRight className="mt-1 h-4 w-4 shrink-0 self-center text-dark-6" />
               </button>

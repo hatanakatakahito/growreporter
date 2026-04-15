@@ -254,5 +254,9 @@ export function getTourIdFromPath(pathname) {
   if (pathname.startsWith('/analysis/')) return 'analysisDay';
   if (pathname === '/members') return 'members';
   if (pathname === '/account/settings') return 'accountSettings';
+  if (pathname.startsWith('/sites/')) return 'sites';
+  if (pathname === '/ai-chat') return 'aiChat';
+  if (pathname === '/improve') return 'improve';
+  if (pathname === '/reports') return 'reports';
   return null;
 }

@@ -282,6 +282,10 @@ export default function MainLayout() {
         exported: 'analysisDay',
         memberInvited: 'members',
         notificationsConfigured: 'accountSettings',
+        siteEdited: 'sites',
+        aiChatTried: 'aiChat',
+        improveViewed: 'improve',
+        reportsViewed: 'reports',
       };
       const tid = stepToTourId[stepKey];
       if (tid) setForcedTourId(tid);

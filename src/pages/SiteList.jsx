@@ -301,6 +301,7 @@ export default function SiteList() {
                     </Link>
                     <Link
                       to={`/sites/${site.id}/edit?step=1`}
+                      data-tour="site-edit-button"
                       className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
                     >
                       <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
