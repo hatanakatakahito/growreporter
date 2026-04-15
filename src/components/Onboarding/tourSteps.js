@@ -7,6 +7,14 @@ import { TOUR_TARGETS, sel } from './tourTargets';
 
 export const analysisMonthSteps = [
   {
+    element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
+    popover: {
+      title: '期間設定',
+      description:
+        '分析する期間と比較対象（前期間・前年同期など）をここで切り替えられます。',
+    },
+  },
+  {
     element: sel(TOUR_TARGETS.ANALYSIS_DIMENSION_FILTERS),
     popover: {
       title: 'フィルタ設定',
