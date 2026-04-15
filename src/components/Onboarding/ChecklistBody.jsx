@@ -143,7 +143,7 @@ export default function ChecklistBody({ onBeforeNavigate }) {
                 onMouseEnter={() => handleItemHover(it.sidebarNavId, true)}
                 onMouseLeave={() => handleItemHover(it.sidebarNavId, false)}
                 title={isDisabledMobile ? 'PCで実行してください' : undefined}
-                className={`group relative flex w-full items-start gap-4 rounded-lg border px-4 py-3 text-left transition ${
+                className={`group relative flex w-full items-start gap-4 rounded-lg border px-4 py-3 text-left transition cursor-pointer [&_*]:pointer-events-none ${
                   isNext
                     ? 'border-primary bg-primary/[0.03] dark:bg-primary/10'
                     : 'border-stroke dark:border-dark-3'
