@@ -31,7 +31,7 @@ const SIDEBAR_THEMES = {
     userName: 'text-white',
     userEmail: 'text-slate-500',
     userHover: 'hover:bg-white/[0.05]',
-    logoutBtn: 'border-white/[0.06] text-slate-200 hover:bg-white/[0.05] hover:text-white',
+    logoutBtn: 'border-white/[0.06] bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:text-white',
     adminBtn: 'bg-primary text-white hover:bg-opacity-90',
     toggleBtnBg: 'border-white/10 bg-[#1e2235] hover:bg-[#252a40]',
     toggleBtnIcon: 'text-slate-400',
@@ -54,7 +54,7 @@ const SIDEBAR_THEMES = {
     userName: 'text-slate-800',
     userEmail: 'text-slate-400',
     userHover: 'hover:bg-slate-50',
-    logoutBtn: 'border-stroke/60 text-slate-700 hover:bg-slate-50 hover:text-slate-900',
+    logoutBtn: 'border-stroke/60 bg-white text-slate-700 hover:bg-slate-50 hover:text-slate-900',
     adminBtn: 'bg-primary text-white hover:bg-opacity-90',
     toggleBtnBg: 'border-stroke bg-gray-100 hover:bg-gray-200',
     toggleBtnIcon: 'text-body-color',
@@ -582,7 +582,7 @@ export default function Sidebar() {
           <div className={`mt-2 flex ${isSidebarOpen ? 'gap-2' : 'flex-col gap-1.5'}`}>
             <button
               onClick={handleLogout}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border bg-white px-2 py-1.5 text-xs font-medium transition ${t.logoutBtn}`}
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition ${t.logoutBtn}`}
               title="ログアウト"
             >
               <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
