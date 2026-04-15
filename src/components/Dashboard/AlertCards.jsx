@@ -93,7 +93,7 @@ export default function AlertCards({ siteId }) {
   if (unreadAlerts.length === 0) return null;
 
   return (
-    <div className="mb-6 space-y-4">
+    <div data-tour="dashboard-alerts" className="mb-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-dark dark:text-white flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-amber-500" />

@@ -196,21 +196,17 @@ export default function Dashboard() {
             <OnboardingChecklistCard />
 
             {/* アラート通知 */}
-            <div data-tour="dashboard-alerts">
-              <AlertCards siteId={selectedSiteId} />
-            </div>
+            <AlertCards siteId={selectedSiteId} />
 
             {/* 主要指標（3タブ：サマリ / CV内訳 / KPI予実） */}
-            <div data-tour="dashboard-kpi">
-              <MetricTabSection
-                data={currentData}
-                previousMonthData={previousData}
-                yearAgoData={yearAgoData}
-                isLoading={isLoading}
-                selectedSite={selectedSite}
-                selectedSiteId={selectedSiteId}
-              />
-            </div>
+            <MetricTabSection
+              data={currentData}
+              previousMonthData={previousData}
+              yearAgoData={yearAgoData}
+              isLoading={isLoading}
+              selectedSite={selectedSite}
+              selectedSiteId={selectedSiteId}
+            />
 
             {/* トレンドチャート */}
             <TrendChart

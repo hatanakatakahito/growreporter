@@ -7,19 +7,11 @@ import { TOUR_TARGETS, sel } from './tourTargets';
 
 export const dashboardSteps = [
   {
-    element: sel(TOUR_TARGETS.DASHBOARD_KPI),
+    element: sel(TOUR_TARGETS.ANALYSIS_KPI_CARD),
     popover: {
       title: '主要指標をひと目で',
       description:
         'セッション・ユーザー・PV・CV とその前月比をタブ切替で確認できます。指標のトレンドを素早く把握しましょう。',
-    },
-  },
-  {
-    element: sel(TOUR_TARGETS.DASHBOARD_ALERTS),
-    popover: {
-      title: '重要な変化を自動検知',
-      description:
-        '前期比で大きく動いた指標はアラートとして表示されます。異常を見逃さずキャッチできます。',
     },
   },
   {
