@@ -231,19 +231,19 @@ export default function AccountSettings() {
               <dl className="divide-y divide-gray-100 dark:divide-dark-3">
                 <div className="grid grid-cols-3 gap-4 py-3">
                   <dt className="text-sm text-gray-500 dark:text-dark-6">組織名</dt>
-                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.company || '未設定'}</dd>
+                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.company}</dd>
                 </div>
                 <div className="grid grid-cols-3 gap-4 py-3">
                   <dt className="text-sm text-gray-500 dark:text-dark-6">部署名</dt>
-                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.department || '未設定'}</dd>
+                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.department}</dd>
                 </div>
                 <div className="grid grid-cols-3 gap-4 py-3">
                   <dt className="text-sm text-gray-500 dark:text-dark-6">姓</dt>
-                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.lastName || '未設定'}</dd>
+                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.lastName}</dd>
                 </div>
                 <div className="grid grid-cols-3 gap-4 py-3">
                   <dt className="text-sm text-gray-500 dark:text-dark-6">名</dt>
-                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.firstName || '未設定'}</dd>
+                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.firstName}</dd>
                 </div>
                 <div className="grid grid-cols-3 gap-4 py-3">
                   <dt className="text-sm text-gray-500 dark:text-dark-6">メールアドレス</dt>
@@ -251,23 +251,23 @@ export default function AccountSettings() {
                 </div>
                 <div className="grid grid-cols-3 gap-4 py-3">
                   <dt className="text-sm text-gray-500 dark:text-dark-6">電話番号</dt>
-                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.phoneNumber || '未設定'}</dd>
+                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.phoneNumber}</dd>
                 </div>
                 <div className="grid grid-cols-3 gap-4 py-3">
                   <dt className="text-sm text-gray-500 dark:text-dark-6">郵便番号</dt>
-                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.zipCode || '未設定'}</dd>
+                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.zipCode}</dd>
                 </div>
                 <div className="grid grid-cols-3 gap-4 py-3">
                   <dt className="text-sm text-gray-500 dark:text-dark-6">都道府県</dt>
-                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.prefecture || '未設定'}</dd>
+                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.prefecture}</dd>
                 </div>
                 <div className="grid grid-cols-3 gap-4 py-3">
                   <dt className="text-sm text-gray-500 dark:text-dark-6">市区町村</dt>
-                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.city || '未設定'}</dd>
+                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.city}</dd>
                 </div>
                 <div className="grid grid-cols-3 gap-4 py-3">
                   <dt className="text-sm text-gray-500 dark:text-dark-6">建物名・部屋番号</dt>
-                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.building || '未設定'}</dd>
+                  <dd className="col-span-2 text-sm text-gray-900 dark:text-white">{userProfile.building}</dd>
                 </div>
               </dl>
             </div>
