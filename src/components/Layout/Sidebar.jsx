@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useOnboarding } from '../../hooks/useOnboarding';
-import { ChevronLeft, ChevronRight, Sun, Moon, RefreshCw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, Moon, BookOpen } from 'lucide-react';
 import { getPlanBadgeColor, getPlanDisplayName } from '../../constants/plans';
 import { usePlan } from '../../hooks/usePlan';
 import UpgradeModal from '../common/UpgradeModal';
@@ -510,10 +510,10 @@ export default function Sidebar() {
             <button
               data-tour="sidebar-restart-tour"
               onClick={handleRestartOnboarding}
-              className={`mt-2 flex w-full items-center gap-1.5 rounded-md border bg-white px-2 py-1.5 text-xs font-medium transition ${t.logoutBtn}`}
+              className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border bg-white px-2 py-1.5 text-xs font-medium transition ${t.logoutBtn}`}
               title="操作方法のガイドを再開"
             >
-              <RefreshCw className="h-3.5 w-3.5 shrink-0" />
+              <BookOpen className="h-3.5 w-3.5 shrink-0" />
               操作方法ガイドを再開
             </button>
           )}
