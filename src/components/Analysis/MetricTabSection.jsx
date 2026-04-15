@@ -90,9 +90,9 @@ export default function MetricTabSection({
 
   return (
     <>
-      <div data-tour="analysis-kpi-card" className="space-y-6">
+      <div className="space-y-6">
         {/* タブナビゲーション */}
-        <div className="flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2 overflow-x-auto">
+        <div data-tour="analysis-kpi-card" className="flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2 overflow-x-auto">
           <button
             onClick={() => setActiveTab('summary')}
             className={`flex-1 shrink-0 rounded-md px-4 sm:px-8 py-2 text-sm whitespace-nowrap font-medium transition-all duration-200 ${
