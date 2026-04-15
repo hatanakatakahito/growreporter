@@ -68,7 +68,7 @@ export default function Sidebar() {
   const { currentUser, userProfile, logout } = useAuth();
   const { isAdmin } = useAdmin();
   const { isSidebarOpen, toggleSidebar, isDarkSidebar, toggleSidebarTheme } = useSidebar();
-  const [isAnalysisOpen, setIsAnalysisOpen] = useState(true);
+  const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
   const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
   const [isEngagementOpen, setIsEngagementOpen] = useState(false);
