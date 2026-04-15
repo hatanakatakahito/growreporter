@@ -387,12 +387,6 @@ export default function AccountSettings() {
               })}
             </div>
 
-            <div className="mx-auto max-w-3xl rounded-lg bg-blue-50 p-5 dark:bg-blue-900/20">
-              <p className="text-sm text-blue-800 dark:text-blue-200">
-                プラン変更をご希望の場合は「アップグレード」ボタンからお問い合わせください。
-                担当者より折り返しご連絡いたします。
-              </p>
-            </div>
           </div>
         )}
 
