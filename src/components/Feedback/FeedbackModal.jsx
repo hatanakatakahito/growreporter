@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { Dialog, DialogBackdrop, DialogPanel, DialogTitle } from '@headlessui/react';
-import { X, Paperclip } from 'lucide-react';
+import { Paperclip, Send } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
+import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 
 const CATEGORY_OPTIONS = [
   { value: 'usage', label: '使い方について' },
@@ -111,161 +112,122 @@ export default function FeedbackModal({ isOpen, onClose }) {
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} className="relative z-[60]">
-      <DialogBackdrop className="fixed inset-0 z-[60] bg-black/50" />
-      <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
-        <DialogPanel className="relative w-full max-w-xl rounded-2xl bg-white shadow-xl dark:bg-dark-2 max-h-[90vh] flex flex-col">
-          {/* ヘッダー */}
-          <div className="flex items-start justify-between border-b border-stroke px-6 py-4 dark:border-dark-3">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wider text-body-color">
-                意見箱
-              </p>
-              <DialogTitle className="mt-1 text-lg font-bold text-dark dark:text-white">
-                お問い合わせフォーム
-              </DialogTitle>
-              <p className="mt-1 text-xs text-body-color">
-                ご質問・ご要望・不具合報告などお気軽にお送りください
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-md p-1 text-body-color hover:bg-gray-100 dark:hover:bg-dark-3"
-              aria-label="閉じる"
-            >
-              <X className="h-5 w-5" />
-            </button>
+    <Dialog open={isOpen} onClose={onClose} size="lg">
+      <DialogTitle>意見箱・お問い合わせ</DialogTitle>
+
+      <DialogBody>
+        <p className="mb-4 text-sm text-body-color">
+          ご質問・ご要望・不具合報告などお気軽にお送りください
+        </p>
+        <form id="feedback-form" onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
+              組織名
+            </label>
+            <input
+              type="text"
+              value={companyName}
+              onChange={(e) => setCompanyName(e.target.value)}
+              className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+              placeholder="組織名"
+            />
           </div>
 
-          {/* 本体 */}
-          <form onSubmit={handleSubmit} className="flex flex-1 flex-col overflow-hidden">
-            <div className="flex-1 space-y-4 overflow-y-auto px-6 py-5">
-              {/* 組織名 */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
-                  組織名
-                </label>
-                <input
-                  type="text"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full rounded-lg border border-stroke bg-white px-3 py-2 text-sm text-dark focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
-                  placeholder="組織名"
-                />
-              </div>
-
-              {/* 姓・名 */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
-                    姓
-                  </label>
-                  <input
-                    type="text"
-                    value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
-                    className="w-full rounded-lg border border-stroke bg-white px-3 py-2 text-sm text-dark focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
-                    placeholder="山田"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
-                    名
-                  </label>
-                  <input
-                    type="text"
-                    value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
-                    className="w-full rounded-lg border border-stroke bg-white px-3 py-2 text-sm text-dark focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
-                    placeholder="太郎"
-                  />
-                </div>
-              </div>
-
-              {/* メールアドレス */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
-                  メールアドレス
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full rounded-lg border border-stroke bg-white px-3 py-2 text-sm text-dark focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
-                  placeholder="sample@example.com"
-                />
-              </div>
-
-              {/* 種別 */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
-                  種別 <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  required
-                  className="w-full rounded-lg border border-stroke bg-white px-3 py-2 text-sm text-dark focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
-                >
-                  <option value="">選択してください</option>
-                  {CATEGORY_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* お問い合わせ内容 */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
-                  お問い合わせ内容 <span className="text-red-500">*</span>
-                </label>
-                <textarea
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  required
-                  rows={6}
-                  className="w-full rounded-lg border border-stroke bg-white px-3 py-2 text-sm text-dark focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark dark:text-white"
-                  placeholder="詳細をご記入ください"
-                />
-              </div>
-
-              {/* 添付資料 */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-dark dark:text-white">
-                  添付資料 <span className="text-xs font-normal text-body-color">（任意・10MBまで）</span>
-                </label>
-                <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-stroke px-3 py-3 text-sm text-body-color hover:border-primary hover:text-primary dark:border-dark-3">
-                  <Paperclip className="h-4 w-4" />
-                  <span>{file ? file.name : 'ファイルを選択'}</span>
-                  <input type="file" onChange={handleFileChange} className="hidden" />
-                </label>
-              </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
+                姓
+              </label>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                placeholder="山田"
+              />
             </div>
-
-            {/* フッター */}
-            <div className="flex items-center justify-end gap-2 border-t border-stroke px-6 py-4 dark:border-dark-3">
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={submitting}
-                className="rounded-md border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-50 disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-              >
-                キャンセル
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
-              >
-                {submitting ? '送信中...' : '送信する'}
-              </button>
+            <div>
+              <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
+                名
+              </label>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+                placeholder="太郎"
+              />
             </div>
-          </form>
-        </DialogPanel>
-      </div>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
+              メールアドレス
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+              placeholder="sample@example.com"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
+              種別 <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              required
+              className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+            >
+              <option value="">選択してください</option>
+              {CATEGORY_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
+              お問い合わせ内容 <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              required
+              rows={6}
+              className="w-full rounded-lg border border-stroke bg-transparent px-4 py-3 text-sm text-dark outline-none focus:border-primary dark:border-dark-3 dark:text-white"
+              placeholder="詳細をご記入ください"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-dark dark:text-white">
+              添付資料 <span className="text-xs font-normal text-body-color">（任意・10MBまで）</span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-stroke px-4 py-3 text-sm text-body-color hover:border-primary hover:text-primary dark:border-dark-3">
+              <Paperclip className="h-4 w-4" />
+              <span>{file ? file.name : 'ファイルを選択'}</span>
+              <input type="file" onChange={handleFileChange} className="hidden" />
+            </label>
+          </div>
+        </form>
+      </DialogBody>
+
+      <DialogActions>
+        <Button plain onClick={onClose} disabled={submitting}>
+          キャンセル
+        </Button>
+        <Button color="blue" type="submit" form="feedback-form" disabled={submitting}>
+          <Send className="h-4 w-4" data-slot="icon" />
+          {submitting ? '送信中...' : '送信する'}
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 }
