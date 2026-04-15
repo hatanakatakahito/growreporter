@@ -15,7 +15,7 @@ import {
  * 操作方法のガイド（オンボーディング）状態管理フック
  */
 export function useOnboarding() {
-  const { currentUser, userProfile, refreshUserProfile } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const { planId, isLoading: isPlanLoading } = usePlan();
   const { isAdmin, loading: isAdminLoading } = useAdmin();
 
@@ -90,17 +90,17 @@ export function useOnboarding() {
     async (partial) => {
       if (!currentUser?.uid) return;
       try {
+        // Firestore に書き込み → onSnapshot 経由で自動的に
+        // userProfile が更新される（refreshUserProfile 不要）
         await updateDoc(doc(db, 'users', currentUser.uid), {
           ...partial,
           updatedAt: serverTimestamp(),
         });
-        // ローカルの userProfile を最新化（再描画トリガ）
-        if (refreshUserProfile) await refreshUserProfile();
       } catch (e) {
         console.error('[useOnboarding] 更新エラー:', e);
       }
     },
-    [currentUser?.uid, refreshUserProfile]
+    [currentUser?.uid]
   );
 
   const markStep = useCallback(

@@ -7,7 +7,7 @@ import {
   onAuthStateChanged,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { auth, googleProvider, microsoftProvider, db } from '../config/firebase';
 import { getDefaultOnboarding, inferStepsFromExisting } from '../constants/onboarding';
 
@@ -268,38 +268,38 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 認証状態の監視
+  // 認証状態の監視 + userProfile の onSnapshot リアルタイム購読
   useEffect(() => {
     if (!auth) {
       setLoading(false);
       return;
     }
-    
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
-      
-      if (user) {
-        // 最終ログイン日時を更新
-        try {
-          // まずユーザープロファイルを取得
-          const currentProfile = await fetchUserProfile(user.uid);
 
-          // 既存ユーザーのみ更新（新規ユーザーは signup/loginWithGoogle 等で作成されるため、
-          // ここでスケルトンドキュメントを作らない）
+    let unsubscribeProfile = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user);
+
+      // 前のユーザーの onSnapshot を解除
+      if (unsubscribeProfile) {
+        unsubscribeProfile();
+        unsubscribeProfile = null;
+      }
+
+      if (user) {
+        // 初回のみ: 最終ログイン日時を更新 + 既存ユーザーの onboarding 遡及マージ
+        try {
+          const currentProfile = await fetchUserProfile(user.uid);
           if (currentProfile) {
             const updateData = {
               lastLoginAt: serverTimestamp(),
             };
-
-            // AI使用カウントフィールドがない場合のみ初期化
             if (currentProfile.aiSummaryUsage === undefined) {
               updateData.aiSummaryUsage = 0;
             }
             if (currentProfile.aiImprovementUsage === undefined) {
               updateData.aiImprovementUsage = 0;
             }
-
-            // onboarding フィールドが未設定の既存ユーザーには実績から推定してマージ
             if (currentProfile.onboarding === undefined) {
               try {
                 const accountOwnerId = currentProfile.accountOwnerId || user.uid;
@@ -313,28 +313,39 @@ export const AuthProvider = ({ children }) => {
                 updateData.onboarding = getDefaultOnboarding();
               }
             }
-
-            await setDoc(
-              doc(db, 'users', user.uid),
-              updateData,
-              { merge: true }
-            );
+            await setDoc(doc(db, 'users', user.uid), updateData, { merge: true });
           }
         } catch (error) {
           console.error('Error updating user data:', error);
         }
-        
-        // ユーザープロファイルを取得
-        const profile = await fetchUserProfile(user.uid);
-        setUserProfile(profile);
+
+        // userProfile を onSnapshot でリアルタイム購読
+        // Firestore への書き込みが即座にローカル state に反映される
+        unsubscribeProfile = onSnapshot(
+          doc(db, 'users', user.uid),
+          (snapshot) => {
+            if (snapshot.exists()) {
+              setUserProfile(snapshot.data());
+            } else {
+              setUserProfile(null);
+            }
+            setLoading(false);
+          },
+          (error) => {
+            console.error('[AuthContext] userProfile onSnapshot error:', error);
+            setLoading(false);
+          }
+        );
       } else {
         setUserProfile(null);
+        setLoading(false);
       }
-      
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeProfile) unsubscribeProfile();
+    };
   }, []);
 
   // userProfile をサーバーから再取得してローカル state を更新

@@ -22,7 +22,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function ChecklistBody({ onBeforeNavigate }) {
   const navigate = useNavigate();
   const { steps, requiredStepKeys, progress, isDesktop } = useOnboarding();
-  const { currentUser, refreshUserProfile } = useAuth();
+  const { currentUser } = useAuth();
 
   // 表示対象のステップ配列（カテゴリ順）
   const orderedItems = useMemo(() => {
@@ -65,29 +65,22 @@ export default function ChecklistBody({ onBeforeNavigate }) {
     return items[0]?.key || null;
   }, [orderedItems]);
 
-  const handleItemClick = async (item) => {
+  const handleItemClick = (item) => {
     // siteRegistered は自動完了専用、クリックしても何もしない
     if (!item.to) return;
 
-    // 【重要】クリックした時点で Firestore に直接書き込む
-    // これにより React state の伝播・stale closure・ツアー完了タイミング
-    // などに依存せず、確実にステップ完了を記録できる。
+    // Firestore に直接書き込み（クリック=完了を確定）
+    // onSnapshot が自動的に userProfile を更新するので await 不要
     if (currentUser?.uid && !item.done) {
-      try {
-        await updateDoc(doc(db, 'users', currentUser.uid), {
-          [`onboarding.steps.${item.key}`]: true,
-          updatedAt: serverTimestamp(),
-        });
-        if (refreshUserProfile) await refreshUserProfile();
-      } catch (e) {
-        console.error('[ChecklistBody] step mark failed:', e);
-      }
+      updateDoc(doc(db, 'users', currentUser.uid), {
+        [`onboarding.steps.${item.key}`]: true,
+        updatedAt: serverTimestamp(),
+      }).catch((e) => console.error('[ChecklistBody] step mark failed:', e));
     }
 
     // モーダルを閉じる
     if (onBeforeNavigate) onBeforeNavigate();
     // URL クエリパラメータ ?guide=1 で「ガイドから遷移」を明示
-    // 遷移先の OnboardingTour が param を検出してツアー起動 → 起動後 param 削除
     const sep = item.to.includes('?') ? '&' : '?';
     navigate(`${item.to}${sep}guide=1`);
   };
