@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
-import { User, CreditCard, Globe, Mail, Users, Check, Zap, ClipboardCheck, Download, UserPlus, MessageCircle } from 'lucide-react';
+import { User, CreditCard, Globe, Mail, Users, Check, Zap, ClipboardCheck, Download, UserPlus } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useSite } from '../contexts/SiteContext';
 import { usePlan } from '../hooks/usePlan';
@@ -313,12 +313,6 @@ export default function AccountSettings() {
               desc: 'サイト最大3件まで、メンバー無制限で招待可能。チーム全体でデータ共有できます。',
               badge: '3サイト',
             },
-            {
-              icon: MessageCircle,
-              title: 'メール・Web会議サポート',
-              desc: '使い方のご質問や導入支援を専任担当がフォロー。',
-              badge: '専任',
-            },
           ];
 
           const freeFeatures = [
@@ -333,7 +327,6 @@ export default function AccountSettings() {
             '改善提案・タスク管理',
             '評価機能',
             'Excel / PPTX エクスポート',
-            'メール・Web会議サポート',
           ];
 
           return (

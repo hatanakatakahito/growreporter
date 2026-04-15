@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronUp, ChevronDown, Info } from 'lucide-react';
+import { ChevronUp, ChevronDown, ChevronRight, Info } from 'lucide-react';
 import { getTooltip } from '../../constants/tooltips';
 import { useTableColumns } from '../../hooks/useTableColumns';
 import ColumnToggle from '../common/ColumnToggle';
@@ -71,10 +71,17 @@ export default function DataTable({
   emptyMessage = 'データがありません',
   isComparing = false,
   showTotals = false,
+  expandable = null,
+  expandRowKey = null,
 }) {
   const [sortColumn, setSortColumn] = useState(null);
   const [sortDirection, setSortDirection] = useState('desc');
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedRows, setExpandedRows] = useState({});
+
+  const toggleExpand = (key) => {
+    setExpandedRows((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   // 表示項目管理（tableKeyがある場合のみ有効）
   const columnToggle = useTableColumns(tableKey || '__noop__', columns);
@@ -238,6 +245,7 @@ export default function DataTable({
         <table className="min-w-full">
           <thead>
             <tr className="border-b-2 border-primary-mid/20 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5">
+              {expandable && <th className="w-8 px-2 py-3"></th>}
               {displayColumns.map((column) => (
                 <th
                   key={column.key}
@@ -282,8 +290,26 @@ export default function DataTable({
               const isSunday = firstColValue.includes('（日）') || firstColValue.includes('(日)') || firstColValue.includes('（祝）') || firstColValue.includes('(祝)');
               const dayRowClass = isSunday ? 'bg-red-50/60' : isSaturday ? 'bg-blue-50/60' : '';
 
+              const rowKey = expandRowKey ? row[expandRowKey] : rowIndex;
+              const isExpanded = !!expandedRows[rowKey];
+              const expandedContent = expandable ? expandable(row) : null;
+              const canExpand = expandable && expandedContent != null;
+
               return (
-                <tr key={rowIndex} className={`border-b border-stroke last:border-b-0 hover:bg-gray-1 ${dayRowClass}`}>
+                <React.Fragment key={rowKey}>
+                <tr
+                  className={`border-b border-stroke last:border-b-0 hover:bg-gray-1 ${dayRowClass} ${canExpand ? 'cursor-pointer' : ''}`}
+                  onClick={canExpand ? () => toggleExpand(rowKey) : undefined}
+                >
+                  {expandable && (
+                    <td className="w-8 px-2 py-3 text-center align-middle">
+                      {canExpand && (
+                        <ChevronRight
+                          className={`h-4 w-4 text-body-color transition-transform ${isExpanded ? 'rotate-90' : ''}`}
+                        />
+                      )}
+                    </td>
+                  )}
                   {displayColumns.map((column) => {
                     const cellValue = column.render
                       ? column.render(row[column.key], row)
@@ -340,12 +366,21 @@ export default function DataTable({
                     );
                   })}
                 </tr>
+                {canExpand && isExpanded && (
+                  <tr className="bg-gray-50 dark:bg-dark-3">
+                    <td colSpan={displayColumns.length + 1} className="px-4 py-3">
+                      {expandedContent}
+                    </td>
+                  </tr>
+                )}
+                </React.Fragment>
               );
             })}
           </tbody>
           {totalsRow && (
             <tfoot>
               <tr className="border-t-2 border-primary-mid/30 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5 font-semibold">
+                {expandable && <td className="w-8 px-2 py-3"></td>}
                 {displayColumns.map((column) => {
                   const isFirstCol = column.key === displayColumns[0]?.key;
                   const cellValue = isFirstCol

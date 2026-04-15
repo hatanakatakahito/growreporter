@@ -368,6 +368,55 @@ export default function Keywords() {
                 <DataTable
                   tableKey="analysis-keywords"
                   isComparing={isComparing}
+                  expandRowKey="keyword"
+                  expandable={(row) => {
+                    const pages = gscData?.queryPagesMap?.[row.keyword];
+                    if (!pages || pages.length === 0) {
+                      return (
+                        <div className="text-xs text-body-color">
+                          このキーワードに紐づく着地ページのデータはありません（GSCのプライバシー制限により非表示の場合があります）。
+                        </div>
+                      );
+                    }
+                    return (
+                      <div>
+                        <div className="mb-2 text-xs font-semibold text-dark dark:text-white">
+                          「{row.keyword}」の主な着地ページ（上位{pages.length}件）
+                        </div>
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="border-b border-stroke text-body-color">
+                              <th className="py-1.5 text-left font-medium">URL</th>
+                              <th className="py-1.5 text-right font-medium">クリック</th>
+                              <th className="py-1.5 text-right font-medium">表示回数</th>
+                              <th className="py-1.5 text-right font-medium">CTR</th>
+                              <th className="py-1.5 text-right font-medium">平均順位</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {pages.map((p, i) => (
+                              <tr key={i} className="border-b border-stroke/50 last:border-b-0">
+                                <td className="py-1.5 pr-2 text-dark dark:text-white">
+                                  <a
+                                    href={p.page}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="break-all text-primary hover:underline"
+                                  >
+                                    {p.page}
+                                  </a>
+                                </td>
+                                <td className="py-1.5 text-right text-dark dark:text-white">{p.clicks.toLocaleString()}</td>
+                                <td className="py-1.5 text-right text-dark dark:text-white">{p.impressions.toLocaleString()}</td>
+                                <td className="py-1.5 text-right text-dark dark:text-white">{(p.ctr * 100).toFixed(2)}%</td>
+                                <td className="py-1.5 text-right text-dark dark:text-white">{p.position.toFixed(1)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  }}
                   columns={[
                     {
                       key: 'keyword',
