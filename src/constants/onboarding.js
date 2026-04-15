@@ -231,19 +231,3 @@ export function inferStepsFromExisting(userData, sitesCount = 0) {
   return base;
 }
 
-/**
- * ルート → tourId のマッピング
- * dashboard はツアー対象外（操作方法ガイドはダッシュボードに表示しない）
- */
-export function getTourIdFromPath(pathname) {
-  if (!pathname) return null;
-  if (pathname === '/analysis/summary') return 'analysisSummary';
-  if (pathname === '/analysis/month') return 'analysisMonth';
-  if (pathname === '/members') return 'members';
-  if (pathname === '/account/settings') return 'accountSettings';
-  if (pathname.startsWith('/sites/')) return 'sites';
-  if (pathname === '/ai-chat') return 'aiChat';
-  if (pathname === '/improve') return 'improve';
-  if (pathname === '/reports') return 'reports';
-  return null;
-}

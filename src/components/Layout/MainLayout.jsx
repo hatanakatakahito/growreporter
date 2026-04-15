@@ -13,9 +13,7 @@ import DateRangePicker from '../Analysis/DateRangePicker';
 import SiteSelectionModal from '../common/SiteSelectionModal';
 import UpgradeModal from '../common/UpgradeModal';
 import OnboardingModal from '../Onboarding/OnboardingModal';
-import OnboardingTour from '../Onboarding/OnboardingTour';
 import { useOnboarding } from '../../hooks/useOnboarding';
-import { getTourIdFromPath } from '../../constants/onboarding';
 import logoImg from '../../assets/img/logo.svg';
 
 /**
@@ -268,9 +266,6 @@ export default function MainLayout() {
     return () => window.removeEventListener('onboarding:open-modal', handleOpenRequest);
   }, [isAdmin]);
 
-  // 現在ルートに対応する tourId
-  const tourId = getTourIdFromPath(location.pathname);
-
   if (!isLoading && sites.length === 0) {
     return <Navigate to="/sites/new" replace />;
   }
@@ -316,11 +311,6 @@ export default function MainLayout() {
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
       />
-
-      {/* 操作方法のガイド: 各画面ミニツアー */}
-      {!isModalOpen && tourId && !isAdmin && (
-        <OnboardingTour tourId={tourId} />
-      )}
     </div>
   );
 }

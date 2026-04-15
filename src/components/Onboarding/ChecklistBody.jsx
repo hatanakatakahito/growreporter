@@ -10,6 +10,21 @@ import {
 } from '../../constants/onboarding';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import { useAuth } from '../../contexts/AuthContext';
+import { usePlan } from '../../hooks/usePlan';
+import { startOnboardingTour } from '../../utils/startOnboardingTour';
+
+// stepKey → tourId のマッピング
+const STEP_TO_TOUR_ID = {
+  analysisViewed: 'analysisMonth',
+  aiTried: 'analysisSummary',
+  exported: 'analysisMonth',
+  memberInvited: 'members',
+  notificationsConfigured: 'accountSettings',
+  siteEdited: 'sites',
+  aiChatTried: 'aiChat',
+  improveViewed: 'improve',
+  reportsViewed: 'reports',
+};
 
 /**
  * チェックリスト本体（モーダルとインラインカードで共用）
@@ -23,6 +38,7 @@ export default function ChecklistBody({ onBeforeNavigate }) {
   const navigate = useNavigate();
   const { steps, requiredStepKeys, progress, isDesktop } = useOnboarding();
   const { currentUser } = useAuth();
+  const { isFree } = usePlan();
 
   // 表示対象のステップ配列（カテゴリ順）
   const orderedItems = useMemo(() => {
@@ -70,7 +86,6 @@ export default function ChecklistBody({ onBeforeNavigate }) {
     if (!item.to) return;
 
     // Firestore に直接書き込み（クリック=完了を確定）
-    // 確実に保存してから navigate するため await する
     if (currentUser?.uid && !item.done) {
       try {
         await updateDoc(doc(db, 'users', currentUser.uid), {
@@ -84,9 +99,17 @@ export default function ChecklistBody({ onBeforeNavigate }) {
 
     // モーダルを閉じる
     if (onBeforeNavigate) onBeforeNavigate();
-    // URL クエリパラメータ ?guide=1 で「ガイドから遷移」を明示
-    const sep = item.to.includes('?') ? '&' : '?';
-    navigate(`${item.to}${sep}guide=1`);
+    // 遷移
+    navigate(item.to);
+
+    // ツアーを React lifecycle の外で直接起動
+    const tourId = STEP_TO_TOUR_ID[item.key];
+    if (tourId) {
+      startOnboardingTour(tourId, {
+        isFree,
+        userId: currentUser?.uid,
+      });
+    }
   };
 
   return (

@@ -41,7 +41,7 @@ export default function Hour() {
   const { currentUser } = useAuth();
   const [searchParams] = useSearchParams();
   const [hiddenBars, setHiddenBars] = useState({});
-  const [activeTab, setActiveTab] = useState('chart');
+  const [activeTab, setActiveTab] = useState('table');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [dimensionFilters, setDimensionFilters] = useState({});
   const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
@@ -236,16 +236,6 @@ export default function Hour() {
               {/* タブ */}
               <div className="mb-6 mt-4 flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
               <button
-                onClick={() => setActiveTab('chart')}
-                className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
-                  activeTab === 'chart'
-                    ? 'bg-primary text-white transition hover:bg-opacity-90'
-                    : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
-                }`}
-              >
-                グラフ形式
-              </button>
-              <button
                 onClick={() => setActiveTab('table')}
                 className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
                   activeTab === 'table'
@@ -254,6 +244,16 @@ export default function Hour() {
                 }`}
               >
                 表形式
+              </button>
+              <button
+                onClick={() => setActiveTab('chart')}
+                className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
+                  activeTab === 'chart'
+                    ? 'bg-primary text-white transition hover:bg-opacity-90'
+                    : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                }`}
+              >
+                グラフ形式
               </button>
             </div>
 

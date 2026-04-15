@@ -7,6 +7,7 @@ import DotWaveSpinner from '../common/DotWaveSpinner';
 import { usePlan } from '../../hooks/usePlan';
 import UpgradeModal from '../common/UpgradeModal';
 import DateRangePicker from './DateRangePicker';
+import MonthPicker from './MonthPicker';
 
 const ExcelIcon = ({ className, disabled }) => (
   <svg className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -37,6 +38,7 @@ export default function AnalysisHeader({
   dateRange,
   setDateRange,
   showDateRange = true,
+  monthPickerMode = false,
   showSiteInfo = true,
   showExport = true,
   hideComparison = false,
@@ -187,7 +189,11 @@ export default function AnalysisHeader({
               {showExport && (
                 <div data-tour="analysis-export" className="relative" ref={downloadMenuRef}>
                   <button
-                    onClick={() => !isExporting && selectedSiteId && setIsDownloadMenuOpen(!isDownloadMenuOpen)}
+                    onClick={() => {
+                      if (isExporting || !selectedSiteId) return;
+                      if (isFree) { setShowUpgradeModal(true); return; }
+                      setIsDownloadMenuOpen(!isDownloadMenuOpen);
+                    }}
                     disabled={isExporting || !selectedSiteId}
                     className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title="レポートダウンロード"
@@ -242,11 +248,18 @@ export default function AnalysisHeader({
               {/* 期間選択 */}
               {showDateRange && dateRange && setDateRange && (
                 <div data-tour="analysis-period">
-                  <DateRangePicker
-                    dateRange={dateRange}
-                    onDateRangeChange={setDateRange}
-                    hideComparison={hideComparison}
-                  />
+                  {monthPickerMode ? (
+                    <MonthPicker
+                      dateRange={dateRange}
+                      onDateRangeChange={setDateRange}
+                    />
+                  ) : (
+                    <DateRangePicker
+                      dateRange={dateRange}
+                      onDateRangeChange={setDateRange}
+                      hideComparison={hideComparison}
+                    />
+                  )}
                 </div>
               )}
               
