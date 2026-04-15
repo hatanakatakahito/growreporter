@@ -1,12 +1,25 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
-import { User, CreditCard, Globe, Mail, Users, Check, Zap, ClipboardCheck, Download, UserPlus } from 'lucide-react';
+import { User, CreditCard, Globe, Mail, Users, Check, X } from 'lucide-react';
+import { PLANS, PLAN_TYPES, isUnlimited } from '../constants/plans';
+import UpgradeModal from '../components/common/UpgradeModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useSite } from '../contexts/SiteContext';
 import { usePlan } from '../hooks/usePlan';
 import { useAccountMembers } from '../hooks/useAccountMembers';
 import { getPlanBadgeColor } from '../constants/plans';
+// Plan comparison table features
+const PLAN_FEATURES = [
+  { label: '登録サイト数', getValue: (p) => `${p.features.maxSites}サイト` },
+  { label: 'メンバー招待', getValue: (p) => isUnlimited(p.features.maxMembers) ? '無制限' : `${p.features.maxMembers}人` },
+  { label: 'AI分析サマリー', getValue: (p) => p.features.aiSummaryMonthly === 0 ? '不可' : (isUnlimited(p.features.aiSummaryMonthly) ? '無制限' : `${p.features.aiSummaryMonthly}回`) },
+  { label: 'AI改善提案', getValue: (p) => p.features.aiImprovementMonthly === 0 ? '不可' : (isUnlimited(p.features.aiImprovementMonthly) ? '無制限' : `${p.features.aiImprovementMonthly}回`) },
+  { label: 'AIチャット', getValue: (p) => p.features.aiChatMonthly === 0 ? '不可' : (isUnlimited(p.features.aiChatMonthly) ? '無制限' : `${p.features.aiChatMonthly}回`) },
+  { label: '改善タスク管理', getValue: (p) => p.features.improvementTask ? '可能' : '不可' },
+  { label: '効果測定（評価する）', getValue: (p) => p.features.reportEvaluation ? '可能' : '不可' },
+  { label: 'Excel / PPTXエクスポート', getValue: (p) => p.features.excelExportMonthly === 0 ? '不可' : (isUnlimited(p.features.excelExportMonthly) ? '無制限' : `${p.features.excelExportMonthly}回`) },
+];
 import { doc, updateDoc } from 'firebase/firestore';
 import { db, functions } from '../config/firebase';
 import { Switch } from '../components/ui/switch';
@@ -57,6 +70,7 @@ export default function AccountSettings() {
   const [monthlyReportEmail, setMonthlyReportEmail] = useState(false);
   const [alertEmail, setAlertEmail] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
@@ -275,201 +289,112 @@ export default function AccountSettings() {
         )}
 
         {/* ========== プラン確認 ========== */}
-        {activeTab === 'plan' && (() => {
-          const isFreePlan = (plan?.id || 'free') === 'free';
-          const sitesUsed = sites?.length || 0;
-          const sitePct = maxSites > 0 ? Math.min(100, (sitesUsed / maxSites) * 100) : 0;
-          const memberPct = maxMembers >= 999999
-            ? Math.min(100, (activeMemberCount / 20) * 100)
-            : Math.min(100, (activeMemberCount / maxMembers) * 100);
-          const priceLabel = isFreePlan ? '¥0' : '¥54,780';
-          const priceSuffix = isFreePlan ? '月額' : '月額（税込）';
-          const headerBg = isFreePlan
-            ? 'bg-gradient-to-r from-blue-50 to-blue-100/50 dark:from-blue-900/20 dark:to-blue-900/10'
-            : 'bg-gradient-to-r from-pink-50 via-red-50 to-orange-50 dark:from-pink-900/20 dark:via-red-900/10 dark:to-orange-900/10';
+        {activeTab === 'plan' && (
+          <div className="space-y-6">
+            <div>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">現在のプラン</h2>
+              <p className="mt-1 text-sm text-gray-600 dark:text-dark-6">
+                現在のあなたのプランと各プランの機能比較
+              </p>
+            </div>
 
-          const upgradeItems = [
-            {
-              icon: Zap,
-              title: 'AI分析・AIチャット・改善提案',
-              desc: 'GA4/GSC データを AI が日本語で解説。質問にも回答し、改善ポイントを自動提案します。',
-              badge: '無制限',
-            },
-            {
-              icon: ClipboardCheck,
-              title: '改善タスク管理 & 効果測定',
-              desc: 'AI 提案をタスク化し、実施後の効果を自動で計測・評価レポート化します。',
-              badge: '追加',
-            },
-            {
-              icon: Download,
-              title: 'Excel / PowerPoint エクスポート',
-              desc: '全15種類以上の分析レポートを Excel / PPTX 形式でダウンロード。クライアント報告書作成に。',
-              badge: '無制限',
-            },
-            {
-              icon: UserPlus,
-              title: 'サイト・メンバー枠拡大',
-              desc: 'サイト最大3件まで、メンバー無制限で招待可能。チーム全体でデータ共有できます。',
-              badge: '3サイト',
-            },
-          ];
-
-          const freeFeatures = [
-            '15種類以上のアクセス分析ビュー',
-            '週次・月次レポートメール',
-            'アラート通知',
-            'データ保持期間 無制限',
-          ];
-          const businessFeatures = [
-            '15種類以上のアクセス分析',
-            'AI分析・AIチャット（無制限）',
-            '改善提案・タスク管理',
-            '評価機能',
-            'Excel / PPTX エクスポート',
-          ];
-
-          return (
-            <div className="space-y-6">
-              {/* 現在のプラン情報カード */}
-              <div className="overflow-hidden rounded-lg border border-stroke bg-white shadow-sm dark:border-dark-3 dark:bg-dark-2">
-                {/* ヘッダー帯 */}
-                <div className={`flex items-center justify-between border-b border-stroke px-6 py-5 dark:border-dark-3 ${headerBg}`}>
-                  <div>
-                    <p className="text-xs text-body-color">現在のプラン</p>
-                    <p className="text-lg font-bold text-dark dark:text-white">{plan?.displayName ?? '無料プラン'}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-body-color">{priceSuffix}</p>
-                    <p className="text-xl font-bold text-dark dark:text-white">
-                      {priceLabel}
-                      <span className="ml-1 text-xs font-normal text-body-color">/ 月</span>
-                    </p>
-                  </div>
-                </div>
-
-                {/* 利用状況 */}
-                <div className="px-6 py-5">
-                  <p className="mb-4 text-sm font-semibold text-dark dark:text-white">ご利用状況</p>
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                    <div className="rounded-lg border border-stroke p-4 dark:border-dark-3">
-                      <p className="text-xs font-medium text-body-color">サイト登録数</p>
-                      <p className="mt-1 text-2xl font-bold text-dark dark:text-white">
-                        {sitesUsed}
-                        <span className="text-sm font-normal text-body-color"> / {maxSites}</span>
-                      </p>
-                      <div className="mt-2 h-1.5 w-full rounded-full bg-stroke dark:bg-dark-3">
-                        <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${sitePct}%` }} />
+            {/* プラン比較カード */}
+            <div className="mx-auto grid max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
+              {[PLANS[PLAN_TYPES.FREE], PLANS[PLAN_TYPES.BUSINESS]].map((p) => {
+                const isCurrent = p.id === (plan?.id || 'free');
+                return (
+                  <div
+                    key={p.id}
+                    className={`relative rounded-xl border-2 bg-white p-6 transition dark:bg-dark-2 ${
+                      isCurrent
+                        ? 'border-primary shadow-lg ring-2 ring-primary/20'
+                        : 'border-gray-200 dark:border-dark-3'
+                    }`}
+                  >
+                    {isCurrent && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <span className="rounded-full bg-primary px-4 py-1 text-xs font-semibold text-white shadow">
+                          現在のプラン
+                        </span>
                       </div>
+                    )}
+
+                    <div className="mb-4 pt-2 text-center">
+                      <span className={`inline-block rounded-full px-4 py-1.5 text-sm font-semibold ${getPlanBadgeColor(p.id)}`}>
+                        {p.displayName}
+                      </span>
                     </div>
-                    <div className="rounded-lg border border-stroke p-4 dark:border-dark-3">
-                      <p className="text-xs font-medium text-body-color">メンバー数</p>
-                      <p className="mt-1 text-2xl font-bold text-dark dark:text-white">
-                        {activeMemberCount}
-                        <span className="text-sm font-normal text-body-color"> / {maxMembers >= 999999 ? '無制限' : `${maxMembers}人`}</span>
-                      </p>
-                      <div className="mt-2 h-1.5 w-full rounded-full bg-stroke dark:bg-dark-3">
-                        <div className="h-1.5 rounded-full bg-primary transition-all" style={{ width: `${memberPct}%` }} />
-                      </div>
-                    </div>
-                    <div className="rounded-lg border border-stroke p-4 dark:border-dark-3">
-                      <p className="text-xs font-medium text-body-color">AI機能</p>
-                      {isFreePlan ? (
-                        <>
-                          <p className="mt-1 text-2xl font-bold text-gray-400">—</p>
-                          <p className="mt-2 text-xs text-body-color">Businessプラン以降</p>
-                        </>
+
+                    <div className="mb-6 text-center">
+                      {p.price === 0 ? (
+                        <span className="text-3xl font-bold text-gray-900 dark:text-white">無料</span>
                       ) : (
                         <>
-                          <p className="mt-1 text-2xl font-bold text-dark dark:text-white">無制限</p>
-                          <p className="mt-2 text-xs text-primary">利用可能</p>
+                          <span className="text-3xl font-bold text-gray-900 dark:text-white">
+                            ¥{p.price.toLocaleString()}
+                          </span>
+                          <span className="text-sm text-gray-500"> / 月（税別）</span>
                         </>
                       )}
                     </div>
-                  </div>
-                </div>
 
-                {/* 含まれる機能 */}
-                <div className="border-t border-stroke px-6 py-5 dark:border-dark-3">
-                  <p className="mb-3 text-sm font-semibold text-dark dark:text-white">
-                    {isFreePlan ? '現プランに含まれる機能' : 'ご利用中の機能'}
-                  </p>
-                  <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
-                    {(isFreePlan ? freeFeatures : businessFeatures).map((f) => (
-                      <div key={f} className="flex items-center gap-2 text-sm text-dark dark:text-white">
-                        <Check className="h-4 w-4 shrink-0 text-primary" strokeWidth={2.5} />
-                        {f}
-                      </div>
-                    ))}
-                  </div>
-                  {!isFreePlan && userProfile?.memberRole === 'owner' && (
-                    <div className="mt-5 flex items-center justify-end">
-                      <Link to="/account/plan" className="text-sm text-primary hover:underline">
-                        プラン詳細・変更 →
-                      </Link>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* アップグレード訴求カード（Freeのみ） */}
-              {isFreePlan && userProfile?.memberRole === 'owner' && (
-                <div className="overflow-hidden rounded-lg border-2 border-primary shadow-lg dark:border-primary/70">
-                  <div className="bg-gradient-to-r from-primary via-purple-500 to-pink-500 px-6 py-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <span className="inline-block rounded-full bg-white/20 px-3 py-0.5 text-[11px] font-semibold text-white">おすすめ</span>
-                        <h3 className="mt-2 text-xl font-bold text-white">ビジネスプランにアップグレード</h3>
-                        <p className="mt-1 text-sm text-white/90">AIの力でサイト改善を本格的に推進</p>
-                      </div>
-                      <div className="text-right text-white">
-                        <p className="text-xs opacity-90">月額（税別）</p>
-                        <p className="text-3xl font-bold">¥49,800</p>
-                        <p className="text-[11px] opacity-90">税込 ¥54,780 / 月</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="bg-white px-6 py-5 dark:bg-dark-2">
-                    <p className="mb-4 text-sm font-semibold text-dark dark:text-white">無料プランとの違い</p>
-                    <div className="space-y-3">
-                      {upgradeItems.map((item) => {
-                        const Icon = item.icon;
+                    <ul className="space-y-3">
+                      {PLAN_FEATURES.map((feature) => {
+                        const val = feature.getValue(p);
+                        const isDisabled = val === '不可';
                         return (
-                          <div key={item.title} className="flex items-start gap-3 rounded-lg bg-primary/[0.04] p-3 dark:bg-primary/10">
-                            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                              <Icon className="h-4 w-4 text-primary" strokeWidth={2} />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="text-sm font-medium text-dark dark:text-white">{item.title}</p>
-                              <p className="mt-0.5 text-xs text-body-color">{item.desc}</p>
-                            </div>
-                            <span className="shrink-0 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-white">
-                              {item.badge}
+                          <li key={feature.label} className={`flex items-start gap-2.5 text-sm ${isDisabled ? 'opacity-50' : ''}`}>
+                            {isDisabled
+                              ? <X className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-400" />
+                              : <Check className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-500" />
+                            }
+                            <span className="text-gray-700 dark:text-gray-300">
+                              <span className="text-gray-500 dark:text-gray-400">{feature.label}: </span>
+                              <span className="font-medium text-gray-900 dark:text-white">{val}</span>
                             </span>
-                          </div>
+                          </li>
                         );
                       })}
-                    </div>
+                    </ul>
 
-                    <div className="mt-6 flex flex-col gap-3 border-t border-stroke pt-5 dark:border-dark-3 sm:flex-row sm:items-center sm:justify-between">
-                      <div className="text-xs text-body-color">
-                        <p>※ 価格は税別。月額・年額どちらも対応。</p>
-                        <p>※ 導入時の初期設定・ヒアリングは無料で承ります。</p>
-                      </div>
-                      <Link
-                        to="/account/plan"
-                        className="inline-flex items-center justify-center rounded-lg bg-gradient-to-r from-primary to-purple-600 px-6 py-2.5 text-sm font-bold text-white shadow hover:opacity-90"
-                      >
-                        アップグレードする →
-                      </Link>
+                    <div className="mt-6">
+                      {isCurrent ? (
+                        <div className="rounded-lg bg-gray-100 py-2.5 text-center text-sm font-medium text-gray-500 dark:bg-dark-3 dark:text-gray-400">
+                          ご利用中
+                        </div>
+                      ) : p.price > (plan?.price || 0) ? (
+                        userProfile?.memberRole === 'owner' ? (
+                          <button
+                            type="button"
+                            onClick={() => setIsUpgradeModalOpen(true)}
+                            className="w-full rounded-lg bg-primary py-2.5 text-center text-sm font-semibold text-white transition hover:opacity-90"
+                          >
+                            アップグレード
+                          </button>
+                        ) : (
+                          <div className="rounded-lg border border-gray-200 py-2.5 text-center text-xs text-gray-500 dark:border-dark-3">
+                            オーナーのみ変更可能
+                          </div>
+                        )
+                      ) : (
+                        <div className="rounded-lg border border-gray-200 py-2.5 text-center text-sm text-gray-400 dark:border-dark-3">
+                          —
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
-              )}
+                );
+              })}
             </div>
-          );
-        })()}
+
+            <div className="mx-auto max-w-3xl rounded-lg bg-blue-50 p-5 dark:bg-blue-900/20">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                プラン変更をご希望の場合は「アップグレード」ボタンからお問い合わせください。
+                担当者より折り返しご連絡いたします。
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ========== 登録サイト ========== */}
         {activeTab === 'sites' && (
@@ -637,6 +562,13 @@ export default function AccountSettings() {
           </div>
         </div>
       </div>
+
+      {/* アップグレードモーダル */}
+      <UpgradeModal
+        isOpen={isUpgradeModalOpen}
+        onClose={() => setIsUpgradeModalOpen(false)}
+        initialStep="form"
+      />
 
       {/* アカウント削除確認モーダル */}
       {showDeleteAccount && (
