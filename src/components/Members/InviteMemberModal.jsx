@@ -60,7 +60,7 @@ export default function InviteMemberModal({ onClose, currentMemberCount, maxMemb
             {!canInvite && (
               <div className="mt-2 text-sm text-red-600">
                 プランの上限に達しています。
-                <Link to="/account/plan" className="ml-1 underline">
+                <Link to="/account/settings?tab=plan" className="ml-1 underline">
                   プランをアップグレード
                 </Link>
               </div>

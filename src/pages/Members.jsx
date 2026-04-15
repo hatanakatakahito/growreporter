@@ -222,7 +222,7 @@ export default function Members() {
           
           {!canInvite && isOwner && (
             <Link
-              to="/account/plan"
+              to="/account/settings?tab=plan"
               className="text-sm text-primary hover:opacity-80 underline"
             >
               プランをアップグレード

@@ -43,7 +43,6 @@ import Reports from './pages/Reports';
 import AIChat from './pages/AIChat';
 import AccountSettings from './pages/AccountSettings';
 import ProfileEdit from './pages/ProfileEdit';
-import PlanInfo from './pages/PlanInfo';
 import Members from './pages/Members';
 import AcceptInvitation from './pages/AcceptInvitation';
 import OAuthCallback from './components/OAuthCallback';
@@ -188,7 +187,6 @@ function App() {
               {/* アカウント設定 */}
               <Route path="/account/settings" element={<AccountSettings />} />
               <Route path="/account/profile" element={<ProfileEdit />} />
-              <Route path="/account/plan" element={<PlanInfo />} />
               
               {/* メンバー管理 */}
               <Route path="/members" element={<Members />} />
