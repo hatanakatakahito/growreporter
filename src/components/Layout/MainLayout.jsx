@@ -290,12 +290,12 @@ export default function MainLayout() {
     return () => window.removeEventListener('onboarding:force-tour', handleForceTour);
   }, []);
 
-  // ルート変更時に forcedTourId をクリア（一度使ったら破棄）
+  // ツアー終了時に forcedTourId をクリア
   useEffect(() => {
-    if (!forcedTourId) return;
-    const timer = setTimeout(() => setForcedTourId(null), 2000);
-    return () => clearTimeout(timer);
-  }, [forcedTourId, location.pathname]);
+    const handleConsumed = () => setForcedTourId(null);
+    window.addEventListener('onboarding:tour-consumed', handleConsumed);
+    return () => window.removeEventListener('onboarding:tour-consumed', handleConsumed);
+  }, []);
 
   // 現在ルートに対応する tourId
   const tourId = getTourIdFromPath(location.pathname);

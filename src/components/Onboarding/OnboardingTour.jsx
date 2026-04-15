@@ -86,6 +86,8 @@ export default function OnboardingTour({ tourId, forceStart = false }) {
                 });
               }
             }
+            // forcedTourId をクリア（MainLayout に通知）
+            window.dispatchEvent(new CustomEvent('onboarding:tour-consumed'));
             // 少し間を置いてから操作方法ガイドのモーダルを再表示
             // （次のステップに進めるよう促す）
             setTimeout(() => {
