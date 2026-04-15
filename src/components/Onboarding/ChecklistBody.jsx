@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Check, ChevronRight } from 'lucide-react';
-import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import toast from 'react-hot-toast';
 import {
   STEP_DEFINITIONS,
   CATEGORIES,
@@ -36,7 +35,7 @@ const STEP_TO_TOUR_ID = {
  */
 export default function ChecklistBody({ onBeforeNavigate }) {
   const navigate = useNavigate();
-  const { steps, requiredStepKeys, progress, isDesktop } = useOnboarding();
+  const { steps, requiredStepKeys, progress, isDesktop, markStep } = useOnboarding();
   const { currentUser } = useAuth();
   const { isFree } = usePlan();
 
@@ -85,15 +84,13 @@ export default function ChecklistBody({ onBeforeNavigate }) {
     // siteRegistered は自動完了専用、クリックしても何もしない
     if (!item.to) return;
 
-    // Firestore に直接書き込み（クリック=完了を確定）
-    if (currentUser?.uid && !item.done) {
+    // markStep 経由で書き込み（セッション内 ref 重複抑止を共有）
+    if (currentUser?.uid) {
       try {
-        await updateDoc(doc(db, 'users', currentUser.uid), {
-          [`onboarding.steps.${item.key}`]: true,
-          updatedAt: serverTimestamp(),
-        });
+        await markStep(item.key);
       } catch (e) {
         console.error('[ChecklistBody] step mark failed:', e);
+        toast.error('進捗の保存に失敗しました。通信状況をご確認ください。');
       }
     }
 

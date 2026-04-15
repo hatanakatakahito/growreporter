@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -86,6 +86,11 @@ export function useOnboarding() {
     return !seenTours.dashboard;
   }, [isVisible, seenTours]);
 
+  // セッション内の書き込み済みキーを記録（stale closure による早期リターン回避のため
+  // userProfile を deps に入れずに重複抑止する）
+  const markedStepsRef = useRef(new Set());
+  const markedToursRef = useRef(new Set());
+
   const updateOnboarding = useCallback(
     async (partial) => {
       if (!currentUser?.uid) return;
@@ -105,25 +110,24 @@ export function useOnboarding() {
 
   const markStep = useCallback(
     async (key) => {
-      // 管理者・ログアウト・onboardingフィールド未存在は対象外
       if (isAdmin) return;
       if (!currentUser?.uid) return;
-      if (!userProfile?.onboarding) return;
-      if (userProfile.onboarding.steps?.[key]) return; // 既に完了
+      if (markedStepsRef.current.has(key)) return;
+      markedStepsRef.current.add(key);
       await updateOnboarding({ [`onboarding.steps.${key}`]: true });
     },
-    [isAdmin, currentUser?.uid, userProfile?.onboarding, updateOnboarding]
+    [isAdmin, currentUser?.uid, updateOnboarding]
   );
 
   const markTourSeen = useCallback(
     async (tourId) => {
       if (isAdmin) return;
       if (!currentUser?.uid) return;
-      if (!userProfile?.onboarding) return;
-      if (userProfile.onboarding.seenTours?.[tourId]) return;
+      if (markedToursRef.current.has(tourId)) return;
+      markedToursRef.current.add(tourId);
       await updateOnboarding({ [`onboarding.seenTours.${tourId}`]: true });
     },
-    [isAdmin, currentUser?.uid, userProfile?.onboarding, updateOnboarding]
+    [isAdmin, currentUser?.uid, updateOnboarding]
   );
 
   const dismiss = useCallback(async () => {
@@ -131,20 +135,17 @@ export function useOnboarding() {
   }, [updateOnboarding]);
 
   const restart = useCallback(async () => {
-    // 既に登録済みのサイトは自動完了のため siteRegistered は保持
+    // 「操作方法ガイドを再開」は dismissed を解除してツアーを再視聴できる
+    // 状態に戻すだけ。完了済みの steps は保持する（ユーザーの進捗を消さない）。
+    // ツアーは再視聴可能にしたいので seenTours だけ ref もクリア。
+    markedToursRef.current.clear();
     const defaults = getDefaultOnboarding();
-    const resetSteps = {
-      ...defaults.steps,
-      siteRegistered: steps.siteRegistered === true,
-    };
     await updateOnboarding({
       'onboarding.dismissed': false,
-      'onboarding.steps': resetSteps,
       'onboarding.seenTours': defaults.seenTours,
       'onboarding.tourVersion': TOUR_TARGET_VERSION,
-      'onboarding.completedAt': null,
     });
-  }, [updateOnboarding, steps]);
+  }, [updateOnboarding]);
 
   return {
     isVisible,
