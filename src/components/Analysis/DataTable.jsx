@@ -219,14 +219,16 @@ export default function DataTable({
             <span>左右にスクロールできます</span>
           </div>
           {tableKey && (
-            <ColumnToggle
-              columns={columns}
-              visibleColumns={columnToggle.visibleColumns}
-              columnOrder={columnToggle.columnOrder}
-              onToggleColumn={columnToggle.toggleColumn}
-              onMoveColumn={columnToggle.moveColumn}
-              onResetColumns={columnToggle.resetToDefault}
-            />
+            <div data-tour="analysis-column-toggle">
+              <ColumnToggle
+                columns={columns}
+                visibleColumns={columnToggle.visibleColumns}
+                columnOrder={columnToggle.columnOrder}
+                onToggleColumn={columnToggle.toggleColumn}
+                onMoveColumn={columnToggle.moveColumn}
+                onResetColumns={columnToggle.resetToDefault}
+              />
+            </div>
           )}
         </div>
       </div>

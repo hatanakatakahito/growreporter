@@ -15,6 +15,9 @@ export const TOUR_TARGETS = {
   ANALYSIS_PERIOD: 'analysis-period',
   ANALYSIS_EXPORT: 'analysis-export',
   ANALYSIS_KPI_CARD: 'analysis-kpi-card',
+  ANALYSIS_DIMENSION_FILTERS: 'analysis-dimension-filters',
+  ANALYSIS_VIEW_TABS: 'analysis-view-tabs',
+  ANALYSIS_COLUMN_TOGGLE: 'analysis-column-toggle',
   AI_SUMMARY: 'ai-summary',
 
   // Account / Members

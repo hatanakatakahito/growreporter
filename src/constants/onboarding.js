@@ -27,8 +27,8 @@ export const STEP_DEFINITIONS = {
   },
   analysisViewed: {
     title: '詳細分析画面を見る',
-    subtitle: '日別・週別・ページ別など13種類の分析',
-    to: '/analysis/day',
+    subtitle: '月別・日別・週別・ページ別など13種類の分析',
+    to: '/analysis/month',
     category: 'basics',
     estimatedTime: '約1分',
     sidebarNavId: 'nav-analysis',
@@ -238,7 +238,7 @@ export function inferStepsFromExisting(userData, sitesCount = 0) {
 export function getTourIdFromPath(pathname) {
   if (!pathname) return null;
   if (pathname === '/analysis/summary') return 'analysisSummary';
-  if (pathname.startsWith('/analysis/')) return 'analysisDay';
+  if (pathname === '/analysis/month') return 'analysisMonth';
   if (pathname === '/members') return 'members';
   if (pathname === '/account/settings') return 'accountSettings';
   if (pathname.startsWith('/sites/')) return 'sites';

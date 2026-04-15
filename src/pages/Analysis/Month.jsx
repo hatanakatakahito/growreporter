@@ -15,6 +15,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
+import { useOnboarding } from '../../hooks/useOnboarding';
 import { format, sub, startOfMonth } from 'date-fns';
 import {
   ResponsiveContainer,
@@ -34,6 +35,8 @@ import {
 export default function Month() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  const { markStep } = useOnboarding();
+  useEffect(() => { markStep('analysisViewed'); }, [markStep]);
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenLines, setHiddenLines] = useState({});
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
@@ -169,7 +172,7 @@ export default function Month() {
                 月別のトレンドを把握し、中長期的な傾向を分析します
               </p>
             </div>
-            <div className="flex flex-shrink-0 items-center gap-2 pt-0.5">
+            <div data-tour="analysis-dimension-filters" className="flex flex-shrink-0 items-center gap-2 pt-0.5">
               <DimensionFilters
                 siteId={selectedSiteId}
                 startDate={monthlyStartDate}
@@ -187,7 +190,7 @@ export default function Month() {
           ) : (
             <>
               {/* タブ（表形式/グラフ形式） */}
-              <div className="mb-6 mt-4 flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
+              <div data-tour="analysis-view-tabs" className="mb-6 mt-4 flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
                 <button
                   onClick={() => setActiveTab('table')}
                   className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${

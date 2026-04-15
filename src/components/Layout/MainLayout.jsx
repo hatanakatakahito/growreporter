@@ -276,9 +276,9 @@ export default function MainLayout() {
       if (!stepKey) return;
       // stepKey → tourId マッピング
       const stepToTourId = {
-        analysisViewed: 'analysisDay',
+        analysisViewed: 'analysisMonth',
         aiTried: 'analysisSummary',
-        exported: 'analysisDay',
+        exported: 'analysisMonth',
         memberInvited: 'members',
         notificationsConfigured: 'accountSettings',
         siteEdited: 'sites',

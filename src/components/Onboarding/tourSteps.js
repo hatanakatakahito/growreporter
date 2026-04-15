@@ -5,12 +5,29 @@ import { TOUR_TARGETS, sel } from './tourTargets';
  * driver.js の steps フォーマット
  */
 
-export const analysisDaySteps = [
+export const analysisMonthSteps = [
   {
-    element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
+    element: sel(TOUR_TARGETS.ANALYSIS_DIMENSION_FILTERS),
     popover: {
-      title: '期間と比較',
-      description: '分析期間と比較対象をここで切り替えられます。',
+      title: 'フィルタ設定',
+      description:
+        'デバイス・チャネル・流入元などで分析対象を絞り込めます。複数条件の組み合わせも可能です。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_VIEW_TABS),
+    popover: {
+      title: '表形式 / グラフ形式',
+      description:
+        '同じデータを「表形式」と「グラフ形式」で切り替えて確認できます。表は数値の比較、グラフはトレンド把握に便利です。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_COLUMN_TOGGLE),
+    popover: {
+      title: '表示項目の切替',
+      description:
+        '表示する列（指標）を選択・並び替えできます。よく見る項目だけに絞ってカスタマイズしましょう。',
     },
   },
   {
@@ -101,7 +118,7 @@ export const reportsSteps = [
 ];
 
 export const TOUR_STEPS_BY_ID = {
-  analysisDay: analysisDaySteps,
+  analysisMonth: analysisMonthSteps,
   analysisSummary: analysisSummarySteps,
   members: membersSteps,
   accountSettings: accountSettingsSteps,
@@ -113,7 +130,7 @@ export const TOUR_STEPS_BY_ID = {
 
 // tourId に対応する完了時の markStep キー
 export const TOUR_STEP_COMPLETION_KEY = {
-  analysisDay: 'analysisViewed',
+  analysisMonth: 'analysisViewed',
   analysisSummary: 'aiTried',
   members: 'memberInvited',
   accountSettings: 'notificationsConfigured',
