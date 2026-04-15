@@ -311,19 +311,11 @@ export default function SiteList() {
                         </svg>
                         編集
                       </Link>
-                      <Button
-                        outline
-                        onClick={() => setDeleteTarget(site)}
-                        className="!text-red-600 !border-red-200 dark:!text-red-400 dark:!border-red-900/30"
-                      >
-                        <svg data-slot="icon" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </Button>
                     </div>
                     <div className="flex gap-2">
                       <Link
                         to={`/sites/${site.id}/edit?step=4`}
+                        data-tour="site-cv-button"
                         className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
                         title="コンバージョン設定にショートカット"
                       >
@@ -336,6 +328,7 @@ export default function SiteList() {
                       </Link>
                       <Link
                         to={`/sites/${site.id}/edit?step=5`}
+                        data-tour="site-kpi-button"
                         className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
                         title="KPI設定にショートカット"
                       >
@@ -346,6 +339,16 @@ export default function SiteList() {
                         KPI設定
                       </Link>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(site)}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-md border border-stroke px-3 py-2 text-xs font-medium text-body-color transition hover:bg-gray-2 dark:border-dark-3 dark:text-dark-6 dark:hover:bg-dark-3"
+                    >
+                      <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      削除
+                    </button>
                   </div>
                 </div>
               </div>

@@ -27,6 +27,8 @@ export const TOUR_TARGETS = {
 
   // Site list
   SITE_EDIT_BUTTON: 'site-edit-button',
+  SITE_CV_BUTTON: 'site-cv-button',
+  SITE_KPI_BUTTON: 'site-kpi-button',
 
   // AI Chat
   AI_CHAT_INPUT: 'ai-chat-input',

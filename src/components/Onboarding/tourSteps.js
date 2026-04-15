@@ -91,11 +91,19 @@ export const accountSettingsSteps = [
 
 export const sitesSteps = [
   {
-    element: sel(TOUR_TARGETS.SITE_EDIT_BUTTON),
+    element: sel(TOUR_TARGETS.SITE_CV_BUTTON),
     popover: {
-      title: 'サイト設定を編集',
+      title: 'コンバージョン設定（Step 1）',
       description:
-        'サイト情報・KPI目標・コンバージョンイベントなどを編集できます。',
+        'サイトの目標となるコンバージョンイベントを設定できます。フォーム送信・購入完了・電話発信などを CV として登録しましょう。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.SITE_KPI_BUTTON),
+    popover: {
+      title: 'KPI設定（Step 2）',
+      description:
+        '月次の目標 KPI（セッション数・ユーザー数・CV数など）を設定できます。設定すると主要指標タブで予実比較が可能になります。',
     },
   },
 ];
