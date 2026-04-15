@@ -471,13 +471,12 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
   const compPeriodLabel = '前期間比';
 
   useEffect(() => {
-    // Free プランは AI 生成不可 → 自動起動しない
-    if (isFree) return;
+    // 親側で Free プランは FreeUpgradePrompt を出すため、ここは常に非Free
     if (selectedSiteId && rawData) {
       loadAnalysis(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedSiteId, isFree]);
+  }, [selectedSiteId]);
 
 
   if (isLoading) {
