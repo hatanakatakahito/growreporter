@@ -122,19 +122,6 @@ export async function onScrapingJobCreatedHandler(event) {
       }
 
       // ========================================
-      // 完了通知アラート
-      // ========================================
-      try {
-        await db.collection('sites').doc(siteId).collection('alerts').add({
-          type: 'scraping_completed',
-          message: `ページスクレイピングが完了しました（成功: ${result.successCount ?? 0}件、失敗: ${result.failedCount ?? 0}件）`,
-          createdAt: new Date(),
-        });
-      } catch (alertError) {
-        logger.warn('[onScrapingJobCreated] アラート保存エラー', { siteId, error: alertError.message });
-      }
-
-      // ========================================
       // サイト診断
       // ========================================
       try {

@@ -276,7 +276,6 @@ export default function MainLayout() {
       if (!stepKey) return;
       // stepKey → tourId マッピング
       const stepToTourId = {
-        dashboardViewed: 'dashboard',
         analysisViewed: 'analysisDay',
         aiTried: 'analysisSummary',
         exported: 'analysisDay',

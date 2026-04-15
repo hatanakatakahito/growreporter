@@ -305,6 +305,8 @@ export async function generateAISummaryCallable(request) {
       const siteTypeArr = Array.isArray(siteData.siteType) ? siteData.siteType : (siteData.siteType ? [siteData.siteType] : []);
       const sitePurposeArr = Array.isArray(siteData.sitePurpose) ? siteData.sitePurpose : (siteData.sitePurpose ? [siteData.sitePurpose] : []);
       options.siteContext = {
+        siteName: siteData.siteName || '未設定',
+        siteUrl: siteData.siteUrl || '未設定',
         industryText: industryArr.length ? industryArr.join('、') : '未設定',
         siteTypeText: siteTypeArr.map((v) => SITE_TYPE_LABELS[v] || v).join('、') || '未設定',
         sitePurposeText: sitePurposeArr.map((v) => SITE_PURPOSE_LABELS[v] || v).join('、') || '未設定',

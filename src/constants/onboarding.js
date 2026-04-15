@@ -25,17 +25,6 @@ export const STEP_DEFINITIONS = {
     videoUrl: null,
     helpUrl: null,
   },
-  dashboardViewed: {
-    title: 'ダッシュボードの見方を知る',
-    subtitle: '主要指標・アラート・サイドバーの使い方',
-    to: '/dashboard',
-    category: 'basics',
-    estimatedTime: '約1分',
-    sidebarNavId: 'nav-dashboard',
-    planRequired: 'free',
-    videoUrl: null,
-    helpUrl: null,
-  },
   analysisViewed: {
     title: '詳細分析画面を見る',
     subtitle: '日別・週別・ページ別など13種類の分析',
@@ -143,7 +132,6 @@ export const STEP_DEFINITIONS = {
 // 表示順序（カテゴリ→キー配列）
 export const STEP_ORDER = [
   'siteRegistered',
-  'dashboardViewed',
   'analysisViewed',
   'notificationsConfigured',
   'siteEdited',
@@ -191,7 +179,6 @@ export function getDefaultOnboarding() {
     completedAt: null,
     steps: {
       siteRegistered: false,
-      dashboardViewed: false,
       analysisViewed: false,
       notificationsConfigured: false,
       siteEdited: false,
@@ -246,10 +233,10 @@ export function inferStepsFromExisting(userData, sitesCount = 0) {
 
 /**
  * ルート → tourId のマッピング
+ * dashboard はツアー対象外（操作方法ガイドはダッシュボードに表示しない）
  */
 export function getTourIdFromPath(pathname) {
   if (!pathname) return null;
-  if (pathname === '/' || pathname === '/dashboard') return 'dashboard';
   if (pathname === '/analysis/summary') return 'analysisSummary';
   if (pathname.startsWith('/analysis/')) return 'analysisDay';
   if (pathname === '/members') return 'members';

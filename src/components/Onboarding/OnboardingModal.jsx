@@ -2,16 +2,24 @@ import React from 'react';
 import { X } from 'lucide-react';
 import { Dialog } from '../ui/dialog';
 import ChecklistBody from './ChecklistBody';
+import { useOnboarding } from '../../hooks/useOnboarding';
 import './driverTheme.css';
 
 /**
  * 初回モーダル（操作方法のガイド）
- * - 「スキップ」「ガイドを終了」「×」→ モーダル閉じるのみ
+ * - 「スキップ」「×」→ モーダル閉じる + 既訪問フラグを立てる
  * - 各チェックリスト項目クリック → モーダル閉じる + 該当画面で
  *   スポットライトツアー起動（ChecklistBody 内のロジック）
+ *
+ * NOTE: ダッシュボードにツアーは存在しないが、「初回モーダルを既に
+ * 表示したか」のフラグとして seenTours.dashboard を流用する。
  */
 export default function OnboardingModal({ open, onClose }) {
+  const { markTourSeen } = useOnboarding();
+
   const handleClose = () => {
+    // 初回モーダル既訪問フラグを立てて以降の自動表示を防ぐ
+    markTourSeen('dashboard');
     onClose?.();
   };
 

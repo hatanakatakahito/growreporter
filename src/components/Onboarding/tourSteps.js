@@ -5,25 +5,6 @@ import { TOUR_TARGETS, sel } from './tourTargets';
  * driver.js の steps フォーマット
  */
 
-export const dashboardSteps = [
-  {
-    element: sel(TOUR_TARGETS.ANALYSIS_KPI_CARD),
-    popover: {
-      title: '主要指標をひと目で',
-      description:
-        'セッション・ユーザー・PV・CV とその前月比をタブ切替で確認できます。指標のトレンドを素早く把握しましょう。',
-    },
-  },
-  {
-    element: sel(TOUR_TARGETS.SIDEBAR_ANALYSIS),
-    popover: {
-      title: '詳細分析はこちらから',
-      description:
-        '日別・週別・時間帯別・ページ別などの詳細分析は左サイドバーから開けます。',
-    },
-  },
-];
-
 export const analysisDaySteps = [
   {
     element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
@@ -127,7 +108,6 @@ export const reportsSteps = [
 ];
 
 export const TOUR_STEPS_BY_ID = {
-  dashboard: dashboardSteps,
   analysisDay: analysisDaySteps,
   analysisSummary: analysisSummarySteps,
   members: membersSteps,
@@ -140,7 +120,6 @@ export const TOUR_STEPS_BY_ID = {
 
 // tourId に対応する完了時の markStep キー
 export const TOUR_STEP_COMPLETION_KEY = {
-  dashboard: 'dashboardViewed',
   analysisDay: 'analysisViewed',
   analysisSummary: 'aiTried',
   members: 'memberInvited',

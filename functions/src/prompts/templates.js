@@ -1405,18 +1405,61 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, 
   const pageQualityText = '';
 
   let siteContextBlock = '';
-  if (siteContext && (siteContext.industryText || siteContext.siteTypeText || siteContext.sitePurposeText)) {
+  if (siteContext && (siteContext.industryText || siteContext.siteTypeText || siteContext.sitePurposeText || siteContext.siteName || siteContext.siteUrl)) {
     siteContextBlock = `
-【サイトの前提情報（改善提案の前提として考慮すること）】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+★★★【絶対的前提条件 / MUST】このサイトの基本情報 ★★★
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+◆◆◆ 最優先の判断軸（すべての提案はこの2項目を起点に組み立てること） ◆◆◆
+【★最優先1】サイト種別: ${siteContext.siteTypeText || '未設定'}
+【★最優先2】サイトの目的: ${siteContext.sitePurposeText || '未設定'}
+
+◆ 補足の前提情報 ◆
+- サイト名: ${siteContext.siteName || '未設定'}
+- サイトURL: ${siteContext.siteUrl || '未設定'}
 - 業界・業種: ${siteContext.industryText || '未設定'}
-- サイト種別: ${siteContext.siteTypeText || '未設定'}
-- サイトの目的: ${siteContext.sitePurposeText || '未設定'}
-上記を踏まえ、この業界・サイト種別・目的に適した改善案のみを提案すること。
+
+【厳守事項】
+▼ 上記は本タスク全体の「絶対的な前提条件」である。分析・改善提案のすべては必ずこの前提に立脚すること。
+▼ 特に「サイト種別」と「サイトの目的」は最優先の判断軸であり、すべての提案はこの2項目に照らして妥当である必要がある。この2項目と矛盾する提案は絶対に出してはならない。
+▼ 各改善提案には必ず「このサイト種別／目的にとってなぜ有効か」の紐付け理由を1文以上含めること。理由が書けない提案は出さないこと。
+▼ 業界・業種はサブ的な判断軸として、施策のトーン・表現・事例選定に反映させること。
+▼ 【最重要ルール】提案内容はサイト種別と1対1で対応している必要がある。
+  例: サイト種別が「採用サイト」なら、提案はすべて "採用応募の獲得・候補者体験の向上・求職者の志望度向上" に資するものでなければならない。
+  採用サイトに対して「商品購入導線」「記事回遊率」「EC決済フロー」等の提案を出すのは明確な誤りであり絶対に禁止。
+
+▼ サイト種別別の提案スコープ（この範囲を絶対に逸脱しないこと）:
+  - 採用サイト → 応募獲得、求人情報の訴求、社員インタビュー・カルチャー訴求、エントリーフォーム改善、候補者の不安解消
+  - ECサイト・通販 → 商品購入促進、カート離脱防止、商品ページ改善、リピート購入、決済導線
+  - コーポレートサイト → 問い合わせ獲得、会社信頼性の訴求、サービス/製品ページ改善、実績・事例訴求
+  - BtoBサービスサイト → リード獲得、資料請求、事例・導入実績、比較検討者への情報提供
+  - メディア・ブログ → 記事回遊率、SEO流入、滞在時間、コンテンツ企画、回遊導線
+  - LP（ランディングページ）→ ファーストビュー、CTA、CVR改善、離脱ポイント改善
+  - ポートフォリオ・ブランドサイト → 世界観・ブランド訴求、問い合わせ、作品/実績の魅せ方
+
+▼ 前提条件と矛盾する施策の具体例（禁止）:
+  - 採用サイト × 商品購入・カート改善・EC的施策
+  - 採用サイト × 記事回遊率向上を主軸にした提案
+  - BtoBコーポレート × EC的なカート離脱改善提案
+  - 認知拡大が目的のサイト × CV導線偏重の提案
+  - メディアサイト × 問い合わせフォーム最適化を主軸にした提案
+  - LP × 記事回遊率向上の提案
+▼ 「未設定」と表示されている項目のみ、一般論での補完を許可する。ただしサイト種別・目的が未設定の場合は、提案冒頭で「種別・目的の設定を推奨」と明記すること。
 
 `;
 
     const siteTypeText = siteContext.siteTypeText || '';
-    if (siteTypeText.includes('ECサイト') || siteTypeText.includes('通販')) {
+    if (siteTypeText.includes('採用')) {
+      siteContextBlock += `【採用サイト特有の重点ポイント（提案はこの範囲内に限定）】
+✓ 応募（エントリー）獲得の最大化 — エントリーフォーム改善、応募導線の簡素化
+✓ 求職者の不安解消コンテンツ（福利厚生、社員の声、1日の流れ、キャリアパス）
+✓ 企業カルチャー・働く魅力の訴求（社員インタビュー、オフィス写真、代表メッセージ）
+✓ 募集要項ページの明確化と検索性（職種別、勤務地別）
+✓ 候補者体験の向上（ページ読み込み速度、モバイル最適化、応募までの心理的ハードル低減）
+✗ 商品購入・カート・EC的な施策は絶対に提案しないこと
+\n`;
+    } else if (siteTypeText.includes('EC') || siteTypeText.includes('通販')) {
       siteContextBlock += `【ECサイト特有の重点ポイント】
 ✓ カート離脱率の改善（カートページ、決済ページの最適化）
 ✓ 商品ページの改善（商品説明、画像、レビュー、関連商品）
@@ -1428,9 +1471,15 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, 
 ✓ 問い合わせフォームへの導線強化
 ✓ 信頼性を高めるコンテンツ（実績、事例、お客様の声）
 ✓ サービス・製品ページの充実
-✓ 採用ページの最適化（該当する場合）
 \n`;
-    } else if (siteTypeText.includes('メディア') || siteTypeText.includes('ブログ')) {
+    } else if (siteTypeText.includes('サービス') || siteTypeText.includes('製品')) {
+      siteContextBlock += `【サービス/製品サイト特有の重点ポイント】
+✓ サービス/製品の価値訴求（機能、ベネフィット、導入事例）
+✓ 資料請求・お問い合わせ・デモ申込への導線強化
+✓ 比較検討者向けコンテンツ（料金、FAQ、競合比較）
+✓ 導入実績・ユーザーボイスによる信頼醸成
+\n`;
+    } else if (siteTypeText.includes('オウンドメディア') || siteTypeText.includes('メディア') || siteTypeText.includes('ブログ')) {
       siteContextBlock += `【メディアサイト特有の重点ポイント】
 ✓ 記事の回遊率向上（関連記事、内部リンク）
 ✓ 滞在時間の延長（コンテンツの質と量）
@@ -1443,6 +1492,20 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, 
 ✓ コンバージョンまでの導線設計
 ✓ 離脱ポイントの特定と改善
 ✓ CTA（行動喚起）の配置と文言
+\n`;
+    } else if (siteTypeText.includes('会員')) {
+      siteContextBlock += `【会員サイト特有の重点ポイント】
+✓ 新規会員登録の獲得と登録フォーム最適化
+✓ 会員限定コンテンツの魅力訴求
+✓ 継続利用・ログイン頻度向上施策
+✓ 退会防止・エンゲージメント向上
+\n`;
+    } else if (siteTypeText.includes('IR')) {
+      siteContextBlock += `【IRサイト特有の重点ポイント】
+✓ 投資家向け情報（決算短信、有価証券報告書）へのアクセス性
+✓ 株主・投資家の信頼を高める情報開示
+✓ IRニュース・開示資料の検索性
+✓ 個人投資家向けコンテンツの充実
 \n`;
     }
   }
@@ -1681,7 +1744,7 @@ ${aiComprehensiveAnalysisText}`;
 
   return `
 あなたはWebサイト改善コンサルタントです。
-
+${siteContextBlock}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 【タスク1】サイトデータの分析（分析サマリー作成）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1698,7 +1761,7 @@ ${analysisViewpoints}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 【タスク2】改善施策の提案（サイト構造と実データに基づく）
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${siteContextBlock}${conversionSettingsText}${task2ScrapingBlock}
+${conversionSettingsText}${task2ScrapingBlock}
 
 【改善施策の生成ルール】
 ${userNoteBlock}${improvementFocusLine}${existingImprovementsText}✓ このサイトの実際の構造とアクセスデータに基づいて提案
