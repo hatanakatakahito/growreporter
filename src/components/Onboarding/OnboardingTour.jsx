@@ -86,6 +86,11 @@ export default function OnboardingTour({ tourId, forceStart = false }) {
                 });
               }
             }
+            // 少し間を置いてから操作方法ガイドのモーダルを再表示
+            // （次のステップに進めるよう促す）
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('onboarding:open-modal'));
+            }, 600);
           },
         });
 
