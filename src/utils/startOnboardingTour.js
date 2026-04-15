@@ -75,7 +75,7 @@ export function startOnboardingTour(tourId, { isFree = false, userId } = {}) {
       nextBtnText: '次へ',
       prevBtnText: '戻る',
       doneBtnText: '完了',
-      closeBtnText: 'スキップ',
+      closeBtnText: 'ガイドを終了する',
       progressText: 'ステップ {{current}} / {{total}}',
       steps,
       onDestroyed: async () => {
