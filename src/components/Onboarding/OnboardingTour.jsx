@@ -136,7 +136,10 @@ export default function OnboardingTour({ tourId, forceStart = false }) {
       cancelled = true;
       cancelAnimationFrame(raf1);
       if (retryTimer) clearTimeout(retryTimer);
-      if (openModalTimer) clearTimeout(openModalTimer);
+      // 完了済みの場合は openModalTimer を残す（モーダル再表示のため）
+      if (!completedRef.current.has(tourId)) {
+        if (openModalTimer) clearTimeout(openModalTimer);
+      }
       // 完了済みなら destroy 不要（既に destroy されている）
       if (driverRef.current && !completedRef.current.has(tourId)) {
         try {
