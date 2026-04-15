@@ -50,16 +50,9 @@ export default function OnboardingModal({ open, onClose }) {
         <button
           type="button"
           onClick={handleClose}
-          className="rounded-md border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-        >
-          スキップ
-        </button>
-        <button
-          type="button"
-          onClick={handleClose}
           className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
         >
-          ガイドを終了
+          スキップ
         </button>
       </div>
     </Dialog>
