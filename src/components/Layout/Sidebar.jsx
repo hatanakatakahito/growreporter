@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useOnboarding } from '../../hooks/useOnboarding';
-import { ChevronLeft, ChevronRight, Sun, Moon, BookOpen } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, Moon, BookOpen, HelpCircle, Compass, FileQuestion, MessageSquare } from 'lucide-react';
 import { getPlanBadgeColor, getPlanDisplayName } from '../../constants/plans';
 import { usePlan } from '../../hooks/usePlan';
 import UpgradeModal from '../common/UpgradeModal';
@@ -73,6 +73,7 @@ export default function Sidebar() {
   const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
   const [isEngagementOpen, setIsEngagementOpen] = useState(false);
   const [isConversionOpen, setIsConversionOpen] = useState(false);
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { isFree } = usePlan();
   const { restart: restartOnboarding } = useOnboarding();
@@ -439,6 +440,78 @@ export default function Sidebar() {
             </li>
           ))}
 
+          {/* 使い方・意見箱（展開式） */}
+          <li>
+            <button
+              onClick={() => isSidebarOpen && setIsHelpOpen(!isHelpOpen)}
+              className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
+                isSidebarOpen ? 'justify-between' : 'justify-center'
+              }`}
+              title={!isSidebarOpen ? '使い方・意見箱' : ''}
+            >
+              <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
+                <HelpCircle className="h-5 w-5" strokeWidth={1.5} />
+                {isSidebarOpen && <span>使い方・意見箱</span>}
+              </div>
+              {isSidebarOpen && (
+                <svg
+                  className={`h-4 w-4 ${t.chevron} transition-transform ${isHelpOpen ? 'rotate-180' : ''}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              )}
+            </button>
+            {isHelpOpen && isSidebarOpen && (
+              <ul className={`ml-2 mt-2 space-y-1 border-l ${t.subBorder} pl-2`}>
+                <li>
+                  <button
+                    type="button"
+                    onClick={handleRestartOnboarding}
+                    className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-left text-sm ${t.subText} transition ${t.subHover}`}
+                  >
+                    <Compass className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                    <span>操作ガイド</span>
+                  </button>
+                </li>
+                <li>
+                  <a
+                    href="https://www.notion.so/growgroup/343eef14914a8194bdb2c536a6b68a84?source=copy_link"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-sm ${t.subText} transition ${t.subHover}`}
+                  >
+                    <BookOpen className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                    <span>マニュアル</span>
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://www.notion.so/growgroup/FAQ-343eef14914a8179a60ef6a938e61319"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-sm ${t.subText} transition ${t.subHover}`}
+                  >
+                    <FileQuestion className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                    <span>FAQ</span>
+                  </a>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    onClick={() => window.dispatchEvent(new CustomEvent('feedback:open'))}
+                    className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-left text-sm ${t.subText} transition ${t.subHover}`}
+                  >
+                    <MessageSquare className="h-4 w-4 shrink-0" strokeWidth={1.5} />
+                    <span>意見箱</span>
+                  </button>
+                </li>
+              </ul>
+            )}
+          </li>
+
         </ul>
       </nav>
 
@@ -504,19 +577,6 @@ export default function Sidebar() {
               </div>
             )}
           </button>
-
-          {/* 操作方法ガイドを再開 */}
-          {isSidebarOpen && (
-            <button
-              data-tour="sidebar-restart-tour"
-              onClick={handleRestartOnboarding}
-              className={`mt-2 flex w-full items-center justify-center gap-1.5 rounded-md border bg-white px-2 py-1.5 text-xs font-medium transition ${t.logoutBtn}`}
-              title="操作方法のガイドを再開"
-            >
-              <BookOpen className="h-3.5 w-3.5 shrink-0" />
-              操作方法ガイドを再開
-            </button>
-          )}
 
           {/* ログアウト & 管理者画面 */}
           <div className={`mt-2 flex ${isSidebarOpen ? 'gap-2' : 'flex-col gap-1.5'}`}>

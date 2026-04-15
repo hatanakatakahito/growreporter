@@ -13,6 +13,7 @@ import DateRangePicker from '../Analysis/DateRangePicker';
 import SiteSelectionModal from '../common/SiteSelectionModal';
 import UpgradeModal from '../common/UpgradeModal';
 import OnboardingModal from '../Onboarding/OnboardingModal';
+import FeedbackModal from '../Feedback/FeedbackModal';
 import { useOnboarding } from '../../hooks/useOnboarding';
 import logoImg from '../../assets/img/logo.svg';
 
@@ -242,6 +243,14 @@ export default function MainLayout() {
   // 操作方法のガイド（オンボーディング）
   const { isVisible: isOnboardingVisible, isFirstVisit, isAdmin } = useOnboarding();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+
+  // 意見箱モーダルを開く（サイドバーからの CustomEvent を購読）
+  useEffect(() => {
+    const handler = () => setIsFeedbackOpen(true);
+    window.addEventListener('feedback:open', handler);
+    return () => window.removeEventListener('feedback:open', handler);
+  }, []);
 
   // Dashboard 初訪問時にモーダルを自動表示（SiteSelectionModal が出ている間は待つ）
   useEffect(() => {
@@ -310,6 +319,12 @@ export default function MainLayout() {
       <OnboardingModal
         open={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+      />
+
+      {/* 意見箱モーダル */}
+      <FeedbackModal
+        isOpen={isFeedbackOpen}
+        onClose={() => setIsFeedbackOpen(false)}
       />
     </div>
   );
