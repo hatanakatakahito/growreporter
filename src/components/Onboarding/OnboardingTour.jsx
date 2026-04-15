@@ -11,8 +11,7 @@ import { TOUR_STEPS_BY_ID, TOUR_STEP_COMPLETION_KEY } from './tourSteps';
  * driver.js のツアーディスパッチャ
  *
  * 起動条件:
- *   1. URL に ?guide=1 がある（ガイドから遷移してきた）
- *   2. または seenTours[tourId] が false かつ isVisible かつ isDesktop
+ *   - URL に ?guide=1 がある（ガイドから遷移してきた）場合のみ起動
  *
  * ?guide=1 があればツアー起動後に history.replaceState で URL から
  * 即座にパラメータを除去する。これにより
@@ -22,8 +21,7 @@ import { TOUR_STEPS_BY_ID, TOUR_STEP_COMPLETION_KEY } from './tourSteps';
  */
 export default function OnboardingTour({ tourId }) {
   const location = useLocation();
-  const { isVisible, isDesktop, seenTours, markTourSeen, markStep, planId } =
-    useOnboarding();
+  const { isDesktop, markTourSeen, markStep, planId } = useOnboarding();
   const isFree = planId === 'free';
   const driverRef = useRef(null);
   const startedKeysRef = useRef(new Set()); // `${tourId}:${locationKey}` 単位の起動済みマーカー
@@ -46,25 +44,10 @@ export default function OnboardingTour({ tourId }) {
     const startKey = `${tourId}:${location.key}`;
     if (startedKeysRef.current.has(startKey)) return undefined;
 
-    // ?guide=1 パラメータ判定
+    // ?guide=1 パラメータ判定（ガイドからの遷移時のみ起動）
     const params = new URLSearchParams(location.search);
     const fromGuide = params.get('guide') === '1';
-
-    // 起動可否判定
-    let shouldStart = false;
-    if (fromGuide) {
-      // ガイドから明示的に遷移してきた → 必ず起動
-      shouldStart = true;
-    } else if (isVisible && !seenTours[tourId]) {
-      // 自動起動: 未視聴の場合のみ
-      // 他モーダルが開いていればスキップ
-      const otherDialog = document.querySelector('[role="dialog"]');
-      if (!otherDialog) {
-        shouldStart = true;
-      }
-    }
-
-    if (!shouldStart) return undefined;
+    if (!fromGuide) return undefined;
 
     const allSteps = TOUR_STEPS_BY_ID[tourId];
     if (!allSteps || allSteps.length === 0) return undefined;
@@ -93,13 +76,11 @@ export default function OnboardingTour({ tourId }) {
 
       // 起動済みマーク & URL から guide パラメータ削除（リロード時に再起動しない）
       startedKeysRef.current.add(startKey);
-      if (fromGuide) {
-        const newParams = new URLSearchParams(location.search);
-        newParams.delete('guide');
-        const newSearch = newParams.toString();
-        const newUrl = location.pathname + (newSearch ? `?${newSearch}` : '');
-        window.history.replaceState(window.history.state, '', newUrl);
-      }
+      const newParams = new URLSearchParams(location.search);
+      newParams.delete('guide');
+      const newSearch = newParams.toString();
+      const newUrl = location.pathname + (newSearch ? `?${newSearch}` : '');
+      window.history.replaceState(window.history.state, '', newUrl);
 
       const drv = driver({
         showProgress: true,
