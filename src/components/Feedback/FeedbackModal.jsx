@@ -111,10 +111,10 @@ export default function FeedbackModal({ isOpen, onClose }) {
   };
 
   return (
-    <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-      <DialogBackdrop className="fixed inset-0 bg-black/50" />
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <DialogPanel className="w-full max-w-xl rounded-2xl bg-white shadow-xl dark:bg-dark-2 max-h-[90vh] flex flex-col">
+    <Dialog open={isOpen} onClose={onClose} className="relative z-[60]">
+      <DialogBackdrop className="fixed inset-0 z-[60] bg-black/50" />
+      <div className="fixed inset-0 z-[61] flex items-center justify-center p-4">
+        <DialogPanel className="relative w-full max-w-xl rounded-2xl bg-white shadow-xl dark:bg-dark-2 max-h-[90vh] flex flex-col">
           {/* ヘッダー */}
           <div className="flex items-start justify-between border-b border-stroke px-6 py-4 dark:border-dark-3">
             <div>
