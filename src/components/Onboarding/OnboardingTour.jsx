@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
 import './driverTheme.css';
@@ -21,6 +21,7 @@ import { TOUR_STEPS_BY_ID, TOUR_STEP_COMPLETION_KEY } from './tourSteps';
  */
 export default function OnboardingTour({ tourId }) {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { isDesktop, markTourSeen, markStep, planId } = useOnboarding();
   const isFree = planId === 'free';
   const driverRef = useRef(null);
@@ -45,8 +46,7 @@ export default function OnboardingTour({ tourId }) {
     if (startedKeysRef.current.has(startKey)) return undefined;
 
     // ?guide=1 パラメータ判定（ガイドからの遷移時のみ起動）
-    const params = new URLSearchParams(location.search);
-    const fromGuide = params.get('guide') === '1';
+    const fromGuide = searchParams.get('guide') === '1';
     if (!fromGuide) return undefined;
 
     const allSteps = TOUR_STEPS_BY_ID[tourId];
@@ -74,13 +74,14 @@ export default function OnboardingTour({ tourId }) {
         return;
       }
 
-      // 起動済みマーク & URL から guide パラメータ削除（リロード時に再起動しない）
+      // 起動済みマーク & URL から guide パラメータ削除
+      // React Router の setSearchParams を使うことで useLocation にも反映される
+      // （history.replaceState だと React Router 内部 state が同期されず
+      // 再マウント時に fromGuide=true と判定されて無限ループする）
       startedKeysRef.current.add(startKey);
-      const newParams = new URLSearchParams(location.search);
+      const newParams = new URLSearchParams(searchParams);
       newParams.delete('guide');
-      const newSearch = newParams.toString();
-      const newUrl = location.pathname + (newSearch ? `?${newSearch}` : '');
-      window.history.replaceState(window.history.state, '', newUrl);
+      setSearchParams(newParams, { replace: true });
 
       const drv = driver({
         showProgress: true,
@@ -88,9 +89,11 @@ export default function OnboardingTour({ tourId }) {
         animate: true,
         smoothScroll: true,
         overlayOpacity: 0.6,
+        showButtons: ['next', 'previous', 'close'],
         nextBtnText: '次へ',
         prevBtnText: '戻る',
         doneBtnText: '完了',
+        closeBtnText: 'スキップ',
         progressText: 'ステップ {{current}} / {{total}}',
         steps,
         onDestroyed: () => {
