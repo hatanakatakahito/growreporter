@@ -13,6 +13,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAutoTour } from '../../hooks/useAutoTour';
 import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import ComparisonBadge from '../../components/Analysis/ComparisonBadge';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
@@ -55,6 +56,7 @@ const GENDER_COLORS = {
 export default function Users() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  useAutoTour('analysisUsers');
   const [locationType, setLocationType] = useState('city');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [dimensionFilters, setDimensionFilters] = useState({});

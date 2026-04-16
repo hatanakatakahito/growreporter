@@ -5,7 +5,9 @@ export const TOUR_TARGETS = {
   // Dashboard
   DASHBOARD_KPI: 'dashboard-kpi',
   DASHBOARD_ALERTS: 'dashboard-alerts',
-  DASHBOARD_CHECKLIST: 'dashboard-checklist',
+  DASHBOARD_QUICK_ACTIONS: 'dashboard-quick-actions',
+  DASHBOARD_TREND: 'dashboard-trend',
+  DASHBOARD_IMPROVE: 'dashboard-improve',
 
   // Sidebar
   SIDEBAR_ANALYSIS: 'sidebar-analysis',
@@ -34,6 +36,8 @@ export const TOUR_TARGETS = {
   COMP_AI_SECTIONS: 'comp-ai-sections',
 
   // Account / Members
+  ACCOUNT_TABS: 'account-tabs',
+  ACCOUNT_EMAIL_TAB: 'account-email-tab',
   ACCOUNT_NOTIFICATIONS: 'account-notifications',
   NOTIFICATION_WEEKLY: 'notification-weekly',
   NOTIFICATION_MONTHLY: 'notification-monthly',

@@ -4,7 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
 import { useOnboarding } from '../../hooks/useOnboarding';
-import { ChevronLeft, ChevronRight, Sun, Moon, BookOpen, HelpCircle, Compass, FileQuestion, MessageSquare } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, Moon, BookOpen, HelpCircle, FileQuestion, MessageSquare, Navigation, RotateCcw } from 'lucide-react';
 import { getPlanBadgeColor, getPlanDisplayName } from '../../constants/plans';
 import { usePlan } from '../../hooks/usePlan';
 import UpgradeModal from '../common/UpgradeModal';
@@ -76,18 +76,7 @@ export default function Sidebar() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { isFree } = usePlan();
-  const { restart: restartOnboarding } = useOnboarding();
-
-  const handleRestartOnboarding = async () => {
-    await restartOnboarding();
-    if (location.pathname !== '/dashboard' && location.pathname !== '/') {
-      navigate('/dashboard');
-    }
-    // 少し遅延させて MainLayout の useEffect が最新 userProfile で再計算された後に発火
-    setTimeout(() => {
-      window.dispatchEvent(new CustomEvent('onboarding:open-modal'));
-    }, 50);
-  };
+  const { tourGuideEnabled, toggleTourGuide, resetSeenTours } = useOnboarding();
 
   // テーマオブジェクト
   const t = SIDEBAR_THEMES[isDarkSidebar ? 'dark' : 'white'];
@@ -467,16 +456,6 @@ export default function Sidebar() {
             {isHelpOpen && isSidebarOpen && (
               <ul className={`ml-2 mt-2 space-y-1 border-l ${t.subBorder} pl-2`}>
                 <li>
-                  <button
-                    type="button"
-                    onClick={handleRestartOnboarding}
-                    className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-left text-sm ${t.subText} transition ${t.subHover}`}
-                  >
-                    <Compass className="h-4 w-4 shrink-0" strokeWidth={1.5} />
-                    <span>操作ガイド</span>
-                  </button>
-                </li>
-                <li>
                   <a
                     href="https://www.notion.so/growgroup/343eef14914a8194bdb2c536a6b68a84?source=copy_link"
                     target="_blank"
@@ -518,11 +497,12 @@ export default function Sidebar() {
       {/* ユーザー情報 */}
       <div className={`absolute bottom-0 left-0 right-0 ${t.bottomBg}`}>
         <div className={isSidebarOpen ? 'p-4' : 'p-2'}>
-          {/* テーマ切替トグル */}
-          <div className={`mb-3 flex justify-center pb-3 border-b ${t.bottomBorder}`}>
+          {/* テーマ切替 + ツアーガイド トグル */}
+          <div className={`mb-3 flex ${isSidebarOpen ? 'items-center justify-center gap-3' : 'flex-col items-center gap-2'} pb-3 border-b ${t.bottomBorder}`}>
+            {/* ダーク/ライト */}
             <button
               onClick={toggleSidebarTheme}
-              className="group relative flex h-7 w-14 items-center rounded-full transition-colors duration-300"
+              className="group relative flex h-7 w-14 shrink-0 items-center rounded-full transition-colors duration-300"
               style={{ backgroundColor: isDarkSidebar ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }}
               title={isDarkSidebar ? 'ライトモードに切替' : 'ダークモードに切替'}
             >
@@ -539,6 +519,47 @@ export default function Sidebar() {
                 }
               </span>
             </button>
+
+            {/* ツアーガイド ON/OFF */}
+            <button
+              onClick={toggleTourGuide}
+              className="group relative flex h-7 w-14 shrink-0 items-center rounded-full transition-colors duration-300"
+              style={{ backgroundColor: tourGuideEnabled
+                ? (isDarkSidebar ? 'rgba(55,88,249,0.35)' : 'rgba(55,88,249,0.15)')
+                : (isDarkSidebar ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)')
+              }}
+              title={tourGuideEnabled ? 'ページガイドを無効化' : 'ページガイドを有効化'}
+            >
+              <span
+                className={`absolute flex h-5 w-5 items-center justify-center rounded-full shadow-sm transition-all duration-300 ${
+                  tourGuideEnabled
+                    ? 'left-[30px] bg-primary'
+                    : (isDarkSidebar ? 'left-[4px] bg-slate-700' : 'left-[4px] bg-white')
+                }`}
+              >
+                <Navigation className={`h-3 w-3 ${tourGuideEnabled ? 'text-white' : (isDarkSidebar ? 'text-slate-400' : 'text-gray-400')}`} />
+              </span>
+            </button>
+
+            {/* リセットボタン（展開時のみ） */}
+            {isSidebarOpen && (
+              <button
+                onClick={async () => {
+                  await resetSeenTours();
+                  const toast = (await import('react-hot-toast')).default;
+                  toast.success('ツアーガイドをリセットしました', {
+                    duration: 2000,
+                    style: { border: '1px solid #DFE4EA', borderRadius: '8px', fontSize: '13px' },
+                  });
+                }}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors ${
+                  isDarkSidebar ? 'hover:bg-white/10 text-slate-400' : 'hover:bg-black/5 text-gray-400'
+                }`}
+                title="ツアーガイドをリセット"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
 
           {/* ユーザー情報（クリックでアカウント設定へ） */}

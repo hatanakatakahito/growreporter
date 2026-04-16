@@ -10,6 +10,7 @@ import { httpsCallable } from 'firebase/functions';
 import { Button } from '@/components/ui/button';
 import UpgradeModal from '@/components/common/UpgradeModal';
 import DotWaveSpinner from '@/components/common/DotWaveSpinner';
+import { useAutoTour } from '../hooks/useAutoTour';
 
 export default function SiteList() {
   const [sites, setSites] = useState([]);
@@ -20,6 +21,7 @@ export default function SiteList() {
   const { currentUser, userProfile } = useAuth();
   const { maxSites } = useSite();
   const navigate = useNavigate();
+  useAutoTour('sites');
   
   const memberRole = userProfile?.memberRole || 'owner';
   const isOwner = memberRole === 'owner';

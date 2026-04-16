@@ -20,6 +20,7 @@ import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSiteDetail } from '../../hooks/useSiteDetail';
+import { useAutoTour } from '../../hooks/useAutoTour';
 
 /**
  * 興味度スコア計算
@@ -60,6 +61,7 @@ export default function ContentAnalysis() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const { siteDetail } = useSiteDetail(selectedSiteId);
+  useAutoTour('analysisContent');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [isGTMBannerDismissed, setIsGTMBannerDismissed] = useState(() => {
     try { return localStorage.getItem('gr_gtm_banner_dismissed') === 'true'; } catch { return false; }

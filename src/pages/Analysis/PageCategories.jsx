@@ -20,6 +20,7 @@ import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAutoTour } from '../../hooks/useAutoTour';
 import {
   ResponsiveContainer,
   BarChart,
@@ -41,6 +42,7 @@ import {
 export default function PageCategories() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  useAutoTour('analysisPageCategories');
   const [activeTab, setActiveTab] = useState('sitemap');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [expandedPaths, setExpandedPaths] = useState(new Set(['/']));

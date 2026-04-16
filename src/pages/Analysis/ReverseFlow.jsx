@@ -18,6 +18,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAutoTour } from '../../hooks/useAutoTour';
 
 /**
  * 逆算フロー画面
@@ -44,6 +45,7 @@ const Arrow = ({ rate }) => (
 export default function ReverseFlow() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const { currentUser } = useAuth();
+  useAutoTour('analysisReverseFlow');
   const navigate = useNavigate();
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);

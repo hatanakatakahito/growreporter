@@ -26,7 +26,7 @@ import { Switch } from '../components/ui/switch';
 import { setPageTitle } from '../utils/pageTitle';
 import { Button } from '@/components/ui/button';
 import DotWaveSpinner from '@/components/common/DotWaveSpinner';
-import { useOnboarding } from '../hooks/useOnboarding';
+import { useAutoTour } from '../hooks/useAutoTour';
 
 const TABS = [
   { id: 'profile', label: 'プロフィール', icon: User },
@@ -44,7 +44,7 @@ export default function AccountSettings() {
   useEffect(() => { setPageTitle('アカウント設定'); }, []);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { markStep } = useOnboarding();
+  useAutoTour('accountSettings');
   const { userProfile, currentUser, logout } = useAuth();
   const { sites } = useSite();
   const { plan } = usePlan();
@@ -54,11 +54,6 @@ export default function AccountSettings() {
     const t = searchParams.get('tab');
     return TABS.some((x) => x.id === t) ? t : 'profile';
   }, [searchParams]);
-
-  // メール通知タブを開いたときにオンボーディングのステップを完了
-  useEffect(() => {
-    if (activeTab === 'email') markStep('notificationsConfigured');
-  }, [activeTab, markStep]);
 
   const handleTabChange = (tabId) => {
     const next = new URLSearchParams(searchParams);
@@ -205,7 +200,7 @@ export default function AccountSettings() {
         </div>
 
         {/* タブナビ */}
-        <div className="mb-6 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
+        <div data-tour="account-tabs" className="mb-6 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
           <nav className="flex overflow-x-auto" aria-label="Tabs">
             {TABS.map((tab) => {
               const Icon = tab.icon;
@@ -214,6 +209,7 @@ export default function AccountSettings() {
                 <button
                   key={tab.id}
                   type="button"
+                  data-tour={tab.id === 'email' ? 'account-email-tab' : undefined}
                   onClick={() => handleTabChange(tab.id)}
                   className={`flex items-center gap-2 whitespace-nowrap border-b-2 px-5 py-4 text-sm transition-colors ${
                     isActive

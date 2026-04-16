@@ -18,6 +18,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAutoTour } from '../../hooks/useAutoTour';
 import ComparisonBadge from '../../components/Analysis/ComparisonBadge';
 import { calculateChangePercent } from '../../utils/comparisonHelpers';
 import {
@@ -38,6 +39,7 @@ import {
 export default function ConversionList() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  useAutoTour('analysisConversions');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenLines, setHiddenLines] = useState({});

@@ -20,6 +20,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAutoTour } from '../../hooks/useAutoTour';
 import {
   ResponsiveContainer,
   BarChart,
@@ -41,6 +42,7 @@ import {
 export default function Referrals() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  useAutoTour('analysisReferrals');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});

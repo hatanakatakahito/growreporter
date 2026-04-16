@@ -15,7 +15,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
-import { useOnboarding } from '../../hooks/useOnboarding';
+import { useAutoTour } from '../../hooks/useAutoTour';
 import { format, sub, startOfMonth } from 'date-fns';
 import {
   ResponsiveContainer,
@@ -35,8 +35,7 @@ import {
 export default function Month() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
-  const { markStep } = useOnboarding();
-  useEffect(() => { markStep('analysisViewed'); }, [markStep]);
+  useAutoTour('analysisMonth');
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenLines, setHiddenLines] = useState({});
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);

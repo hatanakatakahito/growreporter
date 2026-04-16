@@ -16,6 +16,7 @@ import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
+import { useAutoTour } from '../../hooks/useAutoTour';
 import {
   ResponsiveContainer,
   BarChart,
@@ -37,6 +38,7 @@ import {
 export default function Keywords() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  useAutoTour('analysisKeywords');
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);

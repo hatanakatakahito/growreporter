@@ -19,6 +19,7 @@ import PlanLimitModal from '../../components/common/PlanLimitModal';
 import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAutoTour } from '../../hooks/useAutoTour';
 import {
   ResponsiveContainer,
   BarChart,
@@ -40,6 +41,7 @@ import {
 export default function AcquisitionChannels() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  useAutoTour('analysisChannels');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});

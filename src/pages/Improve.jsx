@@ -23,7 +23,7 @@ import UpgradeModal from '../components/common/UpgradeModal';
 import BusinessPlanLockOverlay from '../components/common/BusinessPlanLockOverlay';
 import { usePlan } from '../hooks/usePlan';
 import { useAuth } from '../contexts/AuthContext';
-import { useOnboarding } from '../hooks/useOnboarding';
+import { useAutoTour } from '../hooks/useAutoTour';
 import { generateAndAddImprovements } from '../utils/generateAndAddImprovements';
 import { downloadImprovementsExcel } from '../utils/exportImprovementsToExcel';
 import { formatEstimatedPriceLabel, formatEstimatedDeliveryLabel } from '../utils/improvementEstimate';
@@ -67,8 +67,7 @@ export default function Improve() {
   const { plan, getRemainingByType, checkCanGenerate, isFree } = usePlan();
   const { currentUser, userProfile } = useAuth();
   const navigate = useNavigate();
-  const { markStep } = useOnboarding();
-  useEffect(() => { if (!isFree) markStep('improveViewed'); }, [markStep, isFree]);
+  useAutoTour('improve');
 
   const memberRole = userProfile?.memberRole || 'owner';
   const isViewer = memberRole === 'viewer';

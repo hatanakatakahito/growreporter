@@ -12,9 +12,7 @@ import GlobalNotificationModal from './GlobalMemoNotificationModal';
 import DateRangePicker from '../Analysis/DateRangePicker';
 import SiteSelectionModal from '../common/SiteSelectionModal';
 import UpgradeModal from '../common/UpgradeModal';
-import OnboardingModal from '../Onboarding/OnboardingModal';
 import FeedbackModal from '../Feedback/FeedbackModal';
-import { useOnboarding } from '../../hooks/useOnboarding';
 import logoImg from '../../assets/img/logo.svg';
 
 /**
@@ -240,9 +238,6 @@ export default function MainLayout() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
-  // 操作方法のガイド（オンボーディング）
-  const { isVisible: isOnboardingVisible, isFirstVisit, isAdmin } = useOnboarding();
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
 
   // 意見箱モーダルを開く（サイドバーからの CustomEvent を購読）
@@ -250,29 +245,6 @@ export default function MainLayout() {
     const handler = () => setIsFeedbackOpen(true);
     window.addEventListener('feedback:open', handler);
     return () => window.removeEventListener('feedback:open', handler);
-  }, []);
-
-  // Dashboard 初訪問時にモーダルを自動表示（SiteSelectionModal が出ている間は待つ）
-  useEffect(() => {
-    if (!isOnboardingVisible) return;
-    if (needsSiteSelection) return;
-    if (!isFirstVisit) return;
-    const onDashboard = location.pathname === '/' || location.pathname === '/dashboard';
-    if (!onDashboard) return;
-    // 既に他モーダルが開いている場合は待機
-    const otherDialog = document.querySelector('[role="dialog"]');
-    if (otherDialog) return;
-    setIsModalOpen(true);
-  }, [isOnboardingVisible, needsSiteSelection, isFirstVisit, location.pathname]);
-
-  // ツアー完了後 / サイドバー「操作方法ガイドを再開」からの明示的な open 要求を購読
-  // 管理者でも明示操作時は開く（自動ポップアップ抑止は isFirstVisit 側で制御）
-  useEffect(() => {
-    const handleOpenRequest = () => {
-      setIsModalOpen(true);
-    };
-    window.addEventListener('onboarding:open-modal', handleOpenRequest);
-    return () => window.removeEventListener('onboarding:open-modal', handleOpenRequest);
   }, []);
 
   if (!isLoading && sites.length === 0) {
@@ -314,12 +286,6 @@ export default function MainLayout() {
 
       {/* サイト選択モーダル */}
       <SiteSelectionModal />
-
-      {/* 操作方法のガイド: 初回モーダル */}
-      <OnboardingModal
-        open={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-      />
 
       {/* 意見箱モーダル */}
       <FeedbackModal

@@ -385,7 +385,7 @@ export function adaptPageRows(data) {
 
 export function adaptLandingPageRows(data) {
   return (data?.rows || []).map((r) => ({
-    path: r.landingPagePlusQueryString || r.pagePath || r.path || '',
+    path: r.landingPagePlusQueryString || r.landingPage || r.pagePath || r.path || '',
     sessions: r.sessions || 0,
     users: r.users ?? r.activeUsers ?? 0,
     newUsers: r.newUsers || 0,

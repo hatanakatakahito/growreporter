@@ -226,9 +226,18 @@ def insert_chart_for_sheet(
             series_opts["data_labels"] = {"value": True, "num_format": "#,##0", "font": {"name": "Yu Gothic", "size": 8}}
         if use_markers:
             series_opts["marker"] = {"type": "circle", "size": 5, "fill": {"color": color}, "border": {"color": color}}
-        # 円グラフは系列全体ではなくポイント個別に色指定
+        # 円グラフは系列全体ではなくポイント個別に色指定 + パーセンテージラベル
         if chart_type == "pie":
             series_opts["points"] = [{"fill": {"color": CHART_COLORS[i % len(CHART_COLORS)]}} for i in range(len(used_rows))]
+            series_opts["data_labels"] = {
+                "value": True,
+                "percentage": True,
+                "category": False,
+                "num_format": "#,##0",
+                "separator": "\n",
+                "position": "outside_end",
+                "font": {"name": "Yu Gothic", "size": 8},
+            }
         chart.add_series(series_opts)
 
     chart.set_title({"name": title, "name_font": {"name": "Yu Gothic", "bold": True, "size": 12}})

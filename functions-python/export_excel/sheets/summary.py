@@ -153,9 +153,12 @@ def create_summary_sheet(
                 "values": [ws.name, cv_data_start_row, 1, cv_data_end_row, 1],
                 "data_labels": {
                     "value": True,
+                    "percentage": True,
                     "category": False,
                     "num_format": "#,##0",
+                    "separator": "\n",
                     "position": "outside_end",
+                    "font": {"name": "Yu Gothic", "size": 8},
                 },
                 "points": [{"fill": {"color": CHART_COLORS[i % len(CHART_COLORS)]}} for i in range(num_points)],
             })

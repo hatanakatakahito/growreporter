@@ -9,15 +9,14 @@ import TransferOwnershipModal from '../components/Members/TransferOwnershipModal
 import { Link } from 'react-router-dom';
 import { setPageTitle } from '../utils/pageTitle';
 import { Button } from '@/components/ui/button';
-import { useOnboarding } from '../hooks/useOnboarding';
+import { useAutoTour } from '../hooks/useAutoTour';
 
 /**
  * メンバー管理画面
  */
 export default function Members() {
   const { userProfile } = useAuth();
-  const { markStep } = useOnboarding();
-  useEffect(() => { markStep('memberInvited'); }, [markStep]);
+  useAutoTour('members');
   const { 
     combinedList, 
     activeMemberCount, 

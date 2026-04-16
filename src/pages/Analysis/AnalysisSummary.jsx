@@ -16,7 +16,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
-import { useOnboarding } from '../../hooks/useOnboarding';
+import { useAutoTour } from '../../hooks/useAutoTour';
 import { usePlan } from '../../hooks/usePlan';
 
 /**
@@ -28,11 +28,7 @@ export default function AnalysisSummary() {
   const { currentUser, userProfile } = useAuth();
   const location = useLocation();
   const { isFree } = usePlan();
-  const { markStep } = useOnboarding();
-  useEffect(() => {
-    markStep('analysisViewed');
-    if (!isFree) markStep('aiTried');
-  }, [markStep, isFree]);
+  useAutoTour(isFree ? 'analysisSummaryFree' : 'analysisSummary');
 
   const memberRole = userProfile?.memberRole || 'owner';
   const isViewer = memberRole === 'viewer';

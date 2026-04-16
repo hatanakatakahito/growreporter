@@ -9,7 +9,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp, collection, query, where, getDocs, onSnapshot } from 'firebase/firestore';
 import { auth, googleProvider, microsoftProvider, db } from '../config/firebase';
-import { getDefaultOnboarding, inferStepsFromExisting } from '../constants/onboarding';
+import { getDefaultOnboarding } from '../constants/onboarding';
 
 const AuthContext = createContext();
 
@@ -306,17 +306,7 @@ export const AuthProvider = ({ children }) => {
               updateData.aiImprovementUsage = 0;
             }
             if (currentProfile.onboarding === undefined) {
-              try {
-                const accountOwnerId = currentProfile.accountOwnerId || user.uid;
-                const sitesSnapshot = await getDocs(
-                  query(collection(db, 'sites'), where('userId', '==', accountOwnerId))
-                );
-                const sitesCount = sitesSnapshot.size;
-                updateData.onboarding = inferStepsFromExisting(currentProfile, sitesCount);
-              } catch (e) {
-                console.warn('[AuthContext] onboarding 推定エラー:', e);
-                updateData.onboarding = getDefaultOnboarding();
-              }
+              updateData.onboarding = getDefaultOnboarding();
             }
             // 既存ユーザーの profile 遡及マージ: department/住所が未設定なら upgradeInquiries から補完
             const needsProfileBackfill =

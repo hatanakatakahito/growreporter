@@ -20,6 +20,7 @@ import PlanLimitModal from '../../components/common/PlanLimitModal';
 import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { useAuth } from '../../contexts/AuthContext';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
+import { useAutoTour } from '../../hooks/useAutoTour';
 import {
   ResponsiveContainer,
   BarChart,
@@ -38,6 +39,7 @@ import {
 export default function Week() {
   const { selectedSite, selectedSiteId, selectSite, sites, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  useAutoTour('analysisWeek');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [hiddenBars, setHiddenBars] = useState({});

@@ -15,12 +15,14 @@ import QuickActions from '../components/Dashboard/QuickActions';
 import { setPageTitle } from '../utils/pageTitle';
 import { Globe } from 'lucide-react';
 import { format, sub, subDays, subMonths, startOfMonth } from 'date-fns';
+import { useAutoTour } from '../hooks/useAutoTour';
 
 /**
  * ダッシュボード画面
  */
 export default function Dashboard() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  useAutoTour('dashboard');
 
   useEffect(() => {
     setPageTitle('ダッシュボード');
@@ -189,7 +191,7 @@ export default function Dashboard() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="space-y-8">
             {/* クイックアクション */}
-            <div className="hidden md:block"><QuickActions /></div>
+            <div data-tour="dashboard-quick-actions" className="hidden md:block"><QuickActions /></div>
 
             {/* アラート通知 */}
             <AlertCards siteId={selectedSiteId} />
@@ -205,16 +207,20 @@ export default function Dashboard() {
             />
 
             {/* トレンドチャート */}
-            <TrendChart
-              monthlyData={monthlyData}
-              dailyData={dailyData}
-              dailyConversionData={dailyConversionData}
-              isMonthlyLoading={isMonthlyLoading}
-              isDailyLoading={isDailyLoading}
-            />
+            <div data-tour="dashboard-trend">
+              <TrendChart
+                monthlyData={monthlyData}
+                dailyData={dailyData}
+                dailyConversionData={dailyConversionData}
+                isMonthlyLoading={isMonthlyLoading}
+                isDailyLoading={isDailyLoading}
+              />
+            </div>
 
             {/* 改善タスク進捗 */}
-            <ImprovementSummary siteId={selectedSiteId} />
+            <div data-tour="dashboard-improve">
+              <ImprovementSummary siteId={selectedSiteId} />
+            </div>
           </div>
         </div>
       </main>

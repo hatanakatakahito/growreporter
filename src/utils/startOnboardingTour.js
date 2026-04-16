@@ -5,7 +5,7 @@
  *   - driver.js は React と無関係な純粋 JavaScript ライブラリなので
  *     useEffect ではなく、直接呼び出して使う。
  *   - StrictMode・stale closure・cleanup 競合などの問題を根本的に回避。
- *   - 呼び出し側（ChecklistBody 等）は navigate 後にこの関数を呼ぶだけ。
+ *   - 呼び出し側（useAutoTour）はページ遷移時にこの関数を呼ぶだけ。
  */
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
@@ -13,19 +13,34 @@ import '../components/Onboarding/driverTheme.css';
 import toast from 'react-hot-toast';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
-import {
-  TOUR_STEPS_BY_ID,
-  TOUR_STEP_COMPLETION_KEY,
-} from '../components/Onboarding/tourSteps';
+import { TOUR_STEPS_BY_ID } from '../components/Onboarding/tourSteps';
 
 const STEP_TITLE = {
-  analysisMonth: '詳細分析画面',
+  dashboard: 'ダッシュボード',
+  analysisMonth: '月別分析',
+  analysisDay: '日別分析',
+  analysisWeek: '曜日別分析',
+  analysisHour: '時間帯別分析',
+  analysisChannels: '集客チャネル',
+  analysisKeywords: '流入キーワード',
+  analysisReferrals: '被リンク元',
+  analysisPages: 'ページ別',
+  analysisContent: 'コンテンツ分析',
+  analysisPageCategories: 'ページ分類別',
+  analysisLandingPages: 'ランディングページ',
+  analysisPageFlow: 'ページフロー',
+  analysisConversions: 'コンバージョン',
+  analysisReverseFlow: '逆算フロー',
+  analysisExternalLinks: '外部リンククリック',
+  analysisFileDownloads: 'ファイルダウンロード',
+  analysisUsers: 'ユーザー属性',
+  analysisSummaryFree: '全体サマリー',
   analysisExport: 'レポートダウンロード',
   analysisSummary: 'AI分析',
   comprehensiveAI: 'AI総合分析',
   members: 'メンバー招待',
-  accountSettings: '通知設定',
-  sites: 'サイト設定',
+  accountSettings: 'アカウント設定',
+  sites: 'サイト管理',
   aiChat: 'AIチャット',
   improve: '改善提案',
   reports: '評価機能',
@@ -38,6 +53,9 @@ const STEP_TITLE = {
  * @param {string} options.userId - Firestore 書き込み用の uid
  */
 export function startOnboardingTour(tourId, { isFree = false, userId } = {}) {
+  // 多重起動防止
+  if (window.__onboardingTourActive) return;
+
   const allSteps = TOUR_STEPS_BY_ID[tourId];
   if (!allSteps || allSteps.length === 0) return;
 
@@ -67,6 +85,8 @@ export function startOnboardingTour(tourId, { isFree = false, userId } = {}) {
       return;
     }
 
+    window.__onboardingTourActive = true;
+
     const drv = driver({
       showProgress: true,
       allowClose: true,
@@ -81,18 +101,15 @@ export function startOnboardingTour(tourId, { isFree = false, userId } = {}) {
       progressText: 'ステップ {{current}} / {{total}}',
       steps,
       onDestroyed: async () => {
-        // Firestore に完了を書き込む（単一の source of truth）
-        const completionKey = TOUR_STEP_COMPLETION_KEY[tourId];
+        window.__onboardingTourActive = false;
+
+        // Firestore に seenTours を書き込む
         if (userId) {
           try {
-            const updates = {
+            await updateDoc(doc(db, 'users', userId), {
               [`onboarding.seenTours.${tourId}`]: true,
               updatedAt: serverTimestamp(),
-            };
-            if (completionKey) {
-              updates[`onboarding.steps.${completionKey}`] = true;
-            }
-            await updateDoc(doc(db, 'users', userId), updates);
+            });
           } catch (e) {
             console.error('[startOnboardingTour] firestore write failed:', e);
           }
@@ -110,17 +127,12 @@ export function startOnboardingTour(tourId, { isFree = false, userId } = {}) {
             },
           });
         }
-
-        // 操作方法ガイドのモーダルを再表示
-        setTimeout(() => {
-          window.dispatchEvent(new CustomEvent('onboarding:open-modal'));
-        }, 600);
       },
     });
 
     drv.drive();
   };
 
-  // navigate 後のページマウントを少し待ってから開始
+  // ページマウントを少し待ってから開始
   setTimeout(tryStart, 300);
 }

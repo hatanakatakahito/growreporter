@@ -16,6 +16,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAutoTour } from '../../hooks/useAutoTour';
 
 /**
  * 外部リンククリック分析画面
@@ -24,6 +25,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function ExternalLinks() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
+  useAutoTour('analysisExternalLinks');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [dimensionFilters, setDimensionFilters] = useState({});
   const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);

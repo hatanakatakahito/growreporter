@@ -18,6 +18,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
+import { useAutoTour } from '../../hooks/useAutoTour';
 
 /**
  * ページフロー画面
@@ -27,6 +28,7 @@ import { useAuth } from '../../contexts/AuthContext';
 export default function PageFlow() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const { currentUser } = useAuth();
+  useAutoTour('analysisPageFlow');
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPage, setSelectedPage] = useState('');
   const [selectedPageOption, setSelectedPageOption] = useState(null);

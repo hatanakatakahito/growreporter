@@ -22,13 +22,12 @@ import EvaluationDialog from '../components/Reports/EvaluationDialog';
 import { usePlan } from '../hooks/usePlan';
 import UpgradeModal from '../components/common/UpgradeModal';
 import { useNavigate } from 'react-router-dom';
-import { useOnboarding } from '../hooks/useOnboarding';
+import { useAutoTour } from '../hooks/useAutoTour';
 
 export default function Reports() {
   const navigate = useNavigate();
   const { isFree } = usePlan();
-  const { markStep } = useOnboarding();
-  useEffect(() => { if (!isFree) markStep('reportsViewed'); }, [markStep, isFree]);
+  useAutoTour('reports');
   const {
     selectedSite, selectedSiteId, isLoading,
     completedImprovements, filteredItems, summary,

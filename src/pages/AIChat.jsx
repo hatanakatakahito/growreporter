@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import toast from 'react-hot-toast';
-import { useOnboarding } from '../hooks/useOnboarding';
+import { useAutoTour } from '../hooks/useAutoTour';
 
 const CHART_COLORS = ['#3758F9', '#13C296', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xlsx', 'csv', 'pptx', 'docx'];
@@ -141,8 +141,7 @@ export default function AIChat() {
   const { currentUser } = useAuth();
   const { plan, getRemainingByType, isFree } = usePlan();
   const [searchParams] = useSearchParams();
-  const { markStep } = useOnboarding();
-  useEffect(() => { if (!isFree) markStep('aiChatTried'); }, [markStep, isFree]);
+  useAutoTour('aiChat');
 
   const [sessions, setSessions] = useState([]);
   const [activeSessionId, setActiveSessionId] = useState(null);

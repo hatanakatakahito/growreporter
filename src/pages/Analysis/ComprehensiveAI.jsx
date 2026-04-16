@@ -6,7 +6,7 @@ import { functions } from '../../config/firebase';
 import { useSite } from '../../contexts/SiteContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlan } from '../../hooks/usePlan';
-import { useOnboarding } from '../../hooks/useOnboarding';
+import { useAutoTour } from '../../hooks/useAutoTour';
 import { useSiteMetrics } from '../../hooks/useSiteMetrics';
 import { useGA4MonthlyData } from '../../hooks/useGA4MonthlyData';
 import { useGA4UserDemographics } from '../../hooks/useGA4UserDemographics';
@@ -105,7 +105,7 @@ export default function ComprehensiveAI() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const { currentUser } = useAuth();
   const { planId } = usePlan();
-  const { markStep } = useOnboarding();
+  useAutoTour('comprehensiveAI');
   const navigate = useNavigate();
   const isFree = planId === 'free';
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
@@ -113,10 +113,6 @@ export default function ComprehensiveAI() {
   useEffect(() => {
     setPageTitle('AI総合分析');
   }, []);
-
-  useEffect(() => {
-    if (!isFree) markStep('comprehensiveAITried');
-  }, [markStep, isFree]);
 
   const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
 
