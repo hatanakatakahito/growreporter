@@ -176,7 +176,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   // 必要なデータがない場合は早期リターン（全Hooksの後に配置）
   if (!selectedSiteId || !pageType) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div data-tour="ai-summary" className="text-center py-8 text-gray-500">
         データを読み込み中...
       </div>
     );
@@ -232,7 +232,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   // ローディング中
   if (isLoading) {
     return (
-      <div className="flex min-h-[400px] flex-col items-center justify-center">
+      <div data-tour="ai-summary" className="flex min-h-[400px] flex-col items-center justify-center">
         <DotWaveSpinner size="lg" />
         <p className="mt-4 text-sm text-body-color">AI分析を生成中...</p>
       </div>
@@ -242,7 +242,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
   // エラー
   if (error) {
     return (
-      <div className="rounded-lg bg-red-50 dark:bg-red-900/20 p-6">
+      <div data-tour="ai-summary" className="rounded-lg bg-red-50 dark:bg-red-900/20 p-6">
         <div className="flex items-start gap-3">
           <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
@@ -281,6 +281,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
         </div>
         
         <button
+            data-tour="ai-summary-regenerate"
             onClick={() => {
               if (planId === 'free') {
                 setIsUpgradeModalOpen(true);
@@ -298,7 +299,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
 
       {/* AI分析サマリ */}
       {summary && (
-        <div className="rounded-lg bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 px-10 py-8">
+        <div data-tour="ai-summary-body" className="rounded-lg bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 px-10 py-8">
           {pageType === 'comprehensive_analysis' || pageType === 'comprehensive_improvement' ? (
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown>{summary}</ReactMarkdown>
@@ -401,7 +402,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
       )}
 
       {/* サイト改善画面へのリンク */}
-      <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 flex flex-col items-center">
+      <div data-tour="ai-summary-actions" className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 flex flex-col items-center">
         <div className="flex items-center gap-3">
           <button
             onClick={() => {

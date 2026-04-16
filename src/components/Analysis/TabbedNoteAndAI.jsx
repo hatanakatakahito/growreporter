@@ -60,6 +60,7 @@ export default function TabbedNoteAndAI({ noteContent, aiContent, defaultTab = '
           <button
             onClick={() => handleTabChange('ai')}
             id="ai-analysis-tab"
+            data-tour="analysis-ai-tab"
             className={`
               flex items-center gap-2 px-6 py-4 text-sm font-medium border-b-2 transition-colors
               ${activeTab === 'ai'

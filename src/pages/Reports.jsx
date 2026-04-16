@@ -61,13 +61,27 @@ export default function Reports() {
           {isFree ? (
             <UpgradeModal isOpen={true} onClose={() => navigate('/dashboard')} />
           ) : isLoading ? <LoadingSpinner message="評価データを読み込んでいます..." /> : completedImprovements.length === 0 ? (
-            <div className="rounded-xl border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
-              <p className="text-body-color">評価待ちの完了課題はありません</p>
-            </div>
+            <>
+              <div data-tour="reports-summary" className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {['完了タスク', '計測完了', '平均スコア', '期待超え'].map(label => (
+                  <div key={label} className="rounded-xl border border-stroke bg-white p-5 dark:border-dark-3 dark:bg-dark-2">
+                    <div className="mb-2 text-xs font-medium text-body-color">{label}</div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-2xl font-bold text-dark dark:text-white">—</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div data-tour="reports-filter" />
+              <div data-tour="reports-list" className="rounded-xl border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
+                <p className="text-body-color">評価待ちの完了課題はありません</p>
+                <p className="mt-2 text-xs text-body-color">改善するページでタスクを「完了」にすると、ここで効果計測・AI評価が自動で行われます。</p>
+              </div>
+            </>
           ) : (
             <>
               {/* サマリーカード */}
-              <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <div data-tour="reports-summary" className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {[
                   { label: '完了タスク', value: summary.total, sub: '件' },
                   { label: '計測完了', value: summary.measured, sub: `/ ${summary.total}件` },
@@ -84,10 +98,12 @@ export default function Reports() {
                 ))}
               </div>
 
-              <FilterBar statusFilter={statusFilter} setStatusFilter={setStatusFilter} items={completedImprovements} summary={summary} />
+              <div data-tour="reports-filter">
+                <FilterBar statusFilter={statusFilter} setStatusFilter={setStatusFilter} items={completedImprovements} summary={summary} />
+              </div>
 
               {/* カード一覧 */}
-              <div className="space-y-4">
+              <div data-tour="reports-list" className="space-y-4">
                 {filteredItems.map(item => (
                   <FullCard key={item.id} item={item} siteId={selectedSiteId} onRefresh={refresh}
                     expanded={expandedIds.has(item.id)} onToggle={() => toggle(item.id)}

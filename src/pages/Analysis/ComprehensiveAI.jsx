@@ -6,6 +6,7 @@ import { functions } from '../../config/firebase';
 import { useSite } from '../../contexts/SiteContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlan } from '../../hooks/usePlan';
+import { useOnboarding } from '../../hooks/useOnboarding';
 import { useSiteMetrics } from '../../hooks/useSiteMetrics';
 import { useGA4MonthlyData } from '../../hooks/useGA4MonthlyData';
 import { useGA4UserDemographics } from '../../hooks/useGA4UserDemographics';
@@ -104,6 +105,7 @@ export default function ComprehensiveAI() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const { currentUser } = useAuth();
   const { planId } = usePlan();
+  const { markStep } = useOnboarding();
   const navigate = useNavigate();
   const isFree = planId === 'free';
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
@@ -111,6 +113,10 @@ export default function ComprehensiveAI() {
   useEffect(() => {
     setPageTitle('AI総合分析');
   }, []);
+
+  useEffect(() => {
+    if (!isFree) markStep('comprehensiveAITried');
+  }, [markStep, isFree]);
 
   const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
 
@@ -285,7 +291,7 @@ export default function ComprehensiveAI() {
         hideComparison={true}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
-        <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
+        <div data-tour="comp-ai-root" className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4">
             <h2 className="text-lg font-bold text-dark dark:text-white">分析する - AI総合分析</h2>
             <p className="mt-0.5 text-sm text-body-color">
@@ -558,6 +564,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
             </div>
           </div>
           <button
+            data-tour="comp-ai-regenerate"
             onClick={() => {
               if (planId === 'free') {
                 setIsUpgradeModalOpen(true);
@@ -575,7 +582,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
 
         {/* サイト健全性スコア＋サマリー */}
         {overallSummary && (
-          <div className="flex items-center gap-5 rounded-xl p-6" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 4px 24px -4px rgba(0,0,0,0.06)' }}>
+          <div data-tour="comp-ai-score" className="flex items-center gap-5 rounded-xl p-6" style={{ background: 'rgba(255,255,255,0.72)', backdropFilter: 'blur(16px) saturate(180%)', border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 4px 24px -4px rgba(0,0,0,0.06)' }}>
             <HealthScoreRing rawData={rawData} />
             <div className="flex-1">
               <p className="mb-1.5 text-[14px] font-semibold text-gray-700">サイト健全性スコア</p>
@@ -586,7 +593,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
 
         {/* 注目ポイント（3枚カード） */}
         {highlights.length > 0 && (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div data-tour="comp-ai-highlights" className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {highlights.map((h, i) => {
               const type = getHighlightType(i);
               const style = HIGHLIGHT_STYLES[type];
@@ -603,7 +610,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
 
         {/* ミニKPIサマリー（5枚カード） - クリックで対応セクションへスクロール */}
         {miniKpis.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+          <div data-tour="comp-ai-kpis" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
             {miniKpis.map((kpi, i) => {
               const sectionIds = ['section-access', 'section-visitor', 'section-channel', 'section-content', 'section-conversion'];
               return (
@@ -636,6 +643,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
         )}
 
         {/* 全セクション（ページ内スクロール） */}
+        <div data-tour="comp-ai-sections" className="space-y-5">
         {tabSections.map((tabData, i) => {
           if (!tabData) return null;
           if (i === 4 && !hasConversions) return null;
@@ -686,6 +694,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
             </div>
           );
         })}
+        </div>
 
         {/* 「改善する」への導線 */}
         <div className="flex flex-col items-center pt-6" style={{ borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: '8px' }}>

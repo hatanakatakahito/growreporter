@@ -424,10 +424,10 @@ export default function AIChat() {
   return (
     <div data-tour="ai-chat-input" className="flex h-full bg-gray-50 dark:bg-dark">
       {/* 左パネル: 会話一覧 */}
-      <div className={`${showSidebar ? 'w-72' : 'w-0'} shrink-0 border-r border-stroke dark:border-dark-3 bg-white dark:bg-dark-2 flex flex-col transition-all overflow-hidden`}>
+      <div data-tour="ai-chat-sidebar" className={`${showSidebar ? 'w-72' : 'w-0'} shrink-0 border-r border-stroke dark:border-dark-3 bg-white dark:bg-dark-2 flex flex-col transition-all overflow-hidden`}>
         {/* ヘッダー */}
         <div className="p-4 border-b border-stroke dark:border-dark-3">
-          <button onClick={handleNewSession}
+          <button data-tour="ai-chat-new-session" onClick={handleNewSession}
             className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition">
             <Plus className="h-4 w-4" /> 新しい会話
           </button>
@@ -536,7 +536,7 @@ export default function AIChat() {
                 <h3 className="text-xl font-bold text-dark dark:text-white mb-2">AIに質問する</h3>
                 <p className="text-sm text-body-color">{selectedSite?.siteName || 'サイト'}のアクセスデータに基づいて回答します</p>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div data-tour="ai-chat-suggest" className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {suggestQuestions.map((q, i) => (
                   <button key={i} onClick={() => { setInputText(q); inputRef.current?.focus(); }}
                     className="rounded-lg border border-stroke p-3 text-left text-sm text-dark hover:bg-white dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 transition"
@@ -634,7 +634,7 @@ export default function AIChat() {
                 今月のAIチャット回数に達しました。プランをアップグレードしてください。
               </div>
             ) : (
-              <div className="flex items-center gap-2 rounded-xl border border-stroke bg-white px-2 py-1.5 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+              <div data-tour="ai-chat-input-field" className="flex items-center gap-2 rounded-xl border border-stroke bg-white px-2 py-1.5 shadow-sm dark:border-dark-3 dark:bg-dark-2">
                 <button onClick={() => fileInputRef.current?.click()} className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3" title="ファイル添付">
                   <Paperclip className="h-5 w-5 text-body-color" />
                 </button>

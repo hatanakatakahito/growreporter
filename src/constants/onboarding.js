@@ -6,9 +6,9 @@ export const TOUR_TARGET_VERSION = 1;
 
 // チェックリスト項目カテゴリ
 export const CATEGORIES = {
-  basics: { label: '基本を知る', order: 1 },
-  setup: { label: '初期設定', order: 2 },
-  use: { label: '活用する', order: 3 },
+  setup: { label: '初期設定', order: 1 },
+  basics: { label: '基本の使い方', order: 2 },
+  use: { label: 'AIで改善サイクルを回す', order: 3 },
 };
 
 // 各チェックリスト項目の定義
@@ -62,7 +62,7 @@ export const STEP_DEFINITIONS = {
     title: 'メンバーを招待する',
     subtitle: 'チームと分析結果を共有（3名まで無料）',
     to: '/members',
-    category: 'use',
+    category: 'setup',
     estimatedTime: '約30秒',
     sidebarNavId: 'nav-account-settings',
     planRequired: 'free',
@@ -95,13 +95,24 @@ export const STEP_DEFINITIONS = {
   },
   exported: {
     title: 'レポートをダウンロードする',
-    subtitle: 'Excel / PowerPoint 形式で出力',
-    to: '/analysis/day',
-    category: 'use',
+    subtitle: '分析画面の表示内容を Excel / PowerPoint で出力',
+    to: '/analysis/month',
+    category: 'basics',
     estimatedTime: '約30秒',
     sidebarNavId: 'nav-analysis',
     planRequired: 'business',
     desktopOnly: true,
+    videoUrl: null,
+    helpUrl: null,
+  },
+  comprehensiveAITried: {
+    title: 'AI総合分析を試す',
+    subtitle: '全データを横断してAIが自動で総合評価',
+    to: '/analysis/comprehensive',
+    category: 'use',
+    estimatedTime: '約1分',
+    sidebarNavId: 'nav-analysis',
+    planRequired: 'business',
     videoUrl: null,
     helpUrl: null,
   },
@@ -131,14 +142,18 @@ export const STEP_DEFINITIONS = {
 
 // 表示順序（カテゴリ→キー配列）
 export const STEP_ORDER = [
+  // setup
   'siteRegistered',
-  'analysisViewed',
-  'notificationsConfigured',
   'siteEdited',
+  'notificationsConfigured',
   'memberInvited',
-  'aiTried',
-  'aiChatTried',
+  // basics
+  'analysisViewed',
   'exported',
+  // use（AI改善サイクル）
+  'aiTried',
+  'comprehensiveAITried',
+  'aiChatTried',
   'improveViewed',
   'reportsViewed',
 ];
@@ -184,6 +199,7 @@ export function getDefaultOnboarding() {
       siteEdited: false,
       memberInvited: false,
       aiTried: false,
+      comprehensiveAITried: false,
       aiChatTried: false,
       exported: false,
       improveViewed: false,

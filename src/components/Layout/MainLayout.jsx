@@ -266,14 +266,14 @@ export default function MainLayout() {
   }, [isOnboardingVisible, needsSiteSelection, isFirstVisit, location.pathname]);
 
   // ツアー完了後 / サイドバー「操作方法ガイドを再開」からの明示的な open 要求を購読
+  // 管理者でも明示操作時は開く（自動ポップアップ抑止は isFirstVisit 側で制御）
   useEffect(() => {
     const handleOpenRequest = () => {
-      if (isAdmin) return;
       setIsModalOpen(true);
     };
     window.addEventListener('onboarding:open-modal', handleOpenRequest);
     return () => window.removeEventListener('onboarding:open-modal', handleOpenRequest);
-  }, [isAdmin]);
+  }, []);
 
   if (!isLoading && sites.length === 0) {
     return <Navigate to="/sites/new" replace />;

@@ -20,7 +20,9 @@ import {
 
 const STEP_TITLE = {
   analysisMonth: '詳細分析画面',
+  analysisExport: 'レポートダウンロード',
   analysisSummary: 'AI分析',
+  comprehensiveAI: 'AI総合分析',
   members: 'メンバー招待',
   accountSettings: '通知設定',
   sites: 'サイト設定',

@@ -290,7 +290,7 @@ export default function AnalysisSummary() {
                         onLimitExceeded={() => setIsLimitModalOpen(true)}
                       />
                     ) : (
-                      <div className="py-8 text-center text-gray-500">
+                      <div data-tour="ai-summary" className="py-8 text-center text-gray-500">
                         データを読み込み中...
                       </div>
                     );

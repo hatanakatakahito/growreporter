@@ -108,16 +108,22 @@ function buildCustomSheetsPayload(allData) {
   };
 }
 
-// ダウンロード URL を開いてファイルを保存
-function triggerDownload(url, fileName) {
+// base64 → Blob → ダウンロード
+function downloadBase64File(b64, fileName, contentType) {
+  const byteChars = atob(b64);
+  const byteArr = new Uint8Array(byteChars.length);
+  for (let i = 0; i < byteChars.length; i++) {
+    byteArr[i] = byteChars.charCodeAt(i);
+  }
+  const blob = new Blob([byteArr], { type: contentType });
+  const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
   a.download = fileName;
-  a.target = '_blank';
-  a.rel = 'noopener noreferrer';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 /**
@@ -164,13 +170,13 @@ export function useAnalysisExport() {
 
       const callable = type === 'excel' ? generateExcelFn : generatePptxFn;
       const result = await callable(payload);
-      const { downloadUrl, fileName } = result.data || {};
-      if (!downloadUrl) {
-        throw new Error('ダウンロード URL を取得できませんでした');
+      const { base64: b64, fileName, contentType } = result.data || {};
+      if (!b64) {
+        throw new Error('ファイルデータを取得できませんでした');
       }
 
       setExportProgress('ダウンロード中...');
-      triggerDownload(downloadUrl, fileName || `report.${type === 'excel' ? 'xlsx' : 'pptx'}`);
+      downloadBase64File(b64, fileName || `report.${type === 'excel' ? 'xlsx' : 'pptx'}`, contentType);
       return true;
     },
     [selectedSiteId, selectedSite, dateRange, currentUser, isComparing, comparisonDateRange]

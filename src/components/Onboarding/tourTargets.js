@@ -18,8 +18,20 @@ export const TOUR_TARGETS = {
   ANALYSIS_DIMENSION_FILTERS: 'analysis-dimension-filters',
   ANALYSIS_VIEW_TABS: 'analysis-view-tabs',
   ANALYSIS_COLUMN_TOGGLE: 'analysis-column-toggle',
+  ANALYSIS_AI_TAB: 'analysis-ai-tab',
   ANALYSIS_NOTE: 'analysis-note',
   AI_SUMMARY: 'ai-summary',
+  AI_SUMMARY_REGENERATE: 'ai-summary-regenerate',
+  AI_SUMMARY_BODY: 'ai-summary-body',
+  AI_SUMMARY_ACTIONS: 'ai-summary-actions',
+
+  // Comprehensive AI
+  COMP_AI_ROOT: 'comp-ai-root',
+  COMP_AI_REGENERATE: 'comp-ai-regenerate',
+  COMP_AI_SCORE: 'comp-ai-score',
+  COMP_AI_HIGHLIGHTS: 'comp-ai-highlights',
+  COMP_AI_KPIS: 'comp-ai-kpis',
+  COMP_AI_SECTIONS: 'comp-ai-sections',
 
   // Account / Members
   ACCOUNT_NOTIFICATIONS: 'account-notifications',
@@ -35,12 +47,25 @@ export const TOUR_TARGETS = {
 
   // AI Chat
   AI_CHAT_INPUT: 'ai-chat-input',
+  AI_CHAT_SIDEBAR: 'ai-chat-sidebar',
+  AI_CHAT_NEW_SESSION: 'ai-chat-new-session',
+  AI_CHAT_SUGGEST: 'ai-chat-suggest',
+  AI_CHAT_INPUT_FIELD: 'ai-chat-input-field',
+  AI_CHAT_EXPORT: 'ai-chat-export',
 
   // Improve
   IMPROVE_HEADER: 'improve-header',
+  IMPROVE_AI_GENERATE: 'improve-ai-generate',
+  IMPROVE_MANUAL_ADD: 'improve-manual-add',
+  IMPROVE_AUTO_TOGGLE: 'improve-auto-toggle',
+  IMPROVE_STATUS_FILTER: 'improve-status-filter',
+  IMPROVE_TABLE: 'improve-table',
 
   // Reports
   REPORTS_HEADER: 'reports-header',
+  REPORTS_SUMMARY: 'reports-summary',
+  REPORTS_FILTER: 'reports-filter',
+  REPORTS_LIST: 'reports-list',
 };
 
 export const sel = (key) => `[data-tour="${key}"]`;

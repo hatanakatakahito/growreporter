@@ -609,7 +609,7 @@ export default function Improve() {
 
   if (isSiteLoading || !selectedSiteId) {
     return (
-      <div className="flex flex-col h-full">
+      <div data-tour="improve-header" className="flex flex-col h-full">
         <div className="flex-1 flex items-center justify-center">
           <LoadingSpinner message="サイト情報を読み込んでいます..." />
         </div>
@@ -636,6 +636,7 @@ export default function Improve() {
                   const remaining = getRemainingByType('improvement');
                   return (
                     <button
+                      data-tour="improve-ai-generate"
                       onClick={() => {
                         if (!selectedSiteId) return;
                         setIsFocusModalOpen(true);
@@ -655,15 +656,17 @@ export default function Improve() {
                     </button>
                   );
                 })()}
-                <Button
-                  color="blue"
-                  onClick={() => {
-                    setEditingItem(null);
-                    setIsDialogOpen(true);
-                  }}
-                >
-                  手動で追加
-                </Button>
+                <span data-tour="improve-manual-add">
+                  <Button
+                    color="blue"
+                    onClick={() => {
+                      setEditingItem(null);
+                      setIsDialogOpen(true);
+                    }}
+                  >
+                    手動で追加
+                  </Button>
+                </span>
               </>
             )
           }
@@ -747,7 +750,7 @@ export default function Improve() {
                 </p>
               )}
               {/* 自動生成トグル */}
-              <div className="mt-2 flex items-center gap-2">
+              <div data-tour="improve-auto-toggle" className="mt-2 flex items-center gap-2">
                 <button
                   onClick={async () => {
                     const newVal = !selectedSite?.autoImprovementEnabled;
@@ -767,7 +770,7 @@ export default function Improve() {
                 <span className="text-xs text-body-color">月次自動生成 {selectedSite?.autoImprovementEnabled ? 'ON' : 'OFF'}</span>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
+            <div data-tour="improve-status-filter" className="flex flex-wrap items-center gap-3">
               {/* ステータス絞り込み */}
               {improvements.length > 0 && (
                 <select
@@ -904,7 +907,7 @@ export default function Improve() {
                     </div>
                   </div>
                 )}
-                <div className="rounded-xl border border-stroke dark:border-dark-3 overflow-x-auto overflow-y-visible bg-white dark:bg-dark-2">
+                <div data-tour="improve-table" className="rounded-xl border border-stroke dark:border-dark-3 overflow-x-auto overflow-y-visible bg-white dark:bg-dark-2">
                   <table className="w-full min-w-[900px] border-collapse text-sm table-fixed">
                     <thead>
                       <tr>

@@ -16,7 +16,8 @@ import { startOnboardingTour } from '../../utils/startOnboardingTour';
 const STEP_TO_TOUR_ID = {
   analysisViewed: 'analysisMonth',
   aiTried: 'analysisSummary',
-  exported: 'analysisMonth',
+  comprehensiveAITried: 'comprehensiveAI',
+  exported: 'analysisExport',
   memberInvited: 'members',
   notificationsConfigured: 'accountSettings',
   siteEdited: 'sites',

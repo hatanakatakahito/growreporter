@@ -12,13 +12,14 @@ Firebase Functions エントリポイント — 分析レポートの Excel / PP
   - 有効期限 30 分の signed URL を返却
 """
 
+import base64
 import datetime
 import io
 import traceback
 from typing import Any
 
 from firebase_functions import https_fn, options
-from firebase_admin import initialize_app, storage
+from firebase_admin import initialize_app
 
 initialize_app()
 
@@ -55,12 +56,13 @@ def generate_analysis_excel(req: https_fn.CallableRequest) -> dict[str, Any]:
         buffer.seek(0)
 
         filename = _build_filename(site_name, data.get("dateRange"), ext="xlsx")
-        download_url = _upload_and_sign(uid, filename, buffer, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        b64 = base64.b64encode(buffer.read()).decode("utf-8")
 
         return {
             "success": True,
-            "downloadUrl": download_url,
+            "base64": b64,
             "fileName": filename,
+            "contentType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         }
     except Exception as e:
         print(f"[generate_analysis_excel] error: {e}")
@@ -100,12 +102,13 @@ def generate_analysis_pptx(req: https_fn.CallableRequest) -> dict[str, Any]:
         buffer.seek(0)
 
         filename = _build_filename(site_name, data.get("dateRange"), ext="pptx")
-        download_url = _upload_and_sign(uid, filename, buffer, content_type="application/vnd.openxmlformats-officedocument.presentationml.presentation")
+        b64 = base64.b64encode(buffer.read()).decode("utf-8")
 
         return {
             "success": True,
-            "downloadUrl": download_url,
+            "base64": b64,
             "fileName": filename,
+            "contentType": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         }
     except Exception as e:
         print(f"[generate_analysis_pptx] error: {e}")
@@ -138,44 +141,3 @@ def _sanitize(name: str) -> str:
     return name.strip() or "report"
 
 
-def _upload_and_sign(uid: str, filename: str, buffer: io.BytesIO, content_type: str) -> str:
-    """Cloud Storage にアップロードして 30 分有効の signed URL を返す。"""
-    import google.auth
-    from google.auth.transport import requests as google_requests
-    from google.auth import compute_engine
-
-    bucket = storage.bucket()
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    object_path = f"exports/{uid}/{timestamp}_{filename}"
-
-    blob = bucket.blob(object_path)
-    blob.upload_from_file(buffer, content_type=content_type, rewind=True)
-
-    # Cloud Run の Compute Engine credentials では generate_signed_url は直接使えない。
-    # IAM signBlob API を利用する signing credentials でラップする。
-    credentials, project = google.auth.default()
-    if isinstance(credentials, compute_engine.Credentials):
-        signing_credentials = compute_engine.IDTokenCredentials(
-            request=google_requests.Request(),
-            target_audience="",
-            service_account_email=credentials.service_account_email,
-        )
-        # compute_engine.IDTokenCredentials は署名できないので、
-        # 代わに blob.generate_signed_url に service_account_email を渡して
-        # IAM signBlob API 経由で署名する方式を使う。
-        url = blob.generate_signed_url(
-            version="v4",
-            expiration=datetime.timedelta(minutes=30),
-            method="GET",
-            response_disposition=f'attachment; filename="{filename}"',
-            service_account_email=credentials.service_account_email,
-            access_token=credentials.token,
-        )
-    else:
-        url = blob.generate_signed_url(
-            version="v4",
-            expiration=datetime.timedelta(minutes=30),
-            method="GET",
-            response_disposition=f'attachment; filename="{filename}"',
-        )
-    return url
