@@ -9,6 +9,23 @@ Excel 上で軸変更・データ更新・コピペが可能。
 from typing import Any
 
 
+# GrowReporter のブランドカラーに合わせたパレット
+CHART_COLORS = [
+    "#3758F9",  # primary blue
+    "#13C296",  # secondary green
+    "#F59E0B",  # amber
+    "#EF4444",  # red
+    "#8B5CF6",  # violet
+    "#06B6D4",  # cyan
+    "#F97316",  # orange
+    "#EC4899",  # pink
+    "#6366F1",  # indigo
+    "#14B8A6",  # teal
+    "#84CC16",  # lime
+    "#A855F7",  # purple
+]
+
+
 # シートキー → チャート設定のマッピング
 # type:          折れ線 / 棒 / 円 / 横棒 / 二軸
 # cat_key:       カテゴリ軸のキー (rows の各要素から取る)
@@ -192,21 +209,26 @@ def insert_chart_for_sheet(
     use_dash = config.get("dash", False)
 
     # 系列を追加
-    for label, key in filtered_series:
+    for series_idx, (label, key) in enumerate(filtered_series):
         val_col = col_index_map.get(key)
         if val_col is None:
             continue
+        color = CHART_COLORS[series_idx % len(CHART_COLORS)]
         series_opts = {
             "name": label,
             "categories": [sheet_name, data_start_row, cat_col, data_end_row, cat_col],
             "values": [sheet_name, data_start_row, val_col, data_end_row, val_col],
+            "fill": {"color": color},
+            "line": {"color": color},
+            "border": {"color": color},
         }
         if use_data_labels:
             series_opts["data_labels"] = {"value": True, "num_format": "#,##0"}
         if use_markers:
-            series_opts["marker"] = {"type": "circle", "size": 5}
-        if use_dash:
-            series_opts["line"] = {"dash_type": "dash"}
+            series_opts["marker"] = {"type": "circle", "size": 5, "fill": {"color": color}, "border": {"color": color}}
+        # 円グラフは系列全体ではなくポイント個別に色指定
+        if chart_type == "pie":
+            series_opts["points"] = [{"fill": {"color": CHART_COLORS[i % len(CHART_COLORS)]}} for i in range(len(used_rows))]
         chart.add_series(series_opts)
 
     chart.set_title({"name": title, "name_font": {"bold": True, "size": 12}})

@@ -5,6 +5,7 @@ JS 側の createSummarySheet と同等。
 
 from typing import Any
 
+from ..charts import CHART_COLORS
 from ..helpers import append_ai_and_memo_sections, fmt_change, safe_sheet_name
 
 
@@ -145,6 +146,7 @@ def create_summary_sheet(
         cv_data_end_row = row - 1
         if cv_data_end_row >= cv_data_start_row:
             pie_chart = workbook.add_chart({"type": "pie"})
+            num_points = cv_data_end_row - cv_data_start_row + 1
             pie_chart.add_series({
                 "name": "コンバージョン内訳",
                 "categories": [ws.name, cv_data_start_row, 0, cv_data_end_row, 0],
@@ -155,6 +157,7 @@ def create_summary_sheet(
                     "num_format": "#,##0",
                     "position": "outside_end",
                 },
+                "points": [{"fill": {"color": CHART_COLORS[i % len(CHART_COLORS)]}} for i in range(num_points)],
             })
             pie_chart.set_title({"name": "コンバージョン内訳", "name_font": {"bold": True, "size": 12}})
             pie_chart.set_legend({"position": "right", "font": {"bold": False}})

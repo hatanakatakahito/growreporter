@@ -1,8 +1,10 @@
 """
 逆算フローシート: フォームページ到達 → CV 完了までのファネル
 JS 側の createReverseFlowSheet 相当。
+ファネル縦棒チャート付き。
 """
 
+from ..charts import CHART_COLORS
 from ..helpers import append_ai_and_memo_sections, fmt_year_month, safe_sheet_name
 
 
@@ -45,7 +47,7 @@ def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | Non
         ws.merge_range(row, 1, row, 5, target_cv, formats["data"])
         row += 1
 
-        # サマリー
+        # サマリー + ファネルチャート
         summary = flow.get("summary") or {}
         if summary:
             row += 1
@@ -54,6 +56,7 @@ def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | Non
             ws.write(row, 1, "値", formats["header"])
             row += 1
 
+            funnel_start_row = row
             summary_rows = [
                 ("サイト全体セッション", summary.get("totalSiteViews")),
                 ("フォームページ到達", summary.get("formPageViews")),
@@ -69,6 +72,30 @@ def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | Non
                 except (ValueError, TypeError):
                     ws.write(row, 1, 0, formats["number"])
                 row += 1
+            funnel_end_row = row - 1
+
+            # ファネル縦棒チャート（サイト全体 → フォーム到達 → CV完了）
+            if funnel_end_row >= funnel_start_row:
+                funnel_chart = workbook.add_chart({"type": "column"})
+                funnel_chart.add_series({
+                    "name": flow_name,
+                    "categories": [ws.name, funnel_start_row, 0, funnel_end_row, 0],
+                    "values": [ws.name, funnel_start_row, 1, funnel_end_row, 1],
+                    "data_labels": {"value": True, "num_format": "#,##0"},
+                    "points": [
+                        {"fill": {"color": CHART_COLORS[0]}},
+                        {"fill": {"color": CHART_COLORS[1]}},
+                        {"fill": {"color": CHART_COLORS[3]}},
+                    ],
+                    "gap": 80,
+                })
+                funnel_chart.set_title({"name": f"{flow_name} ファネル", "name_font": {"bold": True, "size": 12}})
+                funnel_chart.set_style(2)
+                funnel_chart.set_plotarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
+                funnel_chart.set_chartarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
+                funnel_chart.set_legend({"none": True})
+                funnel_chart.set_size({"width": 400, "height": 300})
+                ws.insert_chart(funnel_start_row - 1, 3, funnel_chart)
 
         # 月次テーブル
         monthly_table = flow.get("monthlyTable") or []
