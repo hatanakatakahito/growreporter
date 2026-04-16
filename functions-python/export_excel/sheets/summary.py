@@ -128,6 +128,7 @@ def create_summary_sheet(
         ws.write(row, 1, "回数", formats["header"])
         row += 1
 
+        cv_data_start_row = row
         for event_name, count in conversions_breakdown.items():
             try:
                 cnt = float(count or 0)
@@ -139,6 +140,27 @@ def create_summary_sheet(
                 row += 1
             except (ValueError, TypeError):
                 continue
+
+        # CV内訳の円グラフ（データラベル付き）
+        cv_data_end_row = row - 1
+        if cv_data_end_row >= cv_data_start_row:
+            pie_chart = workbook.add_chart({"type": "pie"})
+            pie_chart.add_series({
+                "name": "コンバージョン内訳",
+                "categories": [ws.name, cv_data_start_row, 0, cv_data_end_row, 0],
+                "values": [ws.name, cv_data_start_row, 1, cv_data_end_row, 1],
+                "data_labels": {
+                    "value": True,
+                    "category": False,
+                    "num_format": "#,##0",
+                    "position": "outside_end",
+                },
+            })
+            pie_chart.set_title({"name": "コンバージョン内訳"})
+            pie_chart.set_legend({"position": "right"})
+            pie_chart.set_size({"width": 480, "height": 360})
+            pie_chart.set_style(10)
+            ws.insert_chart(cv_data_start_row - 2, 3, pie_chart)
 
     # AI + メモセクション
     append_ai_and_memo_sections(
