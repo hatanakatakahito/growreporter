@@ -156,7 +156,7 @@ def create_summary_sheet(
                     "position": "outside_end",
                 },
             })
-            pie_chart.set_title({"name": "コンバージョン内訳"})
+            pie_chart.set_title({"name": "コンバージョン内訳", "name_font": {"bold": True, "size": 12}})
             pie_chart.set_legend({"position": "right", "font": {"bold": False}})
             pie_chart.set_size({"width": 480, "height": 360})
             pie_chart.set_style(2)

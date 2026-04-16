@@ -209,7 +209,7 @@ def insert_chart_for_sheet(
             series_opts["line"] = {"dash_type": "dash"}
         chart.add_series(series_opts)
 
-    chart.set_title({"name": title, "name_font": {"bold": False, "size": 12}})
+    chart.set_title({"name": title, "name_font": {"bold": True, "size": 12}})
     chart.set_style(2)  # フラットスタイル（立体・シャドウなし）
     chart.set_plotarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
     chart.set_chartarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
