@@ -214,10 +214,14 @@ def insert_chart_for_sheet(
     chart.set_plotarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
     chart.set_chartarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
 
-    if chart_type != "pie":
+    if chart_type == "bar":
+        # 横棒: 数が多いものを上部にするため Y 軸を反転
+        chart.set_y_axis({"reverse": True})
         chart.set_legend({"position": "bottom", "font": {"bold": False}})
-    else:
+    elif chart_type == "pie":
         chart.set_legend({"position": "right", "font": {"bold": False}})
+    else:
+        chart.set_legend({"position": "bottom", "font": {"bold": False}})
 
     # チャートサイズ
     is_wide = config.get("wide", False)
