@@ -26,6 +26,9 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
             ("PV", "pageViews"),
             ("コンバージョン", "conversions"),
         ],
+        "data_labels": True,
+        "markers": True,
+        "dash": True,
     },
     "daily": {
         "type": "line",
@@ -184,16 +187,28 @@ def insert_chart_for_sheet(
     else:
         chart = workbook.add_chart({"type": "column"})
 
+    # オプション
+    use_data_labels = config.get("data_labels", False)
+    use_markers = config.get("markers", False)
+    use_dash = config.get("dash", False)
+
     # 系列を追加
     for label, key in filtered_series:
         val_col = col_index_map.get(key)
         if val_col is None:
             continue
-        chart.add_series({
+        series_opts = {
             "name": label,
             "categories": [sheet_name, data_start_row, cat_col, data_end_row, cat_col],
             "values": [sheet_name, data_start_row, val_col, data_end_row, val_col],
-        })
+        }
+        if use_data_labels:
+            series_opts["data_labels"] = {"value": True, "num_format": "#,##0"}
+        if use_markers:
+            series_opts["marker"] = {"type": "circle", "size": 5}
+        if use_dash:
+            series_opts["line"] = {"dash_type": "dash"}
+        chart.add_series(series_opts)
 
     chart.set_title({"name": title})
     chart.set_style(10)
