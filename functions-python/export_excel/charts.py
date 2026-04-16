@@ -28,16 +28,15 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         ],
         "data_labels": True,
         "markers": True,
-        "dash": True,
     },
     "daily": {
-        "type": "column",
+        "type": "line",
         "title": "日別推移",
         "cat_key": "date",
         "series": [
             ("セッション", "sessions"),
-            ("コンバージョン", "conversions"),
         ],
+        "wide": True,
     },
     "weekly": {
         "type": "column",
@@ -210,17 +209,22 @@ def insert_chart_for_sheet(
             series_opts["line"] = {"dash_type": "dash"}
         chart.add_series(series_opts)
 
-    chart.set_title({"name": title})
-    chart.set_style(10)
+    chart.set_title({"name": title, "name_font": {"bold": False, "size": 12}})
+    chart.set_style(2)  # フラットスタイル（立体・シャドウなし）
+    chart.set_plotarea({"border": {"none": True}, "shadow": False})
+    chart.set_chartarea({"border": {"none": True}, "shadow": False})
 
     if chart_type != "pie":
-        chart.set_legend({"position": "bottom"})
+        chart.set_legend({"position": "bottom", "font": {"bold": False}})
     else:
-        chart.set_legend({"position": "right"})
+        chart.set_legend({"position": "right", "font": {"bold": False}})
 
-    # チャートサイズ (横棒は縦に長くして URL ラベルを収容)
+    # チャートサイズ
+    is_wide = config.get("wide", False)
     if chart_type == "bar":
         chart.set_size({"width": 720, "height": 600})
+    elif is_wide:
+        chart.set_size({"width": 900, "height": 400})
     else:
         chart.set_size({"width": 640, "height": 400})
 
