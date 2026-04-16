@@ -111,6 +111,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "title": "カテゴリ別 PV 構成",
         "cat_key": "category",
         "series": [("PV", "pageViews")],
+        "top_n": 10,
     },
     "landingPages": {
         "type": "bar",
@@ -226,18 +227,22 @@ def insert_chart_for_sheet(
             series_opts["data_labels"] = {"value": True, "num_format": "#,##0", "font": {"name": "Yu Gothic", "size": 8}}
         if use_markers:
             series_opts["marker"] = {"type": "circle", "size": 5, "fill": {"color": color}, "border": {"color": color}}
-        # 円グラフは系列全体ではなくポイント個別に色指定 + パーセンテージラベル
+        # 円グラフ: ポイント個別色 + パーセンテージのみ表示
         if chart_type == "pie":
             series_opts["points"] = [{"fill": {"color": CHART_COLORS[i % len(CHART_COLORS)]}} for i in range(len(used_rows))]
             series_opts["data_labels"] = {
-                "value": True,
+                "value": False,
                 "percentage": True,
-                "category": False,
-                "num_format": "#,##0",
-                "separator": "\n",
-                "position": "outside_end",
+                "category": True,
+                "separator": " ",
+                "position": "best_fit",
                 "font": {"name": "Yu Gothic", "size": 8},
+                "num_format": "0.0%",
             }
+            # fill/line/border は円グラフでは系列レベルではなくポイントで設定済み
+            del series_opts["fill"]
+            del series_opts["line"]
+            del series_opts["border"]
         chart.add_series(series_opts)
 
     chart.set_title({"name": title, "name_font": {"name": "Yu Gothic", "bold": True, "size": 12}})
@@ -261,6 +266,8 @@ def insert_chart_for_sheet(
     is_wide = config.get("wide", False)
     if chart_type == "bar":
         chart.set_size({"width": 720, "height": 600})
+    elif chart_type == "pie":
+        chart.set_size({"width": 560, "height": 420})
     elif is_wide:
         chart.set_size({"width": 900, "height": 400})
     else:

@@ -154,11 +154,11 @@ def create_summary_sheet(
                 "data_labels": {
                     "value": True,
                     "percentage": True,
-                    "category": False,
-                    "num_format": "#,##0",
+                    "category": True,
                     "separator": "\n",
-                    "position": "outside_end",
+                    "position": "best_fit",
                     "font": {"name": "Yu Gothic", "size": 8},
+                    "num_format": "#,##0",
                 },
                 "points": [{"fill": {"color": CHART_COLORS[i % len(CHART_COLORS)]}} for i in range(num_points)],
             })
