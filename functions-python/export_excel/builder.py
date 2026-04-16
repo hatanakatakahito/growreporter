@@ -39,16 +39,32 @@ from .sheets.reverse_flow import create_reverse_flow_sheet
 from .styles import (
     AI_CONTENT_STYLE,
     AI_SECTION_STYLE,
+    COVER_BRAND_STYLE,
     COVER_LABEL_STYLE,
+    COVER_SUBTITLE_STYLE,
     COVER_TITLE_STYLE,
     COVER_VALUE_STYLE,
+    DATA_CELL_ALT_STYLE,
     DATA_CELL_STYLE,
+    DECIMAL_CELL_ALT_STYLE,
     DECIMAL_CELL_STYLE,
+    FOOTER_TEXT,
     HEADER_STYLE,
+    KPI_HEADER_STYLE,
+    KPI_LABEL_STYLE,
+    KPI_NUM_STYLE,
     MEMO_SECTION_STYLE,
+    NUMBER_CELL_ALT_STYLE,
     NUMBER_CELL_STYLE,
     PERCENT_CELL_STYLE,
+    TEXT_RIGHT_ALT_STYLE,
     TEXT_RIGHT_STYLE,
+    TOC_DESC_STYLE,
+    TOC_HEADER_STYLE,
+    TOC_NAME_STYLE,
+    TOC_NUM_HEADER_STYLE,
+    TOC_NUM_STYLE,
+    TOC_SECTION_TITLE_STYLE,
     TOTAL_LABEL_STYLE,
     TOTAL_NUMBER_STYLE,
     TOTAL_TEXT_STYLE,
@@ -105,7 +121,11 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
     ai_analysis = data.get("aiAnalysis") or {}
     memos = data.get("memos") or {}
 
-    # ─── 1. レポート概要 (表紙) ───────────────────────────
+    # ─── 1. 表紙を先に作成（目次のため） ──────────────────
+    # 実際にデータがあるシートを列挙して目次に載せる
+    available = _compute_available_sheets(custom, sheets_data)
+    kpi_cards = _compute_kpi_cards(custom)
+
     create_cover_sheet(
         workbook,
         site_name=site_name,
@@ -113,6 +133,8 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
         date_range=date_range,
         comp_date_range=comparison_range,
         formats=formats,
+        kpi_cards=kpi_cards,
+        available_sheets=available,
     )
 
     # ─── 2. 全体サマリー ─────────────────────────────────
@@ -203,23 +225,114 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
     workbook.close()
 
 
+def _compute_available_sheets(custom: dict, sheets_data: dict) -> list[str]:
+    """実際にデータが存在するシート名を列挙（目次に載せる順）。"""
+    names = []
+    if custom.get("summary"):
+        names.append("全体サマリー")
+    # dynamic sheets
+    dyn_order = [
+        ("monthly", "月別"),
+        ("daily", "日別"),
+        ("weekly", "曜日別"),
+        ("hourly", "時間帯別"),
+        ("channels", "集客チャネル"),
+        ("keywords", "流入キーワード"),
+        ("referrals", "被リンク元"),
+        ("pages", "ページ別"),
+        ("pageCategories", "ページ分類別"),
+        ("landingPages", "ランディングページ"),
+        ("fileDownloads", "ファイルDL"),
+        ("externalLinks", "外部リンク"),
+    ]
+    for key, label in dyn_order:
+        s = sheets_data.get(key)
+        if s and s.get("rows"):
+            # ユーザー属性を hourly の直後に挿入（builder 順と一致）
+            names.append(label)
+    # ユーザー属性
+    if custom.get("users"):
+        # hourly の後に入れる
+        try:
+            idx = names.index("時間帯別")
+            names.insert(idx + 1, "ユーザー属性")
+        except ValueError:
+            names.append("ユーザー属性")
+    if custom.get("conversions"):
+        names.append("コンバージョン一覧")
+    if custom.get("reverseFlows"):
+        names.append("逆算フロー")
+    if custom.get("improvements"):
+        names.append("改善提案")
+    return names
+
+
+def _compute_kpi_cards(custom: dict) -> list[tuple[str, str]]:
+    """表紙の主要 KPI カード 4 件を返す。"""
+    metrics = (custom.get("summary") or {}).get("metrics") or {}
+    sessions = metrics.get("sessions") or 0
+    conversions = metrics.get("conversions") or 0
+    clicks = metrics.get("clicks") or 0  # GSC クリック
+
+    def fmt_int(v):
+        try:
+            return f"{int(v):,}"
+        except (ValueError, TypeError):
+            return "-"
+
+    def fmt_count(v):
+        try:
+            return f"{int(v):,}件"
+        except (ValueError, TypeError):
+            return "-"
+
+    cvr = (conversions / sessions * 100) if sessions else 0
+    cvr_str = f"{cvr:.2f}%"
+
+    cards = [
+        (fmt_int(sessions), "セッション数"),
+        (fmt_count(conversions), "CV総数"),
+        (fmt_int(clicks), "GSC クリック"),
+        (cvr_str, "CVR（全体）"),
+    ]
+    return cards
+
+
 def _create_formats(workbook) -> dict:
     """ワークブックに全スタイルのフォーマットを登録して辞書で返す。"""
     return {
         "header": workbook.add_format(HEADER_STYLE),
         "data": workbook.add_format(DATA_CELL_STYLE),
+        "data_alt": workbook.add_format(DATA_CELL_ALT_STYLE),
         "number": workbook.add_format(NUMBER_CELL_STYLE),
+        "number_alt": workbook.add_format(NUMBER_CELL_ALT_STYLE),
         "decimal": workbook.add_format(DECIMAL_CELL_STYLE),
+        "decimal_alt": workbook.add_format(DECIMAL_CELL_ALT_STYLE),
         "percent": workbook.add_format(PERCENT_CELL_STYLE),
         "text_right": workbook.add_format(TEXT_RIGHT_STYLE),
+        "text_right_alt": workbook.add_format(TEXT_RIGHT_ALT_STYLE),
         "total_label": workbook.add_format(TOTAL_LABEL_STYLE),
         "total_number": workbook.add_format(TOTAL_NUMBER_STYLE),
         "total_text": workbook.add_format(TOTAL_TEXT_STYLE),
         "ai_header": workbook.add_format(AI_SECTION_STYLE),
         "ai_content": workbook.add_format(AI_CONTENT_STYLE),
         "memo_header": workbook.add_format(MEMO_SECTION_STYLE),
-        "memo_content": workbook.add_format(AI_CONTENT_STYLE),  # メモ本文は AI と同スタイル
+        "memo_content": workbook.add_format(AI_CONTENT_STYLE),
+        # 表紙
         "cover_title": workbook.add_format(COVER_TITLE_STYLE),
+        "cover_subtitle": workbook.add_format(COVER_SUBTITLE_STYLE),
         "cover_label": workbook.add_format(COVER_LABEL_STYLE),
         "cover_value": workbook.add_format(COVER_VALUE_STYLE),
+        "cover_brand": workbook.add_format(COVER_BRAND_STYLE),
+        # KPI
+        "kpi_header": workbook.add_format(KPI_HEADER_STYLE),
+        "kpi_num": workbook.add_format(KPI_NUM_STYLE),
+        "kpi_label": workbook.add_format(KPI_LABEL_STYLE),
+        # 目次
+        "toc_section_title": workbook.add_format(TOC_SECTION_TITLE_STYLE),
+        "toc_num_header": workbook.add_format(TOC_NUM_HEADER_STYLE),
+        "toc_header": workbook.add_format(TOC_HEADER_STYLE),
+        "toc_num": workbook.add_format(TOC_NUM_STYLE),
+        "toc_name": workbook.add_format(TOC_NAME_STYLE),
+        "toc_desc": workbook.add_format(TOC_DESC_STYLE),
     }

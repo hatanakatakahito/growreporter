@@ -21,6 +21,7 @@ from .helpers import (
     fmt_change,
     format_cell_for_export,
 )
+from .styles import FOOTER_TEXT
 
 
 def _default_col_width(col: dict) -> int:
@@ -64,6 +65,8 @@ def build_dynamic_sheet(
     戻り値: ワークシートオブジェクト
     """
     ws = workbook.add_worksheet(sheet_name)
+    ws.hide_gridlines(2)
+    ws.set_footer(FOOTER_TEXT)
 
     if not visible_columns:
         ws.set_column(0, 0, 20)
@@ -134,14 +137,15 @@ def build_dynamic_sheet(
                 out_row.append(fmt_change(cur, prv))
         data_rows.append(out_row)
 
-    # データ行を書き込み
+    # データ行を書き込み（ゼブラストライプ適用）
     for r, row_vals in enumerate(data_rows, start=1):
         row_height = calc_row_height(row_vals, col_widths)
         ws.set_row(r, row_height)
+        is_alt = (r % 2 == 0)  # 偶数行に背景色
         for c, val in enumerate(row_vals):
             col = out_cols[c]["col"]
             col_type = out_cols[c]["type"]
-            _write_value(ws, r, c, val, col, col_type, formats)
+            _write_value(ws, r, c, val, col, col_type, formats, is_alt=is_alt)
 
     # 合計/平均行
     next_row = len(data_rows) + 1
@@ -187,27 +191,29 @@ def build_dynamic_sheet(
     return ws
 
 
-def _write_value(ws, r: int, c: int, val: Any, col: dict, col_type: str, formats: dict):
-    """セル値を適切なフォーマットで書き込む。"""
+def _write_value(ws, r: int, c: int, val: Any, col: dict, col_type: str, formats: dict, is_alt: bool = False):
+    """セル値を適切なフォーマットで書き込む。ゼブラストライプ対応。"""
+    # 偶数行用 formats を取得
+    def fmt(name):
+        return formats[f"{name}_alt"] if is_alt and f"{name}_alt" in formats else formats[name]
+
     if col_type == "delta":
-        # 変化率は常に文字列
-        ws.write(r, c, val, formats["text_right"])
+        ws.write(r, c, val, fmt("text_right"))
         return
 
     if val == "-" or val is None:
-        ws.write(r, c, "-", formats["text_right"])
+        ws.write(r, c, "-", fmt("text_right"))
         return
 
-    fmt = col.get("format")
+    f = col.get("format")
 
-    if fmt == "number" and isinstance(val, (int, float)):
-        ws.write_number(r, c, val, formats["number"])
-    elif fmt == "decimal" and isinstance(val, (int, float)):
-        ws.write_number(r, c, val, formats["decimal"])
-    elif fmt == "percent":
-        # val は "X.XX%" 文字列
-        ws.write_string(r, c, str(val), formats["text_right"])
-    elif fmt == "duration":
-        ws.write_string(r, c, str(val), formats["text_right"])
+    if f == "number" and isinstance(val, (int, float)):
+        ws.write_number(r, c, val, fmt("number"))
+    elif f == "decimal" and isinstance(val, (int, float)):
+        ws.write_number(r, c, val, fmt("decimal"))
+    elif f == "percent":
+        ws.write_string(r, c, str(val), fmt("text_right"))
+    elif f == "duration":
+        ws.write_string(r, c, str(val), fmt("text_right"))
     else:
-        ws.write(r, c, val, formats["data"])
+        ws.write(r, c, val, fmt("data"))

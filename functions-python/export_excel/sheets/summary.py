@@ -7,6 +7,7 @@ from typing import Any
 
 from ..charts import CHART_COLORS
 from ..helpers import append_ai_and_memo_sections, fmt_change, safe_sheet_name
+from ..styles import FOOTER_TEXT
 
 
 def create_summary_sheet(
@@ -20,6 +21,8 @@ def create_summary_sheet(
 ):
     """全体サマリーシートを作成。"""
     ws = workbook.add_worksheet(safe_sheet_name("全体サマリー"))
+    ws.hide_gridlines(2)
+    ws.set_footer(FOOTER_TEXT)
 
     # 列幅
     ws.set_column(0, 0, 20)

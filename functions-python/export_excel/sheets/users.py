@@ -4,11 +4,14 @@ JS 側の createUsersSheet 相当。
 """
 
 from ..helpers import append_ai_and_memo_sections, safe_sheet_name
+from ..styles import FOOTER_TEXT
 
 
 def create_users_sheet(workbook, demographics: dict, ai_data: dict | None, memos: list | None, formats: dict):
     """ユーザー属性シートを作成。"""
     ws = workbook.add_worksheet(safe_sheet_name("ユーザー属性"))
+    ws.hide_gridlines(2)
+    ws.set_footer(FOOTER_TEXT)
 
     ws.set_column(0, 0, 20)
     ws.set_column(1, 1, 16)

@@ -4,11 +4,14 @@ JS 側の createConversionsSheet 相当。
 """
 
 from ..helpers import append_ai_and_memo_sections, fmt_year_month, safe_sheet_name
+from ..styles import FOOTER_TEXT
 
 
 def create_conversions_sheet(workbook, conversions: dict, conversion_events: list, ai_data: dict | None, memos: list | None, formats: dict):
     """コンバージョン一覧シートを作成。"""
     ws = workbook.add_worksheet(safe_sheet_name("コンバージョン一覧"))
+    ws.hide_gridlines(2)
+    ws.set_footer(FOOTER_TEXT)
 
     # conversion_events から全イベント名を抽出
     event_names = []

@@ -4,6 +4,7 @@
 """
 
 from ..helpers import safe_sheet_name
+from ..styles import FOOTER_TEXT
 
 CATEGORY_LABELS = {
     "acquisition": "集客",
@@ -36,6 +37,8 @@ def create_improvements_sheet(workbook, improvements: list, formats: dict):
         return None
 
     ws = workbook.add_worksheet(safe_sheet_name("改善提案"))
+    ws.hide_gridlines(2)
+    ws.set_footer(FOOTER_TEXT)
 
     # 列幅
     for c, w in enumerate(COL_WIDTHS):

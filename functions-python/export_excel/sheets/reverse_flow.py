@@ -6,11 +6,14 @@ JS 側の createReverseFlowSheet 相当。
 
 from ..charts import CHART_COLORS
 from ..helpers import append_ai_and_memo_sections, fmt_year_month, safe_sheet_name
+from ..styles import FOOTER_TEXT
 
 
 def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | None, memos: list | None, formats: dict):
     """逆算フローシートを作成。"""
     ws = workbook.add_worksheet(safe_sheet_name("逆算フロー"))
+    ws.hide_gridlines(2)
+    ws.set_footer(FOOTER_TEXT)
 
     ws.set_column(0, 0, 20)
     ws.set_column(1, 1, 16)
