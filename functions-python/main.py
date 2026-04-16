@@ -140,6 +140,10 @@ def _sanitize(name: str) -> str:
 
 def _upload_and_sign(uid: str, filename: str, buffer: io.BytesIO, content_type: str) -> str:
     """Cloud Storage にアップロードして 30 分有効の signed URL を返す。"""
+    import google.auth
+    from google.auth.transport import requests as google_requests
+    from google.auth import compute_engine
+
     bucket = storage.bucket()
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     object_path = f"exports/{uid}/{timestamp}_{filename}"
@@ -147,11 +151,31 @@ def _upload_and_sign(uid: str, filename: str, buffer: io.BytesIO, content_type: 
     blob = bucket.blob(object_path)
     blob.upload_from_file(buffer, content_type=content_type, rewind=True)
 
-    # signed URL (30 分有効)
-    url = blob.generate_signed_url(
-        version="v4",
-        expiration=datetime.timedelta(minutes=30),
-        method="GET",
-        response_disposition=f'attachment; filename="{filename}"',
-    )
+    # Cloud Run の Compute Engine credentials では generate_signed_url は直接使えない。
+    # IAM signBlob API を利用する signing credentials でラップする。
+    credentials, project = google.auth.default()
+    if isinstance(credentials, compute_engine.Credentials):
+        signing_credentials = compute_engine.IDTokenCredentials(
+            request=google_requests.Request(),
+            target_audience="",
+            service_account_email=credentials.service_account_email,
+        )
+        # compute_engine.IDTokenCredentials は署名できないので、
+        # 代わに blob.generate_signed_url に service_account_email を渡して
+        # IAM signBlob API 経由で署名する方式を使う。
+        url = blob.generate_signed_url(
+            version="v4",
+            expiration=datetime.timedelta(minutes=30),
+            method="GET",
+            response_disposition=f'attachment; filename="{filename}"',
+            service_account_email=credentials.service_account_email,
+            access_token=credentials.token,
+        )
+    else:
+        url = blob.generate_signed_url(
+            version="v4",
+            expiration=datetime.timedelta(minutes=30),
+            method="GET",
+            response_disposition=f'attachment; filename="{filename}"',
+        )
     return url
