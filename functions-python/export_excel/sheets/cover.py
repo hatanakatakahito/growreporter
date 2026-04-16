@@ -92,7 +92,7 @@ def create_cover_sheet(workbook, site_name: str, site_url: str, date_range: dict
     if kpi_cards:
         row += 2
         ws.set_row(row, 22)
-        ws.merge_range(row, 1, row, 4, "  主要 KPI", formats["kpi_header"])
+        ws.merge_range(row, 1, row, 4, "  主要サマリー", formats["kpi_header"])
         row += 1
 
         # 4 枚まで表示（少ない場合は空白を埋める）
