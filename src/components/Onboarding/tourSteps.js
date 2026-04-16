@@ -7,13 +7,35 @@ import { TOUR_TARGETS, sel } from './tourTargets';
 
 // ── ヘルパー: 分析ページ共通ステップを生成 ──────────────
 function makeAnalysisSteps(periodDesc, aiTabDesc, opts = {}) {
-  const { hasColumnToggle = true } = opts;
+  const {
+    hasColumnToggle = true,
+    hasFilters = true,
+    hasViewTabs = true,
+  } = opts;
   const steps = [
     {
       element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
       popover: { title: '期間設定', description: periodDesc },
     },
   ];
+  if (hasFilters) {
+    steps.push({
+      element: sel(TOUR_TARGETS.ANALYSIS_DIMENSION_FILTERS),
+      popover: {
+        title: 'フィルタ設定',
+        description: 'デバイス・チャネル・流入元などで分析対象を絞り込めます。複数条件の組み合わせも可能です。',
+      },
+    });
+  }
+  if (hasViewTabs) {
+    steps.push({
+      element: sel(TOUR_TARGETS.ANALYSIS_VIEW_TABS),
+      popover: {
+        title: '表形式 / グラフ形式',
+        description: '同じデータを「表形式」と「グラフ形式」で切り替えて確認できます。表は数値の比較、グラフはトレンド把握に便利です。',
+      },
+    });
+  }
   if (hasColumnToggle) {
     steps.push({
       element: sel(TOUR_TARGETS.ANALYSIS_COLUMN_TOGGLE),
@@ -182,7 +204,8 @@ export const analysisChannelsSteps = makeAnalysisSteps(
 // ── 流入キーワード ──────────────────────────────
 export const analysisKeywordsSteps = makeAnalysisSteps(
   'Search Console のキーワードデータの対象期間を設定します。検索クエリごとのクリック数・表示回数・掲載順位・CTRを確認できます。',
-  'AIがキーワードの順位変動やCTR改善余地を分析し、SEO施策の優先順位を提案します。'
+  'AIがキーワードの順位変動やCTR改善余地を分析し、SEO施策の優先順位を提案します。',
+  { hasFilters: false }
 );
 
 // ── 被リンク元 ────────────────────────────────
@@ -200,7 +223,8 @@ export const analysisPagesSteps = makeAnalysisSteps(
 // ── コンテンツ分析 ──────────────────────────────
 export const analysisContentSteps = makeAnalysisSteps(
   'コンテンツ分析の対象期間を設定します。ページごとの興味度スコアで改善すべきコンテンツを特定できます。',
-  'AIが興味度スコアの分布を分析し、完読率やCTAクリック率が低いページの具体的な改善案を提案します。'
+  'AIが興味度スコアの分布を分析し、完読率やCTAクリック率が低いページの具体的な改善案を提案します。',
+  { hasViewTabs: false }
 );
 
 // ── ページ分類別 ───────────────────────────────
@@ -219,26 +243,28 @@ export const analysisLandingPagesSteps = makeAnalysisSteps(
 export const analysisPageFlowSteps = makeAnalysisSteps(
   'ページフロー分析の対象期間を設定します。特定ページの直前にユーザーがどのページを見ていたかを分析できます。',
   'AIが遷移パターンを分析し、離脱が多い導線や効果的な回遊経路を提案します。',
-  { hasColumnToggle: false }
+  { hasColumnToggle: false, hasFilters: false, hasViewTabs: false }
 );
 
 // ── コンバージョン ──────────────────────────────
 export const analysisConversionsSteps = makeAnalysisSteps(
   'コンバージョン分析の対象期間を設定します。登録済みのCVイベント別に件数の推移を月単位で確認できます。',
-  'AIがCV数の月別推移とイベント別の傾向を分析し、CV増加のための具体的な施策を提案します。'
+  'AIがCV数の月別推移とイベント別の傾向を分析し、CV増加のための具体的な施策を提案します。',
+  { hasFilters: false }
 );
 
 // ── 逆算フロー ────────────────────────────────
 export const analysisReverseFlowSteps = makeAnalysisSteps(
   '逆算フロー分析の対象期間を設定します。フォームページからのコンバージョンフローを分析できます。',
   'AIがファネルの各段階の離脱率を分析し、CV率改善のためのフォーム最適化案を提案します。',
-  { hasColumnToggle: false }
+  { hasColumnToggle: false, hasFilters: false, hasViewTabs: false }
 );
 
 // ── 外部リンククリック ─────────────────────────────
 export const analysisExternalLinksSteps = makeAnalysisSteps(
   '外部リンククリック分析の対象期間を設定します。サイトから外部サイトへの遷移クリック数を確認できます。',
-  'AIが外部リンクのクリック傾向を分析し、意図しない離脱が多いリンクの改善案を提案します。'
+  'AIが外部リンクのクリック傾向を分析し、意図しない離脱が多いリンクの改善案を提案します。',
+  { hasViewTabs: false }
 );
 
 // ── ファイルダウンロード ────────────────────────────
@@ -251,7 +277,7 @@ export const analysisFileDownloadsSteps = makeAnalysisSteps(
 export const analysisUsersSteps = makeAnalysisSteps(
   'ユーザー属性分析の対象期間を設定します。性別・年齢・デバイス・地域などのデモグラフィックデータを確認できます。',
   'AIがユーザー属性の構成比を分析し、ターゲット層へのリーチ状況や改善余地を提案します。',
-  { hasColumnToggle: false }
+  { hasColumnToggle: false, hasFilters: false, hasViewTabs: false }
 );
 
 // ── 全体サマリー（無料プラン向け） ──────────────────────
@@ -260,21 +286,53 @@ export const analysisSummaryFreeSteps = [
     element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
     popover: {
       title: '期間設定',
-      description: '全体サマリーの対象期間を設定します。主要指標（訪問数・ユーザー数・PV・CV等）の前月比・前年比を一画面で確認できます。',
+      description: '全体サマリーの対象期間を設定します。選択した期間の主要指標を前月比・前年比と一緒に一画面で確認できます。',
     },
   },
   {
-    element: sel(TOUR_TARGETS.ANALYSIS_KPI_CARD),
+    element: sel(TOUR_TARGETS.METRIC_TAB_SUMMARY),
     popover: {
-      title: '主要指標（3タブ）',
-      description: 'サマリ / CV内訳 / KPI予実 の3タブで主要指標を確認できます。KPI設定を行うと目標との予実比較が可能になります。',
+      title: '主要サマリータブ',
+      description: '訪問者数・ユーザー数・平均PV・直帰率・平均滞在時間・CV数など、サイトの主要指標をカード形式で一覧表示します。各カードには前月比・前年同月比が自動計算されます。',
     },
+  },
+  {
+    element: sel(TOUR_TARGETS.METRIC_TAB_CONVERSION),
+    popover: {
+      title: 'CV内訳タブ',
+      description: 'サイトに設定したコンバージョンイベント（フォーム送信・購入・電話など）の内訳と件数を確認できます。未設定の場合はサイト管理画面から登録してください。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.METRIC_TAB_KPI),
+    popover: {
+      title: 'KPIタブ',
+      description: 'サイト管理画面で設定した月次KPI目標に対する実績（達成率）を確認できます。目標未達の指標がひと目で分かり、改善優先度の判断に役立ちます。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_EXPORT),
+    popover: {
+      title: 'Excel / PowerPoint でダウンロード',
+      description: '表示中のデータをそのまま Excel / PowerPoint 形式で出力できます。',
+    },
+    businessOnly: true,
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_AI_TAB),
+    popover: {
+      title: 'AI分析タブ',
+      description: 'AIがサマリーデータを分析し、注目すべき変化点や改善のヒントを日本語で自動解説します。',
+      side: 'bottom',
+      align: 'start',
+    },
+    businessOnly: true,
   },
   {
     element: sel(TOUR_TARGETS.ANALYSIS_NOTE),
     popover: {
       title: 'メモ機能',
-      description: '分析の気付きをメモとして残せます。チームメンバーとも共有可能です。',
+      description: '分析の気付きをメモとして残せます。チームメンバーとも共有可能で、後から振り返るときに便利です。',
       side: 'bottom',
       align: 'start',
     },

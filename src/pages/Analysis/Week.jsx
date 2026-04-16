@@ -242,7 +242,7 @@ export default function Week() {
                 曜日ごとの訪問者とコンバージョンの推移を確認できます
               </p>
             </div>
-            <div className="flex flex-shrink-0 items-center gap-2 pt-0.5">
+            <div className="flex flex-shrink-0 items-center gap-2 pt-0.5" data-tour="analysis-dimension-filters">
               <DimensionFilters
                 siteId={selectedSiteId}
                 startDate={dateRange.from}
@@ -264,7 +264,7 @@ export default function Week() {
           ) : (
             <>
               {/* タブ */}
-              <div className="mb-6 mt-4 flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2">
+              <div className="mb-6 mt-4 flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2" data-tour="analysis-view-tabs">
                 <button
                   onClick={() => setActiveTab('table')}
                   className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${

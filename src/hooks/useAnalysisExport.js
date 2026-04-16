@@ -105,6 +105,7 @@ function buildCustomSheetsPayload(allData) {
     users: allData.demographics,
     conversions: allData.conversions,
     reverseFlows: allData.reverseFlows || [],
+    improvements: allData.improvements || [],
   };
 }
 
@@ -366,6 +367,9 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
 
     // メモ取得（全pageType分）
     allMemos: fetchAllMemos(selectedSiteId),
+
+    // 改善提案一覧
+    improvements: fetchImprovements(selectedSiteId),
   };
 
   // ─── 比較期間データ（比較モード時のみ） ─────────────────────
@@ -496,6 +500,7 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
     externalLinks: results.externalLinks,
     conversions: results.conversions,
     reverseFlows: results.reverseFlows || [],
+    improvements: results.improvements || [],
     aiAnalysis: results.aiAnalysis || {},
     memos: results.allMemos || {},
     // 比較データ
@@ -600,4 +605,16 @@ async function fetchAllMemos(siteId) {
   }
 
   return result;
+}
+
+// ─── 改善提案一覧取得 ────────────────────────────────────
+async function fetchImprovements(siteId) {
+  if (!siteId) return [];
+  try {
+    const snapshot = await getDocs(collection(db, 'sites', siteId, 'improvements'));
+    return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+  } catch (e) {
+    console.error('[Export] fetchImprovements:', e.message);
+    return [];
+  }
 }

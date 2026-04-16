@@ -121,7 +121,7 @@ export default function ExternalLinks() {
                 clickイベントを追跡して外部リンクのクリック数を確認できます
               </p>
             </div>
-            <div className="flex flex-shrink-0 items-center gap-2 pt-0.5">
+            <div className="flex flex-shrink-0 items-center gap-2 pt-0.5" data-tour="analysis-dimension-filters">
               <DimensionFilters
                 siteId={selectedSiteId}
                 startDate={dateRange.from}

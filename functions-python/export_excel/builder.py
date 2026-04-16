@@ -34,6 +34,7 @@ from .sheets.cover import create_cover_sheet
 from .sheets.summary import create_summary_sheet
 from .sheets.users import create_users_sheet
 from .sheets.conversions import create_conversions_sheet
+from .sheets.improvements import create_improvements_sheet
 from .sheets.reverse_flow import create_reverse_flow_sheet
 from .styles import (
     AI_CONTENT_STYLE,
@@ -193,6 +194,11 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             memos=memos.get("analysis/reverse-flow"),
             formats=formats,
         )
+
+    # ─── 18. 改善提案 ───────────────────────────────────
+    improvements = custom.get("improvements")
+    if improvements and len(improvements) > 0:
+        create_improvements_sheet(workbook, improvements, formats)
 
     workbook.close()
 
