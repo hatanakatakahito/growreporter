@@ -49,7 +49,7 @@ def create_conversions_sheet(workbook, conversions: dict, conversion_events: lis
     for entry in monthly_data:
         if not isinstance(entry, dict):
             continue
-        month_label = fmt_year_month(entry.get("month") or entry.get("label"))
+        month_label = fmt_year_month(entry.get("label") or entry.get("month") or entry.get("yearMonth") or "")
         ws.set_row(row_idx, 22)
         ws.write(row_idx, 0, month_label, formats["data"])
         row_total = 0

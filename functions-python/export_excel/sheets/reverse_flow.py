@@ -84,7 +84,7 @@ def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | Non
                 if not isinstance(entry, dict):
                     continue
                 ws.set_row(row, 22)
-                ws.write(row, 0, fmt_year_month(entry.get("month") or entry.get("label")), formats["data"])
+                ws.write(row, 0, fmt_year_month(entry.get("label") or entry.get("month") or entry.get("yearMonth") or ""), formats["data"])
 
                 site = float(entry.get("totalSiteViews") or 0)
                 form = float(entry.get("formPageViews") or 0)
