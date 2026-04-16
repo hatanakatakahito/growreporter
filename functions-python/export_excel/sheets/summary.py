@@ -159,7 +159,8 @@ def create_summary_sheet(
             pie_chart.set_title({"name": "コンバージョン内訳"})
             pie_chart.set_legend({"position": "right"})
             pie_chart.set_size({"width": 480, "height": 360})
-            pie_chart.set_style(10)
+            pie_chart.set_style(2)
+            pie_chart.set_plotarea({"border": {"none": True}, "shadow": False})
             ws.insert_chart(cv_data_start_row - 2, 3, pie_chart)
 
     # AI + メモセクション
