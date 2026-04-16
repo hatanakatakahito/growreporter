@@ -157,10 +157,11 @@ def create_summary_sheet(
                 },
             })
             pie_chart.set_title({"name": "コンバージョン内訳"})
-            pie_chart.set_legend({"position": "right"})
+            pie_chart.set_legend({"position": "right", "font": {"bold": False}})
             pie_chart.set_size({"width": 480, "height": 360})
             pie_chart.set_style(2)
-            pie_chart.set_plotarea({"border": {"none": True}, "shadow": False})
+            pie_chart.set_plotarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
+            pie_chart.set_chartarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
             ws.insert_chart(cv_data_start_row - 2, 3, pie_chart)
 
     # AI + メモセクション

@@ -211,8 +211,8 @@ def insert_chart_for_sheet(
 
     chart.set_title({"name": title, "name_font": {"bold": False, "size": 12}})
     chart.set_style(2)  # フラットスタイル（立体・シャドウなし）
-    chart.set_plotarea({"border": {"none": True}, "shadow": False})
-    chart.set_chartarea({"border": {"none": True}, "shadow": False})
+    chart.set_plotarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
+    chart.set_chartarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
 
     if chart_type != "pie":
         chart.set_legend({"position": "bottom", "font": {"bold": False}})
