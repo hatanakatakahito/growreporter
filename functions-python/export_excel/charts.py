@@ -31,7 +31,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "dash": True,
     },
     "daily": {
-        "type": "line",
+        "type": "column",
         "title": "日別推移",
         "cat_key": "date",
         "series": [
@@ -59,7 +59,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "channels": {
         "type": "bar",
-        "title": "集客チャネル別セッション",
+        "title": "集客チャネル別",
         "cat_key": "channelName",
         "series": [
             ("セッション", "sessions"),
@@ -68,14 +68,14 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "keywords": {
         "type": "bar",
-        "title": "Top 20 キーワード クリック数",
+        "title": "Top 20 流入キーワード",
         "cat_key": "keyword",
         "series": [("クリック", "clicks")],
         "top_n": 20,
     },
     "referrals": {
         "type": "bar",
-        "title": "Top 20 参照元セッション",
+        "title": "Top 20 被リンク元",
         "cat_key": "source",
         "series": [
             ("セッション", "sessions"),
@@ -98,21 +98,21 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "landingPages": {
         "type": "bar",
-        "title": "Top 20 LP 別セッション",
+        "title": "Top 20 ランディングページ",
         "cat_key": "path",
         "series": [("セッション", "sessions")],
         "top_n": 20,
     },
     "fileDownloads": {
         "type": "bar",
-        "title": "Top 20 ファイル DL 数",
+        "title": "Top 20 ファイル DL",
         "cat_key": "fileName",
         "series": [("ダウンロード", "downloads")],
         "top_n": 20,
     },
     "externalLinks": {
         "type": "bar",
-        "title": "Top 20 外部リンク クリック",
+        "title": "Top 20 外部リンク",
         "cat_key": "linkUrl",
         "series": [("クリック", "clicks")],
         "top_n": 20,
@@ -218,8 +218,11 @@ def insert_chart_for_sheet(
     else:
         chart.set_legend({"position": "right"})
 
-    # チャートサイズ
-    chart.set_size({"width": 640, "height": 400})
+    # チャートサイズ (横棒は縦に長くして URL ラベルを収容)
+    if chart_type == "bar":
+        chart.set_size({"width": 720, "height": 600})
+    else:
+        chart.set_size({"width": 640, "height": 400})
 
     # チャートをデータ表の右側に配置 (列 N 付近)
     # カラム幅を考慮しないで単純に固定位置
