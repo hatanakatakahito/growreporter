@@ -81,7 +81,7 @@ def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | Non
                     "name": flow_name,
                     "categories": [ws.name, funnel_start_row, 0, funnel_end_row, 0],
                     "values": [ws.name, funnel_start_row, 1, funnel_end_row, 1],
-                    "data_labels": {"value": True, "num_format": "#,##0"},
+                    "data_labels": {"value": True, "num_format": "#,##0", "font": {"name": "Yu Gothic", "size": 8}},
                     "points": [
                         {"fill": {"color": CHART_COLORS[0]}},
                         {"fill": {"color": CHART_COLORS[1]}},
@@ -89,7 +89,7 @@ def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | Non
                     ],
                     "gap": 80,
                 })
-                funnel_chart.set_title({"name": f"{flow_name} ファネル", "name_font": {"bold": True, "size": 12}})
+                funnel_chart.set_title({"name": f"{flow_name} ファネル", "name_font": {"name": "Yu Gothic", "bold": True, "size": 12}})
                 funnel_chart.set_style(2)
                 funnel_chart.set_plotarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
                 funnel_chart.set_chartarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})

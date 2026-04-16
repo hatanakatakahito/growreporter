@@ -164,36 +164,52 @@ PCT_RE = re.compile(r"^(-?\d+(?:\.\d+)?)%$")
 SEC_RE = re.compile(r"^(\d+(?:\.\d+)?)秒$")
 
 
-def compute_totals_row(headers: list[str], rows: list[list[Any]]) -> dict:
+def compute_totals_row(headers: list[str], rows: list[list[Any]], out_cols: list[dict] | None = None) -> dict:
     """
-    JS の computeTotalsRow と同じロジック。
-    戻り値: {values: [...], kind: [...]} で各列の値と種別を返す。
-    kind: 'label' | 'number' | 'text' | 'empty'
+    合計 / 平均行を計算。
+    out_cols が渡された場合、列の format に応じて合計 or 平均を使い分ける。
+      - number → 合計
+      - decimal / percent / duration → 平均
+      - 変化率列・delta列 → スキップ
+    戻り値: {values: [...], kinds: [...]}
     """
     num_cols = len(headers)
     values: list[Any] = [""] * num_cols
     kinds: list[str] = ["empty"] * num_cols
 
-    # 1 列目: ラベル
     values[0] = "合計 / 平均"
     kinds[0] = "label"
 
     if not rows:
         return {"values": values, "kinds": kinds}
 
+    # 平均を使うべき format (小数系 / 率系 / 時間系)
+    AVG_FORMATS = {"decimal", "percent", "duration"}
+
     for c in range(1, num_cols):
         header = str(headers[c])
-        # 変化率列はスキップ
         if "変化率" in header:
             continue
+
+        # out_cols から列の type と format を取得
+        col_meta = out_cols[c] if out_cols and c < len(out_cols) else None
+        if col_meta and col_meta.get("type") == "delta":
+            continue
+
+        col_format = col_meta.get("col", {}).get("format") if col_meta else None
+        use_avg = col_format in AVG_FORMATS
 
         col_vals = [r[c] for r in rows if r[c] not in (None, "", "-")]
         if not col_vals:
             continue
 
-        # すべて数値 → 合計
+        # すべて数値
         if all(isinstance(v, (int, float)) for v in col_vals):
-            values[c] = sum(col_vals)
+            if use_avg:
+                avg = sum(col_vals) / len(col_vals)
+                values[c] = round(avg, 2)
+            else:
+                values[c] = sum(col_vals)
             kinds[c] = "number"
             continue
 
@@ -218,7 +234,10 @@ def compute_totals_row(headers: list[str], rows: list[list[Any]]) -> dict:
                     all_num = False
                     break
         if all_num and nums_mixed:
-            values[c] = sum(nums_mixed)
+            if use_avg:
+                values[c] = round(sum(nums_mixed) / len(nums_mixed), 2)
+            else:
+                values[c] = sum(nums_mixed)
             kinds[c] = "number"
 
     return {"values": values, "kinds": kinds}

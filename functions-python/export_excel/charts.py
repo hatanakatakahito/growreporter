@@ -223,7 +223,7 @@ def insert_chart_for_sheet(
             "border": {"color": color},
         }
         if use_data_labels:
-            series_opts["data_labels"] = {"value": True, "num_format": "#,##0"}
+            series_opts["data_labels"] = {"value": True, "num_format": "#,##0", "font": {"name": "Yu Gothic", "size": 8}}
         if use_markers:
             series_opts["marker"] = {"type": "circle", "size": 5, "fill": {"color": color}, "border": {"color": color}}
         # 円グラフは系列全体ではなくポイント個別に色指定
@@ -231,19 +231,22 @@ def insert_chart_for_sheet(
             series_opts["points"] = [{"fill": {"color": CHART_COLORS[i % len(CHART_COLORS)]}} for i in range(len(used_rows))]
         chart.add_series(series_opts)
 
-    chart.set_title({"name": title, "name_font": {"bold": True, "size": 12}})
+    chart.set_title({"name": title, "name_font": {"name": "Yu Gothic", "bold": True, "size": 12}})
     chart.set_style(2)  # フラットスタイル（立体・シャドウなし）
     chart.set_plotarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
     chart.set_chartarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
 
+    axis_font = {"name": "Yu Gothic", "size": 9}
+    chart.set_x_axis({"num_font": axis_font, "name_font": axis_font})
+    chart.set_y_axis({"num_font": axis_font, "name_font": axis_font})
+
     if chart_type == "bar":
-        # 横棒: 数が多いものを上部にするため Y 軸を反転
-        chart.set_y_axis({"reverse": True})
-        chart.set_legend({"position": "bottom", "font": {"bold": False}})
+        chart.set_y_axis({"reverse": True, "num_font": axis_font, "name_font": axis_font})
+        chart.set_legend({"position": "bottom", "font": {"name": "Yu Gothic", "bold": False, "size": 9}})
     elif chart_type == "pie":
-        chart.set_legend({"position": "right", "font": {"bold": False}})
+        chart.set_legend({"position": "right", "font": {"name": "Yu Gothic", "bold": False, "size": 9}})
     else:
-        chart.set_legend({"position": "bottom", "font": {"bold": False}})
+        chart.set_legend({"position": "bottom", "font": {"name": "Yu Gothic", "bold": False, "size": 9}})
 
     # チャートサイズ
     is_wide = config.get("wide", False)

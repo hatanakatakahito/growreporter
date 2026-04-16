@@ -146,7 +146,7 @@ def build_dynamic_sheet(
     # 合計/平均行
     next_row = len(data_rows) + 1
     if data_rows:
-        totals = compute_totals_row(headers, data_rows)
+        totals = compute_totals_row(headers, data_rows, out_cols)
         ws.set_row(next_row, 24)
         for c, (val, kind) in enumerate(zip(totals["values"], totals["kinds"])):
             if kind == "label":
