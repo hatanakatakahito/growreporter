@@ -27,7 +27,7 @@ def create_conversions_sheet(workbook, conversions: dict, conversion_events: lis
     for row in monthly_data:
         if isinstance(row, dict):
             for k in row.keys():
-                if k not in ("month", "label") and k not in event_names:
+                if k not in ("month", "label", "yearMonth", "year_month", "period") and k not in event_names:
                     event_names.append(k)
 
     # ヘッダー: 月 + 各イベント
