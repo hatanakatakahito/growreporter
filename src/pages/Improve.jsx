@@ -710,8 +710,9 @@ export default function Improve() {
           improveActions={
             !isViewer && (
               <>
+                {/* ツアー時: 空状態のヒーローCTAがある時は data-tour をそちらに譲る（querySelectorが先頭を拾う対策） */}
                 <button
-                  data-tour="improve-ai-generate"
+                  data-tour={sortedImprovements.length === 0 ? undefined : 'improve-ai-generate'}
                   onClick={() => {
                     if (!selectedSiteId) return;
                     setIsFocusModalOpen(true);
@@ -722,7 +723,7 @@ export default function Improve() {
                   AI改善案生成
                 </button>
                 <button
-                  data-tour="improve-manual-add"
+                  data-tour={sortedImprovements.length === 0 ? undefined : 'improve-manual-add'}
                   onClick={() => {
                     setEditingItem(null);
                     setIsDialogOpen(true);
@@ -1025,11 +1026,6 @@ export default function Improve() {
                       {sortedImprovements.length === 0 ? (
                         <tr className="no-hover"><td colSpan={isViewer ? 6 : 7} className="py-20 px-6 text-center">
                           <div className="flex flex-col items-center gap-6 max-w-xl mx-auto">
-                            {/* アイコン（円背景） */}
-                            <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center">
-                              <Sparkles className="h-12 w-12 text-blue-500" strokeWidth={1.5} />
-                            </div>
-
                             {/* 見出し + 説明 */}
                             <div className="space-y-2">
                               <h2 className="text-xl font-bold text-dark dark:text-white">
@@ -1037,7 +1033,8 @@ export default function Improve() {
                               </h2>
                               {!isViewer && (
                                 <p className="text-sm text-body-color leading-relaxed">
-                                  GA4・Search Console のデータとサイトマップから、AIが成果につながる改善ポイントを自動抽出します。<br />
+                                  GA4・Search Console のデータとサイトマップから、<br />
+                                  AIが成果につながる改善ポイントを自動抽出します。<br />
                                   生成にかかる時間は約30秒です。
                                 </p>
                               )}
@@ -1047,6 +1044,7 @@ export default function Improve() {
                               <>
                                 {/* CTAボタン */}
                                 <button
+                                  data-tour="improve-empty-hero-cta"
                                   onClick={() => {
                                     if (!selectedSiteId) return;
                                     setIsFocusModalOpen(true);
@@ -1059,6 +1057,7 @@ export default function Improve() {
 
                                 {/* サブリンク */}
                                 <button
+                                  data-tour="improve-empty-manual-link"
                                   onClick={() => {
                                     setEditingItem(null);
                                     setIsDialogOpen(true);

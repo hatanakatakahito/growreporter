@@ -71,6 +71,8 @@ export const TOUR_TARGETS = {
   IMPROVE_HEADER: 'improve-header',
   IMPROVE_AI_GENERATE: 'improve-ai-generate',
   IMPROVE_MANUAL_ADD: 'improve-manual-add',
+  IMPROVE_EMPTY_HERO_CTA: 'improve-empty-hero-cta',
+  IMPROVE_EMPTY_MANUAL_LINK: 'improve-empty-manual-link',
   IMPROVE_AUTO_TOGGLE: 'improve-auto-toggle',
   IMPROVE_STATUS_FILTER: 'improve-status-filter',
   IMPROVE_TABLE: 'improve-table',

@@ -666,35 +666,36 @@ export const improveSteps = [
   {
     popover: {
       title: '改善するページへようこそ',
-      description: 'AIが提案する改善タスクを一元管理できるページです。まだタスクがない状態ですね。これから使い方をご案内します。',
+      description: 'AI と手動の両方でサイト改善タスクを一元管理できるページです。生成された改善案にはモックアップ（Before/After 比較）も自動付与され、制作会社にそのまま相談できる状態で仕上がります。',
     },
   },
   {
-    element: sel(TOUR_TARGETS.IMPROVE_AI_GENERATE),
+    // 改善案0件時はヒーローCTA、件ある時はヘッダー側のAI改善案生成ボタン。どちらか片方しかDOMに存在しない
+    element: `[data-tour="${TOUR_TARGETS.IMPROVE_EMPTY_HERO_CTA}"], [data-tour="${TOUR_TARGETS.IMPROVE_AI_GENERATE}"]`,
     popover: {
-      title: 'まずはAI改善案を生成してみましょう',
-      description: 'このボタンをクリックすると、GA4・Search Consoleのデータとサイトマップを元にAIが改善ポイントを自動抽出します。フォーカス（流入改善・CV改善など）も指定できます。',
+      title: 'まずは AI に改善案を作ってもらいましょう',
+      description: 'クリックすると方針（バランス / 集客 / CV / ブランディング / UX）を選ぶモーダルが開き、GA4・Search Console・サイトマップのデータから改善ポイントを約30秒で10件前後抽出します。Before スクショも並列で自動取得されます。',
     },
   },
   {
-    element: sel(TOUR_TARGETS.IMPROVE_MANUAL_ADD),
+    element: `[data-tour="${TOUR_TARGETS.IMPROVE_EMPTY_MANUAL_LINK}"], [data-tour="${TOUR_TARGETS.IMPROVE_MANUAL_ADD}"]`,
     popover: {
       title: '手動でタスクを追加することもできます',
-      description: 'AIが気付かない施策や社内で決定済みのタスクは「手動で追加」から登録できます。カテゴリ・優先度・対象ページ・期待効果を入力できます。',
+      description: 'AI が気付かない施策や社内で決定済みのタスクは「手動で追加」から登録できます。カテゴリ・優先度・対象ページ・期待効果を自由に入力できます。',
     },
   },
   {
     element: sel(TOUR_TARGETS.IMPROVE_AUTO_TOGGLE),
     popover: {
       title: '月次自動生成もおすすめです',
-      description: 'このトグルをONにしておくと、毎月1日に前月データを元にした改善案がAIによって自動生成されます。定期的に改善ネタを仕込みたい場合に便利です。',
+      description: 'このトグルを ON にしておくと、毎月1日に前月データを元にした改善案が AI によって自動生成されます。定期的に改善ネタを仕込みたい場合に便利です。',
     },
   },
   {
     element: sel(TOUR_TARGETS.IMPROVE_TABLE),
     popover: {
-      title: '生成したタスクはここに並びます',
-      description: '改善案が生成されると、この一覧にカテゴリ・優先度・内容・目安料金・ステータスが表示されます。行をクリックすると詳細ドロワーが開き、モックアップ生成やステータス変更が行えます。完了にしたタスクは「評価する」ページで自動的に効果計測されます。',
+      title: '改善タスク一覧',
+      description: '生成・追加したタスクがこの一覧にカテゴリ・優先度・内容・モック・目安料金・ステータスで並びます。行をクリックすると右側にドロワーが開き、モックアップの Before/After 比較やステータス変更、制作会社への相談依頼が行えます。完了にしたタスクは「評価する」ページで効果が自動計測されます。',
       side: 'top',
     },
   },
