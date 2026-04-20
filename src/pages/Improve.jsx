@@ -1035,8 +1035,22 @@ export default function Improve() {
                     </thead>
                     <tbody>
                       {sortedImprovements.length === 0 ? (
-                        <tr><td colSpan={isViewer ? 6 : 7} className="py-6 px-4 text-body-color text-center">
-                          改善案がありません
+                        <tr><td colSpan={isViewer ? 6 : 7} className="py-10 px-4 text-body-color text-center">
+                          <div className="flex flex-col items-center gap-4">
+                            <span>改善案がありません</span>
+                            {!isViewer && (
+                              <button
+                                onClick={() => {
+                                  if (!selectedSiteId) return;
+                                  setIsFocusModalOpen(true);
+                                }}
+                                className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-blue-600 hover:to-pink-600 scale-[1.2] origin-center"
+                              >
+                                <Sparkles className="h-4 w-4" />
+                                AI改善案生成
+                              </button>
+                            )}
+                          </div>
                         </td></tr>
                       ) : (
                         sortedImprovements.map((item) => {
