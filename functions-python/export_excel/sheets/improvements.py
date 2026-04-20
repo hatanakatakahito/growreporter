@@ -4,6 +4,7 @@
 """
 
 from ..helpers import safe_sheet_name
+from ..sheet_builder import write_sheet_title_bar
 from ..styles import FOOTER_TEXT
 
 CATEGORY_LABELS = {
@@ -17,21 +18,20 @@ CATEGORY_LABELS = {
 PRIORITY_LABELS = {"high": "高", "medium": "中", "low": "低"}
 STATUS_LABELS = {"draft": "起案", "in_progress": "対応中", "completed": "完了"}
 
-COL_WIDTHS = [4, 50, 60, 10, 6, 8, 40, 20, 40]
+COL_WIDTHS = [4, 12, 6, 50, 60, 40, 40, 24]
 HEADERS = [
     "No.",
-    "タイトル",
-    "説明",
     "カテゴリ",
     "優先度",
-    "ステータス",
+    "タイトル",
+    "説明",
     "対象URL",
-    "対象箇所",
     "期待効果",
+    "目安料金・納期",
 ]
 
 
-def create_improvements_sheet(workbook, improvements: list, formats: dict):
+def create_improvements_sheet(workbook, improvements: list, formats: dict, sheet_subtitle: str | None = None):
     """改善提案シートを作成。"""
     if not improvements:
         return None
@@ -44,37 +44,46 @@ def create_improvements_sheet(workbook, improvements: list, formats: dict):
     for c, w in enumerate(COL_WIDTHS):
         ws.set_column(c, c, w)
 
-    # ヘッダー
-    ws.set_row(0, 28)
-    for c, h in enumerate(HEADERS):
-        ws.write(0, c, h, formats["header"])
+    num_cols = len(HEADERS)
 
-    # データ行（order → createdAt 順にソート）
+    # シートタイトルバー (行 0-2) — サブタイトルに件数を併記
+    n = len(improvements)
+    title_subtitle = f"{sheet_subtitle}  /  全 {n} 件" if sheet_subtitle else f"全 {n} 件"
+    title_next_row = write_sheet_title_bar(ws, "改善提案アクションプラン", title_subtitle, num_cols, formats)
+
+    # ヘッダー
+    header_row = title_next_row
+    ws.set_row(header_row, 28)
+    for c, h in enumerate(HEADERS):
+        ws.write(header_row, c, h, formats["header"])
+
+    # データ行（order → createdAt 順にソート、ゼブラ）
     sorted_items = sorted(improvements, key=lambda x: (
         x.get("order") if x.get("order") is not None else 999999,
         _get_timestamp(x.get("createdAt")),
     ))
 
     for idx, item in enumerate(sorted_items):
-        row = idx + 1
+        row = header_row + 1 + idx
         ws.set_row(row, max(22, _estimate_row_height(item)))
 
-        ws.write_number(row, 0, idx + 1, formats["number"])
-        ws.write(row, 1, item.get("title") or "", formats["data"])
-        ws.write(row, 2, (item.get("description") or "").strip(), formats["data"])
+        is_alt = (idx % 2 == 1)
+        data_fmt = formats["data_alt"] if is_alt else formats["data"]
+        num_fmt = formats["number_alt"] if is_alt else formats["number"]
+
+        ws.write_number(row, 0, idx + 1, num_fmt)
 
         cat = item.get("category") or ""
-        ws.write(row, 3, CATEGORY_LABELS.get(cat, cat), formats["data"])
+        ws.write(row, 1, CATEGORY_LABELS.get(cat, cat), data_fmt)
 
         pri = item.get("priority") or ""
-        ws.write(row, 4, PRIORITY_LABELS.get(pri, pri), formats["data"])
+        ws.write(row, 2, PRIORITY_LABELS.get(pri, pri), data_fmt)
 
-        status = item.get("status") or ""
-        ws.write(row, 5, STATUS_LABELS.get(status, status), formats["data"])
-
-        ws.write(row, 6, (item.get("targetPageUrl") or "").strip(), formats["data"])
-        ws.write(row, 7, item.get("targetArea") or "", formats["data"])
-        ws.write(row, 8, item.get("expectedImpact") or "", formats["data"])
+        ws.write(row, 3, item.get("title") or "", data_fmt)
+        ws.write(row, 4, (item.get("description") or "").strip(), data_fmt)
+        ws.write(row, 5, (item.get("targetPageUrl") or "").strip(), data_fmt)
+        ws.write(row, 6, item.get("expectedImpact") or "", data_fmt)
+        ws.write(row, 7, item.get("costDeliveryLabel") or "要相談", data_fmt)
 
     return ws
 

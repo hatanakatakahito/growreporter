@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import UpgradeModal from '@/components/common/UpgradeModal';
 import DotWaveSpinner from '@/components/common/DotWaveSpinner';
 import { useAutoTour } from '../hooks/useAutoTour';
+import TourHelpButton from '../components/Onboarding/TourHelpButton';
 
 export default function SiteList() {
   const [sites, setSites] = useState([]);
@@ -168,7 +169,10 @@ export default function SiteList() {
         {/* ヘッダー（アカウント設定ページと同一構成） */}
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">サイト管理</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">サイト管理</h1>
+              <TourHelpButton tourId="sites" />
+            </div>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
               分析対象のサイトを登録・管理します
             </p>

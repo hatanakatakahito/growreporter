@@ -20,7 +20,7 @@ import PlanLimitModal from '../../components/common/PlanLimitModal';
 import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Analysis/DimensionFilters';
 import { useAuth } from '../../contexts/AuthContext';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
-import { useAutoTour } from '../../hooks/useAutoTour';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 import {
   ResponsiveContainer,
   BarChart,
@@ -40,7 +40,6 @@ import {
 export default function Hour() {
   const { selectedSite, selectedSiteId, selectSite, sites, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
-  useAutoTour('analysisHour');
   const [searchParams] = useSearchParams();
   const [hiddenBars, setHiddenBars] = useState({});
   const [activeTab, setActiveTab] = useState('table');
@@ -209,7 +208,10 @@ export default function Hour() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-dark dark:text-white">分析する - 時間帯別分析</h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-dark dark:text-white">分析する - 時間帯別分析</h2>
+                <TourHelpButton tourId="analysisHour" />
+              </div>
               <p className="mt-0.5 text-sm text-body-color">
                 時間帯別の訪問者とコンバージョンの推移を確認できます
               </p>

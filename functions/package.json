@@ -27,7 +27,6 @@
     "nodemailer": "^8.0.1",
     "puppeteer-core": "^22.6.0",
     "react-hot-toast": "^2.6.0",
-    "sharp": "^0.33.0",
     "uuid": "^11.0.3",
     "xml2js": "^0.6.2"
   },

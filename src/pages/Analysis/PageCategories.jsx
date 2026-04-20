@@ -20,7 +20,7 @@ import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
-import { useAutoTour } from '../../hooks/useAutoTour';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 import {
   ResponsiveContainer,
   BarChart,
@@ -42,7 +42,6 @@ import {
 export default function PageCategories() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
-  useAutoTour('analysisPageCategories');
   const [activeTab, setActiveTab] = useState('sitemap');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [expandedPaths, setExpandedPaths] = useState(new Set(['/']));
@@ -472,9 +471,12 @@ export default function PageCategories() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-dark dark:text-white">
-                エンゲージメント - ページ分類別
-              </h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-dark dark:text-white">
+                  エンゲージメント - ページ分類別
+                </h2>
+                <TourHelpButton tourId="analysisPageCategories" />
+              </div>
               <p className="mt-0.5 text-sm text-body-color">
                 ページを第1階層のディレクトリ別に分類して表示します
               </p>

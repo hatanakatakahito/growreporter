@@ -19,17 +19,17 @@
 /* タイトル */
 .driver-popover-title {
   color: #111928 !important;
-  font-size: 14px !important;
+  font-size: 15.5px !important;
   font-weight: 700 !important;
   padding: 0 !important;
-  margin: 0 0 4px 0 !important;
+  margin: 0 0 6px 0 !important;
 }
 
 /* 本文 */
 .driver-popover-description {
-  color: #374151 !important;
-  font-size: 12px !important;
-  line-height: 1.6 !important;
+  color: #1f2937 !important;
+  font-size: 13.2px !important;
+  line-height: 1.7 !important;
   padding: 0 !important;
   margin: 0 !important;
 }
@@ -83,6 +83,28 @@
 /* スキップボタン */
 .driver-popover-close-btn {
   text-decoration: none !important;
+}
+
+/* スキップで完了ボタン（カスタム注入） */
+/* 注意: driver.js の document キャプチャハンドラが "driver-popover" を含むクラス名の
+   要素で stopImmediatePropagation() を発火させるため、プレフィックスは必ず別名にする */
+.onboarding-tour-skip-btn {
+  border-radius: 6px !important;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  border: 1px solid #DFE4EA !important;
+  background: #ffffff !important;
+  color: #637381 !important;
+  cursor: pointer !important;
+  margin-left: 12px !important;
+  margin-right: auto !important;
+  text-shadow: none !important;
+  line-height: 1.2 !important;
+}
+.onboarding-tour-skip-btn:hover {
+  background: #F9FAFB !important;
+  color: #111928 !important;
 }
 
 /* ポップオーバーの矢印 */

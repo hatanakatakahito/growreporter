@@ -149,6 +149,69 @@ export async function generateImprovementMockupCallable(req) {
       }
     }
 
+    // 1d. 既存スクショが無ければ PSI API でオンデマンド撮影（PC + Mobile）
+    //     撮影結果は pageScreenshots に保存し、次回以降の再利用を可能にする
+    if (!beforeScreenshotBase64 && improvement.targetPageUrl) {
+      try {
+        console.log(`[generateImprovementMockup] On-demand PSI capture: ${improvement.targetPageUrl}`);
+        const { captureSingleScreenshot } = await import('../utils/captureSingleScreenshot.js');
+        const { FieldValue } = await import('firebase-admin/firestore');
+
+        // サイト所有者 uid を Storage パス用に取得
+        const siteDoc = await db.collection('sites').doc(siteId).get();
+        const siteOwnerId = siteDoc.data()?.userId || userId;
+        const pagePath = (() => {
+          try { return new URL(improvement.targetPageUrl).pathname; } catch { return '/'; }
+        })();
+
+        // PC + Mobile を並列取得
+        const [pcResult, mobileResult] = await Promise.all([
+          captureSingleScreenshot({
+            url: improvement.targetPageUrl,
+            deviceType: 'pc',
+            userId: siteOwnerId,
+            options: { storagePathPrefix: 'page-screenshots', siteId, pagePath },
+          }),
+          captureSingleScreenshot({
+            url: improvement.targetPageUrl,
+            deviceType: 'mobile',
+            userId: siteOwnerId,
+            options: { storagePathPrefix: 'page-screenshots', siteId, pagePath },
+          }),
+        ]);
+
+        if (pcResult?.imageUrl || mobileResult?.imageUrl) {
+          // pageScreenshots に保存（PC を screenshotUrl に、Mobile を screenshotUrlMobile に）
+          await db.collection('sites').doc(siteId).collection('pageScreenshots').add({
+            url: improvement.targetPageUrl,
+            pagePath,
+            screenshotUrl: pcResult?.imageUrl || null,
+            screenshotUrlMobile: mobileResult?.imageUrl || null,
+            imageSize: pcResult?.imageSize || 0,
+            mobileImageSize: mobileResult?.imageSize || 0,
+            screenshotType: pcResult?.screenshotType || mobileResult?.screenshotType || null,
+            source: 'on-demand-psi',
+            capturedAt: FieldValue.serverTimestamp(),
+          });
+          // _meta 更新（Improve.jsx の realtime listener を発火させる）
+          await db.collection('sites').doc(siteId).collection('pageScreenshots').doc('_meta').set({
+            lastCapturedAt: FieldValue.serverTimestamp(),
+          }, { merge: true });
+
+          // Gemini 入力用に PC 版を base64 化（モックアップ生成は従来通り PC ベース）
+          const primaryUrl = pcResult?.imageUrl || mobileResult?.imageUrl;
+          const res = await fetch(primaryUrl);
+          if (res.ok) {
+            const buffer = await res.arrayBuffer();
+            beforeScreenshotBase64 = `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`;
+            screenshotSource = 'on-demand-psi';
+          }
+        }
+      } catch (e) {
+        console.warn(`[generateImprovementMockup] On-demand PSI capture failed: ${e.message}`);
+      }
+    }
+
     console.log(`[generateImprovementMockup] Screenshot source: ${screenshotSource || 'none'} for ${improvementId}`);
 
     // ── Step 2: デザインデータを pageScrapingData から取得 ──

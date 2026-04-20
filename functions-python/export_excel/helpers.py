@@ -295,11 +295,9 @@ def append_ai_and_memo_sections(
             ws.write(row, 0, "■ AI分析", ai_header_fmt)
         row += 1
 
-        # 本文 (Markdown 記号を除去)
+        # 本文 (Markdown 記号を除去) — 折り返し込みで行高さ推定
         clean_text = _strip_markdown(ai_data.get("summary", ""))
-        lines = clean_text.split("\n")
-        line_count = max(1, len(lines))
-        height = min(MAX_ROW_HEIGHT_PT, max(MIN_ROW_HEIGHT_PT, line_count * LINE_HEIGHT_PT * 1.05))
+        height = _estimate_wrapped_height(clean_text, num_cols)
         ws.set_row(row, height)
         if num_cols > 1:
             ws.merge_range(row, 0, row, num_cols - 1, clean_text, ai_content_fmt)
@@ -320,9 +318,7 @@ def append_ai_and_memo_sections(
 
         for memo in memos:
             memo_text = _format_memo_text(memo)
-            lines = memo_text.split("\n")
-            line_count = max(1, len(lines))
-            height = min(MAX_ROW_HEIGHT_PT, max(MIN_ROW_HEIGHT_PT, line_count * LINE_HEIGHT_PT * 1.05))
+            height = _estimate_wrapped_height(memo_text, num_cols)
             ws.set_row(row, height)
             if num_cols > 1:
                 ws.merge_range(row, 0, row, num_cols - 1, memo_text, memo_content_fmt)
@@ -331,6 +327,27 @@ def append_ai_and_memo_sections(
             row += 1
 
     return row
+
+
+def _estimate_wrapped_height(text: str, num_cols: int) -> float:
+    """
+    マージセル内のテキストが折り返した時の行数を推定し、適切な行高さを返す。
+
+    num_cols から merge 幅をざっくり計算し、1 行あたり何文字入るかを推定する。
+    日本語混在を想定し full-width 1 字 = 2 char width。
+    """
+    if not text:
+        return MIN_ROW_HEIGHT_PT
+    # マージ幅 (おおよその char width) — 列幅 14 char × num_cols
+    total_char_width = max(40, num_cols * 14)
+    # 全角 1 文字 ≒ 2 char width 相当 → 半分にして「日本語的 1 行に入る文字数」とする
+    chars_per_line = max(30, int(total_char_width * 0.55))
+
+    visual_lines = 0
+    for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
+        visual_lines += max(1, math.ceil(len(line) / chars_per_line))
+
+    return min(MAX_ROW_HEIGHT_PT, max(MIN_ROW_HEIGHT_PT, math.ceil(visual_lines * LINE_HEIGHT_PT * 1.15)))
 
 
 def _strip_markdown(text: str) -> str:

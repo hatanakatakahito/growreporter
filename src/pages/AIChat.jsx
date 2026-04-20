@@ -21,6 +21,13 @@ import {
 import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import toast from 'react-hot-toast';
 import { useAutoTour } from '../hooks/useAutoTour';
+import TourHelpButton from '../components/Onboarding/TourHelpButton';
+import { useAdmin } from '../hooks/useAdmin';
+
+const MODEL_OPTIONS = [
+  { value: 'gemini', label: 'Gemini 2.5 Flash', adminOnly: false },
+  { value: 'claude', label: 'Claude Sonnet 4.6', adminOnly: true },
+];
 
 const CHART_COLORS = ['#3758F9', '#13C296', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xlsx', 'csv', 'pptx', 'docx'];
@@ -140,6 +147,7 @@ export default function AIChat() {
   const { selectedSite, selectedSiteId } = useSite();
   const { currentUser } = useAuth();
   const { plan, getRemainingByType, isFree } = usePlan();
+  const { isAdmin } = useAdmin();
   const [searchParams] = useSearchParams();
   useAutoTour('aiChat');
 
@@ -157,6 +165,27 @@ export default function AIChat() {
   const [editTitleValue, setEditTitleValue] = useState('');
   const [showNewSessionDialog, setShowNewSessionDialog] = useState(false);
   const [newSessionTitle, setNewSessionTitle] = useState('');
+  const [modelChoice, setModelChoice] = useState(() => {
+    try { return localStorage.getItem('aiChatModel') || 'gemini'; } catch { return 'gemini'; }
+  });
+
+  // 非管理者が localStorage に claude を持っていた場合は gemini に戻す
+  useEffect(() => {
+    if (modelChoice === 'claude' && !isAdmin) {
+      setModelChoice('gemini');
+      try { localStorage.setItem('aiChatModel', 'gemini'); } catch {}
+    }
+  }, [isAdmin, modelChoice]);
+
+  const handleModelChange = (value) => {
+    setModelChoice(value);
+    try { localStorage.setItem('aiChatModel', value); } catch {}
+  };
+
+  const availableModels = useMemo(
+    () => MODEL_OPTIONS.filter(m => !m.adminOnly || isAdmin),
+    [isAdmin]
+  );
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -261,6 +290,7 @@ export default function AIChat() {
         sessionId: activeSessionId || null,
         message: text,
         attachments: attachmentData,
+        model: modelChoice,
       });
 
       const { sessionId: newSessionId, message: aiMsg } = result.data;
@@ -497,10 +527,11 @@ export default function AIChat() {
             {showSidebar ? <ChevronLeft className="h-5 w-5 text-body-color" /> : <Menu className="h-5 w-5 text-body-color" />}
           </button>
           <Sparkles className="h-5 w-5 text-primary shrink-0" />
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 flex items-center gap-2">
             <h2 className="text-sm font-semibold text-dark dark:text-white truncate">
               AIチャット {selectedSite?.siteName ? `- ${selectedSite.siteName}` : ''}
             </h2>
+            <TourHelpButton tourId="aiChat" />
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {messages.length > 0 && (
@@ -561,7 +592,7 @@ export default function AIChat() {
                       setMessages(prev => prev.filter((_, j) => j !== i));
                       setIsSending(true);
                       const fn = httpsCallable(functions, 'aiChat');
-                      fn({ siteId: selectedSiteId, sessionId: activeSessionId, message: lastUserMsg.text, attachments: [] })
+                      fn({ siteId: selectedSiteId, sessionId: activeSessionId, message: lastUserMsg.text, attachments: [], model: modelChoice })
                         .then(result => {
                           const { message: aiMsg } = result.data;
                           setMessages(prev => [...prev, { role: 'model', text: aiMsg.text, chartData: aiMsg.chartData, improvementData: aiMsg.improvementData, timestamp: new Date().toISOString() }]);
@@ -583,7 +614,7 @@ export default function AIChat() {
                         setMessages(prev => [...prev, userMsg]);
                         setIsSending(true);
                         const fn = httpsCallable(functions, 'aiChat');
-                        fn({ siteId: selectedSiteId, sessionId: activeSessionId, message: newText, attachments: [] })
+                        fn({ siteId: selectedSiteId, sessionId: activeSessionId, message: newText, attachments: [], model: modelChoice })
                           .then(result => {
                             const { message: aiMsg } = result.data;
                             setMessages(prev => [...prev, { role: 'model', text: aiMsg.text, chartData: aiMsg.chartData, improvementData: aiMsg.improvementData, timestamp: new Date().toISOString() }]);
@@ -628,6 +659,21 @@ export default function AIChat() {
         {/* 入力欄 */}
         <div className="border-t border-stroke dark:border-dark-3 bg-white dark:bg-dark-2 px-4 py-3 shrink-0">
           <div className="mx-auto max-w-3xl">
+            {availableModels.length > 1 && !isLimitReached && (
+              <div className="mb-2 flex items-center gap-2">
+                <Sparkles className="h-3.5 w-3.5 text-primary" />
+                <select
+                  value={modelChoice}
+                  onChange={e => handleModelChange(e.target.value)}
+                  className="rounded-md border border-stroke bg-white px-2 py-1 text-xs font-medium text-dark focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+                  title="AIモデル選択（管理者のみClaude選択可）"
+                >
+                  {availableModels.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
             {isLimitReached ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
                 今月のAIチャット回数に達しました。プランをアップグレードしてください。

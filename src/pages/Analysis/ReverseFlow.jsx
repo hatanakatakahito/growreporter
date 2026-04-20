@@ -18,7 +18,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
-import { useAutoTour } from '../../hooks/useAutoTour';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 
 /**
  * 逆算フロー画面
@@ -45,7 +45,6 @@ const Arrow = ({ rate }) => (
 export default function ReverseFlow() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const { currentUser } = useAuth();
-  useAutoTour('analysisReverseFlow');
   const navigate = useNavigate();
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
@@ -483,9 +482,12 @@ export default function ReverseFlow() {
         {/* コンテンツ */}
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-dark dark:text-white">
-              逆算フロー
-            </h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg font-bold text-dark dark:text-white">
+                逆算フロー
+              </h2>
+              <TourHelpButton tourId="analysisReverseFlow" />
+            </div>
             <p className="mt-0.5 text-sm text-body-color">
               フォームページからのコンバージョンフローを分析
             </p>

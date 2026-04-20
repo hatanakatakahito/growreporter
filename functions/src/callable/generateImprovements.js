@@ -251,6 +251,8 @@ export async function generateImprovementsCallable(req) {
     const userEmail = userDoc.exists ? (userDoc.data()?.email || 'unknown') : 'unknown';
 
     const improvementIds = [];
+    // 並列バックグラウンド撮影用に、モックアップ対象（非ビジュアルではない）の targetPageUrl を蓄積
+    const mockupTargetUrls = [];
 
     for (let i = 0; i < filtered.length; i += 250) {
       const chunk = filtered.slice(i, i + 250);
@@ -293,33 +295,21 @@ export async function generateImprovementsCallable(req) {
           ...(nonVisual ? { mockupSkipped: true, mockupSkipReason: 'non_visual' } : {}),
         });
         improvementIds.push(ref.id);
+        // モックアップ対象のみ Before スクショ撮影候補に追加
+        if (!nonVisual && targetPageUrl) {
+          mockupTargetUrls.push(targetPageUrl);
+        }
       }
 
       await batch.commit();
     }
 
-    // Step 8: 不足スクリーンショットの撮影（31〜50位のページ等）
-    const targetPageUrls = filtered
-      .map(suggestion => {
-        let path = (suggestion.targetPagePath || suggestion.targetPageUrl || '').trim();
-        if (!path) {
-          const extracted = extractPathFromTitleOrDescription(suggestion.title, suggestion.description);
-          if (extracted && extracted !== '/') path = extracted;
-        }
-        return buildTargetPageUrl(path);
-      })
-      .filter(Boolean);
-
-    if (targetPageUrls.length > 0) {
-      try {
-        const { captureMissingScreenshots } = await import('../utils/captureMissingScreenshots.js');
-        const ssResult = await captureMissingScreenshots(siteId, targetPageUrls);
-        logger.info('[generateImprovements] 不足スクショ撮影結果:', ssResult);
-      } catch (ssError) {
-        // スクショ失敗は改善案生成の成否に影響させない
-        logger.warn('[generateImprovements] 不足スクショ撮影エラー（無視）:', ssError.message);
-      }
-    }
+    // Before スクショの撮影は await しない — 応答を即座に返してユーザーを待たせない。
+    // フロント側（Improve.jsx）が改善一覧を検知した瞬間、並列度4で
+    // captureBeforeScreenshot Callable を叩いて裏で撮影する方式に切替。
+    // （Cloud Functions 2nd gen で fire-and-forget はコンテナ停止で切れる可能性があるため、
+    //   クライアント駆動の方が確実。サーバ側では mockupTargetUrls を使わず破棄。）
+    void mockupTargetUrls;
 
     const duration = Date.now() - startTime;
     logger.info(`[generateImprovements] 完了: ${improvementIds.length}件保存 (${duration}ms)`);

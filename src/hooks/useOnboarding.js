@@ -3,17 +3,19 @@ import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useAdmin } from './useAdmin';
+import { usePlan } from './usePlan';
 import { getDefaultOnboarding, TOUR_TARGET_VERSION } from '../constants/onboarding';
 
 /**
  * ツアーガイドの状態管理フック（トグル式）
- * - tourGuideEnabled: ON/OFF トグル
+ * - tourGuideEnabled: ON/OFF トグル（OFF→ON で seenTours リセット）
  * - seenTours: 各ツアーの既読状態
- * - resetSeenTours: 全ツアーをリセット
+ * - Free→Business アップグレード時に seenTours を自動リセット
  */
 export function useOnboarding() {
   const { currentUser, userProfile } = useAuth();
   const { isAdmin, loading: isAdminLoading } = useAdmin();
+  const { planId, isLoading: isPlanLoading } = usePlan();
 
   const [isDesktop, setIsDesktop] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -53,6 +55,28 @@ export function useOnboarding() {
     [currentUser?.uid]
   );
 
+  // Free → Business アップグレード検知: seenTours を自動リセット
+  // planId (usePlan の state) が確定する前に実行すると、初期値 'free' と Firestore の
+  // lastPlanId が食い違って誤って「Free→Business 昇格」と判定してしまうため、
+  // usePlan の読み込み完了を必ず待つ。
+  useEffect(() => {
+    if (isPlanLoading) return;
+    if (!currentUser?.uid || !userProfile) return;
+    const lastPlanId = onboarding?.lastPlanId || 'free';
+    if (planId === 'business' && lastPlanId !== 'business') {
+      markedToursRef.current.clear();
+      const defaults = getDefaultOnboarding();
+      updateUserDoc({
+        'onboarding.seenTours': defaults.seenTours,
+        'onboarding.lastPlanId': 'business',
+        'onboarding.tourVersion': TOUR_TARGET_VERSION,
+        tourGuideEnabled: true,
+      });
+    } else if (planId && planId !== lastPlanId) {
+      updateUserDoc({ 'onboarding.lastPlanId': planId });
+    }
+  }, [isPlanLoading, planId, currentUser?.uid, userProfile?.plan]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const markTourSeen = useCallback(
     async (tourId) => {
       if (!currentUser?.uid) return;
@@ -63,23 +87,8 @@ export function useOnboarding() {
     [currentUser?.uid, updateUserDoc]
   );
 
-  const toggleTourGuide = useCallback(async () => {
-    await updateUserDoc({ tourGuideEnabled: !tourGuideEnabled });
-  }, [tourGuideEnabled, updateUserDoc]);
-
-  const resetSeenTours = useCallback(async () => {
-    markedToursRef.current.clear();
-    const defaults = getDefaultOnboarding();
-    await updateUserDoc({
-      'onboarding.seenTours': defaults.seenTours,
-      'onboarding.tourVersion': TOUR_TARGET_VERSION,
-    });
-  }, [updateUserDoc]);
-
   return {
     tourGuideEnabled,
-    toggleTourGuide,
-    resetSeenTours,
     seenTours,
     markTourSeen,
     isDesktop,

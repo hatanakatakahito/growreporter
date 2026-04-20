@@ -18,7 +18,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
-import { useAutoTour } from '../../hooks/useAutoTour';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 
 /**
  * ページフロー画面
@@ -28,7 +28,6 @@ import { useAutoTour } from '../../hooks/useAutoTour';
 export default function PageFlow() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const { currentUser } = useAuth();
-  useAutoTour('analysisPageFlow');
   const [searchParams, setSearchParams] = useSearchParams();
   const [selectedPage, setSelectedPage] = useState('');
   const [selectedPageOption, setSelectedPageOption] = useState(null);
@@ -179,9 +178,12 @@ export default function PageFlow() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-dark dark:text-white">
-                ページフロー
-              </h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-dark dark:text-white">
+                  ページフロー
+                </h2>
+                <TourHelpButton tourId="analysisPageFlow" />
+              </div>
               <p className="mt-0.5 text-sm text-body-color">
                 特定ページを閲覧する直前に、ユーザーがサイト内のどのページを見ていたかを分析
               </p>

@@ -20,7 +20,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
-import { useAutoTour } from '../../hooks/useAutoTour';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 import {
   ResponsiveContainer,
   BarChart,
@@ -39,7 +39,6 @@ import {
 export default function LandingPages() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
-  useAutoTour('analysisLandingPages');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
@@ -240,9 +239,12 @@ export default function LandingPages() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-dark dark:text-white">
-                エンゲージメント - ランディングページ
-              </h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-dark dark:text-white">
+                  エンゲージメント - ランディングページ
+                </h2>
+                <TourHelpButton tourId="analysisLandingPages" />
+              </div>
               <p className="mt-0.5 text-sm text-body-color">
                 ユーザーが最初に訪問したページ（ランディングページ）を確認できます
               </p>

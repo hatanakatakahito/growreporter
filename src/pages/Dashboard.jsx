@@ -16,12 +16,15 @@ import { setPageTitle } from '../utils/pageTitle';
 import { Globe } from 'lucide-react';
 import { format, sub, subDays, subMonths, startOfMonth } from 'date-fns';
 import { useAutoTour } from '../hooks/useAutoTour';
+import TourHelpButton from '../components/Onboarding/TourHelpButton';
+import { usePlan } from '../hooks/usePlan';
 
 /**
  * ダッシュボード画面
  */
 export default function Dashboard() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
+  const { isFree } = usePlan();
   useAutoTour('dashboard');
 
   useEffect(() => {
@@ -129,6 +132,7 @@ export default function Dashboard() {
                     <h1 className="truncate text-2xl font-bold text-gray-900">
                       {selectedSite.siteName || 'サイト名'}
                     </h1>
+                    <TourHelpButton tourId="dashboard" />
                   </div>
                   <p className="mb-4 pl-[30px] text-xs text-gray-500">{selectedSite.siteUrl || ''}</p>
                   <div className="mb-1.5 pl-[30px]">
@@ -217,10 +221,12 @@ export default function Dashboard() {
               />
             </div>
 
-            {/* 改善タスク進捗 */}
-            <div data-tour="dashboard-improve">
-              <ImprovementSummary siteId={selectedSiteId} />
-            </div>
+            {/* 改善タスク進捗（Business プランのみ） */}
+            {!isFree && (
+              <div data-tour="dashboard-improve">
+                <ImprovementSummary siteId={selectedSiteId} />
+              </div>
+            )}
           </div>
         </div>
       </main>

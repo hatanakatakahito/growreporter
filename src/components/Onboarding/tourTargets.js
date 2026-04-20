@@ -2,6 +2,10 @@
  * data-tour 属性値の定数集（タイポ防止）
  */
 export const TOUR_TARGETS = {
+  // Header
+  HEADER_SITE_SELECT: 'header-site-select',
+  HEADER_NOTIFICATION: 'header-notification',
+
   // Dashboard
   DASHBOARD_KPI: 'dashboard-kpi',
   DASHBOARD_ALERTS: 'dashboard-alerts',
@@ -10,8 +14,11 @@ export const TOUR_TARGETS = {
   DASHBOARD_IMPROVE: 'dashboard-improve',
 
   // Sidebar
-  SIDEBAR_ANALYSIS: 'sidebar-analysis',
-  SIDEBAR_RESTART_TOUR: 'sidebar-restart-tour',
+  SIDEBAR_NAV: 'sidebar-nav',
+  SIDEBAR_TOGGLES: 'sidebar-toggles',
+  SIDEBAR_THEME_TOGGLE: 'sidebar-theme-toggle',
+  SIDEBAR_TOUR_TOGGLE: 'sidebar-tour-toggle',
+  SIDEBAR_USER_INFO: 'sidebar-user-info',
 
   // Analysis
   ANALYSIS_PERIOD: 'analysis-period',

@@ -6,6 +6,7 @@ import { useSite } from '../contexts/SiteContext';
 import { useAuth } from '../contexts/AuthContext';
 import { usePlan } from './usePlan';
 import { format, sub, startOfMonth } from 'date-fns';
+import { formatEstimatedPriceLabel, formatEstimatedDeliveryLabel } from '../utils/improvementEstimate';
 import {
   resolveVisibleColumns,
   adaptMonthlyRows,
@@ -94,6 +95,59 @@ function buildSheetsPayload(allData) {
   };
 }
 
+// 月次データから 前月比 (mom) と 前年同月比 (yoy) を算出
+// 戻り値: { sessions: { mom, yoy }, totalUsers: { ... }, ... }（小数比率）
+function computeMonthlyDelta(monthlyData) {
+  if (!Array.isArray(monthlyData) || monthlyData.length < 2) return null;
+
+  // yearMonth/label 昇順でソート（最新が末尾）
+  const sorted = [...monthlyData].sort((a, b) => {
+    const ka = String(a.yearMonth ?? a.month ?? a.label ?? '');
+    const kb = String(b.yearMonth ?? b.month ?? b.label ?? '');
+    return ka.localeCompare(kb);
+  });
+
+  const latest = sorted[sorted.length - 1];
+  const prev = sorted[sorted.length - 2];
+  const yearAgo = sorted.length >= 13 ? sorted[sorted.length - 13] : null;
+
+  // summary metrics キー → monthlyData キーの fallback
+  const fieldMap = {
+    sessions: ['sessions'],
+    totalUsers: ['totalUsers', 'users'],
+    newUsers: ['newUsers'],
+    pageViews: ['pageViews', 'screenPageViews'],
+    engagementRate: ['engagementRate'],
+    conversions: ['conversions', 'totalConversions'],
+  };
+
+  const pick = (row, keys) => {
+    if (!row) return null;
+    for (const k of keys) {
+      const v = row[k];
+      if (v !== undefined && v !== null) return Number(v);
+    }
+    return null;
+  };
+
+  const ratio = (cur, base) => {
+    if (cur == null || base == null || base === 0) return null;
+    return (cur - base) / base;
+  };
+
+  const result = {};
+  for (const [outKey, inKeys] of Object.entries(fieldMap)) {
+    const curVal = pick(latest, inKeys);
+    const prevVal = pick(prev, inKeys);
+    const yearVal = pick(yearAgo, inKeys);
+    result[outKey] = {
+      mom: ratio(curVal, prevVal),
+      yoy: yearAgo ? ratio(curVal, yearVal) : null,
+    };
+  }
+  return result;
+}
+
 // カスタムシート用のペイロード (Python CF 側で独自レイアウトを生成)
 function buildCustomSheetsPayload(allData) {
   return {
@@ -102,10 +156,20 @@ function buildCustomSheetsPayload(allData) {
     conversionEvents: allData.conversionEvents || [],
     summary: allData.summaryMetrics,
     compSummary: allData.comparison?.summaryMetrics || null,
+    monthlyDelta: computeMonthlyDelta(allData.monthlyData),
     users: allData.demographics,
     conversions: allData.conversions,
     reverseFlows: allData.reverseFlows || [],
-    improvements: allData.improvements || [],
+    improvements: (allData.improvements || []).map((item) => {
+      const price = formatEstimatedPriceLabel(item.estimatedLaborHours);
+      const delivery = formatEstimatedDeliveryLabel(item.estimatedLaborHours);
+      const priceLabel = price === '要相談' ? '要相談' : `${price}（税別）`;
+      const deliveryLabel = delivery === '要相談' ? '' : delivery;
+      return {
+        ...item,
+        costDeliveryLabel: deliveryLabel ? `${priceLabel}\n${deliveryLabel}` : priceLabel,
+      };
+    }),
   };
 }
 

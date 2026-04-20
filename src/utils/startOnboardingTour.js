@@ -5,7 +5,6 @@
  *   - driver.js は React と無関係な純粋 JavaScript ライブラリなので
  *     useEffect ではなく、直接呼び出して使う。
  *   - StrictMode・stale closure・cleanup 競合などの問題を根本的に回避。
- *   - 呼び出し側（useAutoTour）はページ遷移時にこの関数を呼ぶだけ。
  */
 import { driver } from 'driver.js';
 import 'driver.js/dist/driver.css';
@@ -47,12 +46,14 @@ const STEP_TITLE = {
 };
 
 /**
+ * ツアーを起動
  * @param {string} tourId - tourSteps.js のキー
  * @param {object} options
  * @param {boolean} options.isFree - Freeプランかどうか（businessOnly フィルタ用）
  * @param {string} options.userId - Firestore 書き込み用の uid
+ * @param {boolean} options.force - 「使い方」ボタンからの手動起動（seenTours を更新しない）
  */
-export function startOnboardingTour(tourId, { isFree = false, userId } = {}) {
+export function startOnboardingTour(tourId, { isFree = false, userId, force = false } = {}) {
   // 多重起動防止
   if (window.__onboardingTourActive) return;
 
@@ -67,31 +68,34 @@ export function startOnboardingTour(tourId, { isFree = false, userId } = {}) {
   if (typeof window === 'undefined') return;
   if (!window.matchMedia('(min-width: 768px)').matches) return;
 
-  // DOM polling: target 要素がレンダリングされるまで待つ
-  let attempts = 0;
-  const maxAttempts = 25; // 100ms × 25 = 2.5秒 まで待つ
+  // ページ側の自動モーダル等とバッティングしないよう、
+  // DOM polling / setTimeout の待機中もツアー起動中とみなすため、ここで先にフラグを立てる。
+  // ツアーが結果的に起動できなかった（全ステップ欠落）場合は launchTour で解除＋完了イベントを発火する。
+  window.__onboardingTourActive = true;
 
-  const tryStart = () => {
-    const target = document.querySelector(steps[0].element);
-    if (!target) {
-      attempts += 1;
-      if (attempts < maxAttempts) {
-        setTimeout(tryStart, 100);
-      } else {
-        console.warn(
-          `[startOnboardingTour] target not found: ${steps[0].element}`
-        );
-      }
+  // DOM polling: element を持つステップの target 要素が揃うまで待つ
+  // タイムアウト後は見つかったステップだけでツアーを開始（全失敗を避ける）
+  let attempts = 0;
+  const maxAttempts = 25; // 200ms × 25 = 5秒 まで待つ
+
+  const stepsPresent = (stepList) =>
+    stepList.filter((s) => !s.element || document.querySelector(s.element));
+
+  const launchTour = (finalSteps) => {
+    if (finalSteps.length === 0) {
+      console.warn('[startOnboardingTour] 表示可能なステップがないため中断');
+      window.__onboardingTourActive = false;
+      window.dispatchEvent(new CustomEvent('onboardingTourEnded', { detail: { tourId } }));
       return;
     }
 
-    window.__onboardingTourActive = true;
-
-    const drv = driver({
+    let drv;
+    drv = driver({
       showProgress: true,
       allowClose: true,
       animate: true,
-      smoothScroll: true,
+      smoothScroll: false,
+      stagePadding: 4,
       overlayOpacity: 0.6,
       showButtons: ['next', 'previous', 'close'],
       nextBtnText: '次へ',
@@ -99,12 +103,35 @@ export function startOnboardingTour(tourId, { isFree = false, userId } = {}) {
       doneBtnText: '完了',
       closeBtnText: 'ガイドを終了する',
       progressText: 'ステップ {{current}} / {{total}}',
-      steps,
+      steps: finalSteps,
+      // 途中ステップでも既読化して終了できる「スキップで完了」ボタンを挿入
+      // クラス名に "driver-popover" を含めると driver.js の document レベル capture ハンドラが
+      // stopImmediatePropagation を発火させてしまい click が届かないので別プレフィックスにする
+      onPopoverRender: (popover, { driver: driverInstance, state }) => {
+        // 最終ステップは「完了」ボタンが同義なのでスキップボタンは出さない
+        if (state.activeIndex === finalSteps.length - 1) return;
+        const skipBtn = document.createElement('button');
+        skipBtn.type = 'button';
+        skipBtn.textContent = 'スキップで完了';
+        skipBtn.className = 'onboarding-tour-skip-btn';
+        skipBtn.addEventListener('click', () => {
+          const target = driverInstance || drv;
+          if (target && typeof target.destroy === 'function') {
+            target.destroy();
+          }
+        });
+        // prev/next と同じフッター領域に追加
+        if (popover.footerButtons) {
+          popover.footerButtons.insertBefore(skipBtn, popover.footerButtons.firstChild);
+        }
+      },
       onDestroyed: async () => {
         window.__onboardingTourActive = false;
+        // ツアー完了を通知（ページ側で被るモーダルの開閉制御などに利用）
+        window.dispatchEvent(new CustomEvent('onboardingTourEnded', { detail: { tourId } }));
 
-        // Firestore に seenTours を書き込む
-        if (userId) {
+        // force モード（手動起動）の場合は seenTours を更新しない
+        if (!force && userId) {
           try {
             await updateDoc(doc(db, 'users', userId), {
               [`onboarding.seenTours.${tourId}`]: true,
@@ -115,22 +142,54 @@ export function startOnboardingTour(tourId, { isFree = false, userId } = {}) {
           }
         }
 
-        // 完走トースト
-        const stepTitle = STEP_TITLE[tourId];
-        if (stepTitle) {
-          toast.success(`${stepTitle}を確認しました`, {
-            duration: 3000,
-            style: {
-              border: '1px solid #DFE4EA',
-              borderRadius: '8px',
-              fontSize: '13px',
-            },
-          });
+        // 完走トースト（force モードは出さない）
+        if (!force) {
+          const stepTitle = STEP_TITLE[tourId];
+          if (stepTitle) {
+            toast.success(`${stepTitle}を確認しました`, {
+              duration: 3000,
+              style: {
+                border: '1px solid #DFE4EA',
+                borderRadius: '8px',
+                fontSize: '13px',
+              },
+            });
+          }
         }
       },
     });
 
     drv.drive();
+  };
+
+  const tryStart = () => {
+    const present = stepsPresent(steps);
+    const allPresent = present.length === steps.length;
+
+    // すべて揃っていれば即起動
+    if (allPresent) {
+      launchTour(steps);
+      return;
+    }
+
+    // タイムアウト前はリトライ
+    attempts += 1;
+    if (attempts < maxAttempts) {
+      setTimeout(tryStart, 200);
+      return;
+    }
+
+    // タイムアウト後は見つかったステップだけで起動（1つでも欠けて全滅を防ぐ）
+    const missing = steps
+      .filter((s) => s.element && !document.querySelector(s.element))
+      .map((s) => s.element);
+    if (missing.length > 0) {
+      console.warn(
+        `[startOnboardingTour] 非表示要素をスキップ (tourId=${tourId}):`,
+        missing
+      );
+    }
+    launchTour(present);
   };
 
   // ページマウントを少し待ってから開始

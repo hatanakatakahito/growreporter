@@ -69,35 +69,79 @@ function makeAnalysisSteps(periodDesc, aiTabDesc, opts = {}) {
       popover: {
         title: 'メモ機能',
         description: '分析の気付きをメモとして残せます。チームメンバーとも共有可能で、後から振り返るときに便利です。',
-        side: 'bottom',
+        side: 'top',
         align: 'start',
       },
-    }
+    },
+    TOUR_GUIDE_TOGGLE_STEP
   );
   return steps;
 }
 
+// ── 全ツアー共通の最終ステップ: ツアーガイドの再表示案内 ──────
+const TOUR_GUIDE_TOGGLE_STEP = {
+  popover: {
+    title: 'ツアーガイドの再表示',
+    description:
+      'このページのガイドは、画面上部の<strong>「使い方」ボタン</strong>からいつでも再表示できます。ご不明な点があればご利用ください。',
+  },
+};
+
 // ── ダッシュボード ──────────────────────────────
 export const dashboardSteps = [
+  // ヘッダー領域
+  {
+    element: sel(TOUR_TARGETS.HEADER_SITE_SELECT),
+    popover: {
+      title: 'サイト選択',
+      description: '複数サイトを登録している場合、ここで分析対象のサイトを切り替えられます。選択したサイトのデータがダッシュボードと各分析画面に反映されます。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
+    popover: {
+      title: '表示期間',
+      description: '分析対象の期間を設定します。カレンダーから開始日・終了日を選択でき、比較対象（前期間・前年同期など）も指定できます。全画面共通の設定です。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.HEADER_NOTIFICATION),
+    popover: {
+      title: '通知',
+      description: 'メモの更新通知やアラート通知をここで確認できます。ベルアイコンに赤い数字バッジが出ている場合は未読の通知があります。',
+    },
+  },
+  // ダッシュボード本体
   {
     element: sel(TOUR_TARGETS.DASHBOARD_QUICK_ACTIONS),
     popover: {
-      title: 'ダッシュボードへようこそ',
-      description: 'サイト全体のパフォーマンスを一画面で把握できます。ここではよく使う機能へのショートカットが並んでいます。',
+      title: 'クイックアクション',
+      description: 'よく使う機能へのショートカットが並んでいます。ワンクリックで各分析画面やAI機能に直接アクセスできます。',
     },
   },
   {
-    element: sel(TOUR_TARGETS.DASHBOARD_ALERTS),
+    element: sel(TOUR_TARGETS.METRIC_TAB_SUMMARY),
     popover: {
-      title: 'アラート通知',
-      description: 'セッション数やCVが大きく変動した場合にアラートが表示されます。異常な変化をいち早くキャッチし、原因分析につなげましょう。',
+      title: '主要サマリータブ',
+      description: '訪問者数・ユーザー数・平均PV・直帰率・平均滞在時間・CV数など、サイトの主要指標をカード形式で一覧表示します。各カードには前月比・前年同月比が自動計算されます。',
     },
   },
   {
-    element: sel(TOUR_TARGETS.ANALYSIS_KPI_CARD),
+    element: sel(TOUR_TARGETS.METRIC_TAB_CONVERSION),
     popover: {
-      title: '主要指標（3タブ）',
-      description: 'サマリ / CV内訳 / KPI予実 の3タブで主要指標を確認できます。前月比・前年比の変化もひと目で分かります。KPI設定を行うと目標との予実比較が可能になります。',
+      title: 'CV内訳タブ',
+      description:
+        'サイトに設定したコンバージョンイベント（フォーム送信・購入・電話など）の内訳と件数を確認できます。<br><br>' +
+        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">コンバージョン設定を開く</a>',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.METRIC_TAB_KPI),
+    popover: {
+      title: 'KPIタブ',
+      description:
+        'サイト管理画面で設定した月次KPI目標に対する実績（達成率）を確認できます。目標未達の指標がひと目で分かり、改善優先度の判断に役立ちます。<br><br>' +
+        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">KPI設定を開く</a>',
     },
   },
   {
@@ -112,10 +156,62 @@ export const dashboardSteps = [
     popover: {
       title: '改善タスク進捗',
       description: '改善するページで管理しているタスクの進捗サマリーが表示されます。未着手・対応中・完了の件数をダッシュボードから確認できます。',
-      side: 'top',
     },
     businessOnly: true,
   },
+  // サイドバー — メニュー個別説明
+  {
+    element: '#nav-dashboard',
+    popover: {
+      title: 'ダッシュボード',
+      description: 'サイト全体のパフォーマンスを一画面で確認できるトップページです。主要指標・トレンドチャート・アラート・改善進捗がまとまっています。',
+    },
+  },
+  {
+    element: '#nav-analysis',
+    popover: {
+      title: '分析する',
+      description: 'クリックするとアコーディオンが開き、15種類以上の分析画面にアクセスできます。時系列（月別/日別/曜日/時間帯）、集客（チャネル/キーワード/リファラ）、ページ（ページ別/コンテンツ/LP等）、コンバージョン（一覧/逆算フロー）のカテゴリに分かれています。',
+    },
+  },
+  {
+    element: '#nav-sites',
+    popover: {
+      title: 'サイト管理',
+      description: '登録サイトの一覧と設定を管理します。GA4/Search Console の連携設定、コンバージョンイベントの登録、月次KPI目標の設定はここから行います。',
+    },
+  },
+  {
+    element: '#nav-account-settings',
+    popover: {
+      title: 'アカウント設定',
+      description: 'プロフィール編集・プラン確認・メール通知設定（週次/月次/アラート）・メンバー管理を行います。',
+    },
+  },
+  {
+    element: '#nav-help',
+    popover: {
+      title: '使い方・意見箱',
+      description: 'クリックするとアコーディオンが開き、「マニュアル」「FAQ」「意見箱」にアクセスできます。操作方法の詳細や困ったときの解決策はマニュアル・FAQをご参照ください。ご意見・ご要望は意見箱からお気軽にお寄せください。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.SIDEBAR_THEME_TOGGLE),
+    popover: {
+      title: 'ダーク / ライトモード',
+      description: 'サイドバーの配色をダークモードとライトモードで切り替えられます。お好みに合わせてお使いください。',
+      side: 'top',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.SIDEBAR_USER_INFO),
+    popover: {
+      title: 'ユーザー情報 / アカウント設定',
+      description: 'ここにはお名前と現在のプランが表示されています。クリックするとアカウント設定画面に移動し、プロフィール編集・プラン確認・メール通知設定・メンバー管理などが行えます。',
+      side: 'top',
+    },
+  },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── 月別分析（専用・詳細版） ────────────────────────
@@ -171,10 +267,11 @@ export const analysisMonthSteps = [
     popover: {
       title: 'メモ機能',
       description: '気付きや分析結果のメモをページごとに残せます。チームメンバーとも共有可能で、後から振り返るときに便利です。',
-      side: 'bottom',
+      side: 'top',
       align: 'start',
     },
   },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── 日別分析 ──────────────────────────────────
@@ -300,14 +397,18 @@ export const analysisSummaryFreeSteps = [
     element: sel(TOUR_TARGETS.METRIC_TAB_CONVERSION),
     popover: {
       title: 'CV内訳タブ',
-      description: 'サイトに設定したコンバージョンイベント（フォーム送信・購入・電話など）の内訳と件数を確認できます。未設定の場合はサイト管理画面から登録してください。',
+      description:
+        'サイトに設定したコンバージョンイベント（フォーム送信・購入・電話など）の内訳と件数を確認できます。<br><br>' +
+        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">コンバージョン設定を開く</a>',
     },
   },
   {
     element: sel(TOUR_TARGETS.METRIC_TAB_KPI),
     popover: {
       title: 'KPIタブ',
-      description: 'サイト管理画面で設定した月次KPI目標に対する実績（達成率）を確認できます。目標未達の指標がひと目で分かり、改善優先度の判断に役立ちます。',
+      description:
+        'サイト管理画面で設定した月次KPI目標に対する実績（達成率）を確認できます。目標未達の指標がひと目で分かり、改善優先度の判断に役立ちます。<br><br>' +
+        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">KPI設定を開く</a>',
     },
   },
   {
@@ -333,10 +434,11 @@ export const analysisSummaryFreeSteps = [
     popover: {
       title: 'メモ機能',
       description: '分析の気付きをメモとして残せます。チームメンバーとも共有可能で、後から振り返るときに便利です。',
-      side: 'bottom',
+      side: 'top',
       align: 'start',
     },
   },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── レポートダウンロード（チェックリスト専用） ──────────────────
@@ -362,6 +464,7 @@ export const analysisExportSteps = [
       description: 'Excel は数値データの二次加工に、PowerPoint はそのまま報告資料に使えるレイアウトで出力されます。',
     },
   },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── AI分析（全体サマリー Business向け） ──────────────────
@@ -395,6 +498,7 @@ export const analysisSummarySteps = [
       side: 'top',
     },
   },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── AI総合分析 ────────────────────────────────
@@ -442,6 +546,7 @@ export const comprehensiveAISteps = [
       side: 'top',
     },
   },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── メンバー ──────────────────────────────────
@@ -453,6 +558,7 @@ export const membersSteps = [
       description: 'Free プランは3名まで、Business プランは無制限で招待できます。',
     },
   },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── アカウント設定 ──────────────────────────────
@@ -467,11 +573,33 @@ export const accountSettingsSteps = [
   {
     element: sel(TOUR_TARGETS.ACCOUNT_EMAIL_TAB),
     popover: {
-      title: 'メール通知を設定しましょう',
-      description: '「メール通知」タブでは3種類の通知を設定できます。\n\n・週次レポート — 毎週のパフォーマンスサマリーをメールで受信\n・月次レポート — 毎月の振り返りレポートをメールで受信\n・アラート通知 — セッション数やCVが大きく変動したときに即座に通知\n\nこのタブを開いてお好みの通知をONにしてください。',
+      title: 'メール通知タブ',
+      description: 'メール通知の設定はこのタブから行います。3種類の通知をそれぞれ ON/OFF できます。',
       side: 'bottom',
     },
   },
+  {
+    element: sel(TOUR_TARGETS.NOTIFICATION_WEEKLY),
+    popover: {
+      title: '週次レポート',
+      description: '毎週月曜日に、前週のサイトパフォーマンスサマリーをメールで受け取れます。訪問者数・PV・CV数など主要指標の週間推移が自動で届くので、週単位のモニタリングに最適です。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.NOTIFICATION_MONTHLY),
+    popover: {
+      title: '月次レポート',
+      description: '毎月初めに、前月のサイトパフォーマンスサマリーをメールで受け取れます。月次の振り返り・クライアントへの報告資料のベースとしてそのままお使いいただけます。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.NOTIFICATION_ALERT),
+    popover: {
+      title: 'アラート通知',
+      description: 'セッション数やCVが前期比で大きく変動した場合にメールで即座に通知します。サイトの異常（急激なアクセス減少・CV急増など）をいち早くキャッチし、原因調査に素早く取りかかれます。',
+    },
+  },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── サイト管理 ────────────────────────────────
@@ -490,12 +618,12 @@ export const sitesSteps = [
       description: '月次の目標KPIを設定できます。設定すると主要指標タブで予実比較が可能になります。',
     },
   },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── AIチャット ────────────────────────────────
 export const aiChatSteps = [
   {
-    element: sel(TOUR_TARGETS.AI_CHAT_INPUT),
     popover: {
       title: 'AIチャットへようこそ',
       description: '選択中のサイトのGA4・Search Consoleデータを土台に、AIと自由に対話できます。',
@@ -530,102 +658,73 @@ export const aiChatSteps = [
       side: 'top',
     },
   },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── 改善する ──────────────────────────────────
 export const improveSteps = [
   {
-    element: sel(TOUR_TARGETS.IMPROVE_HEADER),
     popover: {
       title: '改善するページへようこそ',
-      description: 'AIが提案する改善タスクを一元管理できます。カテゴリ・優先度・ステータス・目安料金で整理します。',
+      description: 'AIが提案する改善タスクを一元管理できるページです。まだタスクがない状態ですね。これから使い方をご案内します。',
     },
   },
   {
     element: sel(TOUR_TARGETS.IMPROVE_AI_GENERATE),
     popover: {
-      title: 'AI改善案を生成する',
-      description: 'GA4・Search Consoleのデータとサイトマップを元に、AIが改善ポイントを自動抽出します。ボタン右上の赤バッジは残り生成回数です。',
+      title: 'まずはAI改善案を生成してみましょう',
+      description: 'このボタンをクリックすると、GA4・Search Consoleのデータとサイトマップを元にAIが改善ポイントを自動抽出します。フォーカス（流入改善・CV改善など）も指定できます。ボタン右上の赤バッジは今月の残り生成回数です。',
     },
   },
   {
     element: sel(TOUR_TARGETS.IMPROVE_MANUAL_ADD),
     popover: {
-      title: '手動でタスクを追加',
-      description: 'AIが気付かない施策や社内で決定済みのタスクは「手動で追加」から登録できます。',
+      title: '手動でタスクを追加することもできます',
+      description: 'AIが気付かない施策や社内で決定済みのタスクは「手動で追加」から登録できます。カテゴリ・優先度・対象ページ・期待効果を入力できます。',
     },
   },
   {
     element: sel(TOUR_TARGETS.IMPROVE_AUTO_TOGGLE),
     popover: {
-      title: '月次自動生成',
-      description: 'ONにすると毎月1日に前月データを元にした改善案を自動生成します。',
-    },
-  },
-  {
-    element: sel(TOUR_TARGETS.IMPROVE_STATUS_FILTER),
-    popover: {
-      title: 'ステータスで絞り込む',
-      description: '「未着手 / 対応中 / 完了 / アーカイブ」で絞り込みできます。',
+      title: '月次自動生成もおすすめです',
+      description: 'このトグルをONにしておくと、毎月1日に前月データを元にした改善案がAIによって自動生成されます。定期的に改善ネタを仕込みたい場合に便利です。',
     },
   },
   {
     element: sel(TOUR_TARGETS.IMPROVE_TABLE),
     popover: {
-      title: '改善タスク一覧',
-      description: '行をクリックするとドロワーが開き、詳細・モックアップ・ステータス変更が行えます。完了にしたタスクは「評価する」ページで自動的に効果計測されます。',
+      title: '生成したタスクはここに並びます',
+      description: '改善案が生成されると、この一覧にカテゴリ・優先度・内容・目安料金・ステータスが表示されます。行をクリックすると詳細ドロワーが開き、モックアップ生成やステータス変更が行えます。完了にしたタスクは「評価する」ページで自動的に効果計測されます。',
       side: 'top',
     },
   },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ── 評価する ──────────────────────────────────
 export const reportsSteps = [
   {
-    element: sel(TOUR_TARGETS.REPORTS_HEADER),
     popover: {
       title: '評価するページへようこそ',
-      description: '「改善する」で完了にしたタスクの効果をGA4データから自動計測し、AIが評価レポートを作成します。',
+      description: 'このページは「改善する」ページで完了にしたタスクの効果をGA4データから自動計測し、AIが評価レポートを作成する場所です。まだ評価対象のタスクがないので空ですが、使い方をご案内します。',
     },
   },
   {
     element: sel(TOUR_TARGETS.REPORTS_SUMMARY),
     popover: {
       title: 'サマリーカード',
-      description: '完了タスク数・計測完了数・平均スコア・期待超え件数をひと目で把握できます。',
-    },
-  },
-  {
-    element: sel(TOUR_TARGETS.REPORTS_FILTER),
-    popover: {
-      title: 'ステータスで絞り込む',
-      description: '「計測待ち / 計測完了 / 期待超え」などで絞り込みできます。',
+      description: '完了タスクが蓄積されると、ここに完了タスク数・計測完了数・平均スコア・期待超え件数が表示されます。経営層やクライアントへの定期報告に便利な指標です。',
     },
   },
   {
     element: sel(TOUR_TARGETS.REPORTS_LIST),
     popover: {
-      title: 'カードをクリックで詳細展開',
-      description: '展開すると改善内容・AI評価・主要指標の変化が3カラムで並びます。',
+      title: '評価カードが並ぶエリア',
+      description: '改善するページでタスクを「完了」にすると、一定期間後にGA4データで効果が自動計測され、このエリアに評価カードとして表示されます。\n\n各カードをクリックで展開すると、改善内容・AI評価コメント・主要指標の変化（前→後）が3カラムで並びます。右上のアクションボタンから「再計測」「追加計測（14/30/60/90日後）」「次のアクション生成（フォローアップ改善案）」が可能で、改善→評価→次の改善のループを回せます。',
       side: 'top',
     },
   },
-  {
-    element: sel(TOUR_TARGETS.REPORTS_LIST),
-    popover: {
-      title: 'アクションボタン',
-      description: '「評価する」でAI評価、「再取得」で再計測、「追加計測」で14/30/60/90日後の自動計測をスケジュールできます。',
-      side: 'top',
-    },
-  },
-  {
-    element: sel(TOUR_TARGETS.REPORTS_LIST),
-    popover: {
-      title: '次のアクション生成',
-      description: 'AI評価結果を踏まえたフォローアップ改善案を自動生成し、「改善する」ページに追加できます。改善→評価→次の改善のループを回しましょう。',
-      side: 'top',
-    },
-  },
+  TOUR_GUIDE_TOGGLE_STEP,
 ];
 
 // ══════════════════════════════════════════════════════

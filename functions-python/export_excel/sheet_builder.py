@@ -21,7 +21,39 @@ from .helpers import (
     fmt_change,
     format_cell_for_export,
 )
-from .styles import FOOTER_TEXT
+from .styles import (
+    FOOTER_TEXT,
+    SHEET_TITLE_NAME_STYLE,
+    SHEET_TITLE_SUBTITLE_STYLE,
+)
+
+
+def write_sheet_title_bar(ws, sheet_name: str, subtitle: str | None, total_cols: int, formats: dict) -> int:
+    """
+    シートタイトルバー (行 0-1) を書き込む。
+    戻り値: 次に書き込み可能な行番号 (空白 1 行を含めて 3)
+    """
+    end_col = max(0, total_cols - 1)
+    # 行 0: シート名 (大) — A 列詰め、インデントなし
+    name_fmt = formats.get("sheet_title_name") or formats["header"]
+    ws.set_row(0, 28)
+    if end_col > 0:
+        ws.merge_range(0, 0, 0, end_col, sheet_name, name_fmt)
+    else:
+        ws.write(0, 0, sheet_name, name_fmt)
+
+    # 行 1: サブタイトル (小)
+    sub_fmt = formats.get("sheet_title_subtitle") or formats["header"]
+    ws.set_row(1, 16)
+    sub = subtitle or ""
+    if end_col > 0:
+        ws.merge_range(1, 0, 1, end_col, sub, sub_fmt)
+    else:
+        ws.write(1, 0, sub, sub_fmt)
+
+    # 行 2: 空白行 (区切り)
+    ws.set_row(2, 6)
+    return 3
 
 
 def _default_col_width(col: dict) -> int:
@@ -59,6 +91,7 @@ def build_dynamic_sheet(
     memos: list | None,
     formats: dict,
     chart_key: str | None = None,
+    sheet_subtitle: str | None = None,
 ):
     """
     動的列対応シートを作成し workbook に追加。
@@ -72,6 +105,11 @@ def build_dynamic_sheet(
         ws.set_column(0, 0, 20)
         ws.write(0, 0, "データなし", formats["header"])
         return ws
+
+    # ─── シートタイトルバー (行 0-1) ─────────────────
+    num_total_cols = max(1, len(visible_columns)) * 3  # 比較モード時の最大列数
+    write_sheet_title_bar(ws, sheet_name, sheet_subtitle, num_total_cols, formats)
+    HEADER_ROW = 3  # タイトル 2 行 + 空白 1 行 = 3
 
     is_comparing = comp_rows is not None
 
@@ -107,10 +145,10 @@ def build_dynamic_sheet(
     for c, w in enumerate(col_widths):
         ws.set_column(c, c, w)
 
-    # ヘッダー行 (行 0)
-    ws.set_row(0, 28)
+    # ヘッダー行 (タイトルバー後)
+    ws.set_row(HEADER_ROW, 28)
     for c, header in enumerate(headers):
-        ws.write(0, c, header, formats["header"])
+        ws.write(HEADER_ROW, c, header, formats["header"])
 
     # データ行
     data_rows: list[list[Any]] = []
@@ -138,17 +176,19 @@ def build_dynamic_sheet(
         data_rows.append(out_row)
 
     # データ行を書き込み（ゼブラストライプ適用）
-    for r, row_vals in enumerate(data_rows, start=1):
+    DATA_START_ROW = HEADER_ROW + 1
+    for idx, row_vals in enumerate(data_rows):
+        r = DATA_START_ROW + idx
         row_height = calc_row_height(row_vals, col_widths)
         ws.set_row(r, row_height)
-        is_alt = (r % 2 == 0)  # 偶数行に背景色
+        is_alt = (idx % 2 == 1)  # 0=白, 1=alt, 2=白...
         for c, val in enumerate(row_vals):
             col = out_cols[c]["col"]
             col_type = out_cols[c]["type"]
             _write_value(ws, r, c, val, col, col_type, formats, is_alt=is_alt)
 
     # 合計/平均行
-    next_row = len(data_rows) + 1
+    next_row = DATA_START_ROW + len(data_rows)
     if data_rows:
         totals = compute_totals_row(headers, data_rows, out_cols)
         ws.set_row(next_row, 24)
@@ -185,7 +225,7 @@ def build_dynamic_sheet(
             sheet_key=chart_key,
             visible_columns=visible_columns,
             rows=rows,
-            data_start_row=1,
+            data_start_row=DATA_START_ROW,
         )
 
     return ws

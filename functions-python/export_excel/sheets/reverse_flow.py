@@ -6,10 +6,11 @@ JS 側の createReverseFlowSheet 相当。
 
 from ..charts import CHART_COLORS
 from ..helpers import append_ai_and_memo_sections, fmt_year_month, safe_sheet_name
+from ..sheet_builder import write_sheet_title_bar
 from ..styles import FOOTER_TEXT
 
 
-def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | None, memos: list | None, formats: dict):
+def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | None, memos: list | None, formats: dict, sheet_subtitle: str | None = None):
     """逆算フローシートを作成。"""
     ws = workbook.add_worksheet(safe_sheet_name("逆算フロー"))
     ws.hide_gridlines(2)
@@ -22,7 +23,9 @@ def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | Non
     ws.set_column(4, 4, 14)
     ws.set_column(5, 5, 14)
 
-    row = 0
+    # シートタイトルバー (行 0-2)
+    row = write_sheet_title_bar(ws, "逆算フロー", sheet_subtitle, 6, formats)
+    first_flow = True
 
     for flow in reverse_flows:
         if not isinstance(flow, dict):
@@ -32,11 +35,12 @@ def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | Non
         form_path = flow.get("formPagePath") or "-"
         target_cv = flow.get("targetCvEvent") or "-"
 
-        # フロー名ヘッダー
-        if row > 0:
+        # フロー名ヘッダー（■ セクション帯）
+        if not first_flow:
             row += 1
-        ws.set_row(row, 28)
-        ws.merge_range(row, 0, row, 5, f"▼ {flow_name}", formats["header"])
+        first_flow = False
+        ws.set_row(row, 26)
+        ws.merge_range(row, 0, row, 5, f"■ {flow_name}", formats["section_marker"])
         row += 1
 
         # 設定情報

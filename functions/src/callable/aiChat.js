@@ -22,6 +22,10 @@ const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xlsx', 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 const GEMINI_DIRECT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
 
+const SUPPORTED_MODELS = ['gemini', 'claude'];
+const ADMIN_ONLY_MODELS = ['claude'];
+const CLAUDE_MODEL_ID = 'claude-sonnet-4-6';
+
 /**
  * メインハンドラ
  */
@@ -31,7 +35,7 @@ export async function aiChatCallable(req) {
   }
 
   const userId = req.auth.uid;
-  const { siteId, sessionId, message, attachments = [] } = req.data;
+  const { siteId, sessionId, message, attachments = [], model: requestedModel } = req.data;
 
   if (!siteId) throw new HttpsError('invalid-argument', 'siteIdが必要です');
   if (!message?.trim()) throw new HttpsError('invalid-argument', 'メッセージが必要です');
@@ -41,6 +45,16 @@ export async function aiChatCallable(req) {
   if (!canEdit) throw new HttpsError('permission-denied', 'このサイトへのアクセス権がありません');
 
   const db = getFirestore();
+
+  // モデル選択の検証（Claude は管理者のみ）
+  const modelChoice = SUPPORTED_MODELS.includes(requestedModel) ? requestedModel : 'gemini';
+  if (ADMIN_ONLY_MODELS.includes(modelChoice)) {
+    const adminDoc = await db.collection('adminUsers').doc(userId).get();
+    const adminRole = adminDoc.exists ? adminDoc.data().role : null;
+    if (!['admin', 'editor', 'viewer'].includes(adminRole)) {
+      throw new HttpsError('permission-denied', `${modelChoice} モデルは管理者のみ利用可能です`);
+    }
+  }
 
   // プラン制限チェック
   const { checkCanGenerate, incrementGenerationCount } = await import('../utils/planManager.js');
@@ -185,37 +199,19 @@ export async function aiChatCallable(req) {
     userParts.push({ text: message });
     contents.push({ role: 'user', parts: userParts });
 
-    // Gemini API呼び出し（リトライ付き）
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey) {
-      throw new HttpsError('internal', 'AI機能が設定されていません。管理者にお問い合わせください。');
-    }
-    const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    // AI 呼び出し（Gemini or Claude、リトライ付き）
     let aiResponse = null;
     let lastError = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
-          {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents,
-              generationConfig: {
-                temperature: 0.7,
-                maxOutputTokens: 4096,
-              },
-            }),
-          }
-        );
-
-        const data = await response.json();
-        aiResponse = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
+        if (modelChoice === 'claude') {
+          aiResponse = await callClaude(contents);
+        } else {
+          aiResponse = await callGemini(contents);
+        }
         if (aiResponse) break;
-        lastError = new Error('Empty response from Gemini');
+        lastError = new Error(`Empty response from ${modelChoice}`);
       } catch (err) {
         lastError = err;
         if (attempt < MAX_RETRIES) {
@@ -244,6 +240,7 @@ export async function aiChatCallable(req) {
       chartData: chartData || null,
       improvementData: improvementData || null,
       attachments: [],
+      model: modelChoice,
       timestamp: new Date().toISOString(),
     };
 
@@ -274,7 +271,7 @@ export async function aiChatCallable(req) {
     // プラン回数消費
     await incrementGenerationCount(userId, 'chat');
 
-    logger.info('[aiChat] 回答生成完了', { siteId, sessionId: sessionRef.id, isNewSession });
+    logger.info('[aiChat] 回答生成完了', { siteId, sessionId: sessionRef.id, isNewSession, model: modelChoice });
 
     return {
       success: true,
@@ -283,6 +280,7 @@ export async function aiChatCallable(req) {
         text: cleanText,
         chartData: chartData || null,
         improvementData: improvementData || null,
+        model: modelChoice,
       },
     };
   } catch (error) {
@@ -290,6 +288,95 @@ export async function aiChatCallable(req) {
     logger.error('[aiChat] エラー:', error);
     throw new HttpsError('internal', `チャットエラー: ${error.message}`);
   }
+}
+
+/**
+ * Gemini API 呼び出し
+ */
+async function callGemini(contents) {
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    throw new HttpsError('internal', 'AI機能が設定されていません。管理者にお問い合わせください。');
+  }
+  const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents,
+        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+      }),
+    }
+  );
+  const data = await response.json();
+  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+/**
+ * Claude (Anthropic) API 呼び出し
+ * Gemini 形式の contents を Claude の system + messages 形式に変換して呼ぶ
+ */
+async function callClaude(contents) {
+  const claudeApiKey = process.env.CLAUDE_API_KEY;
+  if (!claudeApiKey) {
+    throw new HttpsError('failed-precondition', 'Claude API キーが設定されていません。管理者にお問い合わせください。');
+  }
+
+  // contents[0]: user (システムプロンプト) → Claude の system へ
+  // contents[1]: model (定型アック) → 破棄
+  // contents[2..]: 実際の会話履歴 → messages へ
+  let systemPrompt = '';
+  const messages = [];
+
+  for (let i = 0; i < contents.length; i++) {
+    const item = contents[i];
+    if (i === 0 && item.role === 'user') {
+      systemPrompt = (item.parts || []).map(p => p.text).filter(Boolean).join('\n');
+      continue;
+    }
+    if (i === 1 && item.role === 'model') {
+      continue;
+    }
+    const role = item.role === 'model' ? 'assistant' : 'user';
+    const content = (item.parts || []).map(p => {
+      if (p.text) return { type: 'text', text: p.text };
+      if (p.inline_data) {
+        const mediaType = p.inline_data.mime_type;
+        if (mediaType === 'application/pdf') {
+          return { type: 'document', source: { type: 'base64', media_type: mediaType, data: p.inline_data.data } };
+        }
+        return { type: 'image', source: { type: 'base64', media_type: mediaType, data: p.inline_data.data } };
+      }
+      return null;
+    }).filter(Boolean);
+    if (content.length > 0) messages.push({ role, content });
+  }
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'x-api-key': claudeApiKey,
+      'anthropic-version': '2023-06-01',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: CLAUDE_MODEL_ID,
+      max_tokens: 4096,
+      temperature: 0.7,
+      system: systemPrompt,
+      messages,
+    }),
+  });
+
+  const data = await response.json();
+  if (data.type === 'error' || data.error) {
+    throw new Error(`Claude API error: ${data.error?.message || JSON.stringify(data)}`);
+  }
+  // content は配列で、text タイプの要素を結合
+  return (data.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n');
 }
 
 /**

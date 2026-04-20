@@ -18,6 +18,7 @@ import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAutoTour } from '../../hooks/useAutoTour';
 import { usePlan } from '../../hooks/usePlan';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 
 /**
  * 分析画面 - 全体サマリー
@@ -226,7 +227,10 @@ export default function AnalysisSummary() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           {/* ページタイトル */}
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-dark dark:text-white">分析する - 全体サマリー</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg font-bold text-dark dark:text-white">分析する - 全体サマリー</h2>
+              <TourHelpButton tourId={isFree ? 'analysisSummaryFree' : 'analysisSummary'} />
+            </div>
             <p className="mt-0.5 text-sm text-body-color">
               GA4データの全般指標を詳細に分析します
             </p>

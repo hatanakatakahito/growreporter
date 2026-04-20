@@ -3,8 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
-import { useOnboarding } from '../../hooks/useOnboarding';
-import { ChevronLeft, ChevronRight, Sun, Moon, BookOpen, HelpCircle, FileQuestion, MessageSquare, Navigation, RotateCcw } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, Moon, HelpCircle } from 'lucide-react';
 import { getPlanBadgeColor, getPlanDisplayName } from '../../constants/plans';
 import { usePlan } from '../../hooks/usePlan';
 import UpgradeModal from '../common/UpgradeModal';
@@ -74,9 +73,9 @@ export default function Sidebar() {
   const [isEngagementOpen, setIsEngagementOpen] = useState(false);
   const [isConversionOpen, setIsConversionOpen] = useState(false);
   const [isHelpOpen, setIsHelpOpen] = useState(false);
+  const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { isFree } = usePlan();
-  const { tourGuideEnabled, toggleTourGuide, resetSeenTours } = useOnboarding();
 
   // テーマオブジェクト
   const t = SIDEBAR_THEMES[isDarkSidebar ? 'dark' : 'white'];
@@ -121,6 +120,11 @@ export default function Sidebar() {
     // コンバージョンサブメニュー
     if (path.startsWith('/conversion/')) {
       setIsConversionOpen(true);
+    }
+
+    // アカウント設定
+    if (path.startsWith('/account/') || path === '/members') {
+      setIsAccountOpen(true);
     }
   }, [location.pathname]);
 
@@ -257,6 +261,14 @@ export default function Sidebar() {
       ),
       label: 'アカウント設定',
       path: '/account/settings',
+      hasAccountSubmenu: true,
+      submenu: [
+        { label: 'プロフィール', path: '/account/settings?tab=profile' },
+        { label: 'プラン確認', path: '/account/settings?tab=plan' },
+        { label: '登録サイト', path: '/account/settings?tab=sites' },
+        { label: 'メール通知', path: '/account/settings?tab=email' },
+        { label: 'メンバー管理', path: '/account/settings?tab=members' },
+      ],
     },
   ];
 
@@ -283,7 +295,7 @@ export default function Sidebar() {
       </div>
 
       {/* ナビゲーション */}
-      <nav className={`overflow-y-auto py-4 scrollbar-hide ${
+      <nav data-tour="sidebar-nav" className={`overflow-y-auto py-4 scrollbar-hide ${
         isSidebarOpen ? 'h-[calc(100vh-16rem)] px-4' : 'h-[calc(100vh-17rem)] px-2'
       }`} style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <ul className="space-y-2">
@@ -396,6 +408,51 @@ export default function Sidebar() {
                     </ul>
                   )}
                 </>
+              ) : item.hasAccountSubmenu ? (
+                <>
+                  <button
+                    id={item.navId}
+                    onClick={() => isSidebarOpen && setIsAccountOpen(!isAccountOpen)}
+                    className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
+                      isSidebarOpen ? 'justify-between' : 'justify-center'
+                    } ${location.pathname.startsWith('/account/') ? t.activeClass : ''}`}
+                    title={!isSidebarOpen ? item.label : ''}
+                  >
+                    <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
+                      {item.icon}
+                      {isSidebarOpen && <span>{item.label}</span>}
+                    </div>
+                    {isSidebarOpen && (
+                      <svg
+                        className={`h-4 w-4 ${t.chevron} transition-transform ${isAccountOpen ? 'rotate-180' : ''}`}
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                    )}
+                  </button>
+                  {isAccountOpen && isSidebarOpen && (
+                    <ul className={`ml-4 mt-1 space-y-1 border-l ${t.subBorder} pl-3`}>
+                      {item.submenu.map((sub, si) => (
+                        <li key={si}>
+                          <Link
+                            to={sub.path}
+                            className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
+                              location.pathname + location.search === sub.path ||
+                              (sub.path.includes('?tab=') && location.pathname === '/account/settings' && location.search === '?' + sub.path.split('?')[1])
+                                ? t.subActiveClass
+                                : `${t.subText} ${t.subHover}`
+                            }`}
+                          >
+                            {sub.label}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </>
               ) : item.lockedForFree && isFree ? (
                 <button
                   id={item.navId}
@@ -432,6 +489,7 @@ export default function Sidebar() {
           {/* 使い方・意見箱（展開式） */}
           <li>
             <button
+              id="nav-help"
               onClick={() => isSidebarOpen && setIsHelpOpen(!isHelpOpen)}
               className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
                 isSidebarOpen ? 'justify-between' : 'justify-center'
@@ -462,7 +520,6 @@ export default function Sidebar() {
                     rel="noopener noreferrer"
                     className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-sm ${t.subText} transition ${t.subHover}`}
                   >
-                    <BookOpen className="h-4 w-4 shrink-0" strokeWidth={1.5} />
                     <span>マニュアル</span>
                   </a>
                 </li>
@@ -473,7 +530,6 @@ export default function Sidebar() {
                     rel="noopener noreferrer"
                     className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-sm ${t.subText} transition ${t.subHover}`}
                   >
-                    <FileQuestion className="h-4 w-4 shrink-0" strokeWidth={1.5} />
                     <span>FAQ</span>
                   </a>
                 </li>
@@ -483,7 +539,6 @@ export default function Sidebar() {
                     onClick={() => window.dispatchEvent(new CustomEvent('feedback:open'))}
                     className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-left text-sm ${t.subText} transition ${t.subHover}`}
                   >
-                    <MessageSquare className="h-4 w-4 shrink-0" strokeWidth={1.5} />
                     <span>意見箱</span>
                   </button>
                 </li>
@@ -497,12 +552,11 @@ export default function Sidebar() {
       {/* ユーザー情報 */}
       <div className={`absolute bottom-0 left-0 right-0 ${t.bottomBg}`}>
         <div className={isSidebarOpen ? 'p-4' : 'p-2'}>
-          {/* テーマ切替 + ツアーガイド トグル */}
-          <div className={`mb-3 flex ${isSidebarOpen ? 'items-center justify-center gap-3' : 'flex-col items-center gap-2'} pb-3 border-b ${t.bottomBorder}`}>
-            {/* ダーク/ライト */}
+          {/* ダーク/ライトモード切替 */}
+          <div data-tour="sidebar-theme-toggle" className={`mb-3 flex justify-center pb-3 border-b ${t.bottomBorder}`}>
             <button
               onClick={toggleSidebarTheme}
-              className="group relative flex h-7 w-14 shrink-0 items-center rounded-full transition-colors duration-300"
+              className="group relative flex h-7 w-14 items-center rounded-full transition-colors duration-300"
               style={{ backgroundColor: isDarkSidebar ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)' }}
               title={isDarkSidebar ? 'ライトモードに切替' : 'ダークモードに切替'}
             >
@@ -519,51 +573,11 @@ export default function Sidebar() {
                 }
               </span>
             </button>
-
-            {/* ツアーガイド ON/OFF */}
-            <button
-              onClick={toggleTourGuide}
-              className="group relative flex h-7 w-14 shrink-0 items-center rounded-full transition-colors duration-300"
-              style={{ backgroundColor: tourGuideEnabled
-                ? (isDarkSidebar ? 'rgba(55,88,249,0.35)' : 'rgba(55,88,249,0.15)')
-                : (isDarkSidebar ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)')
-              }}
-              title={tourGuideEnabled ? 'ページガイドを無効化' : 'ページガイドを有効化'}
-            >
-              <span
-                className={`absolute flex h-5 w-5 items-center justify-center rounded-full shadow-sm transition-all duration-300 ${
-                  tourGuideEnabled
-                    ? 'left-[30px] bg-primary'
-                    : (isDarkSidebar ? 'left-[4px] bg-slate-700' : 'left-[4px] bg-white')
-                }`}
-              >
-                <Navigation className={`h-3 w-3 ${tourGuideEnabled ? 'text-white' : (isDarkSidebar ? 'text-slate-400' : 'text-gray-400')}`} />
-              </span>
-            </button>
-
-            {/* リセットボタン（展開時のみ） */}
-            {isSidebarOpen && (
-              <button
-                onClick={async () => {
-                  await resetSeenTours();
-                  const toast = (await import('react-hot-toast')).default;
-                  toast.success('ツアーガイドをリセットしました', {
-                    duration: 2000,
-                    style: { border: '1px solid #DFE4EA', borderRadius: '8px', fontSize: '13px' },
-                  });
-                }}
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors ${
-                  isDarkSidebar ? 'hover:bg-white/10 text-slate-400' : 'hover:bg-black/5 text-gray-400'
-                }`}
-                title="ツアーガイドをリセット"
-              >
-                <RotateCcw className="h-3.5 w-3.5" />
-              </button>
-            )}
           </div>
 
           {/* ユーザー情報（クリックでアカウント設定へ） */}
           <button
+            data-tour="sidebar-user-info"
             onClick={() => navigate('/account/settings')}
             className={`w-full rounded-lg transition ${t.userHover}`}
           >

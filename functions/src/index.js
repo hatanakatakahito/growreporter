@@ -98,7 +98,12 @@ export const fetchGSCData = lazyCallable('./callable/fetchGSCData.js', 'fetchGSC
  * スクリーンショット取得 Callable Function
  * サイトのスクリーンショットを自動取得
  */
-export const captureScreenshot = lazyCallable('./callable/captureScreenshot.js', 'captureScreenshotCallable', { memory: '2GiB', timeoutSeconds: 300, secrets: ['PSI_API_KEY'] });
+export const captureScreenshot = lazyCallable('./callable/captureScreenshot.js', 'captureScreenshotCallable', { memory: '1GiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] });
+
+/**
+ * 改善モーダル Before 枠用のオンデマンドスクショ取得（PSI）
+ */
+export const captureBeforeScreenshot = lazyCallable('./callable/captureBeforeScreenshot.js', 'captureBeforeScreenshotCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] });
 
 /**
  * AI要約生成 Callable Function
@@ -631,7 +636,7 @@ export const archiveStaleImprovements = onSchedule({
 /**
  * AIチャット Callable Functions
  */
-export const aiChat = lazyCallable('./callable/aiChat.js', 'aiChatCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['GEMINI_API_KEY'] });
+export const aiChat = lazyCallable('./callable/aiChat.js', 'aiChatCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['GEMINI_API_KEY', 'CLAUDE_API_KEY'] });
 export const getChatSessions = lazyCallable('./callable/chatManagement.js', 'getChatSessionsCallable', { memory: '256MiB', timeoutSeconds: 30 });
 export const deleteChatSession = lazyCallable('./callable/chatManagement.js', 'deleteChatSessionCallable', { memory: '256MiB', timeoutSeconds: 30 });
 export const archiveChatSession = lazyCallable('./callable/chatManagement.js', 'archiveChatSessionCallable', { memory: '256MiB', timeoutSeconds: 30 });

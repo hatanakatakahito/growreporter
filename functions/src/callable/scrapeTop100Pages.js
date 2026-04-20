@@ -24,12 +24,16 @@ export async function runScrapingForSite(db, siteId, options = {}) {
 
   logger.info('[runScrapingForSite] 開始', { siteId });
 
-  const top100Pages = await fetchTop100PagesFromGA4(db, siteData);
+  // GA4 から「バッファ込みで上位300ページ」を取得。
+  // 削除済み(404)ページが混ざっても、最終的にスクレイピング成功を100ページ確保できるようにする。
+  const GA4_BUFFER_LIMIT = 300;
+  const TARGET_SUCCESS = 100;
+  const top100Pages = await fetchTopPagesFromGA4(db, siteData, GA4_BUFFER_LIMIT);
   if (top100Pages.length === 0) {
     throw new Error('GA4データが見つかりません');
   }
 
-  logger.info(`[runScrapingForSite] GA4から${top100Pages.length}ページ取得`);
+  logger.info(`[runScrapingForSite] GA4から${top100Pages.length}ページ取得（目標成功: ${TARGET_SUCCESS}）`);
 
   // 既存のスクレイピングデータを削除（最新のみ保持、バッチは500件まで）
   const existingSnapshot = await db.collection('sites').doc(siteId).collection('pageScrapingData').get();
@@ -112,8 +116,7 @@ export async function runScrapingForSite(db, siteId, options = {}) {
     logger.info(`[runScrapingForSite] Browser起動: ${Date.now() - startedAt}ms`);
 
     results = await scrapeAllPages(browser, pageInfos, {
-      siteId,
-      screenshotTopN: 30,
+      targetSuccessCount: TARGET_SUCCESS,
       onProgress: async ({ message, completedPages, failedPages }) => {
         await progressDocRef.set({
           siteId,
@@ -136,16 +139,21 @@ export async function runScrapingForSite(db, siteId, options = {}) {
     }
   }
 
-  // 進捗更新
+  // 結果を 3カテゴリに分類:
+  // - successCount: 取得成功（AIに渡す価値あり）
+  // - removedCount: 404 で取得不可（サイト側で削除済み / GA4履歴の残骸）
+  // - failedCount:  真の取得エラー（タイムアウト・ネットワーク等、リトライ対象）
   const successCount = results.filter(r => r.success).length;
-  const failedCount = results.filter(r => !r.success).length;
+  const removedCount = results.filter(r => !r.success && r.notFound).length;
+  const failedCount = results.filter(r => !r.success && !r.notFound).length;
   await progressDocRef.update({
     completedPages: successCount,
     failedPages: failedCount,
+    removedPages: removedCount,
     updatedAt: FieldValue.serverTimestamp(),
   });
 
-  const failedResults = results.filter(r => !r.success);
+  const failedResults = results.filter(r => !r.success && !r.notFound);
   if (failedResults.length > 0) {
     failedResults.slice(0, 3).forEach((r, i) => {
       logger.warn(`[runScrapingForSite] 失敗例 ${i + 1}: ${r.pagePath || r.url} -> ${r.error}`);
@@ -158,11 +166,21 @@ export async function runScrapingForSite(db, siteId, options = {}) {
   const metaPayload = {
     lastScrapedAt: FieldValue.serverTimestamp(),
     totalPagesScraped: savedCount,
+    totalPagesRemoved: removedCount,
     totalPagesFailed: failedCount,
+    totalPagesAttempted: results.length,
+    ga4BufferSize: top100Pages.length,
+    targetSuccessCount: TARGET_SUCCESS,
     scrapingDuration: Date.now() - startedAt,
   };
   await db.collection('sites').doc(siteId).collection('pageScrapingMeta').doc('default').set(metaPayload, { merge: true });
-  logger.info('[runScrapingForSite] pageScrapingMeta 書き込み完了', { siteId, totalPagesScraped: savedCount, totalPagesFailed: failedCount });
+  logger.info('[runScrapingForSite] pageScrapingMeta 書き込み完了', {
+    siteId,
+    totalPagesScraped: savedCount,
+    totalPagesRemoved: removedCount,
+    totalPagesFailed: failedCount,
+    totalPagesAttempted: results.length,
+  });
 
   await progressDocRef.update({
     status: 'completed',
@@ -171,13 +189,14 @@ export async function runScrapingForSite(db, siteId, options = {}) {
   });
   logger.info('[runScrapingForSite] scrapingProgress を completed に更新', { siteId });
 
-  logger.info(`[runScrapingForSite] 完了: ${savedCount}ページ保存`);
+  logger.info(`[runScrapingForSite] 完了: ${savedCount}ページ保存 (削除済み${removedCount} / 取得失敗${failedCount})`);
   return {
     success: true,
     totalPages: top100Pages.length,
     successCount: savedCount,
+    removedCount,
     failedCount,
-    message: `${savedCount}ページのスクレイピングが完了しました`,
+    message: `${savedCount}ページのスクレイピングが完了しました（削除済み${removedCount}件はGA4履歴の残骸）`,
   };
 }
 
@@ -295,16 +314,18 @@ export const scrapeTop100PagesCallable = onCall(
 );
 
 /**
- * GA4から上位100ページを取得
+ * GA4から上位N件のページ（PV降順）を取得
+ * @param {number} limit - 取得件数（目標成功数 + 削除済みページのバッファ込み）
  */
-async function fetchTop100PagesFromGA4(db, siteData) {
+async function fetchTopPagesFromGA4(db, siteData, limit = 100) {
   const { userId: siteOwnerId, ga4PropertyId, ga4OauthTokenId, ga4TokenOwner } = siteData;
 
-  logger.info('[fetchTop100PagesFromGA4] サイトデータ', {
+  logger.info('[fetchTopPagesFromGA4] サイトデータ', {
     siteOwnerId,
     ga4PropertyId,
     ga4OauthTokenId,
     ga4TokenOwner,
+    limit,
     allKeys: Object.keys(siteData)
   });
 
@@ -314,7 +335,7 @@ async function fetchTop100PagesFromGA4(db, siteData) {
 
   // トークンはサイト所有者の users/{userId}/oauth_tokens/{tokenId} に保存されている
   const tokenOwnerId = ga4TokenOwner || siteOwnerId;
-  logger.info('[fetchTop100PagesFromGA4] トークン取得試行', { tokenOwnerId, ga4OauthTokenId });
+  logger.info('[fetchTopPagesFromGA4] トークン取得試行', { tokenOwnerId, ga4OauthTokenId });
   const { oauth2Client } = await getAndRefreshToken(tokenOwnerId, ga4OauthTokenId);
 
   // GA4 Data API 呼び出し（直近30日）
@@ -342,7 +363,7 @@ async function fetchTop100PagesFromGA4(db, siteData) {
         { name: 'engagementRate' },
       ],
       orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
-      limit: 100,
+      limit,
     },
   });
 
@@ -375,7 +396,6 @@ async function fetchTop100PagesFromGA4(db, siteData) {
  */
 async function saveScrapingResults(db, siteId, results) {
   let savedCount = 0;
-  const screenshotDocs = [];
 
   // Firestoreのバッチは500件制限があるため、チャンクに分割
   const successResults = results.filter(r => r.success && !r.skipped);
@@ -444,23 +464,11 @@ async function saveScrapingResults(db, siteId, results) {
         sections: result.sections || [],
         // フォーム詳細（purpose, fields, submitText）
         forms: result.forms || [],
-        // スクリーンショットURL（上位30ページのみ）
-        screenshotUrl: result.screenshotUrl || null,
 
         // エラー情報
         scrapingError: null,
         retryCount: 0,
       });
-
-      // スクショ付きページは pageScreenshots にも保存
-      if (result.screenshotUrl) {
-        screenshotDocs.push({
-          url: result.url,
-          pagePath: result.pagePath,
-          screenshotUrl: result.screenshotUrl,
-          imageSize: result.imageSize || 0,
-        });
-      }
 
       savedCount++;
     }
@@ -484,30 +492,12 @@ async function saveScrapingResults(db, siteId, results) {
     await batch.commit();
   }
 
-  // pageScreenshots コレクションに保存
-  if (screenshotDocs.length > 0) {
-    for (let i = 0; i < screenshotDocs.length; i += 500) {
-      const chunk = screenshotDocs.slice(i, i + 500);
-      const batch = db.batch();
-      for (const ssDoc of chunk) {
-        const ref = db.collection('sites').doc(siteId).collection('pageScreenshots').doc();
-        batch.set(ref, {
-          ...ssDoc,
-          capturedAt: FieldValue.serverTimestamp(),
-        });
-      }
-      await batch.commit();
-    }
-
-    // メタ情報を更新
-    await db.collection('sites').doc(siteId).collection('pageScreenshots').doc('_meta').set({
-      totalCaptured: screenshotDocs.length,
-      totalFailed: 0,
-      capturedAt: FieldValue.serverTimestamp(),
-    });
-
-    logger.info(`[saveScrapingResults] pageScreenshots ${screenshotDocs.length}件保存`);
-  }
+  // pageScreenshots/_meta をスクレイピング完了の区切りとして更新。
+  // スクショ実体は generateImprovementMockup でオンデマンド撮影され、同コレクションに追加される。
+  // Improve.jsx の realtime listener はこの _meta を購読している。
+  await db.collection('sites').doc(siteId).collection('pageScreenshots').doc('_meta').set({
+    scrapedAt: FieldValue.serverTimestamp(),
+  }, { merge: true });
 
   return savedCount;
 }

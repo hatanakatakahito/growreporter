@@ -4,10 +4,11 @@ JS 側の createConversionsSheet 相当。
 """
 
 from ..helpers import append_ai_and_memo_sections, fmt_year_month, safe_sheet_name
+from ..sheet_builder import write_sheet_title_bar
 from ..styles import FOOTER_TEXT
 
 
-def create_conversions_sheet(workbook, conversions: dict, conversion_events: list, ai_data: dict | None, memos: list | None, formats: dict):
+def create_conversions_sheet(workbook, conversions: dict, conversion_events: list, ai_data: dict | None, memos: list | None, formats: dict, sheet_subtitle: str | None = None):
     """コンバージョン一覧シートを作成。"""
     ws = workbook.add_worksheet(safe_sheet_name("コンバージョン一覧"))
     ws.hide_gridlines(2)
@@ -41,20 +42,29 @@ def create_conversions_sheet(workbook, conversions: dict, conversion_events: lis
     for c in range(1, num_cols):
         ws.set_column(c, c, 14)
 
-    # ヘッダー行
-    ws.set_row(0, 28)
-    for c, h in enumerate(headers):
-        ws.write(0, c, h, formats["header"])
+    # シートタイトルバー (行 0-2)
+    title_next_row = write_sheet_title_bar(ws, "コンバージョン一覧", sheet_subtitle, num_cols, formats)
 
-    # データ行
-    row_idx = 1
+    # ヘッダー行
+    header_row = title_next_row
+    ws.set_row(header_row, 28)
+    for c, h in enumerate(headers):
+        ws.write(header_row, c, h, formats["header"])
+
+    # データ行（ゼブラ）
+    row_idx = header_row + 1
     totals = [0] * len(event_names)
+    data_idx = 0
     for entry in monthly_data:
         if not isinstance(entry, dict):
             continue
+        is_alt = (data_idx % 2 == 1)
+        data_fmt = formats["data_alt"] if is_alt else formats["data"]
+        num_fmt = formats["number_alt"] if is_alt else formats["number"]
+
         month_label = fmt_year_month(entry.get("label") or entry.get("month") or entry.get("yearMonth") or "")
         ws.set_row(row_idx, 22)
-        ws.write(row_idx, 0, month_label, formats["data"])
+        ws.write(row_idx, 0, month_label, data_fmt)
         row_total = 0
         for c, ev in enumerate(event_names, start=1):
             val = entry.get(ev, 0)
@@ -62,14 +72,15 @@ def create_conversions_sheet(workbook, conversions: dict, conversion_events: lis
                 num = float(val or 0)
             except (ValueError, TypeError):
                 num = 0
-            ws.write_number(row_idx, c, num, formats["number"])
+            ws.write_number(row_idx, c, num, num_fmt)
             totals[c - 1] += num
             row_total += num
-        ws.write_number(row_idx, num_cols - 1, row_total, formats["number"])
+        ws.write_number(row_idx, num_cols - 1, row_total, num_fmt)
         row_idx += 1
+        data_idx += 1
 
     # 合計行
-    if row_idx > 1:
+    if row_idx > header_row + 1:
         ws.set_row(row_idx, 24)
         ws.write(row_idx, 0, "合計", formats["total_label"])
         for c, total in enumerate(totals, start=1):

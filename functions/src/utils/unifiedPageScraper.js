@@ -14,11 +14,61 @@
 import { getStorage } from 'firebase-admin/storage';
 import { logger } from 'firebase-functions/v2';
 
-const NAV_TIMEOUT_MS = 8_000;
+const NAV_TIMEOUT_MS = 15_000;
 const POST_NAV_WAIT_MS = 200;
 const CONCURRENCY = 5;
 export const SCREENSHOT_VIEWPORT = { width: 1280, height: 800, deviceScaleFactor: 1 };
-const SCREENSHOT_QUALITY = 65;
+
+// ブラウザ偽装用 User-Agent（Cloudflare/WAF の bot判定回避のため最新Chromeを装う）
+const BROWSER_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
+const BROWSER_HEADERS = {
+  'Accept-Language': 'ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7',
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Upgrade-Insecure-Requests': '1',
+  'Sec-Ch-Ua': '"Google Chrome";v="125", "Chromium";v="125", "Not.A/Brand";v="24"',
+  'Sec-Ch-Ua-Mobile': '?0',
+  'Sec-Ch-Ua-Platform': '"Windows"',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+};
+
+async function applyBrowserDisguise(p) {
+  await p.setUserAgent(BROWSER_UA);
+  await p.setExtraHTTPHeaders(BROWSER_HEADERS);
+}
+
+// Cloudflare Workers プロキシ経由でHTML取得
+// Google Cloud IP がCloudflareでブロックされるサイトのフォールバック
+const CF_PROXY_URL = 'https://growreporter-fetch-proxy.hatanaka-a1e.workers.dev';
+const CF_PROXY_SECRET = '[REDACTED-CF-PROXY-SECRET]';
+const CF_PROXY_TIMEOUT_MS = 30_000;
+
+async function fetchHtmlViaCloudflareProxy(pageUrl) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), CF_PROXY_TIMEOUT_MS);
+  try {
+    const res = await fetch(CF_PROXY_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Proxy-Secret': CF_PROXY_SECRET,
+      },
+      body: JSON.stringify({ url: pageUrl }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw new Error(`CF proxy returned ${res.status}`);
+    const data = await res.json();
+    if (!data.html || (data.status && data.status >= 400)) {
+      throw new Error(`CF proxy: target returned ${data.status || 'no html'}`);
+    }
+    return { html: data.html, status: data.status || 200 };
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 // ========== ブラウザ起動 ==========
 
@@ -65,8 +115,8 @@ export async function launchBrowser() {
 
 /**
  * @param {'content'|'screenshot'} mode
- *   content  — Phase A用: 画像・フォント・メディアもブロック（DOM抽出のみ）
- *   screenshot — Phase B用: トラッカーのみブロック（スクショ用に画像等は許可）
+ *   content   — DOM 抽出のみ: 画像・フォント・メディアもブロック
+ *   screenshot — スクショ用途: トラッカーのみブロックし画像等は許可
  */
 export async function setupRequestInterception(page, mode = 'screenshot') {
   try {
@@ -486,79 +536,39 @@ function detectPageType(url, pageData) {
   return 'other';
 }
 
-// ========== スクロール + 遅延読み込み対策 ==========
-
-export async function scrollAndWaitForLazyLoad(page) {
-  await page.evaluate(async () => {
-    const distance = 500;
-    const delay = 50;
-    const maxScrolls = 60; // 無限スクロール対策
-    let scrollCount = 0;
-    while (window.scrollY + window.innerHeight < document.body.scrollHeight && scrollCount < maxScrolls) {
-      window.scrollBy(0, distance);
-      await new Promise(r => setTimeout(r, delay));
-      scrollCount++;
-    }
-    window.scrollTo(0, 0);
-  });
-  // 全画像の読み込み完了を待機（最大3秒）
-  await page.evaluate(() => {
-    return Promise.race([
-      Promise.all(
-        Array.from(document.images)
-          .filter(img => !img.complete)
-          .map(img => new Promise(resolve => { img.onload = img.onerror = resolve; }))
-      ),
-      new Promise(resolve => setTimeout(resolve, 2000)),
-    ]);
-  });
-}
-
-// ========== スクリーンショット撮影 + Storage保存 ==========
-
-const SCREENSHOT_MAX_HEIGHT = 5000;
-
-export async function captureAndUploadScreenshot(page, siteId, pagePath) {
-  const bucket = getStorage().bucket();
-
-  // ページ全体の高さを取得し、上限を設ける（メモリ爆発防止）
-  const bodyHeight = await page.evaluate(() => document.body.scrollHeight);
-  const captureHeight = Math.min(bodyHeight, SCREENSHOT_MAX_HEIGHT);
-
-  const screenshotBuffer = await page.screenshot({
-    type: 'jpeg',
-    quality: SCREENSHOT_QUALITY,
-    clip: { x: 0, y: 0, width: SCREENSHOT_VIEWPORT.width, height: captureHeight },
-  });
-
-  const safePath = encodeURIComponent((pagePath || '/').replace(/\//g, '_'));
-  const fileName = `page-screenshots/${siteId}/${Date.now()}_${safePath}.jpg`;
-  const file = bucket.file(fileName);
-  await file.save(screenshotBuffer, {
-    metadata: {
-      contentType: 'image/jpeg',
-      cacheControl: 'public, max-age=2592000',
-    },
-    resumable: false,
-  });
-  await file.makePublic();
-
-  return {
-    screenshotUrl: `https://storage.googleapis.com/${bucket.name}/${fileName}`,
-    imageSize: screenshotBuffer.length,
-  };
-}
-
 // ========== 1ページの統合スクレイピング ==========
+// （スクリーンショット撮影は PSI API 一元化のため本ファイルから廃止。
+//   モックアップ生成時にオンデマンドで captureSingleScreenshot を呼び出します。）
+
+// 403/404/エラーページをタイトルや本文から検出
+function detectErrorPage(extractedData) {
+  const title = (extractedData?.metaTitle || '').trim();
+  const textLen = extractedData?.textLength || 0;
+  const errorPatterns = /^(403|404|500|502|503)\s*(Forbidden|Not Found|Internal Server Error|Bad Gateway|Service Unavailable)?$|^Access Denied$|^Forbidden$|^Not Found$/i;
+  if (errorPatterns.test(title)) {
+    return `エラーページ検出: title="${title}"`;
+  }
+  // 本文が極端に短い + タイトルが空 = 実コンテンツ取得失敗の可能性
+  if (textLen < 100 && title.length < 5) {
+    return `コンテンツ取得失敗: textLength=${textLen}, title="${title}"`;
+  }
+  return null;
+}
 
 async function scrapeSinglePage(page, pageUrl, options = {}) {
-  const { takeScreenshot = false, siteId = '', waitUntil = 'networkidle2' } = options;
+  const {
+    waitUntil = 'networkidle2',
+    // skipDirectAttempt: true の場合、Puppeteer 直接アクセスをスキップして CF プロキシから直行する
+    // （GCP IPがCloudflareで完全ブロックされているサイト向け。無駄な403を抑止する）
+    skipDirectAttempt = false,
+  } = options;
   const startTime = Date.now();
 
-  try {
-    // ページ遷移
+  async function attempt() {
+    let httpStatus = null;
     try {
-      await page.goto(pageUrl, { waitUntil, timeout: NAV_TIMEOUT_MS });
+      const response = await page.goto(pageUrl, { waitUntil, timeout: NAV_TIMEOUT_MS });
+      if (response) httpStatus = response.status();
     } catch (navErr) {
       if (navErr?.name === 'TimeoutError' || navErr?.message?.includes('timeout')) {
         logger.info(`[unifiedScraper] Timeout (continuing): ${pageUrl}`);
@@ -569,8 +579,74 @@ async function scrapeSinglePage(page, pageUrl, options = {}) {
 
     await new Promise(resolve => setTimeout(resolve, POST_NAV_WAIT_MS));
 
-    // コンテンツ抽出（全ページ共通）
     const extractedData = await page.evaluate(extractAllPageData);
+    return { extractedData, httpStatus };
+  }
+
+  try {
+    let extractedData, httpStatus;
+    let errorReason = null;
+    let loadedViaProxy = false;
+
+    if (skipDirectAttempt) {
+      // 直接アクセスを最初からスキップ（サイト単位でCloudflareブロック確定時）
+      errorReason = 'skipped-direct-mode';
+    } else {
+      const first = await attempt();
+      extractedData = first.extractedData;
+      httpStatus = first.httpStatus;
+
+      // HTTP ステータス または コンテンツから エラーページ検出
+      if (httpStatus && httpStatus >= 400) {
+        errorReason = `HTTP ${httpStatus}`;
+      } else {
+        errorReason = detectErrorPage(extractedData);
+      }
+
+      // エラー検出時は 1回だけリトライ（Cloudflareの第1リクエスト拒否→2回目で通過するケースあり）
+      if (errorReason) {
+        logger.warn(`[unifiedScraper] ${errorReason} on ${pageUrl} → retry once`);
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const retry = await attempt();
+        extractedData = retry.extractedData;
+        httpStatus = retry.httpStatus;
+        errorReason = (httpStatus && httpStatus >= 400) ? `HTTP ${httpStatus}` : detectErrorPage(extractedData);
+      }
+    }
+
+    // 直接アクセス失敗（またはスキップモード） → Cloudflare Workers プロキシにフォールバック
+    if (errorReason) {
+      logger.warn(`[unifiedScraper] ${errorReason} on ${pageUrl} → Cloudflare proxy fallback`);
+      try {
+        const { html, status } = await fetchHtmlViaCloudflareProxy(pageUrl);
+        await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: NAV_TIMEOUT_MS });
+        const proxyData = await page.evaluate(extractAllPageData);
+        const proxyErr = detectErrorPage(proxyData);
+        if (proxyErr) {
+          throw new Error(`proxy content still looks like error: ${proxyErr}`);
+        }
+        extractedData = proxyData;
+        httpStatus = status;
+        loadedViaProxy = true;
+        errorReason = null;
+        logger.info(`[unifiedScraper] CF proxy success: ${pageUrl}`);
+      } catch (cfErr) {
+        const loadTime = Date.now() - startTime;
+        // 404 (= サイト側に存在しない) は技術的失敗ではなく「削除済み」扱い
+        const isNotFound = httpStatus === 404 || /404|Not Found/i.test(cfErr.message || '');
+        logger.warn(`[unifiedScraper] CF proxy fallback failed: ${pageUrl} - ${cfErr.message}${isNotFound ? ' [NOT FOUND]' : ''}`);
+        return {
+          success: false,
+          notFound: isNotFound,
+          url: pageUrl,
+          error: `${errorReason} / CF proxy: ${cfErr.message}`,
+          httpStatus,
+          loadTime,
+          scrapedAt: new Date().toISOString(),
+        };
+      }
+    }
+
     const pageType = detectPageType(pageUrl, extractedData);
     const loadTime = Date.now() - startTime;
 
@@ -579,9 +655,9 @@ async function scrapeSinglePage(page, pageUrl, options = {}) {
       url: pageUrl,
       loadTime,
       pageType,
+      httpStatus,
+      loadedViaProxy,
       scrapedAt: new Date().toISOString(),
-      screenshotUrl: null,
-      imageSize: 0,
       ...extractedData,
     };
   } catch (err) {
@@ -603,16 +679,14 @@ async function scrapeSinglePage(page, pageUrl, options = {}) {
  * @param {import('puppeteer-core').Browser} browser
  * @param {Array<{pagePath: string, pageUrl: string, pageViews?: number, users?: number, engagementRate?: number}>} pageInfos
  * @param {object} options
- * @param {string} options.siteId - サイトID（スクショ保存パスに使用）
- * @param {number} [options.screenshotTopN=30] - スクショ撮影するページ数（PV上位N件）
  * @param {function} [options.onProgress] - 進捗コールバック({phase, message})
  * @returns {Promise<Array>} 全ページの結果
  */
 export async function scrapeAllPages(browser, pageInfos, options = {}) {
-  const { siteId, screenshotTopN = 30, onProgress } = options;
+  const { onProgress, targetSuccessCount = Number.MAX_SAFE_INTEGER } = options;
   const startTime = Date.now();
 
-  logger.info(`[unifiedScraper] Start: ${pageInfos.length} pages, screenshots top ${screenshotTopN}, concurrency ${CONCURRENCY}`);
+  logger.info(`[unifiedScraper] Start: ${pageInfos.length} pages, concurrency ${CONCURRENCY}`);
 
   // ===== Phase A: 全ページのコンテンツ抽出（5並列タブ、画像ブロック） =====
   const PHASE_A_CONCURRENCY = 5;
@@ -620,7 +694,7 @@ export async function scrapeAllPages(browser, pageInfos, options = {}) {
   const phaseAPages = [];
   for (let i = 0; i < PHASE_A_CONCURRENCY; i++) {
     const p = await browser.newPage();
-    await p.setExtraHTTPHeaders({ 'Accept-Language': 'ja-JP,ja;q=0.9' });
+    await applyBrowserDisguise(p);
     await p.setViewport(SCREENSHOT_VIEWPORT);
     await setupRequestInterception(p, 'content'); // 画像・フォント・メディアをブロック
     phaseAPages.push(p);
@@ -628,23 +702,52 @@ export async function scrapeAllPages(browser, pageInfos, options = {}) {
 
   const results = [];
   let queueIndex = 0;
+  let successSoFar = 0;
+
+  // 早期諦めロジック: サイト単位で直接アクセスが完全にブロックされていると判定したら、
+  // 残りページでは Puppeteer 直接試行をスキップしてCFプロキシ直行に切り替える。
+  // 目的: GCP IP から無駄な403リクエストを量産しない。
+  const DIRECT_PROBE_COUNT = 5;  // 最初の5ページで判定
+  const DIRECT_BLOCK_THRESHOLD = 4;  // 5ページ中4ページ以上がCFプロキシ経由になったら「直接NG」判定
+  let earlyProbeResults = [];  // 判定用の先頭結果を記録
+  let siteBlocksDirect = false;
 
   async function worker(page) {
     while (true) {
+      // 目標成功数に到達したら、残りページは取得せず早期終了
+      if (successSoFar >= targetSuccessCount) break;
+
       const idx = queueIndex++;
       if (idx >= pageInfos.length) break;
       const info = pageInfos[idx];
 
-      const result = await scrapeSinglePage(page, info.pageUrl, { waitUntil: 'domcontentloaded' });
+      const result = await scrapeSinglePage(page, info.pageUrl, {
+        waitUntil: 'domcontentloaded',
+        skipDirectAttempt: siteBlocksDirect,
+      });
       result.pagePath = info.pagePath;
       result.pageViews = info.pageViews ?? 0;
       result.users = info.users ?? 0;
       result.engagementRate = info.engagementRate ?? 0;
       results.push(result);
+      if (result.success) successSoFar++;
+
+      // 先頭 N 件で「直接アクセス不可」判定
+      if (!siteBlocksDirect && earlyProbeResults.length < DIRECT_PROBE_COUNT) {
+        earlyProbeResults.push(result);
+        if (earlyProbeResults.length >= DIRECT_PROBE_COUNT) {
+          const viaProxyCount = earlyProbeResults.filter(r => r.loadedViaProxy).length;
+          if (viaProxyCount >= DIRECT_BLOCK_THRESHOLD) {
+            siteBlocksDirect = true;
+            logger.warn(`[unifiedScraper] サイト単位ブロック検知 — 先頭${DIRECT_PROBE_COUNT}件中 ${viaProxyCount}件がCFプロキシ経由 → 以降 Puppeteer 直接試行をスキップ`);
+          } else {
+            logger.info(`[unifiedScraper] 直接アクセス可 — 先頭${DIRECT_PROBE_COUNT}件中 ${viaProxyCount}件がCFプロキシ経由（閾値${DIRECT_BLOCK_THRESHOLD}未満）`);
+          }
+        }
+      }
 
       if ((idx + 1) % 10 === 0) {
-        const successCount = results.filter(r => r.success).length;
-        logger.info(`[unifiedScraper] Phase A: ${idx + 1}/${pageInfos.length} (success: ${successCount})`);
+        logger.info(`[unifiedScraper] Phase A: ${idx + 1}/${pageInfos.length} (success: ${successSoFar}/${targetSuccessCount}, blockMode: ${siteBlocksDirect})`);
       }
     }
   }
@@ -657,63 +760,9 @@ export async function scrapeAllPages(browser, pageInfos, options = {}) {
   const phaseADuration = Date.now() - startTime;
   logger.info(`[unifiedScraper] Phase A done: ${phaseASuccess}/${pageInfos.length} in ${phaseADuration}ms`);
 
-  // 進捗通知: ページ情報の取得完了
+  // Phase B（スクショ一括撮影）は廃止。スクリーンショットは PSI API を使って
+  // モックアップ生成時にオンデマンドで取得する方式に切り替えた（captureSingleScreenshot）。
   if (onProgress) {
-    const screenshotCount = Math.min(phaseASuccess, screenshotTopN);
-    await onProgress({
-      phase: 'screenshots',
-      message: `ページ情報の取得が完了しました（成功: ${phaseASuccess}、失敗: ${phaseAFailed}）。スクリーンショットを撮影中...（${screenshotCount}ページ）`,
-      completedPages: phaseASuccess,
-      failedPages: phaseAFailed,
-    });
-  }
-
-  // ===== Phase B: 上位ページのスクショ撮影（1タブ、逐次処理） =====
-
-  const screenshotTargets = results
-    .filter(r => r.success)
-    .slice(0, screenshotTopN);
-
-  if (screenshotTargets.length > 0 && siteId) {
-    const ssPage = await browser.newPage();
-    await ssPage.setExtraHTTPHeaders({ 'Accept-Language': 'ja-JP,ja;q=0.9' });
-    await ssPage.setViewport(SCREENSHOT_VIEWPORT);
-    await setupRequestInterception(ssPage, 'screenshot'); // 画像許可（スクショ用）
-
-    let ssCount = 0;
-    for (const result of screenshotTargets) {
-      try {
-        try {
-          await ssPage.goto(result.url, { waitUntil: 'networkidle2', timeout: NAV_TIMEOUT_MS });
-        } catch (navErr) {
-          if (!(navErr?.name === 'TimeoutError' || navErr?.message?.includes('timeout'))) throw navErr;
-        }
-        await scrollAndWaitForLazyLoad(ssPage);
-        const pagePath = new URL(result.url).pathname;
-        const ssResult = await captureAndUploadScreenshot(ssPage, siteId, pagePath);
-        result.screenshotUrl = ssResult.screenshotUrl;
-        result.imageSize = ssResult.imageSize;
-        ssCount++;
-      } catch (ssErr) {
-        logger.warn(`[unifiedScraper] Screenshot failed: ${result.url} - ${ssErr.message}`);
-      }
-    }
-
-    await ssPage.close().catch(() => {});
-    logger.info(`[unifiedScraper] Phase B done: ${ssCount}/${screenshotTargets.length} screenshots`);
-
-    // 進捗通知: スクリーンショット撮影完了
-    if (onProgress) {
-      await onProgress({
-        phase: 'saving',
-        message: `スクリーンショット撮影が完了しました（${ssCount}/${screenshotTargets.length}ページ）。データを保存中...`,
-        completedPages: phaseASuccess,
-        failedPages: phaseAFailed,
-        screenshotCount: ssCount,
-      });
-    }
-  } else if (onProgress) {
-    // スクショ対象なしの場合
     await onProgress({
       phase: 'saving',
       message: 'データを保存中...',

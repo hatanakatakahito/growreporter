@@ -18,7 +18,7 @@ import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
-import { useAutoTour } from '../../hooks/useAutoTour';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 import ComparisonBadge from '../../components/Analysis/ComparisonBadge';
 import { calculateChangePercent } from '../../utils/comparisonHelpers';
 import {
@@ -39,7 +39,6 @@ import {
 export default function ConversionList() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
-  useAutoTour('analysisConversions');
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenLines, setHiddenLines] = useState({});
@@ -284,9 +283,12 @@ export default function ConversionList() {
         {/* コンテンツ */}
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-dark dark:text-white">
-              コンバージョン
-            </h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg font-bold text-dark dark:text-white">
+                コンバージョン
+              </h2>
+              <TourHelpButton tourId="analysisConversions" />
+            </div>
             <p className="mt-0.5 text-sm text-body-color">
               コンバージョンに貢献したイベントの分析
             </p>

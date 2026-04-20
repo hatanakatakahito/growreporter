@@ -6,6 +6,7 @@ import { functions } from '../../config/firebase';
 import { useSite } from '../../contexts/SiteContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlan } from '../../hooks/usePlan';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 import { useAutoTour } from '../../hooks/useAutoTour';
 import { useSiteMetrics } from '../../hooks/useSiteMetrics';
 import { useGA4MonthlyData } from '../../hooks/useGA4MonthlyData';
@@ -105,7 +106,6 @@ export default function ComprehensiveAI() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
   const { currentUser } = useAuth();
   const { planId } = usePlan();
-  useAutoTour('comprehensiveAI');
   const navigate = useNavigate();
   const isFree = planId === 'free';
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
@@ -113,6 +113,8 @@ export default function ComprehensiveAI() {
   useEffect(() => {
     setPageTitle('AI総合分析');
   }, []);
+
+  useAutoTour('comprehensiveAI');
 
   const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
 
@@ -289,7 +291,10 @@ export default function ComprehensiveAI() {
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         <div data-tour="comp-ai-root" className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-dark dark:text-white">分析する - AI総合分析</h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg font-bold text-dark dark:text-white">分析する - AI総合分析</h2>
+              <TourHelpButton tourId="comprehensiveAI" />
+            </div>
             <p className="mt-0.5 text-sm text-body-color">
               全データを横断してAIが自動分析し、サイトの現状を明らかにします
             </p>

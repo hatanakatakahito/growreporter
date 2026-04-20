@@ -23,6 +23,7 @@ import { usePlan } from '../hooks/usePlan';
 import UpgradeModal from '../components/common/UpgradeModal';
 import { useNavigate } from 'react-router-dom';
 import { useAutoTour } from '../hooks/useAutoTour';
+import TourHelpButton from '../components/Onboarding/TourHelpButton';
 
 export default function Reports() {
   const navigate = useNavigate();
@@ -53,7 +54,10 @@ export default function Reports() {
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-6">
-            <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">評価する</h2>
+            <div className="mb-1 flex items-center gap-2 flex-wrap">
+              <h2 className="text-2xl font-bold text-dark dark:text-white">評価する</h2>
+              <TourHelpButton tourId="reports" />
+            </div>
             <p className="text-sm text-body-color">{selectedSite?.siteName} の改善効果を自動計測し、成果を確認・評価</p>
           </div>
 

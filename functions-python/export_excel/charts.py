@@ -9,17 +9,17 @@ Excel 上で軸変更・データ更新・コピペが可能。
 from typing import Any
 
 
-# GrowReporter のブランドカラーに合わせたパレット
+# GrowReporter ブランドカラー (v5.11.1 ネイビー基調)
 CHART_COLORS = [
-    "#3758F9",  # primary blue
-    "#13C296",  # secondary green
+    "#2347A0",  # primary navy
+    "#3D68CC",  # mid blue
+    "#13C296",  # green
     "#F59E0B",  # amber
     "#EF4444",  # red
     "#8B5CF6",  # violet
     "#06B6D4",  # cyan
     "#F97316",  # orange
     "#EC4899",  # pink
-    "#6366F1",  # indigo
     "#14B8A6",  # teal
     "#84CC16",  # lime
     "#A855F7",  # purple
@@ -54,6 +54,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
             ("セッション", "sessions"),
         ],
         "wide": True,
+        # 日別はデータ点数が多いためラベルなし
     },
     "weekly": {
         "type": "column",
@@ -63,6 +64,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
             ("セッション", "sessions"),
             ("コンバージョン", "conversions"),
         ],
+        "data_labels": True,
     },
     "hourly": {
         "type": "column",
@@ -72,6 +74,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
             ("セッション", "sessions"),
             ("コンバージョン", "conversions"),
         ],
+        "data_labels": True,
     },
     "channels": {
         "type": "bar",
@@ -81,6 +84,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
             ("セッション", "sessions"),
             ("コンバージョン", "conversions"),
         ],
+        "data_labels": True,
     },
     "keywords": {
         "type": "bar",
@@ -88,6 +92,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "cat_key": "keyword",
         "series": [("クリック", "clicks")],
         "top_n": 20,
+        "data_labels": True,
     },
     "referrals": {
         "type": "bar",
@@ -98,6 +103,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
             ("コンバージョン", "conversions"),
         ],
         "top_n": 20,
+        "data_labels": True,
     },
     "pages": {
         "type": "bar",
@@ -105,6 +111,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "cat_key": "path",
         "series": [("PV", "pageViews")],
         "top_n": 20,
+        "data_labels": True,
     },
     "pageCategories": {
         "type": "pie",
@@ -112,6 +119,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "cat_key": "category",
         "series": [("PV", "pageViews")],
         "top_n": 10,
+        "data_labels": True,
     },
     "landingPages": {
         "type": "bar",
@@ -119,6 +127,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "cat_key": "path",
         "series": [("セッション", "sessions")],
         "top_n": 20,
+        "data_labels": True,
     },
     "fileDownloads": {
         "type": "bar",
@@ -126,6 +135,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "cat_key": "fileName",
         "series": [("ダウンロード", "downloads")],
         "top_n": 20,
+        "data_labels": True,
     },
     "externalLinks": {
         "type": "bar",
@@ -133,6 +143,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "cat_key": "linkUrl",
         "series": [("クリック", "clicks")],
         "top_n": 20,
+        "data_labels": True,
     },
 }
 
@@ -233,10 +244,9 @@ def insert_chart_for_sheet(
             series_opts["data_labels"] = {
                 "value": False,
                 "percentage": True,
-                "category": True,
-                "separator": " ",
-                "position": "best_fit",
-                "font": {"name": "Yu Gothic", "size": 8},
+                "category": False,
+                "position": "outside_end",
+                "font": {"name": "Yu Gothic", "size": 9, "bold": True},
                 "num_format": "0.0%",
             }
             # fill/line/border は円グラフでは系列レベルではなくポイントで設定済み
@@ -273,9 +283,8 @@ def insert_chart_for_sheet(
     else:
         chart.set_size({"width": 640, "height": 400})
 
-    # チャートをデータ表の右側に配置 (列 N 付近)
-    # カラム幅を考慮しないで単純に固定位置
-    chart_insert_row = 0
+    # チャートをデータ表の右側に配置 (タイトルバーの下から)
+    chart_insert_row = max(0, data_start_row - 1)  # ヘッダ行の位置から
     chart_insert_col = len(_expand_header_columns(visible_columns)) + 2  # データ表の右横 + 2 列余白
 
     ws.insert_chart(chart_insert_row, chart_insert_col, chart)

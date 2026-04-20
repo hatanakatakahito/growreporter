@@ -16,7 +16,7 @@ import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
-import { useAutoTour } from '../../hooks/useAutoTour';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 import {
   ResponsiveContainer,
   BarChart,
@@ -38,7 +38,6 @@ import {
 export default function Keywords() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
-  useAutoTour('analysisKeywords');
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
@@ -220,9 +219,12 @@ export default function Keywords() {
         {/* コンテンツ */}
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4">
-            <h2 className="text-lg font-bold text-dark dark:text-white">
-              集客 - 流入キーワード元
-            </h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg font-bold text-dark dark:text-white">
+                集客 - 流入キーワード元
+              </h2>
+              <TourHelpButton tourId="analysisKeywords" />
+            </div>
             <p className="mt-0.5 text-sm text-body-color">
               Search Console の検索クエリデータを確認できます
             </p>

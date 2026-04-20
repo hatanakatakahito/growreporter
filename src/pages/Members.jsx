@@ -10,6 +10,7 @@ import { Link } from 'react-router-dom';
 import { setPageTitle } from '../utils/pageTitle';
 import { Button } from '@/components/ui/button';
 import { useAutoTour } from '../hooks/useAutoTour';
+import TourHelpButton from '../components/Onboarding/TourHelpButton';
 
 /**
  * メンバー管理画面
@@ -186,7 +187,10 @@ export default function Members() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">メンバー管理</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-3xl font-bold text-gray-900">メンバー管理</h1>
+              <TourHelpButton tourId="members" />
+            </div>
             <p className="mt-2 text-sm text-gray-600">
               アカウントのメンバーを管理します
             </p>

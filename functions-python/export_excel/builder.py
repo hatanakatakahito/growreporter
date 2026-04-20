@@ -57,6 +57,9 @@ from .styles import (
     NUMBER_CELL_ALT_STYLE,
     NUMBER_CELL_STYLE,
     PERCENT_CELL_STYLE,
+    SECTION_MARKER_STYLE,
+    SHEET_TITLE_NAME_STYLE,
+    SHEET_TITLE_SUBTITLE_STYLE,
     TEXT_RIGHT_ALT_STYLE,
     TEXT_RIGHT_STYLE,
     TOC_DESC_STYLE,
@@ -137,6 +140,9 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
         available_sheets=available,
     )
 
+    # サブタイトル文字列（全シートで共通）
+    sheet_subtitle = _make_sheet_subtitle(date_range, comparison_range)
+
     # ─── 2. 全体サマリー ─────────────────────────────────
     if custom.get("summary"):
         create_summary_sheet(
@@ -147,6 +153,8 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             ai_data=ai_analysis.get("analysis/summary"),
             memos=memos.get("analysis/summary"),
             formats=formats,
+            sheet_subtitle=sheet_subtitle,
+            monthly_delta=custom.get("monthlyDelta"),
         )
 
     # ─── 3〜14. 動的カラム系シート ─────────────────────────
@@ -182,6 +190,7 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             memos=mm,
             formats=formats,
             chart_key=key,
+            sheet_subtitle=sheet_subtitle,
         )
 
     # ─── 4. ユーザー属性 (カスタムレイアウト) ───────────────
@@ -193,6 +202,7 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             ai_data=ai_analysis.get("analysis/users"),
             memos=memos.get("analysis/users"),
             formats=formats,
+            sheet_subtitle=sheet_subtitle,
         )
 
     # ─── 16. コンバージョン一覧 ────────────────────────────
@@ -204,6 +214,7 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             ai_data=ai_analysis.get("analysis/conversions"),
             memos=memos.get("analysis/conversions"),
             formats=formats,
+            sheet_subtitle=sheet_subtitle,
         )
 
     # ─── 17. 逆算フロー ─────────────────────────────────
@@ -215,14 +226,25 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             ai_data=ai_analysis.get("analysis/reverse-flow"),
             memos=memos.get("analysis/reverse-flow"),
             formats=formats,
+            sheet_subtitle=sheet_subtitle,
         )
 
     # ─── 18. 改善提案 ───────────────────────────────────
     improvements = custom.get("improvements")
     if improvements and len(improvements) > 0:
-        create_improvements_sheet(workbook, improvements, formats)
+        create_improvements_sheet(workbook, improvements, formats, sheet_subtitle=sheet_subtitle)
 
     workbook.close()
+
+
+def _make_sheet_subtitle(date_range: dict | None, comp_range: dict | None = None) -> str:
+    """シートタイトルバーの 2 行目（サブタイトル）を生成。"""
+    parts = []
+    if date_range and date_range.get("from") and date_range.get("to"):
+        parts.append(f"{date_range['from']} 〜 {date_range['to']}")
+    if comp_range and comp_range.get("from") and comp_range.get("to"):
+        parts.append(f"比較: {comp_range['from']} 〜 {comp_range['to']}")
+    return "  /  ".join(parts) if parts else ""
 
 
 def _compute_available_sheets(custom: dict, sheets_data: dict) -> list[str]:
@@ -318,6 +340,10 @@ def _create_formats(workbook) -> dict:
         "ai_content": workbook.add_format(AI_CONTENT_STYLE),
         "memo_header": workbook.add_format(MEMO_SECTION_STYLE),
         "memo_content": workbook.add_format(AI_CONTENT_STYLE),
+        # シートタイトルバー
+        "sheet_title_name": workbook.add_format(SHEET_TITLE_NAME_STYLE),
+        "sheet_title_subtitle": workbook.add_format(SHEET_TITLE_SUBTITLE_STYLE),
+        "section_marker": workbook.add_format(SECTION_MARKER_STYLE),
         # 表紙
         "cover_title": workbook.add_format(COVER_TITLE_STYLE),
         "cover_subtitle": workbook.add_format(COVER_SUBTITLE_STYLE),

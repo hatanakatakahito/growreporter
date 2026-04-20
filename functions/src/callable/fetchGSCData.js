@@ -80,7 +80,7 @@ export async function fetchGSCDataCallable(request) {
     // 🚀 パフォーマンス最適化: 基本メトリクス、トップクエリ、トップページを並列取得
     console.log(`[fetchGSCData] Fetching metrics, queries, and pages in parallel...`);
     
-    const [response, topQueriesResponse, topPagesResponse] = await Promise.all([
+    const [response, topQueriesResponse, topPagesResponse, queryPageResponse] = await Promise.all([
       // 基本指標の取得
       searchConsole.searchanalytics.query({
         auth: oauth2Client,
@@ -114,7 +114,37 @@ export async function fetchGSCDataCallable(request) {
           rowLimit: 25000,
         },
       }),
+      // クエリ×ページの組み合わせ取得（キーワードごとの着地ページ特定用）
+      searchConsole.searchanalytics.query({
+        auth: oauth2Client,
+        siteUrl: siteData.gscSiteUrl,
+        requestBody: {
+          startDate,
+          endDate,
+          dimensions: ['query', 'page'],
+          rowLimit: 25000,
+        },
+      }),
     ]);
+
+    // クエリごとに着地ページをグルーピング（各クエリにつき上位5ページ）
+    const queryPagesMap = {};
+    (queryPageResponse.data.rows || []).forEach(row => {
+      const query = row.keys[0];
+      const page = row.keys[1];
+      if (!queryPagesMap[query]) queryPagesMap[query] = [];
+      queryPagesMap[query].push({
+        page,
+        clicks: row.clicks,
+        impressions: row.impressions,
+        ctr: row.ctr,
+        position: row.position,
+      });
+    });
+    Object.keys(queryPagesMap).forEach(query => {
+      queryPagesMap[query].sort((a, b) => b.clicks - a.clicks || b.impressions - a.impressions);
+      queryPagesMap[query] = queryPagesMap[query].slice(0, 5);
+    });
 
     // 5. データ整形
     const result = {
@@ -138,6 +168,7 @@ export async function fetchGSCDataCallable(request) {
         ctr: row.ctr,
         position: row.position,
       })) || [],
+      queryPagesMap,
       period: {
         startDate,
         endDate,

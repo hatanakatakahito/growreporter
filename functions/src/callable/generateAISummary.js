@@ -378,7 +378,7 @@ export async function generateAISummaryCallable(request) {
           ],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: (pageType === 'comprehensive_analysis' || pageType === 'comprehensive_improvement') ? 3000 : 1500,
+            maxOutputTokens: (pageType === 'comprehensive_analysis' || pageType === 'comprehensive_improvement') ? 8192 : 1500,
           },
         }),
       }
@@ -413,7 +413,7 @@ export async function generateAISummaryCallable(request) {
     // 推奨アクションの抽出
     const recommendations = extractRecommendations(rawSummary, pageType);
     console.log('[generateAISummary] 抽出された推奨施策数:', recommendations.length);
-    
+
     // AI生成テキストから「アクションプラン」セクションを削除（重複を防ぐため）
     const summary = removeActionPlanSection(rawSummary, pageType);
     console.log('[generateAISummary] サマリー文字数:', summary.length);
@@ -429,7 +429,14 @@ export async function generateAISummaryCallable(request) {
 
     // 7. 新しいキャッシュシステムに保存
     const now = new Date();
-    await saveCachedAnalysis(siteOwnerId, siteId, pageType, summary, recommendations, startDate, endDate, comparisonStartDate, comparisonEndDate);
+    // 改善案抽出が0件の comprehensive_improvement はキャッシュを保存しない
+    // （パース失敗 or MAX_TOKENS 切れの可能性が高く、キャッシュすると次回も空が返り続けるため）
+    const shouldSkipCache = pageType === 'comprehensive_improvement' && (!recommendations || recommendations.length === 0);
+    if (shouldSkipCache) {
+      console.warn('[generateAISummary] comprehensive_improvement で 0 件抽出: キャッシュ保存をスキップ');
+    } else {
+      await saveCachedAnalysis(siteOwnerId, siteId, pageType, summary, recommendations, startDate, endDate, comparisonStartDate, comparisonEndDate);
+    }
     
     // 8. 旧システムにも保存（互換性のため、将来的に削除予定）
     // metricsはサイズが大きい場合があるため保存しない（Firestore 1MBドキュメント上限対策）
@@ -648,10 +655,14 @@ function extractImprovementRecommendations(summary) {
         if (!Number.isNaN(num) && num >= 0) {
           currentRec.estimatedLaborHours = num;
         }
-      } else if (currentRec.description && trimmedLine) {
+      } else if (typeof currentRec.description === 'string' && trimmedLine) {
+        // 「説明:」のあと改行されて内容が次行に来るケースに対応するため、
+        // description が空文字でも（= 既にラベル行を検出済み）継続行を追記する
         const isLabel = labelPrefixes.some(prefix => normalizedLine.startsWith(prefix) || normalizedLine.startsWith(prefix.replace(':', '：')));
         if (!isLabel && !/^想定工数[（(]/.test(normalizedLine)) {
-          currentRec.description += ' ' + trimmedLine;
+          currentRec.description = currentRec.description
+            ? currentRec.description + ' ' + trimmedLine
+            : trimmedLine;
         }
       }
     });

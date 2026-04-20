@@ -27,6 +27,8 @@ import { setPageTitle } from '../utils/pageTitle';
 import { Button } from '@/components/ui/button';
 import DotWaveSpinner from '@/components/common/DotWaveSpinner';
 import { useAutoTour } from '../hooks/useAutoTour';
+import { useOnboarding } from '../hooks/useOnboarding';
+import TourHelpButton from '../components/Onboarding/TourHelpButton';
 
 const TABS = [
   { id: 'profile', label: 'プロフィール', icon: User },
@@ -44,6 +46,18 @@ export default function AccountSettings() {
   useEffect(() => { setPageTitle('アカウント設定'); }, []);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { seenTours, tourGuideEnabled } = useOnboarding();
+  // ツアー未表示＆ガイドON なら email タブに切替（通知設定のツアーターゲットを描画するため）
+  useEffect(() => {
+    if (tourGuideEnabled && !seenTours.accountSettings) {
+      const t = searchParams.get('tab');
+      if (t !== 'email') {
+        const next = new URLSearchParams(searchParams);
+        next.set('tab', 'email');
+        setSearchParams(next, { replace: true });
+      }
+    }
+  }, [tourGuideEnabled, seenTours.accountSettings]); // eslint-disable-line react-hooks/exhaustive-deps
   useAutoTour('accountSettings');
   const { userProfile, currentUser, logout } = useAuth();
   const { sites } = useSite();
@@ -181,7 +195,10 @@ export default function AccountSettings() {
         {/* ヘッダー */}
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">アカウント設定</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">アカウント設定</h1>
+              <TourHelpButton tourId="accountSettings" />
+            </div>
             <p className="mt-2 text-sm text-gray-600 dark:text-dark-6">
               プロフィール・プラン・通知などアカウント全般を管理します
             </p>

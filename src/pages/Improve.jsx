@@ -24,6 +24,8 @@ import BusinessPlanLockOverlay from '../components/common/BusinessPlanLockOverla
 import { usePlan } from '../hooks/usePlan';
 import { useAuth } from '../contexts/AuthContext';
 import { useAutoTour } from '../hooks/useAutoTour';
+import { useOnboarding } from '../hooks/useOnboarding';
+import TourHelpButton from '../components/Onboarding/TourHelpButton';
 import { generateAndAddImprovements } from '../utils/generateAndAddImprovements';
 import { downloadImprovementsExcel } from '../utils/exportImprovementsToExcel';
 import { formatEstimatedPriceLabel, formatEstimatedDeliveryLabel } from '../utils/improvementEstimate';
@@ -64,8 +66,9 @@ export default function Improve() {
   const { selectedSite, selectedSiteId, isLoading: isSiteLoading } = useSite();
   const { isSidebarOpen } = useSidebar();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { plan, getRemainingByType, checkCanGenerate, isFree } = usePlan();
+  const { plan, getRemainingByType, checkCanGenerate, isFree, isLoading: isPlanLoading } = usePlan();
   const { currentUser, userProfile } = useAuth();
+  const { seenTours, tourGuideEnabled, isDesktop, isLoading: isOnboardingLoading } = useOnboarding();
   const navigate = useNavigate();
   useAutoTour('improve');
 
@@ -256,20 +259,29 @@ export default function Improve() {
   });
 
   // スクショ撮影完了をリアルタイム監視 → キャッシュ自動更新
+  // 初回スナップショット(=リスナー張った時点)だけスキップし、以降はどんな変化でも invalidate
   const lastCapturedAtRef = useRef(null);
+  const listenerInitializedRef = useRef(false);
   useEffect(() => {
     if (!selectedSiteId) return;
+    listenerInitializedRef.current = false;
+    lastCapturedAtRef.current = null;
     const metaRef = doc(db, 'sites', selectedSiteId, 'pageScreenshots', '_meta');
     const unsubscribe = onSnapshot(metaRef, (snap) => {
-      if (!snap.exists()) return;
-      const ts = snap.data().lastCapturedAt?.toMillis?.() || null;
-      // 初回は記録のみ、2回目以降（値が変わった時）にキャッシュ更新
-      if (lastCapturedAtRef.current !== null && ts !== lastCapturedAtRef.current) {
+      const ts = snap.exists() ? (snap.data().lastCapturedAt?.toMillis?.() || null) : null;
+      if (!listenerInitializedRef.current) {
+        // 初回はあくまで現時点の値を記録するだけ（null でも記録する）
+        lastCapturedAtRef.current = ts;
+        listenerInitializedRef.current = true;
+        return;
+      }
+      // 値が変わったら（null → ts でも ts1 → ts2 でも）キャッシュ invalidate
+      if (ts !== lastCapturedAtRef.current) {
+        lastCapturedAtRef.current = ts;
         queryClient.invalidateQueries({ queryKey: ['pageScreenshots', selectedSiteId] });
       }
-      lastCapturedAtRef.current = ts;
     });
-    return () => { unsubscribe(); lastCapturedAtRef.current = null; };
+    return () => { unsubscribe(); };
   }, [selectedSiteId, queryClient]);
 
   // URLを正規化するヘルパー（Before照合用）
@@ -310,12 +322,34 @@ export default function Improve() {
   });
 
   // 改善案が0件の場合、方針選択モーダルを自動表示（初回のみ）
+  // ツアーガイドが発火する条件が揃っている場合は、ツアー完了イベントを待ってから開く
   useEffect(() => {
-    if (!improvementsLoading && improvements.length === 0 && !isViewer && !isGenerationModalOpen && !hasAutoOpenedFocusRef.current) {
-      hasAutoOpenedFocusRef.current = true;
-      setIsFocusModalOpen(true);
+    // ツアー発火判定に必要な状態（プラン / オンボーディング）が未確定ならまだ判断しない
+    if (isOnboardingLoading || isPlanLoading) return;
+    if (improvementsLoading || improvements.length !== 0 || isViewer || isGenerationModalOpen || hasAutoOpenedFocusRef.current) {
+      return;
     }
-  }, [improvementsLoading, improvements.length, isViewer, isGenerationModalOpen]);
+    // improve ツアーが自動発火する条件（useAutoTour のガードと揃える）を満たすか、
+    // 既にツアー起動中なら、ツアー完了イベントを待ってからモーダルを開く
+    const tourWillFire =
+      tourGuideEnabled &&
+      isDesktop &&
+      !seenTours?.improve &&
+      !isFree;
+
+    if (tourWillFire || window.__onboardingTourActive) {
+      const handleTourEnded = () => {
+        if (hasAutoOpenedFocusRef.current) return;
+        hasAutoOpenedFocusRef.current = true;
+        setIsFocusModalOpen(true);
+      };
+      window.addEventListener('onboardingTourEnded', handleTourEnded, { once: true });
+      return () => window.removeEventListener('onboardingTourEnded', handleTourEnded);
+    }
+
+    hasAutoOpenedFocusRef.current = true;
+    setIsFocusModalOpen(true);
+  }, [improvementsLoading, improvements.length, isViewer, isGenerationModalOpen, isOnboardingLoading, isPlanLoading, tourGuideEnabled, isDesktop, seenTours, isFree]);
 
   // ドロワーで表示中のアイテムをデータ更新に同期（モックアップ生成完了時など）
   useEffect(() => {
@@ -331,6 +365,68 @@ export default function Improve() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [improvements]);
+
+  // モックアップ対象の改善について、改善一覧がレンダーされた時点で
+  // Before スクショを並列バックグラウンド撮影する（ユーザーがドロワーを開く頃には撮影済）
+  // 併せてドロワー開時のフォールバック発火も行う（リストに無い edge case 保険）
+  const capturedBeforeRef = useRef(new Set());
+
+  const triggerBeforeCapture = (url) => {
+    if (!url || !/^https?:\/\//i.test(url)) return;
+    if (getBeforeScreenshotUrl(url)) return;
+    if (capturedBeforeRef.current.has(url)) return;
+    capturedBeforeRef.current.add(url);
+    console.log('[Improve] captureBeforeScreenshot 呼出:', url);
+    return httpsCallable(functions, 'captureBeforeScreenshot')({ siteId: selectedSiteId, targetPageUrl: url })
+      .then((res) => {
+        if (res?.data?.success) {
+          console.log('[Improve] Before撮影完了:', url, res.data.alreadyExists ? '(既存)' : '(新規)');
+        } else {
+          console.warn('[Improve] Before撮影失敗:', url, res?.data?.reason);
+        }
+      })
+      .catch((err) => {
+        console.warn('[Improve] captureBeforeScreenshot エラー:', url, err?.message);
+      });
+  };
+
+  // 改善一覧が取れた瞬間（= Gemini生成直後 or 既存再表示）に、モックアップ対象の
+  // Before スクショを並列度4でバックグラウンド撮影する。ユーザーは即座に改善案を
+  // 読み始められ、ドロワーを開く頃には Before が揃っている想定。
+  useEffect(() => {
+    if (!selectedSiteId || !improvements || improvements.length === 0) return;
+    const targets = improvements
+      .filter(item => !item.mockupSkipped && !item.mockupHtml && item.targetPageUrl)
+      .map(item => String(item.targetPageUrl).split(',')[0].trim())
+      .filter(url => url && /^https?:\/\//i.test(url))
+      .filter(url => !getBeforeScreenshotUrl(url) && !capturedBeforeRef.current.has(url));
+    const uniqueTargets = Array.from(new Set(targets));
+    if (uniqueTargets.length === 0) return;
+
+    const CONCURRENCY = 4;
+    let index = 0;
+    const worker = async () => {
+      while (index < uniqueTargets.length) {
+        const url = uniqueTargets[index++];
+        await triggerBeforeCapture(url);
+      }
+    };
+    for (let i = 0; i < Math.min(CONCURRENCY, uniqueTargets.length); i++) {
+      worker();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [improvements, selectedSiteId]);
+
+  // ドロワー開時のフォールバック発火（何らかの理由で一括発火が漏れた場合の保険）
+  useEffect(() => {
+    if (!drawerItem || !selectedSiteId) return;
+    if (drawerItem.mockupSkipped || drawerItem.mockupHtml) return;
+    const raw = drawerItem.targetPageUrl;
+    if (!raw) return;
+    const firstUrl = String(raw).split(',')[0].trim();
+    triggerBeforeCapture(firstUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerItem?.id, selectedSiteId]);
 
   // 更新mutation
   const updateMutation = useMutation({
@@ -727,9 +823,12 @@ export default function Improve() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="mb-1 text-2xl font-bold text-dark dark:text-white">
-                改善する
-              </h2>
+              <div className="mb-1 flex items-center gap-2 flex-wrap">
+                <h2 className="text-2xl font-bold text-dark dark:text-white">
+                  改善する
+                </h2>
+                <TourHelpButton tourId="improve" />
+              </div>
               {/* サイトマップ状況表示（AI改善案生成でこのデータを反映） */}
               {scrapingStatus && scrapingStatus.lastScrapedAt && (
                 <p className="mt-1 text-body-color">
@@ -1358,7 +1457,7 @@ export default function Improve() {
                                   ) : (
                                     <div className="flex h-[300px] flex-col items-center justify-center gap-2 text-xs text-body-color">
                                       <svg className="h-5 w-5 animate-spin text-primary/40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                                      スクリーンショットを取得中...
+                                      スクリーンショットを取得中です（最大30秒程度）
                                     </div>
                                   )}
                                 </div>
@@ -1417,7 +1516,7 @@ export default function Improve() {
                               ) : (
                                 <div className="flex h-[300px] flex-col items-center justify-center gap-2 text-xs text-body-color">
                                   <svg className="h-5 w-5 animate-spin text-primary/40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                                  スクリーンショットを取得中...
+                                  スクリーンショットを取得中です（最大30秒程度）
                                 </div>
                               )}
                             </div>
@@ -1487,7 +1586,7 @@ export default function Improve() {
                                 ) : (
                                   <div className="flex h-[300px] flex-col items-center justify-center gap-2 text-xs text-body-color">
                                   <svg className="h-5 w-5 animate-spin text-primary/40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                                  スクリーンショットを取得中...
+                                  スクリーンショットを取得中です（最大30秒程度）
                                 </div>
                                 )}
                               </div>

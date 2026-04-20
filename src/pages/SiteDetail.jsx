@@ -97,8 +97,12 @@ export default function SiteDetail() {
               const meta = metaDoc.data();
               setScrapingStatus(meta);
               const ok = meta.totalPagesScraped ?? 0;
+              const removed = meta.totalPagesRemoved ?? 0;
               const ng = meta.totalPagesFailed ?? 0;
-              setScrapingMessage(`スクレイピングが完了しました。成功: ${ok}ページ、失敗: ${ng}ページ`);
+              const parts = [`成功: ${ok}ページ`];
+              if (removed > 0) parts.push(`削除済み: ${removed}ページ`);
+              if (ng > 0) parts.push(`取得エラー: ${ng}ページ`);
+              setScrapingMessage(`スクレイピングが完了しました。${parts.join(' / ')}`);
               setTimeout(() => setScrapingMessage(null), 10000);
             }
             setIsScrapingLoading(false);
@@ -442,7 +446,19 @@ export default function SiteDetail() {
             </div>
           </div>
           <div>
-            <div className="text-sm text-body-color dark:text-dark-6">失敗ページ数</div>
+            <div className="text-sm text-body-color dark:text-dark-6">
+              削除済みページ数
+              <span className="ml-1 text-xs text-body-color/70">（サイト側に存在しない）</span>
+            </div>
+            <div className="mt-1 text-dark dark:text-white">
+              {scrapingStatus?.totalPagesRemoved || 0}ページ
+            </div>
+          </div>
+          <div>
+            <div className="text-sm text-body-color dark:text-dark-6">
+              取得エラー数
+              <span className="ml-1 text-xs text-body-color/70">（タイムアウト等）</span>
+            </div>
             <div className="mt-1 text-dark dark:text-white">
               {scrapingStatus?.totalPagesFailed || 0}ページ
             </div>

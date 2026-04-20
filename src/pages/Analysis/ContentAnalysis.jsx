@@ -20,7 +20,7 @@ import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSiteDetail } from '../../hooks/useSiteDetail';
-import { useAutoTour } from '../../hooks/useAutoTour';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 
 /**
  * 興味度スコア計算
@@ -61,7 +61,6 @@ export default function ContentAnalysis() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const { siteDetail } = useSiteDetail(selectedSiteId);
-  useAutoTour('analysisContent');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [isGTMBannerDismissed, setIsGTMBannerDismissed] = useState(() => {
     try { return localStorage.getItem('gr_gtm_banner_dismissed') === 'true'; } catch { return false; }
@@ -334,9 +333,12 @@ export default function ContentAnalysis() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-dark dark:text-white">
-                コンテンツ分析
-              </h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-lg font-bold text-dark dark:text-white">
+                  コンテンツ分析
+                </h2>
+                <TourHelpButton tourId="analysisContent" />
+              </div>
               <p className="mt-0.5 text-sm text-body-color">
                 ページごとの興味度スコアを分析し、改善すべきコンテンツを特定します
               </p>
