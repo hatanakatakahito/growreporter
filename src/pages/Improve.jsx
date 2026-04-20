@@ -7,6 +7,7 @@ import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, X, FileText, Clock, TrendingUp, ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
 import DotWaveSpinner from '../components/common/DotWaveSpinner';
+import logoImg from '../assets/img/logo.svg';
 import { setPageTitle } from '../utils/pageTitle';
 import { db, functions } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -1680,12 +1681,20 @@ export default function Improve() {
                                     </>
                                   ) : (
                                     // デフォルト/生成中: ドロワー開時に自動発火するのでスピナー1種類でOK
-                                    <>
-                                      <div className="mb-3">
-                                        <DotWaveSpinner size="md" />
-                                      </div>
-                                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">モックアップを生成中…</p>
-                                    </>
+                                    // グラデーション + ガラスモーフィズムのカード内にロゴ + スピナー配置
+                                    <div
+                                      className="flex flex-col items-center gap-4 rounded-2xl border border-white/40 px-10 py-6"
+                                      style={{
+                                        background: 'linear-gradient(135deg, rgba(55,88,249,0.18) 0%, rgba(236,72,153,0.18) 100%)',
+                                        backdropFilter: 'blur(14px)',
+                                        WebkitBackdropFilter: 'blur(14px)',
+                                        boxShadow: '0 8px 32px rgba(55,88,249,0.15)',
+                                      }}
+                                    >
+                                      <img src={logoImg} alt="GrowReporter" className="h-7 w-auto" />
+                                      <DotWaveSpinner size="md" />
+                                      <p className="text-sm font-medium text-gray-700 dark:text-gray-200">モックアップを生成中…</p>
+                                    </div>
                                   )}
                                 </div>
                               </div>
