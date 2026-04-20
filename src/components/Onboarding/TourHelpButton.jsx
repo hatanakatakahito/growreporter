@@ -29,7 +29,7 @@ export default function TourHelpButton({ tourId, className = '' }) {
     <button
       type="button"
       onClick={handleClick}
-      className={`hidden md:inline-flex shrink-0 items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 hover:bg-primary hover:text-white text-primary px-3 py-1 text-xs font-medium transition-colors whitespace-nowrap ${className}`}
+      className={`hidden md:inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary text-white px-3 py-1 text-xs font-medium whitespace-nowrap ${className}`}
       title="このページの使い方を見る"
     >
       <BookOpen className="h-3.5 w-3.5" />
