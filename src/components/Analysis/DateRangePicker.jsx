@@ -201,14 +201,6 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
     }
   };
 
-  // キャンセル
-  const handleCancel = () => {
-    if (dateRange?.from && dateRange?.to) {
-      setSelectedRange({ from: new Date(dateRange.from), to: new Date(dateRange.to) });
-    }
-    setIsOpen(false);
-  };
-
   // カスタム比較期間の適用（左=対象期間、右=比較期間）
   const handleCustomCompApply = () => {
     if (customLeftRange?.from && customLeftRange?.to && customRightRange?.from && customRightRange?.to) {
@@ -317,7 +309,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
               month={displayMonth}
               onMonthChange={setDisplayMonth}
               selected={selectedRange}
-              onDayClick={handleMainDayClick}
+              onSelect={(_libRange, triggerDay) => handleMainDayClick(triggerDay)}
               modifiers={mainCalProps.modifiers}
               modifiersClassNames={mainCalProps.modifiersClassNames}
               components={{ DayDate: mainCalProps.renderDay }}
@@ -378,9 +370,6 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
               )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <button onClick={handleCancel} className="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium text-gray-500 transition hover:bg-gray-100">
-                キャンセル
-              </button>
               <button
                 onClick={handleApply}
                 disabled={mainClickPhase === 'end' || !selectedRange?.from || !selectedRange?.to}
@@ -412,7 +401,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
                   month={customLeftMonth}
                   onMonthChange={setCustomLeftMonth}
                   selected={customLeftRange}
-                  onDayClick={handleCustomLeftDayClick}
+                  onSelect={(_libRange, triggerDay) => handleCustomLeftDayClick(triggerDay)}
                   modifiers={customCalProps.modifiers}
                   modifiersClassNames={customCalProps.modifiersClassNames}
                   components={{ DayDate: customCalProps.renderDay }}
@@ -437,7 +426,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
                   month={customRightMonth}
                   onMonthChange={setCustomRightMonth}
                   selected={customRightRange}
-                  onDayClick={handleCustomRightDayClick}
+                  onSelect={(_libRange, triggerDay) => handleCustomRightDayClick(triggerDay)}
                   modifiers={customCalProps.modifiers}
                   modifiersClassNames={customCalProps.modifiersClassNames}
                   components={{ DayDate: customCalProps.renderDay }}
@@ -473,7 +462,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
               </button>
               <button
                 onClick={handleCustomCompApply}
-                disabled={!customLeftRange?.from || !customLeftRange?.to || !customRightRange?.from || !customRightRange?.to}
+                disabled={customLeftPhase === 'end' || customRightPhase === 'end' || !customLeftRange?.from || !customLeftRange?.to || !customRightRange?.from || !customRightRange?.to}
                 className="whitespace-nowrap rounded-full bg-blue-600 px-4 py-1.5 text-[12px] font-medium text-white transition hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
                 適用
