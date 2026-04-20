@@ -1681,7 +1681,7 @@ export default function Improve() {
                                   ) : (
                                     // デフォルト/生成中: ドロワー開時に自動発火するのでスピナー1種類でOK
                                     <>
-                                      <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                                      <div className="mb-3">
                                         <DotWaveSpinner size="md" />
                                       </div>
                                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">モックアップを生成しています</p>
