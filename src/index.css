@@ -166,8 +166,8 @@ html {
   margin-top: 0.25rem;
 }
 
-/* テーブル行ホバー — 全テーブル共通 */
-.main-content table tbody tr:hover {
+/* テーブル行ホバー — 全テーブル共通（.no-hover が付いた行は除外） */
+.main-content table tbody tr:not(.no-hover):hover {
   background-color: rgba(55, 88, 249, 0.04) !important;
   transition: background-color 0.15s ease;
 }

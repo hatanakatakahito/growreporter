@@ -721,17 +721,16 @@ export default function Improve() {
                   <Sparkles className="h-4 w-4" />
                   AI改善案生成
                 </button>
-                <span data-tour="improve-manual-add">
-                  <Button
-                    color="blue"
-                    onClick={() => {
-                      setEditingItem(null);
-                      setIsDialogOpen(true);
-                    }}
-                  >
-                    手動で追加
-                  </Button>
-                </span>
+                <button
+                  data-tour="improve-manual-add"
+                  onClick={() => {
+                    setEditingItem(null);
+                    setIsDialogOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
+                >
+                  手動で追加
+                </button>
               </>
             )
           }
@@ -1024,14 +1023,11 @@ export default function Improve() {
                     )}
                     <tbody>
                       {sortedImprovements.length === 0 ? (
-                        <tr><td colSpan={isViewer ? 6 : 7} className="py-20 px-6 text-center">
+                        <tr className="no-hover"><td colSpan={isViewer ? 6 : 7} className="py-20 px-6 text-center">
                           <div className="flex flex-col items-center gap-6 max-w-xl mx-auto">
-                            {/* アイコン（円背景 + パルス） */}
-                            <div className="relative">
-                              <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center">
-                                <Sparkles className="h-12 w-12 text-blue-500" strokeWidth={1.5} />
-                              </div>
-                              <div className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-pink-400 animate-pulse"></div>
+                            {/* アイコン（円背景） */}
+                            <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center">
+                              <Sparkles className="h-12 w-12 text-blue-500" strokeWidth={1.5} />
                             </div>
 
                             {/* 見出し + 説明 */}
