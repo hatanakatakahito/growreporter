@@ -111,6 +111,8 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
   const { comparisonMode, setComparisonMode, comparisonDateRange, setCustomComparisonRange } = useSite();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedRange, setSelectedRange] = useState(null);
+  // クリックフェーズ: 'start' = 次クリックで開始日, 'end' = 次クリックで終了日
+  const [mainClickPhase, setMainClickPhase] = useState('start');
   const [displayMonth, setDisplayMonth] = useState(
     dateRange?.from ? new Date(dateRange.from) : new Date()
   );
@@ -118,7 +120,9 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
   // カスタム比較用state（左右独立）
   const [showCustomCalendar, setShowCustomCalendar] = useState(false);
   const [customLeftRange, setCustomLeftRange] = useState(null); // 左=対象期間
+  const [customLeftPhase, setCustomLeftPhase] = useState('start');
   const [customRightRange, setCustomRightRange] = useState(null); // 右=比較期間
+  const [customRightPhase, setCustomRightPhase] = useState('start');
   const [customLeftMonth, setCustomLeftMonth] = useState(
     dateRange?.from ? new Date(dateRange.from) : new Date()
   );
@@ -155,10 +159,32 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
   const customMonthDates = useMemo(() => [customLeftMonth, customRightMonth], [customLeftMonth, customRightMonth]);
   const customCalProps = useCalendarProps(customMonthDates);
 
+  // 2クリック選択ハンドラ生成（1=開始, 2=終了, 3=リセットして開始）
+  const createTwoClickHandler = (phase, setPhase, setRange) => (day) => {
+    if (!day) return;
+    if (phase === 'start') {
+      setRange({ from: day, to: undefined });
+      setPhase('end');
+    } else {
+      setRange((prev) => {
+        const from = prev?.from;
+        if (!from) return { from: day, to: undefined };
+        if (day < from) return { from: day, to: from };
+        return { from, to: day };
+      });
+      setPhase('start');
+    }
+  };
+
+  const handleMainDayClick = createTwoClickHandler(mainClickPhase, setMainClickPhase, setSelectedRange);
+  const handleCustomLeftDayClick = createTwoClickHandler(customLeftPhase, setCustomLeftPhase, setCustomLeftRange);
+  const handleCustomRightDayClick = createTwoClickHandler(customRightPhase, setCustomRightPhase, setCustomRightRange);
+
   // プリセットクリック
   const handlePreset = (preset) => {
     const range = preset.getRange();
     setSelectedRange(range);
+    setMainClickPhase('start');
     setDisplayMonth(range.from);
   };
 
@@ -227,6 +253,12 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
           if (!isOpen && dateRange?.from) setDisplayMonth(new Date(dateRange.from));
           setIsOpen(!isOpen);
           setShowCustomCalendar(false);
+          // 開くたびにクリックフェーズを開始日待ちに戻す
+          if (!isOpen) {
+            setMainClickPhase('start');
+            setCustomLeftPhase('start');
+            setCustomRightPhase('start');
+          }
         }}
         className={compact
           ? "flex h-9 w-9 items-center justify-center rounded-lg text-body-color hover:bg-gray-100"
@@ -283,7 +315,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
               month={displayMonth}
               onMonthChange={setDisplayMonth}
               selected={selectedRange}
-              onSelect={setSelectedRange}
+              onDayClick={handleMainDayClick}
               modifiers={mainCalProps.modifiers}
               modifiersClassNames={mainCalProps.modifiersClassNames}
               components={{ DayDate: mainCalProps.renderDay }}
@@ -325,12 +357,22 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
           <div className="flex items-center border-t border-gray-100 px-3 py-2">
             <div className="flex-1 min-w-0 mr-2">
               {selectedRange?.from && selectedRange?.to ? (
-                <span className="text-[11px] text-gray-400 truncate block">
-                  {format(selectedRange.from, 'M/dd')} ~ {format(selectedRange.to, 'M/dd')}
+                <span className="text-[11px] truncate block">
+                  <span className="text-gray-500">開始</span>{' '}
+                  <span className="text-gray-800 font-medium">{format(selectedRange.from, 'yyyy/M/d')}</span>
+                  <span className="text-gray-400"> 〜 </span>
+                  <span className="text-gray-500">終了</span>{' '}
+                  <span className="text-gray-800 font-medium">{format(selectedRange.to, 'yyyy/M/d')}</span>
                 </span>
               ) : selectedRange?.from ? (
-                <span className="text-[11px] text-gray-400">終了日を選択</span>
-              ) : null}
+                <span className="text-[11px] truncate block">
+                  <span className="text-gray-500">開始</span>{' '}
+                  <span className="text-gray-800 font-medium">{format(selectedRange.from, 'yyyy/M/d')}</span>
+                  <span className="text-blue-500"> → 次に終了日をクリック</span>
+                </span>
+              ) : (
+                <span className="text-[11px] text-blue-500">最初に開始日をクリック</span>
+              )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <button onClick={handleCancel} className="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium text-gray-500 transition hover:bg-gray-100">
@@ -367,7 +409,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
                   month={customLeftMonth}
                   onMonthChange={setCustomLeftMonth}
                   selected={customLeftRange}
-                  onSelect={setCustomLeftRange}
+                  onDayClick={handleCustomLeftDayClick}
                   modifiers={customCalProps.modifiers}
                   modifiersClassNames={customCalProps.modifiersClassNames}
                   components={{ DayDate: customCalProps.renderDay }}
@@ -392,7 +434,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
                   month={customRightMonth}
                   onMonthChange={setCustomRightMonth}
                   selected={customRightRange}
-                  onSelect={setCustomRightRange}
+                  onDayClick={handleCustomRightDayClick}
                   modifiers={customCalProps.modifiers}
                   modifiersClassNames={customCalProps.modifiersClassNames}
                   components={{ DayDate: customCalProps.renderDay }}
