@@ -585,9 +585,14 @@ function extractPathFromTitleOrDescription(title, description) {
     const p = parenMatch[1].trim();
     return p || '/';
   }
-  // スラッシュで始まるパス: /path/ または /path
-  const pathMatch = text.match(/(\/[a-zA-Z0-9/_.-]+)/);
-  if (pathMatch && pathMatch[1]) return pathMatch[1];
+  // スラッシュで始まるパス: 前置文字として空白/文頭/カッコ/句点を要求（"UI/UX" の UX を /UX と誤抽出するのを防ぐ）
+  const pathMatch = text.match(/(?:^|[\s「『（(【、。，])(\/[a-zA-Z0-9/_.-]+)/);
+  if (pathMatch && pathMatch[1]) {
+    const p = pathMatch[1];
+    // /UX /UI /AI /CV 等のよくある英大文字略語は誤抽出の可能性が高いので除外
+    if (/^\/[A-Z]{2,4}$/.test(p)) return null;
+    return p;
+  }
   return null;
 }
 
@@ -671,8 +676,10 @@ function extractImprovementRecommendations(summary) {
     if (currentRec.title && currentRec.description) {
       if (!currentRec.category) currentRec.category = 'other';
       if (!currentRec.priority) currentRec.priority = 'medium';
-      // 「対象ページ:」行が無くても、タイトル・説明内のパス（例: (/contacts/)）から対象URLを補う
-      if (!currentRec.targetPagePath || currentRec.targetPagePath === '/') {
+      // 「対象ページ:」行が無い場合のみフォールバックで本文から抽出を試みる。
+      // AI が明示的に「/」を書いた場合はサイト共通指定として尊重し、
+      // 本文から「/UX」等を誤抽出して上書きしないようにする。
+      if (!currentRec.targetPagePath) {
         const extracted = extractPathFromTitleOrDescription(currentRec.title, currentRec.description);
         if (extracted && extracted !== '/') currentRec.targetPagePath = extracted;
       }

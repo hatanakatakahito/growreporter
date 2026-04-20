@@ -19,6 +19,8 @@ import { getStorage } from 'firebase-admin/storage';
 const DENSITY_THRESHOLD = 12; // bytes per Kpixel 未満は破綻と判定
 const PSI_TIMEOUT_MS = 90_000;
 const PSI_BASE_URL = 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed';
+const PSI_MAX_RETRIES = 2;        // 初回 + 最大2回リトライ = 計3回試行
+const PSI_RETRY_DELAY_MS = 3_000; // リトライ間隔
 
 /**
  * @param {object} params
@@ -67,13 +69,39 @@ export async function captureSingleScreenshot({ url, deviceType, userId, options
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-  try {
-    logger.info(`[captureSingleScreenshot] PSI 呼出: ${url} (${strategy})`);
-    const res = await fetch(psiUrl, { signal: controller.signal });
-    if (!res.ok) {
-      logger.warn(`[captureSingleScreenshot] PSI HTTP ${res.status} for ${url}`);
-      return null;
+  // PSI 呼出: 5xx / ネットワーク系の一時的失敗は自動リトライする
+  async function fetchPsiWithRetry() {
+    let lastStatus = null;
+    let lastError = null;
+    for (let attempt = 0; attempt <= PSI_MAX_RETRIES; attempt++) {
+      try {
+        const prefix = attempt === 0 ? '[captureSingleScreenshot] PSI 呼出' : `[captureSingleScreenshot] PSI リトライ${attempt}`;
+        logger.info(`${prefix}: ${url} (${strategy})`);
+        const res = await fetch(psiUrl, { signal: controller.signal });
+        if (res.ok) return res;
+        lastStatus = res.status;
+        // 4xx はリトライしても無意味（URL不正・認証切れ等）
+        if (res.status < 500) {
+          logger.warn(`[captureSingleScreenshot] PSI HTTP ${res.status} (リトライ不要) for ${url}`);
+          return null;
+        }
+        logger.warn(`[captureSingleScreenshot] PSI HTTP ${res.status} (リトライ可能) for ${url}`);
+      } catch (err) {
+        lastError = err;
+        if (err?.name === 'AbortError') throw err; // タイムアウトはリトライしない
+        logger.warn(`[captureSingleScreenshot] PSI fetch エラー: ${err?.message || err} for ${url}`);
+      }
+      if (attempt < PSI_MAX_RETRIES) {
+        await new Promise(r => setTimeout(r, PSI_RETRY_DELAY_MS));
+      }
     }
+    logger.warn(`[captureSingleScreenshot] PSI リトライ上限到達: lastStatus=${lastStatus}, lastError=${lastError?.message} for ${url}`);
+    return null;
+  }
+
+  try {
+    const res = await fetchPsiWithRetry();
+    if (!res) return null;
     const data = await res.json();
 
     // スクショデータ抽出（優先度: fullPageScreenshot → audits['full-page-screenshot'] → audits['final-screenshot']）

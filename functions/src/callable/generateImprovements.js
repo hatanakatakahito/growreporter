@@ -47,8 +47,14 @@ function extractPathFromTitleOrDescription(title, description) {
   if (!text) return null;
   const parenMatch = text.match(/[（(](\/[^）)]*\/?)[）)]/);
   if (parenMatch?.[1]) return parenMatch[1].trim() || '/';
-  const pathMatch = text.match(/(\/[a-zA-Z0-9/_.-]+)/);
-  if (pathMatch?.[1]) return pathMatch[1];
+  // 前置文字として空白/文頭/カッコ/句点を要求（"UI/UX" の UX を誤抽出しないため）
+  const pathMatch = text.match(/(?:^|[\s「『（(【、。，])(\/[a-zA-Z0-9/_.-]+)/);
+  if (pathMatch?.[1]) {
+    const p = pathMatch[1];
+    // /UX /UI /AI /CV 等の短い英大文字略語は誤抽出の可能性が高いので除外
+    if (/^\/[A-Z]{2,4}$/.test(p)) return null;
+    return p;
+  }
   return null;
 }
 

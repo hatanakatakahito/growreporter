@@ -85,7 +85,6 @@ export default function Improve() {
   
   // 方針選択モーダル（AI生成の前に表示）
   const [isFocusModalOpen, setIsFocusModalOpen] = useState(false);
-  const hasAutoOpenedFocusRef = useRef(false);
   // AI生成オーバーレイの状態
   const [isGenerationModalOpen, setIsGenerationModalOpen] = useState(false);
   const [generationStatus, setGenerationStatus] = useState('loading');
@@ -295,10 +294,21 @@ export default function Improve() {
   };
 
   // Before スクリーンショットURLを解決する関数（表示時に呼び出し）
+  // 複数URL（カンマ区切り）の改善案にも対応: 撮影は先頭URLのみで実施するため、
+  // 先頭URL → 正規化先頭URL → 原文字列 の順で検索
   const getBeforeScreenshotUrl = (targetPageUrl) => {
     if (!targetPageUrl) return null;
-    const normalized = normalizeUrlForMatch(targetPageUrl);
-    return pageScreenshotsMap[normalized] || pageScreenshotsMap[targetPageUrl] || null;
+    const firstUrl = String(targetPageUrl).split(',')[0].trim();
+    const candidates = [
+      firstUrl && normalizeUrlForMatch(firstUrl),
+      firstUrl,
+      normalizeUrlForMatch(targetPageUrl),
+      targetPageUrl,
+    ].filter(Boolean);
+    for (const key of candidates) {
+      if (pageScreenshotsMap[key]) return pageScreenshotsMap[key];
+    }
+    return null;
   };
 
   // 改善課題データの取得
@@ -321,35 +331,8 @@ export default function Improve() {
     enabled: !!selectedSiteId,
   });
 
-  // 改善案が0件の場合、方針選択モーダルを自動表示（初回のみ）
-  // ツアーガイドが発火する条件が揃っている場合は、ツアー完了イベントを待ってから開く
-  useEffect(() => {
-    // ツアー発火判定に必要な状態（プラン / オンボーディング）が未確定ならまだ判断しない
-    if (isOnboardingLoading || isPlanLoading) return;
-    if (improvementsLoading || improvements.length !== 0 || isViewer || isGenerationModalOpen || hasAutoOpenedFocusRef.current) {
-      return;
-    }
-    // improve ツアーが自動発火する条件（useAutoTour のガードと揃える）を満たすか、
-    // 既にツアー起動中なら、ツアー完了イベントを待ってからモーダルを開く
-    const tourWillFire =
-      tourGuideEnabled &&
-      isDesktop &&
-      !seenTours?.improve &&
-      !isFree;
-
-    if (tourWillFire || window.__onboardingTourActive) {
-      const handleTourEnded = () => {
-        if (hasAutoOpenedFocusRef.current) return;
-        hasAutoOpenedFocusRef.current = true;
-        setIsFocusModalOpen(true);
-      };
-      window.addEventListener('onboardingTourEnded', handleTourEnded, { once: true });
-      return () => window.removeEventListener('onboardingTourEnded', handleTourEnded);
-    }
-
-    hasAutoOpenedFocusRef.current = true;
-    setIsFocusModalOpen(true);
-  }, [improvementsLoading, improvements.length, isViewer, isGenerationModalOpen, isOnboardingLoading, isPlanLoading, tourGuideEnabled, isDesktop, seenTours, isFree]);
+  // 方針選択モーダル（ImprovementFocusModal）は「AI改善案生成」ボタン押下時のみ開く。
+  // ツアーガイドで案内するため、ページ表示時の自動オープンは廃止した。
 
   // ドロワーで表示中のアイテムをデータ更新に同期（モックアップ生成完了時など）
   useEffect(() => {

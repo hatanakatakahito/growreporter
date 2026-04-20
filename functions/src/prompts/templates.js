@@ -1825,7 +1825,7 @@ ${userNoteBlock}${improvementFocusLine}${existingImprovementsText}
 難易度: easy | medium | hard
 費用感: free | low | medium | high
 想定工数（時間）: 0.5〜100の数値
-対象ページ: 特定ページ向けなら /パス or https://..., サイト共通なら「/」
+対象ページ: 特定ページ向けなら必ず完全な絶対URL（https://example.com/path/）で記述。サイト全体向けなら「/」のみ。タイトル/説明文からの推測は避け、実在するページのURLだけを明示すること。
 対象箇所: ヘッダー・フッター等の場合に記述、特定ページなら空欄可
 
 ---
