@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>C案: プロセス可視化型（ステップ）</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+  body { font-family: 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif; background: #f7f8fa; }
+  .bg-gradient-ai { background: linear-gradient(to right, #3b82f6, #ec4899); }
+  .bg-gradient-ai:hover { background: linear-gradient(to right, #2563eb, #db2777); }
+  .body-color { color: #637381; }
+</style>
+</head>
+<body class="p-8">
+
+<div class="mx-auto max-w-6xl">
+  <!-- ヘッダー部 -->
+  <div class="flex items-center justify-between mb-4">
+    <div>
+      <h1 class="text-xl font-bold text-gray-900">改善する</h1>
+      <p class="text-sm body-color mt-1">サイトマップデータ: 最終更新 2026/4/20 （103ページ取得済み・AI改善案に反映）</p>
+    </div>
+    <button class="bg-gradient-ai inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white">
+      <svg class="h-4 w-4" fill="currentColor" viewBox="0 0 20 20"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+      AI改善案生成
+    </button>
+  </div>
+
+  <!-- 空状態 C案: プロセス可視化型 -->
+  <div class="rounded-xl border border-gray-200 bg-white overflow-hidden">
+    <div class="grid grid-cols-1 lg:grid-cols-2">
+      <!-- 左: ビジュアル（背景グラデ） -->
+      <div class="relative bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 p-12 flex flex-col justify-center items-center text-white min-h-[380px]">
+        <!-- 装飾円 -->
+        <div class="absolute top-8 right-8 h-32 w-32 rounded-full bg-white/10 blur-2xl"></div>
+        <div class="absolute bottom-10 left-10 h-24 w-24 rounded-full bg-white/10 blur-2xl"></div>
+
+        <!-- メインアイコン -->
+        <div class="relative">
+          <div class="h-28 w-28 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+            <svg class="h-14 w-14" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z"/>
+            </svg>
+          </div>
+        </div>
+
+        <h2 class="text-xl font-bold mt-6 mb-2 text-center">AIがあなたのサイトを<br>より良くします</h2>
+        <p class="text-sm text-white/90 text-center">ワンクリックで、成果に直結する改善案が揃います</p>
+      </div>
+
+      <!-- 右: 3ステップ + CTA -->
+      <div class="p-10 flex flex-col justify-center">
+        <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-5">改善の流れ</h3>
+
+        <div class="space-y-4 mb-8">
+          <!-- Step 1 -->
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center">1</div>
+            <div>
+              <h4 class="text-sm font-bold text-gray-900 mb-1">データを自動収集</h4>
+              <p class="text-xs body-color">GA4・Search Console・サイトマップから最新の指標を取得</p>
+            </div>
+          </div>
+          <!-- Step 2 -->
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-purple-100 text-purple-600 font-bold flex items-center justify-center">2</div>
+            <div>
+              <h4 class="text-sm font-bold text-gray-900 mb-1">AIが分析＆抽出</h4>
+              <p class="text-xs body-color">離脱率・CTA・コンテンツ構造などから改善ポイントを特定</p>
+            </div>
+          </div>
+          <!-- Step 3 -->
+          <div class="flex items-start gap-4">
+            <div class="flex-shrink-0 h-10 w-10 rounded-full bg-pink-100 text-pink-600 font-bold flex items-center justify-center">3</div>
+            <div>
+              <h4 class="text-sm font-bold text-gray-900 mb-1">改善案リスト完成</h4>
+              <p class="text-xs body-color">優先度・工数・費用感付きで、すぐ実装できる状態に</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- CTA -->
+        <button class="bg-gradient-ai inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-base font-semibold text-white shadow-md hover:shadow-lg transition-shadow w-full">
+          <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20"><path d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z"/></svg>
+          いますぐ始める（約30秒）
+        </button>
+        <button class="text-xs text-center text-gray-500 hover:text-gray-700 underline mt-3">または手動で改善案を追加する</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="text-center text-xs body-color mt-4">C案: プロセス可視化型 — ヒーロービジュアル + 3ステップで価値と流れを同時に訴求</p>
+</div>
+
+</body>
+</html>

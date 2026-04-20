@@ -1022,20 +1022,54 @@ export default function Improve() {
                     </thead>
                     <tbody>
                       {sortedImprovements.length === 0 ? (
-                        <tr><td colSpan={isViewer ? 6 : 7} className="py-10 px-4 text-body-color text-center">
-                          <div className="flex flex-col items-center gap-4">
-                            <span>改善案がありません</span>
+                        <tr><td colSpan={isViewer ? 6 : 7} className="py-20 px-6 text-center">
+                          <div className="flex flex-col items-center gap-6 max-w-xl mx-auto">
+                            {/* アイコン（円背景 + パルス） */}
+                            <div className="relative">
+                              <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-100 to-pink-100 flex items-center justify-center">
+                                <Sparkles className="h-12 w-12 text-blue-500" strokeWidth={1.5} />
+                              </div>
+                              <div className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-pink-400 animate-pulse"></div>
+                            </div>
+
+                            {/* 見出し + 説明 */}
+                            <div className="space-y-2">
+                              <h2 className="text-xl font-bold text-dark dark:text-white">
+                                {isViewer ? '改善案がありません' : 'まずはAIに改善案を作ってもらいましょう'}
+                              </h2>
+                              {!isViewer && (
+                                <p className="text-sm text-body-color leading-relaxed">
+                                  GA4・Search Console のデータとサイトマップから、AIが成果につながる改善ポイントを自動抽出します。<br />
+                                  生成にかかる時間は約30秒です。
+                                </p>
+                              )}
+                            </div>
+
                             {!isViewer && (
-                              <button
-                                onClick={() => {
-                                  if (!selectedSiteId) return;
-                                  setIsFocusModalOpen(true);
-                                }}
-                                className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-blue-600 hover:to-pink-600 scale-[1.2] origin-center"
-                              >
-                                <Sparkles className="h-4 w-4" />
-                                AI改善案生成
-                              </button>
+                              <>
+                                {/* CTAボタン */}
+                                <button
+                                  onClick={() => {
+                                    if (!selectedSiteId) return;
+                                    setIsFocusModalOpen(true);
+                                  }}
+                                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-base font-semibold text-white shadow-md hover:shadow-lg hover:from-blue-600 hover:to-pink-600 transition-shadow"
+                                >
+                                  <Sparkles className="h-5 w-5" />
+                                  AI改善案を生成する
+                                </button>
+
+                                {/* サブリンク */}
+                                <button
+                                  onClick={() => {
+                                    setEditingItem(null);
+                                    setIsDialogOpen(true);
+                                  }}
+                                  className="text-xs text-body-color underline hover:text-dark dark:hover:text-white"
+                                >
+                                  または手動で改善案を追加する
+                                </button>
+                              </>
                             )}
                           </div>
                         </td></tr>
