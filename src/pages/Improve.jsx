@@ -977,6 +977,7 @@ export default function Improve() {
                 )}
                 <div data-tour="improve-table" className="rounded-xl border border-stroke dark:border-dark-3 overflow-x-auto overflow-y-visible bg-white dark:bg-dark-2">
                   <table className="w-full min-w-[900px] border-collapse text-sm table-fixed">
+                    {sortedImprovements.length > 0 && (
                     <thead>
                       <tr>
                         {!isViewer && (
@@ -1020,13 +1021,14 @@ export default function Improve() {
                         </th>
                       </tr>
                     </thead>
+                    )}
                     <tbody>
                       {sortedImprovements.length === 0 ? (
                         <tr><td colSpan={isViewer ? 6 : 7} className="py-20 px-6 text-center">
                           <div className="flex flex-col items-center gap-6 max-w-xl mx-auto">
                             {/* アイコン（円背景 + パルス） */}
                             <div className="relative">
-                              <div className="h-24 w-24 rounded-full bg-gradient-to-br from-blue-100 to-pink-100 flex items-center justify-center">
+                              <div className="h-24 w-24 rounded-full bg-blue-100 flex items-center justify-center">
                                 <Sparkles className="h-12 w-12 text-blue-500" strokeWidth={1.5} />
                               </div>
                               <div className="absolute -top-1 -right-1 h-6 w-6 rounded-full bg-pink-400 animate-pulse"></div>
@@ -1053,7 +1055,7 @@ export default function Improve() {
                                     if (!selectedSiteId) return;
                                     setIsFocusModalOpen(true);
                                   }}
-                                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-base font-semibold text-white shadow-md hover:shadow-lg hover:from-blue-600 hover:to-pink-600 transition-shadow"
+                                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-base font-semibold text-white shadow-md"
                                 >
                                   <Sparkles className="h-5 w-5" />
                                   AI改善案を生成する
@@ -1065,7 +1067,7 @@ export default function Improve() {
                                     setEditingItem(null);
                                     setIsDialogOpen(true);
                                   }}
-                                  className="text-xs text-body-color underline hover:text-dark dark:hover:text-white"
+                                  className="text-xs text-body-color underline"
                                 >
                                   または手動で改善案を追加する
                                 </button>
