@@ -1304,12 +1304,12 @@ export default function Improve() {
         const fullTargetUrl = targetUrl ? (targetUrl.startsWith('http') ? targetUrl : `${siteUrl}${targetUrl.startsWith('/') ? '' : '/'}${targetUrl}`) : '';
 
         return createPortal(
-          <div className="fixed inset-0 z-[100]">
-            {/* オーバーレイ（ドロワーの背面） */}
-            <div className="absolute inset-0 bg-black/30" onClick={closeDrawer} />
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6">
+            {/* オーバーレイ（モーダルの背面） */}
+            <div className="absolute inset-0 bg-black/40" onClick={closeDrawer} />
 
-            {/* ドロワー本体（オーバーレイの前面） */}
-            <div className="absolute top-0 bottom-0 right-0 w-full sm:w-[85vw] max-w-[1400px] bg-white dark:bg-dark-2 shadow-2xl flex flex-col">
+            {/* モーダル本体（中央配置、95vw × 95vh） */}
+            <div className="relative bg-white dark:bg-dark-2 rounded-xl shadow-2xl flex flex-col overflow-hidden" style={{ width: '95vw', height: '95vh' }}>
 
               {/* ドロワーヘッダー */}
               <div className="px-4 sm:px-10 py-5 border-b border-gray-200 dark:border-dark-3 shrink-0">
