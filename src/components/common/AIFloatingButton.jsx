@@ -7,18 +7,13 @@ import { useAuth } from '../../contexts/AuthContext';
  * AI分析フローティングボタン
  * 全ページ統一の右下固定ボタン
  * クリックでAI分析タブへスクロール
- * @param {string} pageType - ページタイプ
  * @param {function} onScrollToAI - AI分析タブへスクロールする関数
  */
-export default function AIFloatingButton({ pageType, onScrollToAI }) {
+export default function AIFloatingButton({ onScrollToAI }) {
   const [shouldAnimate, setShouldAnimate] = useState(false);
-  const { plan, planId, getRemainingByType } = usePlan();
+  const { plan } = usePlan();
   const { userProfile } = useAuth();
 
-  // pageTypeに応じて適切な残り回数を取得
-  const type = pageType === 'comprehensive_improvement' ? 'improvement' : 'summary';
-  const remaining = getRemainingByType(type);
-  
   const memberRole = userProfile?.memberRole || 'owner';
 
   // 5秒ごとにアニメーションを実行
@@ -53,16 +48,6 @@ export default function AIFloatingButton({ pageType, onScrollToAI }) {
           <Sparkles className="h-7 w-7" aria-hidden="true" />
           <span className="mt-1 text-[11px] font-medium">AI分析</span>
         </div>
-
-        {/* 残り回数バッジ — FreeプランではAI不可のためバッジ非表示 */}
-        {remaining !== null && planId !== 'free' && (
-          <span
-            className="absolute -top-2 -right-2 flex h-6 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-md whitespace-nowrap"
-            title={`${plan?.displayName || 'プラン'}：AI分析の今月の残り回数`}
-          >
-            {remaining === -1 ? '無制限' : `${remaining}回`}
-          </span>
-        )}
       </button>
     </div>
   );

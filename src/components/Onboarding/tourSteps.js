@@ -673,7 +673,7 @@ export const improveSteps = [
     element: sel(TOUR_TARGETS.IMPROVE_AI_GENERATE),
     popover: {
       title: 'まずはAI改善案を生成してみましょう',
-      description: 'このボタンをクリックすると、GA4・Search Consoleのデータとサイトマップを元にAIが改善ポイントを自動抽出します。フォーカス（流入改善・CV改善など）も指定できます。ボタン右上の赤バッジは今月の残り生成回数です。',
+      description: 'このボタンをクリックすると、GA4・Search Consoleのデータとサイトマップを元にAIが改善ポイントを自動抽出します。フォーカス（流入改善・CV改善など）も指定できます。',
     },
   },
   {

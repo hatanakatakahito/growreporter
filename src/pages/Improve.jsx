@@ -710,30 +710,17 @@ export default function Improve() {
           improveActions={
             !isViewer && (
               <>
-                {(() => {
-                  const remaining = getRemainingByType('improvement');
-                  return (
-                    <button
-                      data-tour="improve-ai-generate"
-                      onClick={() => {
-                        if (!selectedSiteId) return;
-                        setIsFocusModalOpen(true);
-                      }}
-                      className="relative inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-blue-600 hover:to-pink-600"
-                    >
-                      <Sparkles className="h-4 w-4" />
-                      AI改善案生成
-                      {remaining !== null && (
-                        <span
-                          className="absolute -top-2 -right-2 flex h-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-md whitespace-nowrap"
-                          title={`${plan?.displayName || 'プラン'}：AI改善案生成の今月の残り回数`}
-                        >
-                          {remaining === -1 ? '無制限' : `${remaining}回`}
-                        </span>
-                      )}
-                    </button>
-                  );
-                })()}
+                <button
+                  data-tour="improve-ai-generate"
+                  onClick={() => {
+                    if (!selectedSiteId) return;
+                    setIsFocusModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-blue-600 hover:to-pink-600"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  AI改善案生成
+                </button>
                 <span data-tour="improve-manual-add">
                   <Button
                     color="blue"
