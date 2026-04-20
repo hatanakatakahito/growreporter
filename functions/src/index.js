@@ -106,6 +106,11 @@ export const captureScreenshot = lazyCallable('./callable/captureScreenshot.js',
 export const captureBeforeScreenshot = lazyCallable('./callable/captureBeforeScreenshot.js', 'captureBeforeScreenshotCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] });
 
 /**
+ * サイトPV上位10ページのBefore予熱（方針選択モーダル開時に呼出）
+ */
+export const preheatSitePageScreenshots = lazyCallable('./callable/preheatSitePageScreenshots.js', 'preheatSitePageScreenshotsCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] });
+
+/**
  * AI要約生成 Callable Function
  * Gemini APIを使用してGA4データの要約を生成
  */

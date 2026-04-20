@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles } from 'lucide-react';
+import { httpsCallable } from 'firebase/functions';
 import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
+import { functions } from '../../config/firebase';
 
 const FOCUS_OPTIONS = [
   { value: 'balance', label: 'バランス（まんべんなく）' },
@@ -13,10 +15,33 @@ const FOCUS_OPTIONS = [
 
 /**
  * AI改善案生成前に「どの成果を優先するか」を選択するモーダル
+ *
+ * 開いた瞬間に裏で preheatSitePageScreenshots を fire-and-forget 呼出し、
+ * PV上位ページのBeforeスクショを事前撮影する（モーダル操作中の数秒〜30秒を活用）
  */
-export default function ImprovementFocusModal({ isOpen, onClose, onConfirm }) {
+export default function ImprovementFocusModal({ isOpen, onClose, onConfirm, siteId }) {
   const [focus, setFocus] = useState('balance');
   const [userNote, setUserNote] = useState('');
+
+  // 同一siteId への予熱を二重発火させないためのガード
+  const preheatFiredRef = useRef(null);
+
+  useEffect(() => {
+    if (!isOpen || !siteId) return;
+    if (preheatFiredRef.current === siteId) return;
+    preheatFiredRef.current = siteId;
+    const fn = httpsCallable(functions, 'preheatSitePageScreenshots');
+    fn({ siteId })
+      .then((res) => {
+        if (res?.data?.success) {
+          console.log('[preheat] 完了:', res.data);
+        }
+      })
+      .catch((err) => {
+        console.warn('[preheat] エラー:', err?.message);
+        preheatFiredRef.current = null; // 失敗時は次回再試行可能にする
+      });
+  }, [isOpen, siteId]);
 
   const handleConfirm = () => {
     onConfirm(focus, userNote.trim());

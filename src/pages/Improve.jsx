@@ -5,7 +5,7 @@ import { useSidebar } from '../contexts/SidebarContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, X, FileText, Clock, TrendingUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, X, FileText, Clock, TrendingUp, ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
 import DotWaveSpinner from '../components/common/DotWaveSpinner';
 import { setPageTitle } from '../utils/pageTitle';
 import { db, functions } from '../config/firebase';
@@ -110,6 +110,8 @@ export default function Improve() {
   const [afterIframeHeight, setAfterIframeHeight] = useState(null);
   // モックアップ生成中のID管理
   const [mockupGeneratingIds, setMockupGeneratingIds] = useState(new Set());
+  // モックアップ生成失敗のID管理（自動発火ループ防止）
+  const [mockupFailedIds, setMockupFailedIds] = useState(new Set());
 
   const queryClient = useQueryClient();
   const siteUrl = (selectedSite?.siteUrl || '').trim().replace(/\/+$/, '');
@@ -118,12 +120,21 @@ export default function Improve() {
   const handleGenerateMockup = async (item) => {
     if (mockupGeneratingIds.has(item.id)) return;
     setMockupGeneratingIds(prev => new Set([...prev, item.id]));
+    // 再試行のため、成功/失敗にかかわらず failed 履歴はクリアしておく
+    setMockupFailedIds(prev => {
+      if (!prev.has(item.id)) return prev;
+      const next = new Set(prev);
+      next.delete(item.id);
+      return next;
+    });
     try {
       const generateMockup = httpsCallable(functions, 'generateImprovementMockup');
       await generateMockup({ siteId: selectedSiteId, improvementId: item.id });
-      toast.success('モックアップを生成しました');
+      // 成功時の toast は出さない（UI上で Before/After が切り替わることで通知）
       queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
     } catch (e) {
+      console.warn('[handleGenerateMockup] 失敗:', e?.message);
+      setMockupFailedIds(prev => new Set([...prev, item.id]));
       toast.error(`モックアップ生成に失敗しました: ${e.message}`);
     } finally {
       setMockupGeneratingIds(prev => {
@@ -348,6 +359,24 @@ export default function Improve() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [improvements]);
+
+  // ドロワー開時に自動でモックアップ生成を発火する
+  // （「生成する」ボタンは廃止済、未生成のモックアップ対象改善はドロワー開いた瞬間に自動生成）
+  //
+  // 依存配列に mockupGeneratingIds / mockupFailedIds を意図的に含めていない理由:
+  //   これらは「発火条件の gate」であり「再発火のトリガー」ではないため。
+  //   ドロワーID変化時のみ効果を再実行したい（gen 中の状態更新では再実行不要）。
+  //   次回ドロワーが開いた時の新しいクロージャでは、最新の状態が参照されるので stale にならない。
+  useEffect(() => {
+    if (!drawerItem || !selectedSiteId) return;
+    if (drawerItem.mockupSkipped) return;
+    if (drawerItem.mockupHtml) return;
+    if (!drawerItem.targetPageUrl) return;
+    if (mockupGeneratingIds.has(drawerItem.id)) return;
+    if (mockupFailedIds.has(drawerItem.id)) return; // 一度失敗したら手動再試行待ち
+    handleGenerateMockup(drawerItem);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [drawerItem?.id, selectedSiteId]);
 
   // モックアップ対象の改善について、改善一覧がレンダーされた時点で
   // Before スクショを並列バックグラウンド撮影する（ユーザーがドロワーを開く頃には撮影済）
@@ -858,6 +887,7 @@ export default function Improve() {
 
           <ImprovementFocusModal
             isOpen={isFocusModalOpen}
+            siteId={selectedSiteId}
             onClose={() => setIsFocusModalOpen(false)}
             onConfirm={async (improvementFocus, userNote) => {
               // プラン上限チェック（生成前）
@@ -1632,46 +1662,30 @@ export default function Improve() {
                                 <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(55,88,249,0.04) 0%, rgba(255,255,255,0.96) 35%, rgba(255,255,255,1) 100%)' }} />
                                 {/* コンテンツ */}
                                 <div className="relative z-10 flex flex-col items-center justify-center p-8" style={{ minHeight: '300px' }}>
-                                  {mockupGeneratingIds.has(item.id) ? (
+                                  {mockupFailedIds.has(item.id) ? (
+                                    // 失敗状態: 手動再試行ボタン
+                                    <>
+                                      <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center">
+                                        <AlertCircle className="h-7 w-7 text-red-500" />
+                                      </div>
+                                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">モックアップ生成に失敗しました</p>
+                                      <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">時間をおいてからお試しください</p>
+                                      <button
+                                        onClick={() => handleGenerateMockup(item)}
+                                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition cursor-pointer shadow-sm"
+                                      >
+                                        <RefreshCw className="h-4 w-4" />
+                                        再試行する
+                                      </button>
+                                    </>
+                                  ) : (
+                                    // デフォルト/生成中: ドロワー開時に自動発火するのでスピナー1種類でOK
                                     <>
                                       <div className="mx-auto mb-3 h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
                                         <DotWaveSpinner size="md" />
                                       </div>
                                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">モックアップを生成しています</p>
                                       <p className="text-xs text-gray-400 dark:text-gray-500">AIがデザインを作成中です。しばらくお待ちください。</p>
-                                    </>
-                                  ) : (
-                                    <>
-                                      {/* 3ステップ */}
-                                      <div className="w-full max-w-[260px] mb-7">
-                                        {[
-                                          { num: '1', main: 'ボタンをクリック', sub: 'ワンクリックで生成開始', active: true },
-                                          { num: '2', main: 'AIがデザインを作成', sub: '改善内容をもとに自動生成', active: false },
-                                          { num: '3', main: 'Before / After で比較', sub: '改善効果を視覚的に確認', active: false },
-                                        ].map((step, i) => (
-                                          <div key={i} className="flex items-start gap-3 mb-4 last:mb-0 relative">
-                                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${step.active ? 'bg-primary text-white' : 'bg-gray-200 dark:bg-dark-3 text-gray-400'}`}>
-                                              {step.num}
-                                            </div>
-                                            <div>
-                                              <div className="text-[13px] font-semibold text-gray-700 dark:text-gray-200">{step.main}</div>
-                                              <div className="text-[11px] text-gray-400 dark:text-gray-500 mt-0.5">{step.sub}</div>
-                                            </div>
-                                            {i < 2 && <div className="absolute left-[13px] top-[30px] w-0.5 h-3 bg-gray-200 dark:bg-dark-3" />}
-                                          </div>
-                                        ))}
-                                      </div>
-                                      <button
-                                        onClick={() => handleGenerateMockup(item)}
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition cursor-pointer shadow-sm"
-                                      >
-                                        <Sparkles className="h-4 w-4" />
-                                        モックアップを生成する
-                                      </button>
-                                      <div className="flex items-center gap-1 mt-4 text-[11px] text-gray-400">
-                                        <Clock className="w-3.5 h-3.5" />
-                                        所要時間: 約30秒
-                                      </div>
                                     </>
                                   )}
                                 </div>
