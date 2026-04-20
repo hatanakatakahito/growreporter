@@ -1580,33 +1580,9 @@ export default function Improve() {
                           <h3 className="text-sm font-bold text-gray-800 dark:text-white">改善モックアップ</h3>
                         </div>
                       </div>
-                      {/* 並べて比較レイアウト: Before + After(未生成) */}
+                      {/* 未生成時は After CTA のみ表示（Before はモックアップ生成完了後に並列表示される） */}
                       <div className="px-4 sm:px-8 pb-8">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          {/* Before */}
-                          <div>
-                            <div className="text-xs font-semibold text-gray-400 mb-2">Before（現在）</div>
-                            <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-dark-3 shadow-lg">
-                              <div className="flex items-center gap-2 bg-gray-100 dark:bg-dark-3 px-3 py-2 border-b border-gray-200 dark:border-dark-3">
-                                <div className="flex gap-1.5">
-                                  <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
-                                  <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
-                                  <span className="w-2.5 h-2.5 rounded-full bg-green-400"></span>
-                                </div>
-                                <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl}</div>
-                              </div>
-                              <div className="bg-white dark:bg-dark-2">
-                                {getBeforeScreenshotUrl(item.targetPageUrl) ? (
-                                  <img src={getBeforeScreenshotUrl(item.targetPageUrl)} alt="現在のページ" className="w-full h-auto" />
-                                ) : (
-                                  <div className="flex h-[300px] flex-col items-center justify-center gap-2 text-xs text-body-color">
-                                  <svg className="h-5 w-5 animate-spin text-primary/40" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path></svg>
-                                  スクリーンショットを取得中です（最大30秒程度）
-                                </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                        <div className="max-w-xl mx-auto">
                           {/* After（未生成 / 生成中） */}
                           <div>
                             <div className="text-xs font-semibold text-primary mb-2">After（改善案適用後）</div>
