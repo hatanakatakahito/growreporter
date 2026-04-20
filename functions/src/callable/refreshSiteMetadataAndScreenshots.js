@@ -8,7 +8,7 @@ import { canEditSite } from '../utils/permissionHelper.js';
 /**
  * メタデータ・スクリーンショットを再取得して sites を更新する
  * メタデータ: fetchMetadata（素fetch→Puppeteerフォールバック）
- * スクリーンショット: captureScreenshot（Puppeteer→PSIフォールバック）
+ * スクリーンショット: captureScreenshot（PSI API 一元化）
  */
 export const refreshSiteMetadataAndScreenshotsCallable = async (request) => {
   const uid = request.auth?.uid;

@@ -133,8 +133,8 @@ export const fetchMetadata = onCall({
  * メタデータ・スクリーンショット再取得（遅延読み込み）
  */
 export const refreshSiteMetadataAndScreenshots = onCall({
-  memory: '2GiB',
-  timeoutSeconds: 300,
+  memory: '1GiB',
+  timeoutSeconds: 180,
   region: 'asia-northeast1',
   cors: true,
   secrets: ['PSI_API_KEY'],
