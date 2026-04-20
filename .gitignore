@@ -37,3 +37,6 @@ functions/.env.*
 !tsconfig.json
 !firebase.json
 !firestore.indexes.json
+
+# Firebase CLI deploy cache
+.firebase/
