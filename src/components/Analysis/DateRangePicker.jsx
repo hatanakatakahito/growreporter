@@ -160,15 +160,17 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
   const customCalProps = useCalendarProps(customMonthDates);
 
   // 2クリック選択ハンドラ生成（1=開始, 2=終了, 3=リセットして開始）
+  // react-day-picker の range モードは from=to=undefined だと単日ハイライトが出ない仕様があるため、
+  // 1クリック時は from=to=同じ日付を入れて確実にハイライトさせる
   const createTwoClickHandler = (phase, setPhase, setRange) => (day) => {
     if (!day) return;
     if (phase === 'start') {
-      setRange({ from: day, to: undefined });
+      setRange({ from: day, to: day });
       setPhase('end');
     } else {
       setRange((prev) => {
         const from = prev?.from;
-        if (!from) return { from: day, to: undefined };
+        if (!from) return { from: day, to: day };
         if (day < from) return { from: day, to: from };
         return { from, to: day };
       });
@@ -356,19 +358,20 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
           {/* フッター */}
           <div className="flex items-center border-t border-gray-100 px-3 py-2">
             <div className="flex-1 min-w-0 mr-2">
-              {selectedRange?.from && selectedRange?.to ? (
+              {/* phase='end' の間は 1クリック目完了状態 → 開始日のみ表示 */}
+              {mainClickPhase === 'end' && selectedRange?.from ? (
+                <span className="text-[11px] truncate block">
+                  <span className="text-gray-500">開始</span>{' '}
+                  <span className="text-gray-800 font-medium">{format(selectedRange.from, 'yyyy/M/d')}</span>
+                  <span className="text-blue-500"> → 次に終了日をクリック</span>
+                </span>
+              ) : selectedRange?.from && selectedRange?.to ? (
                 <span className="text-[11px] truncate block">
                   <span className="text-gray-500">開始</span>{' '}
                   <span className="text-gray-800 font-medium">{format(selectedRange.from, 'yyyy/M/d')}</span>
                   <span className="text-gray-400"> 〜 </span>
                   <span className="text-gray-500">終了</span>{' '}
                   <span className="text-gray-800 font-medium">{format(selectedRange.to, 'yyyy/M/d')}</span>
-                </span>
-              ) : selectedRange?.from ? (
-                <span className="text-[11px] truncate block">
-                  <span className="text-gray-500">開始</span>{' '}
-                  <span className="text-gray-800 font-medium">{format(selectedRange.from, 'yyyy/M/d')}</span>
-                  <span className="text-blue-500"> → 次に終了日をクリック</span>
                 </span>
               ) : (
                 <span className="text-[11px] text-blue-500">最初に開始日をクリック</span>
@@ -380,7 +383,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
               </button>
               <button
                 onClick={handleApply}
-                disabled={!selectedRange?.from || !selectedRange?.to}
+                disabled={mainClickPhase === 'end' || !selectedRange?.from || !selectedRange?.to}
                 className="whitespace-nowrap rounded-full bg-primary px-4 py-1.5 text-[12px] font-medium text-white transition hover:bg-opacity-90 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
                 適用
