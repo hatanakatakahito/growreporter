@@ -1684,8 +1684,7 @@ export default function Improve() {
                                       <div className="mb-3">
                                         <DotWaveSpinner size="md" />
                                       </div>
-                                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">モックアップを生成しています</p>
-                                      <p className="text-xs text-gray-400 dark:text-gray-500">AIがデザインを作成中です。しばらくお待ちください。</p>
+                                      <p className="text-sm font-medium text-gray-700 dark:text-gray-300">モックアップを生成中…</p>
                                     </>
                                   )}
                                 </div>
