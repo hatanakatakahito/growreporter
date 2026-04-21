@@ -387,23 +387,23 @@ export default function SiteDetail() {
           <h3 className="text-lg font-semibold text-dark dark:text-white">
             ページスクレイピングデータ
           </h3>
-          <Button
-            color="blue"
+          <button
             onClick={handleStartScraping}
             disabled={isScrapingLoading}
+            className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isScrapingLoading ? (
               <>
-                <RefreshCw data-slot="icon" className="h-4 w-4 animate-spin" />
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
                 スクレイピング中...
               </>
             ) : (
               <>
-                <Search data-slot="icon" className="h-4 w-4" />
+                <Search className="h-3.5 w-3.5" />
                 スクレイピング開始
               </>
             )}
-          </Button>
+          </button>
         </div>
 
         <p className="mb-4 text-xs text-body-color dark:text-dark-6">
