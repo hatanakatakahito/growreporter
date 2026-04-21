@@ -1816,7 +1816,10 @@ ${userNoteBlock}${improvementFocusLine}${existingImprovementsText}
 その後、以下のフォーマットで改善施策を列挙（施策間は「---」で区切る）:
 
 タイトル: 具体的なタイトル。ページパス・URLを明記
-説明: プレゼン調の自然な文章。現状の実文言・実数値を引用。なぜ・どうする・効果を明示。Before/Afterを具体文言で示す。${siteContext?.siteTypeText || 'この種別'}／${siteContext?.sitePurposeText || 'この目的'}にとってなぜ有効かを含める
+説明: 必ず以下の3ブロック構造で記述する。各ブロックは見出し記号を必ず付けて、分量は各80〜150文字を目安とする（不足する場合のみ短くても可）。${siteContext?.siteTypeText || 'この種別'}／${siteContext?.sitePurposeText || 'この目的'}にとってなぜ有効かを含めること。マークダウン記号（**、#、-、*）や番号リストは使わない。
+【現状の問題】現状の実文言・実数値を引用し、何が問題か・なぜ改善が必要かを説明
+【提案内容】具体的に何をどう変更するか、どこに何を追加するか。Before/Afterの具体文言を示す
+【なぜ効くか】この施策がユーザー行動・検索エンジン・コンバージョンにどう作用するか
 重複判定用ラベル: この施策のテーマを1〜3語で（例: alt属性, h1タグ, 記事CTA）
 カテゴリー: acquisition | content | design | feature | other
 優先度: high | medium | low

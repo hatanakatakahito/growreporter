@@ -62,6 +62,37 @@ const priorityColors = {
   low: 'bg-gray-100 text-gray-700 dark:bg-gray-700/20 dark:text-gray-300',
 };
 
+/**
+ * description を 3セクション（現状の問題 / 提案内容 / なぜ効くか）に分解。
+ * 新フォーマット (【現状の問題】...【提案内容】...【なぜ効くか】...) は分解、
+ * 旧フォーマット（長文1パラグラフ）は { legacy: text } として返す。
+ */
+function parseDescriptionSections(text) {
+  if (!text || typeof text !== 'string') return { legacy: '—' };
+  const SECTION_KEYS = [
+    { key: 'problem', label: '現状の問題', regex: /【\s*現状の問題\s*】/ },
+    { key: 'solution', label: '提案内容', regex: /【\s*提案内容\s*】/ },
+    { key: 'rationale', label: 'なぜ効くか', regex: /【\s*なぜ効くか\s*】/ },
+  ];
+  const hasAnyHeader = SECTION_KEYS.some(s => s.regex.test(text));
+  if (!hasAnyHeader) return { legacy: text };
+
+  // 見出し位置を拾って区間を切り出す
+  const indices = SECTION_KEYS.map(s => {
+    const m = text.match(s.regex);
+    return { key: s.key, label: s.label, start: m ? m.index : -1, matchLen: m ? m[0].length : 0 };
+  }).filter(s => s.start >= 0).sort((a, b) => a.start - b.start);
+
+  const result = {};
+  indices.forEach((section, i) => {
+    const contentStart = section.start + section.matchLen;
+    const contentEnd = i + 1 < indices.length ? indices[i + 1].start : text.length;
+    const body = text.slice(contentStart, contentEnd).trim();
+    if (body) result[section.key] = body;
+  });
+  return result;
+}
+
 export default function Improve() {
   const { selectedSite, selectedSiteId, isLoading: isSiteLoading } = useSite();
   const { isSidebarOpen } = useSidebar();
@@ -1398,11 +1429,35 @@ export default function Improve() {
                 <div className={`shrink-0 border-r border-gray-100 dark:border-dark-3 overflow-y-auto p-8 ${item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped) ? 'w-full sm:w-[480px]' : 'w-full border-r-0'}`}>
                   <div className={`${!item.mockupHtml && (!item.targetPageUrl || item.mockupSkipped) ? 'max-w-3xl mx-auto' : ''}`}>
                     <div className="mb-6">
-                      <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-2 flex items-center gap-1.5">
+                      <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-1.5">
                         <FileText className="w-4 h-4 text-primary" />
                         改善内容
                       </h3>
-                      <p className="text-sm text-gray-700 dark:text-gray-300 leading-7">{item.description || '—'}</p>
+                      {(() => {
+                        const sections = parseDescriptionSections(item.description);
+                        if (sections.legacy !== undefined) {
+                          return <p className="text-sm text-gray-700 dark:text-gray-300 leading-7">{sections.legacy}</p>;
+                        }
+                        const blocks = [
+                          { key: 'problem', label: '現状の問題', accentClass: 'border-red-200 bg-red-50 text-red-900 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200', badgeClass: 'bg-red-100 text-red-700' },
+                          { key: 'solution', label: '提案内容', accentClass: 'border-primary/30 bg-blue-50 text-gray-900 dark:border-primary/40 dark:bg-primary/10 dark:text-gray-100', badgeClass: 'bg-primary text-white' },
+                          { key: 'rationale', label: 'なぜ効くか', accentClass: 'border-green-200 bg-green-50 text-green-900 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-200', badgeClass: 'bg-green-100 text-green-700' },
+                        ];
+                        return (
+                          <div className="space-y-3">
+                            {blocks.map((b) => (
+                              sections[b.key] ? (
+                                <div key={b.key} className={`rounded-lg border px-3 py-2.5 ${b.accentClass}`}>
+                                  <div className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold mb-1.5 ${b.badgeClass}`}>
+                                    {b.label}
+                                  </div>
+                                  <p className="text-sm leading-7">{sections[b.key]}</p>
+                                </div>
+                              ) : null
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </div>
 
                     {item.expectedImpact && (
