@@ -383,27 +383,10 @@ export default function SiteDetail() {
 
         {/* ページスクレイピングデータ */}
         <div className="mt-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4">
           <h3 className="text-lg font-semibold text-dark dark:text-white">
             ページスクレイピングデータ
           </h3>
-          <button
-            onClick={handleStartScraping}
-            disabled={isScrapingLoading}
-            className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isScrapingLoading ? (
-              <>
-                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                スクレイピング中...
-              </>
-            ) : (
-              <>
-                <Search className="h-3.5 w-3.5" />
-                スクレイピング開始
-              </>
-            )}
-          </button>
         </div>
 
         <p className="mb-4 text-xs text-body-color dark:text-dark-6">
@@ -471,6 +454,27 @@ export default function SiteDetail() {
                 : '-'}
             </div>
           </div>
+        </div>
+
+        {/* スクレイピング開始ボタン（「メタデータ・スクショを再取得」と同じサブテル配置） */}
+        <div className="mt-4 border-t border-stroke pt-4 dark:border-dark-3">
+          <button
+            onClick={handleStartScraping}
+            disabled={isScrapingLoading}
+            className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isScrapingLoading ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                スクレイピング中...
+              </>
+            ) : (
+              <>
+                <Search className="h-3.5 w-3.5" />
+                スクレイピング開始
+              </>
+            )}
+          </button>
         </div>
         </div>
 
