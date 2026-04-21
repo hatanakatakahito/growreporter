@@ -382,9 +382,9 @@ export default function Improve() {
       const updated = improvements.find(i => i.id === drawerItem.id);
       if (updated && (updated.mockupHtml !== drawerItem.mockupHtml)) {
         setDrawerItem(updated);
-        // モックアップ生成完了時はAfterタブに切り替え
+        // モックアップ生成完了時も「並べて比較」タブを維持（Before/After を同時に見せる）
         if (updated.mockupHtml && !drawerItem.mockupHtml) {
-          setDrawerTab('after');
+          setDrawerTab('compare');
         }
       }
     }
@@ -688,7 +688,8 @@ export default function Improve() {
 
   const openDrawer = (item) => {
     setDrawerItem(item);
-    setDrawerTab(item.mockupHtml ? 'after' : 'compare');
+    // モックアップ生成済でも「並べて比較」をデフォルトに（Before/After を同時に見せる）
+    setDrawerTab('compare');
     setAfterIframeHeight(null);
   };
   const closeDrawer = () => setDrawerItem(null);
@@ -699,7 +700,7 @@ export default function Improve() {
     if (nextIdx >= 0 && nextIdx < sortedImprovements.length) {
       const nextItem = sortedImprovements[nextIdx];
       setDrawerItem(nextItem);
-      setDrawerTab(nextItem.mockupHtml ? 'after' : 'compare');
+      setDrawerTab('compare');
       setAfterIframeHeight(null);
     }
   };
