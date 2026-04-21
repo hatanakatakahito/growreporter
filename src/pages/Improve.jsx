@@ -1439,19 +1439,17 @@ export default function Improve() {
                           return <p className="text-sm text-gray-700 dark:text-gray-300 leading-7">{sections.legacy}</p>;
                         }
                         const blocks = [
-                          { key: 'problem', label: '現状の問題', accentClass: 'border-red-200 bg-red-50 text-red-900 dark:border-red-900/40 dark:bg-red-900/20 dark:text-red-200', badgeClass: 'bg-red-100 text-red-700' },
-                          { key: 'solution', label: '提案内容', accentClass: 'border-primary/30 bg-blue-50 text-gray-900 dark:border-primary/40 dark:bg-primary/10 dark:text-gray-100', badgeClass: 'bg-primary text-white' },
-                          { key: 'rationale', label: 'なぜ効くか', accentClass: 'border-green-200 bg-green-50 text-green-900 dark:border-green-900/40 dark:bg-green-900/20 dark:text-green-200', badgeClass: 'bg-green-100 text-green-700' },
+                          { key: 'problem', label: '現状の問題' },
+                          { key: 'solution', label: '提案内容' },
+                          { key: 'rationale', label: 'なぜ効くか' },
                         ];
                         return (
-                          <div className="space-y-3">
+                          <div className="space-y-4">
                             {blocks.map((b) => (
                               sections[b.key] ? (
-                                <div key={b.key} className={`rounded-lg border px-3 py-2.5 ${b.accentClass}`}>
-                                  <div className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold mb-1.5 ${b.badgeClass}`}>
-                                    {b.label}
-                                  </div>
-                                  <p className="text-sm leading-7">{sections[b.key]}</p>
+                                <div key={b.key}>
+                                  <div className="text-xs font-bold text-primary mb-1">{b.label}</div>
+                                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-7">{sections[b.key]}</p>
                                 </div>
                               ) : null
                             ))}
