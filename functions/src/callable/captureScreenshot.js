@@ -30,6 +30,8 @@ export async function captureScreenshotCallable(request) {
     deviceType,
     userId,
     // 保存先はデフォルト（screenshots/{userId}/{deviceType}_{timestamp}.jpg）
+    // fullPage: false でviewport版を使用 → ダッシュボードのサムネ枠にきれいに収まる比率
+    options: { fullPage: false },
   });
 
   if (!result?.imageUrl) {

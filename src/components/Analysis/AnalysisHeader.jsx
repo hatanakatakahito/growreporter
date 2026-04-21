@@ -369,7 +369,7 @@ export default function AnalysisHeader({
                     className="absolute left-0 top-0 flex items-center justify-center overflow-hidden rounded-xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm"
                     style={{ width: 280, height: 170 }}
                   >
-                    <img src={currentSite.pcScreenshotUrl} alt="PCキャプチャ" className="h-full w-full object-cover" />
+                    <img src={currentSite.pcScreenshotUrl} alt="PCキャプチャ" className="h-full w-full object-cover object-top" />
                   </div>
                 ) : (
                   <div
@@ -388,7 +388,7 @@ export default function AnalysisHeader({
                     className="absolute bottom-0 right-0 z-[2] flex items-center justify-center overflow-hidden rounded-xl border-2 border-white bg-white/70 shadow-2xl backdrop-blur-sm"
                     style={{ width: 70, height: 130 }}
                   >
-                    <img src={currentSite.mobileScreenshotUrl} alt="スマホキャプチャ" className="h-full w-full object-cover" />
+                    <img src={currentSite.mobileScreenshotUrl} alt="スマホキャプチャ" className="h-full w-full object-cover object-top" />
                   </div>
                 ) : (
                   <div

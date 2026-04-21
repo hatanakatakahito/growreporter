@@ -33,6 +33,7 @@ const PSI_RETRY_DELAY_MS = 3_000; // リトライ間隔
  * @param {string} [params.options.pagePath]      - ファイル名補助
  * @param {number} [params.options.densityThreshold=12]
  * @param {number} [params.options.timeoutMs=90000]
+ * @param {boolean} [params.options.fullPage=true] - true: フルページ優先（密度判定でviewport fallback）/ false: viewportのみ（サイト登録サムネイル等、きれいな画角が必要な用途向け）
  * @returns {Promise<null | { imageUrl: string, source: 'psi', screenshotType: 'full-page'|'viewport', dimensions: {width:number|string,height:number|string}, bytesPerKpx: number|null, imageSize: number }>}
  */
 export async function captureSingleScreenshot({ url, deviceType, userId, options = {} }) {
@@ -61,6 +62,7 @@ export async function captureSingleScreenshot({ url, deviceType, userId, options
     pagePath,
     densityThreshold = DENSITY_THRESHOLD,
     timeoutMs = PSI_TIMEOUT_MS,
+    fullPage = true,
   } = options;
 
   const strategy = deviceType === 'mobile' ? 'mobile' : 'desktop';
@@ -109,9 +111,9 @@ export async function captureSingleScreenshot({ url, deviceType, userId, options
     const auditFps = data.lighthouseResult?.audits?.['full-page-screenshot']?.details?.screenshot;
     const viewportDataUrl = data.lighthouseResult?.audits?.['final-screenshot']?.details?.data;
 
-    let fullPage = null;
-    if (topLevelFps?.data) fullPage = topLevelFps;
-    else if (auditFps?.data) fullPage = auditFps;
+    let fullPageShot = null;
+    if (topLevelFps?.data) fullPageShot = topLevelFps;
+    else if (auditFps?.data) fullPageShot = auditFps;
 
     let chosenBase64;
     let screenshotType;
@@ -124,9 +126,15 @@ export async function captureSingleScreenshot({ url, deviceType, userId, options
       return Math.floor(b64.length * 0.75);
     };
 
-    if (fullPage?.data) {
-      const pixelCount = Math.max(1, (fullPage.width || 1) * (fullPage.height || 1));
-      const estBytes = estimateBinarySize(fullPage.data);
+    if (!fullPage && viewportDataUrl) {
+      // fullPage=false: viewport版優先（サイト登録サムネ等、きれいな画角のため）
+      chosenBase64 = viewportDataUrl;
+      screenshotType = 'viewport';
+      dimensions = { width: 'viewport', height: 'viewport' };
+      logger.info(`[captureSingleScreenshot] fullPage=false → viewport版を使用: ${url}`);
+    } else if (fullPageShot?.data) {
+      const pixelCount = Math.max(1, (fullPageShot.width || 1) * (fullPageShot.height || 1));
+      const estBytes = estimateBinarySize(fullPageShot.data);
       bytesPerKpx = (estBytes / pixelCount) * 1000;
 
       if (bytesPerKpx < densityThreshold && viewportDataUrl) {
@@ -136,9 +144,9 @@ export async function captureSingleScreenshot({ url, deviceType, userId, options
         dimensions = { width: 'viewport', height: 'viewport' };
         logger.info(`[captureSingleScreenshot] 密度 ${bytesPerKpx.toFixed(1)} < ${densityThreshold} → viewport フォールバック: ${url}`);
       } else {
-        chosenBase64 = fullPage.data;
+        chosenBase64 = fullPageShot.data;
         screenshotType = 'full-page';
-        dimensions = { width: fullPage.width, height: fullPage.height };
+        dimensions = { width: fullPageShot.width, height: fullPageShot.height };
       }
     } else if (viewportDataUrl) {
       chosenBase64 = viewportDataUrl;

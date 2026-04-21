@@ -116,7 +116,7 @@ export default function Dashboard() {
         setDateRange={updateDateRange}
         showDateRange={true}
         showSiteInfo={false}
-        showExport={false}
+        showExport={true}
       />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         {/* サイト情報カバー（スクロール領域内） */}
@@ -154,7 +154,7 @@ export default function Dashboard() {
                       className="absolute left-0 top-0 flex items-center justify-center overflow-hidden rounded-xl border border-white/90 bg-white/50 shadow-xl shadow-slate-200/50 backdrop-blur-sm"
                       style={{ width: 280, height: 170 }}
                     >
-                      <img src={selectedSite.pcScreenshotUrl} alt="PCキャプチャ" className="h-full w-full object-cover" />
+                      <img src={selectedSite.pcScreenshotUrl} alt="PCキャプチャ" className="h-full w-full object-cover object-top" />
                     </div>
                   ) : (
                     <div
@@ -173,7 +173,7 @@ export default function Dashboard() {
                       className="absolute bottom-0 right-0 z-[2] flex items-center justify-center overflow-hidden rounded-xl border-2 border-white bg-white/70 shadow-2xl backdrop-blur-sm"
                       style={{ width: 70, height: 130 }}
                     >
-                      <img src={selectedSite.mobileScreenshotUrl} alt="スマホキャプチャ" className="h-full w-full object-cover" />
+                      <img src={selectedSite.mobileScreenshotUrl} alt="スマホキャプチャ" className="h-full w-full object-cover object-top" />
                     </div>
                   ) : (
                     <div
