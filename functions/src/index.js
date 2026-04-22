@@ -230,7 +230,9 @@ export const onScrapingJobCreated = onDocumentCreated(
     timeoutSeconds: 540,
     maxInstances: 3,
     concurrency: 1,
-    secrets: ['PSI_API_KEY'],
+    // PSI_API_KEY: 既存のスクリーンショット取得用
+    // GEMINI_API_KEY: スクレイピング完了時のタクソノミー V2 自動判定(Phase E)で使用
+    secrets: ['PSI_API_KEY', 'GEMINI_API_KEY'],
   },
   async (event) => {
     const { onScrapingJobCreatedHandler } = await import('./triggers/onScrapingJobCreated.js');
