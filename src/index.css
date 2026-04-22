@@ -1,7 +1,11 @@
 /* AI Gradient Theme */
 @import './styles/gradient.css' layer(base);
 
-@import 'tailwindcss';
+/* Tailwind v4: 自動ソース検出を無効化し src/ と index.html のみをスキャン対象にする
+   （プロジェクトルート直下のHTML/CSSや node_modules 等の巻き込みを防ぐ） */
+@import 'tailwindcss' source(none);
+@source "../index.html";
+@source "./**/*.{js,jsx,ts,tsx}";
 
 /* DatePicker — Tailwind importの後に読み込むことでDayPickerデフォルトを確実に上書き */
 @import './styles/datepicker.css';
