@@ -89,7 +89,7 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
     }
   };
 
-  const handleUrlBlur = async () => {
+  const handleUrlBlur = () => {
     const url = formData.siteUrl?.trim();
     if (!url) return;
 
@@ -98,22 +98,11 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
         ...prev,
         siteUrl: '正しいURL形式で入力してください（例: https://example.com）',
       }));
-      return;
     }
-
-    // URLが有効な場合、メタデータとスクショがまだ無ければ自動取得
-    if (!formData.metaTitle && !pcScreenshot) {
-      try {
-        await handleAutoFetchMetadata();
-      } catch (error) {
-        console.error('[Step1] メタデータ取得失敗:', error);
-      }
-      try {
-        await handleAutoFetchScreenshots();
-      } catch (error) {
-        console.error('[Step1] スクショ取得失敗:', error);
-      }
-    }
+    // 新規登録時のメタ情報/スクショ自動取得は行わない。
+    // サイト登録完了後の onSiteCreated / onScrapingJobCreated が全て自動で埋めるため、
+    // ここで走らせるとメタ取得中に「次へ」が押せない問題が発生する。
+    // 編集モードでは「自動取得」ボタンでユーザーが明示的に取得できる。
   };
 
   const handleAutoFetchMetadata = async () => {
