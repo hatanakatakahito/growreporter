@@ -6,7 +6,9 @@ import { useAdminSiteDetail } from '../../../hooks/useAdminSiteDetail';
 import { getPlanDisplayName, getPlanBadgeColor } from '../../../constants/plans';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
-import { functions } from '../../../config/firebase';
+import { functions, db } from '../../../config/firebase';
+import { doc, getDoc, getDocFromServer } from 'firebase/firestore';
+import toast from 'react-hot-toast';
 import { ArrowLeft, Globe, User, BarChart3, AlertTriangle, CheckCircle, XCircle, Search, RefreshCw, Camera, Monitor, Smartphone } from 'lucide-react';
 import { BUSINESS_MODEL_LABELS } from '../../../constants/businessModels';
 import { SITE_ROLE_LABELS } from '../../../constants/siteRoles';
@@ -25,9 +27,6 @@ export default function AdminSiteDetail() {
   const [isScrapingLoading, setIsScrapingLoading] = useState(false);
   const [scrapingError, setScrapingError] = useState(null);
   const [scrapingMessage, setScrapingMessage] = useState(null);
-  const [isScreenshotLoading, setIsScreenshotLoading] = useState(false);
-  const [screenshotMessage, setScreenshotMessage] = useState(null);
-  const [screenshotError, setScreenshotError] = useState(null);
   // タクソノミー再分類モーダル
   const [showTaxonomyModal, setShowTaxonomyModal] = useState(false);
 
@@ -45,25 +44,17 @@ export default function AdminSiteDetail() {
   /** @param {{ fromServer?: boolean }} opts - fromServer: true でキャッシュを避けてサーバーから取得（完了直後の更新反映用） */
   const fetchScrapingStatus = async (opts = {}) => {
     try {
-      const { doc, getDoc, getDocFromServer } = await import('firebase/firestore');
-      const { db } = await import('../../../config/firebase');
       const metaRef = doc(db, 'sites', siteId, 'pageScrapingMeta', 'default');
-      const metaDoc = opts.fromServer
-        ? await getDocFromServer(metaRef)
-        : await getDoc(metaRef);
+      const metaDoc = opts.fromServer ? await getDocFromServer(metaRef) : await getDoc(metaRef);
       if (metaDoc.exists()) {
-        const data = metaDoc.data();
-        if (opts.fromServer && data.lastScrapedAt) {
-          const t = data.lastScrapedAt.toDate ? data.lastScrapedAt.toDate() : data.lastScrapedAt;
-          console.log('[fetchScrapingStatus] サーバーから取得', { lastScrapedAt: t?.toISOString?.(), totalPagesScraped: data.totalPagesScraped });
-        }
-        setScrapingStatus(data);
+        setScrapingStatus(metaDoc.data());
       }
     } catch (err) {
       console.error('[fetchScrapingStatus] エラー:', err);
     }
   };
 
+  // user側 SiteDetail と同じ実装: 進捗メッセージを拾い、完了まで isScrapingLoading を維持。
   const handleStartScraping = async () => {
     setIsScrapingLoading(true);
     setScrapingError(null);
@@ -74,44 +65,35 @@ export default function AdminSiteDetail() {
       const result = await scrapeTop100Pages({ siteId, forceRescrape: true });
 
       if (result.data.success) {
+        setScrapingMessage('スクレイピングを開始しました。完了まで数分かかります...');
         await fetchScrapingStatus();
         refetch();
-        const { doc } = await import('firebase/firestore');
-        const { db } = await import('../../../config/firebase');
         let seenInProgress = false;
-        let pollCount = 0;
         const intervalId = setInterval(async () => {
-          pollCount += 1;
-          const { getDocFromServer } = await import('firebase/firestore');
-          const progressRef = doc(db, 'sites', siteId, 'scrapingProgress', 'default');
-          const progressSnap = await getDocFromServer(progressRef);
+          const progressSnap = await getDocFromServer(doc(db, 'sites', siteId, 'scrapingProgress', 'default'));
           const status = progressSnap.exists() ? progressSnap.data().status : null;
           const progressData = progressSnap.exists() ? progressSnap.data() : null;
-          console.log('[Scraping] ポール', pollCount, 'status=', status, 'seenInProgress=', seenInProgress, 'progressData=', progressData ? { status: progressData.status, error: progressData.error, updatedAt: progressData.updatedAt?.toDate?.()?.toISOString?.() } : null);
           if (status === 'in_progress') {
             seenInProgress = true;
+            if (progressData?.progressMessage) {
+              setScrapingMessage(progressData.progressMessage);
+            }
           }
-          // バックエンドで失敗した場合: ポーリングを止めてエラー内容を表示
           if (status === 'error') {
             clearInterval(intervalId);
-            const errorMsg = progressData?.error || 'スクレイピング中にエラーが発生しました';
-            console.error('[Scraping] バックエンドでエラー', errorMsg);
-            setScrapingError(errorMsg);
+            setIsScrapingLoading(false);
+            setScrapingMessage(null);
+            setScrapingError(progressData?.error || 'スクレイピング中にエラーが発生しました');
             return;
           }
           if (seenInProgress && status !== 'in_progress') {
             clearInterval(intervalId);
-            console.log('[Scraping] 完了と判定（status=', status, '）。800ms待機後にmeta取得');
             await new Promise((r) => setTimeout(r, 800));
             await fetchScrapingStatus({ fromServer: true });
             refetch();
-            const metaRef = doc(db, 'sites', siteId, 'pageScrapingMeta', 'default');
-            const metaDoc = await getDocFromServer(metaRef);
+            const metaDoc = await getDocFromServer(doc(db, 'sites', siteId, 'pageScrapingMeta', 'default'));
             if (metaDoc.exists()) {
               const meta = metaDoc.data();
-              const lastScrapedAt = meta.lastScrapedAt;
-              const lastScrapedAtStr = lastScrapedAt?.toDate ? lastScrapedAt.toDate().toISOString() : (lastScrapedAt ? String(lastScrapedAt) : null);
-              console.log('[Scraping] pageScrapingMeta取得', { totalPagesScraped: meta.totalPagesScraped, totalPagesRemoved: meta.totalPagesRemoved, totalPagesFailed: meta.totalPagesFailed, lastScrapedAt: lastScrapedAtStr, metaKeys: Object.keys(meta) });
               setScrapingStatus(meta);
               const ok = meta.totalPagesScraped ?? 0;
               const removed = meta.totalPagesRemoved ?? 0;
@@ -121,46 +103,41 @@ export default function AdminSiteDetail() {
               if (ng > 0) parts.push(`取得エラー: ${ng}ページ`);
               setScrapingMessage(`スクレイピングが完了しました。${parts.join(' / ')}`);
               setTimeout(() => setScrapingMessage(null), 10000);
-            } else {
-              console.warn('[Scraping] pageScrapingMeta が存在しません');
             }
+            setIsScrapingLoading(false);
           }
         }, 3000);
-        setTimeout(() => clearInterval(intervalId), 5 * 60 * 1000);
+        setTimeout(() => {
+          clearInterval(intervalId);
+          setIsScrapingLoading(false);
+        }, 10 * 60 * 1000);
+        return; // ポーリング完了時にのみローディングを解除するため finally を通さない
       } else {
         throw new Error(result.data.message || 'スクレイピングの開始に失敗しました');
       }
     } catch (err) {
       console.error('[handleStartScraping] エラー:', err);
       setScrapingError(err.message);
-    } finally {
       setIsScrapingLoading(false);
     }
   };
 
+  // user側 SiteDetail と同じ実装: toast でフィードバック
   const handleRefreshScreenshots = async () => {
-    setIsScreenshotLoading(true);
-    setScreenshotError(null);
-    setScreenshotMessage(null);
     try {
+      toast.loading('メタデータ・スクリーンショットを再取得中...', { id: 'refresh-meta' });
       const refresh = httpsCallable(functions, 'refreshSiteMetadataAndScreenshots', { timeout: 120_000 });
       const result = await refresh({ siteId });
-      if (result.data?.success) {
-        const fields = result.data.updatedFields || [];
-        const updated = [];
-        if (fields.includes('pcScreenshotUrl')) updated.push('PC');
-        if (fields.includes('mobileScreenshotUrl')) updated.push('モバイル');
-        setScreenshotMessage(updated.length > 0
-          ? `${updated.join('・')}のスクリーンショットを更新しました`
-          : 'メタデータを更新しました（スクリーンショットの変更なし）');
-        refetch();
-        setTimeout(() => setScreenshotMessage(null), 10000);
+      const fields = result.data?.updatedFields || [];
+      if (fields.length > 0) {
+        toast.success(`再取得完了（${fields.length}件更新）`, { id: 'refresh-meta' });
+      } else {
+        toast.success('再取得完了（更新なし）', { id: 'refresh-meta' });
       }
-    } catch (err) {
-      console.error('[handleRefreshScreenshots] エラー:', err);
-      setScreenshotError(err.message || 'スクリーンショットの再取得に失敗しました');
-    } finally {
-      setIsScreenshotLoading(false);
+      refetch();
+    } catch (e) {
+      console.error('[handleRefreshScreenshots] エラー:', e);
+      toast.error(`再取得に失敗しました: ${e.message}`, { id: 'refresh-meta' });
     }
   };
 
@@ -419,6 +396,16 @@ export default function AdminSiteDetail() {
               )}
             </div>
           </div>
+          {/* メタデータ・スクショ再取得（user側SiteDetailと同じサブトルリンクUI） */}
+          <div className="mt-4 border-t border-stroke pt-4 dark:border-dark-3">
+            <button
+              onClick={handleRefreshScreenshots}
+              className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              メタデータ・スクリーンショットを再取得
+            </button>
+          </div>
         </div>
 
         {/* AI使用状況 */}
@@ -452,42 +439,12 @@ export default function AdminSiteDetail() {
 
       </div>
 
-      {/* スクリーンショット */}
+      {/* スクリーンショット（ボタンは「データ収集設定」セクションのリンクに集約済み） */}
       <div className="mt-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-dark dark:text-white">
-            <Camera className="h-5 w-5" />
-            サイトスクリーンショット
-          </h3>
-          <button
-            onClick={handleRefreshScreenshots}
-            disabled={isScreenshotLoading}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {isScreenshotLoading ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                再取得中...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="h-4 w-4" />
-                スクリーンショット再取得
-              </>
-            )}
-          </button>
-        </div>
-
-        {screenshotMessage && (
-          <div className="mb-4 rounded-lg bg-green-50 p-3 text-sm text-green-700 dark:bg-green-900/20 dark:text-green-400">
-            {screenshotMessage}
-          </div>
-        )}
-        {screenshotError && (
-          <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/20 dark:text-red-400">
-            {screenshotError}
-          </div>
-        )}
+        <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-dark dark:text-white">
+          <Camera className="h-5 w-5" />
+          サイトスクリーンショット
+        </h3>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {/* PC */}
@@ -572,31 +529,12 @@ export default function AdminSiteDetail() {
         </div>
       )}
 
-      {/* ページスクレイピングデータ */}
+      {/* ページスクレイピングデータ（user側SiteDetailと同じ構成） */}
       <div className="mt-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4">
           <h3 className="text-lg font-semibold text-dark dark:text-white">
             ページスクレイピングデータ
           </h3>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleStartScraping}
-              disabled={isScrapingLoading}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-            {isScrapingLoading ? (
-              <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                スクレイピング中...
-              </>
-            ) : (
-              <>
-                <Search className="h-4 w-4" />
-                スクレイピング開始
-              </>
-            )}
-            </button>
-          </div>
         </div>
 
         <p className="mb-4 text-xs text-body-color dark:text-dark-6">
@@ -662,6 +600,27 @@ export default function AdminSiteDetail() {
                 : '-'}
             </div>
           </div>
+        </div>
+
+        {/* スクレイピング開始ボタン（user側 SiteDetail と同じサブトルリンク配置） */}
+        <div className="mt-4 border-t border-stroke pt-4 dark:border-dark-3">
+          <button
+            onClick={handleStartScraping}
+            disabled={isScrapingLoading}
+            className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isScrapingLoading ? (
+              <>
+                <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                スクレイピング中...
+              </>
+            ) : (
+              <>
+                <Search className="h-3.5 w-3.5" />
+                スクレイピング開始
+              </>
+            )}
+          </button>
         </div>
       </div>
 
