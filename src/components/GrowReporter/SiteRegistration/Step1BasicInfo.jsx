@@ -248,9 +248,6 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
           required
         />
         {errors.siteUrl && <p className="mt-1 text-sm text-red-500">{errors.siteUrl}</p>}
-        <p className="mt-2 text-xs text-body-color">
-          業種やサイトの特性は、登録完了後にAIが自動で判定します（100ページのスクレイピング結果をもとに）。
-        </p>
       </div>
 
       {/* サイトタイトル（編集モード時のみ） */}

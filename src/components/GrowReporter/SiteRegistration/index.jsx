@@ -547,7 +547,7 @@ export default function SiteRegistration({ mode = 'new' }) {
               </h2>
               <p className="mt-1 text-sm text-body-color">
                 {
-                  currentStep === 1 ? 'サイト名やURL、業界・業種、サイト種別、サイトの目的を入力してください' :
+                  currentStep === 1 ? 'サイト名とURLを入力してください' :
                   currentStep === 2 ? 'Google Analytics 4のプロパティを連携します' :
                   currentStep === 3 ? 'Google Search Consoleのサイトを連携します（スキップ可能）' :
                   currentStep === 4 ? 'コンバージョンイベントを設定します（スキップ可能）' :
