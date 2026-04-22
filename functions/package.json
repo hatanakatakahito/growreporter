@@ -11,7 +11,9 @@
     "deploy": "firebase deploy --only functions",
     "logs": "firebase functions:log",
     "migrate:taxonomy-v2": "node --loader ./loader.mjs src/scripts/migrateTaxonomyV2.js",
-    "migrate:taxonomy-v2:dry": "node --loader ./loader.mjs src/scripts/migrateTaxonomyV2.js --dry-run"
+    "migrate:taxonomy-v2:dry": "node --loader ./loader.mjs src/scripts/migrateTaxonomyV2.js --dry-run",
+    "batch:rescrape-all": "node --loader ./loader.mjs src/scripts/triggerAllSitesRescrape.js",
+    "batch:rescrape-all:dry": "node --loader ./loader.mjs src/scripts/triggerAllSitesRescrape.js --dry-run"
   },
   "engines": {
     "node": "20"
