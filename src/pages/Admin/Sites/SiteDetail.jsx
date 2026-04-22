@@ -315,8 +315,10 @@ export default function AdminSiteDetail() {
                   ? `${INDUSTRY_MAJOR_LABELS[siteDetail.industryMajor] || siteDetail.industryMajor}${
                       siteDetail.industryMinor ? `／${siteDetail.industryMinor}` : ''
                     }`
-                  : (siteDetail.user?.industry || '-')}
+                  : '-'}
               </div>
+              {/* 注: ユーザーのプロフィール業種(user.industry)はサイト業種と別物のためフォールバックしない。
+                  未判定の場合は AI の自動判定完了を待つか、再分類モーダルで手動設定する。 */}
             </div>
             <div>
               <div className="text-sm text-body-color dark:text-dark-6">サイト役割</div>
