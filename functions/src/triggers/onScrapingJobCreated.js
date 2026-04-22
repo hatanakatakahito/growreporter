@@ -124,7 +124,12 @@ export async function onScrapingJobCreatedHandler(event) {
       // ========================================
       // Phase E: タクソノミー V2 自動判定（100ページ情報から業種・サイト役割・ビジネスモデルを推定）
       // ユーザー側UIでは業種を入力させないため、ここで裏データとして埋める。
-      // 管理者が既に手動確定している（V2 かつ needsManualReclassify !== true）サイトはスキップ。
+      //
+      // スキップ条件:
+      //   - taxonomyVersion === 2 かつ全フィールド設定済み かつ needsManualReclassify !== true
+      //   - ただし forceRescrape=true（ユーザーが手動で「スクレイピング開始」した場合）は
+      //     再判定する（プロンプト改善や内容変化への追従のため）
+      //   - monthly_rescrape（月次自動）も再判定（サイト内容の変化を追うため）
       // ========================================
       try {
         const latestSiteDoc = await db.collection('sites').doc(siteId).get();
@@ -137,7 +142,10 @@ export async function onScrapingJobCreatedHandler(event) {
           !!latestSiteData.industryMinor &&
           !!latestSiteData.siteRole;
 
-        if (alreadyConfirmed) {
+        // forceRescrape=true もしくは monthly_rescrape の場合は skip 条件を無視して再判定
+        const forceInference = data.forceRescrape === true || data.source === 'monthly_rescrape';
+
+        if (alreadyConfirmed && !forceInference) {
           logger.info('[onScrapingJobCreated] タクソノミー確定済みのためスキップ', { siteId });
         } else if (result.successCount < 3) {
           // スクレイピング件数が少なすぎて推定の精度が出せない場合はスキップ
