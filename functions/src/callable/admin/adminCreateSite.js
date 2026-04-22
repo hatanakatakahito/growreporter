@@ -4,15 +4,16 @@ import { logger } from 'firebase-functions/v2';
 import { logUserActivity, ACTIVITY_ACTIONS } from '../../utils/userActivityLogger.js';
 
 /**
- * 管理者が対象ユーザーに代わってサイトを登録
+ * 管理者が対象ユーザーに代わってサイトを登録（タクソノミー V2 対応）
  * Firestoreにサイトドキュメントを作成し、onSiteChangedトリガーでメタデータ・スクショを自動取得
  *
  * @param {string} data.targetUserId - サイトを所有するユーザーID（必須）
  * @param {string} data.siteName - サイト名（必須）
  * @param {string} data.siteUrl - サイトURL（必須）
- * @param {string[]} data.industry - 業種（必須）
- * @param {string[]} data.siteType - サイトタイプ（必須）
- * @param {string[]} data.sitePurpose - サイト目的（必須）
+ * @param {string} data.businessModel - ビジネスモデル（V2必須: b2b/b2c/b2b2c/other）
+ * @param {string} data.industryMajor - 業種大分類（V2必須）
+ * @param {string} data.industryMinor - 業種小分類（V2必須）
+ * @param {string} data.siteRole - サイト役割（V2必須）
  * @param {string} data.metaTitle - メタタイトル（任意）
  * @param {string} data.metaDescription - メタディスクリプション（任意）
  * @param {string} data.pcScreenshotUrl - PCスクリーンショットURL（任意）
@@ -30,9 +31,11 @@ export const adminCreateSiteCallable = async (request) => {
     targetUserId,
     siteName,
     siteUrl,
-    industry = [],
-    siteType = [],
-    sitePurpose = [],
+    // タクソノミー V2
+    businessModel = '',
+    industryMajor = '',
+    industryMinor = '',
+    siteRole = '',
     metaTitle = '',
     metaDescription = '',
     pcScreenshotUrl = '',
@@ -46,14 +49,17 @@ export const adminCreateSiteCallable = async (request) => {
   if (!siteName || !siteUrl) {
     throw new HttpsError('invalid-argument', 'サイト名とサイトURLは必須です');
   }
-  if (!Array.isArray(industry) || industry.length === 0) {
-    throw new HttpsError('invalid-argument', '業種を1つ以上選択してください');
+  if (!businessModel || typeof businessModel !== 'string') {
+    throw new HttpsError('invalid-argument', 'ビジネスモデルを選択してください');
   }
-  if (!Array.isArray(siteType) || siteType.length === 0) {
-    throw new HttpsError('invalid-argument', 'サイトタイプを1つ以上選択してください');
+  if (!industryMajor || typeof industryMajor !== 'string') {
+    throw new HttpsError('invalid-argument', '業種（大分類）を選択してください');
   }
-  if (!Array.isArray(sitePurpose) || sitePurpose.length === 0) {
-    throw new HttpsError('invalid-argument', 'サイト目的を1つ以上選択してください');
+  if (!industryMinor || typeof industryMinor !== 'string') {
+    throw new HttpsError('invalid-argument', '業種（小分類）を選択してください');
+  }
+  if (!siteRole || typeof siteRole !== 'string') {
+    throw new HttpsError('invalid-argument', 'サイト役割を選択してください');
   }
 
   try {
@@ -76,14 +82,17 @@ export const adminCreateSiteCallable = async (request) => {
       ? `${userData.lastName} ${userData.firstName}`
       : (userData.displayName || userData.email || 'Unknown');
 
-    // サイトドキュメント作成
+    // サイトドキュメント作成（V2 スキーマのみ書き込み）
     const now = FieldValue.serverTimestamp();
     const siteDocData = {
       siteName,
       siteUrl,
-      industry,
-      siteType,
-      sitePurpose,
+      // タクソノミー V2
+      businessModel,
+      industryMajor,
+      industryMinor,
+      siteRole,
+      taxonomyVersion: 2,
       metaTitle,
       metaDescription,
       pcScreenshotUrl,
@@ -113,6 +122,10 @@ export const adminCreateSiteCallable = async (request) => {
       targetUserId,
       siteName,
       siteUrl,
+      businessModel,
+      industryMajor,
+      industryMinor,
+      siteRole,
     });
 
     // アクティビティログ

@@ -44,7 +44,15 @@ export const getSiteDetailCallable = async (request) => {
     }
 
     const siteData = siteDoc.data();
-    logger.info('getSiteDetail siteData keys', { keys: Object.keys(siteData), industry: siteData.industry, siteType: siteData.siteType, sitePurpose: siteData.sitePurpose });
+    logger.info('getSiteDetail siteData keys', {
+      keys: Object.keys(siteData),
+      // タクソノミー V2 フィールド
+      businessModel: siteData.businessModel,
+      industryMajor: siteData.industryMajor,
+      industryMinor: siteData.industryMinor,
+      siteRole: siteData.siteRole,
+      taxonomyVersion: siteData.taxonomyVersion,
+    });
 
     // ユーザー情報を取得（業種 = users.industry）
     let userData = null;
@@ -72,14 +80,7 @@ export const getSiteDetailCallable = async (request) => {
     
     const aiUsage = await getAISiteUsage(db, siteId, firstDayOfMonth);
 
-    // サイトタイプ: Firestore は配列 ["corporate"] で保存されているため、表示用に文字列化
-    const siteTypeDisplay = Array.isArray(siteData.siteType) && siteData.siteType.length > 0
-      ? siteData.siteType.join(', ')
-      : (siteData.siteType || '');
-
-    const industryArr = Array.isArray(siteData.industry) ? siteData.industry : (siteData.industry ? [siteData.industry] : []);
-    const sitePurposeArr = siteData.sitePurpose ?? [];
-
+    // タクソノミー V2 フィールドを純粋に返却（配列化・文字列化なし）
     const siteDetail = {
       siteId: siteDoc.id,
       siteName: siteData.siteName || '',
@@ -88,9 +89,13 @@ export const getSiteDetailCallable = async (request) => {
       user: userData,
       ga4PropertyId: siteData.ga4PropertyId || '',
       gscSiteUrl: siteData.gscSiteUrl || '',
-      industry: industryArr,
-      siteType: siteTypeDisplay,
-      sitePurpose: sitePurposeArr,
+      // タクソノミー V2
+      businessModel: siteData.businessModel || '',
+      industryMajor: siteData.industryMajor || '',
+      industryMinor: siteData.industryMinor || '',
+      siteRole: siteData.siteRole || '',
+      taxonomyVersion: Number(siteData.taxonomyVersion) || 0,
+      needsManualReclassify: !!siteData.needsManualReclassify,
       conversionEvents: siteData.conversionEvents || [],
       createdAt: siteData.createdAt?.toDate?.().toISOString() || null,
       updatedAt: siteData.updatedAt?.toDate?.().toISOString() || null,
@@ -105,11 +110,11 @@ export const getSiteDetailCallable = async (request) => {
       isOrphan: !userData,
     };
 
-    logger.info('サイト詳細取得完了', { 
+    logger.info('サイト詳細取得完了', {
       adminId: uid,
       siteId,
-      returnedIndustry: siteDetail.industry?.length ? siteDetail.industry : '(none)',
-      returnedSitePurpose: siteDetail.sitePurpose?.length ? siteDetail.sitePurpose : '(none)',
+      industryMajor: siteDetail.industryMajor || '(none)',
+      siteRole: siteDetail.siteRole || '(none)',
     });
 
     return {

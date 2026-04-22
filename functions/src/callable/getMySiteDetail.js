@@ -52,13 +52,6 @@ export const getMySiteDetailCallable = async (request) => {
     const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const aiUsage = await getAISiteUsage(db, siteId, firstDayOfMonth);
 
-    const siteTypeDisplay = Array.isArray(siteData.siteType) && siteData.siteType.length > 0
-      ? siteData.siteType.join(', ')
-      : (siteData.siteType || '');
-
-    const industryArr = Array.isArray(siteData.industry) ? siteData.industry : (siteData.industry ? [siteData.industry] : []);
-    const sitePurposeArr = siteData.sitePurpose ?? [];
-
     let createdAt = null;
     let updatedAt = null;
     try {
@@ -72,6 +65,8 @@ export const getMySiteDetailCallable = async (request) => {
       // ignore date conversion errors
     }
 
+    // タクソノミー V2 の単一文字列フィールドを純粋に返却する（配列化・文字列化しない）。
+    // フロント側で BUSINESS_MODEL_LABELS / INDUSTRY_MAJOR_LABELS / SITE_ROLE_LABELS を使って表示する。
     const siteDetail = {
       siteId: siteDoc.id,
       siteName: siteData.siteName || '',
@@ -79,9 +74,13 @@ export const getMySiteDetailCallable = async (request) => {
       userId: siteData.userId || '',
       ga4PropertyId: siteData.ga4PropertyId || '',
       gscSiteUrl: siteData.gscSiteUrl || '',
-      industry: industryArr,
-      siteType: siteTypeDisplay,
-      sitePurpose: sitePurposeArr,
+      // タクソノミー V2
+      businessModel: siteData.businessModel || '',
+      industryMajor: siteData.industryMajor || '',
+      industryMinor: siteData.industryMinor || '',
+      siteRole: siteData.siteRole || '',
+      taxonomyVersion: Number(siteData.taxonomyVersion) || 0,
+      needsManualReclassify: !!siteData.needsManualReclassify,
       conversionEvents: Array.isArray(siteData.conversionEvents) ? siteData.conversionEvents : [],
       createdAt,
       updatedAt,

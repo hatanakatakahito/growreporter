@@ -401,6 +401,14 @@
         {"fieldPath": "status", "order": "ASCENDING"},
         {"fieldPath": "emStatus", "order": "ASCENDING"}
       ]
+    },
+    {
+      "collectionGroup": "improvements",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "tagCategory", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ]
     }
   ],
   "fieldOverrides": []

@@ -7,6 +7,9 @@ import Step1BasicInfo from '../GrowReporter/SiteRegistration/Step1BasicInfo';
 import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
 import DotWaveSpinner from '../common/DotWaveSpinner';
+import { BUSINESS_MODEL_LABELS } from '../../constants/businessModels';
+import { SITE_ROLE_LABELS } from '../../constants/siteRoles';
+import { INDUSTRY_MAJOR_LABELS } from '../../constants/industriesV2';
 
 /**
  * 管理者サイト登録モーダル（Step1BasicInfo再利用）
@@ -17,9 +20,12 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
   const [siteData, setSiteData] = useState({
     siteName: '',
     siteUrl: '',
-    industry: [],
-    siteType: [],
-    sitePurpose: [],
+    // タクソノミー V2（単一選択・必須）
+    businessModel: '',
+    industryMajor: '',
+    industryMinor: '',
+    siteRole: '',
+    taxonomyVersion: 2,
     metaTitle: '',
     metaDescription: '',
     pcScreenshotUrl: '',
@@ -36,16 +42,17 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
     ...step1LatestRef.current,
   });
 
-  // バリデーション
+  // バリデーション（V2: 4フィールド単一文字列必須）
   const isValid = () => {
     const data = getLatestData();
     const isMetadataLoading = data.metaTitle === '取得中...' || data.metaDescription === '取得中...';
     return !!(
       data.siteName &&
       data.siteUrl &&
-      Array.isArray(data.industry) && data.industry.length > 0 &&
-      Array.isArray(data.siteType) && data.siteType.length > 0 &&
-      Array.isArray(data.sitePurpose) && data.sitePurpose.length > 0 &&
+      data.businessModel &&
+      data.industryMajor &&
+      data.industryMinor &&
+      data.siteRole &&
       !isMetadataLoading
     );
   };
@@ -62,9 +69,12 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
         targetUserId,
         siteName: data.siteName,
         siteUrl: data.siteUrl,
-        industry: data.industry,
-        siteType: data.siteType,
-        sitePurpose: data.sitePurpose,
+        // タクソノミー V2
+        businessModel: data.businessModel,
+        industryMajor: data.industryMajor,
+        industryMinor: data.industryMinor,
+        siteRole: data.siteRole,
+        taxonomyVersion: 2,
         metaTitle: data.metaTitle || '',
         metaDescription: data.metaDescription || '',
         pcScreenshotUrl: data.pcScreenshotUrl || '',
@@ -126,8 +136,26 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
               <p className="text-sm font-medium text-dark dark:text-white">{data.siteUrl}</p>
             </div>
             <div>
+              <p className="text-xs text-body-color dark:text-dark-6">ビジネスモデル</p>
+              <p className="text-sm text-dark dark:text-white">
+                {BUSINESS_MODEL_LABELS[data.businessModel] || '未選択'}
+              </p>
+            </div>
+            <div>
               <p className="text-xs text-body-color dark:text-dark-6">業種</p>
-              <p className="text-sm text-dark dark:text-white">{data.industry?.join('、') || '未選択'}</p>
+              <p className="text-sm text-dark dark:text-white">
+                {data.industryMajor
+                  ? `${INDUSTRY_MAJOR_LABELS[data.industryMajor] || data.industryMajor}${
+                      data.industryMinor ? `／${data.industryMinor}` : ''
+                    }`
+                  : '未選択'}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-body-color dark:text-dark-6">サイト役割</p>
+              <p className="text-sm text-dark dark:text-white">
+                {SITE_ROLE_LABELS[data.siteRole] || '未選択'}
+              </p>
             </div>
           </div>
 

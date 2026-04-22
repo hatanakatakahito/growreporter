@@ -66,4 +66,5 @@ export const ACTIVITY_ACTIONS = {
   ADMIN_USER_CREATED: 'admin_user_created',
   ADMIN_SITE_CREATED: 'admin_site_created',
   ADMIN_SITE_DELETED: 'admin_site_deleted',
+  ADMIN_TAXONOMY_UPDATED: 'admin_taxonomy_updated',
 };

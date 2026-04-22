@@ -11,7 +11,10 @@ import { db } from '../config/firebase';
 import { doc, getDoc, getDocFromServer, updateDoc } from 'firebase/firestore';
 import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, Copy, Check, AlertCircle, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { SITE_TYPES, SITE_PURPOSES } from '../constants/siteOptions';
+import { BUSINESS_MODEL_LABELS } from '../constants/businessModels';
+import { SITE_ROLE_LABELS } from '../constants/siteRoles';
+import { INDUSTRY_MAJOR_LABELS } from '../constants/industriesV2';
+import TaxonomyMigrationBanner from '../components/common/TaxonomyMigrationBanner';
 import { Button } from '@/components/ui/button';
 /**
  * サイト詳細画面（ユーザー向け・オーナーまたは同一アカウントメンバー）
@@ -215,35 +218,39 @@ export default function SiteDetail() {
             基本情報
           </h3>
           <div className="space-y-3">
+            {/* タクソノミー未移行の警告バナー */}
+            {(Number(siteDetail.taxonomyVersion) !== 2 || siteDetail.needsManualReclassify) && (
+              <div className="mb-2">
+                <TaxonomyMigrationBanner siteId={siteDetail.siteId} variant="user" />
+              </div>
+            )}
             <div>
               <div className="text-sm text-body-color dark:text-dark-6">サイトID</div>
               <div className="font-mono text-sm text-dark dark:text-white">{siteDetail.siteId}</div>
             </div>
             <div>
-              <div className="text-sm text-body-color dark:text-dark-6">業界・業種</div>
+              <div className="text-sm text-body-color dark:text-dark-6">ビジネスモデル</div>
               <div className="text-dark dark:text-white">
-                {Array.isArray(siteDetail.industry) && siteDetail.industry.length > 0
-                  ? siteDetail.industry.join('、')
+                {siteDetail.businessModel
+                  ? BUSINESS_MODEL_LABELS[siteDetail.businessModel] || siteDetail.businessModel
                   : '-'}
               </div>
             </div>
             <div>
-              <div className="text-sm text-body-color dark:text-dark-6">サイト種別</div>
+              <div className="text-sm text-body-color dark:text-dark-6">業種</div>
               <div className="text-dark dark:text-white">
-                {(() => {
-                  const raw = siteDetail.siteType;
-                  if (!raw) return '-';
-                  const values = Array.isArray(raw) ? raw : String(raw).split(',').map((v) => v.trim()).filter(Boolean);
-                  if (values.length === 0) return '-';
-                  return values.map((v) => SITE_TYPES.find((t) => t.value === v)?.label ?? v).join('、');
-                })()}
+                {siteDetail.industryMajor
+                  ? `${INDUSTRY_MAJOR_LABELS[siteDetail.industryMajor] || siteDetail.industryMajor}${
+                      siteDetail.industryMinor ? `／${siteDetail.industryMinor}` : ''
+                    }`
+                  : '-'}
               </div>
             </div>
             <div>
-              <div className="text-sm text-body-color dark:text-dark-6">サイトの目的</div>
+              <div className="text-sm text-body-color dark:text-dark-6">サイト役割</div>
               <div className="text-dark dark:text-white">
-                {Array.isArray(siteDetail.sitePurpose) && siteDetail.sitePurpose.length > 0
-                  ? siteDetail.sitePurpose.map((v) => SITE_PURPOSES.find((p) => p.value === v)?.label ?? v).join('、')
+                {siteDetail.siteRole
+                  ? SITE_ROLE_LABELS[siteDetail.siteRole] || siteDetail.siteRole
                   : '-'}
               </div>
             </div>

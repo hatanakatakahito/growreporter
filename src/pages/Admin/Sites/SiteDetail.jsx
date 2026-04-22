@@ -8,7 +8,11 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import { functions } from '../../../config/firebase';
 import { ArrowLeft, Globe, User, BarChart3, AlertTriangle, CheckCircle, XCircle, Search, RefreshCw, Camera, Monitor, Smartphone } from 'lucide-react';
-import { SITE_TYPES, SITE_PURPOSES } from '../../../constants/siteOptions';
+import { BUSINESS_MODEL_LABELS } from '../../../constants/businessModels';
+import { SITE_ROLE_LABELS } from '../../../constants/siteRoles';
+import { INDUSTRY_MAJOR_LABELS } from '../../../constants/industriesV2';
+import TaxonomyMigrationBanner from '../../../components/common/TaxonomyMigrationBanner';
+import TaxonomyReclassifyModal from '../../../components/Admin/TaxonomyReclassifyModal';
 
 /**
  * サイト詳細画面（管理者用）
@@ -24,6 +28,8 @@ export default function AdminSiteDetail() {
   const [isScreenshotLoading, setIsScreenshotLoading] = useState(false);
   const [screenshotMessage, setScreenshotMessage] = useState(null);
   const [screenshotError, setScreenshotError] = useState(null);
+  // タクソノミー再分類モーダル
+  const [showTaxonomyModal, setShowTaxonomyModal] = useState(false);
 
   useEffect(() => {
     setPageTitle('サイト詳細');
@@ -280,35 +286,43 @@ export default function AdminSiteDetail() {
             基本情報
           </h3>
           <div className="space-y-3">
+            {/* タクソノミー未移行の警告バナー（管理者向け: 再分類モーダルはフェーズ3の後半で追加予定） */}
+            {(Number(siteDetail.taxonomyVersion) !== 2 || siteDetail.needsManualReclassify) && (
+              <div className="mb-2">
+                <TaxonomyMigrationBanner
+                  siteId={siteDetail.siteId}
+                  variant="admin"
+                  onReclassifyClick={() => setShowTaxonomyModal(true)}
+                />
+              </div>
+            )}
             <div>
               <div className="text-sm text-body-color dark:text-dark-6">サイトID</div>
               <div className="font-mono text-sm text-dark dark:text-white">{siteDetail.siteId}</div>
             </div>
             <div>
-              <div className="text-sm text-body-color dark:text-dark-6">業界・業種</div>
+              <div className="text-sm text-body-color dark:text-dark-6">ビジネスモデル</div>
               <div className="text-dark dark:text-white">
-                {Array.isArray(siteDetail.industry) && siteDetail.industry.length > 0
-                  ? siteDetail.industry.join('、')
+                {siteDetail.businessModel
+                  ? BUSINESS_MODEL_LABELS[siteDetail.businessModel] || siteDetail.businessModel
+                  : '-'}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-body-color dark:text-dark-6">業種</div>
+              <div className="text-dark dark:text-white">
+                {siteDetail.industryMajor
+                  ? `${INDUSTRY_MAJOR_LABELS[siteDetail.industryMajor] || siteDetail.industryMajor}${
+                      siteDetail.industryMinor ? `／${siteDetail.industryMinor}` : ''
+                    }`
                   : (siteDetail.user?.industry || '-')}
               </div>
             </div>
             <div>
-              <div className="text-sm text-body-color dark:text-dark-6">サイト種別</div>
+              <div className="text-sm text-body-color dark:text-dark-6">サイト役割</div>
               <div className="text-dark dark:text-white">
-                {(() => {
-                  const raw = siteDetail.siteType;
-                  if (!raw) return '-';
-                  const values = Array.isArray(raw) ? raw : String(raw).split(',').map(v => v.trim()).filter(Boolean);
-                  if (values.length === 0) return '-';
-                  return values.map(v => SITE_TYPES.find(t => t.value === v)?.label ?? v).join('、');
-                })()}
-              </div>
-            </div>
-            <div>
-              <div className="text-sm text-body-color dark:text-dark-6">サイトの目的</div>
-              <div className="text-dark dark:text-white">
-                {Array.isArray(siteDetail.sitePurpose) && siteDetail.sitePurpose.length > 0
-                  ? siteDetail.sitePurpose.map(v => SITE_PURPOSES.find(p => p.value === v)?.label ?? v).join('、')
+                {siteDetail.siteRole
+                  ? SITE_ROLE_LABELS[siteDetail.siteRole] || siteDetail.siteRole
                   : '-'}
               </div>
             </div>
@@ -648,7 +662,19 @@ export default function AdminSiteDetail() {
           </div>
         </div>
       </div>
-      
+
+      {/* タクソノミー V2 再分類モーダル */}
+      {showTaxonomyModal && (
+        <TaxonomyReclassifyModal
+          site={siteDetail}
+          onClose={() => setShowTaxonomyModal(false)}
+          onSuccess={() => {
+            setShowTaxonomyModal(false);
+            refetch();
+          }}
+        />
+      )}
+
     </div>
   );
 }

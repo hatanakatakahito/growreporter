@@ -8,7 +8,9 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import DotWaveSpinner from '../../../components/common/DotWaveSpinner';
 import { Search, Download, ChevronLeft, ChevronRight, Globe, AlertTriangle, CheckCircle, XCircle, BarChart3, Trash2, AlertCircle } from 'lucide-react';
-import { SITE_PURPOSES } from '../../../constants/siteOptions';
+import { BUSINESS_MODEL_LABELS } from '../../../constants/businessModels';
+import { SITE_ROLE_LABELS } from '../../../constants/siteRoles';
+import { INDUSTRY_MAJOR_LABELS } from '../../../constants/industriesV2';
 
 /**
  * サイト管理一覧
@@ -40,11 +42,30 @@ export default function AdminSiteList() {
   const handleExportCSV = () => {
     if (!sites || sites.length === 0) return;
 
-    const csvHeaders = ['サイトID', 'サイト名', 'URL', 'ユーザー名', 'メールアドレス', '業界・業種', 'サイト種別', 'サイトの目的', 'GA4', 'GSC', '登録日'];
+    const csvHeaders = [
+      'サイトID',
+      'サイト名',
+      'URL',
+      'ユーザー名',
+      'メールアドレス',
+      'ビジネスモデル',
+      '業種大分類',
+      '業種小分類',
+      'サイト役割',
+      'GA4',
+      'GSC',
+      '登録日',
+    ];
     const csvRows = sites.map((site) => {
-      const industryStr = Array.isArray(site.industry) && site.industry.length > 0 ? site.industry.join('、') : (site.userIndustry || '');
-      const purposeStr = Array.isArray(site.sitePurpose) && site.sitePurpose.length > 0
-        ? site.sitePurpose.map((v) => SITE_PURPOSES.find((p) => p.value === v)?.label ?? v).join('、')
+      const businessModelStr = site.businessModel
+        ? BUSINESS_MODEL_LABELS[site.businessModel] || site.businessModel
+        : '';
+      const industryMajorStr = site.industryMajor
+        ? INDUSTRY_MAJOR_LABELS[site.industryMajor] || site.industryMajor
+        : '';
+      const industryMinorStr = site.industryMinor || '';
+      const siteRoleStr = site.siteRole
+        ? SITE_ROLE_LABELS[site.siteRole] || site.siteRole
         : '';
       return [
         site.siteId,
@@ -52,9 +73,10 @@ export default function AdminSiteList() {
         site.siteUrl || '',
         site.userName || '',
         site.userEmail || '',
-        industryStr,
-        site.siteType || '',
-        purposeStr,
+        businessModelStr,
+        industryMajorStr,
+        industryMinorStr,
+        siteRoleStr,
         site.hasGA4 ? '設定済' : '未設定',
         site.hasGSC ? '設定済' : '未設定',
         site.createdAt ? new Date(site.createdAt).toLocaleDateString('ja-JP') : '',

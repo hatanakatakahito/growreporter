@@ -63,14 +63,15 @@ export async function exportToSheetsScheduled() {
         // 月次データから該当月のデータを取得
         const monthData = monthlyResult.monthlyData[0];
 
-        // スプレッドシート用の行データを作成
+        // スプレッドシート用の行データを作成（タクソノミー V2）
         const rowData = createRowData(
           {
             siteName: site.siteName,
             siteUrl: site.siteUrl,
-            industry: site.industry ?? [],
-            siteType: site.siteType ?? [],
-            sitePurpose: site.sitePurpose ?? [],
+            businessModel: site.businessModel || '',
+            industryMajor: site.industryMajor || '',
+            industryMinor: site.industryMinor || '',
+            siteRole: site.siteRole || '',
           },
           {
             yearMonth,

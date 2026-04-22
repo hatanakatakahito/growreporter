@@ -1394,26 +1394,40 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, 
   const pageQualityText = '';
 
   let siteContextBlock = '';
-  if (siteContext && (siteContext.industryText || siteContext.siteTypeText || siteContext.sitePurposeText || siteContext.siteName || siteContext.siteUrl)) {
+  if (
+    siteContext &&
+    (siteContext.industryText ||
+      siteContext.businessModelText ||
+      siteContext.siteRoleText ||
+      siteContext.siteTypeText ||
+      siteContext.sitePurposeText ||
+      siteContext.siteName ||
+      siteContext.siteUrl)
+  ) {
     const siteName = siteContext.siteName || '（サイト名未設定）';
     const siteUrl = siteContext.siteUrl || '（URL未設定）';
+    const businessModelText = siteContext.businessModelText || '（ビジネスモデル未設定）';
     const industryText = siteContext.industryText || '（業界未設定）';
-    const siteTypeText = siteContext.siteTypeText || '（サイト種別未設定）';
-    const sitePurposeText = siteContext.sitePurposeText || '（目的未設定）';
+    // タクソノミー V2: siteRole に統合済み。旧 siteTypeText/sitePurposeText は後方互換で受ける。
+    const siteRoleText =
+      siteContext.siteRoleText ||
+      siteContext.siteTypeText ||
+      siteContext.sitePurposeText ||
+      '（サイト役割未設定）';
 
     siteContextBlock = `
 【クライアントの前提】
 ・サイト名: ${siteName}
 ・サイトURL: ${siteUrl}
-・業界: ${industryText}
-・サイト種別: ${siteTypeText}
-・サイトの目的: ${sitePurposeText}
+・ビジネスモデル: ${businessModelText}
+・業界（大分類／小分類）: ${industryText}
+・サイト役割: ${siteRoleText}
 
-このサイトの存在意義は「${siteTypeText}として ${sitePurposeText} を実現する」ことです。
+このサイトの存在意義は「${industryText}における ${siteRoleText} として ${businessModelText} のビジネスを前進させる」ことです。
 すべての改善提案はこの目的に資するかを基準に採否を判断してください。
 
 【業界コンテキストの踏まえ方（必須）】
-以下を一流コンサルタントとして「${industryText}の${siteTypeText}」の現場で
+以下を一流コンサルタントとして「${industryText}の${siteRoleText}」の現場で
 働いてきた経験として想定し、提案本文に反映してください:
 
 1. 典型的なステークホルダー像
@@ -1433,9 +1447,10 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, 
    ・ターゲットが使う検索語彙・業界用語をメタタイトル・見出し・本文で適切に使う
 
 提案の本文には、可能な限り以下を含めてください:
-・「${industryText}の${siteTypeText}では、〇〇なユーザー（例: 法人の人事担当者／
-  地方赴任者／比較検討中の決裁者 等）が〇〇を求めている」という具体的ユーザー像
-・「このサイト種別／目的にとってなぜ有効か」の紐付け理由
+・「${industryText}の${siteRoleText}（${businessModelText}）では、〇〇なユーザー
+  （例: 法人の人事担当者／地方赴任者／比較検討中の決裁者 等）が〇〇を求めている」
+  という具体的ユーザー像
+・「このサイト役割／業種にとってなぜ有効か」の紐付け理由
 ・そのユーザーの意思決定プロセスにおけるこの施策の位置づけ
 
 `;
@@ -1737,14 +1752,14 @@ ${userNoteBlock}${improvementFocusLine}${existingImprovementsText}
    有効な課題がなければ6件で構わないし、15件の価値ある提案が
    できるなら15件でも許容する。水増しも切り捨てもしない。
 
-4. サイト種別と目的に整合
-   すべての提案は「${siteContext?.siteTypeText || 'このサイト種別'}として
-   ${siteContext?.sitePurposeText || 'このサイトの目的'}を実現する」という
-   目的に資するか否かを基準に採否を判断する。本文中に「この種別・
-   目的にとってなぜ有効か」の紐付け理由を1文以上含めること。
+4. サイト役割に整合
+   すべての提案は「${siteContext?.siteRoleText || siteContext?.siteTypeText || 'このサイトの役割'}
+   として ${siteContext?.businessModelText || 'このビジネスモデル'} のビジネスを前進させる」
+   という目的に資するか否かを基準に採否を判断する。本文中に「このサイト役割・
+   業種にとってなぜ有効か」の紐付け理由を1文以上含めること。
 
 5. 業界ステークホルダーの具体像を本文に織り込む
-   ${siteContext?.industryText || 'この業界'}・${siteContext?.siteTypeText || 'このサイト種別'}の現場で、
+   ${siteContext?.industryText || 'この業界'}・${siteContext?.siteRoleText || siteContext?.siteTypeText || 'このサイト役割'}の現場で、
    このサイトを実際に見るのは誰か（法人の人事担当者／出張手配担当者／
    総務／地方赴任者／購買検討者／既存顧客 等）を本文に必ず登場させる。
    その人物が「何を確認したくて」「何に不安を感じていて」「何がわかれば
@@ -1805,7 +1820,7 @@ ${userNoteBlock}${improvementFocusLine}${existingImprovementsText}
 その後、以下のフォーマットで改善施策を列挙（施策間は「---」で区切る）:
 
 タイトル: 具体的なタイトル。ページパス・URLを明記
-説明: 必ず以下の3ブロック構造で記述する。各ブロックは見出し記号を必ず付けて、分量は各80〜150文字を目安とする（不足する場合のみ短くても可）。${siteContext?.siteTypeText || 'この種別'}／${siteContext?.sitePurposeText || 'この目的'}にとってなぜ有効かを含めること。マークダウン記号（**、#、-、*）や番号リストは使わない。
+説明: 必ず以下の3ブロック構造で記述する。各ブロックは見出し記号を必ず付けて、分量は各80〜150文字を目安とする（不足する場合のみ短くても可）。${siteContext?.siteRoleText || siteContext?.siteTypeText || 'このサイト役割'}／${siteContext?.industryText || 'この業種'}にとってなぜ有効かを含めること。マークダウン記号（**、#、-、*）や番号リストは使わない。
 【現状の問題】現状の実文言・実数値を引用し、何が問題か・なぜ改善が必要かを説明
 【提案内容】具体的に何をどう変更するか、どこに何を追加するか。Before/Afterの具体文言を示す
 【なぜ効くか】この施策がユーザー行動・検索エンジン・コンバージョンにどう作用するか

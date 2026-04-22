@@ -25,7 +25,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import { useSite } from '../../../contexts/SiteContext';
 import { useAdmin } from '../../../hooks/useAdmin';
 import { db, functions } from '../../../config/firebase';
-import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, getDocs, deleteField } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
 import logoImg from '../../../assets/img/logo.svg';
@@ -38,6 +38,35 @@ import Step2GA4Connect from './Step2GA4Connect';
 import Step3GSCConnect from './Step3GSCConnect';
 import Step4ConversionSettings from './Step4ConversionSettings';
 import Step5KPISettings from './Step5KPISettings';
+
+// V1 レガシーフィールド。保存時に payload から除外し、updateDoc 時は deleteField() で Firestore から削除する。
+const LEGACY_TAXONOMY_FIELDS = ['industry', 'siteType', 'sitePurpose', 'businessType'];
+
+/**
+ * siteData から Firestore 保存用の payload を構築する。
+ * - レガシーフィールド(industry/siteType/sitePurpose/businessType)を除外
+ * - 必ず taxonomyVersion: 2 を含める
+ */
+function buildSavePayload(baseData) {
+  const cleaned = { ...baseData };
+  LEGACY_TAXONOMY_FIELDS.forEach((key) => {
+    delete cleaned[key];
+  });
+  cleaned.taxonomyVersion = 2;
+  return cleaned;
+}
+
+/**
+ * 既存 V1 サイト更新時に、Firestore 上の旧フィールドを削除するための sentinel を追加。
+ * 新規 addDoc では使わない（そもそも書き込まない）。
+ */
+function legacyDeletionSentinels() {
+  const sentinels = {};
+  LEGACY_TAXONOMY_FIELDS.forEach((key) => {
+    sentinels[key] = deleteField();
+  });
+  return sentinels;
+}
 
 export default function SiteRegistration({ mode = 'new' }) {
   const navigate = useNavigate();
@@ -75,9 +104,12 @@ export default function SiteRegistration({ mode = 'new' }) {
   const [siteData, setSiteData] = useState({
     siteName: '',
     siteUrl: '',
-    industry: [],
-    siteType: [],
-    sitePurpose: [],
+    // タクソノミー V2（単一選択・必須）
+    businessModel: '',
+    industryMajor: '',
+    industryMinor: '',
+    siteRole: '',
+    taxonomyVersion: 2,
     metaTitle: '',
     metaDescription: '',
     pcScreenshotUrl: '',
@@ -172,9 +204,17 @@ export default function SiteRegistration({ mode = 'new' }) {
             setSiteData({
               siteName: data.siteName || '',
               siteUrl: data.siteUrl || '',
+              // V2 フィールド（legacy データは Step1BasicInfo 側で推定プレフィル）
+              businessModel: data.businessModel || '',
+              industryMajor: data.industryMajor || '',
+              industryMinor: data.industryMinor || '',
+              siteRole: data.siteRole || '',
+              taxonomyVersion: Number(data.taxonomyVersion) === 2 ? 2 : undefined,
+              // legacy フィールドをそのまま渡して推定に使う（saveSiteData で delete される）
               industry: Array.isArray(data.industry) ? data.industry : (data.industry ? [data.industry] : []),
               siteType: Array.isArray(data.siteType) ? data.siteType : (data.siteType ? [data.siteType] : []),
               sitePurpose: Array.isArray(data.sitePurpose) ? data.sitePurpose : (data.sitePurpose ? [data.sitePurpose] : []),
+              businessType: data.businessType || '',
               metaTitle: data.metaTitle || '',
               metaDescription: data.metaDescription || '',
               pcScreenshotUrl: data.pcScreenshotUrl || '',
@@ -229,17 +269,21 @@ export default function SiteRegistration({ mode = 'new' }) {
   // バリデーション（useMemoでメモ化してパフォーマンス向上）
   const canProceed = React.useMemo(() => {
     switch (currentStep) {
-      case 1:
+      case 1: {
         // 「取得中...」の状態では進めない
-        const isMetadataLoading = siteData.metaTitle === '取得中...' || siteData.metaDescription === '取得中...';
+        const isMetadataLoading =
+          siteData.metaTitle === '取得中...' || siteData.metaDescription === '取得中...';
         return !!(
           siteData.siteName &&
           siteData.siteUrl &&
-          Array.isArray(siteData.industry) && siteData.industry.length > 0 &&
-          Array.isArray(siteData.siteType) && siteData.siteType.length > 0 &&
-          Array.isArray(siteData.sitePurpose) && siteData.sitePurpose.length > 0 &&
+          // タクソノミー V2: 4フィールドすべて単一文字列で必須
+          siteData.businessModel &&
+          siteData.industryMajor &&
+          siteData.industryMinor &&
+          siteData.siteRole &&
           !isMetadataLoading
         );
+      }
       case 2:
         return !!siteData.ga4PropertyId;
       case 3:
@@ -250,7 +294,18 @@ export default function SiteRegistration({ mode = 'new' }) {
       default:
         return true;
     }
-  }, [currentStep, siteData.siteName, siteData.siteUrl, siteData.industry, siteData.siteType, siteData.sitePurpose, siteData.metaTitle, siteData.metaDescription, siteData.ga4PropertyId]);
+  }, [
+    currentStep,
+    siteData.siteName,
+    siteData.siteUrl,
+    siteData.businessModel,
+    siteData.industryMajor,
+    siteData.industryMinor,
+    siteData.siteRole,
+    siteData.metaTitle,
+    siteData.metaDescription,
+    siteData.ga4PropertyId,
+  ]);
 
   // 保存処理
   const saveSiteData = async (nextStep) => {
@@ -259,14 +314,14 @@ export default function SiteRegistration({ mode = 'new' }) {
 
     try {
       console.log('[SiteRegistration] 保存開始:', { currentUser: currentUser?.uid, siteId, nextStep });
-      
-      const dataToSave = {
+
+      const dataToSave = buildSavePayload({
         ...siteData,
         ...step1LatestRef.current,
         setupStep: nextStep,
         updatedAt: serverTimestamp(),
-      };
-      
+      });
+
       console.log('[SiteRegistration] 保存データ:', {
         metaTitle: dataToSave.metaTitle,
         metaDescription: dataToSave.metaDescription,
@@ -277,7 +332,7 @@ export default function SiteRegistration({ mode = 'new' }) {
       if (siteId) {
         // 既存サイトの更新（管理者代理編集時はuserIdを上書きしない）
         console.log('[SiteRegistration] 既存サイト更新:', siteId);
-        const updatePayload = { ...dataToSave };
+        const updatePayload = { ...dataToSave, ...legacyDeletionSentinels() };
         if (isAdminEditingOtherSite) {
           // 管理者がOAuth連携した場合、トークンオーナーを管理者に設定
           if (updatePayload.ga4OauthTokenId) {
@@ -347,15 +402,15 @@ export default function SiteRegistration({ mode = 'new' }) {
     setError('');
 
     try {
-      const dataToSave = {
+      const dataToSave = buildSavePayload({
         ...siteData,
         ...step1LatestRef.current,
         setupStep: currentStep,
         updatedAt: serverTimestamp(),
-      };
+      });
 
       if (siteId) {
-        const updatePayload = { ...dataToSave };
+        const updatePayload = { ...dataToSave, ...legacyDeletionSentinels() };
         if (isAdminEditingOtherSite) {
           if (updatePayload.ga4OauthTokenId) {
             updatePayload.ga4TokenOwner = currentUser.uid;
@@ -389,13 +444,13 @@ export default function SiteRegistration({ mode = 'new' }) {
     setError('');
 
     try {
-      const finalData = {
+      const finalData = buildSavePayload({
         ...siteData,
         ...step1LatestRef.current,
         setupStep: 5,
         setupCompleted: true,
         updatedAt: serverTimestamp(),
-      };
+      });
 
       let completedSiteId = siteId;
       let isNewSite = !siteId;
@@ -411,7 +466,10 @@ export default function SiteRegistration({ mode = 'new' }) {
       }
 
       if (siteId) {
-        await updateDoc(doc(db, 'sites', siteId), finalData);
+        await updateDoc(doc(db, 'sites', siteId), {
+          ...finalData,
+          ...legacyDeletionSentinels(),
+        });
       } else {
         const docRef = await addDoc(collection(db, 'sites'), {
           ...finalData,

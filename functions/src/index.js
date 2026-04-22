@@ -118,6 +118,12 @@ export const preheatSitePageScreenshots = lazyCallable('./callable/preheatSitePa
 export const generateAISummary = lazyCallable('./callable/generateAISummary.js', 'generateAISummaryCallable', { memory: '512MiB', timeoutSeconds: 60, secrets: ['GEMINI_API_KEY'] });
 
 /**
+ * URL からタクソノミー V2 (businessModel / industryMajor / industryMinor / siteRole) を
+ * Gemini で自動判定する Callable。サイト登録時の入力補助・移行スクリプト両方から利用する。
+ */
+export const inferSiteTaxonomy = lazyCallable('./callable/inferSiteTaxonomy.js', 'inferSiteTaxonomyCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['GEMINI_API_KEY'] });
+
+/**
  * エクスポート使用回数インクリメント Callable Function
  */
 export const incrementExportUsage = lazyCallable('./callable/incrementExportUsage.js', 'incrementExportUsageCallable');
@@ -469,6 +475,11 @@ export const adminCreateUser = lazyCallable('./callable/admin/adminCreateUser.js
  */
 export const adminCreateSite = lazyCallable('./callable/admin/adminCreateSite.js', 'adminCreateSiteCallable', { memory: '256MiB', timeoutSeconds: 30 });
 export const adminDeleteSite = lazyCallable('./callable/admin/adminDeleteSite.js', 'adminDeleteSiteCallable', { memory: '512MiB', timeoutSeconds: 120 });
+
+/**
+ * タクソノミー V2 の手動再分類（移行スクリプト後の needsManualReclassify=true サイト向け）
+ */
+export const adminUpdateSiteTaxonomy = lazyCallable('./callable/admin/adminUpdateSiteTaxonomy.js', 'adminUpdateSiteTaxonomyCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * GA4上位100ページスクレイピング Callable Function（遅延読み込み）

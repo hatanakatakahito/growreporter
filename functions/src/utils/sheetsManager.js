@@ -1,12 +1,45 @@
 import { google } from 'googleapis';
+import {
+  BUSINESS_MODEL_LABELS,
+  INDUSTRY_MAJOR_LABELS,
+  SITE_ROLE_LABELS,
+} from '../constants/siteOptionsV2.js';
 
 /**
- * Google Sheets Manager
+ * Google Sheets Manager（タクソノミー V2 対応）
  * Firebase Admin SDKの認証情報を使用してGoogle Sheets APIを操作
+ *
+ * 列構成（V2, A:P 16列）:
+ *   A: 登録日時
+ *   B: サイト名
+ *   C: URL
+ *   D: ビジネスモデル
+ *   E: 業種大分類
+ *   F: 業種小分類
+ *   G: サイト役割
+ *   H: 対象年月
+ *   I: セッション数
+ *   J: 新規ユーザー
+ *   K: ユーザー数
+ *   L: ページビュー
+ *   M: 1セッションあたりPV
+ *   N: エンゲージメント率
+ *   O: コンバージョン数
+ *   P: コンバージョン率
+ *
+ * 運用: 既存スプレッドシートのヘッダー行はデプロイ前に手動で書き換えること。
+ *       手順は docs/taxonomy-v2-migration.md を参照。
  */
 
 // スプレッドシートID
 const SPREADSHEET_ID = '1Gn9XIvyEwKuYBIgckj_wDA4cTcOZXu03ibwuIvKutIY';
+
+// 範囲定義（1 箇所で管理）
+const RANGE = 'シート1!A:P';
+
+// 列番号（0-indexed）
+const COL_URL = 2; // C列
+const COL_TARGET_MONTH = 7; // H列（V2 で 1 列シフト）
 
 /**
  * Google Sheets APIクライアントを初期化
@@ -35,10 +68,10 @@ export async function getSheetsClient() {
 export async function appendRows(rows) {
   try {
     const sheets = await getSheetsClient();
-    
+
     const response = await sheets.spreadsheets.values.append({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'シート1!A:O', // A列からO列（業界・業種・サイトの目的追加）
+      range: RANGE,
       valueInputOption: 'USER_ENTERED',
       insertDataOption: 'INSERT_ROWS',
       resource: {
@@ -65,10 +98,10 @@ export async function appendRows(rows) {
 export async function getAllRows() {
   try {
     const sheets = await getSheetsClient();
-    
+
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId: SPREADSHEET_ID,
-      range: 'シート1!A:O', // A列からO列（業界・業種・サイトの目的追加）
+      range: RANGE,
     });
 
     return response.data.values || [];
@@ -88,13 +121,13 @@ export async function getAllRows() {
 export async function updateRowIfExists(siteUrl, targetMonth, newRowData) {
   try {
     const allRows = await getAllRows();
-    
+
     // ヘッダー行をスキップ（1行目）
     const dataRows = allRows.slice(1);
-    
-    // 既存データを検索（C列:URL、G列:対象年月）
-    const existingRowIndex = dataRows.findIndex(row => {
-      return row[2] === siteUrl && row[6] === targetMonth; // C列とG列
+
+    // 既存データを検索（C列:URL, H列:対象年月）
+    const existingRowIndex = dataRows.findIndex((row) => {
+      return row[COL_URL] === siteUrl && row[COL_TARGET_MONTH] === targetMonth;
     });
 
     if (existingRowIndex === -1) {
@@ -105,10 +138,10 @@ export async function updateRowIfExists(siteUrl, targetMonth, newRowData) {
     // 既存データがある場合は更新
     const sheets = await getSheetsClient();
     const actualRowIndex = existingRowIndex + 2; // ヘッダー行 + 0-indexedを1-indexedに変換
-    
+
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: `シート1!A${actualRowIndex}:O${actualRowIndex}`,
+      range: `シート1!A${actualRowIndex}:P${actualRowIndex}`,
       valueInputOption: 'USER_ENTERED',
       resource: {
         values: [newRowData],
@@ -139,11 +172,11 @@ export async function appendOrUpdateRows(rows) {
   const rowsToInsert = [];
 
   for (const row of rows) {
-    const siteUrl = row[2]; // C列: URL
-    const targetMonth = row[5]; // F列: 対象年月
-    
+    const siteUrl = row[COL_URL];
+    const targetMonth = row[COL_TARGET_MONTH];
+
     const wasUpdated = await updateRowIfExists(siteUrl, targetMonth, row);
-    
+
     if (wasUpdated) {
       updatedCount++;
     } else {
@@ -167,66 +200,44 @@ export async function appendOrUpdateRows(rows) {
 }
 
 /**
- * データ行を生成
- * @param {object} siteInfo - サイト情報
- * @param {object} monthlyData - 月次データ
- * @returns {Array<any>} - スプレッドシートの行データ
+ * スプレッドシートのセル用にスカラー値に正規化
+ * （V2: siteInfo は単一文字列フィールドを渡す前提）
  */
-/**
- * スプレッドシートのセル用にスカラー値に正規化（配列はカンマ区切り文字列に）
- */
-function toCellValue(value, defaultStr = 'その他') {
+function toCellValue(value, defaultStr = '') {
   if (value == null || value === '') return defaultStr;
   if (Array.isArray(value)) return value.length ? value.join(', ') : defaultStr;
   return typeof value === 'string' ? value : String(value);
 }
 
-// サイト種別の value → 日本語ラベル マッピング
-const SITE_TYPE_LABELS = {
-  corporate: 'コーポレートサイト',
-  service: 'サービスサイト',
-  product: '製品サイト',
-  recruit: '採用サイト',
-  ir: 'IRサイト',
-  lp: 'LPサイト',
-  ec: 'ECサイト',
-  owned_media: 'オウンドメディアサイト',
-  intranet: '社内ポータルサイト',
-  global: 'グローバルサイト',
-  business_system: '業務系システムサイト',
-  member: '会員サイト',
-  other: 'その他',
-};
-
-// サイトの目的の value → 日本語ラベル マッピング
-const SITE_PURPOSE_LABELS = {
-  branding: '認知・ブランディング',
-  lead: 'リード・問い合わせ獲得',
-  sales: '販売',
-  recruit: '採用',
-  media: '情報発信',
-  ir: '投資家向け（IR）',
-  internal: '社内・業務利用',
-  member: '会員獲得',
-  other: 'その他',
-};
-
 /**
- * value コード配列を日本語ラベル配列に変換してセル値にする
+ * value を labelMap で日本語ラベルに変換
  */
-function toLabeledCellValue(values, labelMap, defaultStr = 'その他') {
-  if (!Array.isArray(values) || values.length === 0) return defaultStr;
-  const labels = values.map(v => labelMap[v] || v);
-  return labels.join(', ');
+function toLabeledCellValue(value, labelMap, defaultStr = '未設定') {
+  if (!value) return defaultStr;
+  return labelMap[value] || value;
 }
 
+/**
+ * データ行を生成（タクソノミー V2 スキーマ）
+ *
+ * @param {object} siteInfo - サイト情報（V2 単一文字列フィールド）
+ * @param {string} siteInfo.siteName
+ * @param {string} siteInfo.siteUrl
+ * @param {string} [siteInfo.businessModel]
+ * @param {string} [siteInfo.industryMajor]
+ * @param {string} [siteInfo.industryMinor]
+ * @param {string} [siteInfo.siteRole]
+ * @param {object} monthlyData - 月次データ
+ * @returns {Array<any>} - スプレッドシートの行データ（A:P, 16列）
+ */
 export function createRowData(siteInfo, monthlyData) {
   const {
     siteName,
     siteUrl,
-    industry = [],
-    siteType = [],
-    sitePurpose = [],
+    businessModel = '',
+    industryMajor = '',
+    industryMinor = '',
+    siteRole = '',
   } = siteInfo;
 
   const {
@@ -247,20 +258,20 @@ export function createRowData(siteInfo, monthlyData) {
 
   return [
     new Date().toISOString(), // A: 登録日時
-    toCellValue(siteName, ''),      // B: サイト名
-    toCellValue(siteUrl, ''),      // C: URL
-    toCellValue(industry),         // D: 業界・業種（配列の場合は結合）
-    toLabeledCellValue(siteType, SITE_TYPE_LABELS),     // E: サイト種別
-    toLabeledCellValue(sitePurpose, SITE_PURPOSE_LABELS), // F: サイトの目的
-    yearMonth,                // G: 対象年月
-    sessions,                 // H: セッション数
-    newUsers,                 // I: 新規ユーザー
-    users,                    // J: ユーザー数
-    pageViews,                // K: ページビュー
-    avgPageViews,             // L: 1セッションあたりPV
-    (engagementRate * 100).toFixed(2), // M: エンゲージメント率（%）
-    conversions,              // N: コンバージョン数
-    cvr,                      // O: コンバージョン率（%）
+    toCellValue(siteName, ''), // B: サイト名
+    toCellValue(siteUrl, ''), // C: URL
+    toLabeledCellValue(businessModel, BUSINESS_MODEL_LABELS), // D: ビジネスモデル
+    toLabeledCellValue(industryMajor, INDUSTRY_MAJOR_LABELS), // E: 業種大分類
+    toCellValue(industryMinor, '未設定'), // F: 業種小分類
+    toLabeledCellValue(siteRole, SITE_ROLE_LABELS), // G: サイト役割
+    yearMonth, // H: 対象年月
+    sessions, // I: セッション数
+    newUsers, // J: 新規ユーザー
+    users, // K: ユーザー数
+    pageViews, // L: ページビュー
+    avgPageViews, // M: 1セッションあたりPV
+    (engagementRate * 100).toFixed(2), // N: エンゲージメント率（%）
+    conversions, // O: コンバージョン数
+    cvr, // P: コンバージョン率（%）
   ];
 }
-

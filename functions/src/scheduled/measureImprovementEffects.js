@@ -665,7 +665,11 @@ async function saveImprovementKnowledge(db, siteId, siteData, item, category, ch
   const improvementSummary = (item.title || '').substring(0, 100);
 
   await db.collection('improvementKnowledge').add({
-    industry: siteData.industry ? (Array.isArray(siteData.industry) ? siteData.industry : [siteData.industry]) : [],
+    // タクソノミー V2: 新フィールドで記録（将来のベンチマーク集計のため）
+    businessModel: siteData.businessModel || '',
+    industryMajor: siteData.industryMajor || '',
+    industryMinor: siteData.industryMinor || '',
+    siteRole: siteData.siteRole || '',
     siteScale,
     category,
     targetArea: item.targetArea || '',

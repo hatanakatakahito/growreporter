@@ -73,14 +73,15 @@ export async function onSiteCreatedTrigger(event) {
         // 月次データから該当月のデータを取得
         const monthData = monthlyResult.monthlyData[0];
 
-        // スプレッドシート用の行データを作成
+        // スプレッドシート用の行データを作成（タクソノミー V2）
         const rowData = createRowData(
           {
             siteName: siteData.siteName,
             siteUrl: siteData.siteUrl,
-            industry: siteData.industry ?? [],
-            siteType: siteData.siteType ?? [],
-            sitePurpose: siteData.sitePurpose ?? [],
+            businessModel: siteData.businessModel || '',
+            industryMajor: siteData.industryMajor || '',
+            industryMinor: siteData.industryMinor || '',
+            siteRole: siteData.siteRole || '',
           },
           {
             yearMonth,

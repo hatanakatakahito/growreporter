@@ -54,11 +54,6 @@ export const getAdminSitesCallable = async (request) => {
     let sites = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
-      const siteTypeDisplay = Array.isArray(data.siteType) && data.siteType.length > 0
-        ? data.siteType.join(', ')
-        : (data.siteType || '');
-      const industryArr = Array.isArray(data.industry) ? data.industry : (data.industry ? [data.industry] : []);
-      const sitePurposeArr = data.sitePurpose ?? [];
       sites.push({
         siteId: doc.id,
         siteName: data.siteName || '',
@@ -68,9 +63,13 @@ export const getAdminSitesCallable = async (request) => {
         userEmail: '', // 後で取得
         ga4PropertyId: data.ga4PropertyId || '',
         gscSiteUrl: data.gscSiteUrl || '',
-        industry: industryArr,
-        sitePurpose: sitePurposeArr,
-        siteType: siteTypeDisplay,
+        // タクソノミー V2
+        businessModel: data.businessModel || '',
+        industryMajor: data.industryMajor || '',
+        industryMinor: data.industryMinor || '',
+        siteRole: data.siteRole || '',
+        taxonomyVersion: Number(data.taxonomyVersion) || 0,
+        needsManualReclassify: !!data.needsManualReclassify,
         createdAt: data.createdAt?.toDate?.().toISOString() || null,
         updatedAt: data.updatedAt?.toDate?.().toISOString() || null,
         hasGA4: !!data.ga4PropertyId,

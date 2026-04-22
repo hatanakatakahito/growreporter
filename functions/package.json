@@ -9,7 +9,9 @@
     "shell": "firebase functions:shell",
     "start": "npm run shell",
     "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "logs": "firebase functions:log",
+    "migrate:taxonomy-v2": "node --loader ./loader.mjs src/scripts/migrateTaxonomyV2.js",
+    "migrate:taxonomy-v2:dry": "node --loader ./loader.mjs src/scripts/migrateTaxonomyV2.js --dry-run"
   },
   "engines": {
     "node": "20"

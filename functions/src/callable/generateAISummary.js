@@ -5,7 +5,13 @@ import { checkCanGenerate, incrementGenerationCount } from '../utils/planManager
 import { getCachedAnalysis, saveCachedAnalysis } from '../utils/aiCacheManager.js';
 import { getPromptTemplate } from '../prompts/templates.js';
 import { buildScrapingContextText } from '../prompts/scrapingContextBuilder.js';
-import { SITE_TYPE_LABELS, SITE_PURPOSE_LABELS, IMPROVEMENT_FOCUS_LABELS } from '../constants/siteOptions.js';
+import { IMPROVEMENT_FOCUS_LABELS } from '../constants/siteOptions.js';
+import {
+  BUSINESS_MODEL_LABELS,
+  SITE_ROLE_LABELS,
+  INDUSTRY_MAJOR_LABELS,
+  formatIndustry,
+} from '../constants/siteOptionsV2.js';
 import { canAccessSite, canEditSite } from '../utils/permissionHelper.js';
 
 const MAX_SCREENSHOTS_FOR_GEMINI = 10;
@@ -301,15 +307,26 @@ export async function generateAISummaryCallable(request) {
     }
     const options = {};
     if (pageType === 'comprehensive_improvement') {
-      const industryArr = Array.isArray(siteData.industry) ? siteData.industry : (siteData.industry ? [siteData.industry] : []);
-      const siteTypeArr = Array.isArray(siteData.siteType) ? siteData.siteType : (siteData.siteType ? [siteData.siteType] : []);
-      const sitePurposeArr = Array.isArray(siteData.sitePurpose) ? siteData.sitePurpose : (siteData.sitePurpose ? [siteData.sitePurpose] : []);
+      // タクソノミー V2 の単一文字列フィールドから siteContext を構築する。
+      // 旧フィールド参照は撤去。欠損時は「未設定」で破綻させない。
+      const businessModelText = BUSINESS_MODEL_LABELS[siteData.businessModel] || '未設定';
+      const industryMajorText = INDUSTRY_MAJOR_LABELS[siteData.industryMajor] || '未設定';
+      const industryMinorText = siteData.industryMinor || '未設定';
+      const industryText = formatIndustry(siteData.industryMajor, siteData.industryMinor, '未設定');
+      const siteRoleText = SITE_ROLE_LABELS[siteData.siteRole] || '未設定';
+
       options.siteContext = {
         siteName: siteData.siteName || '未設定',
         siteUrl: siteData.siteUrl || '未設定',
-        industryText: industryArr.length ? industryArr.join('、') : '未設定',
-        siteTypeText: siteTypeArr.map((v) => SITE_TYPE_LABELS[v] || v).join('、') || '未設定',
-        sitePurposeText: sitePurposeArr.map((v) => SITE_PURPOSE_LABELS[v] || v).join('、') || '未設定',
+        // V2 キー（新）
+        businessModelText,
+        industryMajorText,
+        industryMinorText,
+        industryText,
+        siteRoleText,
+        // 旧キーのエイリアス（templates.js 側が未更新でも壊れないように）
+        siteTypeText: siteRoleText,
+        sitePurposeText: siteRoleText,
       };
       options.improvementFocus = IMPROVEMENT_FOCUS_LABELS[improvementFocusValue] || IMPROVEMENT_FOCUS_LABELS.balance;
       options.userNote = userNote || '';
