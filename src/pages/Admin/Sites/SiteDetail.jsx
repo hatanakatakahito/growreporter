@@ -489,6 +489,17 @@ export default function AdminSiteDetail() {
             )}
           </div>
         </div>
+
+        {/* メタデータ・スクショ再取得（スクリーンショット直下にも同じリンクを配置） */}
+        <div className="mt-4 border-t border-stroke pt-4 dark:border-dark-3">
+          <button
+            onClick={handleRefreshScreenshots}
+            className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            メタデータ・スクリーンショットを再取得
+          </button>
+        </div>
       </div>
 
       {/* コンバージョンイベント */}
