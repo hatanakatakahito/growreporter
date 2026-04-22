@@ -21,6 +21,7 @@ import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
   BarChart,
@@ -117,7 +118,7 @@ export default function LandingPages() {
     return url;
   };
 
-  // テーブル用のデータ整形（訪問者数降順）
+  // テーブル用のデータ整形（セッション数降順）
   const tableData =
     landingPageData?.rows
       ?.map((row) => ({
@@ -298,7 +299,7 @@ export default function LandingPages() {
 
               {/* タブコンテンツ */}
               {activeTab === 'chart' ? (
-                <ChartContainer title="ランディングページ別訪問者数（上位10件）" height={400}>
+                <ChartContainer title="ランディングページ別セッション数（上位10件）" height={400}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -314,13 +315,13 @@ export default function LandingPages() {
                       <Legend content={<CustomLegend />} />
                       <Bar
                         dataKey="sessions"
-                        name="訪問者"
+                        name={getShortLabel('sessions')}
                         fill="#3b82f6"
                         hide={hiddenSeries.sessions}
                       />
                       <Bar
                         dataKey="conversions"
-                        name="コンバージョン"
+                        name={getShortLabel('conversions')}
                         fill="#ef4444"
                         hide={hiddenSeries.conversions}
                       />
@@ -356,7 +357,7 @@ export default function LandingPages() {
                     },
                     {
                       key: 'sessions',
-                      label: '訪問者',
+                      label: getShortLabel('sessions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
@@ -364,7 +365,7 @@ export default function LandingPages() {
                     },
                     {
                       key: 'users',
-                      label: 'ユーザー数',
+                      label: getShortLabel('users'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'activeUsers',
@@ -373,7 +374,7 @@ export default function LandingPages() {
                     },
                     {
                       key: 'newUsers',
-                      label: '新規ユーザー',
+                      label: getShortLabel('newUsers'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'newUsers',
@@ -382,7 +383,7 @@ export default function LandingPages() {
                     },
                     {
                       key: 'pageViews',
-                      label: '表示回数',
+                      label: getShortLabel('pageViews'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'screenPageViews',
@@ -391,7 +392,7 @@ export default function LandingPages() {
                     },
                     {
                       key: 'engagementRate',
-                      label: 'ENG率',
+                      label: getShortLabel('engagementRate'),
                       align: 'right',
                       render: (value) => `${value}%`,
                       tooltip: 'engagementRate',
@@ -399,7 +400,7 @@ export default function LandingPages() {
                     },
                     {
                       key: 'bounceRate',
-                      label: '直帰率',
+                      label: getShortLabel('bounceRate'),
                       align: 'right',
                       render: (value) => `${value}%`,
                       tooltip: 'bounceRate',
@@ -409,7 +410,7 @@ export default function LandingPages() {
                     },
                     {
                       key: 'avgSessionDuration',
-                      label: '平均滞在時間',
+                      label: getShortLabel('avgSessionDuration'),
                       align: 'right',
                       render: (value) => {
                         const minutes = Math.floor(value / 60);
@@ -421,7 +422,7 @@ export default function LandingPages() {
                     },
                     {
                       key: 'conversions',
-                      label: 'コンバージョン',
+                      label: getShortLabel('conversions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'conversions',
@@ -429,7 +430,7 @@ export default function LandingPages() {
                     },
                     {
                       key: 'conversionRate',
-                      label: 'CVR',
+                      label: getShortLabel('conversionRate'),
                       align: 'right',
                       render: (value) => `${value}%`,
                       tooltip: 'conversionRate',

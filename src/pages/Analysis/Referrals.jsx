@@ -21,6 +21,7 @@ import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
   BarChart,
@@ -279,7 +280,7 @@ export default function Referrals() {
     return `${entry.name} (${percent}%)`;
   };
 
-  // 平均訪問時間のフォーマット（秒 → 分:秒）
+  // 平均セッション時間のフォーマット（秒 → 分:秒）
   const formatDuration = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = Math.floor(seconds % 60);
@@ -364,7 +365,7 @@ export default function Referrals() {
               {activeTab === 'chart' ? (
                 <div className="space-y-6">
                   {/* 円グラフ */}
-                  <ChartContainer title="参照元別訪問者構成比" height={400}>
+                  <ChartContainer title="参照元別セッション構成比" height={400}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -387,7 +388,7 @@ export default function Referrals() {
                   </ChartContainer>
 
                   {/* 棒グラフ */}
-                  <ChartContainer title="参照元別訪問者数（上位10件）" height={400}>
+                  <ChartContainer title="参照元別セッション数（上位10件）" height={400}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -402,13 +403,13 @@ export default function Referrals() {
                         <Legend content={<CustomLegend />} />
                         <Bar
                           dataKey="sessions"
-                          name="訪問者"
+                          name={getShortLabel('sessions')}
                           fill="#3b82f6"
                           hide={hiddenSeries.sessions}
                         />
                         <Bar
                           dataKey="conversions"
-                          name="コンバージョン"
+                          name={getShortLabel('conversions')}
                           fill="#ef4444"
                           hide={hiddenSeries.conversions}
                         />
@@ -441,7 +442,7 @@ export default function Referrals() {
                     },
                     {
                       key: 'sessions',
-                      label: '訪問者',
+                      label: getShortLabel('sessions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
@@ -449,7 +450,7 @@ export default function Referrals() {
                     },
                     {
                       key: 'users',
-                      label: 'ユーザー数',
+                      label: getShortLabel('users'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'activeUsers',
@@ -457,7 +458,7 @@ export default function Referrals() {
                     },
                     {
                       key: 'newUsers',
-                      label: '新規ユーザー',
+                      label: getShortLabel('newUsers'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'newUsers',
@@ -466,7 +467,7 @@ export default function Referrals() {
                     },
                     {
                       key: 'pageViews',
-                      label: '表示回数',
+                      label: getShortLabel('pageViews'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'screenPageViews',
@@ -475,7 +476,7 @@ export default function Referrals() {
                     },
                     {
                       key: 'engagementRate',
-                      label: 'ENG率',
+                      label: getShortLabel('engagementRate'),
                       align: 'right',
                       tooltip: 'engagementRate',
                       render: (value) => `${value}%`,
@@ -483,7 +484,7 @@ export default function Referrals() {
                     },
                     {
                       key: 'bounceRate',
-                      label: '直帰率',
+                      label: getShortLabel('bounceRate'),
                       align: 'right',
                       tooltip: 'bounceRate',
                       render: (value) => `${value}%`,
@@ -493,7 +494,7 @@ export default function Referrals() {
                     },
                     {
                       key: 'avgSessionDuration',
-                      label: '平均滞在時間',
+                      label: getShortLabel('avgSessionDuration'),
                       align: 'right',
                       tooltip: 'avgSessionDuration',
                       render: (value) => formatDuration(value || 0),
@@ -501,7 +502,7 @@ export default function Referrals() {
                     },
                     {
                       key: 'conversions',
-                      label: 'コンバージョン',
+                      label: getShortLabel('conversions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'conversions',
@@ -509,7 +510,7 @@ export default function Referrals() {
                     },
                     {
                       key: 'conversionRate',
-                      label: 'CVR',
+                      label: getShortLabel('conversionRate'),
                       align: 'right',
                       tooltip: 'conversionRate',
                       render: (value) => `${value}%`,

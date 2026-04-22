@@ -418,7 +418,7 @@ async function processItem(db, siteId, siteData, oauth2Client, item) {
     });
   }
 
-  // KPI
+  // 目標
   let kpiData = null;
   if (siteData.kpiSettings?.kpiList?.length > 0) {
     kpiData = siteData.kpiSettings.kpiList

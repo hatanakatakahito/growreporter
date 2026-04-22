@@ -76,7 +76,7 @@ export async function fetchGA4ChannelConversionDataCallable(request) {
     
     console.log(`[fetchGA4ChannelConversionData] Fetching channel data from GA4 API...`);
     
-    // 訪問者とユーザーデータを取得
+    // セッションとユーザーデータを取得
     const sessionsRequestBody = {
       dateRanges: [{ startDate, endDate }],
       dimensions: [

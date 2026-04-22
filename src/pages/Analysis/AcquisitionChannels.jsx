@@ -20,6 +20,7 @@ import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Anal
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
   BarChart,
@@ -36,7 +37,7 @@ import {
 
 /**
  * 集客チャネル分析画面
- * 流入チャネル別の訪問者とコンバージョンを表示
+ * 流入チャネル別のセッションとコンバージョンを表示
  */
 export default function AcquisitionChannels() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
@@ -154,10 +155,10 @@ export default function AcquisitionChannels() {
     '#f97316',
   ];
 
-  // 合計訪問者数の計算（テーブルデータ作成前）
+  // 合計セッション数の計算（テーブルデータ作成前）
   const totalSessions = channelData?.rows?.reduce((sum, row) => sum + (row.sessions || 0), 0) || 0;
 
-  // テーブル用のデータ整形（訪問者数降順）
+  // テーブル用のデータ整形（セッション数降順）
   const tableData =
     channelData?.rows
       ?.map((row) => ({
@@ -203,7 +204,7 @@ export default function AcquisitionChannels() {
   // チャート用のデータ
   const chartData = tableData;
 
-  // 合計値の計算（訪問者以外）
+  // 合計値の計算（セッション以外）
   const totalUsers = tableData.reduce((sum, row) => sum + row.users, 0);
   const totalConversions = tableData.reduce((sum, row) => sum + row.conversions, 0);
 
@@ -332,7 +333,7 @@ export default function AcquisitionChannels() {
                 <TourHelpButton tourId="analysisChannels" />
               </div>
               <p className="mt-0.5 text-sm text-body-color">
-                流入チャネル別の訪問者数、ユーザー数、コンバージョンを確認できます
+                流入チャネル別のセッション数、ユーザー数、コンバージョンを確認できます
               </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2 pt-0.5" data-tour="analysis-dimension-filters">
@@ -386,7 +387,7 @@ export default function AcquisitionChannels() {
               {activeTab === 'chart' ? (
                 <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                   {/* 円グラフ */}
-                  <ChartContainer title="チャネル別訪問者構成比" height={400}>
+                  <ChartContainer title="チャネル別セッション構成比" height={400}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
                         <Pie
@@ -409,7 +410,7 @@ export default function AcquisitionChannels() {
                   </ChartContainer>
 
                   {/* 棒グラフ */}
-                  <ChartContainer title="チャネル別訪問者数" height={400}>
+                  <ChartContainer title="チャネル別セッション数" height={400}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
                         <CartesianGrid strokeDasharray="3 3" />
@@ -424,13 +425,13 @@ export default function AcquisitionChannels() {
                         <Legend content={<CustomLegend />} />
                         <Bar
                           dataKey="sessions"
-                          name="訪問者"
+                          name={getShortLabel('sessions')}
                           fill="#3b82f6"
                           hide={hiddenSeries.sessions}
                         />
                         <Bar
                           dataKey="conversions"
-                          name="コンバージョン"
+                          name={getShortLabel('conversions')}
                           fill="#ef4444"
                           hide={hiddenSeries.conversions}
                         />
@@ -451,7 +452,7 @@ export default function AcquisitionChannels() {
                     },
                     {
                       key: 'sessions',
-                      label: '訪問者',
+                      label: getShortLabel('sessions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
@@ -465,7 +466,7 @@ export default function AcquisitionChannels() {
                     },
                     {
                       key: 'users',
-                      label: 'ユーザー',
+                      label: getShortLabel('users'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'users',
@@ -473,7 +474,7 @@ export default function AcquisitionChannels() {
                     },
                     {
                       key: 'conversions',
-                      label: 'コンバージョン',
+                      label: getShortLabel('conversions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'conversions',
@@ -481,14 +482,14 @@ export default function AcquisitionChannels() {
                     },
                     {
                       key: 'conversionRate',
-                      label: 'CVR',
+                      label: getShortLabel('conversionRate'),
                       align: 'right',
                       render: (value) => `${value}%`,
                       comparison: true,
                     },
                     {
                       key: 'newUsers',
-                      label: '新規ユーザー',
+                      label: getShortLabel('newUsers'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'newUsers',
@@ -497,7 +498,7 @@ export default function AcquisitionChannels() {
                     },
                     {
                       key: 'pageViews',
-                      label: 'PV数',
+                      label: getShortLabel('pageViews'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'pageViews',
@@ -506,7 +507,7 @@ export default function AcquisitionChannels() {
                     },
                     {
                       key: 'engagementRate',
-                      label: 'ENG率',
+                      label: getShortLabel('engagementRate'),
                       align: 'right',
                       tooltip: 'engagementRate',
                       render: (value) => `${value}%`,
@@ -515,7 +516,7 @@ export default function AcquisitionChannels() {
                     },
                     {
                       key: 'bounceRate',
-                      label: '直帰率',
+                      label: getShortLabel('bounceRate'),
                       align: 'right',
                       tooltip: 'bounceRate',
                       render: (value) => `${value}%`,
@@ -525,7 +526,7 @@ export default function AcquisitionChannels() {
                     },
                     {
                       key: 'avgSessionDuration',
-                      label: '平均滞在',
+                      label: getShortLabel('avgSessionDuration'),
                       align: 'right',
                       tooltip: 'avgSessionDuration',
                       defaultVisible: false,

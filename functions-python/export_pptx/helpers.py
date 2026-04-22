@@ -13,21 +13,31 @@ from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.util import Inches, Pt, Emu
 
 
-# ─── ブランドカラー（旧 JS COLORS と一致） ──────────────
+# ─── ブランドカラー（v5.11.1 ネイビー基調 / Excel と統一） ──────────────
 class Color:
-    PRIMARY = RGBColor(0x37, 0x58, 0xF9)
-    ACCENT = RGBColor(0x93, 0x33, 0xEA)
+    PRIMARY = RGBColor(0x23, 0x47, 0xA0)       # ネイビー (Excel と統一)
+    PRIMARY_MID = RGBColor(0x3D, 0x68, 0xCC)   # ミッドブルー (テーブルヘッダ等)
+    ACCENT = RGBColor(0x7C, 0x3A, 0xED)        # 紫 (AI セクション)
     WHITE = RGBColor(0xFF, 0xFF, 0xFF)
-    DARK = RGBColor(0x33, 0x33, 0x33)
-    SUB_TEXT = RGBColor(0x66, 0x66, 0x66)
-    ALT_ROW = RGBColor(0xEE, 0xF2, 0xFF)
-    BORDER = RGBColor(0xD1, 0xD5, 0xDB)
-    LIGHT_GRAY = RGBColor(0xF5, 0xF5, 0xF5)
+    DARK = RGBColor(0x1E, 0x29, 0x3B)          # 本文 (Excel と統一)
+    SUB_TEXT = RGBColor(0x3D, 0x4F, 0x80)      # 補助テキスト
+    ALT_ROW = RGBColor(0xF5, 0xF7, 0xFF)       # ゼブラ alt 行 (薄ブルー)
+    SECTION_BG = RGBColor(0xEC, 0xF0, 0xFF)    # ■ セクション帯
+    BORDER = RGBColor(0xDF, 0xE4, 0xEA)        # 罫線 (Excel と統一)
+    LIGHT_GRAY = RGBColor(0xF9, 0xFA, 0xFB)
+    BG_SOFT = RGBColor(0xFA, 0xFB, 0xFD)     # 表紙・中表紙の背景色
 
 
+# Excel の CHART_COLORS と統一
 CHART_PALETTE_HEX = [
-    "3b82f6", "ef4444", "10b981", "f59e0b",
-    "8b5cf6", "ec4899", "06b6d4", "f97316",
+    "2347A0",  # primary navy
+    "3D68CC",  # mid blue
+    "13C296",  # green
+    "F59E0B",  # amber
+    "EF4444",  # red
+    "8B5CF6",  # violet
+    "06B6D4",  # cyan
+    "F97316",  # orange
 ]
 
 

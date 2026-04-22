@@ -1,75 +1,51 @@
 /**
  * ツールチップ説明文の定数
- * 旧形式から引き継いだ説明文を一元管理
+ *
+ * 指標（GA4/GSC メトリクス）の説明は `shared/metrics.json` の description を SSoT とし、
+ * このファイルは非メトリクスのツールチップ（ディメンション・サイト診断・Core Web Vitals 等）
+ * のみを保持する。
+ * getTooltip() は metrics 辞書を優先し、fallback として TOOLTIPS を参照する。
  */
 
+import { getTooltip as getMetricTooltip, resolveAlias } from './metrics';
+
 export const TOOLTIPS = {
-  // 基本指標
-  sessions: 'ユーザーがサイトを訪問した回数（30分以上の間隔で区切られる）',
-  users: 'サイトを訪問したユニークユーザーの総数',
-  pageViews: 'ページが閲覧された総回数（同じページの再表示も含む）',
-  screenPageViews: 'ページが閲覧された総回数（同じページの再表示も含む）',
-  avgPageviews: '1訪問あたりの平均ページビュー数',
-  engagementRate: 'エンゲージメント率：10秒以上滞在または2ページ以上閲覧した訪問の割合',
-  bounceRate: '1ページのみ閲覧して離脱した訪問の割合。',
-  avgSessionDuration: '訪問あたりの平均滞在時間。',
-  
-  // コンバージョン
-  conversions: 'サイト設定で定義したコンバージョンの合計数',
-  conversionRate: 'コンバージョンが発生した訪問の割合',
-
-  // コンテンツ興味度
-  interestScore: 'コンテンツ興味度スコア（0〜100）。エンゲージメント率・スクロール完読率・平均滞在時間・非直帰率の各25%加重平均で算出。',
-  scrollRate: 'ページの90%以上までスクロールしたユーザーの割合。GA4の拡張計測機能で自動取得されるscrollイベントに基づきます。',
-
-  // SEO指標
+  // 非メトリクスのディメンション
   keywords: 'ユーザーがGoogle検索で使用した検索クエリ（キーワード）。Search Consoleから取得されます。',
-  clicks: 'Google検索結果からサイトへのクリック数。',
-  impressions: 'Google検索結果にサイトが表示された回数。',
-  ctr: 'クリック率。表示回数に対するクリック数の割合。（クリック数 ÷ 表示回数）× 100',
-  position: 'Google検索結果での平均掲載順位。数値が小さいほど上位に表示されています。',
-  
-  // ユーザー属性
-  newUsers: '初めてサイトを訪れたユーザー数。',
-  returningUsers: '過去にサイトを訪れたことがあるユーザー数。',
-  
-  // デバイス
   device: 'ユーザーが使用したデバイスの種類（デスクトップ、モバイル、タブレット）。',
-  
-  // 集客
   channel: 'ユーザーがサイトに到達した経路（オーガニック検索、ダイレクト、ソーシャル、リファラルなど）。',
   source: 'トラフィックの参照元（google、yahoo、facebookなど）。',
   medium: 'トラフィックのメディア（organic、cpc、referral、emailなど）。',
-  
-  // エンゲージメント
   pageTitle: 'ページのタイトル。',
   pagePath: 'ページのURL パス。',
   landingPage: 'ユーザーが最初に訪れたページ。',
   exitPage: 'ユーザーが最後に閲覧したページ。',
-  avgSessionDuration: '訪問あたりの平均滞在時間。',
-  
-  // 時系列
   date: '日付。',
   dayOfWeek: '曜日。',
   hour: '時間帯。',
-  
-  // KPI
-  targetSessions: '目標訪問者数。月次での目標値を設定します。',
-  targetUsers: '目標ユーザー数。月次での目標値を設定します。',
-  targetConversions: '目標コンバージョン数。月次での目標値を設定します。',
-  targetConversionRate: '目標コンバージョン率。月次での目標値を設定します。',
-  
-  // その他
   eventName: 'イベント名。GA4で計測されているイベントの名前。',
   eventCount: 'イベントの発生回数。',
   fileName: 'ダウンロードされたファイル名。',
   linkUrl: 'クリックされた外部リンクのURL。',
-  
+
+  // ユーザー属性（GA4 指標だが、dictionary に未登録のもの）
+  returningUsers: '過去にサイトを訪れたことがあるユーザー数。',
+
+  // コンテンツ興味度（カスタム計算指標）
+  interestScore: 'コンテンツ興味度スコア（0〜100）。エンゲージメント率・スクロール完読率・平均滞在時間・非直帰率の各25%加重平均で算出。',
+  scrollRate: 'ページの90%以上までスクロールしたユーザーの割合。GA4の拡張計測機能で自動取得されるscrollイベントに基づきます。',
+
+  // 目標（目標値）
+  targetSessions: '目標セッション数。月次での目標値を設定します。',
+  targetUsers: '目標ユーザー数。月次での目標値を設定します。',
+  targetConversions: '目標コンバージョン数。月次での目標値を設定します。',
+  targetConversionRate: '目標コンバージョン率。月次での目標値を設定します。',
+
   // 改善管理
   improvementStatus: '改善課題のステータス（起案、対応中、完了）。',
   improvementPriority: '改善課題の優先度（高、中、低）。',
   improvementCategory: '改善課題のカテゴリ（集客、コンテンツ、デザイン、機能、その他）。',
-  
+
   // レポート
   reportPeriod: 'レポート対象期間。',
   reportType: 'レポートの種類（週次、月次、カスタム）。',
@@ -98,12 +74,17 @@ export const TOOLTIPS = {
 
 /**
  * ツールチップテキストを取得
+ *
+ * 1. 指標辞書（metrics.js）で解決を試みる（alias / target_ プレフィックス対応）
+ * 2. 非メトリクスの TOOLTIPS にフォールバック
+ *
  * @param {string} key - ツールチップのキー
  * @returns {string} - ツールチップテキスト
  */
 export function getTooltip(key) {
+  if (!key) return '';
+  if (resolveAlias(key)) {
+    return getMetricTooltip(key);
+  }
   return TOOLTIPS[key] || '';
 }
-
-
-

@@ -642,7 +642,8 @@ export const archiveStaleImprovements = onSchedule({
 /**
  * AIチャット Callable Functions
  */
-export const aiChat = lazyCallable('./callable/aiChat.js', 'aiChatCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['GEMINI_API_KEY', 'CLAUDE_API_KEY'] });
+export const aiChat = lazyCallable('./callable/aiChat.js', 'aiChatCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['GEMINI_API_KEY'] });
+export const debugCompareCVSources = lazyCallable('./callable/debugCompareCVSources.js', 'debugCompareCVSourcesCallable', { memory: '512MiB', timeoutSeconds: 120 });
 export const getChatSessions = lazyCallable('./callable/chatManagement.js', 'getChatSessionsCallable', { memory: '256MiB', timeoutSeconds: 30 });
 export const deleteChatSession = lazyCallable('./callable/chatManagement.js', 'deleteChatSessionCallable', { memory: '256MiB', timeoutSeconds: 30 });
 export const archiveChatSession = lazyCallable('./callable/chatManagement.js', 'archiveChatSessionCallable', { memory: '256MiB', timeoutSeconds: 30 });

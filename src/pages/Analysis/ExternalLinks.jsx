@@ -17,6 +17,7 @@ import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 
 /**
  * 外部リンククリック分析画面
@@ -176,7 +177,7 @@ export default function ExternalLinks() {
                 },
                 {
                   key: 'clicks',
-                  label: 'クリック数',
+                  label: getShortLabel('clicks'),
                   format: 'number',
                   align: 'right',
                   tooltip: 'clicks',
@@ -184,7 +185,7 @@ export default function ExternalLinks() {
                 },
                 {
                   key: 'users',
-                  label: 'ユーザー数',
+                  label: getShortLabel('users'),
                   format: 'number',
                   align: 'right',
                   tooltip: 'users',

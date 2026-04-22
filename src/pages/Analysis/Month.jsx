@@ -18,6 +18,7 @@ import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAutoTour } from '../../hooks/useAutoTour';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 import { format, sub, startOfMonth } from 'date-fns';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
   LineChart,
@@ -231,16 +232,16 @@ export default function Month() {
                   isComparing={isComparing}
                   columns={[
                     { key: 'label', label: '年月', sortable: true, required: true },
-                    { key: 'users', label: 'ユーザー数', format: 'number', align: 'right', tooltip: 'users', comparison: true },
-                    { key: 'newUsers', label: '新規ユーザー', format: 'number', align: 'right', tooltip: 'newUsers', defaultVisible: false, comparison: true },
-                    { key: 'sessions', label: '訪問者', format: 'number', align: 'right', tooltip: 'sessions', comparison: true },
-                    { key: 'avgPageviews', label: '平均PV', format: 'decimal', align: 'right', tooltip: 'avgPageviews', comparison: true },
-                    { key: 'pageViews', label: '表示回数', format: 'number', align: 'right', tooltip: 'pageViews', comparison: true },
-                    { key: 'engagementRate', label: 'ENG率', format: 'percent', align: 'right', tooltip: 'engagementRate', comparison: true },
-                    { key: 'bounceRate', label: '直帰率', align: 'right', tooltip: 'bounceRate', defaultVisible: false, comparison: true, invertColor: true, render: (value) => `${((value || 0) * 100).toFixed(1)}%` },
-                    { key: 'averageSessionDuration', label: '平均滞在時間', align: 'right', tooltip: 'avgSessionDuration', defaultVisible: false, comparison: true, render: (value) => { const v = value || 0; const m = Math.floor(v / 60); const s = Math.floor(v % 60); return `${m}:${s.toString().padStart(2, '0')}`; } },
-                    { key: 'conversions', label: 'CV数', format: 'number', align: 'right', tooltip: 'conversions', comparison: true },
-                    { key: 'conversionRate', label: 'CVR', format: 'percent', align: 'right', tooltip: 'conversionRate', comparison: true },
+                    { key: 'users', label: getShortLabel('users'), format: 'number', align: 'right', tooltip: 'users', comparison: true },
+                    { key: 'newUsers', label: getShortLabel('newUsers'), format: 'number', align: 'right', tooltip: 'newUsers', defaultVisible: false, comparison: true },
+                    { key: 'sessions', label: getShortLabel('sessions'), format: 'number', align: 'right', tooltip: 'sessions', comparison: true },
+                    { key: 'avgPageviews', label: getShortLabel('avgPageviews'), format: 'decimal', align: 'right', tooltip: 'avgPageviews', comparison: true },
+                    { key: 'pageViews', label: getShortLabel('pageViews'), format: 'number', align: 'right', tooltip: 'pageViews', comparison: true },
+                    { key: 'engagementRate', label: getShortLabel('engagementRate'), format: 'percent', align: 'right', tooltip: 'engagementRate', comparison: true },
+                    { key: 'bounceRate', label: getShortLabel('bounceRate'), align: 'right', tooltip: 'bounceRate', defaultVisible: false, comparison: true, invertColor: true, render: (value) => `${((value || 0) * 100).toFixed(1)}%` },
+                    { key: 'averageSessionDuration', label: getShortLabel('averageSessionDuration'), align: 'right', tooltip: 'averageSessionDuration', defaultVisible: false, comparison: true, render: (value) => { const v = value || 0; const m = Math.floor(v / 60); const s = Math.floor(v % 60); return `${m}:${s.toString().padStart(2, '0')}`; } },
+                    { key: 'conversions', label: getShortLabel('conversions'), format: 'number', align: 'right', tooltip: 'conversions', comparison: true },
+                    { key: 'conversionRate', label: getShortLabel('conversionRate'), format: 'percent', align: 'right', tooltip: 'conversionRate', comparison: true },
                   ]}
                   data={tableMonthlyData}
                   pageSize={24}
@@ -258,15 +259,15 @@ export default function Month() {
                       <YAxis tickFormatter={(v) => v.toLocaleString()} />
                       <RechartsTooltip content={<CustomTooltip />} />
                       <Legend content={<CustomLegend />} />
-                      <Line type="monotone" dataKey="users" name="ユーザー数" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.users} />
-                      <Line type="monotone" dataKey="sessions" name="訪問者" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.sessions} />
-                      <Line type="monotone" dataKey="pageViews" name="PV数" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.pageViews} />
-                      <Line type="monotone" dataKey="conversions" name="CV数" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.conversions} />
+                      <Line type="monotone" dataKey="users" name={getShortLabel('users')} stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.users} />
+                      <Line type="monotone" dataKey="sessions" name={getShortLabel('sessions')} stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.sessions} />
+                      <Line type="monotone" dataKey="pageViews" name={getShortLabel('pageViews')} stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.pageViews} />
+                      <Line type="monotone" dataKey="conversions" name={getShortLabel('conversions')} stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} hide={hiddenLines.conversions} />
                       {isComparing && (
-                        <Line type="monotone" dataKey="sessions_prev" name="訪問者（比較）" stroke="#fcd34d" strokeWidth={1.5} strokeDasharray="5 5" dot={false} hide={hiddenLines.sessions_prev} />
+                        <Line type="monotone" dataKey="sessions_prev" name={formatComparisonLabel('sessions', 'prev', { useShort: true })} stroke="#fcd34d" strokeWidth={1.5} strokeDasharray="5 5" dot={false} hide={hiddenLines.sessions_prev} />
                       )}
                       {isComparing && (
-                        <Line type="monotone" dataKey="conversions_prev" name="CV（比較）" stroke="#fca5a5" strokeWidth={1.5} strokeDasharray="5 5" dot={false} hide={hiddenLines.conversions_prev} />
+                        <Line type="monotone" dataKey="conversions_prev" name={formatComparisonLabel('conversions', 'prev', { useShort: true })} stroke="#fca5a5" strokeWidth={1.5} strokeDasharray="5 5" dot={false} hide={hiddenLines.conversions_prev} />
                       )}
                     </LineChart>
                   </ResponsiveContainer>

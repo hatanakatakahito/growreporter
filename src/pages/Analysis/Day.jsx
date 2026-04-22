@@ -21,6 +21,7 @@ import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Anal
 import { useAuth } from '../../contexts/AuthContext';
 import { mergeComparisonByIndex } from '../../utils/comparisonHelpers';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
   LineChart,
@@ -34,7 +35,7 @@ import {
 
 /**
  * 日別分析画面
- * 日別の訪問者とコンバージョンの推移を表示
+ * 日別のセッションとコンバージョンの推移を表示
  */
 export default function Day() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
@@ -233,7 +234,7 @@ export default function Day() {
                 <TourHelpButton tourId="analysisDay" />
               </div>
               <p className="mt-0.5 text-sm text-body-color">
-                日別の訪問者とコンバージョンの推移を確認できます
+                日別のセッションとコンバージョンの推移を確認できます
               </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2 pt-0.5" data-tour="analysis-dimension-filters">
@@ -290,13 +291,13 @@ export default function Day() {
                       <XAxis dataKey="date" tickFormatter={formatDateLabel} />
                       <YAxis
                         yAxisId="left"
-                        label={{ value: '訪問者', angle: -90, position: 'insideLeft' }}
+                        label={{ value: getShortLabel('sessions'), angle: -90, position: 'insideLeft' }}
                         tickFormatter={(v) => v.toLocaleString()}
                       />
                       <YAxis
                         yAxisId="right"
                         orientation="right"
-                        label={{ value: 'コンバージョン', angle: 90, position: 'insideRight' }}
+                        label={{ value: getShortLabel('conversions'), angle: 90, position: 'insideRight' }}
                         tickFormatter={(v) => v.toLocaleString()}
                       />
                       <RechartsTooltip content={<CustomTooltip />} />
@@ -305,7 +306,7 @@ export default function Day() {
                         yAxisId="left"
                         type="monotone"
                         dataKey="sessions"
-                        name="訪問者"
+                        name={getShortLabel('sessions')}
                         stroke="#3b82f6"
                         strokeWidth={2}
                         dot={{ r: 3 }}
@@ -315,7 +316,7 @@ export default function Day() {
                         yAxisId="right"
                         type="monotone"
                         dataKey="conversions"
-                        name="コンバージョン"
+                        name={getShortLabel('conversions')}
                         stroke="#ef4444"
                         strokeWidth={2}
                         dot={{ r: 3 }}
@@ -326,7 +327,7 @@ export default function Day() {
                           yAxisId="left"
                           type="monotone"
                           dataKey="sessions_prev"
-                          name="訪問者（比較）"
+                          name={`${getShortLabel('sessions')}（前期）`}
                           stroke="#93c5fd"
                           strokeWidth={1.5}
                           strokeDasharray="5 5"
@@ -339,7 +340,7 @@ export default function Day() {
                           yAxisId="right"
                           type="monotone"
                           dataKey="conversions_prev"
-                          name="CV（比較）"
+                          name={`${getShortLabel('conversions')}（前期）`}
                           stroke="#fca5a5"
                           strokeWidth={1.5}
                           strokeDasharray="5 5"
@@ -364,7 +365,7 @@ export default function Day() {
                     },
                     {
                       key: 'sessions',
-                      label: '訪問者',
+                      label: getShortLabel('sessions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
@@ -372,7 +373,7 @@ export default function Day() {
                     },
                     {
                       key: 'users',
-                      label: 'ユーザー',
+                      label: getShortLabel('users'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'users',
@@ -381,7 +382,7 @@ export default function Day() {
                     },
                     {
                       key: 'newUsers',
-                      label: '新規ユーザー',
+                      label: getShortLabel('newUsers'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'newUsers',
@@ -390,7 +391,7 @@ export default function Day() {
                     },
                     {
                       key: 'pageViews',
-                      label: 'PV数',
+                      label: getShortLabel('pageViews'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'pageViews',
@@ -399,7 +400,7 @@ export default function Day() {
                     },
                     {
                       key: 'engagementRate',
-                      label: 'ENG率',
+                      label: getShortLabel('engagementRate'),
                       align: 'right',
                       tooltip: 'engagementRate',
                       defaultVisible: false,
@@ -408,7 +409,7 @@ export default function Day() {
                     },
                     {
                       key: 'bounceRate',
-                      label: '直帰率',
+                      label: getShortLabel('bounceRate'),
                       align: 'right',
                       tooltip: 'bounceRate',
                       defaultVisible: false,
@@ -418,7 +419,7 @@ export default function Day() {
                     },
                     {
                       key: 'avgSessionDuration',
-                      label: '平均滞在',
+                      label: getShortLabel('avgSessionDuration'),
                       align: 'right',
                       tooltip: 'avgSessionDuration',
                       defaultVisible: false,
@@ -432,7 +433,7 @@ export default function Day() {
                     },
                     {
                       key: 'conversions',
-                      label: 'コンバージョン',
+                      label: getShortLabel('conversions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'conversions',
@@ -440,7 +441,7 @@ export default function Day() {
                     },
                     {
                       key: 'conversionRate',
-                      label: 'CVR',
+                      label: getShortLabel('conversionRate'),
                       align: 'right',
                       tooltip: 'conversionRate',
                       defaultVisible: false,

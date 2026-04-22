@@ -21,6 +21,7 @@ import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
   BarChart,
@@ -546,7 +547,7 @@ export default function PageCategories() {
                       サイトマップ形式
                     </h3>
                     <p className="mt-1 text-sm text-body-color">
-                      ページを階層構造で表示します（PV数の多い順）
+                      ページを階層構造で表示します（ページビューの多い順）
                     </p>
                   </div>
                   
@@ -620,7 +621,7 @@ export default function PageCategories() {
                         <Legend content={<CustomLegend />} />
                         <Bar
                           dataKey="pageViews"
-                          name="ページビュー"
+                          name={getShortLabel('pageViews')}
                           fill="#3b82f6"
                           hide={hiddenSeries.pageViews}
                         />
@@ -647,7 +648,7 @@ export default function PageCategories() {
                     },
                     {
                       key: 'pageViews',
-                      label: 'ページビュー',
+                      label: getShortLabel('pageViews'),
                       align: 'right',
                       comparison: true,
                       render: (value) => {
@@ -664,7 +665,7 @@ export default function PageCategories() {
                     },
                     {
                       key: 'sessions',
-                      label: '訪問者',
+                      label: getShortLabel('sessions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
@@ -673,7 +674,7 @@ export default function PageCategories() {
                     },
                     {
                       key: 'users',
-                      label: 'ユーザー数',
+                      label: getShortLabel('users'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'activeUsers',
@@ -682,7 +683,7 @@ export default function PageCategories() {
                     },
                     {
                       key: 'newUsers',
-                      label: '新規ユーザー',
+                      label: getShortLabel('newUsers'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'newUsers',
@@ -691,7 +692,7 @@ export default function PageCategories() {
                     },
                     {
                       key: 'engagementRate',
-                      label: 'ENG率',
+                      label: getShortLabel('engagementRate'),
                       align: 'right',
                       tooltip: 'engagementRate',
                       render: (value) => `${value}%`,
@@ -700,7 +701,7 @@ export default function PageCategories() {
                     },
                     {
                       key: 'bounceRate',
-                      label: '直帰率',
+                      label: getShortLabel('bounceRate'),
                       align: 'right',
                       tooltip: 'bounceRate',
                       render: (value) => `${value}%`,
@@ -710,7 +711,7 @@ export default function PageCategories() {
                     },
                     {
                       key: 'avgDuration',
-                      label: '平均滞在時間',
+                      label: getShortLabel('avgDuration'),
                       align: 'right',
                       tooltip: 'avgSessionDuration',
                       render: (value) => {
@@ -724,7 +725,7 @@ export default function PageCategories() {
                     },
                     {
                       key: 'conversions',
-                      label: 'コンバージョン',
+                      label: getShortLabel('conversions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'conversions',
@@ -733,7 +734,7 @@ export default function PageCategories() {
                     },
                     {
                       key: 'conversionRate',
-                      label: 'CVR',
+                      label: getShortLabel('conversionRate'),
                       align: 'right',
                       tooltip: 'conversionRate',
                       render: (value) => `${value}%`,

@@ -8,6 +8,8 @@ Excel 上で軸変更・データ更新・コピペが可能。
 
 from typing import Any
 
+from shared.metrics import short_label_of
+
 
 # GrowReporter ブランドカラー (v5.11.1 ネイビー基調)
 CHART_COLORS = [
@@ -38,10 +40,10 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "title": "月別推移",
         "cat_key": "label",
         "series": [
-            ("セッション", "sessions"),
-            ("ユーザー", "users"),
-            ("PV", "pageViews"),
-            ("コンバージョン", "conversions"),
+            (short_label_of("sessions"), "sessions"),
+            (short_label_of("users"), "users"),
+            (short_label_of("pageViews"), "pageViews"),
+            (short_label_of("conversions"), "conversions"),
         ],
         "data_labels": True,
         "markers": True,
@@ -51,7 +53,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "title": "日別推移",
         "cat_key": "date",
         "series": [
-            ("セッション", "sessions"),
+            (short_label_of("sessions"), "sessions"),
         ],
         "wide": True,
         # 日別はデータ点数が多いためラベルなし
@@ -61,8 +63,8 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "title": "曜日別",
         "cat_key": "dayName",
         "series": [
-            ("セッション", "sessions"),
-            ("コンバージョン", "conversions"),
+            (short_label_of("sessions"), "sessions"),
+            (short_label_of("conversions"), "conversions"),
         ],
         "data_labels": True,
     },
@@ -71,8 +73,8 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "title": "時間帯別",
         "cat_key": "hour",
         "series": [
-            ("セッション", "sessions"),
-            ("コンバージョン", "conversions"),
+            (short_label_of("sessions"), "sessions"),
+            (short_label_of("conversions"), "conversions"),
         ],
         "data_labels": True,
     },
@@ -81,8 +83,8 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "title": "集客チャネル別",
         "cat_key": "channelName",
         "series": [
-            ("セッション", "sessions"),
-            ("コンバージョン", "conversions"),
+            (short_label_of("sessions"), "sessions"),
+            (short_label_of("conversions"), "conversions"),
         ],
         "data_labels": True,
     },
@@ -90,7 +92,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "type": "bar",
         "title": "Top 20 流入キーワード",
         "cat_key": "keyword",
-        "series": [("クリック", "clicks")],
+        "series": [(short_label_of("clicks"), "clicks")],
         "top_n": 20,
         "data_labels": True,
     },
@@ -99,8 +101,8 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "title": "Top 20 被リンク元",
         "cat_key": "source",
         "series": [
-            ("セッション", "sessions"),
-            ("コンバージョン", "conversions"),
+            (short_label_of("sessions"), "sessions"),
+            (short_label_of("conversions"), "conversions"),
         ],
         "top_n": 20,
         "data_labels": True,
@@ -109,7 +111,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "type": "bar",
         "title": "Top 20 ページ別 PV",
         "cat_key": "path",
-        "series": [("PV", "pageViews")],
+        "series": [(short_label_of("pageViews"), "pageViews")],
         "top_n": 20,
         "data_labels": True,
     },
@@ -117,7 +119,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "type": "pie",
         "title": "カテゴリ別 PV 構成",
         "cat_key": "category",
-        "series": [("PV", "pageViews")],
+        "series": [(short_label_of("pageViews"), "pageViews")],
         "top_n": 10,
         "data_labels": True,
     },
@@ -125,7 +127,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "type": "bar",
         "title": "Top 20 ランディングページ",
         "cat_key": "path",
-        "series": [("セッション", "sessions")],
+        "series": [(short_label_of("sessions"), "sessions")],
         "top_n": 20,
         "data_labels": True,
     },
@@ -133,7 +135,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "type": "bar",
         "title": "Top 20 ファイル DL",
         "cat_key": "fileName",
-        "series": [("ダウンロード", "downloads")],
+        "series": [("ダウンロード", "downloads")],  # 非指標はリテラルのまま
         "top_n": 20,
         "data_labels": True,
     },
@@ -141,7 +143,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
         "type": "bar",
         "title": "Top 20 外部リンク",
         "cat_key": "linkUrl",
-        "series": [("クリック", "clicks")],
+        "series": [(short_label_of("clicks"), "clicks")],
         "top_n": 20,
         "data_labels": True,
     },

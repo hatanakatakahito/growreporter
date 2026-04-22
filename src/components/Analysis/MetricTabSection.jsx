@@ -4,6 +4,7 @@ import { Info } from 'lucide-react';
 import Tooltip from '../common/Tooltip';
 import LoadingSpinner from '../common/LoadingSpinner';
 import { getTooltip } from '../../constants/tooltips';
+import { getShortLabel } from '../../constants/metrics';
 
 // 数値のカンマ区切り表示
 const formatNumber = (num) => {
@@ -69,7 +70,7 @@ const MetricCard = ({ title, currentValue, previousValue, yearAgoValue, format: 
 };
 
 /**
- * 主要指標サマリ / コンバージョン内訳 / KPI予実 の3タブセクション
+ * 主要指標サマリ / コンバージョン内訳 / 目標予実 の3タブセクション
  * ダッシュボードと全体サマリーの両方で使用
  */
 export default function MetricTabSection({
@@ -144,9 +145,9 @@ export default function MetricTabSection({
                 : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
             } flex items-center justify-center gap-2`}
           >
-            KPI
+            目標
             {!hasKpiSettings && (
-              <span className="inline-flex items-center gap-1" title="KPI設定が未設定です。クリックして設定してください。">
+              <span className="inline-flex items-center gap-1" title="目標設定が未設定です。クリックして設定してください。">
                 <svg className="h-5 w-5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
@@ -164,43 +165,43 @@ export default function MetricTabSection({
             ) : data ? (
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 <MetricCard
-                  title="訪問者"
+                  title={getShortLabel('sessions')}
                   currentValue={data?.metrics?.sessions || 0}
                   previousValue={previousMonthData?.metrics?.sessions || 0}
                   yearAgoValue={yearAgoData?.metrics?.sessions || 0}
                   tooltip={getTooltip('sessions')}
                 />
                 <MetricCard
-                  title="ユーザー"
+                  title={getShortLabel('totalUsers')}
                   currentValue={data?.metrics?.totalUsers || 0}
                   previousValue={previousMonthData?.metrics?.totalUsers || 0}
                   yearAgoValue={yearAgoData?.metrics?.totalUsers || 0}
-                  tooltip={getTooltip('users')}
+                  tooltip={getTooltip('totalUsers')}
                 />
                 <MetricCard
-                  title="新規ユーザー"
+                  title={getShortLabel('newUsers')}
                   currentValue={data?.metrics?.newUsers || 0}
                   previousValue={previousMonthData?.metrics?.newUsers || 0}
                   yearAgoValue={yearAgoData?.metrics?.newUsers || 0}
                   tooltip={getTooltip('newUsers')}
                 />
                 <MetricCard
-                  title="表示回数"
+                  title={getShortLabel('screenPageViews')}
                   currentValue={data?.metrics?.pageViews || 0}
                   previousValue={previousMonthData?.metrics?.pageViews || 0}
                   yearAgoValue={yearAgoData?.metrics?.pageViews || 0}
-                  tooltip={getTooltip('pageViews')}
+                  tooltip={getTooltip('screenPageViews')}
                 />
                 <MetricCard
-                  title="平均PV"
+                  title={getShortLabel('pageViewsPerSession')}
                   currentValue={(data?.metrics?.pageViews || 0) / (data?.metrics?.sessions || 1)}
                   previousValue={(previousMonthData?.metrics?.pageViews || 0) / (previousMonthData?.metrics?.sessions || 1)}
                   yearAgoValue={(yearAgoData?.metrics?.pageViews || 0) / (yearAgoData?.metrics?.sessions || 1)}
                   format="decimal"
-                  tooltip={getTooltip('avgPageviews')}
+                  tooltip={getTooltip('pageViewsPerSession')}
                 />
                 <MetricCard
-                  title="ENG率"
+                  title={getShortLabel('engagementRate')}
                   currentValue={data?.metrics?.engagementRate || 0}
                   previousValue={previousMonthData?.metrics?.engagementRate || 0}
                   yearAgoValue={yearAgoData?.metrics?.engagementRate || 0}
@@ -208,14 +209,14 @@ export default function MetricTabSection({
                   tooltip={getTooltip('engagementRate')}
                 />
                 <MetricCard
-                  title="CV数"
+                  title={getShortLabel('conversions')}
                   currentValue={data?.metrics?.conversions || 0}
                   previousValue={previousMonthData?.metrics?.conversions || 0}
                   yearAgoValue={yearAgoData?.metrics?.conversions || 0}
                   tooltip={getTooltip('conversions')}
                 />
                 <MetricCard
-                  title="CVR"
+                  title={getShortLabel('conversionRate')}
                   currentValue={(data?.metrics?.conversions || 0) / (data?.metrics?.sessions || 1)}
                   previousValue={(previousMonthData?.metrics?.conversions || 0) / (previousMonthData?.metrics?.sessions || 1)}
                   yearAgoValue={(yearAgoData?.metrics?.conversions || 0) / (yearAgoData?.metrics?.sessions || 1)}
@@ -323,11 +324,11 @@ export default function MetricTabSection({
           </div>
         )}
 
-        {/* KPI予実タブ */}
+        {/* 目標予実タブ */}
         {activeTab === 'kpi' && (
           <div className="space-y-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-dark dark:text-white">KPI</h3>
+              <h3 className="text-lg font-semibold text-dark dark:text-white">目標</h3>
               <Link to={`/sites/${selectedSiteId}/edit?step=5`} className="text-sm text-primary hover:underline">
                 設定を編集 →
               </Link>
@@ -339,7 +340,7 @@ export default function MetricTabSection({
                   <Info className="h-5 w-5 flex-shrink-0 text-orange-600 dark:text-orange-400" />
                   <div>
                     <p className="text-orange-800 dark:text-orange-300">
-                      KPIが設定されていません。
+                      目標が設定されていません。
                       <Link to={`/sites/${selectedSiteId}/edit?step=5`} className="ml-2 font-semibold underline">
                         設定する →
                       </Link>
@@ -499,7 +500,7 @@ export default function MetricTabSection({
         </div>
       )}
 
-      {/* KPI未設定アラートモーダル */}
+      {/* 目標未設定アラートモーダル */}
       {isKpiAlertOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
@@ -517,7 +518,7 @@ export default function MetricTabSection({
                   </svg>
                 </div>
                 <h3 className="text-base font-semibold text-dark dark:text-white">
-                  KPI目標が未設定です
+                  目標が未設定です
                 </h3>
               </div>
               <button
@@ -531,7 +532,7 @@ export default function MetricTabSection({
             </div>
             <div className="px-6 py-4">
               <p className="text-sm leading-relaxed text-body-color">
-                正確なKPI予実分析を行うには、サイト設定でKPI目標を定義してください。
+                正確な目標予実分析を行うには、サイト設定で目標を定義してください。
               </p>
             </div>
             <div className="px-6 pb-6">

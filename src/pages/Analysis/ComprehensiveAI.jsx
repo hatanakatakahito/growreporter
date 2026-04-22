@@ -13,6 +13,7 @@ import { useGA4MonthlyData } from '../../hooks/useGA4MonthlyData';
 import { useGA4UserDemographics } from '../../hooks/useGA4UserDemographics';
 import { useGSCData } from '../../hooks/useGSCData';
 import { PAGE_TYPES } from '../../constants/plans';
+import { getShortLabel, getLabel } from '../../constants/metrics';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
@@ -54,7 +55,7 @@ const SECTION_META = {
   'ユーザー分析': {
     icon: Users,
     color: 'violet',
-    title: '訪問者の傾向',
+    title: 'ユーザー分析',
     links: [
       { label: 'ユーザー属性', path: '/analysis/users' },
     ],
@@ -84,7 +85,7 @@ const SECTION_META = {
     color: 'rose',
     title: '成果はどれくらいか',
     links: [
-      { label: 'コンバージョン', path: '/analysis/conversions' },
+      { label: getShortLabel('conversions'), path: '/analysis/conversions' },
       { label: '逆算フロー', path: '/analysis/reverse-flow' },
     ],
   },
@@ -423,7 +424,7 @@ function getHighlightType(index) {
 }
 
 /**
- * AI総合分析コンテンツ（スコア＋ミニKPI＋タブ切り替え型）
+ * AI総合分析コンテンツ（スコア＋ミニ目標＋タブ切り替え型）
  */
 function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExceeded }) {
   const { selectedSiteId } = useSite();
@@ -526,7 +527,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
 
   // タブ定義（SECTION_METAの順序に従う）
   const TAB_ORDER = ['アクセス概況', 'ユーザー分析', '集客分析', 'コンテンツ分析', 'コンバージョン分析'];
-  const TAB_LABELS = ['アクセス', '訪問者の傾向', '集客', 'コンテンツ', '成果'];
+  const TAB_LABELS = ['アクセス', 'ユーザー分析', '集客', 'コンテンツ', '成果'];
   const TAB_ICONS = [BarChart3, Users, TrendingUp, FileText, Target];
 
   // タブに対応するセクションを取得（AIの出力タイトルが変わっても対応）
@@ -541,7 +542,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
     return section && meta ? { section, meta } : null;
   });
 
-  // ミニKPIデータ
+  // ミニ目標データ
   const metrics = rawData.current?.metrics;
   const prevMetrics = rawData.previousMonth?.metrics;
   const miniKpis = buildMiniKpis(metrics, prevMetrics, rawData);
@@ -609,7 +610,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
           </div>
         )}
 
-        {/* ミニKPIサマリー（5枚カード） - クリックで対応セクションへスクロール */}
+        {/* ミニ目標サマリー（5枚カード） - クリックで対応セクションへスクロール */}
         {miniKpis.length > 0 && (
           <div data-tour="comp-ai-kpis" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
             {miniKpis.map((kpi, i) => {
@@ -722,7 +723,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
 }
 
 /**
- * ミニKPIデータ構築
+ * ミニ目標データ構築
  */
 function buildMiniKpis(metrics, prevMetrics, rawData) {
   if (!metrics) return [];
@@ -763,11 +764,11 @@ function buildMiniKpis(metrics, prevMetrics, rawData) {
   const cvChange = prevCV && prevCV > 0 ? ((totalCV - prevCV) / prevCV) * 100 : null;
 
   return [
-    { label: '訪問数', value: sessions.toLocaleString(), change: sessionsChange },
+    { label: getShortLabel('sessions'), value: sessions.toLocaleString(), change: sessionsChange },
     { label: '端末傾向', value: deviceLabel || '-', change: null },
     { label: '検索流入', value: searchSessions.toLocaleString(), change: null },
-    { label: 'PV数', value: pv.toLocaleString(), change: pvChange },
-    { label: 'CV数', value: `${totalCV}件`, change: cvChange },
+    { label: getShortLabel('pageViews'), value: pv.toLocaleString(), change: pvChange },
+    { label: getShortLabel('conversions'), value: `${totalCV}件`, change: cvChange },
   ];
 }
 
@@ -867,7 +868,7 @@ function ChangeBadge({ current, previous, periodLabel = '前期間比' }) {
 }
 
 /**
- * アクセス概況 - KPIカード（素人向けラベル）
+ * アクセス概況 - 目標カード（素人向けラベル）
  */
 function AccessOverviewCards({ metrics, prevMetrics, rawData, compPeriodLabel }) {
   if (!metrics) return null;
@@ -878,10 +879,10 @@ function AccessOverviewCards({ metrics, prevMetrics, rawData, compPeriodLabel })
   const engRate = metrics.engagementRate || 0;
 
   const kpis = [
-    { label: '訪問数', sublabel: 'サイトに来た回数', value: sessions.toLocaleString(), current: sessions, prev: prevMetrics?.sessions },
-    { label: '訪問者数', sublabel: '何人がサイトを見たか', value: users.toLocaleString(), current: users, prev: prevMetrics?.users || prevMetrics?.totalUsers },
-    { label: 'ページ閲覧数', sublabel: '何ページ見られたか', value: pv.toLocaleString(), current: pv, prev: prevMetrics?.pageViews || prevMetrics?.screenPageViews },
-    { label: '閲覧の質', sublabel: 'しっかり読まれた割合', value: `${(engRate * 100).toFixed(1)}%`, current: engRate, prev: prevMetrics?.engagementRate, isRate: true },
+    { label: getLabel('sessions'), sublabel: 'サイトに来た回数', value: sessions.toLocaleString(), current: sessions, prev: prevMetrics?.sessions },
+    { label: getLabel('totalUsers'), sublabel: '何人がサイトを見たか', value: users.toLocaleString(), current: users, prev: prevMetrics?.users || prevMetrics?.totalUsers },
+    { label: getLabel('screenPageViews'), sublabel: '何ページ見られたか', value: pv.toLocaleString(), current: pv, prev: prevMetrics?.pageViews || prevMetrics?.screenPageViews },
+    { label: getLabel('engagementRate'), sublabel: 'しっかり読まれた割合', value: `${(engRate * 100).toFixed(1)}%`, current: engRate, prev: prevMetrics?.engagementRate, isRate: true },
   ];
 
   return (
@@ -907,7 +908,7 @@ function AccessOverviewCards({ metrics, prevMetrics, rawData, compPeriodLabel })
 }
 
 /**
- * ユーザー分析 - 訪問者の特徴（性別・年齢・地域・デバイス・新規リピーター）
+ * ユーザー分析 - ユーザー属性（性別・年齢・地域・デバイス・新規リピーター）
  */
 function UserAnalysisCards({ demographics }) {
   if (!demographics) return null;
@@ -920,7 +921,7 @@ function UserAnalysisCards({ demographics }) {
   };
   const filterKnown = (arr) => (arr || []).filter(d => isKnown(d.name));
 
-  // --- KPIサマリーカード ---
+  // --- 目標サマリーカード ---
   const summaryItems = [];
 
   // デバイス
@@ -997,7 +998,7 @@ function UserAnalysisCards({ demographics }) {
 
   return (
     <div className="space-y-5">
-      {/* KPIサマリーカード */}
+      {/* 目標サマリーカード */}
       {summaryItems.length > 0 && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
           {summaryItems.map((item, i) => (
@@ -1108,8 +1109,8 @@ function ContentTable({ pages }) {
         <thead>
           <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
             <th className="py-2 pr-3 text-left font-medium text-gray-700">ページ</th>
-            <th className="px-3 py-2 text-right font-medium text-gray-700">閲覧数</th>
-            <th className="px-3 py-2 text-right font-medium text-gray-700">閲覧の質</th>
+            <th className="px-3 py-2 text-right font-medium text-gray-700">{getShortLabel('screenPageViews')}</th>
+            <th className="px-3 py-2 text-right font-medium text-gray-700">{getShortLabel('engagementRate')}</th>
           </tr>
         </thead>
         <tbody>

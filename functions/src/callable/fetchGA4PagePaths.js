@@ -92,7 +92,7 @@ export async function fetchGA4PagePathsCallable(request) {
       const title = row.dimensionValues[1].value;
       
       if (path && path !== '(not set)') {
-        // 同じパスで複数のタイトルがある場合、最初のもの（PV数が多い）を使用
+        // 同じパスで複数のタイトルがある場合、最初のもの（ページビューが多い）を使用
         if (!pageMap.has(path)) {
           pageMap.set(path, {
             path,

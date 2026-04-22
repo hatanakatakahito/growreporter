@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx-js-style';
 import { resolveVisibleColumns } from '../constants/analysisColumns';
+import { getLabel, getShortLabel } from '../constants/metrics';
 
 // ─── スタイル定数 ───────────────────────────────────────────
 const FONT_BASE = { name: 'MS Gothic', sz: 10 };
@@ -913,15 +914,15 @@ function createCoverSheet(siteName, siteUrl, dateRange, compDateRange) {
   return ws;
 }
 
-/** 2. 全体サマリー（主要指標 + KPI予実 + コンバージョン内訳） */
+/** 2. 全体サマリー（主要指標 + 目標予実 + コンバージョン内訳） */
 function createSummarySheet(data, kpiSettings, aiData, memos, compSummary) {
   const m = data?.metrics || {};
   const conversions = data?.conversions || {};
   const kpiList = kpiSettings?.kpiList || [];
 
-  // KPIセクション（設定がある場合）
+  // 目標セクション（設定がある場合）
   if (kpiList.length > 0) {
-    const headers = ['KPI指標', '目標値', '実績値', '達成率'];
+    const headers = ['目標指標', '目標値', '実績値', '達成率'];
     const rows = kpiList.map(kpi => {
       const target = kpi.target || 0;
       let actual = 0;
@@ -952,19 +953,19 @@ function createSummarySheet(data, kpiSettings, aiData, memos, compSummary) {
       return [kpi.label || kpi.metric, targetDisplay, actualDisplay, achievement];
     });
 
-    // KPI + 基本指標 + コンバージョン内訳を1シートにまとめる
+    // 目標 + 基本指標 + コンバージョン内訳を1シートにまとめる
     rows.push(['', '', '', '']);
     rows.push(['【基本指標】', '', '', '']);
-    rows.push(['セッション数', '', fmtNum(m.sessions), '']);
-    rows.push(['ユーザー数', '', fmtNum(m.totalUsers), '']);
-    rows.push(['新規ユーザー数', '', fmtNum(m.newUsers), '']);
-    rows.push(['ページビュー数', '', fmtNum(m.pageViews), '']);
-    rows.push(['エンゲージメント率', '', fmtPct(m.engagementRate), '']);
-    rows.push(['コンバージョン数（合計）', '', fmtNum(m.conversions), '']);
-    rows.push(['クリック数（GSC）', '', fmtNum(m.clicks), '']);
-    rows.push(['表示回数（GSC）', '', fmtNum(m.impressions), '']);
-    rows.push(['CTR（GSC）', '', fmtPctRaw(m.ctr), '']);
-    rows.push(['平均掲載順位（GSC）', '', m.position ? Number(m.position).toFixed(1) : '-', '']);
+    rows.push([getLabel('sessions'), '', fmtNum(m.sessions), '']);
+    rows.push([getLabel('totalUsers'), '', fmtNum(m.totalUsers), '']);
+    rows.push([getLabel('newUsers'), '', fmtNum(m.newUsers), '']);
+    rows.push([getLabel('screenPageViews'), '', fmtNum(m.pageViews), '']);
+    rows.push([getLabel('engagementRate'), '', fmtPct(m.engagementRate), '']);
+    rows.push([`${getLabel('conversions')}（合計）`, '', fmtNum(m.conversions), '']);
+    rows.push([getLabel('clicks'), '', fmtNum(m.clicks), '']);
+    rows.push([getLabel('impressions'), '', fmtNum(m.impressions), '']);
+    rows.push([getLabel('ctr'), '', fmtPctRaw(m.ctr), '']);
+    rows.push([getLabel('position'), '', m.position ? Number(m.position).toFixed(1) : '-', '']);
 
     if (Object.keys(conversions).length > 0) {
       rows.push(['', '', '', '']);
@@ -978,7 +979,7 @@ function createSummarySheet(data, kpiSettings, aiData, memos, compSummary) {
     return createDataSheet(headers, rows, colWidths, aiData, memos);
   }
 
-  // KPI未設定の場合は従来のレイアウト
+  // 目標未設定の場合は従来のレイアウト
   const cm = compSummary?.metrics || {};
   const hasComp = compSummary != null;
   const headers = hasComp ? ['指標', '当期', '前期', '変化率'] : ['指標', '値'];
@@ -987,16 +988,16 @@ function createSummarySheet(data, kpiSettings, aiData, memos, compSummary) {
     return [label, val];
   };
   const rows = [
-    makeRow('セッション数', fmtNum(m.sessions), fmtNum(cm.sessions)),
-    makeRow('ユーザー数', fmtNum(m.totalUsers), fmtNum(cm.totalUsers)),
-    makeRow('新規ユーザー数', fmtNum(m.newUsers), fmtNum(cm.newUsers)),
-    makeRow('ページビュー数', fmtNum(m.pageViews), fmtNum(cm.pageViews)),
-    makeRow('エンゲージメント率', fmtPct(m.engagementRate), fmtPct(cm.engagementRate)),
-    makeRow('コンバージョン数（合計）', fmtNum(m.conversions), fmtNum(cm.conversions)),
-    makeRow('クリック数（GSC）', fmtNum(m.clicks), fmtNum(cm.clicks)),
-    makeRow('表示回数（GSC）', fmtNum(m.impressions), fmtNum(cm.impressions)),
-    makeRow('CTR（GSC）', fmtPctRaw(m.ctr), fmtPctRaw(cm.ctr)),
-    makeRow('平均掲載順位（GSC）', m.position ? Number(m.position).toFixed(1) : '-', cm.position ? Number(cm.position).toFixed(1) : '-'),
+    makeRow(getLabel('sessions'), fmtNum(m.sessions), fmtNum(cm.sessions)),
+    makeRow(getLabel('totalUsers'), fmtNum(m.totalUsers), fmtNum(cm.totalUsers)),
+    makeRow(getLabel('newUsers'), fmtNum(m.newUsers), fmtNum(cm.newUsers)),
+    makeRow(getLabel('screenPageViews'), fmtNum(m.pageViews), fmtNum(cm.pageViews)),
+    makeRow(getLabel('engagementRate'), fmtPct(m.engagementRate), fmtPct(cm.engagementRate)),
+    makeRow(`${getLabel('conversions')}（合計）`, fmtNum(m.conversions), fmtNum(cm.conversions)),
+    makeRow(getLabel('clicks'), fmtNum(m.clicks), fmtNum(cm.clicks)),
+    makeRow(getLabel('impressions'), fmtNum(m.impressions), fmtNum(cm.impressions)),
+    makeRow(getLabel('ctr'), fmtPctRaw(m.ctr), fmtPctRaw(cm.ctr)),
+    makeRow(getLabel('position'), m.position ? Number(m.position).toFixed(1) : '-', cm.position ? Number(cm.position).toFixed(1) : '-'),
   ];
   // コンバージョン内訳
   if (Object.keys(conversions).length > 0) {
@@ -1048,7 +1049,7 @@ function createUsersSheet(demographics, aiData, memos) {
     row++;
 
     // ヘッダー
-    const hdrLabels = ['項目', 'ユーザー数', '割合'];
+    const hdrLabels = ['項目', getShortLabel('totalUsers'), '割合'];
     for (let c = 0; c < 3; c++) {
       ws[XLSX.utils.encode_cell({ r: row, c })] = { v: hdrLabels[c], s: HEADER_STYLE };
     }
@@ -1143,7 +1144,7 @@ function createExternalLinksSheet(data, aiData, memos) {
 /** 16. コンバージョン一覧 */
 function createConversionsSheet(data, aiData, memos) {
   if (!data?.data || data.data.length === 0) {
-    const headers = ['月', 'CV数（合計）'];
+    const headers = ['月', `${getShortLabel('conversions')}（合計）`];
     return createDataSheet(headers, [], [{ wch: 14 }, { wch: 16 }], aiData, memos);
   }
   // イベント名を収集（yearMonth以外のキー）
@@ -1266,7 +1267,7 @@ export function exportAnalysisToExcel(allData, siteName, dateRange) {
   // 1. レポート概要
   XLSX.utils.book_append_sheet(wb, createCoverSheet(siteName, allData.siteUrl, dateRange, comp?.dateRange), safeSheetName('レポート概要'));
 
-  // 2. 全体サマリー（主要指標 + KPI予実 + コンバージョン内訳）
+  // 2. 全体サマリー（主要指標 + 目標予実 + コンバージョン内訳）
   if (allData.summaryMetrics) {
     XLSX.utils.book_append_sheet(wb, createSummarySheet(allData.summaryMetrics, allData.kpiSettings, ai['analysis/summary'], memos['analysis/summary'], comp?.summaryMetrics), safeSheetName('全体サマリー'));
   }

@@ -1,6 +1,7 @@
 import React from 'react';
 import MetricCard from './MetricCard';
 import { getTooltip } from '../../constants/tooltips';
+import { getLabel } from '../../constants/metrics';
 
 /**
  * 主要指標カード（GA4 + GSC）
@@ -20,7 +21,7 @@ export default function MetricCards({ currentMetrics, previousMetrics, isLoading
 
   const metrics = [
     {
-      title: '訪問者数',
+      title: getLabel('sessions'),
       value: curr.sessions || 0,
       change: calcChange(curr.sessions, prev.sessions),
       format: 'number',
@@ -32,11 +33,11 @@ export default function MetricCards({ currentMetrics, previousMetrics, isLoading
       ),
     },
     {
-      title: 'ユーザー数',
+      title: getLabel('totalUsers'),
       value: curr.totalUsers || 0,
       change: calcChange(curr.totalUsers, prev.totalUsers),
       format: 'number',
-      tooltip: getTooltip('users'),
+      tooltip: getTooltip('totalUsers'),
       icon: (
         <svg className="h-7 w-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
@@ -44,11 +45,11 @@ export default function MetricCards({ currentMetrics, previousMetrics, isLoading
       ),
     },
     {
-      title: 'ページビュー数',
+      title: getLabel('screenPageViews'),
       value: curr.pageViews || 0,
       change: calcChange(curr.pageViews, prev.pageViews),
       format: 'number',
-      tooltip: getTooltip('pageViews'),
+      tooltip: getTooltip('screenPageViews'),
       icon: (
         <svg className="h-7 w-7 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -57,7 +58,7 @@ export default function MetricCards({ currentMetrics, previousMetrics, isLoading
       ),
     },
     {
-      title: 'エンゲージメント率',
+      title: getLabel('engagementRate'),
       value: curr.engagementRate || 0,
       change: calcChange(curr.engagementRate, prev.engagementRate),
       format: 'percent',
@@ -69,7 +70,7 @@ export default function MetricCards({ currentMetrics, previousMetrics, isLoading
       ),
     },
     {
-      title: 'コンバージョン数',
+      title: getLabel('conversions'),
       value: curr.conversions || 0,
       change: calcChange(curr.conversions, prev.conversions),
       format: 'number',
@@ -81,7 +82,7 @@ export default function MetricCards({ currentMetrics, previousMetrics, isLoading
       ),
     },
     {
-      title: 'コンバージョン率',
+      title: getLabel('conversionRate'),
       value: curr.sessions > 0 ? (curr.conversions || 0) / curr.sessions : 0,
       change: (() => {
         const currRate = curr.sessions > 0 ? (curr.conversions || 0) / curr.sessions : 0;
@@ -102,7 +103,7 @@ export default function MetricCards({ currentMetrics, previousMetrics, isLoading
   if (hasGSCConnection) {
     metrics.push(
       {
-        title: '検索クリック数',
+        title: getLabel('clicks'),
         value: curr.clicks || 0,
         change: calcChange(curr.clicks, prev.clicks),
         format: 'number',
@@ -114,7 +115,7 @@ export default function MetricCards({ currentMetrics, previousMetrics, isLoading
         ),
       },
       {
-        title: '検索表示回数',
+        title: getLabel('impressions'),
         value: curr.impressions || 0,
         change: calcChange(curr.impressions, prev.impressions),
         format: 'number',

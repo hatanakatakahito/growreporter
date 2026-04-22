@@ -114,14 +114,14 @@ export default function CompleteSummary({ siteData }) {
           </div>
         )}
 
-        {/* KPI設定 */}
+        {/* 目標設定 */}
         {siteData.kpiSettings && siteData.kpiSettings.kpiList && siteData.kpiSettings.kpiList.length > 0 && (
           <div>
             <div className="mb-2 flex items-center gap-2 text-sm font-medium text-body-color">
               <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
               </svg>
-              KPI設定: {siteData.kpiSettings.kpiList.length}件
+              目標設定: {siteData.kpiSettings.kpiList.length}件
             </div>
             <div className="space-y-1 rounded-md bg-gray-50 p-4 dark:bg-dark-3">
               {siteData.kpiSettings.kpiList.slice(0, 5).map((kpi, index) => (

@@ -123,7 +123,7 @@ export const dashboardSteps = [
     element: sel(TOUR_TARGETS.METRIC_TAB_SUMMARY),
     popover: {
       title: '主要サマリータブ',
-      description: '訪問者数・ユーザー数・平均PV・直帰率・平均滞在時間・CV数など、サイトの主要指標をカード形式で一覧表示します。各カードには前月比・前年同月比が自動計算されます。',
+      description: 'セッション数・ユーザー数・1セッションあたりPV・直帰率・平均セッション時間・コンバージョン数など、サイトの主要指標をカード形式で一覧表示します。各カードには前月比・前年同月比が自動計算されます。',
     },
   },
   {
@@ -138,10 +138,10 @@ export const dashboardSteps = [
   {
     element: sel(TOUR_TARGETS.METRIC_TAB_KPI),
     popover: {
-      title: 'KPIタブ',
+      title: '目標タブ',
       description:
-        'サイト管理画面で設定した月次KPI目標に対する実績（達成率）を確認できます。目標未達の指標がひと目で分かり、改善優先度の判断に役立ちます。<br><br>' +
-        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">KPI設定を開く</a>',
+        'サイト管理画面で設定した月次目標に対する実績（達成率）を確認できます。目標未達の指標がひと目で分かり、改善優先度の判断に役立ちます。<br><br>' +
+        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">目標設定を開く</a>',
     },
   },
   {
@@ -178,7 +178,7 @@ export const dashboardSteps = [
     element: '#nav-sites',
     popover: {
       title: 'サイト管理',
-      description: '登録サイトの一覧と設定を管理します。GA4/Search Console の連携設定、コンバージョンイベントの登録、月次KPI目標の設定はここから行います。',
+      description: '登録サイトの一覧と設定を管理します。GA4/Search Console の連携設定、コンバージョンイベントの登録、月次目標の設定はここから行います。',
     },
   },
   {
@@ -313,7 +313,7 @@ export const analysisReferralsSteps = makeAnalysisSteps(
 
 // ── ページ別 ──────────────────────────────────
 export const analysisPagesSteps = makeAnalysisSteps(
-  'ページ別分析の対象期間を設定します。ページごとのPV数・エンゲージメント率・滞在時間・興味度スコアを確認できます。',
+  'ページ別分析の対象期間を設定します。ページごとのページビュー・エンゲージメント率・滞在時間・興味度スコアを確認できます。',
   'AIがページ単位のパフォーマンスを分析し、改善余地のあるページや高評価ページの特徴を解説します。'
 );
 
@@ -346,7 +346,7 @@ export const analysisPageFlowSteps = makeAnalysisSteps(
 // ── コンバージョン ──────────────────────────────
 export const analysisConversionsSteps = makeAnalysisSteps(
   'コンバージョン分析の対象期間を設定します。登録済みのCVイベント別に件数の推移を月単位で確認できます。',
-  'AIがCV数の月別推移とイベント別の傾向を分析し、CV増加のための具体的な施策を提案します。',
+  'AIがコンバージョン数の月別推移とイベント別の傾向を分析し、コンバージョン増加のための具体的な施策を提案します。',
   { hasFilters: false }
 );
 
@@ -390,7 +390,7 @@ export const analysisSummaryFreeSteps = [
     element: sel(TOUR_TARGETS.METRIC_TAB_SUMMARY),
     popover: {
       title: '主要サマリータブ',
-      description: '訪問者数・ユーザー数・平均PV・直帰率・平均滞在時間・CV数など、サイトの主要指標をカード形式で一覧表示します。各カードには前月比・前年同月比が自動計算されます。',
+      description: 'セッション数・ユーザー数・1セッションあたりPV・直帰率・平均セッション時間・コンバージョン数など、サイトの主要指標をカード形式で一覧表示します。各カードには前月比・前年同月比が自動計算されます。',
     },
   },
   {
@@ -405,10 +405,10 @@ export const analysisSummaryFreeSteps = [
   {
     element: sel(TOUR_TARGETS.METRIC_TAB_KPI),
     popover: {
-      title: 'KPIタブ',
+      title: '目標タブ',
       description:
-        'サイト管理画面で設定した月次KPI目標に対する実績（達成率）を確認できます。目標未達の指標がひと目で分かり、改善優先度の判断に役立ちます。<br><br>' +
-        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">KPI設定を開く</a>',
+        'サイト管理画面で設定した月次目標に対する実績（達成率）を確認できます。目標未達の指標がひと目で分かり、改善優先度の判断に役立ちます。<br><br>' +
+        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">目標設定を開く</a>',
     },
   },
   {
@@ -534,15 +534,15 @@ export const comprehensiveAISteps = [
   {
     element: sel(TOUR_TARGETS.COMP_AI_KPIS),
     popover: {
-      title: 'ミニKPI（クリックでジャンプ）',
-      description: '主要KPIを前期間比と一緒に表示します。カードをクリックすると該当セクションへスクロールします。',
+      title: 'ミニ目標（クリックでジャンプ）',
+      description: '主要目標を前期間比と一緒に表示します。カードをクリックすると該当セクションへスクロールします。',
     },
   },
   {
     element: sel(TOUR_TARGETS.COMP_AI_SECTIONS),
     popover: {
       title: '5つの分析セクション',
-      description: 'アクセス / 訪問者 / 集客 / コンテンツ / 成果 の順で各カテゴリのAIコメントが並びます。「詳細を見る」リンクから個別分析ページを開けます。',
+      description: 'アクセス / ユーザー分析 / 集客 / コンテンツ / 成果 の順で各カテゴリのAIコメントが並びます。「詳細を見る」リンクから個別分析ページを開けます。',
       side: 'top',
     },
   },
@@ -582,7 +582,7 @@ export const accountSettingsSteps = [
     element: sel(TOUR_TARGETS.NOTIFICATION_WEEKLY),
     popover: {
       title: '週次レポート',
-      description: '毎週月曜日に、前週のサイトパフォーマンスサマリーをメールで受け取れます。訪問者数・PV・CV数など主要指標の週間推移が自動で届くので、週単位のモニタリングに最適です。',
+      description: '毎週月曜日に、前週のサイトパフォーマンスサマリーをメールで受け取れます。セッション数・ページビュー・コンバージョン数など主要指標の週間推移が自動で届くので、週単位のモニタリングに最適です。',
     },
   },
   {
@@ -614,8 +614,8 @@ export const sitesSteps = [
   {
     element: sel(TOUR_TARGETS.SITE_KPI_BUTTON),
     popover: {
-      title: 'KPI設定（Step 2）',
-      description: '月次の目標KPIを設定できます。設定すると主要指標タブで予実比較が可能になります。',
+      title: '目標設定（Step 2）',
+      description: '月次の目標を設定できます。設定すると主要指標タブで予実比較が可能になります。',
     },
   },
   TOUR_GUIDE_TOGGLE_STEP,

@@ -164,6 +164,7 @@ def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | Non
         formats["ai_content"],
         formats["memo_header"],
         formats["memo_content"],
+        ai_placeholder_fmt=formats.get("ai_placeholder"),
     )
 
     return ws

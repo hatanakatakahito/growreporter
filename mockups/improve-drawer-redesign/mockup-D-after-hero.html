@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>D案: After主役 + Before サムネ</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = { theme: { extend: { colors: { primary: '#3758F9', 'body-color': '#637381', dark: '#111928' } } } }
+</script>
+<style>
+  body { font-family: 'Yu Gothic', 'Hiragino Kaku Gothic ProN', sans-serif; background:#f8fafc; margin:0; }
+  .shot-before { background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="500" viewBox="0 0 400 500"><rect fill="%23ffffff" width="400" height="500"/><rect fill="%23f3f4f6" y="0" width="400" height="80"/><rect fill="%23e5e7eb" x="20" y="20" width="120" height="16" rx="4"/><rect fill="%233758F9" x="280" y="20" width="90" height="40" rx="6"/><rect fill="%231e293b" x="20" y="110" width="220" height="32" rx="4"/><rect fill="%23cbd5e1" x="20" y="160" width="360" height="10" rx="2"/><rect fill="%23f1f5f9" x="20" y="220" width="110" height="140" rx="8"/><rect fill="%23f1f5f9" x="145" y="220" width="110" height="140" rx="8"/><rect fill="%23f1f5f9" x="270" y="220" width="110" height="140" rx="8"/></svg>') center/cover; }
+  .shot-after { background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500"><rect fill="%23ffffff" width="800" height="500"/><rect fill="%23f3f4f6" y="0" width="800" height="80"/><rect fill="%23e5e7eb" x="40" y="20" width="180" height="20" rx="4"/><rect fill="%233758F9" x="620" y="20" width="140" height="40" rx="6"/><rect fill="%231e293b" x="40" y="130" width="400" height="40" rx="4"/><rect fill="%23cbd5e1" x="40" y="190" width="720" height="12" rx="2"/><rect fill="%23f1f5f9" x="40" y="240" width="230" height="140" rx="8"/><rect fill="%23f1f5f9" x="285" y="240" width="230" height="140" rx="8"/><rect fill="%23f1f5f9" x="530" y="240" width="230" height="140" rx="8"/><rect fill="%23eff6ff" stroke="%233758F9" stroke-width="3" x="40" y="400" width="720" height="80" rx="12"/><rect fill="%233758F9" x="300" y="420" width="200" height="40" rx="20"/></svg>') center/cover; }
+</style>
+</head>
+<body>
+
+<div class="p-8 text-xs text-gray-400">メインコンテンツ（背景）...</div>
+
+<div class="fixed inset-0 z-[100]">
+  <div class="absolute inset-0 bg-black/30"></div>
+  <div class="absolute top-0 bottom-0 right-0 w-full sm:w-[85vw] max-w-[1400px] bg-white shadow-2xl flex flex-col">
+
+    <!-- ヘッダー -->
+    <div class="px-4 sm:px-10 py-5 border-b border-gray-200 shrink-0">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-lg font-bold text-dark flex-1 min-w-0 mr-4">施工事例ページにおける「建設事業」カテゴリへのCTA強化</h2>
+        <button class="text-gray-400 p-2 rounded-lg">
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="flex items-center gap-3 flex-wrap">
+        <a href="#" class="inline-flex items-center gap-1 text-xs text-primary hover:underline">
+          <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"/></svg>
+          対象ページを開く
+        </a>
+        <span class="text-gray-300">|</span>
+        <span class="px-2.5 py-1 rounded text-xs font-semibold bg-green-100 text-green-700">機能</span>
+        <span class="px-2.5 py-1 rounded text-xs font-semibold bg-red-100 text-red-700">優先度: 高</span>
+        <div class="ml-auto flex items-center gap-2">
+          <select class="appearance-none text-sm border border-gray-200 rounded-lg pl-3 pr-8 py-1.5 cursor-pointer bg-white text-dark">
+            <option>起案</option>
+          </select>
+          <button class="text-sm text-gray-500 border border-gray-200 rounded-lg px-3 py-1.5">編集</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- コンテンツ: 左（コンパクト） + 右（After主役） -->
+    <div class="flex-1 overflow-hidden flex">
+
+      <!-- 左カラム: コンパクト説明 (280px) -->
+      <div class="shrink-0 border-r border-gray-100 overflow-y-auto p-5 w-[280px]">
+        <div class="bg-green-50 rounded-xl p-3 mb-4">
+          <div class="text-xs font-bold text-green-800 mb-1 flex items-center gap-1">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>
+            期待する効果
+          </div>
+          <p class="text-xs text-green-800 leading-relaxed">お問い合わせ数 月間 +3〜5件</p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 mb-4">
+          <div class="bg-gray-50 rounded-lg p-3">
+            <div class="text-[10px] text-gray-500">¥ 目安料金</div>
+            <div class="text-sm font-bold text-gray-900 mt-0.5">24万円〜</div>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-3">
+            <div class="text-[10px] text-gray-500">📆 目安納期</div>
+            <div class="text-sm font-bold text-gray-900 mt-0.5">5営業日〜</div>
+          </div>
+        </div>
+
+        <details class="group rounded-lg border border-gray-200 mb-4" open>
+          <summary class="flex items-center justify-between cursor-pointer px-3 py-2.5 text-xs font-bold text-gray-800 hover:bg-gray-50">
+            <div class="flex items-center gap-1.5">
+              <svg class="w-3.5 h-3.5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              改善内容
+            </div>
+            <svg class="w-4 h-4 text-gray-400 transition group-open:rotate-180" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </summary>
+          <div class="px-3 pb-3">
+            <p class="text-xs text-gray-700 leading-6">施工事例（/works/）ページに、建設事業（/construction/）へのCTAを設置し、潜在顧客の事業詳細ページへの誘導を強化する。</p>
+          </div>
+        </details>
+      </div>
+
+      <!-- 右カラム: After主役 + Before サムネ -->
+      <div class="flex-1 overflow-y-auto bg-gray-50/50">
+        <div class="sticky top-0 z-10 bg-gray-50/95 backdrop-blur px-4 sm:px-8 pt-5 pb-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-bold text-gray-800">改善モックアップ</h3>
+            <span class="rounded-full bg-green-100 px-2 py-0.5 text-[9px] font-bold text-green-700">AI生成</span>
+          </div>
+          <div class="flex gap-0.5 bg-gray-200/70 rounded-lg p-0.5">
+            <button class="rounded-md px-3 py-1 text-xs font-medium text-gray-600">並べて比較</button>
+            <button class="rounded-md px-3 py-1 text-xs font-medium text-gray-600">Before</button>
+            <button class="rounded-md bg-white shadow px-3 py-1 text-xs font-medium">After 主役</button>
+          </div>
+        </div>
+
+        <div class="px-4 sm:px-8 pb-8">
+          <div class="flex items-start gap-4">
+            <!-- After 主役 -->
+            <div class="flex-1">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <span class="inline-block w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                  <span class="text-xs font-bold text-primary uppercase tracking-wider">After（改善案適用後）</span>
+                </div>
+                <button class="text-[11px] text-primary hover:underline">↗ フルスクリーン</button>
+              </div>
+              <div class="rounded-xl overflow-hidden border-2 border-primary/30 shadow-xl bg-white">
+                <div class="flex items-center gap-2 bg-gray-100 px-3 py-2 border-b border-gray-200">
+                  <span class="w-2.5 h-2.5 rounded-full bg-red-400"></span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                  <span class="w-2.5 h-2.5 rounded-full bg-green-400"></span>
+                  <div class="flex-1 mx-2 rounded bg-white px-3 py-0.5 text-[10px] text-gray-400 truncate">https://www.kudo.co.jp/works/</div>
+                </div>
+                <div class="shot-after h-[560px] w-full"></div>
+              </div>
+            </div>
+
+            <!-- Before サムネ -->
+            <div class="w-56 shrink-0">
+              <div class="sticky top-[80px]">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="text-[10px] font-semibold text-gray-500 uppercase tracking-wider">Before</span>
+                  <button class="text-[10px] text-primary hover:underline">↗ 拡大</button>
+                </div>
+                <div class="rounded-lg overflow-hidden border border-gray-200 shadow-md bg-white">
+                  <div class="flex items-center gap-1 bg-gray-100 px-2 py-1 border-b border-gray-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-red-400"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-400"></span>
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                  </div>
+                  <div class="shot-before h-[260px] w-full"></div>
+                </div>
+                <p class="mt-2 text-[10px] text-gray-400 leading-relaxed">現状のページ。クリックで並列比較ビューへ。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- フッター -->
+    <div class="px-4 sm:px-10 py-4 border-t border-gray-200 flex items-center justify-between shrink-0 bg-gray-50/80">
+      <div class="flex items-center gap-3">
+        <button class="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-4 py-2 text-sm font-medium text-white shadow-sm">
+          ✉ 制作会社に相談する
+        </button>
+        <button class="text-sm text-red-600 border border-red-200 rounded-lg px-3 py-1.5">削除</button>
+      </div>
+      <div class="flex items-center gap-2 text-sm text-gray-500">
+        <button class="px-3 py-1.5 rounded border">‹ 前</button>
+        <span class="text-xs">6 / 12</span>
+        <button class="px-3 py-1.5 rounded border">次 ›</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p class="fixed bottom-3 left-1/2 -translate-x-1/2 text-xs text-white bg-black/70 px-3 py-1 rounded-full z-[110]">
+  D案: After主役（~720px）+ Before サムネ（~220px）
+</p>
+
+</body>
+</html>

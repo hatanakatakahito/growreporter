@@ -134,6 +134,13 @@ AI_CONTENT_STYLE = {
     "border": 1, "border_color": "#DDD6FE",
 }
 
+AI_PLACEHOLDER_STYLE = {
+    "font_name": FONT_NAME, "font_size": 9, "italic": True,
+    "font_color": "#9CA3AF", "bg_color": "#F9FAFB",
+    "align": "left", "valign": "vcenter", "text_wrap": True,
+    "border": 1, "border_color": "#E5E7EB",
+}
+
 # ─── メモセクション ────────────────────────────────────
 MEMO_SECTION_STYLE = {
     "font_name": FONT_NAME, "font_size": 11, "bold": True,

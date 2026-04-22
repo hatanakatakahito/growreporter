@@ -4,6 +4,7 @@ import {
   CHANNEL_MAP, DAY_NAMES,
 } from './exportAnalysisToExcel';
 import logoSvgRaw from '../assets/img/logo.svg?raw';
+import { getLabel, getShortLabel, getTooltip } from '../constants/metrics';
 
 // ─── 定数 ──────────────────────────────────────────────────────
 const FONT_FACE = '游ゴシック';
@@ -335,7 +336,7 @@ function createCoverSlide(pptx, siteName, siteUrl, dateRange, logoBase64, compDa
   addSlideFooter(slide);
 }
 
-// 2. 全体サマリー（主要指標 + KPI予実 + コンバージョン内訳）
+// 2. 全体サマリー（主要指標 + 目標予実 + コンバージョン内訳）
 function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos, compSummary) {
   const slide = pptx.addSlide();
   addSlideTitle(slide, '全体サマリー');
@@ -357,21 +358,21 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos, compSum
 
     // [label, currentValue, prevValue(optional)]
     const metricsData = [
-      ['セッション数', formatNumber(m.sessions), hasComp ? formatNumber(cm.sessions) : null, hasComp ? fmtChange(m.sessions, cm.sessions) : null],
-      ['ユーザー数', formatNumber(m.totalUsers), hasComp ? formatNumber(cm.totalUsers) : null, hasComp ? fmtChange(m.totalUsers, cm.totalUsers) : null],
-      ['新規ユーザー数', formatNumber(m.newUsers), hasComp ? formatNumber(cm.newUsers) : null, hasComp ? fmtChange(m.newUsers, cm.newUsers) : null],
-      ['ページビュー数', formatNumber(m.pageViews), hasComp ? formatNumber(cm.pageViews) : null, hasComp ? fmtChange(m.pageViews, cm.pageViews) : null],
-      ['エンゲージメント率', fmtPct(m.engagementRate), hasComp ? fmtPct(cm.engagementRate) : null, null],
-      ['コンバージョン数', formatNumber(m.conversions), hasComp ? formatNumber(cm.conversions) : null, hasComp ? fmtChange(m.conversions, cm.conversions) : null],
+      [getLabel('sessions'), formatNumber(m.sessions), hasComp ? formatNumber(cm.sessions) : null, hasComp ? fmtChange(m.sessions, cm.sessions) : null],
+      [getLabel('totalUsers'), formatNumber(m.totalUsers), hasComp ? formatNumber(cm.totalUsers) : null, hasComp ? fmtChange(m.totalUsers, cm.totalUsers) : null],
+      [getLabel('newUsers'), formatNumber(m.newUsers), hasComp ? formatNumber(cm.newUsers) : null, hasComp ? fmtChange(m.newUsers, cm.newUsers) : null],
+      [getLabel('screenPageViews'), formatNumber(m.pageViews), hasComp ? formatNumber(cm.pageViews) : null, hasComp ? fmtChange(m.pageViews, cm.pageViews) : null],
+      [getLabel('engagementRate'), fmtPct(m.engagementRate), hasComp ? fmtPct(cm.engagementRate) : null, null],
+      [getLabel('conversions'), formatNumber(m.conversions), hasComp ? formatNumber(cm.conversions) : null, hasComp ? fmtChange(m.conversions, cm.conversions) : null],
     ];
 
     // GSC指標
     if (m.clicks || m.impressions) {
       metricsData.push(
-        ['クリック数（GSC）', formatNumber(m.clicks), hasComp ? formatNumber(cm.clicks) : null, hasComp ? fmtChange(m.clicks, cm.clicks) : null],
-        ['表示回数（GSC）', formatNumber(m.impressions), hasComp ? formatNumber(cm.impressions) : null, hasComp ? fmtChange(m.impressions, cm.impressions) : null],
-        ['CTR（GSC）', fmtPct(m.ctr), hasComp ? fmtPct(cm.ctr) : null, null],
-        ['平均掲載順位（GSC）', m.position ? Number(m.position).toFixed(1) : '-', hasComp && cm.position ? Number(cm.position).toFixed(1) : null, null],
+        [getLabel('clicks'), formatNumber(m.clicks), hasComp ? formatNumber(cm.clicks) : null, hasComp ? fmtChange(m.clicks, cm.clicks) : null],
+        [getLabel('impressions'), formatNumber(m.impressions), hasComp ? formatNumber(cm.impressions) : null, hasComp ? fmtChange(m.impressions, cm.impressions) : null],
+        [getLabel('ctr'), fmtPct(m.ctr), hasComp ? fmtPct(cm.ctr) : null, null],
+        [getLabel('position'), m.position ? Number(m.position).toFixed(1) : '-', hasComp && cm.position ? Number(cm.position).toFixed(1) : null, null],
       );
     }
 
@@ -447,13 +448,13 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos, compSum
       });
     }
 
-    // KPI達成状況
+    // 目標達成状況
     const rowH = hasComp ? 0.42 : 0.55;
     let kpiEndY = CONTENT_Y + tableRows.length * rowH + 0.2;
     if (kpiSettings?.kpiList && kpiSettings.kpiList.length > 0) {
       const activeKpis = kpiSettings.kpiList.filter(k => k.isActive);
       if (activeKpis.length > 0) {
-        slide.addText('KPI達成状況', {
+        slide.addText('目標達成状況', {
           x: MARGIN_X, y: kpiEndY, w: CONTENT_W, h: 0.3,
           fontSize: 12, fontFace: FONT_FACE, bold: true, color: COLORS.dark,
         });
@@ -487,7 +488,7 @@ function createSummarySlide(pptx, dashboard, kpiSettings, aiData, memos, compSum
       }
     }
 
-    // AI分析+メモ（テーブル/KPIの直下から配置）
+    // AI分析+メモ（テーブル/目標の直下から配置）
     const aiY = kpiEndY + 0.1;
     const aiMaxH = FOOTER_Y - aiY - 0.05;
     addAIAndMemoFooter(slide, aiData, memos, aiY, Math.max(aiMaxH, 0), pptx, '全体サマリー');
@@ -542,18 +543,18 @@ function createMonthlySlide(pptx, monthlyData, aiData, memos, compMonthlyData) {
   const chartH = FOOTER_Y - CONTENT_Y - 0.1;
   const labels = sortedAsc.map(d => fmtYearMonth(d.month || d.label || d.yearMonth));
   const chartData = [
-    { name: 'ユーザー', labels, values: sortedAsc.map(d => fmtNum(d.users || d.totalUsers)) },
-    { name: 'セッション', labels, values: sortedAsc.map(d => fmtNum(d.sessions)) },
-    { name: 'PV', labels, values: sortedAsc.map(d => fmtNum(d.pageViews || d.screenPageViews)) },
-    { name: 'CV', labels, values: sortedAsc.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
+    { name: getShortLabel('totalUsers'), labels, values: sortedAsc.map(d => fmtNum(d.users || d.totalUsers)) },
+    { name: getShortLabel('sessions'), labels, values: sortedAsc.map(d => fmtNum(d.sessions)) },
+    { name: getShortLabel('screenPageViews'), labels, values: sortedAsc.map(d => fmtNum(d.pageViews || d.screenPageViews)) },
+    { name: getShortLabel('conversions'), labels, values: sortedAsc.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
   ];
   let chartColors = ['3b82f6', 'f59e0b', '8b5cf6', 'ef4444'];
 
   if (compMonthlyData && compMonthlyData.length > 0) {
     const compSorted = [...compMonthlyData].sort((a, b) => ((a.label || a.month || '') > (b.label || b.month || '') ? 1 : -1));
     chartData.push(
-      { name: '前期セッション', labels, values: labels.map((_, i) => fmtNum(compSorted[i]?.sessions)) },
-      { name: '前期CV', labels, values: labels.map((_, i) => fmtNum(compSorted[i]?.conversions || compSorted[i]?.totalConversions || 0)) },
+      { name: `${getShortLabel('sessions')}（前期）`, labels, values: labels.map((_, i) => fmtNum(compSorted[i]?.sessions)) },
+      { name: `${getShortLabel('conversions')}（前期）`, labels, values: labels.map((_, i) => fmtNum(compSorted[i]?.conversions || compSorted[i]?.totalConversions || 0)) },
     );
     chartColors = [...chartColors, '93c5fd', 'fca5a5'];
   }
@@ -579,13 +580,13 @@ function createMonthlySlide(pptx, monthlyData, aiData, memos, compMonthlyData) {
 
   const headers = [
     { label: '月', align: 'center' },
-    { label: 'セッション', align: 'right' },
-    { label: 'ユーザー', align: 'right' },
-    { label: '新規ユーザー', align: 'right' },
-    { label: 'PV', align: 'right' },
-    { label: 'エンゲ率', align: 'right' },
-    { label: 'CV', align: 'right' },
-    { label: 'CVR', align: 'right' },
+    { label: getShortLabel('sessions'), align: 'right' },
+    { label: getShortLabel('totalUsers'), align: 'right' },
+    { label: getShortLabel('newUsers'), align: 'right' },
+    { label: getShortLabel('screenPageViews'), align: 'right' },
+    { label: getShortLabel('engagementRate'), align: 'right' },
+    { label: getShortLabel('conversions'), align: 'right' },
+    { label: getShortLabel('conversionRate'), align: 'right' },
   ];
 
   const rows = sortedDesc.map(d => [
@@ -625,8 +626,8 @@ function createDailySlide(pptx, dailyData, aiData, memos, compDailyData) {
   const chartH = FOOTER_Y - CONTENT_Y - 0.1;
   const labels = dataRows.map(d => fmtDate(d.date).replace(/^\d{4}\//, ''));
   const chartData = [
-    { name: 'セッション', labels, values: dataRows.map(d => fmtNum(d.sessions)) },
-    { name: 'CV', labels, values: dataRows.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
+    { name: getShortLabel('sessions'), labels, values: dataRows.map(d => fmtNum(d.sessions)) },
+    { name: getShortLabel('conversions'), labels, values: dataRows.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
   ];
   let chartColors = ['3b82f6', 'ef4444'];
 
@@ -634,8 +635,8 @@ function createDailySlide(pptx, dailyData, aiData, memos, compDailyData) {
   if (compDailyData?.rows && compDailyData.rows.length > 0) {
     const compRows = [...compDailyData.rows].sort((a, b) => (a.date > b.date ? 1 : -1));
     chartData.push(
-      { name: '前期セッション', labels, values: labels.map((_, i) => fmtNum(compRows[i]?.sessions)) },
-      { name: '前期CV', labels, values: labels.map((_, i) => fmtNum(compRows[i]?.conversions || compRows[i]?.totalConversions || 0)) },
+      { name: `${getShortLabel('sessions')}（前期）`, labels, values: labels.map((_, i) => fmtNum(compRows[i]?.sessions)) },
+      { name: `${getShortLabel('conversions')}（前期）`, labels, values: labels.map((_, i) => fmtNum(compRows[i]?.conversions || compRows[i]?.totalConversions || 0)) },
     );
     chartColors = [...chartColors, '93c5fd', 'fca5a5'];
   }
@@ -660,8 +661,8 @@ function createDailySlide(pptx, dailyData, aiData, memos, compDailyData) {
   const tableLayout = calcTableOnlyLayout(hasAI, hasMemos);
   const headers = [
     { label: '日付', align: 'center' },
-    { label: 'セッション', align: 'right' },
-    { label: 'CV', align: 'right' },
+    { label: getShortLabel('sessions'), align: 'right' },
+    { label: getShortLabel('conversions'), align: 'right' },
   ];
   const rows = dataRows.map(d => [
     fmtDate(d.date),
@@ -711,8 +712,8 @@ function createWeeklySlide(pptx, weeklyData, aiData, memos) {
 
   const labels = dataRows.map(d => DAY_NAMES[Number(d.dayOfWeek)] || d.dayOfWeek);
   const chartData = [
-    { name: 'セッション', labels, values: dataRows.map(d => fmtNum(d.sessions)) },
-    { name: 'CV', labels, values: dataRows.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
+    { name: getShortLabel('sessions'), labels, values: dataRows.map(d => fmtNum(d.sessions)) },
+    { name: getShortLabel('conversions'), labels, values: dataRows.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
   ];
 
   slide.addChart(pptx.charts.BAR, chartData, {
@@ -726,8 +727,8 @@ function createWeeklySlide(pptx, weeklyData, aiData, memos) {
 
   const headers = [
     { label: '曜日', align: 'center' },
-    { label: 'セッション', align: 'right' },
-    { label: 'CV', align: 'right' },
+    { label: getShortLabel('sessions'), align: 'right' },
+    { label: getShortLabel('conversions'), align: 'right' },
   ];
   const rows = dataRows.map(d => [
     DAY_NAMES[Number(d.dayOfWeek)] || d.dayOfWeek,
@@ -759,8 +760,8 @@ function createHourlySlide(pptx, hourlyData, aiData, memos) {
   const chartH = FOOTER_Y - CONTENT_Y - 0.1;
   const labels = dataRows.map(d => `${d.hour}時`);
   const chartData = [
-    { name: 'セッション', labels, values: dataRows.map(d => fmtNum(d.sessions)) },
-    { name: 'CV', labels, values: dataRows.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
+    { name: getShortLabel('sessions'), labels, values: dataRows.map(d => fmtNum(d.sessions)) },
+    { name: getShortLabel('conversions'), labels, values: dataRows.map(d => fmtNum(d.conversions || d.totalConversions || 0)) },
   ];
 
   slide1.addChart(pptx.charts.BAR, chartData, {
@@ -781,8 +782,8 @@ function createHourlySlide(pptx, hourlyData, aiData, memos) {
   const tableLayout = calcTableOnlyLayout(hasAI, hasMemos);
   const headers = [
     { label: '時間', align: 'center' },
-    { label: 'セッション', align: 'right' },
-    { label: 'CV', align: 'right' },
+    { label: getShortLabel('sessions'), align: 'right' },
+    { label: getShortLabel('conversions'), align: 'right' },
   ];
   const rows = dataRows.map(d => [
     `${d.hour}時`,
@@ -891,7 +892,7 @@ function createUsersRegionSlide(pptx, demographics, aiData, memos) {
   const headers = [
     { label: '#', align: 'center' },
     { label: '地域', align: 'left' },
-    { label: 'ユーザー数', align: 'right' },
+    { label: getShortLabel('totalUsers'), align: 'right' },
     { label: '割合', align: 'right' },
   ];
 
@@ -936,7 +937,7 @@ function createChannelsSlide(pptx, channels, aiData, memos) {
     pieValues.push(othersTotal);
   }
 
-  slide.addChart(pptx.charts.PIE, [{ name: 'セッション', labels: pieLabels, values: pieValues }], {
+  slide.addChart(pptx.charts.PIE, [{ name: getShortLabel('sessions'), labels: pieLabels, values: pieValues }], {
     x: 2.7, y: layout.chartY, w: 5.5, h: layout.chartH,
     showLegend: true, legendPos: 'r', legendFontSize: 10,
     chartColors: CHART_PALETTE,
@@ -947,9 +948,9 @@ function createChannelsSlide(pptx, channels, aiData, memos) {
   // テーブル
   const headers = [
     { label: 'チャネル', align: 'left' },
-    { label: 'セッション', align: 'right' },
-    { label: 'ユーザー', align: 'right' },
-    { label: 'CV', align: 'right' },
+    { label: getShortLabel('sessions'), align: 'right' },
+    { label: getShortLabel('totalUsers'), align: 'right' },
+    { label: getShortLabel('conversions'), align: 'right' },
   ];
   const rows = sorted.slice(0, 10).map(r => [
     CHANNEL_MAP[r.sessionDefaultChannelGroup] || r.sessionDefaultChannelGroup || '',
@@ -983,10 +984,10 @@ function createKeywordsSlide(pptx, keywords, aiData, memos) {
   const headers = [
     { label: '#', align: 'center' },
     { label: 'キーワード', align: 'left' },
-    { label: 'クリック', align: 'right' },
-    { label: '表示回数', align: 'right' },
-    { label: 'CTR', align: 'right' },
-    { label: '掲載順位', align: 'right' },
+    { label: getShortLabel('clicks'), align: 'right' },
+    { label: getShortLabel('impressions'), align: 'right' },
+    { label: getShortLabel('ctr'), align: 'right' },
+    { label: getShortLabel('position'), align: 'right' },
   ];
 
   const rows = top20.map((q, i) => [
@@ -1032,7 +1033,7 @@ function createReferralsSlide(pptx, referrals, aiData, memos) {
     pieValues.push(othersTotal);
   }
 
-  slide.addChart(pptx.charts.PIE, [{ name: 'セッション', labels: pieLabels, values: pieValues }], {
+  slide.addChart(pptx.charts.PIE, [{ name: getShortLabel('sessions'), labels: pieLabels, values: pieValues }], {
     x: 2.7, y: layout.chartY, w: 5.5, h: layout.chartH,
     showLegend: true, legendPos: 'r', legendFontSize: 10,
     chartColors: CHART_PALETTE,
@@ -1042,10 +1043,10 @@ function createReferralsSlide(pptx, referrals, aiData, memos) {
 
   const headers = [
     { label: '参照元', align: 'left' },
-    { label: 'セッション', align: 'right' },
-    { label: 'ユーザー', align: 'right' },
-    { label: 'CV', align: 'right' },
-    { label: 'エンゲ率', align: 'right' },
+    { label: getShortLabel('sessions'), align: 'right' },
+    { label: getShortLabel('totalUsers'), align: 'right' },
+    { label: getShortLabel('conversions'), align: 'right' },
+    { label: getShortLabel('engagementRate'), align: 'right' },
   ];
   const rows = sorted.slice(0, 10).map(r => [
     r.source || r.sessionSource || '',
@@ -1078,8 +1079,8 @@ function createPagesSlide(pptx, pages, aiData, memos) {
 
   // 棒グラフ
   const chartData = [
-    { name: 'PV', labels: top10.map(r => (r.pagePath || '').substring(0, 30)), values: top10.map(r => fmtNum(r.screenPageViews)) },
-    { name: 'セッション', labels: top10.map(r => (r.pagePath || '').substring(0, 30)), values: top10.map(r => fmtNum(r.sessions)) },
+    { name: getShortLabel('screenPageViews'), labels: top10.map(r => (r.pagePath || '').substring(0, 30)), values: top10.map(r => fmtNum(r.screenPageViews)) },
+    { name: getShortLabel('sessions'), labels: top10.map(r => (r.pagePath || '').substring(0, 30)), values: top10.map(r => fmtNum(r.sessions)) },
   ];
 
   slide.addChart(pptx.charts.BAR, chartData, {
@@ -1095,9 +1096,9 @@ function createPagesSlide(pptx, pages, aiData, memos) {
   const headers = [
     { label: '#', align: 'center' },
     { label: 'ページパス', align: 'left' },
-    { label: 'PV', align: 'right' },
-    { label: 'セッション', align: 'right' },
-    { label: 'エンゲ率', align: 'right' },
+    { label: getShortLabel('screenPageViews'), align: 'right' },
+    { label: getShortLabel('sessions'), align: 'right' },
+    { label: getShortLabel('engagementRate'), align: 'right' },
   ];
   const rows = top10.map((r, i) => [
     i + 1,
@@ -1153,7 +1154,7 @@ function createPageCategoriesSlide(pptx, pageCategories, aiData, memos) {
     pieValues.push(othersTotal);
   }
 
-  slide.addChart(pptx.charts.PIE, [{ name: 'PV', labels: pieLabels, values: pieValues }], {
+  slide.addChart(pptx.charts.PIE, [{ name: getShortLabel('screenPageViews'), labels: pieLabels, values: pieValues }], {
     x: 2.7, y: layout.chartY, w: 5.5, h: layout.chartH,
     showLegend: true, legendPos: 'r', legendFontSize: 10,
     chartColors: CHART_PALETTE,
@@ -1163,9 +1164,9 @@ function createPageCategoriesSlide(pptx, pageCategories, aiData, memos) {
 
   const headers = [
     { label: 'カテゴリ', align: 'left' },
-    { label: 'PV', align: 'right' },
-    { label: 'ユーザー', align: 'right' },
-    { label: 'エンゲ率', align: 'right' },
+    { label: getShortLabel('screenPageViews'), align: 'right' },
+    { label: getShortLabel('totalUsers'), align: 'right' },
+    { label: getShortLabel('engagementRate'), align: 'right' },
   ];
   const rows = categories.slice(0, 10).map(c => [
     c.category,
@@ -1197,8 +1198,8 @@ function createLandingPagesSlide(pptx, landingPages, aiData, memos) {
 
   // 棒グラフ
   const chartData = [
-    { name: 'セッション', labels: top10.map(r => (r.landingPage || '').substring(0, 30)), values: top10.map(r => fmtNum(r.sessions)) },
-    { name: 'CV', labels: top10.map(r => (r.landingPage || '').substring(0, 30)), values: top10.map(r => fmtNum(r.conversions || 0)) },
+    { name: getShortLabel('sessions'), labels: top10.map(r => (r.landingPage || '').substring(0, 30)), values: top10.map(r => fmtNum(r.sessions)) },
+    { name: getShortLabel('conversions'), labels: top10.map(r => (r.landingPage || '').substring(0, 30)), values: top10.map(r => fmtNum(r.conversions || 0)) },
   ];
 
   slide.addChart(pptx.charts.BAR, chartData, {
@@ -1214,9 +1215,9 @@ function createLandingPagesSlide(pptx, landingPages, aiData, memos) {
   const headers = [
     { label: '#', align: 'center' },
     { label: 'ランディングページ', align: 'left' },
-    { label: 'セッション', align: 'right' },
-    { label: 'CV', align: 'right' },
-    { label: 'エンゲ率', align: 'right' },
+    { label: getShortLabel('sessions'), align: 'right' },
+    { label: getShortLabel('conversions'), align: 'right' },
+    { label: getShortLabel('engagementRate'), align: 'right' },
   ];
   const rows = top10.map((r, i) => [
     i + 1,
@@ -1250,7 +1251,7 @@ function createFileDownloadsSlide(pptx, fileDownloads, aiData, memos) {
   // 棒グラフ
   const chartData = [
     { name: 'DL数', labels: top10.map(r => (r.fileName || r.linkUrl || '').substring(0, 25)), values: top10.map(r => fmtNum(r.eventCount)) },
-    { name: 'ユーザー', labels: top10.map(r => (r.fileName || r.linkUrl || '').substring(0, 25)), values: top10.map(r => fmtNum(r.activeUsers)) },
+    { name: getShortLabel('totalUsers'), labels: top10.map(r => (r.fileName || r.linkUrl || '').substring(0, 25)), values: top10.map(r => fmtNum(r.activeUsers)) },
   ];
 
   slide.addChart(pptx.charts.BAR, chartData, {
@@ -1267,7 +1268,7 @@ function createFileDownloadsSlide(pptx, fileDownloads, aiData, memos) {
     { label: '#', align: 'center' },
     { label: 'ファイル名', align: 'left' },
     { label: 'DL数', align: 'right' },
-    { label: 'ユーザー', align: 'right' },
+    { label: getShortLabel('totalUsers'), align: 'right' },
   ];
   const rows = top10.map((r, i) => [
     i + 1,
@@ -1300,8 +1301,8 @@ function createExternalLinksSlide(pptx, externalLinks, aiData, memos) {
   const headers = [
     { label: '#', align: 'center' },
     { label: 'リンクURL', align: 'left' },
-    { label: 'クリック数', align: 'right' },
-    { label: 'ユーザー', align: 'right' },
+    { label: getShortLabel('clicks'), align: 'right' },
+    { label: getShortLabel('totalUsers'), align: 'right' },
   ];
   const rows = top10.map((r, i) => [
     i + 1,
@@ -1451,20 +1452,21 @@ function createAppendixSlide(pptx) {
   const slide = pptx.addSlide();
   addSlideTitle(slide, '指標・用語の説明');
 
+  // 用語集は辞書（shared/metrics.json）の description を一次ソースとする
   const terms = [
-    ['セッション', 'ユーザーがサイトを訪問した回数。30分以上操作がない場合、新しいセッションとしてカウント'],
-    ['ユーザー', 'サイトを訪問したユニークユーザー数'],
-    ['新規ユーザー', '選択期間中に初めてサイトを訪問したユーザー数'],
-    ['ページビュー（表示回数）', 'ページが表示された回数の合計'],
-    ['エンゲージメント率', 'エンゲージメントのあったセッションの割合（10秒以上滞在、2PV以上、CVイベント発生のいずれか）'],
+    [getLabel('sessions'), getTooltip('sessions')],
+    [getLabel('totalUsers'), getTooltip('totalUsers')],
+    [getLabel('newUsers'), getTooltip('newUsers')],
+    [getLabel('screenPageViews'), getTooltip('screenPageViews')],
+    [getLabel('engagementRate'), getTooltip('engagementRate')],
     ['平均エンゲージメント時間', 'ユーザーがサイトに積極的に関与していた平均時間'],
-    ['コンバージョン（キーイベント）', '設定した目標アクション（お問い合わせ、資料DL等）の完了数'],
-    ['コンバージョン率（CVR）', 'セッションのうちコンバージョンに至った割合'],
+    [getLabel('conversions'), getTooltip('conversions')],
+    [getLabel('conversionRate'), getTooltip('conversionRate')],
     ['ランディングページ', 'ユーザーが最初に閲覧したページ'],
-    ['クリック数（GSC）', 'Google検索結果でサイトがクリックされた回数'],
-    ['表示回数（GSC）', 'Google検索結果にサイトが表示された回数'],
-    ['CTR（GSC）', '表示回数に対するクリック数の割合'],
-    ['平均掲載順位（GSC）', 'Google検索結果での平均表示順位'],
+    [getLabel('clicks'), getTooltip('clicks')],
+    [getLabel('impressions'), getTooltip('impressions')],
+    [getLabel('ctr'), getTooltip('ctr')],
+    [getLabel('position'), getTooltip('position')],
   ];
 
   const tableY = CONTENT_Y;
@@ -1557,7 +1559,7 @@ export async function downloadAnalysisPptx(allData, siteName, dateRange) {
   // 1. 表紙
   createCoverSlide(pptx, siteName, allData.siteUrl, dateRange, logoBase64, comp?.dateRange);
 
-  // 2. 全体サマリー（主要指標 + KPI予実 + コンバージョン内訳）
+  // 2. 全体サマリー（主要指標 + 目標予実 + コンバージョン内訳）
   createSummarySlide(pptx, allData.summaryMetrics, allData.kpiSettings, ai['analysis/summary'], memos['analysis/summary'], comp?.summaryMetrics);
 
   // セクション2: トレンド分析

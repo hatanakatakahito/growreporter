@@ -239,10 +239,10 @@ export function createRowData(siteInfo, monthlyData) {
     conversions = 0,
   } = monthlyData;
 
-  // 平均PV = ページビュー数 / 訪問者数
+  // 1セッションあたりPV = ページビュー数 / セッション数
   const avgPageViews = sessions > 0 ? (pageViews / sessions).toFixed(2) : 0;
 
-  // CVR = コンバージョン数 / 訪問者数 * 100
+  // コンバージョン率 = コンバージョン数 / セッション数 * 100
   const cvr = sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : 0;
 
   return [
@@ -253,14 +253,14 @@ export function createRowData(siteInfo, monthlyData) {
     toLabeledCellValue(siteType, SITE_TYPE_LABELS),     // E: サイト種別
     toLabeledCellValue(sitePurpose, SITE_PURPOSE_LABELS), // F: サイトの目的
     yearMonth,                // G: 対象年月
-    sessions,                 // H: 訪問者数
+    sessions,                 // H: セッション数
     newUsers,                 // I: 新規ユーザー
     users,                    // J: ユーザー数
-    pageViews,                // K: PV数
-    avgPageViews,             // L: 平均PV
-    (engagementRate * 100).toFixed(2), // M: ENG率（%）
-    conversions,              // N: CV数
-    cvr,                      // O: CVR（%）
+    pageViews,                // K: ページビュー
+    avgPageViews,             // L: 1セッションあたりPV
+    (engagementRate * 100).toFixed(2), // M: エンゲージメント率（%）
+    conversions,              // N: コンバージョン数
+    cvr,                      // O: コンバージョン率（%）
   ];
 }
 

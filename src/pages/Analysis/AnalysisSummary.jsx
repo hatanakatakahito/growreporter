@@ -22,7 +22,7 @@ import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 
 /**
  * 分析画面 - 全体サマリー
- * 主要指標サマリ / コンバージョン内訳 / KPI予実の3タブ構成
+ * 主要指標サマリ / コンバージョン内訳 / 目標予実の3タブ構成
  */
 export default function AnalysisSummary() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange } = useSite();
@@ -73,7 +73,7 @@ export default function AnalysisSummary() {
     hasGSCConnection
   );
 
-  // 前月の日付範囲計算（コンバージョン内訳/KPI予実用）
+  // 前月の日付範囲計算（コンバージョン内訳/目標予実用）
   const previousMonthRange = useMemo(() => {
     const from = dateRange.from ? new Date(dateRange.from) : new Date();
     const to = dateRange.to ? new Date(dateRange.to) : new Date();

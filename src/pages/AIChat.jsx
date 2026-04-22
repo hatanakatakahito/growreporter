@@ -22,21 +22,88 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import toast from 'react-hot-toast';
 import { useAutoTour } from '../hooks/useAutoTour';
 import TourHelpButton from '../components/Onboarding/TourHelpButton';
-import { useAdmin } from '../hooks/useAdmin';
-
-const MODEL_OPTIONS = [
-  { value: 'gemini', label: 'Gemini 2.5 Flash', adminOnly: false },
-  { value: 'claude', label: 'Claude Sonnet 4.6', adminOnly: true },
-];
 
 const CHART_COLORS = ['#3758F9', '#13C296', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xlsx', 'csv', 'pptx', 'docx'];
 const MAX_FILE_SIZE = 20 * 1024 * 1024;
 
-const PROSE_CLASSES = 'prose prose-sm max-w-none text-dark dark:text-gray-300 dark:prose-invert';
+const PROSE_CLASSES = [
+  'prose prose-sm max-w-none text-dark dark:text-gray-300 dark:prose-invert',
+  // 段落はタイトめに（prose-sm のデフォルトに勝つため ! を付与）
+  'prose-p:!my-[0.4em] prose-p:!leading-[1.85]',
+  // 見出し共通
+  'prose-headings:!font-bold prose-headings:!text-slate-900 dark:prose-headings:!text-white',
+  'prose-h1:!text-lg prose-h1:!mt-8 prose-h1:!mb-3',
+  // h2: 下線なし、上余白多め
+  'prose-h2:!text-[17px] prose-h2:!mt-[1.9rem] prose-h2:!mb-[0.4rem] prose-h2:!pb-0 prose-h2:!border-0',
+  // h3: コンパクト
+  'prose-h3:!text-sm prose-h3:!mt-[1.2rem] prose-h3:!mb-1',
+  // 見出し直後の段落は上マージンを詰める
+  '[&_h2+p]:!mt-1 [&_h3+p]:!mt-1 [&_h2+h3]:!mt-3 [&_h3+h3]:!mt-4',
+  // リスト項目間はゆったり
+  'prose-li:!my-1 prose-ul:!my-3 prose-ol:!my-3 prose-li:!leading-[1.75]',
+  // 区切り線
+  'prose-hr:!my-6 prose-hr:!border-slate-200',
+  // strong は色で目立たせる
+  'prose-strong:!text-slate-900 dark:prose-strong:!text-white prose-strong:!font-semibold',
+].join(' ');
 
 // ReactMarkdownのテーブル等にインラインでスタイルを適用するcomponents定義
 const MARKDOWN_COMPONENTS = {
+  // 見出しは prose-sm のデフォルトを確実に上書きするためインラインスタイルを使用
+  // サイズ階層: h1 20 > h2 18 > h3 16 > h4 14(bold) > 本文 14
+  h1: ({ children }) => (
+    <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#0F172A', marginTop: '2rem', marginBottom: '0.75rem', lineHeight: 1.4 }}>{children}</h1>
+  ),
+  h2: ({ children }) => (
+    <h2 style={{ fontSize: '20px', fontWeight: 700, color: '#0F172A', marginTop: '1.9rem', marginBottom: '0.6rem', paddingBottom: '0.35rem', borderBottom: '1px solid #E2E8F0', lineHeight: 1.4 }}>{children}</h2>
+  ),
+  h3: ({ children }) => (
+    <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#0F172A', marginTop: '1.2rem', marginBottom: '0.35rem', lineHeight: 1.5, display: 'flex', alignItems: 'center', gap: '0.4em' }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3758F9" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+        <path d="M9 18l6-6-6-6" />
+      </svg>
+      <span>{children}</span>
+    </h3>
+  ),
+  h4: ({ children }) => (
+    <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#0F172A', marginTop: '1rem', marginBottom: '0.25rem', lineHeight: 1.5 }}>{children}</h4>
+  ),
+  // リスト: bullet/番号を表示して左インデント確保、本文と同サイズ(14px)で統一
+  ul: ({ children }) => (
+    <ul style={{ listStyleType: 'disc', paddingLeft: '1.5em', margin: '0.5em 0', color: '#334155', fontSize: '14px' }}>{children}</ul>
+  ),
+  ol: ({ children }) => (
+    <ol style={{ listStyleType: 'decimal', paddingLeft: '1.6em', margin: '0.5em 0', color: '#334155', fontSize: '14px' }}>{children}</ol>
+  ),
+  li: ({ children }) => (
+    <li style={{ marginTop: '0.25em', marginBottom: '0.25em', lineHeight: 1.8, paddingLeft: '0.2em', fontSize: '14px' }}>{children}</li>
+  ),
+  // 段落: 擬似見出し検出（<strong>のみ や **text:** で始まる段落）を h3 扱いに（post-process の保険）
+  p: ({ children }) => {
+    const arr = React.Children.toArray(children);
+    let isPseudoHeading = false;
+    // ケース1: <strong>のみ（"**タイトル**" 単独段落）
+    if (arr.length === 1 && React.isValidElement(arr[0]) && arr[0].type === 'strong') {
+      isPseudoHeading = true;
+    }
+    // ケース2: <strong>タイトル</strong> に続いて : やコロン記号 のみ
+    if (
+      arr.length === 2 &&
+      React.isValidElement(arr[0]) && arr[0].type === 'strong' &&
+      typeof arr[1] === 'string' && /^[\s：:]+$/.test(arr[1])
+    ) {
+      isPseudoHeading = true;
+    }
+    if (isPseudoHeading) {
+      return (
+        <p style={{ marginTop: '1rem', marginBottom: '0.3rem', fontSize: '14px', fontWeight: 700, color: '#0F172A', lineHeight: 1.5 }}>
+          {children}
+        </p>
+      );
+    }
+    return <p style={{ marginTop: '0.4em', marginBottom: '0.4em', fontSize: '14px', lineHeight: 1.85 }}>{children}</p>;
+  },
   table: ({ children }) => <ExpandableTable>{children}</ExpandableTable>,
   thead: ({ children }) => (
     <thead style={{ backgroundColor: '#ffffff' }}>{children}</thead>
@@ -74,6 +141,48 @@ const DEFAULT_SUGGEST_QUESTIONS = [
   '最も改善すべきページはどこ？',
   'SEOで改善できるキーワードは？',
 ];
+
+// サジェスト質問のタイトル（カード表示用の短縮ラベル）
+const SUGGEST_TITLES = {
+  '前月分のアクセス状況を表組でまとめて': '前月のサマリー',
+  '前月分と前年同月分を比較して表組でまとめて': '前年同月との比較',
+  '今月のコンバージョン数を内訳別で教えて': '今月のCV内訳',
+  '現在のアクセス状況についてどんな状況か教えて': '現状のアクセス状況',
+  '最も改善すべきページはどこ？': '優先改善ページ',
+  'SEOで改善できるキーワードは？': 'SEO改善キーワード',
+  'アクセスが急増/急減した日とその原因は？': 'アクセス変動の原因',
+  '曜日ごとのアクセス傾向を教えて': '曜日別のアクセス傾向',
+  '曜日ごとのアクセスパターンを分析して': '曜日別のアクセスパターン',
+  '平日と週末のアクセス差はどのくらい？': '平日と週末の差',
+  '時間帯別のアクセスピークはいつ？': 'アクセスのピーク時間',
+  'アクセスが少ない時間帯に改善できることは？': '閑散時間帯の改善',
+  '月別のトレンドを前年と比較して': '月別の前年比較',
+  '成長率が最も高い月と低い月は？': '成長率の月別比較',
+  '全体サマリーで最も注目すべき変化は？': '注目すべき変化',
+  '改善の優先順位をつけるとしたら？': '改善の優先順位',
+  'ユーザー属性の特徴を教えて': 'ユーザー属性の特徴',
+  'ターゲットユーザーにリーチできている？': 'ターゲット到達度',
+  'チャネル別の前年比較を表組で教えて': 'チャネル別の前年比較',
+  '弱いチャネルを強化するにはどうすればいい？': '弱いチャネルの強化',
+  '順位が改善できそうなキーワードは？': '改善余地のあるKW',
+  '前年と比べてKW順位はどう変化した？': 'KW順位の年次変化',
+  '参照元サイトで注目すべきものは？': '注目の参照元',
+  '新しい流入経路を開拓するには？': '新規流入経路の開拓',
+  'PVが高いのにCVが低いページは？': 'PV高・CV低ページ',
+  'ページ別のエンゲージメント率を比較して': 'ページ別のエンゲージ',
+  'カテゴリ別で最も改善余地があるのは？': 'カテゴリ別の改善余地',
+  'カテゴリ別のCV貢献度を教えて': 'カテゴリ別のCV貢献',
+  'ランディングページの直帰率が高いのはどこ？': 'LPの直帰率',
+  'LPごとのCV率を比較して': 'LP別のCV率',
+  'CV数の月別推移と傾向を教えて': 'CV数の月別推移',
+  'CVを増やすための具体的な施策は？': 'CV増の具体施策',
+  'CVに至る最も効果的な導線は？': '効果的なCV導線',
+  'CV直前で離脱が多いページは？': 'CV直前の離脱',
+  'ユーザーが離脱しやすい遷移パターンは？': '離脱しやすい遷移',
+  'トップページからの理想的な遷移先は？': 'トップからの理想遷移',
+  'サイト全体で最も優先すべき課題は？': '最優先すべき課題',
+  'この分析結果をもとに改善提案をして': '分析ベースの改善提案',
+};
 
 // ページ種別に応じた動的サジェスト質問
 const PAGE_SUGGEST_QUESTIONS = {
@@ -144,10 +253,9 @@ const PAGE_SUGGEST_QUESTIONS = {
 };
 
 export default function AIChat() {
-  const { selectedSite, selectedSiteId } = useSite();
+  const { selectedSite, selectedSiteId, dateRange } = useSite();
   const { currentUser } = useAuth();
   const { plan, getRemainingByType, isFree } = usePlan();
-  const { isAdmin } = useAdmin();
   const [searchParams] = useSearchParams();
   useAutoTour('aiChat');
 
@@ -165,27 +273,6 @@ export default function AIChat() {
   const [editTitleValue, setEditTitleValue] = useState('');
   const [showNewSessionDialog, setShowNewSessionDialog] = useState(false);
   const [newSessionTitle, setNewSessionTitle] = useState('');
-  const [modelChoice, setModelChoice] = useState(() => {
-    try { return localStorage.getItem('aiChatModel') || 'gemini'; } catch { return 'gemini'; }
-  });
-
-  // 非管理者が localStorage に claude を持っていた場合は gemini に戻す
-  useEffect(() => {
-    if (modelChoice === 'claude' && !isAdmin) {
-      setModelChoice('gemini');
-      try { localStorage.setItem('aiChatModel', 'gemini'); } catch {}
-    }
-  }, [isAdmin, modelChoice]);
-
-  const handleModelChange = (value) => {
-    setModelChoice(value);
-    try { localStorage.setItem('aiChatModel', value); } catch {}
-  };
-
-  const availableModels = useMemo(
-    () => MODEL_OPTIONS.filter(m => !m.adminOnly || isAdmin),
-    [isAdmin]
-  );
 
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -290,7 +377,8 @@ export default function AIChat() {
         sessionId: activeSessionId || null,
         message: text,
         attachments: attachmentData,
-        model: modelChoice,
+        startDate: dateRange?.from,
+        endDate: dateRange?.to,
       });
 
       const { sessionId: newSessionId, message: aiMsg } = result.data;
@@ -307,6 +395,7 @@ export default function AIChat() {
         text: aiMsg.text,
         chartData: aiMsg.chartData,
         improvementData: aiMsg.improvementData,
+        followupQuestions: aiMsg.followupQuestions,
         timestamp: new Date().toISOString(),
       }]);
 
@@ -481,11 +570,11 @@ export default function AIChat() {
                   onBlur={() => handleSaveTitle(s.id)} onKeyDown={e => { if (e.key === 'Enter') handleSaveTitle(s.id); if (e.key === 'Escape') setEditingTitleId(null); }}
                   className="w-full text-sm border border-primary rounded px-1 py-0.5 dark:bg-dark-3 dark:text-white" />
               ) : (
-                <div className="text-sm font-medium text-dark dark:text-white truncate">{s.title || '無題の会話'}</div>
+                <div className="pr-8 text-sm font-medium text-dark dark:text-white truncate">{s.title || '無題の会話'}</div>
               )}
-              <div className="flex items-center gap-2 mt-1 text-xs text-body-color">
+              <div className="pr-8 flex items-center gap-2 mt-1 text-xs text-body-color">
                 <span>{s.turnCount || 0}ターン</span>
-                {s.updatedAt && <span>{new Date(s.updatedAt).toLocaleDateString('ja-JP')}</span>}
+                {s.updatedAt && <span>{new Date(s.updatedAt).toLocaleString('ja-JP', { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>}
               </div>
               {/* メニュー */}
               <button onClick={e => { e.stopPropagation(); setSessionMenuId(sessionMenuId === s.id ? null : s.id); }}
@@ -526,7 +615,6 @@ export default function AIChat() {
           <button onClick={() => setShowSidebar(!showSidebar)} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3 hidden lg:block">
             {showSidebar ? <ChevronLeft className="h-5 w-5 text-body-color" /> : <Menu className="h-5 w-5 text-body-color" />}
           </button>
-          <Sparkles className="h-5 w-5 text-primary shrink-0" />
           <div className="flex-1 min-w-0 flex items-center gap-2">
             <h2 className="text-sm font-semibold text-dark dark:text-white truncate">
               AIチャット {selectedSite?.siteName ? `- ${selectedSite.siteName}` : ''}
@@ -535,50 +623,37 @@ export default function AIChat() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {messages.length > 0 && (
-              <>
-                <button onClick={handleExport} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3" title="テキストエクスポート">
-                  <Download className="h-4 w-4 text-body-color" />
-                </button>
-                {activeSessionId && (
-                  <button onClick={() => {
-                    if (window.confirm('この会話を終了しますか？\n会話履歴と添付ファイルは残ります。')) {
-                      const fn = httpsCallable(functions, 'endChatSession');
-                      fn({ siteId: selectedSiteId, sessionId: activeSessionId })
-                        .then(() => { toast.success('会話を終了しました'); loadSessions(); })
-                        .catch(() => toast.error('操作に失敗しました'));
-                    }
-                  }} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3" title="会話を終了">
-                    <StopCircle className="h-4 w-4 text-body-color" />
-                  </button>
-                )}
-              </>
+              <button onClick={handleExport} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3" title="テキストエクスポート">
+                <Download className="h-4 w-4 text-body-color" />
+              </button>
             )}
           </div>
         </div>
 
         {/* メッセージ表示エリア */}
-        <div className="flex-1 overflow-y-auto px-4 py-6">
+        <div className={`flex-1 overflow-y-auto px-4 py-6 ${messages.length === 0 ? 'flex items-center justify-center' : ''}`}>
           {messages.length === 0 ? (
-            /* 新規チャット: サマリー + サジェスト */
-            <div className="mx-auto max-w-2xl">
+            /* 新規チャット: サマリー + サジェスト（縦中央配置） */
+            <div className="mx-auto max-w-2xl w-full">
               <div className="mb-8 text-center">
-                <Sparkles className="mx-auto mb-4 h-12 w-12 text-primary/30" />
-                <h3 className="text-xl font-bold text-dark dark:text-white mb-2">AIに質問する</h3>
-                <p className="text-sm text-body-color">{selectedSite?.siteName || 'サイト'}のアクセスデータに基づいて回答します</p>
+                <h3 className="text-2xl font-bold mb-2" style={{ background: 'linear-gradient(135deg, #3758F9 0%, #8B5CF6 100%)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
+                  AIに質問する
+                </h3>
+                <p className="text-sm text-slate-600 dark:text-gray-400">{selectedSite?.siteName || 'サイト'}のアクセスデータに基づいて回答します</p>
               </div>
               <div data-tour="ai-chat-suggest" className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {suggestQuestions.map((q, i) => (
                   <button key={i} onClick={() => { setInputText(q); inputRef.current?.focus(); }}
-                    className="rounded-lg border border-stroke p-3 text-left text-sm text-dark hover:bg-white dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 transition"
-                    style={{ background: 'rgba(255, 255, 255, 0.50)' }}>
-                    {q}
+                    className="rounded-xl border border-slate-200 bg-white p-4 text-left hover:border-slate-300 hover:shadow-sm transition dark:border-dark-3 dark:bg-dark-2 dark:hover:border-dark-3">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-white mb-1">{SUGGEST_TITLES[q] || q}</div>
+                    <div className="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">{q}</div>
                   </button>
                 ))}
               </div>
             </div>
           ) : (
             /* メッセージ一覧 */
-            <div className="mx-auto max-w-3xl space-y-6">
+            <div className="mx-auto max-w-5xl space-y-6">
               {messages.map((msg, i) => {
                 // 最後のユーザーメッセージかどうか判定
                 const isLastUserMsg = msg.role === 'user' && !messages.slice(i + 1).some(m => m.role === 'user');
@@ -592,16 +667,17 @@ export default function AIChat() {
                       setMessages(prev => prev.filter((_, j) => j !== i));
                       setIsSending(true);
                       const fn = httpsCallable(functions, 'aiChat');
-                      fn({ siteId: selectedSiteId, sessionId: activeSessionId, message: lastUserMsg.text, attachments: [], model: modelChoice })
+                      fn({ siteId: selectedSiteId, sessionId: activeSessionId, message: lastUserMsg.text, attachments: [], startDate: dateRange?.from, endDate: dateRange?.to })
                         .then(result => {
                           const { message: aiMsg } = result.data;
-                          setMessages(prev => [...prev, { role: 'model', text: aiMsg.text, chartData: aiMsg.chartData, improvementData: aiMsg.improvementData, timestamp: new Date().toISOString() }]);
+                          setMessages(prev => [...prev, { role: 'model', text: aiMsg.text, chartData: aiMsg.chartData, improvementData: aiMsg.improvementData, followupQuestions: aiMsg.followupQuestions, timestamp: new Date().toISOString() }]);
                         })
                         .catch(() => {
                           setMessages(prev => [...prev, { role: 'error', text: '回答の生成に失敗しました。', timestamp: new Date().toISOString() }]);
                         })
                         .finally(() => setIsSending(false));
                     } : null}
+                    onSelectFollowup={(q) => { setInputText(q); inputRef.current?.focus(); }}
                     onEdit={isLastUserMsg && !isSending ? (newText) => {
                       // 最後のユーザーメッセージ以降を削除して、編集テキストで再送信
                       setMessages(prev => prev.slice(0, i));
@@ -614,10 +690,10 @@ export default function AIChat() {
                         setMessages(prev => [...prev, userMsg]);
                         setIsSending(true);
                         const fn = httpsCallable(functions, 'aiChat');
-                        fn({ siteId: selectedSiteId, sessionId: activeSessionId, message: newText, attachments: [], model: modelChoice })
+                        fn({ siteId: selectedSiteId, sessionId: activeSessionId, message: newText, attachments: [], startDate: dateRange?.from, endDate: dateRange?.to })
                           .then(result => {
                             const { message: aiMsg } = result.data;
-                            setMessages(prev => [...prev, { role: 'model', text: aiMsg.text, chartData: aiMsg.chartData, improvementData: aiMsg.improvementData, timestamp: new Date().toISOString() }]);
+                            setMessages(prev => [...prev, { role: 'model', text: aiMsg.text, chartData: aiMsg.chartData, improvementData: aiMsg.improvementData, followupQuestions: aiMsg.followupQuestions, timestamp: new Date().toISOString() }]);
                           })
                           .catch(e => {
                             setMessages(prev => [...prev, { role: 'error', text: '回答の生成に失敗しました。', timestamp: new Date().toISOString() }]);
@@ -658,28 +734,13 @@ export default function AIChat() {
 
         {/* 入力欄 */}
         <div className="border-t border-stroke dark:border-dark-3 bg-white dark:bg-dark-2 px-4 py-3 shrink-0">
-          <div className="mx-auto max-w-3xl">
-            {availableModels.length > 1 && !isLimitReached && (
-              <div className="mb-2 flex items-center gap-2">
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-                <select
-                  value={modelChoice}
-                  onChange={e => handleModelChange(e.target.value)}
-                  className="rounded-md border border-stroke bg-white px-2 py-1 text-xs font-medium text-dark focus:border-primary focus:outline-none dark:border-dark-3 dark:bg-dark-2 dark:text-white"
-                  title="AIモデル選択（管理者のみClaude選択可）"
-                >
-                  {availableModels.map(m => (
-                    <option key={m.value} value={m.value}>{m.label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
+          <div className="mx-auto max-w-5xl">
             {isLimitReached ? (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-center text-sm text-amber-700 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-400">
                 今月のAIチャット回数に達しました。プランをアップグレードしてください。
               </div>
             ) : (
-              <div data-tour="ai-chat-input-field" className="flex items-center gap-2 rounded-xl border border-stroke bg-white px-2 py-1.5 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+              <div data-tour="ai-chat-input-field" className="flex items-center gap-2 rounded-xl border border-stroke bg-white px-2 py-1.5 dark:border-dark-3 dark:bg-dark-2">
                 <button onClick={() => fileInputRef.current?.click()} className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3" title="ファイル添付">
                   <Paperclip className="h-5 w-5 text-body-color" />
                 </button>
@@ -692,7 +753,9 @@ export default function AIChat() {
                   onInput={e => { e.target.style.height = '36px'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }}
                 />
                 <button onClick={handleSend} disabled={isSending || (!inputText.trim() && attachments.length === 0)}
-                  className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 transition">
+                  className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-white hover:opacity-95 disabled:opacity-40 transition"
+                  style={{ background: 'linear-gradient(135deg, #3758F9 0%, #7C3AED 100%)' }}
+                  title="送信">
                   {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </button>
               </div>
@@ -760,7 +823,7 @@ function UserAvatar() {
   );
 }
 
-function ChatMessage({ message, onAddImprovement, onEdit, isLast, onRetry }) {
+function ChatMessage({ message, onAddImprovement, onEdit, isLast, onRetry, onSelectFollowup }) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState('');
 
@@ -800,10 +863,10 @@ function ChatMessage({ message, onAddImprovement, onEdit, isLast, onRetry }) {
   };
 
   return (
-    <div className={`group flex gap-3 ${isUser ? 'justify-end' : ''}`}>
+    <div className={`group flex items-start gap-3 ${isUser ? 'justify-end' : ''}`}>
       {!isUser && (
-        <div className="shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-          <Sparkles className="h-4 w-4 text-primary" />
+        <div className="shrink-0 w-9 h-9 rounded-full overflow-hidden bg-white border border-slate-200 flex items-center justify-center shadow-sm">
+          <img src="/favicon.ico" alt="AI" className="h-6 w-6 object-contain" />
         </div>
       )}
       <div className={`max-w-[85%] ${isUser ? '' : 'space-y-3'}`}>
@@ -827,7 +890,10 @@ function ChatMessage({ message, onAddImprovement, onEdit, isLast, onRetry }) {
           ) : (
             /* 通常表示 */
             <div className="relative">
-              <div className="bg-primary text-white rounded-2xl px-4 py-2.5">
+              <div
+                className="text-white rounded-2xl rounded-tr-md px-4 py-3 shadow-sm leading-relaxed"
+                style={{ background: 'linear-gradient(135deg, #3758F9 0%, #7C3AED 100%)' }}
+              >
                 <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                 {message.attachments?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1.5">
@@ -851,12 +917,32 @@ function ChatMessage({ message, onAddImprovement, onEdit, isLast, onRetry }) {
           )
         ) : (
           <>
-            {/* マークダウン + インライングラフ + 改善提案レンダリング */}
-            <MessageContent text={message.text} chartData={message.chartData} onAddImprovement={onAddImprovement} />
+            {/* AIメッセージ: 白バブル + ボーダー + シャドウ */}
+            <div className="rounded-2xl rounded-tl-md bg-white border border-slate-200 p-5 shadow-sm dark:bg-dark-2 dark:border-dark-3">
+              <MessageContent text={message.text} chartData={message.chartData} onAddImprovement={onAddImprovement} />
+            </div>
 
             {/* バックエンドで検出された改善提案（フォールバック） */}
             {message.improvementData && !message.text.includes(':::improvement') && (
               <ImprovementCard data={message.improvementData} onAdd={onAddImprovement} />
+            )}
+
+            {/* フォローアップ質問候補 */}
+            {Array.isArray(message.followupQuestions) && message.followupQuestions.length > 0 && onSelectFollowup && (
+              <div className="mt-3">
+                <div className="mb-1.5 text-[11px] font-medium text-slate-500 dark:text-gray-400">続けて質問</div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {message.followupQuestions.slice(0, 4).map((q, i) => (
+                    <button
+                      key={i}
+                      onClick={() => onSelectFollowup(q)}
+                      className="text-left rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition dark:border-dark-3 dark:bg-dark-2 dark:text-gray-300 dark:hover:border-violet-700 dark:hover:bg-violet-900/20"
+                    >
+                      {q}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
           </>
         )}

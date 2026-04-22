@@ -27,9 +27,10 @@ import io
 from typing import Any
 
 from pptx import Presentation
+from pptx.dml.color import RGBColor
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION, XL_LABEL_POSITION
-from pptx.enum.shapes import MSO_SHAPE
+from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
 from pptx.oxml.ns import qn
 from pptx.util import Inches, Pt, Emu
@@ -68,6 +69,13 @@ from .helpers import (
     set_cell_text,
 )
 
+from shared.metrics import (
+    label_of,
+    short_label_of,
+    tooltip_of,
+    comparison_label,
+)
+
 
 # ─── エントリポイント ────────────────────────────────────
 
@@ -78,6 +86,9 @@ class _Ctx:
     def __init__(self) -> None:
         self.slide_count = 0
         self.date_label = ""
+        self.year_month = ""
+        self.section_index = 0
+        self.section_total = 0
 
 
 def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
@@ -100,6 +111,13 @@ def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
     d_to = date_range.get("to") or ""
     if d_from and d_to and len(d_to) >= 10:
         ctx.date_label = f"{d_from.replace('-', '.')}~{d_to[8:10]}"
+    # セクション中表紙の右下に出す年月 (例: '26.03)
+    ctx.year_month = ""
+    if d_to and len(d_to) >= 7:
+        ctx.year_month = f"'{d_to[2:4]}.{d_to[5:7]}"
+    # セクション番号管理 (中表紙の通し番号 + 総数)
+    ctx.section_index = 0
+    ctx.section_total = 6  # トレンド/ユーザー/集客/コンテンツ/コンバージョン/Appendix
 
     # 1. 表紙
     _create_cover_slide(prs, ctx, site_name, custom.get("siteUrl") or "", date_range, comp_range)
@@ -110,6 +128,7 @@ def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
         summary=custom.get("summary"),
         comp_summary=custom.get("compSummary"),
         kpi_settings=custom.get("kpiSettings"),
+        monthly_delta=custom.get("monthlyDelta"),
         ai_data=ai.get("analysis/summary"),
         memos=memos.get("analysis/summary") or memos.get("summary"),
     )
@@ -279,22 +298,50 @@ def _add_slide_title(slide, ctx: _Ctx, title: str) -> None:
 
 
 def _add_slide_footer(slide, ctx: _Ctx) -> None:
+    """全スライド共通フッター (表紙除く):
+    左に © グローレポータ / 右に P.NN。スライドコンテンツ幅 (MARGIN_X ~ SLIDE_W - MARGIN_X) に揃える。
+    """
     ctx.slide_count += 1
-    tb = slide.shapes.add_textbox(
-        Inches(SLIDE_W - 1.5), Inches(FOOTER_Y),
-        Inches(1.2), Inches(0.3),
+    foot_y = SLIDE_H - 0.32
+    foot_h = 0.28
+    page_w = 0.8
+
+    # 左: © (コンテンツ左端 = MARGIN_X)
+    brand_tb = slide.shapes.add_textbox(
+        Inches(MARGIN_X), Inches(foot_y),
+        Inches(CONTENT_W - page_w - 0.2), Inches(foot_h),
     )
-    tf = tb.text_frame
-    tf.margin_left = 0
-    tf.margin_right = 0
-    p = tf.paragraphs[0]
-    p.alignment = PP_ALIGN.RIGHT
-    run = p.add_run()
-    run.text = str(ctx.slide_count)
-    run.font.name = FONT_FACE
-    run.font.size = Pt(8)
-    run.font.color.rgb = Color.SUB_TEXT
-    tb.text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
+    btf = brand_tb.text_frame
+    btf.margin_left = 0
+    btf.margin_right = 0
+    btf.margin_top = 0
+    btf.margin_bottom = 0
+    btf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    bp = btf.paragraphs[0]
+    br = bp.add_run()
+    br.text = "© グローレポータ All rights reserved."
+    br.font.name = FONT_FACE
+    br.font.size = Pt(9)
+    br.font.color.rgb = Color.SUB_TEXT
+
+    # 右: P.NN (コンテンツ右端 = SLIDE_W - MARGIN_X)
+    page_tb = slide.shapes.add_textbox(
+        Inches(SLIDE_W - MARGIN_X - page_w), Inches(foot_y),
+        Inches(page_w), Inches(foot_h),
+    )
+    ptf = page_tb.text_frame
+    ptf.margin_left = 0
+    ptf.margin_right = 0
+    ptf.margin_top = 0
+    ptf.margin_bottom = 0
+    ptf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    pp = ptf.paragraphs[0]
+    pp.alignment = PP_ALIGN.RIGHT
+    pr = pp.add_run()
+    pr.text = f"P.{ctx.slide_count:02d}"
+    pr.font.name = FONT_FACE
+    pr.font.size = Pt(9)
+    pr.font.color.rgb = Color.SUB_TEXT
 
 
 def _add_section_label(slide, ctx: _Ctx) -> None:
@@ -513,17 +560,39 @@ def _add_ai_and_memo_footer(
     tf.margin_left = Emu(18288)
     tf.margin_right = Emu(18288)
 
-    # テキストを段落ごとに追加（行間 1.2 倍）
+    # テキストを段落ごとに追加（行間 1.5 倍）
     paragraphs = ai_text.split("\n")
     for idx, line in enumerate(paragraphs):
         p = tf.paragraphs[0] if idx == 0 else tf.add_paragraph()
         p.alignment = PP_ALIGN.LEFT
-        p.line_spacing = 1.2
+        p.line_spacing = 1.5
         run = p.add_run()
         run.text = line
         run.font.name = FONT_FACE
         run.font.size = Pt(10)
         run.font.color.rgb = Color.DARK
+
+
+def _create_ai_slide(
+    prs, ctx: "_Ctx", parent_title: str,
+    ai_data: dict | None, memos: list | None,
+) -> None:
+    """親スライドの直後に AI 分析専用スライドを追加する。
+    AI データもメモも無い場合はスキップ。
+    """
+    has_ai = bool(ai_data and ai_data.get("summary"))
+    has_memo = bool(memos and len(memos) > 0)
+    if not has_ai and not has_memo:
+        return
+
+    slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank
+    _fill_slide_bg(slide, Color.WHITE)
+    _add_slide_title(slide, ctx, f"{parent_title} — AI分析")
+
+    # コンテンツ全域を AI に使用
+    ai_y = CONTENT_Y
+    ai_h = FOOTER_Y - CONTENT_Y - 0.1
+    _add_ai_and_memo_footer(slide, ai_data, memos, ai_y, ai_h)
 
 
 # ─── 1. 表紙 ────────────────────────────────────────────
@@ -534,87 +603,165 @@ def _create_cover_slide(
     site_name: str, site_url: str,
     date_range: dict | None, comp_range: dict | None,
 ) -> None:
-    slide = prs.slides.add_slide(prs.slide_layouts[6])  # blank
-    _fill_slide_bg(slide, Color.WHITE)
+    """表紙: 上部 (REPORT 番号 + ロゴ) / 中央 (大タイトル) / 右側 (縦書き) / 下部 (4 列情報)"""
+    from datetime import datetime as _dt, timedelta, timezone
 
-    # 「GrowReporter」ロゴテキスト
-    logo_tb = slide.shapes.add_textbox(
-        Inches(MARGIN_X), Inches(1.1),
-        Inches(CONTENT_W), Inches(1.0),
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _fill_slide_bg(slide, Color.BG_SOFT)
+    # 表紙はページ番号管理から除外 (slide_count を増やさない)
+
+    d_from = (date_range or {}).get("from", "") or ""
+    d_to = (date_range or {}).get("to", "") or ""
+    end_ym = ""
+    if d_to and len(d_to) >= 7:
+        end_ym = d_to[:7].replace("-", ".")  # 2026.03
+
+    # 期間文字列 (同じ年月なら短縮形)
+    period_str = ""
+    if d_from and d_to:
+        if d_from[:7] == d_to[:7] and len(d_to) >= 10:
+            period_str = f"{d_from[:7].replace('-', '.')}.{d_from[8:10]}—{d_to[8:10]}"
+        else:
+            period_str = f"{d_from.replace('-', '.')}—{d_to.replace('-', '.')}"
+
+    JST = timezone(timedelta(hours=9))
+    created_str = _dt.now(JST).strftime("%Y/%m/%d")
+
+    left_x = 0.7
+    right_x = SLIDE_W - 0.7
+
+    # ─── 上部左: ─ REPORT / YYYY.MM ──
+    rep_y = 0.5
+    rep_h = 0.30
+    rep_tb = slide.shapes.add_textbox(
+        Inches(left_x + 0.4), Inches(rep_y),
+        Inches(5.0), Inches(rep_h),
     )
-    ltf = logo_tb.text_frame
-    ltf.margin_left = 0
-    ltf.margin_right = 0
-    lp = ltf.paragraphs[0]
-    lp.alignment = PP_ALIGN.CENTER
-    lrun = lp.add_run()
-    lrun.text = "GrowReporter"
-    lrun.font.name = FONT_FACE
-    lrun.font.size = Pt(44)
-    lrun.font.bold = True
-    lrun.font.color.rgb = Color.PRIMARY
+    rtf = rep_tb.text_frame
+    rtf.margin_left = 0
+    rtf.margin_right = 0
+    rtf.margin_top = 0
+    rtf.margin_bottom = 0
+    rtf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    rp = rtf.paragraphs[0]
+    rr = rp.add_run()
+    rr.text = f"REPORT / {end_ym}"
+    rr.font.name = FONT_FACE
+    rr.font.size = Pt(10)
+    rr.font.color.rgb = Color.PRIMARY
 
-    # 「分析レポート」タイトル
+    # 装飾線 (テキスト中央高さに揃える)
+    deco_y = rep_y + rep_h / 2
+    deco = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT,
+        Inches(left_x), Inches(deco_y),
+        Inches(left_x + 0.25), Inches(deco_y),
+    )
+    deco.line.color.rgb = Color.PRIMARY
+    deco.line.width = Pt(1.2)
+    _disable_shape_shadow(deco)
+
+    # ─── ロゴ画像 (タグラインはロゴ内にあるため別表示なし) ──
+    import os as _os
+    _logo_path = _os.path.join(
+        _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))),
+        "assets", "logo.png",
+    )
+    if _os.path.exists(_logo_path):
+        logo_w_in = 2.3
+        logo_h_in = logo_w_in * (383 / 1600)
+        slide.shapes.add_picture(
+            _logo_path,
+            Inches(left_x), Inches(1.05),
+            width=Inches(logo_w_in), height=Inches(logo_h_in),
+        )
+
+    # ─── 中央: 大タイトル「分析レポート」 + サイト名 ──
+    title_y = 2.6
     title_tb = slide.shapes.add_textbox(
-        Inches(MARGIN_X), Inches(2.4),
-        Inches(CONTENT_W), Inches(0.7),
+        Inches(left_x), Inches(title_y),
+        Inches(SLIDE_W - left_x - 1.2), Inches(1.4),
     )
     ttf = title_tb.text_frame
     ttf.margin_left = 0
     ttf.margin_right = 0
     tp = ttf.paragraphs[0]
-    tp.alignment = PP_ALIGN.CENTER
-    trun = tp.add_run()
-    trun.text = "分析レポート"
-    trun.font.name = FONT_FACE
-    trun.font.size = Pt(28)
-    trun.font.bold = True
-    trun.font.color.rgb = Color.PRIMARY
-    ttf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    tp.alignment = PP_ALIGN.LEFT
+    tr = tp.add_run()
+    tr.text = "分析レポート"
+    tr.font.name = FONT_FACE
+    tr.font.size = Pt(64)
+    tr.font.bold = True
+    tr.font.color.rgb = Color.DARK
 
-    # 情報テーブル
-    from datetime import datetime as _dt
-    rows = [
-        ("サイト名", site_name or ""),
-        ("URL", site_url or ""),
-        ("分析期間", f"{(date_range or {}).get('from', '')} 〜 {(date_range or {}).get('to', '')}"),
-    ]
-    if comp_range and comp_range.get("from") and comp_range.get("to"):
-        rows.append(("比較期間", f"{comp_range.get('from')} 〜 {comp_range.get('to')}"))
-    rows.append(("レポート作成日", _dt.now().strftime("%Y/%m/%d")))
+    # サイト名 (タイトル直下、タイトルに寄せて配置)
+    if site_name:
+        sub_tb = slide.shapes.add_textbox(
+            Inches(left_x), Inches(title_y + 1.25),
+            Inches(SLIDE_W - left_x - 1.2), Inches(0.4),
+        )
+        stf = sub_tb.text_frame
+        stf.margin_left = 0
+        stf.margin_right = 0
+        sp = stf.paragraphs[0]
+        sp.alignment = PP_ALIGN.LEFT
+        sr = sp.add_run()
+        sr.text = site_name
+        sr.font.name = FONT_FACE
+        sr.font.size = Pt(14)
+        sr.font.color.rgb = Color.SUB_TEXT
 
-    table_x = 2.2
-    table_w = 6.6
-    label_w = 1.8
-    value_w = 4.8
-    row_h = 0.55
-    table_y = 3.5
-    n = len(rows)
-
-    shape = slide.shapes.add_table(
-        n, 2,
-        Inches(table_x), Inches(table_y),
-        Inches(table_w), Inches(row_h * n),
+    # ─── 下部: 横線 + 4 カラム情報 (フッターとの距離を確保) ──
+    bottom_y = SLIDE_H - 1.8
+    bline = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT,
+        Inches(left_x), Inches(bottom_y),
+        Inches(right_x), Inches(bottom_y),
     )
-    table = shape.table
-    table.first_row = False
-    table.horz_banding = False
-    table.columns[0].width = Inches(label_w)
-    table.columns[1].width = Inches(value_w)
+    bline.line.color.rgb = Color.BORDER
+    bline.line.width = Pt(0.5)
+    _disable_shape_shadow(bline)
 
-    for i, (label, val) in enumerate(rows):
-        table.rows[i].height = Inches(row_h)
+    info_cols = [
+        ("01・SITE", site_name or ""),
+        ("02・URL", site_url or ""),
+        ("03・PERIOD", period_str or ""),
+        ("04・CREATED", created_str),
+    ]
+    col_w = (right_x - left_x) / 4
+    for i, (label, value) in enumerate(info_cols):
+        x = left_x + col_w * i
+        # ラベル
+        ltb = slide.shapes.add_textbox(
+            Inches(x), Inches(bottom_y + 0.18),
+            Inches(col_w - 0.2), Inches(0.28),
+        )
+        ltf = ltb.text_frame
+        ltf.margin_left = 0
+        ltf.margin_right = 0
+        lp = ltf.paragraphs[0]
+        lr = lp.add_run()
+        lr.text = label
+        lr.font.name = FONT_FACE
+        lr.font.size = Pt(8)
+        lr.font.color.rgb = Color.SUB_TEXT
+        # 値
+        vtb = slide.shapes.add_textbox(
+            Inches(x), Inches(bottom_y + 0.5),
+            Inches(col_w - 0.2), Inches(0.4),
+        )
+        vtf2 = vtb.text_frame
+        vtf2.margin_left = 0
+        vtf2.margin_right = 0
+        vtf2.word_wrap = True
+        vp2 = vtf2.paragraphs[0]
+        vr2 = vp2.add_run()
+        vr2.text = value
+        vr2.font.name = FONT_FACE
+        vr2.font.size = Pt(11)
+        vr2.font.color.rgb = Color.DARK
 
-        lc = table.cell(i, 0)
-        set_cell_bg(lc, Color.PRIMARY)
-        set_cell_text(lc, label, font_size=12, bold=True, color=Color.WHITE, align="center")
-        _set_cell_border(lc, Color.BORDER)
-
-        vc = table.cell(i, 1)
-        set_cell_bg(vc, Color.WHITE)
-        set_cell_text(vc, val, font_size=12, color=Color.DARK, align="left")
-        _set_cell_border(vc, Color.BORDER)
-
+    # 共通フッター (© + P.01) — 表紙も含めて通し番号
     _add_slide_footer(slide, ctx)
 
 
@@ -635,6 +782,7 @@ def _create_summary_slide(
     kpi_settings: dict | None,
     ai_data: dict | None,
     memos: list | None,
+    monthly_delta: dict | None = None,
 ) -> None:
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     _fill_slide_bg(slide, Color.WHITE)
@@ -648,27 +796,38 @@ def _create_summary_slide(
     cm = (comp_summary or {}).get("metrics") or {}
     has_comp = bool(cm)
 
-    metrics_data = [
-        ("セッション数", m.get("sessions"), cm.get("sessions"), "number"),
-        ("ユーザー数", m.get("totalUsers"), cm.get("totalUsers"), "number"),
-        ("新規ユーザー数", m.get("newUsers"), cm.get("newUsers"), "number"),
-        ("ページビュー数", m.get("pageViews"), cm.get("pageViews"), "number"),
-        ("エンゲージメント率", m.get("engagementRate"), cm.get("engagementRate"), "percent"),
-        ("コンバージョン数", m.get("conversions"), cm.get("conversions"), "number"),
+    # 項目: 現在の 6 コア + 4 GSC を維持
+    # 上段 (大カード) = セッション / コンバージョン / エンゲージメント率 の 3 主要指標
+    # 下段 (小カード) = ユーザー / 新規 / PV / クリック / 表示回数 / CTR / 掲載順位
+    # mom_key は monthlyDelta の lookup キー (None なら前月比表示なし)
+    top_items = [
+        (short_label_of("sessions"), m.get("sessions"), cm.get("sessions"), "number", "sessions"),
+        (short_label_of("conversions"), m.get("conversions"), cm.get("conversions"), "number", "conversions"),
+        (short_label_of("engagementRate"), m.get("engagementRate"), cm.get("engagementRate"), "percent", "engagementRate"),
     ]
-    if m.get("clicks") or m.get("impressions"):
-        metrics_data.extend([
-            ("クリック数（GSC）", m.get("clicks"), cm.get("clicks"), "number"),
-            ("表示回数（GSC）", m.get("impressions"), cm.get("impressions"), "number"),
-            ("CTR（GSC）", m.get("ctr"), cm.get("ctr"), "percent"),
-            ("平均掲載順位（GSC）", m.get("position"), cm.get("position"), "decimal"),
+    bottom_items = [
+        (short_label_of("totalUsers"), m.get("totalUsers"), cm.get("totalUsers"), "number", "totalUsers"),
+        (short_label_of("newUsers"), m.get("newUsers"), cm.get("newUsers"), "number", "newUsers"),
+        (short_label_of("screenPageViews"), m.get("pageViews"), cm.get("pageViews"), "number", "pageViews"),
+    ]
+    if m.get("clicks") is not None or m.get("impressions") is not None:
+        bottom_items.extend([
+            (short_label_of("clicks"), m.get("clicks"), cm.get("clicks"), "number", None),
+            (short_label_of("impressions"), m.get("impressions"), cm.get("impressions"), "number", None),
+            (short_label_of("ctr"), m.get("ctr"), cm.get("ctr"), "percent", None),
+            (short_label_of("position"), m.get("position"), cm.get("position"), "decimal", None),
         ])
 
     def _fmt_val(val, kind):
         if val is None or val == "":
             return "-"
         if kind == "percent":
-            return fmt_pct(val)
+            try:
+                v = float(val)
+                v = v * 100 if abs(v) <= 1 else v
+                return f"{v:.1f}"
+            except (ValueError, TypeError):
+                return "-"
         if kind == "decimal":
             try:
                 return f"{float(val):.1f}"
@@ -676,75 +835,175 @@ def _create_summary_slide(
                 return "-"
         return format_number(val)
 
-    if has_comp:
-        # 縦 1 列形式: ラベル / 当期 / 前期 / 変化率
-        headers = [
-            {"label": "指標", "align": "left"},
-            {"label": "当期", "align": "right"},
-            {"label": "前期", "align": "right"},
-            {"label": "変化率", "align": "right"},
-        ]
-        rows_out = []
-        for label, cur, prev, kind in metrics_data:
-            change = ""
-            if kind in ("number", "decimal"):
-                change = fmt_change(cur, prev) or "-"
-            elif kind == "percent":
-                change = "-"
-            rows_out.append([
-                label,
-                _fmt_val(cur, kind),
-                _fmt_val(prev, kind) if prev is not None else "-",
-                change or "-",
-            ])
-        col_widths = [3.0, 2.6, 2.6, 2.0]
-        table_h = 0.42 * (len(rows_out) + 1)
-        _build_table(
-            slide, headers, rows_out, col_widths,
-            x=MARGIN_X, y=CONTENT_Y, h=table_h,
-            font_size=10,
-        )
-        kpi_end_y = CONTENT_Y + table_h + 0.2
-    else:
-        # 通常モード: 2列×N行（ラベル=青 / 値=白）
-        pairs = [(label, _fmt_val(v, kind)) for label, v, _, kind in metrics_data]
-        n_rows = (len(pairs) + 1) // 2
-        row_h = 0.42  # AI 分析が入りきるよう少し低く（旧 0.50）
-        table_h = row_h * n_rows
+    def _fmt_delta(cur, prev, kind):
+        """変化率 (差分) を返す。None なら表示しない。"""
+        if cur is None or prev is None:
+            return None
+        try:
+            c, p = float(cur), float(prev)
+        except (ValueError, TypeError):
+            return None
+        if kind == "percent":
+            # 割合系はパーセントポイント差
+            cv = c * 100 if abs(c) <= 1 else c
+            pv = p * 100 if abs(p) <= 1 else p
+            diff = cv - pv
+            sign = "+" if diff >= 0 else ""
+            return (f"{sign}{diff:.1f}%", diff >= 0)
+        # 数値系は前期比
+        if p == 0:
+            return None
+        diff = (c - p) / p * 100
+        sign = "+" if diff >= 0 else ""
+        return (f"{sign}{diff:.1f}%", diff >= 0)
 
-        shape = slide.shapes.add_table(
-            n_rows, 4,
-            Inches(MARGIN_X), Inches(CONTENT_Y),
-            Inches(CONTENT_W), Inches(table_h),
-        )
-        table = shape.table
-        table.first_row = False
-        table.horz_banding = False
-        col_w = [2.2, 2.85, 2.2, 2.85]
-        for i, w in enumerate(col_w):
-            table.columns[i].width = Inches(w)
-        for r in range(n_rows):
-            table.rows[r].height = Inches(row_h)
-            for pos in (0, 1):
-                idx = r * 2 + pos
-                if idx >= len(pairs):
-                    for c in (pos * 2, pos * 2 + 1):
-                        cell = table.cell(r, c)
-                        set_cell_bg(cell, Color.WHITE)
-                        set_cell_text(cell, "", font_size=11)
-                    continue
-                label, val = pairs[idx]
-                lc = table.cell(r, pos * 2)
-                set_cell_bg(lc, Color.PRIMARY)
-                set_cell_text(lc, label, font_size=11, bold=True, color=Color.WHITE, align="center")
-                _set_cell_border(lc, Color.BORDER)
-                vc = table.cell(r, pos * 2 + 1)
-                set_cell_bg(vc, Color.WHITE)
-                set_cell_text(vc, val, font_size=13, bold=True, color=Color.PRIMARY, align="right")
-                _set_cell_border(vc, Color.BORDER)
-        kpi_end_y = CONTENT_Y + table_h + 0.2
+    POS_COLOR = RGBColor(0x10, 0xB9, 0x81)  # green
+    NEG_COLOR = RGBColor(0xEF, 0x44, 0x44)  # red
+    CARD_BG = RGBColor(0xF3, 0xF4, 0xF6)    # very light gray
 
-    # KPI 達成状況
+    def _unit_suffix(kind):
+        return "%" if kind == "percent" else ""
+
+    def _draw_card(x, y, w, h, label, value_str, unit, delta=None, mom=None, big=True):
+        """1 枚のカード (rounded rectangle) を描画。delta=比較期間変化率 / mom=前月比。"""
+        card = slide.shapes.add_shape(
+            MSO_SHAPE.ROUNDED_RECTANGLE,
+            Inches(x), Inches(y),
+            Inches(w), Inches(h),
+        )
+        # 控えめな角丸 (default ~0.17 → 0.05 で小さめ角丸)
+        try:
+            card.adjustments[0] = 0.05
+        except Exception:
+            pass
+        card.fill.solid()
+        card.fill.fore_color.rgb = CARD_BG
+        card.line.fill.background()
+        _disable_shape_shadow(card)
+
+        # ラベル
+        label_tb = slide.shapes.add_textbox(
+            Inches(x + 0.2), Inches(y + 0.15),
+            Inches(w - 0.4), Inches(0.28),
+        )
+        ltf = label_tb.text_frame
+        ltf.margin_left = 0
+        ltf.margin_right = 0
+        ltf.margin_top = 0
+        ltf.margin_bottom = 0
+        lp = ltf.paragraphs[0]
+        lr = lp.add_run()
+        lr.text = label
+        lr.font.name = FONT_FACE
+        lr.font.size = Pt(10)
+        lr.font.color.rgb = Color.SUB_TEXT
+
+        # 値 (数値 + 単位)
+        val_y = y + 0.45
+        val_tb = slide.shapes.add_textbox(
+            Inches(x + 0.2), Inches(val_y),
+            Inches(w - 0.4), Inches(0.7 if big else 0.55),
+        )
+        vtf = val_tb.text_frame
+        vtf.margin_left = 0
+        vtf.margin_right = 0
+        vtf.margin_top = 0
+        vtf.margin_bottom = 0
+        vp = vtf.paragraphs[0]
+        vr = vp.add_run()
+        vr.text = value_str
+        vr.font.name = FONT_FACE
+        vr.font.size = Pt(32 if big else 22)
+        vr.font.bold = True
+        vr.font.color.rgb = Color.DARK
+        if unit:
+            ur = vp.add_run()
+            ur.text = unit
+            ur.font.name = FONT_FACE
+            ur.font.size = Pt(16 if big else 12)
+            ur.font.color.rgb = Color.DARK
+
+        # フッターに 比較期間差分 と 前月比 を併記 (利用可能なもののみ)
+        footer_items = []
+        if delta is not None:
+            delta_str, is_positive = delta
+            footer_items.append(("前期比", delta_str, is_positive))
+        if mom is not None:
+            mom_str, is_positive = mom
+            footer_items.append(("前月比", mom_str, is_positive))
+
+        if footer_items:
+            foot_tb = slide.shapes.add_textbox(
+                Inches(x + 0.2), Inches(y + h - 0.32),
+                Inches(w - 0.4), Inches(0.25),
+            )
+            ftf = foot_tb.text_frame
+            ftf.margin_left = 0
+            ftf.margin_right = 0
+            ftf.margin_top = 0
+            ftf.margin_bottom = 0
+            fp = ftf.paragraphs[0]
+            for idx, (prefix, text, is_pos) in enumerate(footer_items):
+                if idx > 0:
+                    sep = fp.add_run()
+                    sep.text = "  "
+                    sep.font.name = FONT_FACE
+                    sep.font.size = Pt(8)
+                # ラベル (グレー)
+                lbl = fp.add_run()
+                lbl.text = f"{prefix} "
+                lbl.font.name = FONT_FACE
+                lbl.font.size = Pt(8)
+                lbl.font.color.rgb = Color.SUB_TEXT
+                # 値 (緑/赤)
+                val = fp.add_run()
+                val.text = text
+                val.font.name = FONT_FACE
+                val.font.size = Pt(9)
+                val.font.bold = True
+                val.font.color.rgb = POS_COLOR if is_pos else NEG_COLOR
+
+    md = monthly_delta or {}
+
+    def _mom_pair(key):
+        """monthlyDelta から前月比を取り出し整形。"""
+        if not key or key not in md:
+            return None
+        mom_v = (md.get(key) or {}).get("mom")
+        if mom_v is None:
+            return None
+        try:
+            pct = float(mom_v) * 100
+        except (ValueError, TypeError):
+            return None
+        sign = "+" if pct >= 0 else ""
+        return (f"{sign}{pct:.1f}%", pct >= 0)
+
+    # ─── 上段: 大カード 3 枚 ──
+    top_y = CONTENT_Y
+    gap = 0.15
+    n_top = len(top_items)
+    top_card_w = (CONTENT_W - gap * (n_top - 1)) / n_top
+    top_card_h = 1.5
+    for i, (label, cur, prev, kind, mk) in enumerate(top_items):
+        x = MARGIN_X + (top_card_w + gap) * i
+        delta = _fmt_delta(cur, prev, kind) if has_comp else None
+        mom = _mom_pair(mk)
+        _draw_card(x, top_y, top_card_w, top_card_h, label, _fmt_val(cur, kind), _unit_suffix(kind), delta=delta, mom=mom, big=True)
+
+    # ─── 下段: 小カード ──
+    bot_y = top_y + top_card_h + 0.2
+    n_bot = len(bottom_items)
+    bot_card_w = (CONTENT_W - gap * (n_bot - 1)) / n_bot
+    bot_card_h = 1.2
+    for i, (label, cur, prev, kind, mk) in enumerate(bottom_items):
+        x = MARGIN_X + (bot_card_w + gap) * i
+        mom = _mom_pair(mk)
+        _draw_card(x, bot_y, bot_card_w, bot_card_h, label, _fmt_val(cur, kind), _unit_suffix(kind), delta=None, mom=mom, big=False)
+
+    kpi_end_y = bot_y + bot_card_h + 0.2
+
+    # 目標達成状況
     if kpi_settings and kpi_settings.get("kpiList"):
         active_kpis = [k for k in kpi_settings["kpiList"] if k.get("isActive")]
         if active_kpis:
@@ -757,7 +1016,7 @@ def _create_summary_slide(
             tf.margin_right = 0
             p = tf.paragraphs[0]
             run = p.add_run()
-            run.text = "KPI達成状況"
+            run.text = "目標達成状況"
             run.font.name = FONT_FACE
             run.font.size = Pt(12)
             run.font.bold = True
@@ -784,7 +1043,7 @@ def _create_summary_slide(
                     format_number(actual),
                     rate,
                 ])
-            tbl_h = 0.36 * (len(rows_out) + 1)  # KPI 表も少し低く（旧 0.4）
+            tbl_h = 0.36 * (len(rows_out) + 1)  # 目標表も少し低く（旧 0.4）
             _build_table(
                 slide, headers, rows_out, [3.5, 2.2, 2.2, 2.2],
                 x=MARGIN_X, y=kpi_end_y, h=tbl_h,
@@ -823,26 +1082,164 @@ def _get_kpi_actual(kpi: dict, summary: dict | None) -> Any:
 # ─── セクション区切り ────────────────────────────────────
 
 
+SECTION_DESCRIPTIONS = {
+    "トレンド分析": "月別・日別・曜日別・時間帯別の切り口で、訪問・成果の推移を可視化します。\nどの期間にどのくらいの動きがあったかを把握できます。",
+    "ユーザー分析": "デバイス・年齢・性別・地域別のユーザー属性とアクセス傾向をまとめています。",
+    "集客分析": "チャネル・キーワード・参照元から、流入の量と質を多角的に分析します。",
+    "コンテンツ分析": "ページ別・分類別・LP・ファイル DL・外部リンクの利用状況を確認できます。",
+    "コンバージョン分析": "コンバージョン推移と、フォーム到達までの逆算フローによるファネル分析を確認できます。",
+    "Appendix": "用語・指標の説明と補足情報をまとめています。",
+}
+
+
 def _create_section_divider(prs: Presentation, ctx: _Ctx, title: str) -> None:
+    """中表紙: 薄背景 + 巨大薄色番号 + SECTION/CHAPTER ラベル + タイトル + 説明 + 専用フッター"""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    _fill_slide_bg(slide, Color.PRIMARY)
-    tb = slide.shapes.add_textbox(
-        Inches(0), Inches(0),
-        Inches(SLIDE_W), Inches(SLIDE_H),
+    _fill_slide_bg(slide, Color.BG_SOFT)
+    ctx.section_index += 1
+    sec_idx = ctx.section_index
+    sec_total = ctx.section_total or 6
+    sec_num_str = f"{sec_idx:02d}"
+    total_num_str = f"{sec_total:02d}"
+
+    left_x = 0.7
+    right_x = SLIDE_W - 0.7
+
+    # ─── 上部左: ─ SECTION / NN / 基本レポート ──
+    top_y = 0.45
+    top_h = 0.30
+    sec_tb = slide.shapes.add_textbox(
+        Inches(left_x + 0.4), Inches(top_y),
+        Inches(5.0), Inches(top_h),
     )
-    tf = tb.text_frame
-    tf.margin_left = 0
-    tf.margin_right = 0
-    p = tf.paragraphs[0]
-    p.alignment = PP_ALIGN.CENTER
-    run = p.add_run()
-    run.text = title
-    run.font.name = FONT_FACE
-    run.font.size = Pt(32)
-    run.font.bold = True
-    run.font.color.rgb = Color.WHITE
-    tb.text_frame.vertical_anchor = MSO_ANCHOR.MIDDLE
-    _add_section_label(slide, ctx)
+    stf = sec_tb.text_frame
+    stf.margin_left = 0
+    stf.margin_right = 0
+    stf.margin_top = 0
+    stf.margin_bottom = 0
+    stf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    sp = stf.paragraphs[0]
+    sr = sp.add_run()
+    sr.text = f"SECTION / {sec_num_str} / 基本レポート"
+    sr.font.name = FONT_FACE
+    sr.font.size = Pt(10)
+    sr.font.color.rgb = Color.PRIMARY
+
+    # 装飾線 (テキスト中央高さに揃える)
+    deco_y = top_y + top_h / 2
+    deco = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT,
+        Inches(left_x), Inches(deco_y),
+        Inches(left_x + 0.25), Inches(deco_y),
+    )
+    deco.line.color.rgb = Color.PRIMARY
+    deco.line.width = Pt(1.2)
+    _disable_shape_shadow(deco)
+
+    # ─── 上部右: CHAPTER NN / NN ──
+    chap_tb = slide.shapes.add_textbox(
+        Inches(SLIDE_W - 3.0), Inches(top_y),
+        Inches(2.3), Inches(top_h),
+    )
+    ctf = chap_tb.text_frame
+    ctf.margin_left = 0
+    ctf.margin_right = 0
+    ctf.margin_top = 0
+    ctf.margin_bottom = 0
+    ctf.vertical_anchor = MSO_ANCHOR.MIDDLE
+    cp = ctf.paragraphs[0]
+    cp.alignment = PP_ALIGN.RIGHT
+    cr = cp.add_run()
+    cr.text = f"CHAPTER {sec_num_str} / {total_num_str}"
+    cr.font.name = FONT_FACE
+    cr.font.size = Pt(10)
+    cr.font.color.rgb = Color.PRIMARY
+
+    # ─── 巨大な薄色セクション番号 (背景装飾) — スライド左端ぎりぎり ──
+    big_num_tb = slide.shapes.add_textbox(
+        Inches(0), Inches(2.2),
+        Inches(4.5), Inches(3.5),
+    )
+    btf = big_num_tb.text_frame
+    btf.margin_left = 0
+    btf.margin_right = 0
+    btf.margin_top = 0
+    btf.margin_bottom = 0
+    bp = btf.paragraphs[0]
+    bp.alignment = PP_ALIGN.LEFT
+    br = bp.add_run()
+    br.text = sec_num_str
+    br.font.name = FONT_FACE
+    br.font.size = Pt(280)
+    br.font.bold = True
+    br.font.color.rgb = Color.SECTION_BG  # 薄ブルー背景装飾
+
+    # ─── 中央: 小ラベル「基本レポート」+ 大タイトル ──
+    label_x = 3.3
+    label_y = 3.05
+    eyebrow_tb = slide.shapes.add_textbox(
+        Inches(label_x), Inches(label_y),
+        Inches(SLIDE_W - label_x - 0.7), Inches(0.35),
+    )
+    etf = eyebrow_tb.text_frame
+    etf.margin_left = 0
+    etf.margin_right = 0
+    ep = etf.paragraphs[0]
+    er = ep.add_run()
+    er.text = "基本レポート"
+    er.font.name = FONT_FACE
+    er.font.size = Pt(13)
+    er.font.bold = True
+    er.font.color.rgb = Color.PRIMARY
+
+    title_tb = slide.shapes.add_textbox(
+        Inches(label_x), Inches(label_y + 0.4),
+        Inches(SLIDE_W - label_x - 0.7), Inches(1.3),
+    )
+    ttf = title_tb.text_frame
+    ttf.margin_left = 0
+    ttf.margin_right = 0
+    tp = ttf.paragraphs[0]
+    tr = tp.add_run()
+    tr.text = title
+    tr.font.name = FONT_FACE
+    tr.font.size = Pt(54)
+    tr.font.bold = True
+    tr.font.color.rgb = Color.DARK
+
+    # ─── 横線 ──
+    line_y = label_y + 1.85
+    div_line = slide.shapes.add_connector(
+        MSO_CONNECTOR.STRAIGHT,
+        Inches(label_x), Inches(line_y),
+        Inches(right_x), Inches(line_y),
+    )
+    div_line.line.color.rgb = Color.BORDER
+    div_line.line.width = Pt(0.5)
+    _disable_shape_shadow(div_line)
+
+    # ─── 説明文 ──
+    desc = SECTION_DESCRIPTIONS.get(title, "")
+    if desc:
+        desc_tb = slide.shapes.add_textbox(
+            Inches(label_x), Inches(line_y + 0.18),
+            Inches(SLIDE_W - label_x - 0.7), Inches(1.5),
+        )
+        dtf = desc_tb.text_frame
+        dtf.margin_left = 0
+        dtf.margin_right = 0
+        dtf.word_wrap = True
+        for idx, dline in enumerate(desc.split("\n")):
+            dp = dtf.paragraphs[0] if idx == 0 else dtf.add_paragraph()
+            dp.line_spacing = 1.6
+            dr = dp.add_run()
+            dr.text = dline
+            dr.font.name = FONT_FACE
+            dr.font.size = Pt(13)
+            dr.font.color.rgb = Color.SUB_TEXT
+
+    # 共通フッター (© + P.NN)
+    _add_slide_footer(slide, ctx)
 
 
 # ─── チャートヘルパー ────────────────────────────────────
@@ -1009,14 +1406,14 @@ def _create_monthly_slides(
     labels = [r.get("label", "") for r in rows_asc]
     chart_data = CategoryChartData()
     chart_data.categories = labels
-    chart_data.add_series("ユーザー", [fmt_num(r.get("users")) for r in rows_asc])
-    chart_data.add_series("セッション", [fmt_num(r.get("sessions")) for r in rows_asc])
-    chart_data.add_series("PV", [fmt_num(r.get("pageViews")) for r in rows_asc])
-    chart_data.add_series("CV", [fmt_num(r.get("conversions")) for r in rows_asc])
+    chart_data.add_series(short_label_of("totalUsers"), [fmt_num(r.get("users")) for r in rows_asc])
+    chart_data.add_series(short_label_of("sessions"), [fmt_num(r.get("sessions")) for r in rows_asc])
+    chart_data.add_series(short_label_of("screenPageViews"), [fmt_num(r.get("pageViews")) for r in rows_asc])
+    chart_data.add_series(short_label_of("conversions"), [fmt_num(r.get("conversions")) for r in rows_asc])
     colors = ["3b82f6", "f59e0b", "8b5cf6", "ef4444"]
     if comp_rows_asc:
-        chart_data.add_series("前期セッション", [fmt_num(r.get("sessions")) for r in comp_rows_asc])
-        chart_data.add_series("前期CV", [fmt_num(r.get("conversions")) for r in comp_rows_asc])
+        chart_data.add_series(comparison_label("sessions", "prev", use_short=True), [fmt_num(r.get("sessions")) for r in comp_rows_asc])
+        chart_data.add_series(comparison_label("conversions", "prev", use_short=True), [fmt_num(r.get("conversions")) for r in comp_rows_asc])
         colors += ["93c5fd", "fca5a5"]
 
     chart_h = FOOTER_Y - CONTENT_Y - 0.6
@@ -1040,13 +1437,13 @@ def _create_monthly_slides(
 
     headers = [
         {"label": "月", "align": "center"},
-        {"label": "セッション", "align": "right"},
-        {"label": "ユーザー", "align": "right"},
-        {"label": "新規ユーザー", "align": "right"},
-        {"label": "PV", "align": "right"},
-        {"label": "エンゲ率", "align": "right"},
-        {"label": "CV", "align": "right"},
-        {"label": "CVR", "align": "right"},
+        {"label": short_label_of("sessions"), "align": "right"},
+        {"label": short_label_of("totalUsers"), "align": "right"},
+        {"label": short_label_of("newUsers"), "align": "right"},
+        {"label": short_label_of("screenPageViews"), "align": "right"},
+        {"label": short_label_of("engagementRate"), "align": "right"},
+        {"label": short_label_of("conversions"), "align": "right"},
+        {"label": short_label_of("conversionRate"), "align": "right"},
     ]
     rows_out = [
         [
@@ -1061,13 +1458,16 @@ def _create_monthly_slides(
         ]
         for r in rows_desc
     ]
+    # 月別は 8 列で横幅統一
+    n_cols = len(headers)
+    equal_w = [CONTENT_W / n_cols] * n_cols
     _build_table(
-        slide2, headers, rows_out, [1.2, 1.3, 1.3, 1.3, 1.2, 1.1, 1.1, 1.1],
+        slide2, headers, rows_out, equal_w,
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
         font_size=get_table_font_size(len(rows_out)),
     )
-    _add_ai_and_memo_footer(slide2, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide2, ctx)
+    _create_ai_slide(prs, ctx, "月別（13ヶ月推移）データ", ai_data, memos)
 
 
 # ─── 4. 日別 ─────────────────────────────────────────────
@@ -1094,12 +1494,12 @@ def _create_daily_slides(
     labels = [_short_date(r.get("date", "")) for r in rows_asc]
     chart_data = CategoryChartData()
     chart_data.categories = labels
-    chart_data.add_series("セッション", [fmt_num(r.get("sessions")) for r in rows_asc])
-    chart_data.add_series("CV", [fmt_num(r.get("conversions")) for r in rows_asc])
+    chart_data.add_series(short_label_of("sessions"), [fmt_num(r.get("sessions")) for r in rows_asc])
+    chart_data.add_series(short_label_of("conversions"), [fmt_num(r.get("conversions")) for r in rows_asc])
     colors = ["3b82f6", "ef4444"]
     if comp_rows_asc:
-        chart_data.add_series("前期セッション", [fmt_num(r.get("sessions")) for r in comp_rows_asc])
-        chart_data.add_series("前期CV", [fmt_num(r.get("conversions")) for r in comp_rows_asc])
+        chart_data.add_series(comparison_label("sessions", "prev", use_short=True), [fmt_num(r.get("sessions")) for r in comp_rows_asc])
+        chart_data.add_series(comparison_label("conversions", "prev", use_short=True), [fmt_num(r.get("conversions")) for r in comp_rows_asc])
         colors += ["93c5fd", "fca5a5"]
 
     chart_h = FOOTER_Y - CONTENT_Y - 0.6
@@ -1130,8 +1530,8 @@ def _create_daily_slides(
 
     headers = [
         {"label": "日付", "align": "center"},
-        {"label": "セッション", "align": "right"},
-        {"label": "CV", "align": "right"},
+        {"label": short_label_of("sessions"), "align": "right"},
+        {"label": short_label_of("conversions"), "align": "right"},
     ]
     rows_out = [
         [r.get("date", ""), format_number(r.get("sessions")), format_number(r.get("conversions"))]
@@ -1160,8 +1560,8 @@ def _create_daily_slides(
             font_size=font_size,
         )
 
-    _add_ai_and_memo_footer(slide2, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide2, ctx)
+    _create_ai_slide(prs, ctx, "日別推移（データ）", ai_data, memos)
 
 
 def _short_date(s: str) -> str:
@@ -1197,8 +1597,8 @@ def _create_weekly_slide(
     labels = [r.get("dayName", "") for r in rows]
     chart_data = CategoryChartData()
     chart_data.categories = labels
-    chart_data.add_series("セッション", [fmt_num(r.get("sessions")) for r in rows])
-    chart_data.add_series("CV", [fmt_num(r.get("conversions")) for r in rows])
+    chart_data.add_series(short_label_of("sessions"), [fmt_num(r.get("sessions")) for r in rows])
+    chart_data.add_series(short_label_of("conversions"), [fmt_num(r.get("conversions")) for r in rows])
 
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.COLUMN_CLUSTERED,
@@ -1210,8 +1610,8 @@ def _create_weekly_slide(
 
     headers = [
         {"label": "曜日", "align": "center"},
-        {"label": "セッション", "align": "right"},
-        {"label": "CV", "align": "right"},
+        {"label": short_label_of("sessions"), "align": "right"},
+        {"label": short_label_of("conversions"), "align": "right"},
     ]
     rows_out = [
         [r.get("dayName", ""), format_number(r.get("sessions")), format_number(r.get("conversions"))]
@@ -1222,8 +1622,8 @@ def _create_weekly_slide(
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
         font_size=10,
     )
-    _add_ai_and_memo_footer(slide, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide, ctx)
+    _create_ai_slide(prs, ctx, "曜日別", ai_data, memos)
 
 
 # ─── 6. 時間帯別 ─────────────────────────────────────────
@@ -1247,8 +1647,8 @@ def _create_hourly_slides(
     labels = [r.get("hour", "") for r in rows]
     chart_data = CategoryChartData()
     chart_data.categories = labels
-    chart_data.add_series("セッション", [fmt_num(r.get("sessions")) for r in rows])
-    chart_data.add_series("CV", [fmt_num(r.get("conversions")) for r in rows])
+    chart_data.add_series(short_label_of("sessions"), [fmt_num(r.get("sessions")) for r in rows])
+    chart_data.add_series(short_label_of("conversions"), [fmt_num(r.get("conversions")) for r in rows])
 
     chart_h = FOOTER_Y - CONTENT_Y - 0.6
     chart = slide1.shapes.add_chart(
@@ -1270,8 +1670,8 @@ def _create_hourly_slides(
 
     headers = [
         {"label": "時間", "align": "center"},
-        {"label": "セッション", "align": "right"},
-        {"label": "CV", "align": "right"},
+        {"label": short_label_of("sessions"), "align": "right"},
+        {"label": short_label_of("conversions"), "align": "right"},
     ]
     rows_out = [
         [r.get("hour", ""), format_number(r.get("sessions")), format_number(r.get("conversions"))]
@@ -1299,8 +1699,8 @@ def _create_hourly_slides(
             font_size=font_size,
         )
 
-    _add_ai_and_memo_footer(slide2, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide2, ctx)
+    _create_ai_slide(prs, ctx, "時間帯別（データ）", ai_data, memos)
 
 
 # ─── 7. ユーザー属性（ドーナツ 4） ────────────────────────
@@ -1411,7 +1811,7 @@ def _create_users_region_slide(
     headers = [
         {"label": "#", "align": "center"},
         {"label": "地域", "align": "left"},
-        {"label": "ユーザー数", "align": "right"},
+        {"label": short_label_of("totalUsers"), "align": "right"},
         {"label": "割合", "align": "right"},
     ]
     rows_out = [
@@ -1490,7 +1890,7 @@ def _create_channels_slide(
 
     cd = CategoryChartData()
     cd.categories = pie_labels
-    cd.add_series("セッション", pie_values)
+    cd.add_series(short_label_of("sessions"), pie_values)
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.PIE,
         Inches(2.7), Inches(layout["chart_y"]),
@@ -1501,9 +1901,9 @@ def _create_channels_slide(
 
     headers = [
         {"label": "チャネル", "align": "left"},
-        {"label": "セッション", "align": "right"},
-        {"label": "ユーザー", "align": "right"},
-        {"label": "CV", "align": "right"},
+        {"label": short_label_of("sessions"), "align": "right"},
+        {"label": short_label_of("totalUsers"), "align": "right"},
+        {"label": short_label_of("conversions"), "align": "right"},
     ]
     rows_out = [
         [
@@ -1518,8 +1918,8 @@ def _create_channels_slide(
         slide, headers, rows_out, [3.5, 2.5, 2.2, 1.9],
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
     )
-    _add_ai_and_memo_footer(slide, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide, ctx)
+    _create_ai_slide(prs, ctx, "集客チャネル", ai_data, memos)
 
 
 # ─── 10. 流入キーワード ──────────────────────────────────
@@ -1545,10 +1945,10 @@ def _create_keywords_slide(
     headers = [
         {"label": "#", "align": "center"},
         {"label": "キーワード", "align": "left"},
-        {"label": "クリック", "align": "right"},
-        {"label": "表示回数", "align": "right"},
-        {"label": "CTR", "align": "right"},
-        {"label": "掲載順位", "align": "right"},
+        {"label": short_label_of("clicks"), "align": "right"},
+        {"label": short_label_of("impressions"), "align": "right"},
+        {"label": short_label_of("ctr"), "align": "right"},
+        {"label": short_label_of("position"), "align": "right"},
     ]
     rows_out = [
         [
@@ -1611,7 +2011,7 @@ def _create_referrals_slide(
 
     cd = CategoryChartData()
     cd.categories = pie_labels
-    cd.add_series("セッション", pie_values)
+    cd.add_series(short_label_of("sessions"), pie_values)
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.PIE,
         Inches(2.7), Inches(layout["chart_y"]),
@@ -1622,10 +2022,10 @@ def _create_referrals_slide(
 
     headers = [
         {"label": "参照元", "align": "left"},
-        {"label": "セッション", "align": "right"},
-        {"label": "ユーザー", "align": "right"},
-        {"label": "CV", "align": "right"},
-        {"label": "エンゲ率", "align": "right"},
+        {"label": short_label_of("sessions"), "align": "right"},
+        {"label": short_label_of("totalUsers"), "align": "right"},
+        {"label": short_label_of("conversions"), "align": "right"},
+        {"label": short_label_of("engagementRate"), "align": "right"},
     ]
     rows_out = [
         [
@@ -1641,8 +2041,8 @@ def _create_referrals_slide(
         slide, headers, rows_out, [3.0, 2.0, 1.8, 1.6, 1.7],
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
     )
-    _add_ai_and_memo_footer(slide, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide, ctx)
+    _create_ai_slide(prs, ctx, "被リンク元", ai_data, memos)
 
 
 # ─── 12. ページ別 Top 10 ─────────────────────────────────
@@ -1669,8 +2069,8 @@ def _create_pages_slide(
     labels = [(r.get("path") or "")[:30] for r in top10]
     cd = CategoryChartData()
     cd.categories = labels
-    cd.add_series("PV", [fmt_num(r.get("pageViews")) for r in top10])
-    cd.add_series("セッション", [fmt_num(r.get("sessions")) for r in top10])
+    cd.add_series(short_label_of("screenPageViews"), [fmt_num(r.get("pageViews")) for r in top10])
+    cd.add_series(short_label_of("sessions"), [fmt_num(r.get("sessions")) for r in top10])
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.COLUMN_CLUSTERED,
         Inches(MARGIN_X), Inches(layout["chart_y"]),
@@ -1682,9 +2082,9 @@ def _create_pages_slide(
     headers = [
         {"label": "#", "align": "center"},
         {"label": "ページパス", "align": "left"},
-        {"label": "PV", "align": "right"},
-        {"label": "セッション", "align": "right"},
-        {"label": "エンゲ率", "align": "right"},
+        {"label": short_label_of("screenPageViews"), "align": "right"},
+        {"label": short_label_of("sessions"), "align": "right"},
+        {"label": short_label_of("engagementRate"), "align": "right"},
     ]
     rows_out = [
         [
@@ -1700,8 +2100,8 @@ def _create_pages_slide(
         slide, headers, rows_out, [0.6, 4.8, 1.6, 1.6, 1.5],
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
     )
-    _add_ai_and_memo_footer(slide, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide, ctx)
+    _create_ai_slide(prs, ctx, "ページ別 Top 10", ai_data, memos)
 
 
 # ─── 13. ページ分類別 ───────────────────────────────────
@@ -1734,7 +2134,7 @@ def _create_page_categories_slide(
 
     cd = CategoryChartData()
     cd.categories = pie_labels
-    cd.add_series("PV", pie_values)
+    cd.add_series(short_label_of("screenPageViews"), pie_values)
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.PIE,
         Inches(2.7), Inches(layout["chart_y"]),
@@ -1745,9 +2145,9 @@ def _create_page_categories_slide(
 
     headers = [
         {"label": "カテゴリ", "align": "left"},
-        {"label": "PV", "align": "right"},
-        {"label": "ユーザー", "align": "right"},
-        {"label": "エンゲ率", "align": "right"},
+        {"label": short_label_of("screenPageViews"), "align": "right"},
+        {"label": short_label_of("totalUsers"), "align": "right"},
+        {"label": short_label_of("engagementRate"), "align": "right"},
     ]
     rows_out = [
         [
@@ -1762,8 +2162,8 @@ def _create_page_categories_slide(
         slide, headers, rows_out, [3.5, 2.5, 2.2, 1.9],
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
     )
-    _add_ai_and_memo_footer(slide, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide, ctx)
+    _create_ai_slide(prs, ctx, "ページ分類別", ai_data, memos)
 
 
 # ─── 14. ランディングページ ─────────────────────────────
@@ -1790,8 +2190,8 @@ def _create_landing_pages_slide(
     labels = [(r.get("path") or "")[:30] for r in top10]
     cd = CategoryChartData()
     cd.categories = labels
-    cd.add_series("セッション", [fmt_num(r.get("sessions")) for r in top10])
-    cd.add_series("CV", [fmt_num(r.get("conversions")) for r in top10])
+    cd.add_series(short_label_of("sessions"), [fmt_num(r.get("sessions")) for r in top10])
+    cd.add_series(short_label_of("conversions"), [fmt_num(r.get("conversions")) for r in top10])
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.COLUMN_CLUSTERED,
         Inches(MARGIN_X), Inches(layout["chart_y"]),
@@ -1803,9 +2203,9 @@ def _create_landing_pages_slide(
     headers = [
         {"label": "#", "align": "center"},
         {"label": "ランディングページ", "align": "left"},
-        {"label": "セッション", "align": "right"},
-        {"label": "CV", "align": "right"},
-        {"label": "エンゲ率", "align": "right"},
+        {"label": short_label_of("sessions"), "align": "right"},
+        {"label": short_label_of("conversions"), "align": "right"},
+        {"label": short_label_of("engagementRate"), "align": "right"},
     ]
     rows_out = [
         [
@@ -1821,8 +2221,8 @@ def _create_landing_pages_slide(
         slide, headers, rows_out, [0.6, 4.8, 1.6, 1.6, 1.5],
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
     )
-    _add_ai_and_memo_footer(slide, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide, ctx)
+    _create_ai_slide(prs, ctx, "ランディングページ Top 10", ai_data, memos)
 
 
 # ─── 15. ファイルDL ─────────────────────────────────────
@@ -1850,7 +2250,7 @@ def _create_file_downloads_slide(
     cd = CategoryChartData()
     cd.categories = labels
     cd.add_series("DL数", [fmt_num(r.get("downloads")) for r in top10])
-    cd.add_series("ユーザー", [fmt_num(r.get("users")) for r in top10])
+    cd.add_series(short_label_of("totalUsers"), [fmt_num(r.get("users")) for r in top10])
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.COLUMN_CLUSTERED,
         Inches(MARGIN_X), Inches(layout["chart_y"]),
@@ -1863,7 +2263,7 @@ def _create_file_downloads_slide(
         {"label": "#", "align": "center"},
         {"label": "ファイル名", "align": "left"},
         {"label": "DL数", "align": "right"},
-        {"label": "ユーザー", "align": "right"},
+        {"label": short_label_of("totalUsers"), "align": "right"},
     ]
     rows_out = [
         [
@@ -1878,8 +2278,8 @@ def _create_file_downloads_slide(
         slide, headers, rows_out, [0.6, 5.8, 1.9, 1.8],
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
     )
-    _add_ai_and_memo_footer(slide, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide, ctx)
+    _create_ai_slide(prs, ctx, "ファイルダウンロード", ai_data, memos)
 
 
 # ─── 16. 外部リンク ─────────────────────────────────────
@@ -1907,7 +2307,7 @@ def _create_external_links_slide(
         {"label": "#", "align": "center"},
         {"label": "リンクURL", "align": "left"},
         {"label": "クリック数", "align": "right"},
-        {"label": "ユーザー", "align": "right"},
+        {"label": short_label_of("totalUsers"), "align": "right"},
     ]
     rows_out = [
         [
@@ -1922,8 +2322,8 @@ def _create_external_links_slide(
         slide, headers, rows_out, [0.6, 5.8, 1.9, 1.8],
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
     )
-    _add_ai_and_memo_footer(slide, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide, ctx)
+    _create_ai_slide(prs, ctx, "外部リンククリック", ai_data, memos)
 
 
 # ─── 17. コンバージョン月次推移 ─────────────────────────
@@ -2009,8 +2409,8 @@ def _create_conversions_slides(
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
         font_size=get_table_font_size(len(rows_out)),
     )
-    _add_ai_and_memo_footer(slide2, ai_data, memos, layout["ai_y"], layout["ai_h"])
     _add_slide_footer(slide2, ctx)
+    _create_ai_slide(prs, ctx, "コンバージョン月次推移 データ", ai_data, memos)
 
 
 # ─── 18. 逆算フロー ─────────────────────────────────────
@@ -2065,31 +2465,44 @@ def _create_reverse_flow_slide(
         slide, headers, rows_out, [2.5, 1.3, 1.2, 1.3, 1.2, 1.3, 1.3],
         x=MARGIN_X, y=layout["table_y"], h=tbl_h,
     )
-    # AI 分析はテーブルの直下（固定オフセット 0.3"）に配置。フッターまでの残りを活用
-    ai_y = layout["table_y"] + tbl_h + 0.3
-    ai_h = max(FOOTER_Y - ai_y - 0.1, AI_MIN_H)
-    _add_ai_and_memo_footer(slide, ai_data, memos, ai_y, ai_h)
     _add_slide_footer(slide, ctx)
+    _create_ai_slide(prs, ctx, "逆算フロー", ai_data, memos)
 
 
 # ─── 19. Appendix 用語集 ────────────────────────────────
 
 
-APPENDIX_TERMS = [
-    ("セッション", "ユーザーがサイトを訪問した回数。30分以上操作がない場合、新しいセッションとしてカウント"),
-    ("ユーザー", "サイトを訪問したユニークユーザー数"),
-    ("新規ユーザー", "選択期間中に初めてサイトを訪問したユーザー数"),
-    ("ページビュー（表示回数）", "ページが表示された回数の合計"),
-    ("エンゲージメント率", "エンゲージメントのあったセッションの割合（10秒以上滞在、2PV以上、CVイベント発生のいずれか）"),
-    ("平均エンゲージメント時間", "ユーザーがサイトに積極的に関与していた平均時間"),
-    ("コンバージョン（キーイベント）", "設定した目標アクション（お問い合わせ、資料DL等）の完了数"),
-    ("コンバージョン率（CVR）", "セッションのうちコンバージョンに至った割合"),
-    ("ランディングページ", "ユーザーが最初に閲覧したページ"),
-    ("クリック数（GSC）", "Google検索結果でサイトがクリックされた回数"),
-    ("表示回数（GSC）", "Google検索結果にサイトが表示された回数"),
-    ("CTR（GSC）", "表示回数に対するクリック数の割合"),
-    ("平均掲載順位（GSC）", "Google検索結果での平均表示順位"),
+# 用語集に載せる指標 (辞書の canonical key)。ランディングページは辞書外なので
+# 固定テキストのタプルとして末尾に追加する。
+_APPENDIX_METRIC_KEYS = [
+    "sessions",
+    "totalUsers",
+    "newUsers",
+    "screenPageViews",
+    "engagementRate",
+    "averageSessionDuration",
+    "conversions",
+    "conversionRate",
 ]
+
+_APPENDIX_EXTRA_TERMS = [
+    ("ランディングページ", "ユーザーが最初に閲覧したページ"),
+]
+
+_APPENDIX_GSC_KEYS = ["clicks", "impressions", "ctr", "position"]
+
+
+def _build_appendix_terms() -> list[tuple[str, str]]:
+    terms: list[tuple[str, str]] = []
+    for k in _APPENDIX_METRIC_KEYS:
+        terms.append((label_of(k), tooltip_of(k)))
+    terms.extend(_APPENDIX_EXTRA_TERMS)
+    for k in _APPENDIX_GSC_KEYS:
+        terms.append((label_of(k), tooltip_of(k)))
+    return terms
+
+
+APPENDIX_TERMS = _build_appendix_terms()
 
 
 def _create_appendix_slide(prs: Presentation, ctx: _Ctx) -> None:

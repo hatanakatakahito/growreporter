@@ -153,7 +153,7 @@ export function buildPageFilter(pagePath) {
  * @param {object|null} params.gscData - GSCデータ { clicks, impressions, ctr, position }
  * @param {object|null} params.channelData - チャネル別セッション [{ channel, sessions, ... }]
  * @param {object|null} params.eventData - 外部リンク・ファイルDLデータ
- * @param {object|null} params.kpiData - KPIメトリクス
+ * @param {object|null} params.kpiData - 目標メトリクス
  * @param {{ startDate: string, endDate: string }} params.period - 計測期間
  * @returns {object} スナップショットオブジェクト
  */
@@ -192,7 +192,7 @@ export function buildSnapshot({
     // イベント
     externalLinkClicks: eventData?.externalLinkClicks || 0,
     fileDownloads: eventData?.fileDownloads || 0,
-    // KPI
+    // 目標
     kpiMetrics: kpiData || null,
   };
 }
@@ -229,8 +229,8 @@ export function calculateChanges(before, after) {
 }
 
 /**
- * KPIの実績値をGA4データから抽出
- * @param {object} kpi - KPI定義
+ * 目標の実績値をGA4データから抽出
+ * @param {object} kpi - 目標定義
  * @param {object} ga4Basic - GA4基本メトリク���
  * @param {object} ga4Conversions - コンバージョンデータ
  * @returns {number}

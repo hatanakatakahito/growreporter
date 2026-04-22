@@ -21,10 +21,11 @@ import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
 import { useSiteDetail } from '../../hooks/useSiteDetail';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 
 /**
  * 興味度スコア計算
- * GTMデータあり (V2): 5指標（ENG率20% + スクロール深度25% + 滞在時間20% + 非直帰率15% + CTAクリック率20%）
+ * GTMデータあり (V2): 5指標（エンゲージメント率20% + スクロール深度25% + 滞在時間20% + 非直帰率15% + CTAクリック率20%）
  * scrollデータあり (V1): 4指標均等配分（各25%）
  * scrollデータなし: 3指標均等配分（各33.3%）
  */
@@ -460,7 +461,7 @@ export default function ContentAnalysis() {
                   },
                   {
                     key: 'pageViews',
-                    label: 'ページビュー',
+                    label: getShortLabel('pageViews'),
                     format: 'number',
                     align: 'right',
                     tooltip: 'screenPageViews',
@@ -469,7 +470,7 @@ export default function ContentAnalysis() {
                   },
                   {
                     key: 'engagementRate',
-                    label: 'ENG率',
+                    label: getShortLabel('engagementRate'),
                     align: 'right',
                     tooltip: 'engagementRate',
                     sortable: true,
@@ -478,7 +479,7 @@ export default function ContentAnalysis() {
                   },
                   {
                     key: 'bounceRate',
-                    label: '直帰率',
+                    label: getShortLabel('bounceRate'),
                     align: 'right',
                     tooltip: 'bounceRate',
                     sortable: true,
@@ -489,7 +490,7 @@ export default function ContentAnalysis() {
                   },
                   {
                     key: 'avgDuration',
-                    label: '平均滞在時間',
+                    label: getShortLabel('avgDuration'),
                     align: 'right',
                     tooltip: 'avgSessionDuration',
                     sortable: true,
@@ -498,7 +499,7 @@ export default function ContentAnalysis() {
                   },
                   {
                     key: 'sessions',
-                    label: '訪問者',
+                    label: getShortLabel('sessions'),
                     format: 'number',
                     align: 'right',
                     tooltip: 'sessions',

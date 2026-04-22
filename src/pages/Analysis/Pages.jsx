@@ -21,6 +21,7 @@ import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
   BarChart,
@@ -451,13 +452,13 @@ export default function Pages() {
                       <Legend content={<CustomLegend />} />
                       <Bar
                         dataKey="pageViews"
-                        name="ページビュー"
+                        name={getShortLabel('pageViews')}
                         fill="#3b82f6"
                         hide={hiddenSeries.pageViews}
                       />
                       <Bar
                         dataKey="sessions"
-                        name="訪問者"
+                        name={getShortLabel('sessions')}
                         fill="#10b981"
                         hide={hiddenSeries.sessions}
                       />
@@ -493,7 +494,7 @@ export default function Pages() {
                     },
                     {
                       key: 'pageViews',
-                      label: 'ページビュー',
+                      label: getShortLabel('pageViews'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'screenPageViews',
@@ -501,7 +502,7 @@ export default function Pages() {
                     },
                     {
                       key: 'sessions',
-                      label: '訪問者',
+                      label: getShortLabel('sessions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'sessions',
@@ -510,7 +511,7 @@ export default function Pages() {
                     },
                     {
                       key: 'users',
-                      label: 'ユーザー',
+                      label: getShortLabel('users'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'users',
@@ -519,7 +520,7 @@ export default function Pages() {
                     },
                     {
                       key: 'newUsers',
-                      label: '新規ユーザー',
+                      label: getShortLabel('newUsers'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'newUsers',
@@ -528,7 +529,7 @@ export default function Pages() {
                     },
                     {
                       key: 'engagementRate',
-                      label: 'ENG率',
+                      label: getShortLabel('engagementRate'),
                       align: 'right',
                       tooltip: 'engagementRate',
                       render: (value) => `${value}%`,
@@ -536,7 +537,7 @@ export default function Pages() {
                     },
                     {
                       key: 'bounceRate',
-                      label: '直帰率',
+                      label: getShortLabel('bounceRate'),
                       align: 'right',
                       tooltip: 'bounceRate',
                       render: (value) => `${value}%`,
@@ -546,7 +547,7 @@ export default function Pages() {
                     },
                     {
                       key: 'avgDuration',
-                      label: '平均滞在時間',
+                      label: getShortLabel('avgDuration'),
                       align: 'right',
                       tooltip: 'avgSessionDuration',
                       render: (value) => formatDuration(value),
@@ -554,7 +555,7 @@ export default function Pages() {
                     },
                     {
                       key: 'conversions',
-                      label: 'コンバージョン',
+                      label: getShortLabel('conversions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'conversions',
@@ -563,7 +564,7 @@ export default function Pages() {
                     },
                     {
                       key: 'conversionRate',
-                      label: 'CVR',
+                      label: getShortLabel('conversionRate'),
                       align: 'right',
                       tooltip: 'conversionRate',
                       render: (value) => `${value}%`,

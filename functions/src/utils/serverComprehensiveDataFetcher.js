@@ -15,10 +15,10 @@ import { logger } from 'firebase-functions/v2';
  * @param {string} siteId
  * @returns {Promise<object>}
  */
-export async function fetchComprehensiveDataForImprovement(siteId) {
+export async function fetchComprehensiveDataForImprovement(siteId, options = {}) {
   const db = getFirestore();
   const startTime = Date.now();
-  logger.info('[serverDataFetcher] 開始', { siteId });
+  logger.info('[serverDataFetcher] 開始', { siteId, options });
 
   // サイトデータ取得
   const siteDoc = await db.collection('sites').doc(siteId).get();
@@ -27,14 +27,23 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
 
   // 期間設定
   const today = new Date();
-  const thirtyDaysAgo = new Date(today);
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-  const thirteenMonthsAgo = new Date(today);
-  thirteenMonthsAgo.setMonth(thirteenMonthsAgo.getMonth() - 13);
+  // 月別トレンド用: 過去24ヶ月分を取得（長期トレンド分析に対応）
+  const twentyFourMonthsAgo = new Date(today);
+  twentyFourMonthsAgo.setMonth(twentyFourMonthsAgo.getMonth() - 24);
+  const monthlyStart = formatDate(twentyFourMonthsAgo);
 
-  const recentStart = formatDate(thirtyDaysAgo);
-  const recentEnd = formatDate(today);
-  const monthlyStart = formatDate(thirteenMonthsAgo);
+  // recent 期間: オプションで上書き可能（指定なければ直近30日）
+  let recentStart;
+  let recentEnd;
+  if (options.startDate && options.endDate) {
+    recentStart = options.startDate;
+    recentEnd = options.endDate;
+  } else {
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    recentStart = formatDate(thirtyDaysAgo);
+    recentEnd = formatDate(today);
+  }
 
   // GA4 OAuth クライアント取得
   let ga4Client = null;
@@ -53,6 +62,12 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
   }
 
   const ga4PropertyId = siteData.ga4PropertyId;
+
+  // アプリ側で制御する CV イベント一覧（GA4ネイティブ conversions 指標ではなく、
+  // siteData.conversionEvents に登録されたイベントのみをカウント対象とする）
+  const conversionEventNames = (siteData.conversionEvents || [])
+    .map(e => e?.eventName)
+    .filter(Boolean);
 
   // Phase 1: 全データソースを並列取得
   const [
@@ -83,25 +98,25 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
     // ユーザー属性
     ga4Client ? fetchGA4UserDemographics(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
     // 集客チャネル
-    ga4Client ? fetchGA4Channels(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
+    ga4Client ? fetchGA4Channels(ga4Client, ga4PropertyId, recentStart, recentEnd, conversionEventNames) : null,
     // GSCキーワード
     gscClient ? fetchGSCKeywords(gscClient, siteData.gscSiteUrl, recentStart, recentEnd) : null,
     // ページ別
-    ga4Client ? fetchGA4Pages(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
+    ga4Client ? fetchGA4Pages(ga4Client, ga4PropertyId, recentStart, recentEnd, conversionEventNames) : null,
     // ランディングページ
-    ga4Client ? fetchGA4LandingPages(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
+    ga4Client ? fetchGA4LandingPages(ga4Client, ga4PropertyId, recentStart, recentEnd, conversionEventNames) : null,
     // ページ分類別
     ga4Client ? fetchGA4PageCategories(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
     // 月次コンバージョン
     ga4Client ? fetchGA4MonthlyConversions(ga4Client, ga4PropertyId, monthlyStart, recentEnd, siteData) : null,
-    // 日別
-    ga4Client ? fetchGA4CustomReport(ga4Client, ga4PropertyId, recentStart, recentEnd, ['date'], ['sessions', 'totalUsers', 'conversions']) : null,
+    // 日別（CVはアプリ設定のイベントで別取得してマージ）
+    ga4Client ? fetchGA4DailyWithCV(ga4Client, ga4PropertyId, recentStart, recentEnd, conversionEventNames) : null,
     // 曜日別
     ga4Client ? fetchGA4CustomReport(ga4Client, ga4PropertyId, recentStart, recentEnd, ['dayOfWeek'], ['sessions', 'totalUsers']) : null,
     // 時間帯別
     ga4Client ? fetchGA4CustomReport(ga4Client, ga4PropertyId, recentStart, recentEnd, ['hour'], ['sessions', 'totalUsers']) : null,
     // 被リンク元
-    ga4Client ? fetchGA4Referrals(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
+    ga4Client ? fetchGA4Referrals(ga4Client, ga4PropertyId, recentStart, recentEnd, conversionEventNames) : null,
     // ファイルダウンロード
     ga4Client ? fetchGA4FileDownloads(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
     // 外部リンク
@@ -129,10 +144,10 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
     ? await fetchReverseFlowData(ga4Client, ga4PropertyId, reverseFlowSettings, recentStart, recentEnd)
     : [];
 
-  // Phase 3: 前年同月データ（チャット用）
-  const oneYearAgoStart = new Date(thirtyDaysAgo);
+  // Phase 3: 前年同月データ（チャット用）- recent 期間を1年前にシフト
+  const oneYearAgoStart = new Date(recentStart);
   oneYearAgoStart.setFullYear(oneYearAgoStart.getFullYear() - 1);
-  const oneYearAgoEnd = new Date(today);
+  const oneYearAgoEnd = new Date(recentEnd);
   oneYearAgoEnd.setFullYear(oneYearAgoEnd.getFullYear() - 1);
   const prevYearStart = formatDate(oneYearAgoStart);
   const prevYearEnd = formatDate(oneYearAgoEnd);
@@ -143,10 +158,10 @@ export async function fetchComprehensiveDataForImprovement(siteId) {
     prevPagesResult,
     prevLandingPagesResult,
   ] = await Promise.allSettled([
-    ga4Client ? fetchGA4Channels(ga4Client, ga4PropertyId, prevYearStart, prevYearEnd) : null,
+    ga4Client ? fetchGA4Channels(ga4Client, ga4PropertyId, prevYearStart, prevYearEnd, conversionEventNames) : null,
     gscClient ? fetchGSCKeywords(gscClient, siteData.gscSiteUrl, prevYearStart, prevYearEnd) : null,
-    ga4Client ? fetchGA4Pages(ga4Client, ga4PropertyId, prevYearStart, prevYearEnd) : null,
-    ga4Client ? fetchGA4LandingPages(ga4Client, ga4PropertyId, prevYearStart, prevYearEnd) : null,
+    ga4Client ? fetchGA4Pages(ga4Client, ga4PropertyId, prevYearStart, prevYearEnd, conversionEventNames) : null,
+    ga4Client ? fetchGA4LandingPages(ga4Client, ga4PropertyId, prevYearStart, prevYearEnd, conversionEventNames) : null,
   ]);
 
   const comprehensiveData = {
@@ -301,52 +316,141 @@ async function fetchGA4UserDemographics(auth, propertyId, startDate, endDate) {
   };
 }
 
-async function fetchGA4Channels(auth, propertyId, startDate, endDate) {
-  const data = await runGA4Report(auth, propertyId, {
-    dateRanges: [{ startDate, endDate }],
-    dimensions: [{ name: 'sessionDefaultChannelGroup' }],
-    metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }],
-  });
-  return (data.rows || []).map(row => ({
-    channel: row.dimensionValues[0]?.value || 'Unknown',
-    sessions: parseInt(row.metricValues[0]?.value || '0'),
-    users: parseInt(row.metricValues[1]?.value || '0'),
-    conversions: parseInt(row.metricValues[2]?.value || '0'),
-  }));
+/**
+ * CV イベント数を指定ディメンション別に集計（アプリ設定の conversionEvents に限定）
+ * @returns {Promise<Object<string, number>>} { [dimensionValue]: cvCount }
+ */
+async function fetchCVByDimension(auth, propertyId, startDate, endDate, dimensionName, conversionEventNames) {
+  if (!conversionEventNames?.length) return {};
+  try {
+    const data = await runGA4Report(auth, propertyId, {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: dimensionName }, { name: 'eventName' }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: conversionEventNames },
+        },
+      },
+    });
+    const result = {};
+    (data.rows || []).forEach(row => {
+      const dimValue = row.dimensionValues[0]?.value;
+      const count = parseInt(row.metricValues[0]?.value || '0');
+      if (dimValue) result[dimValue] = (result[dimValue] || 0) + count;
+    });
+    return result;
+  } catch (e) {
+    logger.warn(`[fetchCVByDimension] エラー (${dimensionName}):`, e.message);
+    return {};
+  }
 }
 
-async function fetchGA4Pages(auth, propertyId, startDate, endDate) {
-  const data = await runGA4Report(auth, propertyId, {
-    dateRanges: [{ startDate, endDate }],
-    dimensions: [{ name: 'pagePath' }, { name: 'pageTitle' }],
-    metrics: [{ name: 'screenPageViews' }, { name: 'totalUsers' }, { name: 'conversions' }],
-    orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
-    limit: 50,
-  });
-  return (data.rows || []).map(row => ({
-    path: row.dimensionValues[0]?.value || '',
-    title: row.dimensionValues[1]?.value || '',
-    pageViews: parseInt(row.metricValues[0]?.value || '0'),
-    users: parseInt(row.metricValues[1]?.value || '0'),
-    conversions: parseInt(row.metricValues[2]?.value || '0'),
-  }));
+/**
+ * CV イベント数を複数ディメンション別に集計
+ * @returns {Promise<Object<string, number>>} { `${dim1}__${dim2}`: cvCount }
+ */
+async function fetchCVByMultiDimension(auth, propertyId, startDate, endDate, dimensionNames, conversionEventNames) {
+  if (!conversionEventNames?.length) return {};
+  try {
+    const data = await runGA4Report(auth, propertyId, {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [...dimensionNames.map(n => ({ name: n })), { name: 'eventName' }],
+      metrics: [{ name: 'eventCount' }],
+      dimensionFilter: {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: { values: conversionEventNames },
+        },
+      },
+    });
+    const result = {};
+    (data.rows || []).forEach(row => {
+      const key = dimensionNames.map((_, i) => row.dimensionValues[i]?.value || '').join('__');
+      const count = parseInt(row.metricValues[0]?.value || '0');
+      result[key] = (result[key] || 0) + count;
+    });
+    return result;
+  } catch (e) {
+    logger.warn(`[fetchCVByMultiDimension] エラー (${dimensionNames.join(',')}):`, e.message);
+    return {};
+  }
 }
 
-async function fetchGA4LandingPages(auth, propertyId, startDate, endDate) {
-  const data = await runGA4Report(auth, propertyId, {
-    dateRanges: [{ startDate, endDate }],
-    dimensions: [{ name: 'landingPage' }],
-    metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagementRate' }, { name: 'conversions' }],
-    orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-    limit: 30,
+async function fetchGA4Channels(auth, propertyId, startDate, endDate, conversionEventNames) {
+  const [baseData, cvMap] = await Promise.all([
+    runGA4Report(auth, propertyId, {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'sessionDefaultChannelGroup' }],
+      metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+    }),
+    fetchCVByDimension(auth, propertyId, startDate, endDate, 'sessionDefaultChannelGroup', conversionEventNames),
+  ]);
+  return (baseData.rows || []).map(row => {
+    const channel = row.dimensionValues[0]?.value || 'Unknown';
+    return {
+      channel,
+      sessions: parseInt(row.metricValues[0]?.value || '0'),
+      users: parseInt(row.metricValues[1]?.value || '0'),
+      conversions: cvMap[channel] || 0,
+    };
   });
-  return (data.rows || []).map(row => ({
-    page: row.dimensionValues[0]?.value || '',
-    sessions: parseInt(row.metricValues[0]?.value || '0'),
-    users: parseInt(row.metricValues[1]?.value || '0'),
-    engagementRate: parseFloat(row.metricValues[2]?.value || '0'),
-    conversions: parseInt(row.metricValues[3]?.value || '0'),
-  }));
+}
+
+async function fetchGA4Pages(auth, propertyId, startDate, endDate, conversionEventNames) {
+  const [baseData, cvMap] = await Promise.all([
+    runGA4Report(auth, propertyId, {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'pagePath' }, { name: 'pageTitle' }],
+      metrics: [
+        { name: 'screenPageViews' },
+        { name: 'totalUsers' },
+        { name: 'engagementRate' },
+        { name: 'bounceRate' },
+        { name: 'averageSessionDuration' },
+      ],
+      orderBys: [{ metric: { metricName: 'screenPageViews' }, desc: true }],
+      limit: 50,
+    }),
+    fetchCVByDimension(auth, propertyId, startDate, endDate, 'pagePath', conversionEventNames),
+  ]);
+  return (baseData.rows || []).map(row => {
+    const path = row.dimensionValues[0]?.value || '';
+    return {
+      path,
+      title: row.dimensionValues[1]?.value || '',
+      pageViews: parseInt(row.metricValues[0]?.value || '0'),
+      users: parseInt(row.metricValues[1]?.value || '0'),
+      engagementRate: parseFloat(row.metricValues[2]?.value || '0'),
+      bounceRate: parseFloat(row.metricValues[3]?.value || '0'),
+      averageSessionDuration: parseFloat(row.metricValues[4]?.value || '0'),
+      conversions: cvMap[path] || 0,
+    };
+  });
+}
+
+async function fetchGA4LandingPages(auth, propertyId, startDate, endDate, conversionEventNames) {
+  const [baseData, cvMap] = await Promise.all([
+    runGA4Report(auth, propertyId, {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'landingPage' }],
+      metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'engagementRate' }],
+      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+      limit: 30,
+    }),
+    fetchCVByDimension(auth, propertyId, startDate, endDate, 'landingPage', conversionEventNames),
+  ]);
+  return (baseData.rows || []).map(row => {
+    const page = row.dimensionValues[0]?.value || '';
+    return {
+      page,
+      sessions: parseInt(row.metricValues[0]?.value || '0'),
+      users: parseInt(row.metricValues[1]?.value || '0'),
+      engagementRate: parseFloat(row.metricValues[2]?.value || '0'),
+      conversions: cvMap[page] || 0,
+    };
+  });
 }
 
 async function fetchGA4PageCategories(auth, propertyId, startDate, endDate) {
@@ -365,16 +469,29 @@ async function fetchGA4PageCategories(auth, propertyId, startDate, endDate) {
   }));
 }
 
-async function fetchGA4Referrals(auth, propertyId, startDate, endDate) {
+async function fetchGA4Referrals(auth, propertyId, startDate, endDate, conversionEventNames) {
   try {
-    const data = await runGA4Report(auth, propertyId, {
-      dateRanges: [{ startDate, endDate }],
-      dimensions: [{ name: 'sessionSource' }, { name: 'sessionMedium' }],
-      metrics: [{ name: 'sessions' }, { name: 'totalUsers' }, { name: 'conversions' }],
-      orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
-      limit: 30,
+    const [baseData, cvMap] = await Promise.all([
+      runGA4Report(auth, propertyId, {
+        dateRanges: [{ startDate, endDate }],
+        dimensions: [{ name: 'sessionSource' }, { name: 'sessionMedium' }],
+        metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+        orderBys: [{ metric: { metricName: 'sessions' }, desc: true }],
+        limit: 30,
+      }),
+      fetchCVByMultiDimension(auth, propertyId, startDate, endDate, ['sessionSource', 'sessionMedium'], conversionEventNames),
+    ]);
+    return (baseData.rows || []).map(row => {
+      const source = row.dimensionValues[0]?.value || '';
+      const medium = row.dimensionValues[1]?.value || '';
+      return {
+        source,
+        medium,
+        sessions: parseInt(row.metricValues[0]?.value || '0'),
+        users: parseInt(row.metricValues[1]?.value || '0'),
+        conversions: cvMap[`${source}__${medium}`] || 0,
+      };
     });
-    return data.rows || [];
   } catch { return []; }
 }
 
@@ -465,6 +582,32 @@ async function fetchGA4CustomReport(auth, propertyId, startDate, endDate, dimens
       dimensions.forEach((dim, idx) => { rowData[dim] = row.dimensionValues[idx].value; });
       metrics.forEach((met, idx) => { rowData[met] = parseFloat(row.metricValues[idx].value || 0); });
       return rowData;
+    }),
+  };
+}
+
+/**
+ * 日別データ取得（CVはアプリ設定の conversionEvents で別計測してマージ）
+ * 戻り値: { rows: [{ date, sessions, totalUsers, conversions }] }
+ */
+async function fetchGA4DailyWithCV(auth, propertyId, startDate, endDate, conversionEventNames) {
+  const [baseReport, cvMap] = await Promise.all([
+    runGA4Report(auth, propertyId, {
+      dateRanges: [{ startDate, endDate }],
+      dimensions: [{ name: 'date' }],
+      metrics: [{ name: 'sessions' }, { name: 'totalUsers' }],
+    }),
+    fetchCVByDimension(auth, propertyId, startDate, endDate, 'date', conversionEventNames),
+  ]);
+  return {
+    rows: (baseReport.rows || []).map(row => {
+      const date = row.dimensionValues[0]?.value || '';
+      return {
+        date,
+        sessions: parseInt(row.metricValues[0]?.value || '0'),
+        totalUsers: parseInt(row.metricValues[1]?.value || '0'),
+        conversions: cvMap[date] || 0,
+      };
     }),
   };
 }

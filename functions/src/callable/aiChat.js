@@ -22,10 +22,6 @@ const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xlsx', 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
 const GEMINI_DIRECT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf'];
 
-const SUPPORTED_MODELS = ['gemini', 'claude'];
-const ADMIN_ONLY_MODELS = ['claude'];
-const CLAUDE_MODEL_ID = 'claude-sonnet-4-6';
-
 /**
  * メインハンドラ
  */
@@ -35,7 +31,7 @@ export async function aiChatCallable(req) {
   }
 
   const userId = req.auth.uid;
-  const { siteId, sessionId, message, attachments = [], model: requestedModel } = req.data;
+  const { siteId, sessionId, message, attachments = [], startDate, endDate } = req.data;
 
   if (!siteId) throw new HttpsError('invalid-argument', 'siteIdが必要です');
   if (!message?.trim()) throw new HttpsError('invalid-argument', 'メッセージが必要です');
@@ -45,16 +41,6 @@ export async function aiChatCallable(req) {
   if (!canEdit) throw new HttpsError('permission-denied', 'このサイトへのアクセス権がありません');
 
   const db = getFirestore();
-
-  // モデル選択の検証（Claude は管理者のみ）
-  const modelChoice = SUPPORTED_MODELS.includes(requestedModel) ? requestedModel : 'gemini';
-  if (ADMIN_ONLY_MODELS.includes(modelChoice)) {
-    const adminDoc = await db.collection('adminUsers').doc(userId).get();
-    const adminRole = adminDoc.exists ? adminDoc.data().role : null;
-    if (!['admin', 'editor', 'viewer'].includes(adminRole)) {
-      throw new HttpsError('permission-denied', `${modelChoice} モデルは管理者のみ利用可能です`);
-    }
-  }
 
   // プラン制限チェック
   const { checkCanGenerate, incrementGenerationCount } = await import('../utils/planManager.js');
@@ -95,7 +81,8 @@ export async function aiChatCallable(req) {
     if (isNewSession || !session?.dataSnapshot) {
       const { fetchComprehensiveDataForImprovement } = await import('../utils/serverComprehensiveDataFetcher.js');
       const { getChatSystemPrompt } = await import('../prompts/templates.js');
-      const comprehensiveData = await fetchComprehensiveDataForImprovement(siteId);
+      const fetchOptions = (startDate && endDate) ? { startDate, endDate } : {};
+      const comprehensiveData = await fetchComprehensiveDataForImprovement(siteId, fetchOptions);
 
       // サイト情報取得
       const siteDoc = await db.collection('sites').doc(siteId).get();
@@ -199,21 +186,23 @@ export async function aiChatCallable(req) {
     userParts.push({ text: message });
     contents.push({ role: 'user', parts: userParts });
 
-    // AI 呼び出し（Gemini or Claude、リトライ付き）
+    // Gemini 呼び出し（リトライ付き）
     let aiResponse = null;
     let lastError = null;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        if (modelChoice === 'claude') {
-          aiResponse = await callClaude(contents);
-        } else {
-          aiResponse = await callGemini(contents);
-        }
+        aiResponse = await callGemini(contents);
         if (aiResponse) break;
-        lastError = new Error(`Empty response from ${modelChoice}`);
+        lastError = new Error('Empty response from Gemini');
+        logger.warn('[aiChat] 空のレスポンス', { attempt });
       } catch (err) {
         lastError = err;
+        logger.error('[aiChat] AI呼出エラー', {
+          attempt,
+          message: err?.message,
+          stack: err?.stack,
+        });
         if (attempt < MAX_RETRIES) {
           await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
         }
@@ -221,11 +210,15 @@ export async function aiChatCallable(req) {
     }
 
     if (!aiResponse) {
+      logger.error('[aiChat] AIの回答生成に完全失敗', {
+        lastErrorMessage: lastError?.message,
+        lastErrorStack: lastError?.stack,
+      });
       throw new HttpsError('internal', `AIの回答生成に失敗しました: ${lastError?.message}`);
     }
 
-    // グラフJSON・改善提案フォーマットの検出
-    const { chartData, improvementData, cleanText } = parseAIResponse(aiResponse);
+    // グラフJSON・改善提案・フォローアップ質問フォーマットの検出
+    const { chartData, improvementData, followupQuestions, cleanText } = parseAIResponse(aiResponse);
 
     // ユーザーメッセージとAI回答をFirestoreに保存
     const userMessage = {
@@ -239,8 +232,8 @@ export async function aiChatCallable(req) {
       text: cleanText,
       chartData: chartData || null,
       improvementData: improvementData || null,
+      followupQuestions: followupQuestions || null,
       attachments: [],
-      model: modelChoice,
       timestamp: new Date().toISOString(),
     };
 
@@ -271,7 +264,7 @@ export async function aiChatCallable(req) {
     // プラン回数消費
     await incrementGenerationCount(userId, 'chat');
 
-    logger.info('[aiChat] 回答生成完了', { siteId, sessionId: sessionRef.id, isNewSession, model: modelChoice });
+    logger.info('[aiChat] 回答生成完了', { siteId, sessionId: sessionRef.id, isNewSession });
 
     return {
       success: true,
@@ -280,7 +273,7 @@ export async function aiChatCallable(req) {
         text: cleanText,
         chartData: chartData || null,
         improvementData: improvementData || null,
-        model: modelChoice,
+        followupQuestions: followupQuestions || null,
       },
     };
   } catch (error) {
@@ -294,7 +287,7 @@ export async function aiChatCallable(req) {
  * Gemini API 呼び出し
  */
 async function callGemini(contents) {
-  const geminiApiKey = process.env.GEMINI_API_KEY;
+  const geminiApiKey = (process.env.GEMINI_API_KEY || '').trim();
   if (!geminiApiKey) {
     throw new HttpsError('internal', 'AI機能が設定されていません。管理者にお問い合わせください。');
   }
@@ -307,76 +300,12 @@ async function callGemini(contents) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         contents,
-        generationConfig: { temperature: 0.7, maxOutputTokens: 4096 },
+        generationConfig: { temperature: 0.7, maxOutputTokens: 8192 },
       }),
     }
   );
   const data = await response.json();
   return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
-
-/**
- * Claude (Anthropic) API 呼び出し
- * Gemini 形式の contents を Claude の system + messages 形式に変換して呼ぶ
- */
-async function callClaude(contents) {
-  const claudeApiKey = process.env.CLAUDE_API_KEY;
-  if (!claudeApiKey) {
-    throw new HttpsError('failed-precondition', 'Claude API キーが設定されていません。管理者にお問い合わせください。');
-  }
-
-  // contents[0]: user (システムプロンプト) → Claude の system へ
-  // contents[1]: model (定型アック) → 破棄
-  // contents[2..]: 実際の会話履歴 → messages へ
-  let systemPrompt = '';
-  const messages = [];
-
-  for (let i = 0; i < contents.length; i++) {
-    const item = contents[i];
-    if (i === 0 && item.role === 'user') {
-      systemPrompt = (item.parts || []).map(p => p.text).filter(Boolean).join('\n');
-      continue;
-    }
-    if (i === 1 && item.role === 'model') {
-      continue;
-    }
-    const role = item.role === 'model' ? 'assistant' : 'user';
-    const content = (item.parts || []).map(p => {
-      if (p.text) return { type: 'text', text: p.text };
-      if (p.inline_data) {
-        const mediaType = p.inline_data.mime_type;
-        if (mediaType === 'application/pdf') {
-          return { type: 'document', source: { type: 'base64', media_type: mediaType, data: p.inline_data.data } };
-        }
-        return { type: 'image', source: { type: 'base64', media_type: mediaType, data: p.inline_data.data } };
-      }
-      return null;
-    }).filter(Boolean);
-    if (content.length > 0) messages.push({ role, content });
-  }
-
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': claudeApiKey,
-      'anthropic-version': '2023-06-01',
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: CLAUDE_MODEL_ID,
-      max_tokens: 4096,
-      temperature: 0.7,
-      system: systemPrompt,
-      messages,
-    }),
-  });
-
-  const data = await response.json();
-  if (data.type === 'error' || data.error) {
-    throw new Error(`Claude API error: ${data.error?.message || JSON.stringify(data)}`);
-  }
-  // content は配列で、text タイプの要素を結合
-  return (data.content || []).filter(c => c.type === 'text').map(c => c.text).join('\n');
 }
 
 /**
@@ -409,7 +338,59 @@ function parseAIResponse(text) {
     }
   }
 
-  return { chartData, improvementData, cleanText };
+  // フォローアップ質問候補の検出（:::followups ブロック）
+  let followupQuestions = null;
+  const followupsMatch = text.match(/:::followups\s*\n([\s\S]*?)\n:::/);
+  if (followupsMatch) {
+    try {
+      const parsed = JSON.parse(followupsMatch[1]);
+      if (Array.isArray(parsed?.questions)) {
+        followupQuestions = parsed.questions.filter(q => typeof q === 'string' && q.trim()).slice(0, 4);
+      }
+      cleanText = cleanText.replace(followupsMatch[0], '').trim();
+    } catch (e) {
+      // JSON解析失敗時は無視
+    }
+  }
+
+  // 可読性向上 post-process（AI の書式を軽く整えるだけ。本文テキストは 1 文字も変えない）
+  cleanText = improveReadability(cleanText);
+
+  return { chartData, improvementData, followupQuestions, cleanText };
+}
+
+/**
+ * AI 応答の可読性向上 post-process
+ * - 単独行の擬似見出し（`**text**` / `**text:**` / `**text：**`）を `### text` に変換
+ * - 句点後に改行のみで段落が続く場合、空行を挿入して段落分離を明確化
+ * - 文章内容・数値・固有名詞は一切変更しない
+ */
+function improveReadability(text) {
+  if (!text) return text;
+  let out = text;
+
+  // Step 1: 擬似見出しの検出と変換（3パターン対応）
+  //   A. 単独行の `**title**` または `**title:**` → `### title`
+  //   B. 行頭の `**title:** 本文` または `**title**: 本文` → `### title\n\n本文`
+  // 注意: `\s` は改行を含むため `[ \t]` で水平空白のみ許可し、次行を巻き込まないようにする
+  out = out.replace(
+    /^[ \t]*\*\*([^*\n]{1,50}?)\*\*[ \t]*[：:]?[ \t]*(.*)$/gm,
+    (match, title, rest) => {
+      const cleanTitle = title.replace(/[：:]\s*$/, '').trim();
+      const body = rest.trim();
+      if (!cleanTitle) return match;
+      return body ? `### ${cleanTitle}\n\n${body}` : `### ${cleanTitle}`;
+    }
+  );
+
+  // Step 2: 句点後の改行に空行を挿入（段落分離）
+  // 次の行が見出し(#)・リスト(-,*)・テーブル(|)・コード(空白)で始まる場合はスキップ
+  out = out.replace(
+    /([。!?！?])\n(?![\n#\-\*\|\s])/g,
+    '$1\n\n'
+  );
+
+  return out;
 }
 
 /**

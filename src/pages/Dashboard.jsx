@@ -200,7 +200,7 @@ export default function Dashboard() {
             {/* アラート通知 */}
             <AlertCards siteId={selectedSiteId} />
 
-            {/* 主要指標（3タブ：サマリ / CV内訳 / KPI予実） */}
+            {/* 主要指標（3タブ：サマリ / CV内訳 / 目標予実） */}
             <MetricTabSection
               data={currentData}
               previousMonthData={previousData}

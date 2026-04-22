@@ -315,7 +315,7 @@ export async function generateAISummaryCallable(request) {
       options.userNote = userNote || '';
       options.existingImprovements = existingImprovements || [];
       options.diagnosisData = metrics.diagnosisData || null;
-      // コンバージョン設定とKPI設定を追加
+      // コンバージョン設定と目標設定を追加
       options.conversionGoals = siteData.conversionGoals || [];
       options.kpiSettings = siteData.kpiSettings || [];
     }
@@ -1438,7 +1438,7 @@ function formatRawDataToMetrics(rawData, pageType) {
           const avgDuration = row.avgSessionDuration || 0;
           const durationMin = Math.floor(avgDuration / 60);
           const durationSec = Math.floor(avgDuration % 60);
-          return `${row.source}: ${sessions}訪問, ${users}ユーザー, CV ${conversions}件 (CVR ${cvr}%), ENG率 ${engRate}%, 滞在時間 ${durationMin}分${durationSec}秒`;
+          return `${row.source}: ${sessions}セッション, ${users}ユーザー, コンバージョン ${conversions}件 (コンバージョン率 ${cvr}%), エンゲージメント率 ${engRate}%, 滞在時間 ${durationMin}分${durationSec}秒`;
         })
         .join('\n');
       return {
@@ -1467,7 +1467,7 @@ function formatRawDataToMetrics(rawData, pageType) {
           const avgDuration = row.averageSessionDuration ? `${Math.floor(row.averageSessionDuration / 60)}分${Math.floor(row.averageSessionDuration % 60)}秒` : '0秒';
           const conversions = row.conversions || 0;
           const cvr = sessions > 0 ? ((conversions / sessions) * 100).toFixed(2) : '0.00';
-          return `${row.landingPage}: ${sessions}訪問, ENG率 ${engRate}%, 滞在時間 ${avgDuration}, CV ${conversions}件 (CVR ${cvr}%)`;
+          return `${row.landingPage}: ${sessions}セッション, エンゲージメント率 ${engRate}%, 滞在時間 ${avgDuration}, コンバージョン ${conversions}件 (コンバージョン率 ${cvr}%)`;
         })
         .join('\n');
       return {
@@ -1521,7 +1521,7 @@ function formatRawDataToMetrics(rawData, pageType) {
             const scrollRate = pv > 0 ? ((scrollCount / pv) * 100).toFixed(1) : '0.0';
             scrollText = `, 完読率 ${scrollRate}%`;
           }
-          return `${row.pagePath || row.pageTitle}: ${pv}PV, ENG率 ${engRate}%, 滞在時間 ${durationMin}分${durationSec}秒${scrollText}, 興味スコア ${score}`;
+          return `${row.pagePath || row.pageTitle}: ${pv}ページビュー, エンゲージメント率 ${engRate}%, 滞在時間 ${durationMin}分${durationSec}秒${scrollText}, 興味スコア ${score}`;
         })
         .join('\n');
 

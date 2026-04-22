@@ -3,6 +3,7 @@ import { TrendingUp, TrendingDown, Clock, AlertCircle, CheckCircle2, RefreshCw, 
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
 import toast from 'react-hot-toast';
+import { getShortLabel, getInvertColor, formatValue } from '../../constants/metrics';
 
 /**
  * 改善効果計測パネル
@@ -254,9 +255,9 @@ function PendingView({ em, effectiveDate }) {
       </p>
       {em.before && (
         <div className="mt-3 grid grid-cols-3 gap-2">
-          <MiniStat label="セッション" value={em.before.sessions?.toLocaleString()} />
-          <MiniStat label="ユーザー" value={em.before.totalUsers?.toLocaleString()} />
-          <MiniStat label="エンゲージメント" value={em.before.engagementRate != null ? `${(em.before.engagementRate * 100).toFixed(1)}%` : '—'} />
+          <MiniStat label={getShortLabel('sessions')} value={em.before.sessions?.toLocaleString()} />
+          <MiniStat label={getShortLabel('totalUsers')} value={em.before.totalUsers?.toLocaleString()} />
+          <MiniStat label={getShortLabel('engagementRate')} value={em.before.engagementRate != null ? `${(em.before.engagementRate * 100).toFixed(1)}%` : '—'} />
         </div>
       )}
     </div>
@@ -339,20 +340,21 @@ function getPrimaryMetrics(category) {
     pos: (v) => (v ?? 0).toFixed(1),
   };
 
+  // 指標メタは shared/metrics.json から解決。format/invertColor も辞書が持つ
   const all = {
-    sessions: { key: 'sessions', label: 'セッション', format: fmt.num },
-    totalUsers: { key: 'totalUsers', label: 'ユーザー', format: fmt.num },
-    newUsers: { key: 'newUsers', label: '新規ユーザー', format: fmt.num },
-    pageViews: { key: 'pageViews', label: 'ページビュー', format: fmt.num },
-    engagementRate: { key: 'engagementRate', label: 'エンゲージメント率', format: fmt.pct },
-    bounceRate: { key: 'bounceRate', label: '直帰率', format: fmt.pct, invertColor: true },
-    avgSessionDuration: { key: 'avgSessionDuration', label: '平均セッション時間', format: fmt.sec },
-    conversions: { key: 'conversions', label: 'コンバージョン', format: fmt.num },
-    conversionRate: { key: 'conversionRate', label: 'CVR', format: fmt.pct },
-    impressions: { key: 'impressions', label: '表示回数(GSC)', format: fmt.num },
-    clicks: { key: 'clicks', label: 'クリック数(GSC)', format: fmt.num },
-    ctr: { key: 'ctr', label: 'CTR(GSC)', format: fmt.pct },
-    avgPosition: { key: 'avgPosition', label: '平均掲載順位', format: fmt.pos, invertColor: true },
+    sessions: { key: 'sessions', label: getShortLabel('sessions'), format: fmt.num, invertColor: getInvertColor('sessions') },
+    totalUsers: { key: 'totalUsers', label: getShortLabel('totalUsers'), format: fmt.num, invertColor: getInvertColor('totalUsers') },
+    newUsers: { key: 'newUsers', label: getShortLabel('newUsers'), format: fmt.num, invertColor: getInvertColor('newUsers') },
+    pageViews: { key: 'pageViews', label: getShortLabel('pageViews'), format: fmt.num, invertColor: getInvertColor('pageViews') },
+    engagementRate: { key: 'engagementRate', label: getShortLabel('engagementRate'), format: fmt.pct, invertColor: getInvertColor('engagementRate') },
+    bounceRate: { key: 'bounceRate', label: getShortLabel('bounceRate'), format: fmt.pct, invertColor: getInvertColor('bounceRate') },
+    avgSessionDuration: { key: 'avgSessionDuration', label: getShortLabel('avgSessionDuration'), format: fmt.sec, invertColor: getInvertColor('avgSessionDuration') },
+    conversions: { key: 'conversions', label: getShortLabel('conversions'), format: fmt.num, invertColor: getInvertColor('conversions') },
+    conversionRate: { key: 'conversionRate', label: getShortLabel('conversionRate'), format: fmt.pct, invertColor: getInvertColor('conversionRate') },
+    impressions: { key: 'impressions', label: getShortLabel('impressions'), format: fmt.num, invertColor: getInvertColor('impressions') },
+    clicks: { key: 'clicks', label: getShortLabel('clicks'), format: fmt.num, invertColor: getInvertColor('clicks') },
+    ctr: { key: 'ctr', label: getShortLabel('ctr'), format: fmt.pct, invertColor: getInvertColor('ctr') },
+    avgPosition: { key: 'avgPosition', label: getShortLabel('position'), format: fmt.pos, invertColor: getInvertColor('position') },
   };
 
   const byCategory = {

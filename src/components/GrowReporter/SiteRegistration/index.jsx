@@ -95,7 +95,7 @@ export default function SiteRegistration({ mode = 'new' }) {
     gscGoogleAccount: '',
     // STEP 4: コンバージョン設定
     conversionEvents: [],
-    // STEP 5: KPI設定
+    // STEP 5: 目標設定
     kpiSettings: {
       targetSessions: 0,
       targetUsers: 0,
@@ -502,7 +502,7 @@ export default function SiteRegistration({ mode = 'new' }) {
                   currentStep === 2 ? 'GA4連携' :
                   currentStep === 3 ? 'Search Console連携' :
                   currentStep === 4 ? 'コンバージョン設定' :
-                  'KPI設定'
+                  '目標設定'
                 }
                 {currentStep >= 3 && <span className="ml-2 text-sm text-gray-500">（任意）</span>}
               </h2>
@@ -512,7 +512,7 @@ export default function SiteRegistration({ mode = 'new' }) {
                   currentStep === 2 ? 'Google Analytics 4のプロパティを連携します' :
                   currentStep === 3 ? 'Google Search Consoleのサイトを連携します（スキップ可能）' :
                   currentStep === 4 ? 'コンバージョンイベントを設定します（スキップ可能）' :
-                  '目標KPIを設定します（スキップ可能）'
+                  '目標を設定します（スキップ可能）'
                 }
               </p>
             </div>

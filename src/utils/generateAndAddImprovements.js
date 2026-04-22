@@ -21,6 +21,8 @@ export async function generateAndAddImprovements(siteId, currentUserEmail, onSta
       improvementFocus: options.improvementFocus || 'balance',
       userNote: options.userNote || '',
       forceRegenerate: options.forceRegenerate || false,
+      startDate: options.startDate,
+      endDate: options.endDate,
     });
 
     const count = result.data.count || 0;

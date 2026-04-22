@@ -100,6 +100,7 @@ def create_conversions_sheet(workbook, conversions: dict, conversion_events: lis
         formats["ai_content"],
         formats["memo_header"],
         formats["memo_content"],
+        ai_placeholder_fmt=formats.get("ai_placeholder"),
     )
 
     return ws

@@ -21,6 +21,7 @@ import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Anal
 import { useAuth } from '../../contexts/AuthContext';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
   BarChart,
@@ -35,7 +36,7 @@ import {
 
 /**
  * 時間帯別分析画面
- * 時間帯別の訪問者とコンバージョンを棒グラフで表示
+ * 時間帯別のセッションとコンバージョンを棒グラフで表示
  */
 export default function Hour() {
   const { selectedSite, selectedSiteId, selectSite, sites, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
@@ -213,7 +214,7 @@ export default function Hour() {
                 <TourHelpButton tourId="analysisHour" />
               </div>
               <p className="mt-0.5 text-sm text-body-color">
-                時間帯別の訪問者とコンバージョンの推移を確認できます
+                時間帯別のセッションとコンバージョンの推移を確認できます
               </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2 pt-0.5" data-tour="analysis-dimension-filters">
@@ -270,13 +271,13 @@ export default function Hour() {
                     <XAxis dataKey="hour" tickFormatter={(value) => `${value}時`} />
                     <YAxis
                       yAxisId="left"
-                      label={{ value: '訪問者', angle: -90, position: 'insideLeft' }}
+                      label={{ value: getShortLabel('sessions'), angle: -90, position: 'insideLeft' }}
                       tickFormatter={(v) => v.toLocaleString()}
                     />
                     <YAxis
                       yAxisId="right"
                       orientation="right"
-                      label={{ value: 'コンバージョン', angle: 90, position: 'insideRight' }}
+                      label={{ value: getShortLabel('conversions'), angle: 90, position: 'insideRight' }}
                       tickFormatter={(v) => v.toLocaleString()}
                     />
                     <RechartsTooltip content={<CustomTooltip />} />
@@ -284,7 +285,7 @@ export default function Hour() {
                     <Bar
                       yAxisId="left"
                       dataKey="sessions"
-                      name="訪問者"
+                      name={getShortLabel('sessions')}
                       fill="#3b82f6"
                       hide={hiddenBars.sessions}
                     >
@@ -293,7 +294,7 @@ export default function Hour() {
                     <Bar
                       yAxisId="right"
                       dataKey="conversions"
-                      name="コンバージョン"
+                      name={getShortLabel('conversions')}
                       fill="#ef4444"
                       hide={hiddenBars.conversions}
                     >
@@ -316,7 +317,7 @@ export default function Hour() {
                   },
                   {
                     key: 'sessions',
-                    label: '訪問者',
+                    label: getShortLabel('sessions'),
                     format: 'number',
                     align: 'right',
                     tooltip: 'sessions',
@@ -324,7 +325,7 @@ export default function Hour() {
                   },
                   {
                     key: 'users',
-                    label: 'ユーザー',
+                    label: getShortLabel('users'),
                     format: 'number',
                     align: 'right',
                     tooltip: 'users',
@@ -333,7 +334,7 @@ export default function Hour() {
                   },
                   {
                     key: 'newUsers',
-                    label: '新規ユーザー',
+                    label: getShortLabel('newUsers'),
                     format: 'number',
                     align: 'right',
                     tooltip: 'newUsers',
@@ -342,7 +343,7 @@ export default function Hour() {
                   },
                   {
                     key: 'pageViews',
-                    label: 'PV数',
+                    label: getShortLabel('pageViews'),
                     format: 'number',
                     align: 'right',
                     tooltip: 'pageViews',
@@ -351,7 +352,7 @@ export default function Hour() {
                   },
                   {
                     key: 'engagementRate',
-                    label: 'ENG率',
+                    label: getShortLabel('engagementRate'),
                     align: 'right',
                     tooltip: 'engagementRate',
                     defaultVisible: false,
@@ -360,7 +361,7 @@ export default function Hour() {
                   },
                   {
                     key: 'bounceRate',
-                    label: '直帰率',
+                    label: getShortLabel('bounceRate'),
                     align: 'right',
                     tooltip: 'bounceRate',
                     defaultVisible: false,
@@ -370,7 +371,7 @@ export default function Hour() {
                   },
                   {
                     key: 'avgSessionDuration',
-                    label: '平均滞在',
+                    label: getShortLabel('avgSessionDuration'),
                     align: 'right',
                     tooltip: 'avgSessionDuration',
                     defaultVisible: false,
@@ -384,7 +385,7 @@ export default function Hour() {
                   },
                   {
                     key: 'conversions',
-                    label: 'コンバージョン',
+                    label: getShortLabel('conversions'),
                     format: 'number',
                     align: 'right',
                     tooltip: 'conversions',
@@ -392,7 +393,7 @@ export default function Hour() {
                   },
                   {
                     key: 'conversionRate',
-                    label: 'CVR',
+                    label: getShortLabel('conversionRate'),
                     align: 'right',
                     tooltip: 'conversionRate',
                     defaultVisible: false,

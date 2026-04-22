@@ -105,7 +105,7 @@ export async function sendWeeklyReportsHandler(event) {
         const metrics = mapMetricsForTemplate(rawMetrics);
         const previousMetrics = mapMetricsForTemplate(rawPrevMetrics);
 
-        // CV内訳・KPIデータ
+        // CV内訳・目標データ
         const conversionDetails = rawMetrics.conversionDetails || [];
         const previousConversionDetails = rawPrevMetrics.conversionDetails || [];
         const kpiSettings = siteData.kpiSettings || null;

@@ -1,20 +1,19 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Target, Settings } from 'lucide-react';
+import { getLabel, getTargetLabel, resolveAlias } from '../../constants/metrics';
 
-const METRIC_LABELS = {
-  users: 'ユーザー数',
-  sessions: '訪問者数',
-  pageviews: 'ページビュー数',
-  engagement_rate: 'エンゲージメント率',
-  target_sessions: '目標訪問者数',
-  target_users: '目標ユーザー数',
-  target_conversions: '目標コンバージョン数',
-  target_conversion_rate: '目標コンバージョン率',
-};
+function resolveKpiLabel(metricKey) {
+  if (!metricKey) return '';
+  if (typeof metricKey === 'string' && metricKey.startsWith('target_')) {
+    return getTargetLabel(metricKey);
+  }
+  const canonical = resolveAlias(metricKey);
+  return canonical ? getLabel(canonical) : metricKey;
+}
 
 /**
- * KPI達成状況
+ * 目標達成状況
  */
 export default function KPIProgress({ kpiSettings, metricsData, conversionsData, isLoading }) {
   const kpiList = kpiSettings?.kpiList || [];
@@ -22,7 +21,7 @@ export default function KPIProgress({ kpiSettings, metricsData, conversionsData,
   if (isLoading) {
     return (
       <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">KPI達成状況</h3>
+        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">目標達成状況</h3>
         <div className="space-y-4">
           {[1, 2].map((i) => (
             <div key={i} className="animate-pulse">
@@ -38,16 +37,16 @@ export default function KPIProgress({ kpiSettings, metricsData, conversionsData,
   if (kpiList.length === 0) {
     return (
       <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">KPI達成状況</h3>
+        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">目標達成状況</h3>
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <Target className="h-10 w-10 text-body-color/40" />
-          <p className="text-sm text-body-color">KPIが設定されていません</p>
+          <p className="text-sm text-body-color">目標が設定されていません</p>
           <Link
             to="/sites/list"
             className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90"
           >
             <Settings className="h-3.5 w-3.5" />
-            サイト設定でKPIを設定
+            サイト設定で目標を設定
           </Link>
         </div>
       </div>
@@ -56,13 +55,13 @@ export default function KPIProgress({ kpiSettings, metricsData, conversionsData,
 
   return (
     <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-      <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">KPI達成状況</h3>
+      <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">目標達成状況</h3>
       <div className="space-y-4">
         {kpiList.map((kpi) => {
           const target = kpi.target || 0;
           let actual = 0;
 
-          // コンバージョンKPIの場合
+          // コンバージョン目標の場合
           if (kpi.isConversion && kpi.eventName && conversionsData) {
             actual = conversionsData[kpi.eventName] || 0;
           } else if (metricsData) {
@@ -85,7 +84,7 @@ export default function KPIProgress({ kpiSettings, metricsData, conversionsData,
           const displayActual = isRate ? `${(actual * 100).toFixed(1)}%` : actual.toLocaleString();
           const displayTarget = isRate ? `${(target * 100).toFixed(1)}%` : target.toLocaleString();
           const percent = target > 0 ? Math.min((actual / target) * 100, 100) : 0;
-          const label = kpi.label || METRIC_LABELS[kpi.metric] || kpi.metric;
+          const label = kpi.label || resolveKpiLabel(kpi.metric) || kpi.metric;
 
           return (
             <div key={kpi.id}>

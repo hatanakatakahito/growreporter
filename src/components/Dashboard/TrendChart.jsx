@@ -4,12 +4,13 @@ import {
   ResponsiveContainer, Legend,
 } from 'recharts';
 import DotWaveSpinner from '../common/DotWaveSpinner';
+import { getShortLabel } from '../../constants/metrics';
 
 const METRIC_OPTIONS = [
-  { key: 'sessions', label: 'セッション', color: '#3758F9', axis: 'left' },
-  { key: 'totalUsers', label: 'ユーザー', color: '#13C296', axis: 'left' },
-  { key: 'screenPageViews', label: 'PV', color: '#F59E0B', axis: 'left' },
-  { key: 'totalConversions', label: 'CV数', color: '#EF4444', axis: 'right' },
+  { key: 'sessions', color: '#3758F9', axis: 'left' },
+  { key: 'totalUsers', color: '#13C296', axis: 'left' },
+  { key: 'screenPageViews', color: '#F59E0B', axis: 'left' },
+  { key: 'totalConversions', color: '#EF4444', axis: 'right' },
 ];
 
 const formatNumber = (v) => {
@@ -18,7 +19,7 @@ const formatNumber = (v) => {
 };
 
 /**
- * トレンドチャート（月次/日次タブ切替、CV数は右Y軸）
+ * トレンドチャート（月次/日次タブ切替、コンバージョン数は右Y軸）
  */
 export default function TrendChart({ monthlyData, dailyData, dailyConversionData, isMonthlyLoading, isDailyLoading }) {
   const [tab, setTab] = useState('monthly');
@@ -88,7 +89,7 @@ export default function TrendChart({ monthlyData, dailyData, dailyConversionData
   const chartData = tab === 'monthly' ? monthlyChartData : dailyChartData;
   const isLoading = tab === 'monthly' ? isMonthlyLoading : isDailyLoading;
 
-  // CV数が選択されているか
+  // コンバージョン数が選択されているか
   const showRightAxis = selectedMetrics.includes('totalConversions');
   // 左軸の指標があるか
   const hasLeftMetrics = selectedMetrics.some((k) => k !== 'totalConversions');
@@ -106,7 +107,7 @@ export default function TrendChart({ monthlyData, dailyData, dailyConversionData
     return [Math.max(0, min - padding), max + padding];
   }, [chartData, selectedMetrics, tab]);
 
-  // 右Y軸のドメイン（CV数用）
+  // 右Y軸のドメイン（コンバージョン数用）
   const yDomainRight = useMemo(() => {
     if (!showRightAxis || chartData.length === 0) return [0, 'auto'];
     const values = chartData.map((d) => d.totalConversions || 0);
@@ -136,7 +137,7 @@ export default function TrendChart({ monthlyData, dailyData, dailyConversionData
                 }`}
                 style={selectedMetrics.includes(opt.key) ? { backgroundColor: opt.color } : {}}
               >
-                {opt.label}
+                {getShortLabel(opt.key)}
               </button>
             ))}
           </div>
@@ -194,7 +195,7 @@ export default function TrendChart({ monthlyData, dailyData, dailyConversionData
               domain={yDomainLeft}
               hide={!hasLeftMetrics}
             />
-            {/* 右Y軸（CV数） */}
+            {/* 右Y軸（コンバージョン数） */}
             {showRightAxis && (
               <YAxis
                 yAxisId="right"
@@ -214,15 +215,11 @@ export default function TrendChart({ monthlyData, dailyData, dailyConversionData
                 fontSize: '12px',
               }}
               formatter={(value, name) => {
-                const opt = METRIC_OPTIONS.find((o) => o.key === name);
-                return [value.toLocaleString(), opt?.label || name];
+                return [value.toLocaleString(), getShortLabel(name)];
               }}
             />
             <Legend
-              formatter={(value) => {
-                const opt = METRIC_OPTIONS.find((o) => o.key === value);
-                return opt?.label || value;
-              }}
+              formatter={(value) => getShortLabel(value)}
               wrapperStyle={{ fontSize: '12px' }}
             />
             {METRIC_OPTIONS.filter((o) => selectedMetrics.includes(o.key)).map((opt) => (

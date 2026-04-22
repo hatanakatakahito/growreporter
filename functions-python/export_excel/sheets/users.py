@@ -3,6 +3,8 @@
 JS 側の createUsersSheet 相当。
 """
 
+from shared.metrics import short_label_of
+
 from ..helpers import append_ai_and_memo_sections, safe_sheet_name
 from ..sheet_builder import write_sheet_title_bar
 from ..styles import FOOTER_TEXT
@@ -49,7 +51,7 @@ def create_users_sheet(workbook, demographics: dict, ai_data: dict | None, memos
         # ヘッダー
         ws.set_row(row, 24)
         ws.write(row, 0, "項目", formats["header"])
-        ws.write(row, 1, "ユーザー数", formats["header"])
+        ws.write(row, 1, short_label_of("totalUsers"), formats["header"])
         ws.write(row, 2, "割合", formats["header"])
         row += 1
 
@@ -90,6 +92,7 @@ def create_users_sheet(workbook, demographics: dict, ai_data: dict | None, memos
         formats["ai_content"],
         formats["memo_header"],
         formats["memo_content"],
+        ai_placeholder_fmt=formats.get("ai_placeholder"),
     )
 
     return ws

@@ -277,7 +277,7 @@ function calculateStats(scoredPages, ga4PageData) {
     ? scoredPages.reduce((sum, p) => sum + p.contentScore, 0) / scoredPages.length
     : 0;
 
-  // 平均PV（GA4データから）
+  // 1セッションあたりPV（GA4データから）
   const avgPageViews = ga4PageData.length > 0
     ? ga4PageData.reduce((sum, p) => sum + (p.pageViews || 0), 0) / ga4PageData.length
     : 0;

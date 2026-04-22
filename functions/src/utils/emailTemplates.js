@@ -2,6 +2,7 @@ import * as functions from 'firebase-functions';
 import { getFirestore } from 'firebase-admin/firestore';
 import { format, subDays, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { getLabel, resolveAlias } from '../constants/metrics.js';
 
 /**
  * メールテンプレートを生成
@@ -104,21 +105,30 @@ export function generateEmailTemplate(reportType, siteData, dateRange, options =
     }).join('');
   };
 
-  // KPIセクションHTML（月次レポートのみ）
+  // 目標セクションHTML（月次レポートのみ）
   const renderKpiSection = () => {
     if (!kpiSettings || !kpiSettings.kpiList || kpiSettings.kpiList.length === 0) return '';
     const activeKpis = kpiSettings.kpiList.filter((k) => k.isActive);
     if (activeKpis.length === 0) return '';
 
-    // KPIメトリクスの実績値をマッピング
+    // 目標メトリクスの実績値をマッピング
+    // kpi.metric は 'sessions' / 'target_sessions' / 'engagement_rate' 等の揺れがあるため
+    // resolveAlias() で canonical キーに正規化してから、本テンプレートの metrics オブジェクトの
+    // フィールド名（sessions/users/pageviews/...）へマップする
+    const CANONICAL_TO_METRICS_FIELD = {
+      sessions: 'sessions',
+      totalUsers: 'users',
+      screenPageViews: 'pageviews',
+      pageViewsPerSession: 'averagePageviews',
+      engagementRate: 'engagementRate',
+      conversions: 'conversions',
+      conversionRate: 'conversionRate',
+      bounceRate: 'bounceRate',
+    };
     const getActualValue = (kpi) => {
-      const key = kpi.metric;
-      if (key === 'sessions' || key === 'target_sessions') return metrics.sessions;
-      if (key === 'users' || key === 'target_users') return metrics.users;
-      if (key === 'pageviews') return metrics.pageviews;
-      if (key === 'engagement_rate') return metrics.engagementRate;
-      if (key === 'target_conversions') return metrics.conversions;
-      if (key === 'target_conversion_rate') return metrics.conversionRate;
+      const canonical = resolveAlias(kpi.metric);
+      const field = canonical ? CANONICAL_TO_METRICS_FIELD[canonical] : null;
+      if (field && metrics[field] != null) return metrics[field];
       if (kpi.isConversion && kpi.eventName) {
         const cv = conversionDetails.find((c) => c.eventName === kpi.eventName);
         return cv ? cv.count : 0;
@@ -145,11 +155,11 @@ export function generateEmailTemplate(reportType, siteData, dateRange, options =
     return `
           <tr>
             <td style="padding: 0 30px 30px 30px;">
-              <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 16px; font-weight: 700;">KPI達成状況</h3>
+              <h3 style="margin: 0 0 12px 0; color: #1f2937; font-size: 16px; font-weight: 700;">目標達成状況</h3>
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
                 <thead>
                   <tr style="background-color: #f9fafb;">
-                    <th style="padding: 10px 12px; text-align: left; font-size: 13px; color: #374151;">KPI</th>
+                    <th style="padding: 10px 12px; text-align: left; font-size: 13px; color: #374151;">目標</th>
                     <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #374151;">実績</th>
                     <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #374151;">目標</th>
                     <th style="padding: 10px 12px; text-align: right; font-size: 13px; color: #374151;">達成率</th>
@@ -213,15 +223,15 @@ export function generateEmailTemplate(reportType, siteData, dateRange, options =
                   </tr>
                 </thead>
                 <tbody>
-                  ${renderRow(metrics.sessions, previousMetrics.sessions, '訪問者数')}
-                  ${renderRow(metrics.users, previousMetrics.users, 'ユーザー数')}
-                  ${renderRow(metrics.pageviews, previousMetrics.pageviews, '表示回数')}
-                  ${renderRow(metrics.averagePageviews, previousMetrics.averagePageviews, '平均PV', 2)}
-                  ${renderRow(metrics.engagementRate, previousMetrics.engagementRate, 'ENG率', 1, '%')}
-                  ${renderRow(metrics.conversions, previousMetrics.conversions, 'CV数')}
+                  ${renderRow(metrics.sessions, previousMetrics.sessions, getLabel('sessions'))}
+                  ${renderRow(metrics.users, previousMetrics.users, getLabel('totalUsers'))}
+                  ${renderRow(metrics.pageviews, previousMetrics.pageviews, getLabel('screenPageViews'))}
+                  ${renderRow(metrics.averagePageviews, previousMetrics.averagePageviews, getLabel('pageViewsPerSession'), 2)}
+                  ${renderRow(metrics.engagementRate, previousMetrics.engagementRate, getLabel('engagementRate'), 1, '%')}
+                  ${renderRow(metrics.conversions, previousMetrics.conversions, getLabel('conversions'))}
                   ${renderConversionRows()}
-                  ${renderRow(metrics.conversionRate, previousMetrics.conversionRate, 'CVR', 3, '%')}
-                  ${renderRow(metrics.bounceRate, previousMetrics.bounceRate, '直帰率', 1, '%')}
+                  ${renderRow(metrics.conversionRate, previousMetrics.conversionRate, getLabel('conversionRate'), 3, '%')}
+                  ${renderRow(metrics.bounceRate, previousMetrics.bounceRate, getLabel('bounceRate'), 1, '%')}
                 </tbody>
               </table>
             </td>
@@ -293,19 +303,27 @@ export function generateEmailTemplate(reportType, siteData, dateRange, options =
       }).join('\n')
     : '';
 
-  // KPIテキスト
+  // 目標テキスト
   const kpiText = (() => {
     if (!kpiSettings?.kpiList?.length) return '';
+    // canonical キー → このテンプレートの metrics オブジェクトのフィールド名
+    const CANONICAL_TO_METRICS_FIELD_TEXT = {
+      sessions: 'sessions',
+      totalUsers: 'users',
+      screenPageViews: 'pageviews',
+      pageViewsPerSession: 'averagePageviews',
+      engagementRate: 'engagementRate',
+      conversions: 'conversions',
+      conversionRate: 'conversionRate',
+      bounceRate: 'bounceRate',
+    };
     const lines = kpiSettings.kpiList.filter((k) => k.isActive).map((kpi) => {
-      const key = kpi.metric;
       let actual = 0;
-      if (key === 'sessions' || key === 'target_sessions') actual = metrics.sessions;
-      else if (key === 'users' || key === 'target_users') actual = metrics.users;
-      else if (key === 'pageviews') actual = metrics.pageviews;
-      else if (key === 'engagement_rate') actual = metrics.engagementRate;
-      else if (key === 'target_conversions') actual = metrics.conversions;
-      else if (key === 'target_conversion_rate') actual = metrics.conversionRate;
-      else if (kpi.isConversion && kpi.eventName) {
+      const canonical = resolveAlias(kpi.metric);
+      const field = canonical ? CANONICAL_TO_METRICS_FIELD_TEXT[canonical] : null;
+      if (field && metrics[field] != null) {
+        actual = metrics[field];
+      } else if (kpi.isConversion && kpi.eventName) {
         const cv = conversionDetails.find((c) => c.eventName === kpi.eventName);
         actual = cv ? cv.count : 0;
       }
@@ -313,7 +331,7 @@ export function generateEmailTemplate(reportType, siteData, dateRange, options =
       const progress = target > 0 ? Math.min((actual / target) * 100, 100) : 0;
       return `- ${kpi.label}: ${fmt(actual)} / ${fmt(target)}（${progress.toFixed(0)}%）`;
     });
-    return lines.length ? `\n■KPI達成状況\n${lines.join('\n')}` : '';
+    return lines.length ? `\n■目標達成状況\n${lines.join('\n')}` : '';
   })();
 
   // テキスト版
@@ -324,14 +342,14 @@ ${reportTitle} - ${displaySiteName}
 サイトURL: ${displaySiteUrl || '（URLなし）'}
 
 ■主要指標
-- 訪問者数: ${fmt(metrics.sessions)} (前${prevPeriodLabel}比 ${calculateChange(metrics.sessions, previousMetrics.sessions).toFixed(1)}%)
-- ユーザー数: ${fmt(metrics.users)} (前${prevPeriodLabel}比 ${calculateChange(metrics.users, previousMetrics.users).toFixed(1)}%)
-- 表示回数: ${fmt(metrics.pageviews)} (前${prevPeriodLabel}比 ${calculateChange(metrics.pageviews, previousMetrics.pageviews).toFixed(1)}%)
-- 平均PV: ${fmt(metrics.averagePageviews, 2)} (前${prevPeriodLabel}比 ${calculateChange(metrics.averagePageviews, previousMetrics.averagePageviews).toFixed(1)}%)
-- ENG率: ${fmt(metrics.engagementRate, 1)}% (前${prevPeriodLabel}比 ${calculateChange(metrics.engagementRate, previousMetrics.engagementRate).toFixed(1)}%)
-- CV数: ${fmt(metrics.conversions)} (前${prevPeriodLabel}比 ${calculateChange(metrics.conversions, previousMetrics.conversions).toFixed(1)}%)
-${cvDetailText ? cvDetailText + '\n' : ''}- CVR: ${fmt(metrics.conversionRate, 3)}% (前${prevPeriodLabel}比 ${calculateChange(metrics.conversionRate, previousMetrics.conversionRate).toFixed(1)}%)
-- 直帰率: ${fmt(metrics.bounceRate, 1)}% (前${prevPeriodLabel}比 ${calculateChange(metrics.bounceRate, previousMetrics.bounceRate).toFixed(1)}%)
+- ${getLabel('sessions')}: ${fmt(metrics.sessions)} (前${prevPeriodLabel}比 ${calculateChange(metrics.sessions, previousMetrics.sessions).toFixed(1)}%)
+- ${getLabel('totalUsers')}: ${fmt(metrics.users)} (前${prevPeriodLabel}比 ${calculateChange(metrics.users, previousMetrics.users).toFixed(1)}%)
+- ${getLabel('screenPageViews')}: ${fmt(metrics.pageviews)} (前${prevPeriodLabel}比 ${calculateChange(metrics.pageviews, previousMetrics.pageviews).toFixed(1)}%)
+- ${getLabel('pageViewsPerSession')}: ${fmt(metrics.averagePageviews, 2)} (前${prevPeriodLabel}比 ${calculateChange(metrics.averagePageviews, previousMetrics.averagePageviews).toFixed(1)}%)
+- ${getLabel('engagementRate')}: ${fmt(metrics.engagementRate, 1)}% (前${prevPeriodLabel}比 ${calculateChange(metrics.engagementRate, previousMetrics.engagementRate).toFixed(1)}%)
+- ${getLabel('conversions')}: ${fmt(metrics.conversions)} (前${prevPeriodLabel}比 ${calculateChange(metrics.conversions, previousMetrics.conversions).toFixed(1)}%)
+${cvDetailText ? cvDetailText + '\n' : ''}- ${getLabel('conversionRate')}: ${fmt(metrics.conversionRate, 3)}% (前${prevPeriodLabel}比 ${calculateChange(metrics.conversionRate, previousMetrics.conversionRate).toFixed(1)}%)
+- ${getLabel('bounceRate')}: ${fmt(metrics.bounceRate, 1)}% (前${prevPeriodLabel}比 ${calculateChange(metrics.bounceRate, previousMetrics.bounceRate).toFixed(1)}%)
 ${kpiText}
 
 詳細はこちら: ${dashboardUrl}

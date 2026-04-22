@@ -148,6 +148,202 @@ function computeMonthlyDelta(monthlyData) {
   return result;
 }
 
+// エクスポートに含まれる AI シート定義
+//   exportKey: Python CF 側で参照するキー (aiAnalysis[key])
+//   pageType:  generateAISummary callable に渡すキー (画面が保存する pageType と一致 → cache 共有)
+//   getRawData(allData): その pageType の AI prompt が期待する rawData を組み立て
+//   getCompRawData(allData): 比較期間の rawData (なければ null)
+//   hasData(allData): データが空なら AI 生成スキップ
+const AI_SHEET_CONFIG = [
+  {
+    exportKey: 'analysis/summary',
+    pageType: 'summary',
+    getRawData: (d) => ({
+      summaryMetrics: d.summaryMetrics,
+      monthlyData: d.monthlyData,
+    }),
+    getCompRawData: (d) => (d.comparison ? {
+      summaryMetrics: d.comparison.summaryMetrics,
+      monthlyData: d.comparison.monthlyData,
+    } : null),
+    hasData: (d) => !!d.summaryMetrics?.metrics,
+  },
+  {
+    exportKey: 'analysis/month',
+    pageType: 'analysis/month',
+    getRawData: (d) => ({ monthlyTrend: d.monthlyData }),
+    getCompRawData: (d) => (d.comparison ? { monthlyTrend: d.comparison.monthlyData } : null),
+    hasData: (d) => Array.isArray(d.monthlyData) && d.monthlyData.length > 0,
+  },
+  {
+    exportKey: 'analysis/day',
+    pageType: 'day',
+    getRawData: (d) => d.daily,
+    getCompRawData: (d) => d.comparison?.daily || null,
+    hasData: (d) => !!(d.daily?.rows?.length),
+  },
+  {
+    exportKey: 'analysis/week',
+    pageType: 'week',
+    getRawData: (d) => d.weekly,
+    getCompRawData: () => null,
+    hasData: (d) => !!(d.weekly?.rows?.length || (Array.isArray(d.weekly) && d.weekly.length)),
+  },
+  {
+    exportKey: 'analysis/hour',
+    pageType: 'hour',
+    getRawData: (d) => d.hourly,
+    getCompRawData: () => null,
+    hasData: (d) => !!(d.hourly?.rows?.length || (Array.isArray(d.hourly) && d.hourly.length)),
+  },
+  {
+    exportKey: 'analysis/users',
+    pageType: 'users',
+    getRawData: (d) => d.demographics,
+    getCompRawData: () => null,
+    hasData: (d) => !!d.demographics?.data,
+  },
+  {
+    exportKey: 'analysis/channels',
+    pageType: 'channels',
+    getRawData: (d) => d.channels,
+    getCompRawData: (d) => d.comparison?.channels || null,
+    hasData: (d) => !!(d.channels?.rows?.length || (Array.isArray(d.channels) && d.channels.length)),
+  },
+  {
+    exportKey: 'analysis/keywords',
+    pageType: 'keywords',
+    getRawData: (d) => d.keywords,
+    getCompRawData: () => null,
+    hasData: (d) => !!(d.keywords?.rows?.length || d.keywords?.queries?.length),
+  },
+  {
+    exportKey: 'analysis/referrals',
+    pageType: 'referrals',
+    getRawData: (d) => d.referrals,
+    getCompRawData: (d) => d.comparison?.referrals || null,
+    hasData: (d) => !!(d.referrals?.rows?.length || (Array.isArray(d.referrals) && d.referrals.length)),
+  },
+  {
+    exportKey: 'analysis/pages',
+    pageType: 'pages',
+    getRawData: (d) => d.pages,
+    getCompRawData: (d) => d.comparison?.pages || null,
+    hasData: (d) => !!(d.pages?.rows?.length),
+  },
+  {
+    exportKey: 'analysis/page-categories',
+    pageType: 'pageCategories',
+    getRawData: (d) => ({ rows: d.pageCategories?.rows || d.pageCategories || [] }),
+    getCompRawData: () => null,
+    hasData: (d) => !!(d.pageCategories?.rows?.length || (Array.isArray(d.pageCategories) && d.pageCategories.length)),
+  },
+  {
+    exportKey: 'analysis/landing-pages',
+    pageType: 'landingPages',
+    getRawData: (d) => d.landingPages,
+    getCompRawData: (d) => d.comparison?.landingPages || null,
+    hasData: (d) => !!(d.landingPages?.rows?.length || (Array.isArray(d.landingPages) && d.landingPages.length)),
+  },
+  {
+    exportKey: 'analysis/file-downloads',
+    pageType: 'fileDownloads',
+    getRawData: (d) => d.fileDownloads,
+    getCompRawData: () => null,
+    hasData: (d) => !!(d.fileDownloads?.rows?.length),
+  },
+  {
+    exportKey: 'analysis/external-links',
+    pageType: 'externalLinks',
+    getRawData: (d) => d.externalLinks,
+    getCompRawData: () => null,
+    hasData: (d) => !!(d.externalLinks?.rows?.length),
+  },
+  {
+    exportKey: 'analysis/conversions',
+    pageType: 'conversions',
+    getRawData: (d) => d.conversions,
+    getCompRawData: () => null,
+    hasData: (d) => !!(d.conversions?.data?.length || d.conversions?.rows?.length),
+  },
+  {
+    exportKey: 'analysis/reverse-flow',
+    pageType: 'reverseFlow',
+    getRawData: (d) => {
+      const flow = (d.reverseFlows || [])[0];
+      if (!flow) return null;
+      return {
+        summary: flow.summary,
+        monthly: flow.monthlyTable || [],
+        flow: {
+          flowName: flow.flowName,
+          formPagePath: flow.formPagePath,
+          targetCvEvent: flow.targetCvEvent,
+        },
+      };
+    },
+    getCompRawData: () => null,
+    hasData: (d) => Array.isArray(d.reverseFlows) && d.reverseFlows.length > 0,
+  },
+];
+
+// 未生成かつデータありの AI シートをバックエンドで自動生成して aiAnalysis にマージ
+async function generateMissingAIAnalyses(allData, siteId, dateRange, comparisonDateRange, onProgress) {
+  const startDate = typeof dateRange.from === 'string' ? dateRange.from : format(dateRange.from, 'yyyy-MM-dd');
+  const endDate = typeof dateRange.to === 'string' ? dateRange.to : format(dateRange.to, 'yyyy-MM-dd');
+  const compStart = comparisonDateRange ? (typeof comparisonDateRange.from === 'string' ? comparisonDateRange.from : format(comparisonDateRange.from, 'yyyy-MM-dd')) : null;
+  const compEnd = comparisonDateRange ? (typeof comparisonDateRange.to === 'string' ? comparisonDateRange.to : format(comparisonDateRange.to, 'yyyy-MM-dd')) : null;
+
+  const existing = allData.aiAnalysis || {};
+  const targets = AI_SHEET_CONFIG.filter((cfg) => {
+    if (existing[cfg.exportKey]?.summary) return false;  // 画面で生成済み → スキップ
+    if (!cfg.hasData(allData)) return false;             // データなし → スキップ
+    return true;
+  });
+
+  if (targets.length === 0) return existing;
+
+  const generateFn = httpsCallable(functions, 'generateAISummary');
+  let completed = 0;
+  const total = targets.length;
+  if (onProgress) onProgress(`AI 分析を生成中... (0/${total})`);
+
+  const results = await Promise.allSettled(
+    targets.map(async (cfg) => {
+      const rawData = cfg.getRawData(allData);
+      if (!rawData) return { exportKey: cfg.exportKey, summary: null };
+      const params = {
+        siteId,
+        pageType: cfg.pageType,
+        rawData,
+        startDate,
+        endDate,
+      };
+      const compRaw = cfg.getCompRawData(allData);
+      if (compRaw && compStart && compEnd) {
+        params.comparisonRawData = compRaw;
+        params.comparisonStartDate = compStart;
+        params.comparisonEndDate = compEnd;
+      }
+      try {
+        const r = await generateFn(params);
+        return { exportKey: cfg.exportKey, summary: r.data?.summary || null, generatedAt: r.data?.generatedAt };
+      } finally {
+        completed += 1;
+        if (onProgress) onProgress(`AI 分析を生成中... (${completed}/${total})`);
+      }
+    })
+  );
+
+  const merged = { ...existing };
+  for (const res of results) {
+    if (res.status !== 'fulfilled') continue;
+    const { exportKey, summary, generatedAt } = res.value;
+    if (summary) merged[exportKey] = { summary, generatedAt };
+  }
+  return merged;
+}
+
 // カスタムシート用のペイロード (Python CF 側で独自レイアウトを生成)
 function buildCustomSheetsPayload(allData) {
   return {
@@ -222,6 +418,15 @@ export function useAnalysisExport() {
         isComparing ? comparisonDateRange : null
       );
 
+      // 未生成 AI シートをバックエンドで自動生成 (画面生成済みはスキップ / データなしはスキップ)
+      const mergedAI = await generateMissingAIAnalyses(
+        allData,
+        selectedSiteId,
+        dateRange,
+        isComparing ? comparisonDateRange : null,
+        setExportProgress
+      );
+
       setExportProgress('サーバで生成中...');
       const payload = {
         siteName: selectedSite?.siteName || '',
@@ -229,7 +434,7 @@ export function useAnalysisExport() {
         comparisonRange: allData.comparison?.dateRange || null,
         sheets: buildSheetsPayload(allData),
         customSheets: buildCustomSheetsPayload(allData),
-        aiAnalysis: allData.aiAnalysis || {},
+        aiAnalysis: mergedAI,
         memos: allData.memos || {},
       };
 
@@ -343,7 +548,7 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
   const fetchReverseFlow = httpsCallable(functions, 'fetchGA4ReverseFlowData');
 
   const promises = {
-    // 全体サマリー: GA4基本メトリクス（主要指標・KPI・CV内訳用）
+    // 全体サマリー: GA4基本メトリクス（主要指標・目標・CV内訳用）
     summaryGA4: fetchGA4({
       siteId: selectedSiteId, startDate, endDate,
       metrics: ['sessions', 'totalUsers', 'newUsers', 'screenPageViews', 'engagementRate'],
@@ -501,7 +706,7 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
   const results = {};
   keys.forEach((key, i) => { results[key] = values[i]; });
 
-  // 全体サマリー用データの統合（主要指標 + KPI + CV内訳）
+  // 全体サマリー用データの統合（主要指標 + 目標 + CV内訳）
   const summaryMetrics = results.summaryGA4 || results.summaryGSC ? {
     metrics: {
       sessions: results.summaryGA4?.metrics?.sessions || 0,

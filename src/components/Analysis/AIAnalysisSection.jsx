@@ -208,18 +208,18 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
           <div className="rounded-lg bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 px-10 py-8">
             <div className="text-sm text-gray-800 dark:text-gray-200">
               <p className="leading-relaxed">
-                当期の訪問数は6,373回、ページ閲覧数は17,484回でした。
+                当期のセッション数は6,373回、ページビューは17,484回でした。
                 <br /><span className="block h-1" />
-                総成果数は176件となり、特に「入居のお申し込み完了」と「見学のお申し込み完了」は目標を大きく上回る結果となりました。
+                総コンバージョン数は176件となり、特に「入居のお申し込み完了」と「見学のお申し込み完了」は目標を大きく上回る結果となりました。
                 <br /><span className="block h-1" />
-                一方で、「料金シュミレーション完了」や「資料請求」などの初期段階の成果が大幅に減少しており、全体的なユーザー獲得の勢いが前月と比較して低下している状況です。
+                一方で、「料金シュミレーション完了」や「資料請求」などの初期段階のコンバージョンが大幅に減少しており、全体的なユーザー獲得の勢いが前月と比較して低下している状況です。
               </p>
               <ul className="mt-4 space-y-2 list-disc pl-5">
-                <li className="leading-relaxed">ユーザー数が前月比35.8%減の4,812人となり、サイトへの訪問者全体が減少しました。</li>
-                <li className="leading-relaxed">訪問数も前月比31.9%減の6,373回となり、サイトへの来訪機会が減っています。</li>
-                <li className="leading-relaxed">総成果数は前月比41.9%減の176件となり、成果獲得の全体的な量が大きく落ち込みました。</li>
-                <li className="leading-relaxed">料金シミュレーション完了が前月比51.2%減の81件、資料請求が前月比61.2%減の19件と、特に成果の初期段階での減少が顕著です。</li>
-                <li className="leading-relaxed">前年同月比では訪問数が4,149回から6,373回へ増加し、成果数も0件から176件へと大幅に増加しました。</li>
+                <li className="leading-relaxed">ユーザー数が前月比35.8%減の4,812人となり、サイトへのセッション全体が減少しました。</li>
+                <li className="leading-relaxed">セッション数も前月比31.9%減の6,373回となり、サイトへの来訪機会が減っています。</li>
+                <li className="leading-relaxed">総コンバージョン数は前月比41.9%減の176件となり、成果獲得の全体的な量が大きく落ち込みました。</li>
+                <li className="leading-relaxed">料金シミュレーション完了が前月比51.2%減の81件、資料請求が前月比61.2%減の19件と、特にコンバージョンの初期段階での減少が顕著です。</li>
+                <li className="leading-relaxed">前年同月比ではセッション数が4,149回から6,373回へ増加し、コンバージョン数も0件から176件へと大幅に増加しました。</li>
               </ul>
             </div>
           </div>

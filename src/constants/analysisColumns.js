@@ -7,40 +7,56 @@
  * Excel に反映するために使用する。
  *
  * フィールド:
- *  - key:            データ行のプロパティ名
- *  - label:          ヘッダ表示名
+ *  - key:            データ行のプロパティ名（localStorage 互換のため不変）
+ *  - label:          ヘッダ表示名（指標列は shared/metrics.json の shortLabel を参照）
+ *  - tooltip:        指標辞書のキー。DataTable がヘルプアイコン表示に使用
  *  - format:         'number' | 'decimal' | 'percent' | 'duration' | 'string'（省略=string）
  *  - required:       true の場合はユーザーが非表示にできず常に出力
  *  - defaultVisible: false の場合はデフォルト非表示（ユーザーが表示に切替可）
  *  - comparison:     true の場合、比較モード時に前期値・変化率の列を追加
  */
 
+import { getShortLabel } from './metrics';
+
+// 指標列のショートハンド：column.key は行プロパティ名（API/adapter 由来）のまま保持し、
+// label / tooltip は辞書（shared/metrics.json）から解決する
+function metricCol(rowKey, format, opts = {}) {
+  return {
+    key: rowKey,
+    label: getShortLabel(rowKey),
+    tooltip: rowKey, // resolveAlias 経由で canonicalKey に解決される
+    format,
+    comparison: true,
+    ...opts,
+  };
+}
+
 // 共通の「期間×メトリクス」列セット（日/曜日/時間帯で共通）
 const PERIOD_METRIC_COLUMNS = [
-  { key: 'sessions', label: '訪問者', format: 'number', comparison: true },
-  { key: 'users', label: 'ユーザー', format: 'number', defaultVisible: false, comparison: true },
-  { key: 'newUsers', label: '新規ユーザー', format: 'number', defaultVisible: false, comparison: true },
-  { key: 'pageViews', label: 'PV数', format: 'number', defaultVisible: false, comparison: true },
-  { key: 'engagementRate', label: 'ENG率', format: 'percent', defaultVisible: false, comparison: true },
-  { key: 'bounceRate', label: '直帰率', format: 'percent', defaultVisible: false, comparison: true },
-  { key: 'avgSessionDuration', label: '平均滞在', format: 'duration', defaultVisible: false, comparison: true },
-  { key: 'conversions', label: 'コンバージョン', format: 'number', comparison: true },
-  { key: 'conversionRate', label: 'CVR', format: 'percent', defaultVisible: false },
+  metricCol('sessions', 'number'),
+  metricCol('users', 'number', { defaultVisible: false }),
+  metricCol('newUsers', 'number', { defaultVisible: false }),
+  metricCol('pageViews', 'number', { defaultVisible: false }),
+  metricCol('engagementRate', 'percent', { defaultVisible: false }),
+  metricCol('bounceRate', 'percent', { defaultVisible: false }),
+  metricCol('avgSessionDuration', 'duration', { defaultVisible: false }),
+  metricCol('conversions', 'number'),
+  metricCol('conversionRate', 'percent', { defaultVisible: false, comparison: false }),
 ];
 
 export const ANALYSIS_COLUMNS = {
   'analysis-month': [
     { key: 'label', label: '年月', required: true },
-    { key: 'users', label: 'ユーザー数', format: 'number', comparison: true },
-    { key: 'newUsers', label: '新規ユーザー', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'sessions', label: '訪問者', format: 'number', comparison: true },
-    { key: 'avgPageviews', label: '平均PV', format: 'decimal', comparison: true },
-    { key: 'pageViews', label: '表示回数', format: 'number', comparison: true },
-    { key: 'engagementRate', label: 'ENG率', format: 'percent', comparison: true },
-    { key: 'bounceRate', label: '直帰率', format: 'percent', defaultVisible: false, comparison: true },
-    { key: 'averageSessionDuration', label: '平均滞在時間', format: 'duration', defaultVisible: false, comparison: true },
-    { key: 'conversions', label: 'CV数', format: 'number', comparison: true },
-    { key: 'conversionRate', label: 'CVR', format: 'percent', comparison: true },
+    metricCol('users', 'number'),
+    metricCol('newUsers', 'number', { defaultVisible: false }),
+    metricCol('sessions', 'number'),
+    metricCol('avgPageviews', 'decimal'),
+    metricCol('pageViews', 'number'),
+    metricCol('engagementRate', 'percent'),
+    metricCol('bounceRate', 'percent', { defaultVisible: false }),
+    metricCol('averageSessionDuration', 'duration', { defaultVisible: false }),
+    metricCol('conversions', 'number'),
+    metricCol('conversionRate', 'percent'),
   ],
   'analysis-day': [
     { key: 'date', label: '日付', required: true },
@@ -56,84 +72,85 @@ export const ANALYSIS_COLUMNS = {
   ],
   'analysis-channels': [
     { key: 'channelName', label: 'チャネル', required: true },
-    { key: 'sessions', label: '訪問者', format: 'number', comparison: true },
+    metricCol('sessions', 'number'),
     { key: 'sessionRate', label: '割合', format: 'percent' },
-    { key: 'users', label: 'ユーザー', format: 'number', comparison: true },
-    { key: 'conversions', label: 'コンバージョン', format: 'number', comparison: true },
-    { key: 'conversionRate', label: 'CVR', format: 'percent', comparison: true },
-    { key: 'newUsers', label: '新規ユーザー', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'pageViews', label: 'PV数', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'engagementRate', label: 'ENG率', format: 'percent', defaultVisible: false, comparison: true },
-    { key: 'bounceRate', label: '直帰率', format: 'percent', defaultVisible: false, comparison: true },
-    { key: 'avgSessionDuration', label: '平均滞在', format: 'duration', defaultVisible: false, comparison: true },
+    metricCol('users', 'number'),
+    metricCol('conversions', 'number'),
+    metricCol('conversionRate', 'percent'),
+    metricCol('newUsers', 'number', { defaultVisible: false }),
+    metricCol('pageViews', 'number', { defaultVisible: false }),
+    metricCol('engagementRate', 'percent', { defaultVisible: false }),
+    metricCol('bounceRate', 'percent', { defaultVisible: false }),
+    metricCol('avgSessionDuration', 'duration', { defaultVisible: false }),
   ],
   'analysis-keywords': [
     { key: 'keyword', label: 'キーワード', required: true },
-    { key: 'clicks', label: 'クリック数', format: 'number', comparison: true },
-    { key: 'impressions', label: '表示回数', format: 'number', comparison: true },
-    { key: 'ctr', label: 'クリック率', format: 'percent', comparison: true },
-    { key: 'position', label: '平均掲載順位', format: 'decimal', comparison: true },
+    metricCol('clicks', 'number'),
+    metricCol('impressions', 'number'),
+    metricCol('ctr', 'percent'),
+    metricCol('position', 'decimal'),
   ],
   'analysis-referrals': [
     { key: 'source', label: '参照元', required: true },
-    { key: 'sessions', label: '訪問者', format: 'number', comparison: true },
-    { key: 'users', label: 'ユーザー数', format: 'number', comparison: true },
-    { key: 'newUsers', label: '新規ユーザー', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'pageViews', label: '表示回数', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'engagementRate', label: 'ENG率', format: 'percent', comparison: true },
-    { key: 'bounceRate', label: '直帰率', format: 'percent', defaultVisible: false, comparison: true },
-    { key: 'avgSessionDuration', label: '平均滞在時間', format: 'duration', comparison: true },
-    { key: 'conversions', label: 'コンバージョン', format: 'number', comparison: true },
-    { key: 'conversionRate', label: 'CVR', format: 'percent', comparison: true },
+    metricCol('sessions', 'number'),
+    metricCol('users', 'number'),
+    metricCol('newUsers', 'number', { defaultVisible: false }),
+    metricCol('pageViews', 'number', { defaultVisible: false }),
+    metricCol('engagementRate', 'percent'),
+    metricCol('bounceRate', 'percent', { defaultVisible: false }),
+    metricCol('avgSessionDuration', 'duration'),
+    metricCol('conversions', 'number'),
+    metricCol('conversionRate', 'percent'),
   ],
   'analysis-pages': [
     { key: 'path', label: 'ページパス', required: true },
-    { key: 'pageViews', label: 'ページビュー', format: 'number', comparison: true },
-    { key: 'sessions', label: '訪問者', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'users', label: 'ユーザー', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'newUsers', label: '新規ユーザー', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'engagementRate', label: 'ENG率', format: 'percent', comparison: true },
-    { key: 'bounceRate', label: '直帰率', format: 'percent', defaultVisible: false, comparison: true },
-    { key: 'avgDuration', label: '平均滞在時間', format: 'duration', comparison: true },
-    { key: 'conversions', label: 'コンバージョン', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'conversionRate', label: 'CVR', format: 'percent', defaultVisible: false, comparison: true },
-    { key: 'interestScore', label: '興味スコア', format: 'decimal', comparison: true },
-    { key: 'scrollRate', label: '完読率', format: 'percent', defaultVisible: false, comparison: true },
+    metricCol('pageViews', 'number'),
+    metricCol('sessions', 'number', { defaultVisible: false }),
+    metricCol('users', 'number', { defaultVisible: false }),
+    metricCol('newUsers', 'number', { defaultVisible: false }),
+    metricCol('engagementRate', 'percent'),
+    metricCol('bounceRate', 'percent', { defaultVisible: false }),
+    metricCol('avgDuration', 'duration'),
+    metricCol('conversions', 'number', { defaultVisible: false }),
+    metricCol('conversionRate', 'percent', { defaultVisible: false }),
+    { key: 'interestScore', label: '興味スコア', tooltip: 'interestScore', format: 'decimal', comparison: true },
+    { key: 'scrollRate', label: '完読率', tooltip: 'scrollRate', format: 'percent', defaultVisible: false, comparison: true },
   ],
   'analysis-page-categories': [
     { key: 'category', label: 'カテゴリ', required: true },
     { key: 'pages', label: '配下のページ数', format: 'number' },
-    { key: 'pageViews', label: 'ページビュー', format: 'number', comparison: true },
-    { key: 'sessions', label: '訪問者', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'users', label: 'ユーザー数', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'newUsers', label: '新規ユーザー', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'engagementRate', label: 'ENG率', format: 'percent', defaultVisible: false, comparison: true },
-    { key: 'bounceRate', label: '直帰率', format: 'percent', defaultVisible: false, comparison: true },
-    { key: 'avgDuration', label: '平均滞在時間', format: 'duration', defaultVisible: false, comparison: true },
-    { key: 'conversions', label: 'コンバージョン', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'conversionRate', label: 'CVR', format: 'percent', defaultVisible: false, comparison: true },
+    metricCol('pageViews', 'number'),
+    metricCol('sessions', 'number', { defaultVisible: false }),
+    metricCol('users', 'number', { defaultVisible: false }),
+    metricCol('newUsers', 'number', { defaultVisible: false }),
+    metricCol('engagementRate', 'percent', { defaultVisible: false }),
+    metricCol('bounceRate', 'percent', { defaultVisible: false }),
+    metricCol('avgDuration', 'duration', { defaultVisible: false }),
+    metricCol('conversions', 'number', { defaultVisible: false }),
+    metricCol('conversionRate', 'percent', { defaultVisible: false }),
   ],
   'analysis-landing-pages': [
     { key: 'path', label: 'ランディングページ', required: true },
-    { key: 'sessions', label: '訪問者', format: 'number', comparison: true },
-    { key: 'users', label: 'ユーザー数', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'newUsers', label: '新規ユーザー', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'pageViews', label: '表示回数', format: 'number', defaultVisible: false, comparison: true },
-    { key: 'engagementRate', label: 'ENG率', format: 'percent', comparison: true },
-    { key: 'bounceRate', label: '直帰率', format: 'percent', defaultVisible: false, comparison: true },
-    { key: 'avgSessionDuration', label: '平均滞在時間', format: 'duration', comparison: true },
-    { key: 'conversions', label: 'コンバージョン', format: 'number', comparison: true },
-    { key: 'conversionRate', label: 'CVR', format: 'percent', comparison: true },
+    metricCol('sessions', 'number'),
+    metricCol('users', 'number', { defaultVisible: false }),
+    metricCol('newUsers', 'number', { defaultVisible: false }),
+    metricCol('pageViews', 'number', { defaultVisible: false }),
+    metricCol('engagementRate', 'percent'),
+    metricCol('bounceRate', 'percent', { defaultVisible: false }),
+    metricCol('avgSessionDuration', 'duration'),
+    metricCol('conversions', 'number'),
+    metricCol('conversionRate', 'percent'),
   ],
   'analysis-file-downloads': [
     { key: 'fileName', label: 'ファイル名', required: true },
     { key: 'downloads', label: 'ダウンロード数', format: 'number', comparison: true },
-    { key: 'users', label: 'ユーザー数', format: 'number', comparison: true },
+    metricCol('users', 'number'),
   ],
   'analysis-external-links': [
     { key: 'linkUrl', label: 'URL', required: true },
+    // 外部リンクのクリックは GA4 イベント数であり、GSC の clicks とは別指標のため辞書参照しない
     { key: 'clicks', label: 'クリック数', format: 'number', comparison: true },
-    { key: 'users', label: 'ユーザー数', format: 'number', comparison: true },
+    metricCol('users', 'number'),
   ],
 };
 

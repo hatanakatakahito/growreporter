@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getLabel, getTargetLabel } from '../../../constants/metrics';
 
 export default function Step5KPISettings({ siteData, setSiteData }) {
   const [error, setError] = useState(null);
@@ -7,15 +8,17 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
   const [kpiList, setKpiList] = useState(siteData.kpiSettings?.kpiList || []);
 
   // 基本指標のプリセット
+  // getLabel / getTargetLabel は内部で resolveAlias を呼ぶため、
+  // snake_case のキーも canonical に自動解決される
   const BASIC_METRICS = [
-    { value: 'users', label: 'ユーザー数' },
-    { value: 'sessions', label: '訪問者数' },
-    { value: 'pageviews', label: 'ページビュー数' },
-    { value: 'engagement_rate', label: 'エンゲージメント率 (%)' },
-    { value: 'target_sessions', label: '目標訪問者数' },
-    { value: 'target_users', label: '目標ユーザー数' },
-    { value: 'target_conversions', label: '目標コンバージョン数' },
-    { value: 'target_conversion_rate', label: '目標コンバージョン率 (%)' },
+    { value: 'users', label: getLabel('users') },
+    { value: 'sessions', label: getLabel('sessions') },
+    { value: 'pageviews', label: getLabel('pageviews') },
+    { value: 'engagement_rate', label: getLabel('engagement_rate') },
+    { value: 'target_sessions', label: getTargetLabel('target_sessions') },
+    { value: 'target_users', label: getTargetLabel('target_users') },
+    { value: 'target_conversions', label: getTargetLabel('target_conversions') },
+    { value: 'target_conversion_rate', label: getTargetLabel('target_conversion_rate') },
   ];
 
   // コンバージョンイベントを指標として追加
@@ -32,14 +35,14 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
     ...CONVERSION_METRICS,
   ];
 
-  // 初期化: 既存のKPIを復元
+  // 初期化: 既存の目標を復元
   useEffect(() => {
     if (siteData.kpiSettings?.kpiList) {
       setKpiList(siteData.kpiSettings.kpiList);
     }
   }, [siteData.kpiSettings]);
 
-  // KPIの追加
+  // 目標の追加
   const handleAddKPI = (e) => {
     e.preventDefault();
     setError(null);
@@ -83,7 +86,7 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
     setTargetValue('');
   };
 
-  // KPIの削除
+  // 目標の削除
   const handleRemoveKPI = (kpiId) => {
     const newKpiList = kpiList.filter(kpi => kpi.id !== kpiId);
     setKpiList(newKpiList);
@@ -91,7 +94,7 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
 
   // 親コンポーネントにデータを反映
   useEffect(() => {
-    // 基本KPIの値を計算
+    // 基本目標の値を計算
     const targetSessions = kpiList.find(k => k.metric === 'target_sessions')?.target || 0;
     const targetUsers = kpiList.find(k => k.metric === 'target_users')?.target || 0;
     const targetConversions = kpiList.find(k => k.metric === 'target_conversions')?.target || 0;
@@ -126,10 +129,10 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
           </div>
           <div className="flex-1">
             <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-              サイトの目標値（KPI）を設定してください
+              サイトの目標値を設定してください
             </p>
             <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
-              設定したKPIは分析画面で継続的に表示され、目標達成状況を確認できます。
+              設定した目標は分析画面で継続的に表示され、目標達成状況を確認できます。
             </p>
           </div>
         </div>
@@ -149,10 +152,10 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
         </div>
       )}
 
-      {/* カスタムKPI設定（任意） */}
+      {/* カスタム目標設定（任意） */}
       <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
         <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
-          カスタムKPI設定（任意）
+          カスタム目標設定（任意）
         </h3>
         
         <form onSubmit={handleAddKPI} className="space-y-4">
@@ -228,7 +231,7 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
         </form>
       </div>
 
-      {/* 設定済みKPI一覧 */}
+      {/* 設定済み目標一覧 */}
       {kpiList.length > 0 && (
         <div className="space-y-2">
           {kpiList.map((kpi) => (
@@ -266,7 +269,7 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
               <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
             </svg>
             <p className="text-sm text-body-color">
-              KPI設定は任意です。後から設定することもできます。
+              目標設定は任意です。後から設定することもできます。
             </p>
           </div>
         </div>

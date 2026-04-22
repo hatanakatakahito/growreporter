@@ -5,6 +5,7 @@ import { collection, query, where, getDocs, deleteDoc, doc } from 'firebase/fire
 import { httpsCallable } from 'firebase/functions';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
+import { getShortLabel, getInvertColor } from '../../constants/metrics';
 
 export function useReportsData() {
   const { selectedSite, selectedSiteId } = useSite();
@@ -135,15 +136,15 @@ export function getPrimaryMetrics(category) {
     pos: (v) => (v ?? 0).toFixed(1),
   };
   const all = {
-    sessions: { key: 'sessions', label: 'セッション', format: fmt.num },
-    totalUsers: { key: 'totalUsers', label: 'ユーザー', format: fmt.num },
-    newUsers: { key: 'newUsers', label: '新規ユーザー', format: fmt.num },
-    pageViews: { key: 'pageViews', label: 'ページビュー', format: fmt.num },
-    engagementRate: { key: 'engagementRate', label: 'エンゲージメント率', format: fmt.pct },
-    bounceRate: { key: 'bounceRate', label: '直帰率', format: fmt.pct, invertColor: true },
-    avgSessionDuration: { key: 'avgSessionDuration', label: '平均セッション時間', format: fmt.sec },
-    conversions: { key: 'conversions', label: 'コンバージョン', format: fmt.num },
-    conversionRate: { key: 'conversionRate', label: 'CVR', format: fmt.pct },
+    sessions: { key: 'sessions', label: getShortLabel('sessions'), format: fmt.num, invertColor: getInvertColor('sessions') },
+    totalUsers: { key: 'totalUsers', label: getShortLabel('totalUsers'), format: fmt.num, invertColor: getInvertColor('totalUsers') },
+    newUsers: { key: 'newUsers', label: getShortLabel('newUsers'), format: fmt.num, invertColor: getInvertColor('newUsers') },
+    pageViews: { key: 'pageViews', label: getShortLabel('pageViews'), format: fmt.num, invertColor: getInvertColor('pageViews') },
+    engagementRate: { key: 'engagementRate', label: getShortLabel('engagementRate'), format: fmt.pct, invertColor: getInvertColor('engagementRate') },
+    bounceRate: { key: 'bounceRate', label: getShortLabel('bounceRate'), format: fmt.pct, invertColor: getInvertColor('bounceRate') },
+    avgSessionDuration: { key: 'avgSessionDuration', label: getShortLabel('avgSessionDuration'), format: fmt.sec, invertColor: getInvertColor('avgSessionDuration') },
+    conversions: { key: 'conversions', label: getShortLabel('conversions'), format: fmt.num, invertColor: getInvertColor('conversions') },
+    conversionRate: { key: 'conversionRate', label: getShortLabel('conversionRate'), format: fmt.pct, invertColor: getInvertColor('conversionRate') },
   };
   const byCategory = {
     acquisition: ['sessions', 'totalUsers', 'newUsers', 'engagementRate'],

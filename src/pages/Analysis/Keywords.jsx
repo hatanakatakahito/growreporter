@@ -17,6 +17,7 @@ import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
   BarChart,
@@ -285,7 +286,7 @@ export default function Keywords() {
               {/* タブコンテンツ */}
               {activeTab === 'chart' ? (
                 <div className="space-y-6">
-                  {/* 棒グラフ：クリック数とインプレッション数 */}
+                  {/* 棒グラフ：クリック数と表示回数 */}
                   <ChartContainer title="キーワード別クリック数（上位10件）" height={400}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
@@ -302,13 +303,13 @@ export default function Keywords() {
                         <Legend content={<CustomLegend />} />
                         <Bar
                           dataKey="clicks"
-                          name="クリック数"
+                          name={getShortLabel('clicks')}
                           fill="#3b82f6"
                           hide={hiddenSeries.clicks}
                         />
                         <Bar
                           dataKey="impressions"
-                          name="インプレッション数"
+                          name={getShortLabel('impressions')}
                           fill="#10b981"
                           hide={hiddenSeries.impressions}
                         />
@@ -334,7 +335,7 @@ export default function Keywords() {
                         <XAxis
                           type="number"
                           dataKey="position"
-                          name="掲載順位"
+                          name={getShortLabel('position')}
                           reversed
                           label={{
                             value: '掲載順位（数値が小さいほど上位）',
@@ -344,9 +345,9 @@ export default function Keywords() {
                         <YAxis
                           type="number"
                           dataKey="clicks"
-                          name="クリック数"
+                          name={getShortLabel('clicks')}
                           label={{
-                            value: 'クリック数',
+                            value: getShortLabel('clicks'),
                             angle: -90,
                             position: 'insideLeft',
                           }}
@@ -355,7 +356,7 @@ export default function Keywords() {
                           type="number"
                           dataKey="ctr"
                           range={[50, 400]}
-                          name="クリック率"
+                          name={getShortLabel('ctr')}
                         />
                         <RechartsTooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3' }} />
                         <Scatter
@@ -431,7 +432,7 @@ export default function Keywords() {
                     },
                     {
                       key: 'clicks',
-                      label: 'クリック数',
+                      label: getShortLabel('clicks'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'clicks',
@@ -439,7 +440,7 @@ export default function Keywords() {
                     },
                     {
                       key: 'impressions',
-                      label: '表示回数',
+                      label: getShortLabel('impressions'),
                       format: 'number',
                       align: 'right',
                       tooltip: 'impressions',
@@ -447,7 +448,7 @@ export default function Keywords() {
                     },
                     {
                       key: 'ctr',
-                      label: 'クリック率',
+                      label: getShortLabel('ctr'),
                       align: 'right',
                       render: (value) => `${value}%`,
                       tooltip: 'ctr',
@@ -455,7 +456,7 @@ export default function Keywords() {
                     },
                     {
                       key: 'position',
-                      label: '平均掲載順位',
+                      label: getShortLabel('position'),
                       align: 'right',
                       tooltip: 'position',
                       comparison: true,

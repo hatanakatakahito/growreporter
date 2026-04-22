@@ -18,6 +18,7 @@ import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
   BarChart,
@@ -276,7 +277,7 @@ export default function FileDownloads() {
                       />
                       <Bar
                         dataKey="users"
-                        name="ユーザー数"
+                        name={getShortLabel('users')}
                         fill="#10b981"
                         hide={hiddenSeries.users}
                       />
@@ -322,7 +323,7 @@ export default function FileDownloads() {
                     },
                     {
                       key: 'users',
-                      label: 'ユーザー数',
+                      label: getShortLabel('users'),
                       format: 'number',
                       sortable: true,
                       align: 'right',

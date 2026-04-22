@@ -270,7 +270,7 @@ export async function fetchBeforeMetricsCallable(request) {
       });
     }
 
-    // 8. KPIメトリクス取得
+    // 8. 目標メトリクス取得
     let kpiData = null;
     if (siteData.kpiSettings?.kpiList?.length > 0) {
       kpiData = siteData.kpiSettings.kpiList

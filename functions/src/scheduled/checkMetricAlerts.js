@@ -5,8 +5,10 @@ import { getGA4MetricsForSite } from '../utils/ga4ServerHelper.js';
 import { generateBatchedAlertEmailTemplate, normalizePlan } from '../utils/emailTemplates.js';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { generateBatchedAlertHypotheses } from '../utils/alertHypotheses.js';
+import { getLabel } from '../constants/metrics.js';
 
 const ALERT_THRESHOLD_PERCENT = 50;
+// 閾値判定対象の指標キー一覧（ga4ServerHelper 由来のフィールド名）
 const METRIC_KEYS = [
   'sessions',
   'totalUsers',
@@ -17,16 +19,7 @@ const METRIC_KEYS = [
   'conversionRate',
   'bounceRate',
 ];
-const METRIC_LABELS = {
-  sessions: '流入数（セッション）',
-  totalUsers: 'ユーザー数',
-  screenPageViews: '表示回数',
-  averagePageviews: '平均PV',
-  engagementRate: 'エンゲージメント率',
-  totalConversions: 'コンバージョン数',
-  conversionRate: 'コンバージョン率',
-  bounceRate: '直帰率',
-};
+// ラベルは metrics.js の辞書（getLabel）を使用する。METRIC_LABELS は廃止。
 
 /**
  * サイトにアクセス権があり、アラートメールONのユーザー一覧を取得
@@ -172,7 +165,7 @@ async function runCheckMetricAlerts() {
 
       const isDrop = changePercent < 0;
       const type = isDrop ? `${metricKey}_drop` : `${metricKey}_surge`;
-      const metricLabel = METRIC_LABELS[metricKey] || metricKey;
+      const metricLabel = getLabel(metricKey);
       const direction = isDrop ? '減少' : '増加';
       const message = `${metricLabel}が${Math.abs(changePercent).toFixed(1)}%${direction}しました`;
 
@@ -208,7 +201,7 @@ async function runCheckMetricAlerts() {
         const isAlert = collectedAlerts.some(a => a.metricName === key);
         return {
           key,
-          label: METRIC_LABELS[key] || key,
+          label: getLabel(key),
           current,
           previous,
           changePercent: change,

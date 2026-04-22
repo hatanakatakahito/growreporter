@@ -1,28 +1,33 @@
 """
-全体サマリーシート: 主要 KPI + KPI 目標達成率 + CV 内訳 + AI 所感
-v5.11.1 リデザイン: サンプル準拠の ■ セクション + 補足列付き 3 列 KPI 表
+全体サマリーシート: 主要指標 + 目標達成率 + CV 内訳 + AI 所感
+v5.11.1 リデザイン: サンプル準拠の ■ セクション + 補足列付き 3 列指標表
 """
 
+import math
 from typing import Any
 
+from shared.metrics import METRICS, label_of, summary_metric_rows
 from ..charts import CHART_COLORS
 from ..helpers import append_ai_and_memo_sections, fmt_change, safe_sheet_name
 from ..sheet_builder import write_sheet_title_bar
 from ..styles import FOOTER_TEXT
 
 
-METRIC_LABELS = [
-    ("sessions", "セッション数", "number"),
-    ("totalUsers", "ユーザー数", "number"),
-    ("newUsers", "新規ユーザー", "number"),
-    ("pageViews", "PV 数", "number"),
-    ("engagementRate", "エンゲージメント率", "percent"),
-    ("conversions", "コンバージョン数", "number"),
-    ("clicks", "GSC クリック数", "number"),
-    ("impressions", "GSC 表示回数", "number"),
-    ("ctr", "GSC CTR", "percent"),
-    ("position", "GSC 平均掲載順位", "decimal"),
+# Excel 全体サマリーで並べる順番を定義（metrics.json の canonical key）
+_SUMMARY_METRIC_KEYS = [
+    "sessions",
+    "totalUsers",
+    "newUsers",
+    "screenPageViews",  # canonical (旧 pageViews は alias として解決)
+    "engagementRate",
+    "conversions",
+    "clicks",
+    "impressions",
+    "ctr",
+    "position",
 ]
+
+METRIC_LABELS = summary_metric_rows(_SUMMARY_METRIC_KEYS)
 
 
 def create_summary_sheet(
@@ -60,8 +65,8 @@ def create_summary_sheet(
     # シートタイトルバー (4 列分)
     row = write_sheet_title_bar(ws, "全体サマリー", sheet_subtitle, 4, formats)
 
-    # ─── ■ 主要 KPI ─────────────────────────────────────
-    row = _write_section_marker(ws, row, "■ 主要 KPI", 4, formats)
+    # ─── ■ 主要指標 ─────────────────────────────────────
+    row = _write_section_marker(ws, row, "■ 主要指標", 4, formats)
 
     # ヘッダー: 比較モード時は 4 列、通常モード時は 3 列
     if has_comp:
@@ -82,7 +87,7 @@ def create_summary_sheet(
     # データ行（ゼブラ）
     data_idx = 0
     for key, label, kind in METRIC_LABELS:
-        cur_val = metrics.get(key, 0)
+        cur_val = _lookup_metric_value(metrics, key)
         if cur_val in (None, 0) and not has_comp:
             continue
 
@@ -95,31 +100,38 @@ def create_summary_sheet(
         _write_metric(ws, row, 1, cur_val, kind, formats, is_alt=is_alt)
 
         if has_comp:
-            prev_val = comp_metrics.get(key, 0)
+            prev_val = _lookup_metric_value(comp_metrics, key)
             _write_metric(ws, row, 2, prev_val, kind, formats, is_alt=is_alt)
             change = fmt_change(cur_val, prev_val)
             ws.write(row, 3, change, txt_fmt)
         else:
             # 通常モード: 補足列に 前月比 / 前年同月比 を併記
-            note = _format_mom_yoy(monthly_delta.get(key))
+            delta = monthly_delta.get(key)
+            if delta is None:
+                # monthly_delta 側が alias キー (pageViews 等) の可能性に対応
+                for alias in (METRICS.get(key, {}).get("aliases") or []):
+                    if alias in monthly_delta:
+                        delta = monthly_delta[alias]
+                        break
+            note = _format_mom_yoy(delta)
             ws.merge_range(row, 2, row, 3, note, txt_fmt)
         row += 1
         data_idx += 1
 
-    # ─── ■ KPI 目標達成率 ─────────────────────────────
+    # ─── ■ 目標達成率 ─────────────────────────────
     if kpi_settings and isinstance(kpi_settings, dict):
         kpi_targets = [
-            ("sessionsTarget", "セッション数", metrics.get("sessions", 0)),
-            ("usersTarget", "ユーザー数", metrics.get("totalUsers", 0)),
-            ("conversionsTarget", "コンバージョン数", metrics.get("conversions", 0)),
+            ("sessionsTarget", label_of("sessions"), metrics.get("sessions", 0)),
+            ("usersTarget", label_of("totalUsers"), metrics.get("totalUsers", 0)),
+            ("conversionsTarget", label_of("conversions"), metrics.get("conversions", 0)),
         ]
         valid = [(t, l, a) for t, l, a in kpi_targets if kpi_settings.get(t) is not None]
         if valid:
             row += 1
-            row = _write_section_marker(ws, row, "■ KPI 目標達成率", 4, formats)
+            row = _write_section_marker(ws, row, "■ 目標達成率", 4, formats)
 
             ws.set_row(row, 24)
-            for c, h in enumerate(["KPI 指標", "目標値", "実績値", "達成率"]):
+            for c, h in enumerate(["目標指標", "目標値", "実績値", "達成率"]):
                 ws.write(row, c, h, formats["header"])
             row += 1
 
@@ -148,31 +160,37 @@ def create_summary_sheet(
         row += 1
         row = _write_section_marker(ws, row, "■ コンバージョン内訳", 4, formats)
 
+        # ヘッダー: イベント名 (A:C 結合) + 回数 (D)
         ws.set_row(row, 24)
-        ws.write(row, 0, "イベント名", formats["header"])
-        ws.write(row, 1, "回数", formats["header"])
-        # CV 内訳は 2 列だけ使うので右の 2 列はチャート領域
-        ws.write(row, 2, "", formats["header"])
-        ws.write(row, 3, "", formats["header"])
+        ws.merge_range(row, 0, row, 2, "イベント名", formats["header"])
+        ws.write(row, 3, "回数", formats["header"])
         row += 1
 
         cv_data_start_row = row
-        cv_idx = 0
+        # まず全件をフィルタ → 全行で均一な行高を決める
+        cv_items = []
         for event_name, count in conversions_breakdown.items():
             try:
                 cnt = float(count or 0)
                 if cnt <= 0:
                     continue
-                is_alt = (cv_idx % 2 == 1)
-                data_fmt = formats["data_alt"] if is_alt else formats["data"]
-                num_fmt = formats["number_alt"] if is_alt else formats["number"]
-                ws.set_row(row, 22)
-                ws.write(row, 0, event_name, data_fmt)
-                ws.write_number(row, 1, cnt, num_fmt)
-                row += 1
-                cv_idx += 1
+                cv_items.append((str(event_name or ""), cnt))
             except (ValueError, TypeError):
                 continue
+        # 最長のイベント名から統一行高を算出 (A:C 結合幅 ≒ 22+16+32 = 70 chars)
+        merged_width = 70
+        max_visual = max((sum(2 if ord(c) > 0x7F else 1 for c in n) for n, _ in cv_items), default=0)
+        wrap_lines = max(1, math.ceil(max_visual / merged_width))
+        cv_uniform_height = max(22, wrap_lines * 18)
+
+        for cv_idx, (ev_name, cnt) in enumerate(cv_items):
+            is_alt = (cv_idx % 2 == 1)
+            data_fmt = formats["data_alt"] if is_alt else formats["data"]
+            num_fmt = formats["number_alt"] if is_alt else formats["number"]
+            ws.set_row(row, cv_uniform_height)
+            ws.merge_range(row, 0, row, 2, ev_name, data_fmt)
+            ws.write_number(row, 3, cnt, num_fmt)
+            row += 1
 
         cv_data_end_row = row - 1
         if cv_data_end_row >= cv_data_start_row:
@@ -180,8 +198,9 @@ def create_summary_sheet(
             num_points = cv_data_end_row - cv_data_start_row + 1
             pie_chart.add_series({
                 "name": "コンバージョン内訳",
+                # カテゴリは A 列 (結合元), 値は D 列
                 "categories": [ws.name, cv_data_start_row, 0, cv_data_end_row, 0],
-                "values": [ws.name, cv_data_start_row, 1, cv_data_end_row, 1],
+                "values": [ws.name, cv_data_start_row, 3, cv_data_end_row, 3],
                 "data_labels": {
                     "value": False,
                     "percentage": True,
@@ -200,8 +219,8 @@ def create_summary_sheet(
             pie_chart.set_chartarea({"border": {"none": True}, "shadow": False, "fill": {"none": True}})
             ws.insert_chart(cv_data_start_row - 2, 5, pie_chart)
 
-    # ─── ■ AI による所感（AI 分析がある場合）───────────
-    # AI セクションは既存ヘルパーで追加（紫系のヘッダ + 内容）
+    # ─── ■ AI による所感 ─────────────────────────────
+    # AI セクションは常時表示（未生成の場合はプレースホルダ）
     row += 1
     append_ai_and_memo_sections(
         ws,
@@ -214,9 +233,27 @@ def create_summary_sheet(
         formats["ai_content"],
         formats["memo_header"],
         formats["memo_content"],
+        ai_placeholder_fmt=formats.get("ai_placeholder"),
     )
 
     return ws
+
+
+def _lookup_metric_value(metrics_dict: dict, canonical_key: str, default=0):
+    """canonical キー優先で値を取得、未存在なら alias キーをフォールバック。
+
+    (例) canonical=screenPageViews でも、送信データは旧キー pageViews の
+    可能性があるため aliases を走査する。
+    """
+    if not isinstance(metrics_dict, dict):
+        return default
+    if canonical_key in metrics_dict:
+        return metrics_dict.get(canonical_key, default)
+    aliases = (METRICS.get(canonical_key, {}) or {}).get("aliases") or []
+    for alias in aliases:
+        if alias in metrics_dict:
+            return metrics_dict.get(alias, default)
+    return default
 
 
 def _write_section_marker(ws, row: int, label: str, num_cols: int, formats: dict) -> int:

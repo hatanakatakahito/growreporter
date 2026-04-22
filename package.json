@@ -42,10 +42,14 @@
     "design-system"
   ],
   "scripts": {
-    "dev": "vite",
+    "dev": "node scripts/sync-metrics.mjs && vite",
+    "prebuild": "node scripts/sync-metrics.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "sync-metrics": "node scripts/sync-metrics.mjs",
+    "check-metrics": "node scripts/check-metrics-parity.mjs",
+    "predeploy": "node scripts/sync-metrics.mjs",
     "deploy": "npm run build && firebase deploy",
     "deploy:hosting": "npm run build && firebase deploy --only hosting",
     "firebase:emulators": "firebase emulators:start"

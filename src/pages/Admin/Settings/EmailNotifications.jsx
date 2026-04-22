@@ -8,6 +8,7 @@ import { useAuth } from '../../../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { setPageTitle } from '../../../utils/pageTitle';
 import DotWaveSpinner from '../../../components/common/DotWaveSpinner';
+import { getLabel } from '../../../constants/metrics';
 
 /**
  * メール通知設定画面（管理者用）
@@ -402,13 +403,13 @@ export default function EmailNotifications() {
         <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">送信される指標</h3>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
-            'セッション数',
-            'ユーザー数',
-            '表示回数',
-            '平均PV',
-            'エンゲージメント率',
-            '直帰率',
-            'CV数 / CVR',
+            getLabel('sessions'),
+            getLabel('totalUsers'),
+            getLabel('screenPageViews'),
+            getLabel('pageViewsPerSession'),
+            getLabel('engagementRate'),
+            getLabel('bounceRate'),
+            `${getLabel('conversions')} / ${getLabel('conversionRate')}`,
             '前期比較',
           ].map((metric, index) => (
             <div

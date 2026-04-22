@@ -1,11 +1,15 @@
 """
 レポート概要（表紙）シート
-ブランドバー + タイトル + メタ情報 + 主要 KPI カード + 目次
+ブランドバー + タイトル + メタ情報 + 主要指標カード + 目次
 """
 
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+from shared.metrics import short_label_of
 
 from ..helpers import safe_sheet_name
+
+JST = timezone(timedelta(hours=9))
 from ..styles import (
     FOOTER_TEXT,
     FONT_NAME,
@@ -18,21 +22,21 @@ from ..styles import (
 # (sheet_name, description, condition_key)
 #   condition_key: allData.customSheets で該当データがあれば表示
 TOC_SHEETS = [
-    ("全体サマリー", "主要KPI・KPI目標達成率・CV内訳", "summary"),
-    ("月別", "月別 セッション・ENG率・CV推移", "dynamic:monthly"),
+    ("全体サマリー", f"主要指標・目標達成率・{short_label_of('conversions')}内訳", "summary"),
+    ("月別", f"月別 {short_label_of('sessions')}・{short_label_of('engagementRate')}・{short_label_of('conversions')}推移", "dynamic:monthly"),
     ("ユーザー属性", "デバイス・年齢・性別・地域", "users"),
-    ("日別", "日別セッション・CV推移", "dynamic:daily"),
-    ("曜日別", "曜日別のCV発生パターン", "dynamic:weekly"),
-    ("時間帯別", "時間帯別のセッション・CV", "dynamic:hourly"),
-    ("集客チャネル", "流入チャネル別 訪問者・CVR", "dynamic:channels"),
-    ("流入キーワード", "GSC キーワード別 クリック・順位", "dynamic:keywords"),
-    ("被リンク元", "参照元サイト別 訪問者・CV", "dynamic:referrals"),
-    ("ページ別", "ページ別 PV・ENG率・滞在時間", "dynamic:pages"),
-    ("ページ分類別", "ディレクトリ別 PV 集計", "dynamic:pageCategories"),
-    ("ランディングページ", "LP 別 訪問者・ENG率・CV", "dynamic:landingPages"),
+    ("日別", f"日別 {short_label_of('sessions')}・{short_label_of('conversions')}推移", "dynamic:daily"),
+    ("曜日別", f"曜日別の{short_label_of('conversions')}発生パターン", "dynamic:weekly"),
+    ("時間帯別", f"時間帯別の{short_label_of('sessions')}・{short_label_of('conversions')}", "dynamic:hourly"),
+    ("集客チャネル", f"流入チャネル別 {short_label_of('totalUsers')}・{short_label_of('conversionRate')}", "dynamic:channels"),
+    ("流入キーワード", f"GSC キーワード別 {short_label_of('clicks')}・{short_label_of('position')}", "dynamic:keywords"),
+    ("被リンク元", f"参照元サイト別 {short_label_of('totalUsers')}・{short_label_of('conversions')}", "dynamic:referrals"),
+    ("ページ別", f"ページ別 {short_label_of('screenPageViews')}・{short_label_of('engagementRate')}・{short_label_of('averageSessionDuration')}", "dynamic:pages"),
+    ("ページ分類別", f"ディレクトリ別 {short_label_of('screenPageViews')} 集計", "dynamic:pageCategories"),
+    ("ランディングページ", f"LP 別 {short_label_of('totalUsers')}・{short_label_of('engagementRate')}・{short_label_of('conversions')}", "dynamic:landingPages"),
     ("ファイルDL", "ファイルダウンロード数", "dynamic:fileDownloads"),
-    ("外部リンク", "外部リンククリック数", "dynamic:externalLinks"),
-    ("コンバージョン一覧", "CV 種別 × 月別内訳", "conversions"),
+    ("外部リンク", f"外部リンク{short_label_of('clicks')}数", "dynamic:externalLinks"),
+    ("コンバージョン一覧", f"{short_label_of('conversions')} 種別 × 月別内訳", "conversions"),
     ("逆算フロー", "フォーム ファネル分析", "reverseFlows"),
     ("改善提案", "AI が提案した改善施策一覧", "improvements"),
 ]
@@ -44,7 +48,7 @@ def create_cover_sheet(workbook, site_name: str, site_url: str, date_range: dict
                        available_sheets: list | None = None):
     """
     表紙シートを作成。
-    kpi_cards: [(value_str, label), ...] 最大 4 件
+    kpi_cards: [(value_str, label), ...] 最大 4 件（主要指標カード）
     available_sheets: 目次に含めるシート名のリスト（実際に生成されたシートのみ）
     """
     ws = workbook.add_worksheet(safe_sheet_name("レポート概要"))
@@ -80,7 +84,7 @@ def create_cover_sheet(workbook, site_name: str, site_url: str, date_range: dict
         info.append(("分析期間", f"{date_range['from']} 〜 {date_range['to']}"))
     if comp_date_range and comp_date_range.get("from") and comp_date_range.get("to"):
         info.append(("比較期間", f"{comp_date_range['from']} 〜 {comp_date_range['to']}"))
-    info.append(("生成日時", datetime.now().strftime("%Y/%m/%d %H:%M")))
+    info.append(("生成日時", datetime.now(JST).strftime("%Y/%m/%d %H:%M")))
 
     for label, val in info:
         ws.set_row(row, 24)
@@ -88,7 +92,7 @@ def create_cover_sheet(workbook, site_name: str, site_url: str, date_range: dict
         ws.merge_range(row, 2, row, 4, val, formats["cover_value"])
         row += 1
 
-    # 主要 KPI
+    # 主要指標カード
     if kpi_cards:
         row += 2
         ws.set_row(row, 22)

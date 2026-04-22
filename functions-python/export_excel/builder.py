@@ -24,9 +24,13 @@ Excel ワークブック生成のエントリポイント
 """
 
 import io
+import re
+import zipfile
 from typing import Any
 
 import xlsxwriter
+
+from shared.metrics import label_of
 
 from .helpers import safe_sheet_name
 from .sheet_builder import build_dynamic_sheet
@@ -38,6 +42,7 @@ from .sheets.improvements import create_improvements_sheet
 from .sheets.reverse_flow import create_reverse_flow_sheet
 from .styles import (
     AI_CONTENT_STYLE,
+    AI_PLACEHOLDER_STYLE,
     AI_SECTION_STYLE,
     COVER_BRAND_STYLE,
     COVER_LABEL_STYLE,
@@ -236,6 +241,75 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
 
     workbook.close()
 
+    # XML ポスト処理: テキストボックスを oneCellAnchor + 明示 ext に変換
+    # → Excel の列幅変更で AI セクションがリサイズされない (固定 18.3 cm を保証)
+    _convert_textboxes_to_oneCellAnchor(buffer)
+
+
+# ─── XML ポスト処理 ─────────────────────────────────
+# xlsxwriter は埋め込み shape を twoCellAnchor で出力するが、Excel は cell range で
+# サイズを再計算してしまう。oneCellAnchor + 明示 ext に書き換えて固定サイズを保証する。
+
+_TEXTBOX_ANCHOR_PATTERN = re.compile(
+    r'<xdr:twoCellAnchor[^>]*>'
+    r'(\s*<xdr:from>.*?</xdr:from>)'
+    r'\s*<xdr:to>.*?</xdr:to>'
+    r'(.*?)'
+    r'</xdr:twoCellAnchor>',
+    re.DOTALL,
+)
+_SHAPE_EXT_PATTERN = re.compile(r'<a:ext cx="(\d+)" cy="(\d+)"')
+
+
+def _convert_textboxes_to_oneCellAnchor(buf: io.BytesIO) -> None:
+    """xl/drawings/drawing*.xml 内の text box (xdr:sp) を oneCellAnchor へ変換。
+    チャート (xdr:graphicFrame) は touch しない。"""
+    buf.seek(0)
+    in_data = buf.getvalue()
+
+    out_buf = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(in_data), "r") as zin:
+        with zipfile.ZipFile(out_buf, "w", zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                data = zin.read(item.filename)
+                if item.filename.startswith("xl/drawings/drawing") and item.filename.endswith(".xml"):
+                    try:
+                        modified = _convert_textbox_anchors(data.decode("utf-8"))
+                        data = modified.encode("utf-8")
+                    except Exception:
+                        pass  # 失敗時は元の XML をそのまま出力
+                zout.writestr(item, data)
+
+    buf.seek(0)
+    buf.truncate()
+    buf.write(out_buf.getvalue())
+
+
+def _convert_textbox_anchors(xml: str) -> str:
+    """drawing XML 内のテキストボックスの twoCellAnchor → oneCellAnchor 変換。"""
+    def replacer(m: re.Match) -> str:
+        block = m.group(0)
+        # チャート (graphicFrame) は変換しない — twoCellAnchor のままにする
+        if "<xdr:sp " not in block:
+            return block
+
+        from_block = m.group(1)
+        rest = m.group(2)
+
+        # シェイプの spPr/xfrm/ext から実サイズを取得
+        ext_m = _SHAPE_EXT_PATTERN.search(rest)
+        if not ext_m:
+            return block
+        cx, cy = ext_m.group(1), ext_m.group(2)
+
+        return (
+            f"<xdr:oneCellAnchor>{from_block}"
+            f"<xdr:ext cx=\"{cx}\" cy=\"{cy}\"/>{rest}"
+            f"</xdr:oneCellAnchor>"
+        )
+
+    return _TEXTBOX_ANCHOR_PATTERN.sub(replacer, xml)
+
 
 def _make_sheet_subtitle(date_range: dict | None, comp_range: dict | None = None) -> str:
     """シートタイトルバーの 2 行目（サブタイトル）を生成。"""
@@ -290,7 +364,7 @@ def _compute_available_sheets(custom: dict, sheets_data: dict) -> list[str]:
 
 
 def _compute_kpi_cards(custom: dict) -> list[tuple[str, str]]:
-    """表紙の主要 KPI カード 4 件を返す。"""
+    """表紙の主要指標カード 4 件を返す。"""
     metrics = (custom.get("summary") or {}).get("metrics") or {}
     sessions = metrics.get("sessions") or 0
     conversions = metrics.get("conversions") or 0
@@ -312,10 +386,10 @@ def _compute_kpi_cards(custom: dict) -> list[tuple[str, str]]:
     cvr_str = f"{cvr:.2f}%"
 
     cards = [
-        (fmt_int(sessions), "セッション数"),
-        (fmt_count(conversions), "CV総数"),
-        (fmt_int(clicks), "GSC クリック"),
-        (cvr_str, "CVR（全体）"),
+        (fmt_int(sessions), label_of("sessions")),
+        (fmt_count(conversions), label_of("conversions")),
+        (fmt_int(clicks), label_of("clicks")),
+        (cvr_str, label_of("conversionRate")),
     ]
     return cards
 
@@ -338,6 +412,7 @@ def _create_formats(workbook) -> dict:
         "total_text": workbook.add_format(TOTAL_TEXT_STYLE),
         "ai_header": workbook.add_format(AI_SECTION_STYLE),
         "ai_content": workbook.add_format(AI_CONTENT_STYLE),
+        "ai_placeholder": workbook.add_format(AI_PLACEHOLDER_STYLE),
         "memo_header": workbook.add_format(MEMO_SECTION_STYLE),
         "memo_content": workbook.add_format(AI_CONTENT_STYLE),
         # シートタイトルバー
@@ -350,7 +425,7 @@ def _create_formats(workbook) -> dict:
         "cover_label": workbook.add_format(COVER_LABEL_STYLE),
         "cover_value": workbook.add_format(COVER_VALUE_STYLE),
         "cover_brand": workbook.add_format(COVER_BRAND_STYLE),
-        # KPI
+        # 主要指標カード
         "kpi_header": workbook.add_format(KPI_HEADER_STYLE),
         "kpi_num": workbook.add_format(KPI_NUM_STYLE),
         "kpi_label": workbook.add_format(KPI_LABEL_STYLE),

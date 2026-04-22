@@ -5,6 +5,7 @@ import { ja } from 'date-fns/locale';
 import { generateEmailTemplate, generateBatchedAlertEmailTemplate, generateAdminCreatedAccountEmail } from '../utils/emailTemplates.js';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { getGA4MetricsForSite } from '../utils/ga4ServerHelper.js';
+import { getLabel } from '../constants/metrics.js';
 
 /**
  * テストメール送信ハンドラ（v2 request）
@@ -184,11 +185,6 @@ async function sendTestAlert(db, recipientEmail, siteId) {
   }
 
   const METRIC_KEYS = ['sessions', 'totalUsers', 'screenPageViews', 'averagePageviews', 'engagementRate', 'totalConversions', 'conversionRate', 'bounceRate'];
-  const METRIC_LABELS = {
-    sessions: '流入数（セッション）', totalUsers: 'ユーザー数', screenPageViews: '表示回数',
-    averagePageviews: '平均PV', engagementRate: 'エンゲージメント率',
-    totalConversions: 'コンバージョン数', conversionRate: 'コンバージョン率', bounceRate: '直帰率',
-  };
   const ALERT_THRESHOLD = 30; // テスト用に閾値を下げる（本番は50%）
 
   // 全指標サマリーを構築
@@ -199,16 +195,17 @@ async function sendTestAlert(db, recipientEmail, siteId) {
     const previous = previousMetrics[key];
     const change = previous && previous !== 0 ? ((current - previous) / previous) * 100 : null;
     const isAlert = change != null && Math.abs(change) >= ALERT_THRESHOLD;
-    allMetricsSummary.push({ key, label: METRIC_LABELS[key], current, previous, changePercent: change, isAlert });
+    const label = getLabel(key);
+    allMetricsSummary.push({ key, label, current, previous, changePercent: change, isAlert });
     if (isAlert) {
       const isDrop = change < 0;
       collectedAlerts.push({
         metricName: key,
-        metricLabel: METRIC_LABELS[key],
+        metricLabel: label,
         currentValue: current,
         previousValue: previous,
         changePercent: change,
-        message: `${METRIC_LABELS[key]}が${Math.abs(change).toFixed(1)}%${isDrop ? '減少' : '増加'}しました`,
+        message: `${label}が${Math.abs(change).toFixed(1)}%${isDrop ? '減少' : '増加'}しました`,
         periodCurrent: periodLabel,
         periodPrevious: `${previousStartStr} 〜 ${previousEndStr}`,
       });
@@ -217,12 +214,13 @@ async function sendTestAlert(db, recipientEmail, siteId) {
 
   // アラートが0件の場合、テスト用にセッションを強制追加
   if (collectedAlerts.length === 0) {
+    const sessionLabel = getLabel('sessions');
     allMetricsSummary[0].isAlert = true;
     collectedAlerts.push({
-      metricName: 'sessions', metricLabel: '流入数（セッション）',
+      metricName: 'sessions', metricLabel: sessionLabel,
       currentValue: currentMetrics.sessions, previousValue: previousMetrics.sessions,
       changePercent: allMetricsSummary[0].changePercent || -10,
-      message: '流入数（セッション）が変化しました（テスト送信）',
+      message: `${sessionLabel}が変化しました（テスト送信）`,
       periodCurrent: periodLabel,
       periodPrevious: `${previousStartStr} 〜 ${previousEndStr}`,
     });

@@ -5,28 +5,30 @@ import { getPageTypeLabel } from '../../constants/pageTypes';
 import { useSite } from '../../contexts/SiteContext';
 import { Dialog, DialogTitle, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
+import { getLabel } from '../../constants/metrics';
 
-// アラートタイプの日本語表示マッピング
-const ALERT_TYPE_LABELS = {
-  sessions_drop: 'セッション数の減少',
-  sessions_surge: 'セッション数の急増',
-  totalUsers_drop: 'ユーザー数の減少',
-  totalUsers_surge: 'ユーザー数の急増',
-  screenPageViews_drop: '表示回数の減少',
-  screenPageViews_surge: '表示回数の急増',
-  averagePageviews_drop: '平均PVの減少',
-  averagePageviews_surge: '平均PVの急増',
-  engagementRate_drop: 'エンゲージメント率の低下',
-  engagementRate_surge: 'エンゲージメント率の上昇',
-  totalConversions_drop: 'コンバージョン数の減少',
-  totalConversions_surge: 'コンバージョン数の急増',
-  conversionRate_drop: 'コンバージョン率の低下',
-  conversionRate_surge: 'コンバージョン率の上昇',
-  bounceRate_drop: '直帰率の低下',
-  bounceRate_surge: '直帰率の上昇',
+// アラートタイプの日本語表示マッピング（getLabel で統一ラベルを参照）
+const getAlertTypeLabel = (type) => {
+  const labelMap = {
+    sessions_drop: 'セッション数の減少',
+    sessions_surge: 'セッション数の急増',
+    totalUsers_drop: 'ユーザー数の減少',
+    totalUsers_surge: 'ユーザー数の急増',
+    screenPageViews_drop: '表示回数の減少',
+    screenPageViews_surge: '表示回数の急増',
+    averagePageviews_drop: `${getLabel('pageViewsPerSession')}の減少`,
+    averagePageviews_surge: `${getLabel('pageViewsPerSession')}の急増`,
+    engagementRate_drop: 'エンゲージメント率の低下',
+    engagementRate_surge: 'エンゲージメント率の上昇',
+    totalConversions_drop: 'コンバージョン数の減少',
+    totalConversions_surge: 'コンバージョン数の急増',
+    conversionRate_drop: 'コンバージョン率の低下',
+    conversionRate_surge: 'コンバージョン率の上昇',
+    bounceRate_drop: '直帰率の低下',
+    bounceRate_surge: '直帰率の上昇',
+  };
+  return labelMap[type] || type || 'アラート';
 };
-
-const getAlertTypeLabel = (type) => ALERT_TYPE_LABELS[type] || type || 'アラート';
 
 /**
  * グローバル通知モーダル

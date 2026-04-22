@@ -246,23 +246,119 @@ def compute_totals_row(headers: list[str], rows: list[list[Any]], out_cols: list
 # ─── 行の高さ計算 ────────────────────────────────────────────
 
 
+def _visual_width(s: str) -> int:
+    """Excel の digit-width 単位でのテキスト可視幅 (日本語 = 2, ASCII = 1)。"""
+    w = 0
+    for c in s:
+        w += 2 if ord(c) > 0x7F else 1
+    return w
+
+
 def calc_row_height(row_values: list[Any], col_widths: list[int]) -> float:
-    """各セルのテキスト長から必要な行高さを推定。"""
+    """各セルのテキスト長から必要な行高さを推定（日本語の全角幅を考慮）。
+
+    visual_width が col_width 以下なら 1 行扱い（境界ケースの過剰折り返しを避ける）。
+    明示的な改行 \\n と、はみ出し量から実際の wrap 行数を算出する。
+    """
     max_lines = 1
     for idx, v in enumerate(row_values):
         if v is None or v == "":
             continue
         s = str(v).replace("\r\n", "\n").replace("\r", "\n")
-        wch = col_widths[idx] if idx < len(col_widths) else 10
-        chars_per_line = max(8, wch * 0.5)
+        # 列幅 (digit-width 単位)。xlsxwriter の column width はこの単位に近い
+        wch = max(4, col_widths[idx] if idx < len(col_widths) else 10)
         lines = 0
         for seg in s.split("\n"):
-            lines += max(1, math.ceil(len(seg) / chars_per_line))
+            vw = _visual_width(seg)
+            # col 幅以下は折り返し無し（Excel は若干余裕を持って収める）
+            if vw <= wch:
+                lines += 1
+            else:
+                lines += math.ceil(vw / wch)
         max_lines = max(max_lines, lines)
+    if max_lines <= 1:
+        return MIN_ROW_HEIGHT_PT
     return min(MAX_ROW_HEIGHT_PT, max(MIN_ROW_HEIGHT_PT, math.ceil(max_lines * LINE_HEIGHT_PT * 1.05)))
 
 
 # ─── AI 分析 & メモセクション追記 ──────────────────────────
+
+
+AI_PLACEHOLDER_TEXT = "※ 画面で AI 分析を生成するとここに表示されます"
+
+# AI セクションはセルではなく図形 (text box) として描画 → 列幅に左右されない統一幅
+# 幅 18.3 cm (= 18.3 × 37.795 px ≒ 692 px @ 96 DPI)
+# 高さ 6.0 cm 固定 (= 6 × 37.795 ≒ 227 px)
+AI_BOX_WIDTH_PX = 692
+AI_BOX_TOTAL_HEIGHT_PX = 227  # 6.0 cm 固定
+AI_CHARS_PER_LINE = 60  # 参考値 (現状高さは固定なので未使用)
+
+
+AI_TITLE_HEIGHT_PX = 32  # タイトル部 (0.85 cm)
+
+
+def _insert_ai_textbox(ws, row: int, ai_data: dict | None) -> int:
+    """AI セクションを Excel テキストボックスとして挿入し、ボックス下端の次の行を返す。
+
+    全シート共通の固定幅 18.3 cm × 高さ 6.0 cm、editAs="absolute" で列幅変更の影響なし。
+    タイトル「■ AI分析」(紫太字) と本文 (ダーク) は xlsxwriter の rich text 制約により
+    別シェイプだが、同じ塗り・枠線・幅で隙間なく繋げて視覚的に 1 ブロックに見せる。
+
+    高さ固定方針: 長文 AI サマリーはボックス内で見た目上カットされる
+    (テキスト自体はファイルに保持されるので、ユーザーが手動でリサイズすれば全文表示される)。
+    """
+    if ai_data and ai_data.get("summary"):
+        body_text = _strip_markdown(ai_data.get("summary", ""))
+        is_placeholder = False
+    else:
+        body_text = AI_PLACEHOLDER_TEXT
+        is_placeholder = True
+
+    body_height_px = AI_BOX_TOTAL_HEIGHT_PX - AI_TITLE_HEIGHT_PX  # 195 px ≒ 5.15 cm
+    total_height_px = AI_BOX_TOTAL_HEIGHT_PX
+
+    # 配色 (プレースホルダは控えめに)
+    title_color = "#7C3AED"
+    body_color = "#9CA3AF" if is_placeholder else "#1E293B"
+    bg_color = "#F9FAFB" if is_placeholder else "#F5F3FF"
+    border_color = "#E5E7EB" if is_placeholder else "#DDD6FE"
+
+    common_options = {
+        "width": AI_BOX_WIDTH_PX,
+        "x_offset": 4,
+        "fill": {"color": bg_color},
+        "border": {"color": border_color},
+        "object_position": 3,  # セルから完全独立 (列幅変更でリサイズされない)
+    }
+
+    # 1) タイトルボックス (紫太字)
+    title_options = {
+        **common_options,
+        "height": AI_TITLE_HEIGHT_PX,
+        "y_offset": 4,
+        "align": {"vertical": "middle", "horizontal": "left"},
+        "font": {"name": "Yu Gothic", "size": 11, "bold": True, "color": title_color},
+    }
+    ws.insert_textbox(row, 0, "  ■ AI分析", title_options)
+
+    # 2) 本文ボックス (タイトルの直下に隙間なく配置)
+    body_options = {
+        **common_options,
+        "height": body_height_px,
+        "y_offset": 4 + AI_TITLE_HEIGHT_PX,
+        "align": {"vertical": "top", "horizontal": "left"},
+        "font": {
+            "name": "Yu Gothic",
+            "size": 10,
+            "color": body_color,
+            "italic": is_placeholder,
+        },
+    }
+    ws.insert_textbox(row, 0, body_text, body_options)
+
+    # 次に書き込み可能な行 = ボックス下端より下
+    rows_consumed = math.ceil(total_height_px / 20) + 1
+    return row + rows_consumed
 
 
 def append_ai_and_memo_sections(
@@ -276,52 +372,43 @@ def append_ai_and_memo_sections(
     ai_content_fmt,
     memo_header_fmt,
     memo_content_fmt,
+    ai_placeholder_fmt=None,
 ) -> int:
     """
     AI 分析 + メモセクションをワークシートに追記。
+    AI セクション = Excel テキストボックス (全シート固定幅 800px、高さ自動)
+    メモセクション = セル merge (データ表幅または最低 8 列)
     戻り値: 追記後の次の行番号。
     """
     row = start_row
 
-    # AI 分析セクション
-    if ai_data and ai_data.get("summary"):
-        row += 2  # 空白行
+    # AI セクション (テキストボックスで挿入 — 全シート統一幅)
+    row += 2  # 空白行
+    row = _insert_ai_textbox(ws, row, ai_data)
 
-        # ヘッダー
-        ws.set_row(row, 26)
-        if num_cols > 1:
-            ws.merge_range(row, 0, row, num_cols - 1, "■ AI分析", ai_header_fmt)
-        else:
-            ws.write(row, 0, "■ AI分析", ai_header_fmt)
-        row += 1
-
-        # 本文 (Markdown 記号を除去) — 折り返し込みで行高さ推定
-        clean_text = _strip_markdown(ai_data.get("summary", ""))
-        height = _estimate_wrapped_height(clean_text, num_cols)
-        ws.set_row(row, height)
-        if num_cols > 1:
-            ws.merge_range(row, 0, row, num_cols - 1, clean_text, ai_content_fmt)
-        else:
-            ws.write(row, 0, clean_text, ai_content_fmt)
-        row += 1
-
-    # メモセクション
+    # メモセクション (セルで描画 — データ表またはAI 領域の幅に合わせる)
     if memos and len(memos) > 0:
+        ai_end_col = max(num_cols - 1, 7)  # 最低 8 列分
+        # データ表より右の余白列を補填
+        for c in range(num_cols, ai_end_col + 1):
+            ws.set_column(c, c, 14)
+        ai_cols = ai_end_col + 1
+
         row += 2
 
         ws.set_row(row, 26)
-        if num_cols > 1:
-            ws.merge_range(row, 0, row, num_cols - 1, "■ メモ", memo_header_fmt)
+        if ai_cols > 1:
+            ws.merge_range(row, 0, row, ai_end_col, "■ メモ", memo_header_fmt)
         else:
             ws.write(row, 0, "■ メモ", memo_header_fmt)
         row += 1
 
         for memo in memos:
             memo_text = _format_memo_text(memo)
-            height = _estimate_wrapped_height(memo_text, num_cols)
+            height = _estimate_wrapped_height(memo_text, ai_cols)
             ws.set_row(row, height)
-            if num_cols > 1:
-                ws.merge_range(row, 0, row, num_cols - 1, memo_text, memo_content_fmt)
+            if ai_cols > 1:
+                ws.merge_range(row, 0, row, ai_end_col, memo_text, memo_content_fmt)
             else:
                 ws.write(row, 0, memo_text, memo_content_fmt)
             row += 1
@@ -333,21 +420,21 @@ def _estimate_wrapped_height(text: str, num_cols: int) -> float:
     """
     マージセル内のテキストが折り返した時の行数を推定し、適切な行高さを返す。
 
-    num_cols から merge 幅をざっくり計算し、1 行あたり何文字入るかを推定する。
-    日本語混在を想定し full-width 1 字 = 2 char width。
+    num_cols から merge 幅をざっくり推定。1 列 ≒ 18 char width として
+    日本語混在テキストが全角 60〜100 字/行で折り返す想定。
     """
     if not text:
         return MIN_ROW_HEIGHT_PT
-    # マージ幅 (おおよその char width) — 列幅 14 char × num_cols
-    total_char_width = max(40, num_cols * 14)
-    # 全角 1 文字 ≒ 2 char width 相当 → 半分にして「日本語的 1 行に入る文字数」とする
-    chars_per_line = max(30, int(total_char_width * 0.55))
+    # マージ幅 ≒ 列幅 18 char × num_cols（経験値）
+    total_char_width = max(60, num_cols * 18)
+    # 日本語混在は char_width × 0.7 を 1 行あたり目安文字数として扱う
+    chars_per_line = max(50, int(total_char_width * 0.7))
 
     visual_lines = 0
     for line in text.replace("\r\n", "\n").replace("\r", "\n").split("\n"):
         visual_lines += max(1, math.ceil(len(line) / chars_per_line))
 
-    return min(MAX_ROW_HEIGHT_PT, max(MIN_ROW_HEIGHT_PT, math.ceil(visual_lines * LINE_HEIGHT_PT * 1.15)))
+    return min(MAX_ROW_HEIGHT_PT, max(MIN_ROW_HEIGHT_PT, math.ceil(visual_lines * LINE_HEIGHT_PT * 1.0)))
 
 
 def _strip_markdown(text: str) -> str:

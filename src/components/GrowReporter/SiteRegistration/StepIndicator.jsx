@@ -7,7 +7,7 @@ export default function StepIndicator({ currentStep, onStepClick }) {
     { number: 2, title: 'GA4連携', subtitle: '', required: true },
     { number: 3, title: 'Search\nConsole', subtitle: '（任意）', required: false },
     { number: 4, title: 'コンバージョン', subtitle: '（任意）', required: false },
-    { number: 5, title: 'KPI設定', subtitle: '（任意）', required: false },
+    { number: 5, title: '目標設定', subtitle: '（任意）', required: false },
   ];
 
   return (
