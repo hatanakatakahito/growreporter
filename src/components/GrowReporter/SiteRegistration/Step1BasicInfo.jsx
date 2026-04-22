@@ -1,81 +1,27 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { BUSINESS_MODELS } from '../../../constants/businessModels';
-import { SITE_ROLES } from '../../../constants/siteRoles';
-import { INDUSTRY_MINOR_BY_MAJOR } from '../../../constants/industriesV2';
-import {
-  inferSiteRole,
-  inferIndustry,
-  inferBusinessModel,
-} from '../../../constants/taxonomyMigration';
 import { storage, functions } from '../../../config/firebase';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { httpsCallable } from 'firebase/functions';
-import toast from 'react-hot-toast';
-import { Upload, X, Sparkles, Wand2 } from 'lucide-react';
+import { Upload, X, Sparkles } from 'lucide-react';
 import DotWaveSpinner from '../../common/DotWaveSpinner';
-import SingleSelectField from './SingleSelectField';
-import IndustryPickerV2 from './IndustryPickerV2';
-import { useInferSiteTaxonomy } from '../../../hooks/useInferSiteTaxonomy';
 import { SCREENSHOT_DISPLAY_HEIGHT_PX } from '../../../constants/screenshotDisplay';
 
-// legacy サイト(taxonomyVersion !== 2)から V2 4軸を推定するヘルパー
-function inferV2FromLegacy(data) {
-  if (!data) return null;
-  const legacySiteType = Array.isArray(data.siteType)
-    ? data.siteType
-    : data.siteType
-      ? [data.siteType]
-      : [];
-  const legacySitePurpose = Array.isArray(data.sitePurpose)
-    ? data.sitePurpose
-    : data.sitePurpose
-      ? [data.sitePurpose]
-      : [];
-  const legacyIndustry = Array.isArray(data.industry)
-    ? data.industry
-    : data.industry
-      ? [data.industry]
-      : [];
-
-  const { role } = inferSiteRole(legacySiteType, legacySitePurpose);
-  const { major, minor } = inferIndustry(legacyIndustry);
-  const { model } = inferBusinessModel(data.businessType, role);
-
-  return {
-    businessModel: model || '',
-    industryMajor: major || '',
-    industryMinor: minor || '',
-    siteRole: role || '',
-    inferred: true,
-  };
-}
-
+/**
+ * サイト登録 Step1（基本情報）
+ *
+ * タクソノミー V2（業種・サイト役割・ビジネスモデル）の入力 UI はこの画面から削除済み。
+ * ユーザーに業種を選択させず、サイト登録完了後のスクレイピング処理
+ * （onScrapingJobCreated）で 100ページ分の情報を踏まえて AI が自動判定する。
+ *
+ * 必須項目: siteName / siteUrl のみ。
+ */
 export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, mode = 'new' }) {
-  const isV2 = Number(siteData.taxonomyVersion) === 2;
-  const legacyInferred = !isV2 && mode === 'edit' ? inferV2FromLegacy(siteData) : null;
-
   const [formData, setFormData] = useState({
     siteName: siteData.siteName || '',
     siteUrl: siteData.siteUrl || '',
-    businessModel: siteData.businessModel || legacyInferred?.businessModel || '',
-    industryMajor: siteData.industryMajor || legacyInferred?.industryMajor || '',
-    industryMinor: siteData.industryMinor || legacyInferred?.industryMinor || '',
-    siteRole: siteData.siteRole || legacyInferred?.siteRole || '',
     metaTitle: siteData.metaTitle || '',
     metaDescription: siteData.metaDescription || '',
   });
-
-  // legacy から推定した値を表示するためのフラグ（ユーザー確認を促すヒント）
-  const [inferredFields, setInferredFields] = useState(
-    legacyInferred
-      ? {
-          businessModel: !!legacyInferred.businessModel,
-          industryMajor: !!legacyInferred.industryMajor,
-          industryMinor: !!legacyInferred.industryMinor,
-          siteRole: !!legacyInferred.siteRole,
-        }
-      : {}
-  );
 
   const [errors, setErrors] = useState({});
   const [pcScreenshot, setPcScreenshot] = useState(siteData.pcScreenshotUrl || null);
@@ -84,9 +30,6 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
   const [isMetadataFetching, setIsMetadataFetching] = useState(false);
   const [isScreenshotFetching, setIsScreenshotFetching] = useState(false);
   const [screenshotProgress, setScreenshotProgress] = useState('');
-
-  // タクソノミー V2 の URL 自動判定
-  const { mutateAsync: inferTaxonomy, isPending: isInferringTaxonomy } = useInferSiteTaxonomy();
 
   // 編集モードで親が非同期取得した siteData をフォームに反映
   const lastSyncedSiteUrl = useRef(null);
@@ -100,40 +43,18 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
     if (lastSyncedSiteUrl.current === url) return;
     lastSyncedSiteUrl.current = url;
 
-    const incomingIsV2 = Number(siteData.taxonomyVersion) === 2;
-    const incomingLegacy = !incomingIsV2 ? inferV2FromLegacy(siteData) : null;
-
     setFormData({
       siteName: siteData.siteName || '',
       siteUrl: siteData.siteUrl || '',
-      businessModel: siteData.businessModel || incomingLegacy?.businessModel || '',
-      industryMajor: siteData.industryMajor || incomingLegacy?.industryMajor || '',
-      industryMinor: siteData.industryMinor || incomingLegacy?.industryMinor || '',
-      siteRole: siteData.siteRole || incomingLegacy?.siteRole || '',
       metaTitle: siteData.metaTitle || '',
       metaDescription: siteData.metaDescription || '',
     });
-    setInferredFields(
-      incomingLegacy
-        ? {
-            businessModel: !siteData.businessModel && !!incomingLegacy.businessModel,
-            industryMajor: !siteData.industryMajor && !!incomingLegacy.industryMajor,
-            industryMinor: !siteData.industryMinor && !!incomingLegacy.industryMinor,
-            siteRole: !siteData.siteRole && !!incomingLegacy.siteRole,
-          }
-        : {}
-    );
     setPcScreenshot(siteData.pcScreenshotUrl || null);
     setMobileScreenshot(siteData.mobileScreenshotUrl || null);
   }, [
     mode,
     siteData.siteName,
     siteData.siteUrl,
-    siteData.businessModel,
-    siteData.industryMajor,
-    siteData.industryMinor,
-    siteData.siteRole,
-    siteData.taxonomyVersion,
     siteData.metaTitle,
     siteData.metaDescription,
     siteData.pcScreenshotUrl,
@@ -144,9 +65,8 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
   useEffect(() => {
     const payload = {
       ...formData,
-      // 新規サイト登録/編集時は必ず V2 スキーマで保存
+      // タクソノミー V2 は裏で onScrapingJobCreated が書き込むが、ここで明示しておく
       taxonomyVersion: 2,
-      // legacy 推定値を含むかどうか（親の saveSiteData でログに使う可能性がある）
       pcScreenshotUrl: pcScreenshot || null,
       mobileScreenshotUrl: mobileScreenshot || null,
     };
@@ -158,31 +78,6 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
     const { id, value } = e.target;
     setFormData((prev) => ({ ...prev, [id]: value }));
     if (errors[id]) setErrors((prev) => ({ ...prev, [id]: '' }));
-  };
-
-  const setField = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
-    // ユーザーが確定操作したフィールドは「推定」バッジを消す
-    if (inferredFields[field]) {
-      setInferredFields((prev) => ({ ...prev, [field]: false }));
-    }
-  };
-
-  const handleIndustryChange = ({ major, minor }) => {
-    setFormData((prev) => ({
-      ...prev,
-      industryMajor: major,
-      industryMinor: minor,
-    }));
-    if (errors.industryMajor || errors.industryMinor) {
-      setErrors((prev) => ({ ...prev, industryMajor: '', industryMinor: '' }));
-    }
-    setInferredFields((prev) => ({
-      ...prev,
-      industryMajor: false,
-      industryMinor: false,
-    }));
   };
 
   const validateUrl = (url) => {
@@ -310,56 +205,6 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
     }
   };
 
-  // 推定値だった場合のヒント
-  const legacyHint = '旧データから推定しました。必要に応じて修正してください。';
-  const aiHint = 'AIがURLから推定しました。必要に応じて修正してください。';
-
-  // URL からタクソノミー V2 を AI 推定して 4 フィールドをプレフィル
-  const handleInferTaxonomy = async () => {
-    const url = formData.siteUrl?.trim();
-    if (!url) {
-      toast.error('先にサイトURLを入力してください');
-      return;
-    }
-    if (!validateUrl(url)) {
-      setErrors((prev) => ({
-        ...prev,
-        siteUrl: '正しいURL形式で入力してください',
-      }));
-      return;
-    }
-    try {
-      const result = await inferTaxonomy({
-        siteUrl: url,
-        siteName: formData.siteName || '',
-        siteId: siteData.id || '',
-      });
-      setFormData((prev) => ({
-        ...prev,
-        businessModel: result.businessModel || prev.businessModel,
-        industryMajor: result.industryMajor || prev.industryMajor,
-        industryMinor: result.industryMinor || prev.industryMinor,
-        siteRole: result.siteRole || prev.siteRole,
-      }));
-      setInferredFields({
-        businessModel: !!result.businessModel,
-        industryMajor: !!result.industryMajor,
-        industryMinor: !!result.industryMinor,
-        siteRole: !!result.siteRole,
-        _byAI: true,
-      });
-      if (result.confidence === 'low') {
-        toast.success('AIで推定しました（信頼度: 低め。内容をご確認ください）', { duration: 5000 });
-      } else {
-        toast.success(`AIで自動判定しました（信頼度: ${result.confidence === 'high' ? '高' : '中'}）`);
-      }
-    } catch (error) {
-      console.error('[Step1] タクソノミー自動判定エラー:', error);
-      const msg = error?.message || '自動判定に失敗しました。手入力で設定してください。';
-      toast.error(msg, { duration: 6000 });
-    }
-  };
-
   return (
     <div className="space-y-6">
       {/* サイト名 */}
@@ -403,89 +248,10 @@ export default function Step1BasicInfo({ siteData, setSiteData, step1LatestRef, 
           required
         />
         {errors.siteUrl && <p className="mt-1 text-sm text-red-500">{errors.siteUrl}</p>}
+        <p className="mt-2 text-xs text-body-color">
+          業種やサイトの特性は、登録完了後にAIが自動で判定します（100ページのスクレイピング結果をもとに）。
+        </p>
       </div>
-
-      {/* AI 自動判定ボタン（タクソノミー V2） */}
-      <div className="flex items-center justify-between rounded-lg border border-dashed border-primary/40 bg-gradient-to-r from-primary-blue/5 to-primary-purple/5 px-4 py-3 dark:border-primary/30">
-        <div>
-          <p className="text-sm font-medium text-dark dark:text-white">
-            URLから業種・サイト役割を自動判定
-          </p>
-          <p className="mt-0.5 text-xs text-body-color dark:text-dark-6">
-            サイトURLをもとに、AIが以下の4項目を推定します。推定後も自由に修正可能です。
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={handleInferTaxonomy}
-          disabled={isInferringTaxonomy || !formData.siteUrl}
-          className="flex items-center gap-1.5 whitespace-nowrap rounded-md bg-gradient-primary px-4 py-2 text-xs font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          {isInferringTaxonomy ? (
-            <>
-              <DotWaveSpinner size="xs" variant="white" />
-              判定中...
-            </>
-          ) : (
-            <>
-              <Wand2 className="h-3.5 w-3.5" />
-              AIで自動判定
-            </>
-          )}
-        </button>
-      </div>
-
-      {/* ビジネスモデル */}
-      <SingleSelectField
-        label="ビジネスモデル"
-        required
-        options={BUSINESS_MODELS}
-        value={formData.businessModel}
-        onChange={(v) => setField('businessModel', v)}
-        error={errors.businessModel}
-        placeholder="ビジネスモデルを選択"
-        hint={
-          inferredFields.businessModel
-            ? inferredFields._byAI
-              ? aiHint
-              : legacyHint
-            : undefined
-        }
-      />
-
-      {/* 業種（大分類・小分類） */}
-      <IndustryPickerV2
-        industryMajor={formData.industryMajor}
-        industryMinor={formData.industryMinor}
-        onChange={handleIndustryChange}
-        errors={{ major: errors.industryMajor, minor: errors.industryMinor }}
-        hints={{
-          major: inferredFields.industryMajor
-            ? inferredFields._byAI
-              ? aiHint
-              : legacyHint
-            : undefined,
-          minor: inferredFields.industryMinor
-            ? inferredFields._byAI
-              ? aiHint
-              : legacyHint
-            : undefined,
-        }}
-      />
-
-      {/* サイト役割 */}
-      <SingleSelectField
-        label="サイト役割"
-        required
-        options={SITE_ROLES}
-        value={formData.siteRole}
-        onChange={(v) => setField('siteRole', v)}
-        error={errors.siteRole}
-        placeholder="サイト役割を選択"
-        hint={
-          inferredFields.siteRole ? (inferredFields._byAI ? aiHint : legacyHint) : undefined
-        }
-      />
 
       {/* サイトタイトル（編集モード時のみ） */}
       {mode === 'edit' && (

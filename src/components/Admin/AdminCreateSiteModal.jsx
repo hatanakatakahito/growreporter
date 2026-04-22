@@ -7,24 +7,19 @@ import Step1BasicInfo from '../GrowReporter/SiteRegistration/Step1BasicInfo';
 import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
 import DotWaveSpinner from '../common/DotWaveSpinner';
-import { BUSINESS_MODEL_LABELS } from '../../constants/businessModels';
-import { SITE_ROLE_LABELS } from '../../constants/siteRoles';
-import { INDUSTRY_MAJOR_LABELS } from '../../constants/industriesV2';
 
 /**
  * 管理者サイト登録モーダル（Step1BasicInfo再利用）
  * 作成後にサイト登録ウィザード（Step2~5）へ遷移
+ *
+ * 業種・サイト役割・ビジネスモデルはこのフォームで入力させない。
+ * サイト登録完了後のスクレイピング処理で AI が 100ページ情報を踏まえて自動判定する。
  */
 export default function AdminCreateSiteModal({ targetUserId, targetUserName, onClose, onSuccess }) {
   const navigate = useNavigate();
   const [siteData, setSiteData] = useState({
     siteName: '',
     siteUrl: '',
-    // タクソノミー V2（単一選択・必須）
-    businessModel: '',
-    industryMajor: '',
-    industryMinor: '',
-    siteRole: '',
     taxonomyVersion: 2,
     metaTitle: '',
     metaDescription: '',
@@ -42,19 +37,11 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
     ...step1LatestRef.current,
   });
 
-  // バリデーション（V2: 4フィールド単一文字列必須）
+  // バリデーション（業種はAIが自動判定するため、管理者も入力不要）
   const isValid = () => {
     const data = getLatestData();
     const isMetadataLoading = data.metaTitle === '取得中...' || data.metaDescription === '取得中...';
-    return !!(
-      data.siteName &&
-      data.siteUrl &&
-      data.businessModel &&
-      data.industryMajor &&
-      data.industryMinor &&
-      data.siteRole &&
-      !isMetadataLoading
-    );
+    return !!(data.siteName && data.siteUrl && !isMetadataLoading);
   };
 
   // サイト作成実行
@@ -69,11 +56,7 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
         targetUserId,
         siteName: data.siteName,
         siteUrl: data.siteUrl,
-        // タクソノミー V2
-        businessModel: data.businessModel,
-        industryMajor: data.industryMajor,
-        industryMinor: data.industryMinor,
-        siteRole: data.siteRole,
+        // 業種系はサイト登録後のスクレイピング完了時に AI が自動判定するため送らない
         taxonomyVersion: 2,
         metaTitle: data.metaTitle || '',
         metaDescription: data.metaDescription || '',
@@ -135,28 +118,9 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
               <p className="text-xs text-body-color dark:text-dark-6">サイトURL</p>
               <p className="text-sm font-medium text-dark dark:text-white">{data.siteUrl}</p>
             </div>
-            <div>
-              <p className="text-xs text-body-color dark:text-dark-6">ビジネスモデル</p>
-              <p className="text-sm text-dark dark:text-white">
-                {BUSINESS_MODEL_LABELS[data.businessModel] || '未選択'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-body-color dark:text-dark-6">業種</p>
-              <p className="text-sm text-dark dark:text-white">
-                {data.industryMajor
-                  ? `${INDUSTRY_MAJOR_LABELS[data.industryMajor] || data.industryMajor}${
-                      data.industryMinor ? `／${data.industryMinor}` : ''
-                    }`
-                  : '未選択'}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-body-color dark:text-dark-6">サイト役割</p>
-              <p className="text-sm text-dark dark:text-white">
-                {SITE_ROLE_LABELS[data.siteRole] || '未選択'}
-              </p>
-            </div>
+            <p className="text-xs text-body-color dark:text-dark-6">
+              ※ 業種・サイト役割・ビジネスモデルはサイト登録完了後、スクレイピング結果をもとにAIが自動判定します。
+            </p>
           </div>
 
           {error && (

@@ -1,27 +1,12 @@
 import React from 'react';
-import { BUSINESS_MODEL_LABELS } from '../../../constants/businessModels';
-import { SITE_ROLE_LABELS } from '../../../constants/siteRoles';
-import { INDUSTRY_MAJOR_LABELS } from '../../../constants/industriesV2';
 
+/**
+ * サイト登録完了サマリー画面
+ *
+ * 業種・サイト役割・ビジネスモデルはユーザーに表示しない方針
+ * （タクソノミー V2 の裏方化。AIが100ページスクレイピング後に自動判定・管理画面でのみ可視化）
+ */
 export default function CompleteSummary({ siteData }) {
-  const businessModelLabel = siteData.businessModel
-    ? BUSINESS_MODEL_LABELS[siteData.businessModel] || siteData.businessModel
-    : '未選択';
-
-  const industryLabel = (() => {
-    const majorLabel = siteData.industryMajor
-      ? INDUSTRY_MAJOR_LABELS[siteData.industryMajor] || siteData.industryMajor
-      : '';
-    const minorLabel = siteData.industryMinor || '';
-    if (!majorLabel && !minorLabel) return '未選択';
-    if (majorLabel && minorLabel) return `${majorLabel}／${minorLabel}`;
-    return majorLabel || minorLabel;
-  })();
-
-  const siteRoleLabel = siteData.siteRole
-    ? SITE_ROLE_LABELS[siteData.siteRole] || siteData.siteRole
-    : '未選択';
-
   return (
     <div className="mb-8 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
       <h2 className="mb-4 text-xl font-semibold text-dark dark:text-white">登録内容のサマリー</h2>
@@ -40,18 +25,6 @@ export default function CompleteSummary({ siteData }) {
               <span className="font-medium text-dark dark:text-white break-all">
                 {siteData.siteUrl}
               </span>
-            </div>
-            <div className="flex gap-2">
-              <span className="shrink-0 text-body-color">ビジネスモデル:</span>
-              <span className="font-medium text-dark dark:text-white">{businessModelLabel}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="shrink-0 text-body-color">業種:</span>
-              <span className="font-medium text-dark dark:text-white">{industryLabel}</span>
-            </div>
-            <div className="flex gap-2">
-              <span className="shrink-0 text-body-color">サイト役割:</span>
-              <span className="font-medium text-dark dark:text-white">{siteRoleLabel}</span>
             </div>
           </div>
         </div>

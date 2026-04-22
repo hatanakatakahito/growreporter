@@ -122,6 +122,96 @@ export async function onScrapingJobCreatedHandler(event) {
       }
 
       // ========================================
+      // Phase E: タクソノミー V2 自動判定（100ページ情報から業種・サイト役割・ビジネスモデルを推定）
+      // ユーザー側UIでは業種を入力させないため、ここで裏データとして埋める。
+      // 管理者が既に手動確定している（V2 かつ needsManualReclassify !== true）サイトはスキップ。
+      // ========================================
+      try {
+        const latestSiteDoc = await db.collection('sites').doc(siteId).get();
+        const latestSiteData = latestSiteDoc.data() || {};
+        const alreadyConfirmed =
+          Number(latestSiteData.taxonomyVersion) === 2 &&
+          latestSiteData.needsManualReclassify !== true &&
+          !!latestSiteData.businessModel &&
+          !!latestSiteData.industryMajor &&
+          !!latestSiteData.industryMinor &&
+          !!latestSiteData.siteRole;
+
+        if (alreadyConfirmed) {
+          logger.info('[onScrapingJobCreated] タクソノミー確定済みのためスキップ', { siteId });
+        } else if (result.successCount < 3) {
+          // スクレイピング件数が少なすぎて推定の精度が出せない場合はスキップ
+          logger.warn('[onScrapingJobCreated] スクレイピング件数不足でタクソノミー推定をスキップ', {
+            siteId,
+            successCount: result.successCount,
+          });
+        } else {
+          const pagesSnap = await db
+            .collection('sites')
+            .doc(siteId)
+            .collection('pageScrapingData')
+            .orderBy('pageViews', 'desc')
+            .limit(100)
+            .get();
+
+          if (pagesSnap.empty) {
+            logger.warn('[onScrapingJobCreated] pageScrapingData が空でタクソノミー推定をスキップ', { siteId });
+          } else {
+            const pages = pagesSnap.docs.map((d) => d.data());
+            const { inferTaxonomyFromPageScrapingData } = await import(
+              '../utils/taxonomyInferenceHelper.js'
+            );
+
+            const inference = await inferTaxonomyFromPageScrapingData({
+              siteUrl: latestSiteData.siteUrl || siteUrl || '',
+              siteName: latestSiteData.siteName || '',
+              topMetadata: {
+                title: latestSiteData.metaTitle || siteUpdate.metaTitle || '',
+                description:
+                  latestSiteData.metaDescription || siteUpdate.metaDescription || '',
+              },
+              pages,
+              conversionEvents: latestSiteData.conversionEvents || [],
+            });
+
+            const taxonomyUpdate = {
+              businessModel: inference.businessModel,
+              industryMajor: inference.industryMajor,
+              industryMinor: inference.industryMinor,
+              siteRole: inference.siteRole,
+              taxonomyVersion: 2,
+              needsManualReclassify: inference.confidence === 'low',
+              taxonomyInferredAt: FieldValue.serverTimestamp(),
+              taxonomyInferenceSource: 'page_scraping',
+              taxonomyConfidence: inference.confidence,
+              taxonomyReasoning: inference.reasoning || '',
+              // 旧フィールドが残っていれば掃除
+              industry: FieldValue.delete(),
+              siteType: FieldValue.delete(),
+              sitePurpose: FieldValue.delete(),
+              businessType: FieldValue.delete(),
+            };
+
+            await db.collection('sites').doc(siteId).update(taxonomyUpdate);
+            logger.info('[onScrapingJobCreated] タクソノミー V2 自動判定完了', {
+              siteId,
+              businessModel: inference.businessModel,
+              industryMajor: inference.industryMajor,
+              industryMinor: inference.industryMinor,
+              siteRole: inference.siteRole,
+              confidence: inference.confidence,
+              totalPages: pages.length,
+            });
+          }
+        }
+      } catch (taxonomyError) {
+        logger.warn('[onScrapingJobCreated] タクソノミー自動判定エラー（既存処理は継続）', {
+          siteId,
+          error: taxonomyError.message,
+        });
+      }
+
+      // ========================================
       // サイト診断
       // ========================================
       try {

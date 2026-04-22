@@ -104,11 +104,8 @@ export default function SiteRegistration({ mode = 'new' }) {
   const [siteData, setSiteData] = useState({
     siteName: '',
     siteUrl: '',
-    // タクソノミー V2（単一選択・必須）
-    businessModel: '',
-    industryMajor: '',
-    industryMinor: '',
-    siteRole: '',
+    // タクソノミー V2 はユーザーに入力させない。サイト登録完了後のスクレイピング処理
+    // （onScrapingJobCreated）で 100ページ情報を元に AI が裏で自動判定・保存する。
     taxonomyVersion: 2,
     metaTitle: '',
     metaDescription: '',
@@ -204,17 +201,13 @@ export default function SiteRegistration({ mode = 'new' }) {
             setSiteData({
               siteName: data.siteName || '',
               siteUrl: data.siteUrl || '',
-              // V2 フィールド（legacy データは Step1BasicInfo 側で推定プレフィル）
+              // タクソノミー V2 は裏データ（編集モードでは表示しない）。Firestore の現状値をそのまま保持しておく。
               businessModel: data.businessModel || '',
               industryMajor: data.industryMajor || '',
               industryMinor: data.industryMinor || '',
               siteRole: data.siteRole || '',
               taxonomyVersion: Number(data.taxonomyVersion) === 2 ? 2 : undefined,
-              // legacy フィールドをそのまま渡して推定に使う（saveSiteData で delete される）
-              industry: Array.isArray(data.industry) ? data.industry : (data.industry ? [data.industry] : []),
-              siteType: Array.isArray(data.siteType) ? data.siteType : (data.siteType ? [data.siteType] : []),
-              sitePurpose: Array.isArray(data.sitePurpose) ? data.sitePurpose : (data.sitePurpose ? [data.sitePurpose] : []),
-              businessType: data.businessType || '',
+              needsManualReclassify: !!data.needsManualReclassify,
               metaTitle: data.metaTitle || '',
               metaDescription: data.metaDescription || '',
               pcScreenshotUrl: data.pcScreenshotUrl || '',
@@ -273,16 +266,8 @@ export default function SiteRegistration({ mode = 'new' }) {
         // 「取得中...」の状態では進めない
         const isMetadataLoading =
           siteData.metaTitle === '取得中...' || siteData.metaDescription === '取得中...';
-        return !!(
-          siteData.siteName &&
-          siteData.siteUrl &&
-          // タクソノミー V2: 4フィールドすべて単一文字列で必須
-          siteData.businessModel &&
-          siteData.industryMajor &&
-          siteData.industryMinor &&
-          siteData.siteRole &&
-          !isMetadataLoading
-        );
+        // タクソノミー V2 は裏方化したため、Step1 の必須は siteName + siteUrl のみ。
+        return !!(siteData.siteName && siteData.siteUrl && !isMetadataLoading);
       }
       case 2:
         return !!siteData.ga4PropertyId;
@@ -298,10 +283,6 @@ export default function SiteRegistration({ mode = 'new' }) {
     currentStep,
     siteData.siteName,
     siteData.siteUrl,
-    siteData.businessModel,
-    siteData.industryMajor,
-    siteData.industryMinor,
-    siteData.siteRole,
     siteData.metaTitle,
     siteData.metaDescription,
     siteData.ga4PropertyId,

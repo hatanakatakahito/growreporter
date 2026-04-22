@@ -105,7 +105,10 @@ async function callGemini(promptText) {
   if (!geminiApiKey) {
     throw new Error('GEMINI_API_KEY が設定されていません');
   }
-  const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+  // 業種判定は 100ページの情報を扱うため精度重視で gemini-2.5-flash を使う。
+  // 軽量パターン(単一URL)でも同じモデルを使う(差は僅少、一貫性優先)。
+  const geminiModel =
+    process.env.GEMINI_TAXONOMY_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
@@ -224,6 +227,236 @@ export async function inferTaxonomyFromUrl({ siteUrl, siteName = '', metadata = 
 
   const rawText = await callGemini(prompt);
   logger.info('[taxonomyInference] Gemini raw response length', { len: rawText.length });
+
+  const parsed = extractJson(rawText);
+  const result = validateResult(parsed);
+
+  logger.info('[taxonomyInference] Inference result (URL)', {
+    siteUrl,
+    result,
+  });
+
+  return result;
+}
+
+// ============================================================================
+// 100ページスクレイピングデータ版の業種推定（メイン動線）
+// ============================================================================
+
+/**
+ * pageScrapingData から会社情報・事業内容・サービス紹介系ページを優先的にピックアップする。
+ *
+ * 優先順位:
+ * 1. pageType === 'top'（トップページ）
+ * 2. pageType === 'about'（会社概要）
+ * 3. pageType === 'service'（サービス紹介）
+ * 4. pageType === 'product'（製品紹介）
+ * 5. pagePath に /about|company|corporate|profile|business|service|products|solution 等が含まれる
+ * 6. metaTitle に「会社概要」「事業内容」「サービス」「企業理念」「ミッション」「about」等が含まれる
+ * 7. それでも足りなければ pageViews 降順で補完
+ *
+ * @returns {Array} 選定されたページ(最大 limit 件)
+ */
+function pickRepresentativePages(pages, limit = 8) {
+  if (!Array.isArray(pages) || pages.length === 0) return [];
+
+  const aboutTypePath = /\/(about|company|corporate|profile|outline|philosophy|mission|vision|ir)(\b|\/|\.|$)/i;
+  const aboutTitle = /会社概要|企業情報|私たち|私達|企業理念|ミッション|ビジョン|代表[の者]?|代表者?メッセージ|about\b|company\b|profile\b/i;
+  const serviceTypePath = /\/(service|services|business|product|products|solution|solutions|shop|works|portfolio|case-?stud)/i;
+  const serviceTitle = /事業内容|サービス[紹一]|製品|商品|ソリューション|導入事例|お客様の声|works?\b|services?\b|products?\b/i;
+
+  const scored = pages.map((p) => {
+    const path = (p.pagePath || '').toLowerCase();
+    const title = (p.metaTitle || '');
+    const pageType = (p.pageType || '').toLowerCase();
+    let score = 0;
+
+    // pageType ベースの高スコア
+    if (pageType === 'top') score += 100;
+    else if (pageType === 'about') score += 90;
+    else if (pageType === 'service') score += 80;
+    else if (pageType === 'product') score += 75;
+
+    // パス・タイトルマッチで加点
+    if (aboutTypePath.test(path)) score += 60;
+    if (aboutTitle.test(title)) score += 55;
+    if (serviceTypePath.test(path)) score += 40;
+    if (serviceTitle.test(title)) score += 35;
+
+    // トップページのパス (/ や /index)
+    if (path === '/' || path === '' || /^\/(index\.html?|home)$/i.test(path)) {
+      score += 95;
+    }
+
+    // 情報量(本文 500字以上)でごく軽く加点
+    const textLen = Number(p.textLength) || (p.mainText ? p.mainText.length : 0);
+    if (textLen >= 500) score += 5;
+
+    // PV は tie-break 用の最小加点
+    const pv = Number(p.pageViews) || 0;
+    score += Math.min(pv, 1000) / 1000;
+
+    return { page: p, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+
+  // 重複 pagePath は除外
+  const seen = new Set();
+  const picked = [];
+  for (const { page } of scored) {
+    const key = (page.pagePath || page.pageUrl || '').toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    picked.push(page);
+    if (picked.length >= limit) break;
+  }
+  return picked;
+}
+
+/**
+ * 100ページスクレイピングデータから Gemini 用プロンプトを構築
+ */
+function buildPromptFromScraping({
+  siteUrl,
+  siteName,
+  topMetadata,
+  allPages,
+  representativePages,
+  conversionEvents,
+}) {
+  const businessModelOptions = BUSINESS_MODELS.map((m) => `  - ${m.value}: ${m.label}（${m.description}）`).join('\n');
+  const siteRoleOptions = SITE_ROLES.map((r) => `  - ${r.value}: ${r.label}（${r.description}）`).join('\n');
+  const industryMajorOptions = INDUSTRY_MAJOR.map((i) => `  - ${i.value}: ${i.label}（${i.description}）`).join('\n');
+  const industryMinorByMajor = Object.entries(INDUSTRY_MINOR_BY_MAJOR)
+    .map(([major, minors]) => `  - ${major}: ${minors.join(' / ')}`)
+    .join('\n');
+
+  // 全ページ構造情報（トークン節約のため compact フォーマット）
+  const pageListText = allPages
+    .slice(0, 100)
+    .map((p, i) => {
+      const path = p.pagePath || '';
+      const title = (p.metaTitle || '').slice(0, 80);
+      const desc = (p.metaDescription || '').slice(0, 80);
+      const type = p.pageType || '';
+      return `${i + 1}. [${type}] ${path} | "${title}" | ${desc}`;
+    })
+    .join('\n');
+
+  // 代表ページ本文抜粋
+  const representativeText = representativePages
+    .map((p, i) => {
+      const body = (p.mainText || '').slice(0, 1000).replace(/\s+/g, ' ').trim();
+      return `--- 代表ページ ${i + 1}: ${p.pagePath || ''} [${p.pageType || ''}] ---
+タイトル: ${p.metaTitle || ''}
+ディスクリプション: ${p.metaDescription || ''}
+本文抜粋(1000字): ${body || '(本文なし)'}`;
+    })
+    .join('\n\n');
+
+  const cvText =
+    Array.isArray(conversionEvents) && conversionEvents.length > 0
+      ? conversionEvents
+          .map((e) => (typeof e === 'string' ? e : e.displayName || e.eventName || ''))
+          .filter(Boolean)
+          .join(' / ')
+      : '(未設定)';
+
+  return `あなたはWebマーケティング専門のアナリストです。以下のWebサイトについて、100ページ分のスクレイピング結果を踏まえてBtoB/BtoC・業種（大分類・小分類）・サイト役割の4軸を判定し、JSONで返してください。
+
+【サイト情報】
+URL: ${siteUrl}
+${siteName ? `サイト名: ${siteName}\n` : ''}トップページ タイトル: ${topMetadata?.title || '(不明)'}
+トップページ ディスクリプション: ${topMetadata?.description || '(不明)'}
+
+【コンバージョンイベント名（ユーザー設定値）】
+${cvText}
+
+【全ページ一覧（最大100件。pagePath / タイトル / ディスクリプション）】
+${pageListText || '(取得なし)'}
+
+【代表ページの本文抜粋（会社概要・事業内容・サービス紹介・トップを優先選定）】
+${representativeText || '(取得なし)'}
+
+【判定する 4 軸と候補】
+
+◆ businessModel（必ず下記 value から1つ選択）
+${businessModelOptions}
+
+◆ siteRole（必ず下記 value から1つ選択）
+${siteRoleOptions}
+
+◆ industryMajor（必ず下記 value から1つ選択）
+${industryMajorOptions}
+
+◆ industryMinor（industryMajor に対応する小分類から1つ選択）
+${industryMinorByMajor}
+
+【判定ルール】
+1. すべての軸で、上記候補の value を厳密に1つ選ぶこと（範囲外は不可）
+2. industryMinor は選んだ industryMajor に属する値のみ選ぶこと
+3. 全ページ一覧のパターン（例: /rent/ が並ぶ→不動産賃貸、/works/ が並ぶ→制作会社）を重視する
+4. 代表ページ本文に「会社概要」「事業内容」が含まれていれば、そこの記述を最優先で根拠にする
+5. コンバージョンイベント名も業種判定の強いシグナルにする
+6. 取得情報から判断根拠が薄い場合は confidence を 'low' にすること
+7. 返答は **JSON のみ**。前後に説明文・マークダウン記号を一切付けない
+8. **JSON 以外の文字を出力したら失敗**とみなす
+
+【出力フォーマット】
+{
+  "businessModel": "b2b|b2c|b2b2c|other",
+  "industryMajor": "<value>",
+  "industryMinor": "<value>",
+  "siteRole": "<value>",
+  "confidence": "high|medium|low",
+  "reasoning": "判定根拠を日本語で1〜2文、80文字以内"
+}`;
+}
+
+/**
+ * 100ページスクレイピングデータから V2 タクソノミーを推定する公開 API。
+ * onScrapingJobCreated のスクレイピング完了処理の最後に呼び出される想定。
+ *
+ * @param {Object} args
+ * @param {string} args.siteUrl - サイトURL（必須）
+ * @param {string} [args.siteName] - サイト名
+ * @param {Object} [args.topMetadata] - { title, description, ogTitle, ogDescription }
+ * @param {Array} args.pages - pageScrapingData ドキュメントの配列
+ * @param {Array} [args.conversionEvents] - CV設定（名前配列 or {displayName}配列）
+ * @returns {Promise<{ businessModel, industryMajor, industryMinor, siteRole, confidence, reasoning }>}
+ */
+export async function inferTaxonomyFromPageScrapingData({
+  siteUrl,
+  siteName = '',
+  topMetadata = {},
+  pages = [],
+  conversionEvents = [],
+}) {
+  if (!siteUrl) {
+    throw new Error('siteUrl is required');
+  }
+  if (!Array.isArray(pages) || pages.length === 0) {
+    throw new Error('pageScrapingData が空です。スクレイピング未完了のサイトで呼ばれた可能性があります。');
+  }
+
+  const representativePages = pickRepresentativePages(pages, 8);
+
+  const prompt = buildPromptFromScraping({
+    siteUrl,
+    siteName,
+    topMetadata,
+    allPages: pages,
+    representativePages,
+    conversionEvents,
+  });
+
+  const rawText = await callGemini(prompt);
+  logger.info('[taxonomyInference] Gemini raw response length (scraping)', {
+    len: rawText.length,
+    totalPages: pages.length,
+    representativeCount: representativePages.length,
+  });
 
   const parsed = extractJson(rawText);
   const result = validateResult(parsed);
