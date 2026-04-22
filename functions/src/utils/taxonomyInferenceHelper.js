@@ -100,15 +100,17 @@ ${industryMinorByMajor}
 /**
  * Gemini API 呼び出し（aiChat.js と同じ構造）
  */
-async function callGemini(promptText) {
+async function callGemini(promptText, modelOverride) {
   const geminiApiKey = (process.env.GEMINI_API_KEY || '').trim();
   if (!geminiApiKey) {
     throw new Error('GEMINI_API_KEY が設定されていません');
   }
-  // 業種判定は 100ページの情報を扱うため精度重視で gemini-2.5-flash を使う。
-  // 軽量パターン(単一URL)でも同じモデルを使う(差は僅少、一貫性優先)。
+  // デフォルトは gemini-2.5-flash。2段階推定で Pro フォールバック時に modelOverride を渡す。
   const geminiModel =
-    process.env.GEMINI_TAXONOMY_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    modelOverride ||
+    process.env.GEMINI_TAXONOMY_MODEL ||
+    process.env.GEMINI_MODEL ||
+    'gemini-2.5-flash';
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
@@ -486,15 +488,68 @@ export async function inferTaxonomyFromPageScrapingData({
     conversionEvents,
   });
 
-  const rawText = await callGemini(prompt);
-  logger.info('[taxonomyInference] Gemini raw response length (scraping)', {
+  // --- 1段目: gemini-2.5-flash ---
+  const flashModel = process.env.GEMINI_TAXONOMY_MODEL || 'gemini-2.5-flash';
+  const rawText = await callGemini(prompt, flashModel);
+  logger.info('[taxonomyInference] Gemini raw response (flash)', {
     len: rawText.length,
     totalPages: pages.length,
     representativeCount: representativePages.length,
+    model: flashModel,
   });
 
   const parsed = extractJson(rawText);
-  const result = validateResult(parsed);
+  let result = validateResult(parsed);
+
+  // --- 2段目: 不確実な判定の場合、gemini-2.5-pro でフォールバック再推定 ---
+  // 不確実サイン:
+  //   - industryMinor が「その他」で始まる(「その他」「その他士業」等)
+  //   - confidence が 'low' または 'medium'
+  // Pro 発動は年間数件レベルなのでコスト影響は最小。
+  const isUncertain =
+    (result.industryMinor && result.industryMinor.startsWith('その他')) ||
+    result.confidence === 'low' ||
+    result.confidence === 'medium';
+
+  if (isUncertain) {
+    const proModel = process.env.GEMINI_TAXONOMY_PRO_MODEL || 'gemini-2.5-pro';
+    logger.info('[taxonomyInference] 不確実判定のため Pro でフォールバック再推定', {
+      siteUrl,
+      firstResult: result,
+      proModel,
+    });
+
+    try {
+      const rawText2 = await callGemini(prompt, proModel);
+      logger.info('[taxonomyInference] Gemini raw response (pro)', {
+        len: rawText2.length,
+        model: proModel,
+      });
+      const parsed2 = extractJson(rawText2);
+      const result2 = validateResult(parsed2);
+
+      // Pro の結果が有効なら上書き。Pro が極端に悪化した場合(大分類すら当たらない等)は
+      // Flash の結果を残す保険として、最低限の妥当性チェック。
+      const isBetter =
+        result2 &&
+        result2.industryMajor !== 'public_education' ||
+        result2.industryMajor === result.industryMajor;
+      if (isBetter) {
+        logger.info('[taxonomyInference] Pro 結果で上書き', { siteUrl, proResult: result2 });
+        result = result2;
+      } else {
+        logger.warn('[taxonomyInference] Pro 結果が妥当でないため Flash 結果を維持', {
+          siteUrl,
+          proResult: result2,
+        });
+      }
+    } catch (proError) {
+      logger.warn('[taxonomyInference] Pro フォールバックエラー(Flash 結果を維持)', {
+        siteUrl,
+        error: proError.message,
+      });
+    }
+  }
 
   logger.info('[taxonomyInference] Inference result', {
     siteUrl,
