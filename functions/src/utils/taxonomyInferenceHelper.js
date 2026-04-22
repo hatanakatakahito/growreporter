@@ -204,6 +204,13 @@ function validateResult(raw) {
     result.confidence = 'low';
   }
 
+  // industryMinor に「その他」が選ばれた場合は手動確認が望ましいため confidence を low に強制。
+  // プロンプト側のルールD（「その他」時は low 必須）を Gemini が守りきれないケースへの保険。
+  // 下流で needsManualReclassify=true が自動付与される。
+  if (result.industryMinor === 'その他') {
+    result.confidence = 'low';
+  }
+
   return result;
 }
 
