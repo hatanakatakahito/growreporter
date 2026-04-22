@@ -96,105 +96,105 @@ export const BUSINESS_TYPE_TO_MODEL = {
   other: 'other',
 };
 
-// --- Industry: 旧 industry(70サブ) → 新 {industryMajor, industryMinor} ---
-// 小分類ラベルは新マスター(industriesV2.js)の表記に寄せている。
-// 対応する新ラベルが存在しない旧値は `industryMinor: 'その他'` + 適切な major で吸収。
+// --- Industry: 旧 industry(V1 70サブ) → 新 V2 {industryMajor, industryMinor} ---
+// 新マスター(industriesV2.js)の 17 大分類に合わせてリマップ。
+// 対応する新小分類が存在しない旧値は各 major の `その他` で吸収する。
 export const INDUSTRY_V1_TO_V2 = {
-  // IT・Web・通信
-  'SaaS・クラウド': { major: 'b2b_saas', minor: 'SaaS・クラウド' },
-  'Webサービス': { major: 'b2b_saas', minor: 'Webサービス（BtoB）' },
-  'EC・通販': { major: 'b2c_retail', minor: 'EC・通販' },
-  'メディア・ポータル': { major: 'b2c_media', minor: 'メディア・ポータル' },
-  'アプリ開発': { major: 'b2b_saas', minor: 'アプリ開発' },
-  'Web制作・開発': { major: 'b2b_saas', minor: 'Web制作・開発' },
-  'SI・システム開発': { major: 'b2b_saas', minor: 'SI・システム開発' },
-  '通信・インフラ': { major: 'b2b_manufacturing', minor: '通信・インフラ' },
+  // 旧: IT・Web・通信 → 新: it_communication
+  'SaaS・クラウド': { major: 'it_communication', minor: 'SaaS・クラウドサービス' },
+  'Webサービス': { major: 'it_communication', minor: 'Webサービス・ポータル' },
+  'EC・通販': { major: 'retail_ec', minor: 'EC・通販' },
+  'メディア・ポータル': { major: 'media_advertising', minor: 'Webメディア・キュレーション' },
+  'アプリ開発': { major: 'it_communication', minor: 'アプリ開発' },
+  'Web制作・開発': { major: 'it_communication', minor: 'Web制作・ホームページ制作' },
+  'SI・システム開発': { major: 'it_communication', minor: '受託開発・SI' },
+  '通信・インフラ': { major: 'it_communication', minor: '通信キャリア・ISP' },
 
-  // 製造業
-  '機械・電機': { major: 'b2b_manufacturing', minor: '機械・電機' },
-  '食品・飲料': { major: 'b2c_retail', minor: '食品・飲料（メーカー）' },
-  '化学・素材': { major: 'b2b_manufacturing', minor: '化学・素材' },
-  '自動車・部品': { major: 'b2b_manufacturing', minor: '自動車・部品（BtoB）' },
-  '建材・住設': { major: 'b2b_manufacturing', minor: '建材・住設' },
-  'その他製造': { major: 'b2b_manufacturing', minor: 'その他製造' },
+  // 旧: 製造業 → 新: manufacturer
+  '機械・電機': { major: 'manufacturer', minor: '機械・電機・精密機器' },
+  '食品・飲料': { major: 'manufacturer', minor: '食品・飲料(メーカー)' },
+  '化学・素材': { major: 'manufacturer', minor: '化学・素材・繊維' },
+  '自動車・部品': { major: 'manufacturer', minor: '自動車・輸送機器' },
+  '建材・住設': { major: 'manufacturer', minor: '建材・住宅設備' },
+  'その他製造': { major: 'manufacturer', minor: 'その他' },
 
-  // 小売・EC
-  'アパレル・ファッション': { major: 'b2c_retail', minor: 'アパレル・ファッション' },
-  '食品・日用品': { major: 'b2c_retail', minor: '食品・日用品' },
-  '家電・家具': { major: 'b2c_retail', minor: '家電・家具' },
-  '雑貨・ギフト': { major: 'b2c_retail', minor: '雑貨・ギフト' },
-  'その他小売': { major: 'b2c_retail', minor: 'その他小売' },
+  // 旧: 小売・EC → 新: retail_ec
+  'アパレル・ファッション': { major: 'retail_ec', minor: 'アパレル・ファッション小売' },
+  '食品・日用品': { major: 'retail_ec', minor: 'スーパー・コンビニ' },
+  '家電・家具': { major: 'retail_ec', minor: '専門店(家電・家具等)' },
+  '雑貨・ギフト': { major: 'retail_ec', minor: '専門店(家電・家具等)' },
+  'その他小売': { major: 'retail_ec', minor: 'その他' },
 
-  // 金融・保険
-  '銀行・証券': { major: 'finance', minor: '銀行・証券' },
-  '保険': { major: 'finance', minor: '保険' },
-  'フィンテック': { major: 'finance', minor: 'フィンテック' },
-  '不動産投資': { major: 'finance', minor: '不動産投資' },
-  'その他金融': { major: 'finance', minor: 'その他金融' },
+  // 旧: 金融・保険 → 新: finance
+  '銀行・証券': { major: 'finance', minor: '銀行' },
+  '保険': { major: 'finance', minor: '生命保険・損害保険' },
+  'フィンテック': { major: 'finance', minor: 'FinTech・金融サービス' },
+  '不動産投資': { major: 'finance', minor: '不動産投資・投資運用' },
+  'その他金融': { major: 'finance', minor: 'その他' },
 
-  // 不動産・建設
-  '売買仲介': { major: 'local_service', minor: '不動産売買仲介' },
-  '賃貸管理': { major: 'local_service', minor: '不動産賃貸管理' },
-  '建設・工事': { major: 'local_service', minor: '建設・工事' },
-  'リフォーム・リノベ': { major: 'local_service', minor: 'リフォーム・リノベ' },
-  'その他不動産': { major: 'local_service', minor: 'その他' },
+  // 旧: 不動産・建設 → 新: realestate_construction
+  '売買仲介': { major: 'realestate_construction', minor: '不動産売買・仲介' },
+  '賃貸管理': { major: 'realestate_construction', minor: '不動産賃貸・管理' },
+  '建設・工事': { major: 'realestate_construction', minor: '建設・ゼネコン' },
+  'リフォーム・リノベ': { major: 'realestate_construction', minor: 'リフォーム・リノベーション' },
+  'その他不動産': { major: 'realestate_construction', minor: 'その他' },
 
-  // 飲食・宿泊
-  'レストラン・カフェ': { major: 'local_service', minor: 'レストラン・カフェ' },
-  'デリバリー・テイクアウト': { major: 'local_service', minor: 'デリバリー・テイクアウト' },
-  'ホテル・旅館': { major: 'b2c_experience', minor: 'ホテル・旅館' },
-  '旅行・観光': { major: 'b2c_experience', minor: '旅行・観光' },
-  'その他飲食宿泊': { major: 'local_service', minor: 'その他' },
+  // 旧: 飲食・宿泊 → 新: food_beverage / entertainment に分岐
+  'レストラン・カフェ': { major: 'food_beverage', minor: 'レストラン・カフェ' },
+  'デリバリー・テイクアウト': { major: 'food_beverage', minor: 'デリバリー・テイクアウト' },
+  'ホテル・旅館': { major: 'entertainment', minor: 'ホテル・旅館' },
+  '旅行・観光': { major: 'entertainment', minor: '旅行・観光業' },
+  'その他飲食宿泊': { major: 'food_beverage', minor: 'その他' },
 
-  // 医療・福祉・美容
-  '病院・クリニック': { major: 'local_service', minor: '病院・クリニック' },
-  '歯科': { major: 'local_service', minor: '歯科' },
-  '介護・福祉': { major: 'local_service', minor: '介護・福祉' },
-  '美容・エステ': { major: 'local_service', minor: '美容・エステ' },
-  '美容室・サロン': { major: 'local_service', minor: '美容室・サロン' },
-  '薬局・ドラッグ': { major: 'local_service', minor: '薬局・ドラッグ' },
-  'その他医療': { major: 'local_service', minor: 'その他' },
+  // 旧: 医療・福祉・美容 → 新: healthcare / beauty_lifestyle に分岐
+  '病院・クリニック': { major: 'healthcare', minor: '病院・クリニック(医科)' },
+  '歯科': { major: 'healthcare', minor: '歯科・歯科医院' },
+  '介護・福祉': { major: 'healthcare', minor: '介護・福祉・障害者支援' },
+  '美容・エステ': { major: 'beauty_lifestyle', minor: 'エステ・ネイル・サロン' },
+  '美容室・サロン': { major: 'beauty_lifestyle', minor: '美容室・理容' },
+  '薬局・ドラッグ': { major: 'healthcare', minor: '調剤薬局・ドラッグ' },
+  'その他医療': { major: 'healthcare', minor: 'その他' },
 
-  // 教育・スクール
-  '学校・大学': { major: 'public_education', minor: '学校・大学' },
-  '学習塾・予備校': { major: 'local_service', minor: '学習塾・予備校' },
-  'オンライン講座': { major: 'b2c_experience', minor: 'オンライン講座' },
-  '資格・研修': { major: 'b2c_experience', minor: '資格・研修' },
-  'その他教育': { major: 'public_education', minor: 'その他教育' },
+  // 旧: 教育・スクール → 新: education
+  '学校・大学': { major: 'education', minor: '学校・大学・専門学校' },
+  '学習塾・予備校': { major: 'education', minor: '学習塾・予備校' },
+  'オンライン講座': { major: 'education', minor: 'オンライン教育・e-learning' },
+  '資格・研修': { major: 'education', minor: '資格・スキル講座' },
+  'その他教育': { major: 'education', minor: 'その他' },
 
-  // 士業・コンサルティング
-  '弁護士・法律事務所': { major: 'professional', minor: '弁護士・法律事務所' },
-  '税理士・会計事務所': { major: 'professional', minor: '税理士・会計事務所' },
-  '社労士・行政書士': { major: 'professional', minor: '社労士・行政書士' },
-  '経営コンサルティング': { major: 'professional', minor: '経営コンサルティング' },
-  'ITコンサルティング': { major: 'professional', minor: 'ITコンサルティング' },
-  'その他士業': { major: 'professional', minor: 'その他士業' },
+  // 旧: 士業・コンサルティング → 新: consulting_professional
+  '弁護士・法律事務所': { major: 'consulting_professional', minor: '弁護士・法律事務所' },
+  '税理士・会計事務所': { major: 'consulting_professional', minor: '税理士・会計事務所' },
+  '社労士・行政書士': { major: 'consulting_professional', minor: '社労士・行政書士' },
+  '経営コンサルティング': { major: 'consulting_professional', minor: '経営・戦略コンサル' },
+  'ITコンサルティング': { major: 'consulting_professional', minor: 'IT・システムコンサル' },
+  'その他士業': { major: 'consulting_professional', minor: 'その他士業' },
 
-  // 人材・広告・メディア
-  '人材紹介・派遣': { major: 'professional', minor: '人材紹介・派遣' },
-  '広告代理店': { major: 'professional', minor: '広告代理店' },
-  'PR・マーケティング': { major: 'professional', minor: 'PR・マーケティング' },
-  '出版・メディア': { major: 'b2c_media', minor: '出版・メディア' },
-  '映像・デザイン': { major: 'professional', minor: '映像・デザイン' },
-  'その他広告': { major: 'professional', minor: 'その他' },
+  // 旧: 人材・広告・メディア → 新: hr_bpo / media_advertising に分岐
+  '人材紹介・派遣': { major: 'hr_bpo', minor: '人材紹介・人材派遣' },
+  '広告代理店': { major: 'media_advertising', minor: '広告代理店・マーケティング' },
+  'PR・マーケティング': { major: 'media_advertising', minor: 'PR・広報支援' },
+  '出版・メディア': { major: 'media_advertising', minor: '出版・新聞' },
+  '映像・デザイン': { major: 'media_advertising', minor: 'デザイン・クリエイティブ' },
+  'その他広告': { major: 'media_advertising', minor: 'その他' },
 
-  // サービス業
-  '清掃・メンテナンス': { major: 'local_service', minor: '清掃・メンテナンス' },
-  '冠婚葬祭': { major: 'local_service', minor: '冠婚葬祭' },
-  'レンタル・リース': { major: 'b2c_experience', minor: 'レンタル・リース' },
-  'フィットネス・スポーツ': { major: 'local_service', minor: 'フィットネス・スポーツ' },
-  'ペット関連': { major: 'local_service', minor: 'ペット関連' },
-  'その他サービス': { major: 'local_service', minor: 'その他' },
+  // 旧: サービス業 → 新: other_services / beauty_lifestyle / entertainment に分岐
+  '清掃・メンテナンス': { major: 'other_services', minor: '清掃・ビルメンテナンス' },
+  '冠婚葬祭': { major: 'beauty_lifestyle', minor: 'ブライダル・冠婚葬祭' },
+  'レンタル・リース': { major: 'other_services', minor: 'レンタル・リース' },
+  'フィットネス・スポーツ': { major: 'entertainment', minor: 'スポーツ・フィットネス' },
+  'ペット関連': { major: 'beauty_lifestyle', minor: 'ペット関連' },
+  'その他サービス': { major: 'other_services', minor: 'その他' },
 
-  // 官公庁・団体
-  '自治体・行政': { major: 'public_education', minor: '自治体・行政' },
-  '公的機関': { major: 'public_education', minor: '公的機関' },
-  'NPO・NGO': { major: 'public_education', minor: 'NPO・NGO' },
-  '業界団体': { major: 'public_education', minor: '業界団体' },
-  'その他団体': { major: 'public_education', minor: 'その他団体' },
+  // 旧: 官公庁・団体 → 新: public_nonprofit
+  '自治体・行政': { major: 'public_nonprofit', minor: '官公庁・自治体' },
+  '公的機関': { major: 'public_nonprofit', minor: '公的機関・独立行政法人' },
+  'NPO・NGO': { major: 'public_nonprofit', minor: 'NPO・NGO・財団' },
+  '業界団体': { major: 'public_nonprofit', minor: '業界団体・協会' },
+  'その他団体': { major: 'public_nonprofit', minor: 'その他' },
 
-  // その他(大分類自体がラベルだった場合)
-  'その他': { major: 'public_education', minor: 'その他' },
+  // 旧: その他(大分類自体がラベルだった場合)
+  'その他': { major: 'other_services', minor: 'その他' },
 };
 
 // --- 推定信頼度判定 ---
@@ -228,8 +228,8 @@ export function inferIndustry(legacyIndustryArray) {
   const mapped = INDUSTRY_V1_TO_V2[first];
   if (mapped) return { ...mapped, confident: arr.length === 1 };
 
-  // マスターに無い旧値は public_education の「その他」で吸収
-  return { major: 'public_education', minor: 'その他', confident: false };
+  // マスターに無い旧値は other_services の「その他」で吸収
+  return { major: 'other_services', minor: 'その他', confident: false };
 }
 
 export function inferBusinessModel(legacyBusinessType, inferredSiteRole) {

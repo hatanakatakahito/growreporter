@@ -5,6 +5,8 @@
  * このファイルを新設した意図:
  *   - functions/src/utils/sheetsManager.js 等に散在していたラベル定義を一元化
  *   - フロントと完全に同じ value を使うことで Firestore 往復での整合性を保つ
+ *
+ * 業種 V2 は 17 大分類（リクナビ・マイナビ準拠）で、全ての小分類は末尾に「その他」を含む。
  */
 
 // --- ビジネスモデル ---
@@ -26,17 +28,25 @@ export const SITE_ROLE_LABELS = {
   other: 'その他',
 };
 
-// --- 業種大分類（9軸） ---
+// --- 業種大分類（17軸・リクナビ/マイナビ準拠） ---
 export const INDUSTRY_MAJOR_LABELS = {
-  local_service: '地域密着型サービス',
-  professional: '専門職・士業',
-  b2b_saas: 'BtoB SaaS・IT製品',
-  b2b_manufacturing: 'BtoB 製造・素材・インフラ',
+  it_communication: 'IT・通信・インターネット',
+  manufacturer: 'メーカー(モノづくり)',
+  trading: '商社・卸売',
+  retail_ec: '流通・小売・EC',
+  food_beverage: 'フード・飲食',
   finance: '金融・保険',
-  b2c_retail: 'BtoC 物販・EC',
-  b2c_experience: 'BtoC 体験・予約・接客',
-  b2c_media: 'BtoC メディア・Webサービス',
-  public_education: '官公庁・団体・教育',
+  realestate_construction: '不動産・建設',
+  logistics_infra: '運輸・物流・インフラ',
+  healthcare: '医療・介護・福祉',
+  education: '教育・学習支援',
+  hr_bpo: '人材・アウトソーシング',
+  media_advertising: 'メディア・広告・出版',
+  consulting_professional: 'コンサル・専門サービス(士業含む)',
+  entertainment: 'エンタメ・レジャー・観光',
+  beauty_lifestyle: '美容・ライフスタイルサービス',
+  public_nonprofit: '公共・団体',
+  other_services: 'その他サービス業',
 };
 
 /**
@@ -50,7 +60,7 @@ export function labelFor(map, value, fallback = '未設定') {
 
 /**
  * 業種(大・小)を組み合わせた表示文字列。
- * 例: "BtoB SaaS・IT製品／SaaS・クラウド"
+ * 例: "IT・通信・インターネット／SaaS・クラウドサービス"
  */
 export function formatIndustry(major, minor, fallback = '未設定') {
   const majorLabel = INDUSTRY_MAJOR_LABELS[major];
@@ -80,49 +90,95 @@ export const SITE_ROLES = [
 ];
 
 export const INDUSTRY_MAJOR = [
-  { value: 'local_service', label: '地域密着型サービス', description: '商圏が物理的に限定。MEO・地域キーワードが効く' },
-  { value: 'professional', label: '専門職・士業', description: '高信頼性訴求と専門性の証跡が鍵' },
-  { value: 'b2b_saas', label: 'BtoB SaaS・IT製品', description: 'デジタル系BtoB' },
-  { value: 'b2b_manufacturing', label: 'BtoB 製造・素材・インフラ', description: '機械・素材・建設・通信' },
-  { value: 'finance', label: '金融・保険', description: '銀行・証券・保険・FinTech' },
-  { value: 'b2c_retail', label: 'BtoC 物販・EC', description: 'アパレル・日用品・家電・食品' },
-  { value: 'b2c_experience', label: 'BtoC 体験・予約・接客', description: '宿泊・旅行・習い事・イベント' },
-  { value: 'b2c_media', label: 'BtoC メディア・Webサービス', description: 'メディア・アプリ・コンテンツ配信' },
-  { value: 'public_education', label: '官公庁・団体・教育', description: '自治体・NPO・学校・業界団体' },
+  { value: 'it_communication', label: 'IT・通信・インターネット', description: 'SaaS / Web制作 / SI / アプリ / 通信キャリア など' },
+  { value: 'manufacturer', label: 'メーカー(モノづくり)', description: '機械 / 自動車 / 化学 / 食品飲料 / 医薬品 / アパレル など' },
+  { value: 'trading', label: '商社・卸売', description: '総合商社 / 専門商社' },
+  { value: 'retail_ec', label: '流通・小売・EC', description: '百貨店 / スーパー / コンビニ / 専門店 / 通販EC' },
+  { value: 'food_beverage', label: 'フード・飲食', description: 'レストラン / カフェ / 居酒屋 / デリバリー' },
+  { value: 'finance', label: '金融・保険', description: '銀行 / 証券 / 保険 / 信販・リース / FinTech' },
+  { value: 'realestate_construction', label: '不動産・建設', description: '仲介 / 賃貸管理 / デベロッパー / ゼネコン / 住宅 / リフォーム' },
+  { value: 'logistics_infra', label: '運輸・物流・インフラ', description: '陸運 / 倉庫 / 航空 / 鉄道 / 電力・ガス' },
+  { value: 'healthcare', label: '医療・介護・福祉', description: '病院 / クリニック / 歯科 / 介護 / 調剤薬局' },
+  { value: 'education', label: '教育・学習支援', description: '学校 / 塾 / 予備校 / eラーニング / 保育' },
+  { value: 'hr_bpo', label: '人材・アウトソーシング', description: '人材紹介 / 派遣 / 求人広告 / BPO' },
+  { value: 'media_advertising', label: 'メディア・広告・出版', description: '広告代理店 / PR / 出版 / TV / Webメディア / 制作' },
+  { value: 'consulting_professional', label: 'コンサル・専門サービス(士業含む)', description: '経営コンサル / 弁護士 / 税理士 / 社労士 / シンクタンク' },
+  { value: 'entertainment', label: 'エンタメ・レジャー・観光', description: '旅行 / ホテル / アミューズメント / スポーツ / 映画・音楽' },
+  { value: 'beauty_lifestyle', label: '美容・ライフスタイルサービス', description: '美容室 / エステ / ブライダル / 冠婚葬祭 / ペット' },
+  { value: 'public_nonprofit', label: '公共・団体', description: '官公庁 / NPO / 協会 / 独立行政法人' },
+  { value: 'other_services', label: 'その他サービス業', description: '清掃 / 警備 / レンタル / 自動車販売・整備 など' },
 ];
 
 export const INDUSTRY_MINOR_BY_MAJOR = {
-  local_service: [
-    '病院・クリニック', '歯科', '介護・福祉', '美容・エステ', '美容室・サロン', '薬局・ドラッグ',
-    'レストラン・カフェ', 'デリバリー・テイクアウト', '不動産売買仲介', '不動産賃貸管理',
-    '建設・工事', 'リフォーム・リノベ', '清掃・メンテナンス', '冠婚葬祭', 'ペット関連',
-    'フィットネス・スポーツ', '学習塾・予備校', '自動車販売店', 'その他',
+  it_communication: [
+    'SaaS・クラウドサービス', 'Webサービス・ポータル', 'インターネット広告・DX支援',
+    'ソフトウェア・パッケージ', '受託開発・SI', 'Web制作・ホームページ制作',
+    'アプリ開発', '通信キャリア・ISP', 'データセンター・クラウドインフラ', 'ゲーム', 'その他',
   ],
-  professional: [
-    '弁護士・法律事務所', '税理士・会計事務所', '社労士・行政書士', '経営コンサルティング',
-    'ITコンサルティング', '広告代理店', 'PR・マーケティング', '人材紹介・派遣',
-    '映像・デザイン', 'その他士業', 'その他',
+  manufacturer: [
+    '機械・電機・精密機器', '自動車・輸送機器', '化学・素材・繊維',
+    '食品・飲料(メーカー)', '医薬品・化粧品', '家電・家具・雑貨メーカー',
+    'アパレル・ファッションメーカー', '建材・住宅設備', 'その他',
   ],
-  b2b_saas: [
-    'SaaS・クラウド', 'Webサービス（BtoB）', 'Web制作・開発', 'SI・システム開発',
-    'アプリ開発', '業務系システム', 'その他',
+  trading: ['総合商社', '専門商社', 'その他'],
+  retail_ec: [
+    '百貨店・GMS', 'スーパー・コンビニ', 'ドラッグストア・ホームセンター',
+    '専門店(家電・家具等)', 'EC・通販', 'アパレル・ファッション小売',
+    '自動車販売・整備', 'その他',
   ],
-  b2b_manufacturing: [
-    '機械・電機', '化学・素材', '自動車・部品（BtoB）', '建材・住設', '通信・インフラ',
-    'その他製造', 'その他',
+  food_beverage: [
+    'レストラン・カフェ', 'ファストフード・ファミレス', '居酒屋・バー',
+    'デリバリー・テイクアウト', '食品・飲料(卸・小売)', 'その他',
   ],
-  finance: ['銀行・証券', '保険', 'フィンテック', '不動産投資', 'その他金融', 'その他'],
-  b2c_retail: [
-    'アパレル・ファッション', '食品・日用品', '家電・家具', '雑貨・ギフト',
-    '食品・飲料（メーカー）', 'EC・通販', 'その他小売', 'その他',
+  finance: [
+    '銀行', '証券・投資信託', '生命保険・損害保険',
+    'クレジットカード・信販・リース', 'FinTech・金融サービス', '不動産投資・投資運用', 'その他',
   ],
-  b2c_experience: [
-    'ホテル・旅館', '旅行・観光', 'オンライン講座', '資格・研修', 'レンタル・リース', 'その他',
+  realestate_construction: [
+    '不動産売買・仲介', '不動産賃貸・管理', '不動産デベロッパー',
+    '建設・ゼネコン', '住宅メーカー・工務店', 'リフォーム・リノベーション',
+    '設備・プラント', 'その他',
   ],
-  b2c_media: ['メディア・ポータル', '出版・メディア', 'Webサービス（BtoC）', 'その他'],
-  public_education: [
-    '学校・大学', '自治体・行政', '公的機関', 'NPO・NGO', '業界団体',
-    'その他教育', 'その他団体', 'その他',
+  logistics_infra: [
+    '陸運・トラック運送', '航空・海運・鉄道', '倉庫・物流サービス',
+    '電力・ガス・エネルギー', '上下水道・環境インフラ', 'その他',
+  ],
+  healthcare: [
+    '病院・クリニック(医科)', '歯科・歯科医院', '介護・福祉・障害者支援',
+    '調剤薬局・ドラッグ', 'メディカル関連サービス', 'その他',
+  ],
+  education: [
+    '学校・大学・専門学校', '学習塾・予備校', '資格・スキル講座',
+    'オンライン教育・e-learning', '保育園・幼児教育', 'その他',
+  ],
+  hr_bpo: [
+    '人材紹介・人材派遣', '求人広告・採用支援', 'BPO・業務代行',
+    '教育研修サービス', 'その他',
+  ],
+  media_advertising: [
+    '広告代理店・マーケティング', 'PR・広報支援', '出版・新聞',
+    'テレビ・ラジオ・映像制作', 'Webメディア・キュレーション',
+    'デザイン・クリエイティブ', 'その他',
+  ],
+  consulting_professional: [
+    '経営・戦略コンサル', 'IT・システムコンサル', '弁護士・法律事務所',
+    '税理士・会計事務所', '社労士・行政書士', '特許・知財サービス',
+    'シンクタンク・リサーチ', 'その他士業', 'その他',
+  ],
+  entertainment: [
+    '旅行・観光業', 'ホテル・旅館', 'アミューズメント・レジャー施設',
+    'スポーツ・フィットネス', '映画・音楽・芸能', 'イベント・興行', 'その他',
+  ],
+  beauty_lifestyle: [
+    '美容室・理容', 'エステ・ネイル・サロン', 'ブライダル・冠婚葬祭',
+    'クリーニング・家事代行', 'ペット関連', 'その他',
+  ],
+  public_nonprofit: [
+    '官公庁・自治体', '公的機関・独立行政法人', 'NPO・NGO・財団',
+    '業界団体・協会', 'その他',
+  ],
+  other_services: [
+    '清掃・ビルメンテナンス', '警備・セキュリティ', 'レンタル・リース', 'その他',
   ],
 };
 
