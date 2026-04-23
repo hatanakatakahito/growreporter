@@ -132,6 +132,11 @@ export default function Improve() {
   const [isExporting, setIsExporting] = useState(false);
   const downloadMenuRef = useRef(null);
 
+  // モックアップ右カラム用のスクロール ref（変更箇所への自動スクロール用）
+  const mockupScrollRef = useRef(null);
+  // モックアップ生成後の自動スクロール完了を改善案IDで管理（無限再スクロール防止）
+  const autoScrolledRef = useRef(new Set());
+
   // スクレイピング状況
   const [scrapingStatus, setScrapingStatus] = useState(null);
   
@@ -415,9 +420,9 @@ export default function Improve() {
         updated.mockupStorageUrl !== drawerItem.mockupStorageUrl
       )) {
         setDrawerItem(updated);
-        // モックアップ生成完了時も「並べて比較」タブを維持（Before/After を同時に見せる）
+        // モックアップ生成完了時は「After」タブに自動切替（After 単体を大きく見せる）
         if (hasMockup(updated) && !hasMockup(drawerItem)) {
-          setDrawerTab('compare');
+          setDrawerTab('after');
         }
       }
     }
@@ -503,6 +508,49 @@ export default function Improve() {
     triggerBeforeCapture(firstUrl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerItem?.id, selectedSiteId]);
+
+  // ドロワー切替時に自動スクロール履歴をリセット（同じ改善案を再度開いた時にも再スクロール）
+  useEffect(() => {
+    autoScrolledRef.current.delete(drawerItem?.id);
+  }, [drawerItem?.id]);
+
+  // iframe (snapshot_patch モックアップ) からの postMessage を受信
+  // - __mockup_size: iframe の高さを反映
+  // - __mockup_changed_positions: 最初の data-changed 要素まで自動スクロール（初回のみ）
+  useEffect(() => {
+    if (!drawerItem) return;
+    function handleMessage(e) {
+      if (!e.data || typeof e.data !== 'object') return;
+      if (e.data.type === '__mockup_size') {
+        if (e.data.height && typeof e.data.height === 'number') {
+          setAfterIframeHeight(e.data.height);
+        }
+      } else if (e.data.type === '__mockup_changed_positions') {
+        const positions = e.data.positions;
+        if (!Array.isArray(positions) || positions.length === 0) return;
+        if (autoScrolledRef.current.has(drawerItem.id)) return;
+        autoScrolledRef.current.add(drawerItem.id);
+        // 最初の変更箇所までスクロール
+        const target = positions[0];
+        // compare タブは scale(0.5)、それ以外は等倍
+        const scale = drawerTab === 'compare' ? 0.5 : 1;
+        const container = mockupScrollRef.current;
+        if (!container) return;
+        // iframe 親要素までの相対位置 + iframe 内の Y 座標 × scale
+        // iframe 親(div) の getBoundingClientRect で container 基準の offsetTop を求める
+        const iframe = container.querySelector('iframe[title="改善モックアップ"]');
+        if (!iframe) return;
+        const iframeRect = iframe.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        const iframeTopInContainer = iframeRect.top - containerRect.top + container.scrollTop;
+        const targetScrollTop =
+          iframeTopInContainer + target.top * scale - container.clientHeight * 0.3;
+        container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+      }
+    }
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [drawerItem?.id, drawerTab]);
 
   // 更新mutation
   const updateMutation = useMutation({
@@ -748,8 +796,9 @@ export default function Improve() {
 
   const openDrawer = (item) => {
     setDrawerItem(item);
-    // モックアップ生成済でも「並べて比較」をデフォルトに（Before/After を同時に見せる）
-    setDrawerTab('compare');
+    // モックアップ生成済なら「After」を初期表示（After 単体を大きく見せる）
+    // 未生成の場合は「並べて比較」（既存サイト + これからモックアップが生成される右枠）
+    setDrawerTab(hasMockup(item) ? 'after' : 'compare');
     setAfterIframeHeight(null);
   };
   const closeDrawer = () => setDrawerItem(null);
@@ -760,7 +809,7 @@ export default function Improve() {
     if (nextIdx >= 0 && nextIdx < sortedImprovements.length) {
       const nextItem = sortedImprovements[nextIdx];
       setDrawerItem(nextItem);
-      setDrawerTab('compare');
+      setDrawerTab(hasMockup(nextItem) ? 'after' : 'compare');
       setAfterIframeHeight(null);
     }
   };
@@ -971,7 +1020,6 @@ export default function Improve() {
                   <option value="draft">{statusLabels.draft}</option>
                   <option value="in_progress">{statusLabels.in_progress}</option>
                   <option value="completed">{statusLabels.completed}</option>
-                  <option value="archived">{statusLabels.archived}</option>
                 </select>
               )}
             </div>
@@ -1582,7 +1630,7 @@ export default function Improve() {
 
                 {/* 右カラム: モックアップ（モックアップ対象の場合のみ表示） */}
                 {(hasMockup(item) || (item.targetPageUrl && !item.mockupSkipped)) && (
-                <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-dark">
+                <div ref={mockupScrollRef} className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-dark">
                   {hasMockup(item) ? (
                     <>
                       {/* タブ（sticky） */}
@@ -1663,7 +1711,7 @@ export default function Improve() {
                                       title="改善モックアップ"
                                       src={item.mockupStorageUrl}
                                       className="absolute top-3 left-0 border-0 pointer-events-none"
-                                      sandbox="allow-same-origin"
+                                      sandbox="allow-same-origin allow-scripts"
                                       onLoad={(e) => {
                                         try {
                                           const h = e.target.contentDocument?.documentElement?.scrollHeight;
@@ -1675,9 +1723,9 @@ export default function Improve() {
                                   ) : (
                                     <iframe
                                       title="改善モックアップ"
-                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:4px solid #3758F9;outline-offset:4px;border-radius:6px;position:relative;z-index:1;background-color:rgba(55,88,249,0.06);}[data-changed]::after{content:attr(data-changed);position:absolute;top:-26px;left:0;background:#3758F9;color:#fff;font-size:18px;font-weight:700;padding:3px 10px;border-radius:10px 10px 10px 0;line-height:1.3;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 2px 6px rgba(55,88,249,0.4);max-width:100%;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:2px;border-radius:6px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;bottom:100%;left:0;margin-bottom:4px;background:#3758F9;color:#fff;font-size:18px;font-weight:700;padding:3px 10px;border-radius:10px 10px 10px 0;line-height:1.3;z-index:9999;pointer-events:none;white-space:normal;word-break:break-word;box-shadow:0 2px 6px rgba(55,88,249,0.4);max-width:100%;box-sizing:border-box;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
                                       className="absolute top-3 left-0 border-0 pointer-events-none"
-                                      sandbox="allow-same-origin"
+                                      sandbox="allow-same-origin allow-scripts"
                                       onLoad={(e) => {
                                         try {
                                           const h = e.target.contentDocument?.documentElement?.scrollHeight;
@@ -1742,7 +1790,7 @@ export default function Improve() {
                                   title="改善モックアップ"
                                   src={item.mockupStorageUrl}
                                   className="w-full border-0 pointer-events-none"
-                                  sandbox="allow-same-origin"
+                                  sandbox="allow-same-origin allow-scripts"
                                   onLoad={(e) => {
                                     try {
                                       const h = e.target.contentDocument?.documentElement?.scrollHeight;
@@ -1754,9 +1802,9 @@ export default function Improve() {
                               ) : (
                                 <iframe
                                   title="改善モックアップ"
-                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:4px solid #3758F9;outline-offset:4px;border-radius:6px;position:relative;z-index:1;background-color:rgba(55,88,249,0.06);}[data-changed]::after{content:attr(data-changed);position:absolute;top:-26px;left:0;background:#3758F9;color:#fff;font-size:18px;font-weight:700;padding:3px 10px;border-radius:10px 10px 10px 0;line-height:1.3;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 2px 6px rgba(55,88,249,0.4);max-width:100%;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:2px;border-radius:6px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;bottom:100%;left:0;margin-bottom:4px;background:#3758F9;color:#fff;font-size:18px;font-weight:700;padding:3px 10px;border-radius:10px 10px 10px 0;line-height:1.3;z-index:9999;pointer-events:none;white-space:normal;word-break:break-word;box-shadow:0 2px 6px rgba(55,88,249,0.4);max-width:100%;box-sizing:border-box;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
                                   className="w-full border-0 pointer-events-none"
-                                  sandbox="allow-same-origin"
+                                  sandbox="allow-same-origin allow-scripts"
                                   onLoad={(e) => {
                                     try {
                                       const h = e.target.contentDocument?.documentElement?.scrollHeight;
@@ -1818,18 +1866,8 @@ export default function Improve() {
                                 </div>
                                 <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl}</div>
                               </div>
-                              {/* 半透明スクショ背景 + 3ステップCTA */}
+                              {/* 生成中/失敗時のプレースホルダ（白背景） */}
                               <div className="relative overflow-hidden bg-white dark:bg-dark-2" style={{ minHeight: '300px' }}>
-                                {/* 背景: Beforeスクショ半透明 + グラデーション */}
-                                {getBeforeScreenshotUrl(item.targetPageUrl) && (
-                                  <img
-                                    src={getBeforeScreenshotUrl(item.targetPageUrl)}
-                                    alt=""
-                                    className="absolute inset-0 w-full h-full object-cover opacity-[0.10]"
-                                  />
-                                )}
-                                <div className="absolute inset-0" style={{ background: 'linear-gradient(160deg, rgba(55,88,249,0.04) 0%, rgba(255,255,255,0.96) 35%, rgba(255,255,255,1) 100%)' }} />
-                                {/* コンテンツ */}
                                 <div className="relative z-10 flex flex-col items-center justify-center p-8" style={{ minHeight: '300px' }}>
                                   {mockupFailedIds.has(item.id) ? (
                                     // 失敗状態: 手動再試行ボタン
