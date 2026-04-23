@@ -67,8 +67,6 @@
 
 | 関数名 | 用途 | 備考 |
 |--------|------|------|
-| testSheetsConnection | スプレッドシート接続テスト | 管理・デバッグ用 |
-| fetchImprovementKnowledge | 改善施策ナレッジ取得（スプレッドシート） | 現在は generateAISummary で改善案を生成 |
 | analyzePageQuality | ページ品質分析 | UI から未使用 |
 | clearAllAICache | 全AI分析キャッシュクリア | 管理者用・画面にボタンなし |
 | getAdminGA4Properties | 管理者の GA4 プロパティ一覧 | 管理画面で未使用 |
@@ -82,7 +80,6 @@
 | 関数名 | スケジュール | 用途 |
 |--------|--------------|------|
 | cleanupCache | 毎日 3:00 JST | キャッシュクリーンアップ |
-| exportToSheets | 毎日 4:00 JST | 前月データをスプレッドシートへエクスポート |
 | resetMonthlyLimits | 毎月1日 0:00 | 月次制限リセット |
 | updatePageScrapingDataScheduled | 毎日 3:00 | 30日以上経過サイトの再スクレイピング |
 | sendWeeklyReports | スケジュール | 週次レポート送信 |
@@ -94,6 +91,6 @@
 
 | 関数名 | トリガー | 用途 |
 |--------|----------|------|
-| siteCreatedSheetsExport | sites/{siteId} 書き込み | サイト登録完了時にシートエクスポート＋スクレイピング |
+| siteCreatedSheetsExport | sites/{siteId} 書き込み | サイト登録完了時にスクレイピング・スクショ取得・登録完了メール送信（関数名はレガシー） |
 | onSiteChanged | カスタム | サイト作成・URL変更時のメタ・スクショ取得 |
 | onScrapingJobCreated | カスタム | スクレイピングジョブ実行 |

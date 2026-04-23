@@ -222,15 +222,10 @@ Firestore `sites/{siteId}/improvements/{id}`
 - 所有権譲渡: `transferOwnership` (重要操作、確認モーダル必須)
 - 一覧取得: `getAccountMembers`
 
-### 6.10 スプレッドシート自動出力
-Google Sheets API v4 (`sheetsManager.js`)
-- サイト登録完了時: 過去3ヶ月分を即時エクスポート (`siteCreatedSheetsExport` トリガー、2GiB / 540s)
-- 定期: `exportToSheets` 毎日4:00 JST、全サイトの前月データ
-
-### 6.11 コンテンツ興味度スコア (計画中)
+### 6.10 コンテンツ興味度スコア (計画中)
 `project_content_interest_score.md` に記載の GA4 既存データ + GTM テンプレート方式。未実装。
 
-### 6.12 オンボーディング / ツアー
+### 6.11 オンボーディング / ツアー
 - driver.js ベース、pageType 単位でツアー定義
 - `useOnboarding` / `useAutoTour` フック、`TourHelpButton` (ヘッダー? マーク)
 - `seenTours` は users ドキュメントに保存、`tourGuideEnabled` で全体 ON/OFF
@@ -303,7 +298,6 @@ Google Sheets API v4 (`sheetsManager.js`)
 | 関数名 | Cron (JST) | 役割 |
 |---|---|---|
 | `cleanupCache` | 毎日 03:00 | 24h超の api_cache 削除 |
-| `exportToSheets` | 毎日 04:00 | 全サイト前月データをスプレッドシート出力 |
 | `measureImprovementEffects` | 毎日 04:00 | 改善 After 指標計測 & AI評価 |
 | `archiveStaleImprovements` | 毎日 05:00 | 90日超 draft を自動アーカイブ |
 | `checkMetricAlertsScheduled` | 毎日 08:00 | メトリクスアラート & 原因仮説生成 |
@@ -329,7 +323,7 @@ Google Sheets API v4 (`sheetsManager.js`)
 - `generateImprovementMockup` (512MiB / 120s)
 - `aiChat` (512MiB / 120s)
 - `batchGenerateAISummaries` (1GiB / 540s): 管理者用一括生成
-- `analyzePageQuality` / `fetchImprovementKnowledge` / `clearAllAICache`
+- `analyzePageQuality` / `clearAllAICache`
 
 ### 10.3 スクショ・メタデータ
 - `captureScreenshot` (1GiB / 120s)

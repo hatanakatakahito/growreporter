@@ -75,19 +75,6 @@ export const SITE_ROLE_FALLBACK_BY_PURPOSE = {
   other: 'other',
 };
 
-// --- 新 siteRole → 旧 siteType の逆引き(fetchImprovementKnowledge スプレッドシート互換) ---
-// 既存のスプレッドシート(改善施策ナレッジ)は旧 siteType キーで行が分類されているため、
-// V2 側から検索するときに旧キーへ戻すためのマップ。
-export const SITE_ROLE_TO_LEGACY_TYPE = {
-  corporate: 'corporate',
-  service_product: 'service',
-  ec: 'ec',
-  owned_media: 'owned_media',
-  recruit: 'recruit',
-  closed: 'member',
-  other: 'other',
-};
-
 // --- BusinessModel: 旧 businessType → 新 businessModel ---
 export const BUSINESS_TYPE_TO_MODEL = {
   btob: 'b2b',

@@ -183,24 +183,11 @@ export const cleanupCache = onSchedule({
 });
 
 /**
- * Googleスプレッドシートエクスポート Scheduled Function
- * 毎日午前4時（JST）に実行
- * 全サイトの前月データをスプレッドシートに自動エクスポート
- */
-export const exportToSheets = onSchedule({
-  schedule: '0 4 * * *',
-  timeZone: 'Asia/Tokyo',
-  memory: '512MiB',
-  timeoutSeconds: 540,
-  region: 'asia-northeast1',
-}, async (event) => {
-  const m = await import('./scheduled/exportToSheets.js');
-  return m.exportToSheetsScheduled(event);
-});
-
-/**
  * サイト登録完了時トリガー
- * サイト登録完了時（setupCompleted: false → true）に過去3ヶ月分のデータをスプレッドシートに自動エクスポート
+ * setupCompleted: false → true の変更を受けて、
+ *   - 上位100ページスクレイピングジョブを投入
+ *   - PC/モバイルのスクリーンショットを即時取得
+ *   - サイト登録完了メールを送信
  */
 export const siteCreatedSheetsExport = onDocumentWritten({
   document: 'sites/{siteId}',
