@@ -19,6 +19,7 @@ import EffectMeasurementPanel from '../components/Improve/EffectMeasurementPanel
 import AIGenerationModal from '../components/Improve/AIGenerationModal';
 import ImprovementFocusModal from '../components/Improve/ImprovementFocusModal';
 import ConsultationFormModal from '../components/Improve/ConsultationFormModal';
+import ImplementationCheckGuideDialog from '../components/Improve/ImplementationCheckGuideDialog';
 import UpgradeModal from '../components/common/UpgradeModal';
 import BusinessPlanLockOverlay from '../components/common/BusinessPlanLockOverlay';
 import { usePlan } from '../hooks/usePlan';
@@ -113,6 +114,10 @@ export default function Improve() {
   const [completionItem, setCompletionItem] = useState(null);
   const [isCompletionDialogOpen, setIsCompletionDialogOpen] = useState(false);
   const [isCompletionLoading, setIsCompletionLoading] = useState(false);
+
+  // 実装検証 Before 未取得時の誘導ダイアログ（fast-path: draft→completed 直行対策）
+  const [implCheckGuideItem, setImplCheckGuideItem] = useState(null);
+  const [isImplCheckGuideOpen, setIsImplCheckGuideOpen] = useState(false);
   
   // 方針選択モーダル（AI生成の前に表示）
   const [isFocusModalOpen, setIsFocusModalOpen] = useState(false);
@@ -146,6 +151,9 @@ export default function Improve() {
 
   const queryClient = useQueryClient();
   const siteUrl = (selectedSite?.siteUrl || '').trim().replace(/\/+$/, '');
+
+  // モックアップが生成済か判定（新フロー: mockupStorageUrl、旧フロー: mockupHtml のどちらかがあれば済）
+  const hasMockup = (item) => !!(item && (item.mockupStorageUrl || item.mockupHtml));
 
   // モックアップ生成ハンドラ
   const handleGenerateMockup = async (item) => {
@@ -380,10 +388,13 @@ export default function Improve() {
   useEffect(() => {
     if (drawerItem && improvements.length > 0) {
       const updated = improvements.find(i => i.id === drawerItem.id);
-      if (updated && (updated.mockupHtml !== drawerItem.mockupHtml)) {
+      if (updated && (
+        updated.mockupHtml !== drawerItem.mockupHtml ||
+        updated.mockupStorageUrl !== drawerItem.mockupStorageUrl
+      )) {
         setDrawerItem(updated);
         // モックアップ生成完了時も「並べて比較」タブを維持（Before/After を同時に見せる）
-        if (updated.mockupHtml && !drawerItem.mockupHtml) {
+        if (hasMockup(updated) && !hasMockup(drawerItem)) {
           setDrawerTab('compare');
         }
       }
@@ -401,7 +412,7 @@ export default function Improve() {
   useEffect(() => {
     if (!drawerItem || !selectedSiteId) return;
     if (drawerItem.mockupSkipped) return;
-    if (drawerItem.mockupHtml) return;
+    if (hasMockup(drawerItem)) return;
     if (!drawerItem.targetPageUrl) return;
     if (mockupGeneratingIds.has(drawerItem.id)) return;
     if (mockupFailedIds.has(drawerItem.id)) return; // 一度失敗したら手動再試行待ち
@@ -439,7 +450,7 @@ export default function Improve() {
   useEffect(() => {
     if (!selectedSiteId || !improvements || improvements.length === 0) return;
     const targets = improvements
-      .filter(item => !item.mockupSkipped && !item.mockupHtml && item.targetPageUrl)
+      .filter(item => !item.mockupSkipped && !hasMockup(item) && item.targetPageUrl)
       .map(item => String(item.targetPageUrl).split(',')[0].trim())
       .filter(url => url && /^https?:\/\//i.test(url))
       .filter(url => !getBeforeScreenshotUrl(url) && !capturedBeforeRef.current.has(url));
@@ -463,7 +474,7 @@ export default function Improve() {
   // ドロワー開時のフォールバック発火（何らかの理由で一括発火が漏れた場合の保険）
   useEffect(() => {
     if (!drawerItem || !selectedSiteId) return;
-    if (drawerItem.mockupSkipped || drawerItem.mockupHtml) return;
+    if (drawerItem.mockupSkipped || hasMockup(drawerItem)) return;
     const raw = drawerItem.targetPageUrl;
     if (!raw) return;
     const firstUrl = String(raw).split(',')[0].trim();
@@ -542,13 +553,38 @@ export default function Improve() {
     }
   };
 
+  // status が in_progress に遷移したタイミングで実装検証用 Before スナップショットを取得
+  // （バックグラウンドで fire-and-forget、UI はブロックしない）
+  const triggerBeforeImplementationSnapshot = (improvementId) => {
+    const captureFn = httpsCallable(functions, 'captureBeforeImplementationSnapshot');
+    captureFn({ siteId: selectedSiteId, improvementId })
+      .then((res) => {
+        console.log('[ImplCheck] Before スナップショット取得:', res.data);
+      })
+      .catch((err) => {
+        console.warn('[ImplCheck] Before スナップショット取得失敗:', err?.message);
+      });
+  };
+
   const handleStatusChange = (item, newStatus) => {
     if (item.status === newStatus) return;
     const updateData = { status: newStatus };
     if (newStatus === 'completed') {
+      // Fast-path 対策: Before スナップショット未取得なら誘導ダイアログを表示
+      const hasBeforeSnapshot = item?.implementationCheck?.beforeSnapshot?.capturedAt;
+      if (!hasBeforeSnapshot) {
+        setImplCheckGuideItem(item);
+        setIsImplCheckGuideOpen(true);
+        return;
+      }
       // 完了ダイアログを表示（改善反映日入力 + 効果計測開始）
       setCompletionItem(item);
       setIsCompletionDialogOpen(true);
+    } else if (newStatus === 'in_progress') {
+      // 対応中に遷移した時点で Before スナップショットを取得（上書きあり）
+      updateMutation.mutate({ id: item.id, data: updateData });
+      triggerBeforeImplementationSnapshot(item.id);
+      return;
     } else {
       // 完了→他ステータスへの差し戻し時: effectMeasurementをsuspendedに
       if (item.status === 'completed' && item.effectMeasurement) {
@@ -1194,7 +1230,7 @@ export default function Improve() {
                                 })()}
                               </td>
                               <td className="py-7 px-2 align-middle text-center w-[100px] min-w-[100px]" onClick={(e) => e.stopPropagation()}>
-                                {item.mockupHtml ? (
+                                {hasMockup(item) ? (
                                   <span className="inline-flex items-center gap-0.5 rounded-full bg-green-50 dark:bg-green-900/20 px-2 py-1 text-[10px] font-bold text-green-600 dark:text-green-400" title="モックアップ生成済み">
                                     <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="m4.5 12.75 6 6 9-13.5" /></svg>
                                     モック
@@ -1286,6 +1322,37 @@ export default function Improve() {
         item={completionItem}
         onConfirm={handleCompletionConfirm}
         isLoading={isCompletionLoading}
+      />
+
+      <ImplementationCheckGuideDialog
+        isOpen={isImplCheckGuideOpen}
+        item={implCheckGuideItem}
+        isLoading={false}
+        onClose={() => {
+          setIsImplCheckGuideOpen(false);
+          setImplCheckGuideItem(null);
+        }}
+        onMoveToInProgress={() => {
+          if (!implCheckGuideItem) return;
+          const target = implCheckGuideItem;
+          updateMutation.mutate({ id: target.id, data: { status: 'in_progress' } });
+          triggerBeforeImplementationSnapshot(target.id);
+          setIsImplCheckGuideOpen(false);
+          setImplCheckGuideItem(null);
+          toast.success('対応中に戻し、改善前の状態を記録しています');
+        }}
+        onProceedWithoutCheck={() => {
+          if (!implCheckGuideItem) return;
+          const target = implCheckGuideItem;
+          setIsImplCheckGuideOpen(false);
+          setImplCheckGuideItem(null);
+          // 検証スキップの印として beforeSnapshot を null で明示的に記録（diff 側で verified=null 判定）
+          updateDoc(doc(db, 'sites', selectedSiteId, 'improvements', target.id), {
+            'implementationCheck.verificationSkipped': true,
+          }).catch(() => {});
+          setCompletionItem(target);
+          setIsCompletionDialogOpen(true);
+        }}
       />
 
       <EvaluationModal
@@ -1429,8 +1496,8 @@ export default function Improve() {
               <div className="flex-1 overflow-hidden flex">
 
                 {/* 左カラム: テキスト情報 */}
-                <div className={`shrink-0 border-r border-gray-100 dark:border-dark-3 overflow-y-auto p-8 ${item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped) ? 'w-full sm:w-[480px]' : 'w-full border-r-0'}`}>
-                  <div className={`${!item.mockupHtml && (!item.targetPageUrl || item.mockupSkipped) ? 'max-w-3xl mx-auto' : ''}`}>
+                <div className={`shrink-0 border-r border-gray-100 dark:border-dark-3 overflow-y-auto p-8 ${hasMockup(item) || (item.targetPageUrl && !item.mockupSkipped) ? 'w-full sm:w-[480px]' : 'w-full border-r-0'}`}>
+                  <div className={`${!hasMockup(item) && (!item.targetPageUrl || item.mockupSkipped) ? 'max-w-3xl mx-auto' : ''}`}>
                     <div className="mb-6">
                       <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-1.5">
                         <FileText className="w-4 h-4 text-primary" />
@@ -1479,7 +1546,7 @@ export default function Improve() {
                           <span className="text-green-600 text-base font-bold">¥</span>
                           目安料金
                         </div>
-                        <div className={`font-bold text-gray-900 dark:text-white ${item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped) ? 'text-lg' : 'text-xl'}`}>
+                        <div className={`font-bold text-gray-900 dark:text-white ${hasMockup(item) || (item.targetPageUrl && !item.mockupSkipped) ? 'text-lg' : 'text-xl'}`}>
                           {formatEstimatedPriceLabel(item.estimatedLaborHours)}
                         </div>
                         <div className="text-xs text-body-color mt-0.5">（税別）</div>
@@ -1489,7 +1556,7 @@ export default function Improve() {
                           <Clock className="w-4 h-4 text-blue-500" />
                           目安納期
                         </div>
-                        <div className={`font-bold text-gray-900 dark:text-white ${item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped) ? 'text-lg' : 'text-xl'}`}>
+                        <div className={`font-bold text-gray-900 dark:text-white ${hasMockup(item) || (item.targetPageUrl && !item.mockupSkipped) ? 'text-lg' : 'text-xl'}`}>
                           {formatEstimatedDeliveryLabel(item.estimatedLaborHours)}
                         </div>
                       </div>
@@ -1509,9 +1576,9 @@ export default function Improve() {
                 </div>
 
                 {/* 右カラム: モックアップ（モックアップ対象の場合のみ表示） */}
-                {(item.mockupHtml || (item.targetPageUrl && !item.mockupSkipped)) && (
+                {(hasMockup(item) || (item.targetPageUrl && !item.mockupSkipped)) && (
                 <div className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-dark">
-                  {item.mockupHtml ? (
+                  {hasMockup(item) ? (
                     <>
                       {/* タブ（sticky） */}
                       <div className="sticky top-0 z-10 bg-gray-50/95 dark:bg-dark/95 backdrop-blur px-4 sm:px-8 pt-5 pb-3 flex items-center justify-between">
@@ -1577,19 +1644,35 @@ export default function Improve() {
                                   <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl || 'https://example.com'}</div>
                                 </div>
                                 <div className="bg-white dark:bg-dark-2 relative pt-3" style={{ height: afterIframeHeight ? `${afterIframeHeight * 0.5 + 12}px` : '812px' }}>
-                                  <iframe
-                                    title="改善モックアップ"
-                                    srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:2px;border-radius:4px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;top:-10px;right:-4px;background:#3758F9;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;line-height:1.4;z-index:9999;pointer-events:none;white-space:nowrap;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
-                                    className="absolute top-3 left-0 border-0 pointer-events-none"
-                                    sandbox="allow-same-origin"
-                                    onLoad={(e) => {
-                                      try {
-                                        const h = e.target.contentDocument?.documentElement?.scrollHeight;
-                                        if (h) setAfterIframeHeight(h);
-                                      } catch (_) {}
-                                    }}
-                                    style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px', width: '200%', transform: 'scale(0.5)', transformOrigin: 'top left' }}
-                                  />
+                                  {item.mockupStorageUrl ? (
+                                    <iframe
+                                      title="改善モックアップ"
+                                      src={item.mockupStorageUrl}
+                                      className="absolute top-3 left-0 border-0 pointer-events-none"
+                                      sandbox="allow-same-origin"
+                                      onLoad={(e) => {
+                                        try {
+                                          const h = e.target.contentDocument?.documentElement?.scrollHeight;
+                                          if (h) setAfterIframeHeight(h);
+                                        } catch (_) {}
+                                      }}
+                                      style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px', width: '200%', transform: 'scale(0.5)', transformOrigin: 'top left' }}
+                                    />
+                                  ) : (
+                                    <iframe
+                                      title="改善モックアップ"
+                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:2px;border-radius:4px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;top:-10px;right:-4px;background:#3758F9;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;line-height:1.4;z-index:9999;pointer-events:none;white-space:nowrap;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                      className="absolute top-3 left-0 border-0 pointer-events-none"
+                                      sandbox="allow-same-origin"
+                                      onLoad={(e) => {
+                                        try {
+                                          const h = e.target.contentDocument?.documentElement?.scrollHeight;
+                                          if (h) setAfterIframeHeight(h);
+                                        } catch (_) {}
+                                      }}
+                                      style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px', width: '200%', transform: 'scale(0.5)', transformOrigin: 'top left' }}
+                                    />
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -1640,25 +1723,41 @@ export default function Improve() {
                               <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl || 'https://example.com'}</div>
                             </div>
                             <div className="bg-white dark:bg-dark-2 pt-3">
-                              <iframe
-                                title="改善モックアップ"
-                                srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:2px;border-radius:4px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;top:-10px;right:-4px;background:#3758F9;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;line-height:1.4;z-index:9999;pointer-events:none;white-space:nowrap;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
-                                className="w-full border-0 pointer-events-none"
-                                sandbox="allow-same-origin"
-                                onLoad={(e) => {
-                                  try {
-                                    const h = e.target.contentDocument?.documentElement?.scrollHeight;
-                                    if (h) setAfterIframeHeight(h);
-                                  } catch (_) {}
-                                }}
-                                style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px' }}
-                              />
+                              {item.mockupStorageUrl ? (
+                                <iframe
+                                  title="改善モックアップ"
+                                  src={item.mockupStorageUrl}
+                                  className="w-full border-0 pointer-events-none"
+                                  sandbox="allow-same-origin"
+                                  onLoad={(e) => {
+                                    try {
+                                      const h = e.target.contentDocument?.documentElement?.scrollHeight;
+                                      if (h) setAfterIframeHeight(h);
+                                    } catch (_) {}
+                                  }}
+                                  style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px' }}
+                                />
+                              ) : (
+                                <iframe
+                                  title="改善モックアップ"
+                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:2px;border-radius:4px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;top:-10px;right:-4px;background:#3758F9;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;line-height:1.4;z-index:9999;pointer-events:none;white-space:nowrap;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                  className="w-full border-0 pointer-events-none"
+                                  sandbox="allow-same-origin"
+                                  onLoad={(e) => {
+                                    try {
+                                      const h = e.target.contentDocument?.documentElement?.scrollHeight;
+                                      if (h) setAfterIframeHeight(h);
+                                    } catch (_) {}
+                                  }}
+                                  style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px' }}
+                                />
+                              )}
                             </div>
                           </div>
                         </div>
                       )}
                     </>
-                  ) : item.targetPageUrl && !item.mockupHtml && !item.mockupSkipped ? (
+                  ) : item.targetPageUrl && !hasMockup(item) && !item.mockupSkipped ? (
                     <>
                       {/* ヘッダー（sticky） */}
                       <div className="sticky top-0 z-10 bg-gray-50/95 dark:bg-dark/95 backdrop-blur px-4 sm:px-8 pt-5 pb-3 flex items-center">

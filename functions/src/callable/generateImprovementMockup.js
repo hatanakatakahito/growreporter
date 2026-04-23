@@ -15,6 +15,9 @@
 
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
+import { getStorage } from 'firebase-admin/storage';
+import * as cheerio from 'cheerio';
+import { captureFullSnapshot, readSnapshotHtml } from '../utils/captureFullSnapshot.js';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -22,6 +25,8 @@ const GEMINI_MODEL = 'gemini-2.5-flash';
 // 長いキー要素 HTML を含むプロンプトで MAX_TOKENS 切れによる HTML 抽出失敗が頻発していた
 const MAX_OUTPUT_TOKENS = 16384;
 const MAX_RETRIES = 2;
+// Snapshot モード: Gemini に渡す構造 HTML の最大サイズ（超過時は旧モードにフォールバック）
+const MAX_STRUCTURAL_HTML_BYTES = 400_000;
 
 export async function generateImprovementMockupCallable(req) {
   // 認証チェック
@@ -76,6 +81,28 @@ export async function generateImprovementMockupCallable(req) {
         mockupGeneratedAt: new Date(),
       });
       return { success: true, message: 'ビジュアル変更を伴わない改善のためモックアップ生成をスキップしました', skipped: true };
+    }
+
+    // ── 新フロー: Snapshot + 差分パッチ方式で完全再現を試みる ──
+    // 失敗した場合は下の旧フロー（AI HTML 直生成）にフォールバック
+    if (improvement.targetPageUrl) {
+      try {
+        const snapshotResult = await trySnapshotBasedMockup({
+          siteId,
+          improvementId,
+          improvement,
+          apiKey,
+          db,
+        });
+        if (snapshotResult) {
+          const duration = Date.now() - startTime;
+          console.log(`[generateImprovementMockup] Done via snapshot_patch in ${duration}ms`);
+          return { ...snapshotResult, duration };
+        }
+        console.log('[generateImprovementMockup] Snapshot flow returned null, fallback to legacy flow');
+      } catch (err) {
+        console.warn(`[generateImprovementMockup] Snapshot flow failed, fallback to legacy: ${err.message}`);
+      }
     }
 
     // ── Step 1: Beforeスクリーンショットを取得（pageScrapingData → pageScreenshots → なし） ──
@@ -571,4 +598,361 @@ function extractHtmlCss(rawText) {
   }
 
   return { html, css };
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// Snapshot + 差分パッチ方式（完全再現モード）
+// ═══════════════════════════════════════════════════════════════════════
+
+/**
+ * Snapshot ベースで完全再現モックアップを生成する。失敗時は null を返す。
+ */
+async function trySnapshotBasedMockup({ siteId, improvementId, improvement, apiKey, db }) {
+  // 1) スナップショット取得（24h キャッシュ）
+  const snap = await captureFullSnapshot({ siteId, pageUrl: improvement.targetPageUrl });
+  if (!snap) {
+    console.log(`[snapshot_patch] snapshot capture failed for ${improvement.targetPageUrl}`);
+    return null;
+  }
+  const snapshotHtml = await readSnapshotHtml(snap.storagePath);
+  if (!snapshotHtml) {
+    console.log(`[snapshot_patch] snapshot HTML read failed: ${snap.storagePath}`);
+    return null;
+  }
+
+  // 2) AI 入力用の構造 HTML を作成（<style>中身除去、data URI除去）
+  const structuralHtml = buildStructuralHtml(snapshotHtml);
+  if (!structuralHtml || structuralHtml.length > MAX_STRUCTURAL_HTML_BYTES) {
+    console.log(`[snapshot_patch] structural HTML too large or empty: ${structuralHtml?.length || 0} bytes`);
+    return null;
+  }
+
+  // 3) Gemini に JSON パッチをリクエスト
+  const patch = await requestPatchFromGemini({ apiKey, improvement, structuralHtml });
+  if (!patch || !Array.isArray(patch.changes) || patch.changes.length === 0) {
+    console.log('[snapshot_patch] empty or invalid patch from Gemini');
+    return null;
+  }
+
+  // 4) cheerio で snapshot にパッチ適用
+  const applied = applyPatchesToSnapshot(snapshotHtml, patch.changes);
+  if (!applied || applied.appliedCount === 0) {
+    console.log(`[snapshot_patch] patch application produced no changes (requested=${patch.changes.length})`);
+    return null;
+  }
+
+  // 5) Storage にパッチ適用後 HTML を保存
+  const bucket = getStorage().bucket();
+  const mockupPath = `page-mockups/${siteId}/${improvementId}.html`;
+  const mockupFile = bucket.file(mockupPath);
+  await mockupFile.save(applied.html, {
+    metadata: {
+      contentType: 'text/html; charset=utf-8',
+      cacheControl: 'public, max-age=60',
+    },
+    resumable: false,
+  });
+  await mockupFile.makePublic();
+  const mockupStorageUrl = `https://storage.googleapis.com/${bucket.name}/${mockupPath}`;
+
+  // 6) Firestore 更新
+  await db.doc(`sites/${siteId}/improvements/${improvementId}`).update({
+    mockupStorageUrl,
+    mockupStoragePath: mockupPath,
+    mockupSourceSnapshotPath: snap.storagePath,
+    mockupPatchChanges: patch.changes,
+    mockupPatchSummary: patch.summary || '',
+    mockupMode: 'snapshot_patch',
+    mockupGeneratedAt: new Date(),
+    // 旧 mockupHtml は上書きしない（backward compat のため）
+  });
+
+  console.log(`[snapshot_patch] 成功: patches applied=${applied.appliedCount}/${patch.changes.length}, output=${applied.html.length} bytes`);
+  return {
+    success: true,
+    message: 'モックアップを生成しました（完全再現モード）',
+    mode: 'snapshot_patch',
+    patchCount: patch.changes.length,
+    appliedCount: applied.appliedCount,
+    outputBytes: applied.html.length,
+  };
+}
+
+/**
+ * snapshot HTML から Gemini 入力用の構造 HTML を作成する
+ * - <style> の中身を除去
+ * - <img src="data:..."> の data URI を簡略化
+ * - <svg>...</svg> の中身を省略
+ * - コメント除去
+ */
+export function buildStructuralHtml(html) {
+  try {
+    const $ = cheerio.load(html, { decodeEntities: false });
+
+    // <style> の中身を空に
+    $('style').each((_, el) => {
+      $(el).text('/* ... */');
+    });
+
+    // data URI 画像を省略
+    $('img[src^="data:"]').each((_, el) => {
+      $(el).attr('src', '[inline-image]');
+    });
+
+    // SVG 中身を省略
+    $('svg').each((_, el) => {
+      const $el = $(el);
+      const width = $el.attr('width');
+      const height = $el.attr('height');
+      $el.empty();
+      if (width) $el.attr('width', width);
+      if (height) $el.attr('height', height);
+      $el.append('<!-- svg-content -->');
+    });
+
+    // 長大なインラインCSS（style属性）を切り詰め
+    $('[style]').each((_, el) => {
+      const s = $(el).attr('style') || '';
+      if (s.length > 200) $(el).attr('style', s.substring(0, 200) + '...');
+    });
+
+    return $.html();
+  } catch (err) {
+    console.warn(`[buildStructuralHtml] エラー: ${err.message}`);
+    return null;
+  }
+}
+
+/**
+ * Gemini に JSON パッチを生成させる
+ */
+export async function requestPatchFromGemini({ apiKey, improvement, structuralHtml }) {
+  const systemInstruction =
+    'あなたはWebサイト改善のエキスパートです。指定された改善案を、対象ページのDOMに対して適用するための最小限のJSONパッチを返してください。返答は必ず指定されたJSON形式のみで、説明文やマークダウンは不要です。';
+
+  const prompt = buildPatchPrompt(improvement, structuralHtml);
+
+  const body = {
+    system_instruction: { parts: [{ text: systemInstruction }] },
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: 0.4,
+      maxOutputTokens: 8192,
+      thinkingConfig: { thinkingBudget: 1024 },
+      responseMimeType: 'application/json',
+    },
+  };
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(
+        `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        }
+      );
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        const retriable = res.status === 429 || res.status >= 500;
+        console.warn(`[requestPatchFromGemini] HTTP ${res.status} (retriable=${retriable}): ${errText.substring(0, 200)}`);
+        if (!retriable || attempt >= MAX_RETRIES) return null;
+        await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+        continue;
+      }
+      const data = await res.json();
+      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const finishReason = data.candidates?.[0]?.finishReason;
+      if (!rawText) {
+        console.warn(`[requestPatchFromGemini] empty response (finishReason=${finishReason})`);
+        if (finishReason === 'SAFETY' || finishReason === 'RECITATION') return null;
+        if (attempt >= MAX_RETRIES) return null;
+        await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+        continue;
+      }
+      const parsed = parsePatchJson(rawText);
+      if (!parsed) {
+        console.warn(`[requestPatchFromGemini] JSON parse failed, rawText head: ${rawText.substring(0, 300)}`);
+        if (attempt >= MAX_RETRIES) return null;
+        await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+        continue;
+      }
+      return parsed;
+    } catch (err) {
+      console.warn(`[requestPatchFromGemini] exception (attempt=${attempt}): ${err.message}`);
+      if (attempt >= MAX_RETRIES) return null;
+      await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+    }
+  }
+  return null;
+}
+
+function buildPatchPrompt(improvement, structuralHtml) {
+  const { title, description, expectedImpact, category } = improvement;
+  return `以下の改善案を、対象ページのDOMに対して適用するための最小限のパッチをJSONで返してください。
+
+## 改善案
+タイトル: ${title || ''}
+説明: ${description || ''}
+期待効果: ${expectedImpact || ''}
+カテゴリ: ${category || ''}
+
+## 対象ページの HTML 構造
+（<style>の中身とdata URIは省略してあります。CSSクラス名はそのまま使えます。）
+
+\`\`\`html
+${structuralHtml}
+\`\`\`
+
+## 出力形式（この形式のJSONのみ返す）
+
+{
+  "changes": [
+    {
+      "target_selector": "上記HTMLに実在するCSSセレクタ",
+      "action": "replace | append | prepend | insert_after | insert_before | modify_attrs | remove のいずれか",
+      "new_html": "新しいHTML（replace/append/prepend/insert_*時のみ）。<style>タグ含むインラインCSSも書いてよい",
+      "new_attrs": { "key": "value" },
+      "change_label": "変更内容の短い日本語ラベル（例: CTA追加、見出し変更）"
+    }
+  ],
+  "summary": "この改善で何を変えたかの一行要約"
+}
+
+## ルール
+1. **target_selector は必ず上記HTMLに実在するセレクタを使う**。存在しないタグ・クラス・idを指定しないこと
+2. **変更は最小限**。ページ全体を作り直さず、改善に必要な要素だけを変更する
+3. 新規要素追加時は、既存の色・フォント・ボタンスタイルを踏襲し違和感がないようにする
+4. 既存のCSSクラス（header, btn, cta 等）は積極的に再利用する
+5. new_html 内で style="..." や <style> タグを使って追加スタイルを付けてよい
+6. 変更箇所は AI 側で data-changed 属性を付けなくてよい（サーバ側で自動付与する）
+7. changes は 1〜5 件程度。冗長な変更は避ける`;
+}
+
+function parsePatchJson(rawText) {
+  // responseMimeType=application/json 指定時はそのまま JSON のはず
+  try {
+    return JSON.parse(rawText);
+  } catch (_) {}
+
+  // コードブロック囲まれている場合
+  const m = rawText.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (m) {
+    try { return JSON.parse(m[1].trim()); } catch (_) {}
+  }
+
+  // 最初の { から最後の } を切り出してリトライ
+  const first = rawText.indexOf('{');
+  const last = rawText.lastIndexOf('}');
+  if (first >= 0 && last > first) {
+    try { return JSON.parse(rawText.substring(first, last + 1)); } catch (_) {}
+  }
+  return null;
+}
+
+/**
+ * snapshot HTML に差分パッチを適用する
+ * 戻り値: { html, appliedCount } or null
+ */
+export function applyPatchesToSnapshot(snapshotHtml, changes) {
+  let $;
+  try {
+    $ = cheerio.load(snapshotHtml, { decodeEntities: false });
+  } catch (err) {
+    console.warn(`[applyPatchesToSnapshot] cheerio.load 失敗: ${err.message}`);
+    return null;
+  }
+
+  let appliedCount = 0;
+  for (const change of changes) {
+    const { target_selector, action, new_html, new_attrs, change_label } = change || {};
+    if (!target_selector || !action) continue;
+
+    let $target;
+    try {
+      $target = $(target_selector);
+    } catch (err) {
+      console.warn(`[applyPatchesToSnapshot] 無効なセレクタ: ${target_selector}`);
+      continue;
+    }
+    if ($target.length === 0) {
+      console.warn(`[applyPatchesToSnapshot] セレクタ不一致: ${target_selector}`);
+      continue;
+    }
+
+    const marked = new_html ? markChangedHtml(new_html, change_label) : '';
+
+    try {
+      switch (action) {
+        case 'replace':
+          if (!marked) continue;
+          $target.replaceWith(marked);
+          break;
+        case 'append':
+          if (!marked) continue;
+          $target.append(marked);
+          break;
+        case 'prepend':
+          if (!marked) continue;
+          $target.prepend(marked);
+          break;
+        case 'insert_after':
+          if (!marked) continue;
+          $target.after(marked);
+          break;
+        case 'insert_before':
+          if (!marked) continue;
+          $target.before(marked);
+          break;
+        case 'modify_attrs':
+          if (!new_attrs || typeof new_attrs !== 'object') continue;
+          for (const [k, v] of Object.entries(new_attrs)) {
+            $target.attr(k, String(v));
+          }
+          $target.attr('data-changed', change_label || '属性変更');
+          break;
+        case 'remove':
+          $target.remove();
+          break;
+        default:
+          console.warn(`[applyPatchesToSnapshot] 未知のaction: ${action}`);
+          continue;
+      }
+      appliedCount++;
+    } catch (err) {
+      console.warn(`[applyPatchesToSnapshot] 適用失敗 ${action}@${target_selector}: ${err.message}`);
+    }
+  }
+
+  // data-changed 用の outline CSS を head に注入
+  const outlineCss = `[data-changed]{outline:2px solid #3758F9 !important;outline-offset:2px !important;border-radius:4px !important;position:relative !important;z-index:1 !important;}[data-changed]::after{content:attr(data-changed);position:absolute;top:-10px;right:-4px;background:#3758F9;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;line-height:1.4;z-index:9999;pointer-events:none;white-space:nowrap;}`;
+  if ($('head').length > 0) {
+    $('head').append(`<style id="__mockup-outline">${outlineCss}</style>`);
+  } else {
+    $.root().prepend(`<style id="__mockup-outline">${outlineCss}</style>`);
+  }
+
+  return { html: $.html(), appliedCount };
+}
+
+/**
+ * 新規追加HTML要素に data-changed 属性を付与する
+ * - 単一ルート要素ならその要素に付与
+ * - 複数要素ならそれぞれに付与
+ */
+function markChangedHtml(html, label) {
+  const safeLabel = String(label || '変更').replace(/"/g, '&quot;');
+  try {
+    const $ = cheerio.load(`<root>${html}</root>`, { decodeEntities: false, xmlMode: false });
+    $('root').children().each((_, el) => {
+      const $el = $(el);
+      if (!$el.attr('data-changed')) {
+        $el.attr('data-changed', safeLabel);
+      }
+    });
+    return $('root').html() || html;
+  } catch (_) {
+    return html;
+  }
 }
