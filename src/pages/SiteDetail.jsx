@@ -12,6 +12,9 @@ import { doc, getDoc, getDocFromServer, updateDoc } from 'firebase/firestore';
 import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, Copy, Check, AlertCircle, Sparkles } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
+import { BUSINESS_MODEL_LABELS } from '../constants/businessModels';
+import { SITE_ROLE_LABELS } from '../constants/siteRoles';
+import { INDUSTRY_MAJOR_LABELS } from '../constants/industriesV2';
 /**
  * サイト詳細画面（ユーザー向け・オーナーまたは同一アカウントメンバー）
  * ユーザー情報セクションは表示しない
@@ -214,11 +217,35 @@ export default function SiteDetail() {
             基本情報
           </h3>
           <div className="space-y-3">
-            {/* タクソノミー V2（業種・サイト役割・ビジネスモデル）はユーザー側では非表示。
-                裏で AI が 100ページスクレイピング結果から自動判定し、管理画面のみで可視化する。 */}
             <div>
               <div className="text-sm text-body-color dark:text-dark-6">サイトID</div>
               <div className="font-mono text-sm text-dark dark:text-white">{siteDetail.siteId}</div>
+            </div>
+            <div>
+              <div className="text-sm text-body-color dark:text-dark-6">ビジネスモデル</div>
+              <div className="text-dark dark:text-white">
+                {siteDetail.businessModel
+                  ? BUSINESS_MODEL_LABELS[siteDetail.businessModel] || siteDetail.businessModel
+                  : '-'}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-body-color dark:text-dark-6">業種</div>
+              <div className="text-dark dark:text-white">
+                {siteDetail.industryMajor
+                  ? `${INDUSTRY_MAJOR_LABELS[siteDetail.industryMajor] || siteDetail.industryMajor}${
+                      siteDetail.industryMinor ? `／${siteDetail.industryMinor}` : ''
+                    }`
+                  : '-'}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-body-color dark:text-dark-6">サイト役割</div>
+              <div className="text-dark dark:text-white">
+                {siteDetail.siteRole
+                  ? SITE_ROLE_LABELS[siteDetail.siteRole] || siteDetail.siteRole
+                  : '-'}
+              </div>
             </div>
             <div>
               <div className="text-sm text-body-color dark:text-dark-6">登録日</div>
