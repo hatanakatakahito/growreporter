@@ -390,13 +390,16 @@ export default function Improve() {
 
   // 改善課題データの取得
   const { data: improvements = [], isLoading: improvementsLoading } = useQuery({
-    queryKey: ['improvements', selectedSiteId],
+    queryKey: ['improvements', selectedSiteId, showArchived],
     queryFn: async () => {
       if (!selectedSiteId) return [];
 
+      const statusesToFetch = showArchived
+        ? ['draft', 'in_progress', 'completed', 'archived']
+        : ['draft', 'in_progress', 'completed'];
       const q = query(
         collection(db, 'sites', selectedSiteId, 'improvements'),
-        where('status', 'in', ['draft', 'in_progress', 'completed'])
+        where('status', 'in', statusesToFetch)
       );
 
       const querySnapshot = await getDocs(q);
@@ -734,6 +737,7 @@ export default function Improve() {
 
   // ステータス絞り込み
   const [statusFilter, setStatusFilter] = useState('all');
+  const [showArchived, setShowArchived] = useState(false);
   const filteredImprovements = useMemo(() => {
     if (statusFilter === 'all') return improvements;
     return improvements.filter(item => (item.status || 'draft') === statusFilter);
@@ -1011,16 +1015,32 @@ export default function Improve() {
             <div data-tour="improve-status-filter" className="flex flex-wrap items-center gap-3">
               {/* ステータス絞り込み */}
               {improvements.length > 0 && (
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="rounded-lg border border-stroke bg-white px-3 py-2 text-sm text-dark dark:border-dark-3 dark:bg-dark-2 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
-                >
-                  <option value="all">すべてのステータス</option>
-                  <option value="draft">{statusLabels.draft}</option>
-                  <option value="in_progress">{statusLabels.in_progress}</option>
-                  <option value="completed">{statusLabels.completed}</option>
-                </select>
+                <>
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="rounded-lg border border-stroke bg-white px-3 py-2 text-sm text-dark dark:border-dark-3 dark:bg-dark-2 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
+                  >
+                    <option value="all">すべてのステータス</option>
+                    <option value="draft">{statusLabels.draft}</option>
+                    <option value="in_progress">{statusLabels.in_progress}</option>
+                    <option value="completed">{statusLabels.completed}</option>
+                    {showArchived && <option value="archived">{statusLabels.archived}</option>}
+                  </select>
+                  <label className="inline-flex items-center gap-1.5 text-xs text-body-color cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={showArchived}
+                      onChange={(e) => {
+                        const next = e.target.checked;
+                        setShowArchived(next);
+                        if (!next && statusFilter === 'archived') setStatusFilter('all');
+                      }}
+                      className="h-3.5 w-3.5 rounded border-stroke text-primary focus:ring-primary dark:border-dark-3"
+                    />
+                    アーカイブも表示
+                  </label>
+                </>
               )}
             </div>
           </div>
