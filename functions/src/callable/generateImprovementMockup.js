@@ -18,7 +18,10 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GEMINI_MODEL = 'gemini-2.5-flash';
-const MAX_OUTPUT_TOKENS = 8192;
+// 16384 まで拡張: 旧 8192 は thinkingBudget=2048 と合わせると本文枠が 6144 トークンしか無く
+// 長いキー要素 HTML を含むプロンプトで MAX_TOKENS 切れによる HTML 抽出失敗が頻発していた
+const MAX_OUTPUT_TOKENS = 16384;
+const MAX_RETRIES = 2;
 
 export async function generateImprovementMockupCallable(req) {
   // 認証チェック
@@ -292,39 +295,102 @@ export async function generateImprovementMockupCallable(req) {
       parts.push({ text: prompt });
     }
 
-    // Gemini API呼び出し
-    const response = await fetch(
-      `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: systemInstruction }] },
-          contents: [{ parts }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: MAX_OUTPUT_TOKENS,
-            thinkingConfig: { thinkingBudget: 2048 },
-          },
-        }),
-      }
-    );
+    // Gemini API 呼び出し（リトライ付き）
+    const requestBody = JSON.stringify({
+      system_instruction: { parts: [{ text: systemInstruction }] },
+      contents: [{ parts }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: MAX_OUTPUT_TOKENS,
+        thinkingConfig: { thinkingBudget: 2048 },
+      },
+    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[generateImprovementMockup] Gemini API error: ${response.status}`, errorText);
-      throw new HttpsError('internal', `Gemini API error: ${response.status}`);
+    let html = '';
+    let css = '';
+    let lastError = null;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await fetch(
+          `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: requestBody,
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text().catch(() => '');
+          // 4xx はリトライしても結果は変わらない（SAFETY/認証/リクエスト不正）
+          // 429（レート制限）と 5xx（サーバ側一時障害）のみリトライ
+          const retriable = response.status === 429 || response.status >= 500;
+          const err = new Error(`Gemini API error: ${response.status} ${errorText.substring(0, 300)}`);
+          err.status = response.status;
+          err.retriable = retriable;
+          throw err;
+        }
+
+        const data = await response.json();
+        const candidate = data.candidates?.[0];
+        const rawText = candidate?.content?.parts?.[0]?.text || '';
+        const finishReason = candidate?.finishReason;
+
+        const extracted = extractHtmlCss(rawText);
+
+        if (extracted.html) {
+          html = extracted.html;
+          css = extracted.css;
+          break;
+        }
+
+        // HTML が抽出できなかった場合：原因調査用ログを残す
+        console.warn('[generateImprovementMockup] No HTML extracted', {
+          improvementId,
+          attempt,
+          finishReason,
+          safetyRatings: candidate?.safetyRatings,
+          promptFeedback: data.promptFeedback,
+          rawTextLen: rawText.length,
+          rawTextHead: rawText.substring(0, 300),
+        });
+
+        // SAFETY / RECITATION ブロック等はリトライしても同じ結果になる
+        // MAX_TOKENS / STOP（空だった）はリトライ対象
+        if (finishReason === 'SAFETY' || finishReason === 'RECITATION' || finishReason === 'PROHIBITED_CONTENT') {
+          return {
+            success: false,
+            message: `モックアップ生成がブロックされました（${finishReason}）`,
+          };
+        }
+
+        const err = new Error(`Empty or unparseable response (finishReason=${finishReason || 'unknown'})`);
+        err.retriable = true;
+        throw err;
+      } catch (err) {
+        lastError = err;
+        const isRetriable = err.retriable !== false;
+        console.error('[generateImprovementMockup] Gemini call failed', {
+          improvementId,
+          attempt,
+          status: err.status,
+          retriable: isRetriable,
+          message: err.message,
+        });
+        if (!isRetriable || attempt >= MAX_RETRIES) break;
+        // 指数バックオフ: 1秒 → 2秒
+        await new Promise(resolve => setTimeout(resolve, (attempt + 1) * 1000));
+      }
     }
 
-    const data = await response.json();
-    const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-
-    // HTML/CSS抽出
-    const { html, css } = extractHtmlCss(rawText);
-
     if (!html) {
-      console.warn(`[generateImprovementMockup] No HTML generated for ${improvementId}. rawText length=${rawText.length}, first 500 chars: ${rawText.substring(0, 500)}`);
-      return { success: false, message: 'モックアップHTMLの生成に失敗しました' };
+      const statusHint = lastError?.status ? ` (status=${lastError.status})` : '';
+      console.warn(`[generateImprovementMockup] Final failure for ${improvementId}${statusHint}: ${lastError?.message}`);
+      return {
+        success: false,
+        message: `モックアップHTMLの生成に失敗しました${statusHint}`,
+      };
     }
 
     // Firestoreに保存

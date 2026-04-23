@@ -513,7 +513,7 @@ export const scheduleRemeasurement = lazyCallable('./callable/scheduleRemeasurem
  * 改善モックアップ生成 Callable Function（Gemini 2.5 Flash）
  * 手動トリガー：改善箇所のみの部分HTML生成
  */
-export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['GEMINI_API_KEY'] });
+export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '512MiB', timeoutSeconds: 300, secrets: ['GEMINI_API_KEY'] });
 
 /**
  * プランアップグレードお問い合わせ送信
