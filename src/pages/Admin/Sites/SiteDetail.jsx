@@ -439,106 +439,109 @@ export default function AdminSiteDetail() {
 
       </div>
 
-      {/* スクリーンショット（ボタンは「データ収集設定」セクションのリンクに集約済み） */}
-      <div className="mt-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-        <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-dark dark:text-white">
-          <Camera className="h-5 w-5" />
-          サイトスクリーンショット
-        </h3>
-
-        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          {/* PC */}
-          <div>
-            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-body-color dark:text-dark-6">
-              <Monitor className="h-4 w-4" />
-              PC
-            </div>
-            {siteDetail.pcScreenshotUrl ? (
-              <div className="overflow-hidden rounded-lg border border-stroke dark:border-dark-3">
-                <img
-                  src={siteDetail.pcScreenshotUrl}
-                  alt="PC screenshot"
-                  className="w-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
-                <span className="text-sm text-body-color">未取得</span>
-              </div>
-            )}
-          </div>
-
-          {/* モバイル */}
-          <div>
-            <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-body-color dark:text-dark-6">
-              <Smartphone className="h-4 w-4" />
-              モバイル
-            </div>
-            {siteDetail.mobileScreenshotUrl ? (
-              <div className="mx-auto max-w-[200px] overflow-hidden rounded-lg border border-stroke dark:border-dark-3">
-                <img
-                  src={siteDetail.mobileScreenshotUrl}
-                  alt="Mobile screenshot"
-                  className="w-full object-cover"
-                />
-              </div>
-            ) : (
-              <div className="mx-auto flex h-40 max-w-[200px] items-center justify-center rounded-lg border border-dashed border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
-                <span className="text-sm text-body-color">未取得</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* メタデータ・スクショ再取得（スクリーンショット直下にも同じリンクを配置） */}
-        <div className="mt-4 border-t border-stroke pt-4 dark:border-dark-3">
-          <button
-            onClick={handleRefreshScreenshots}
-            className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            メタデータ・スクリーンショットを再取得
-          </button>
-        </div>
-      </div>
-
-      {/* コンバージョンイベント */}
-      {siteDetail.conversionEvents && siteDetail.conversionEvents.length > 0 && (
-        <div className="mt-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-          <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
-            コンバージョンイベント
+      {/* スクリーンショット + コンバージョンイベント（2列） */}
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        {/* スクリーンショット（ボタンは「データ収集設定」セクションのリンクに集約済み） */}
+        <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-dark dark:text-white">
+            <Camera className="h-5 w-5" />
+            サイトスクリーンショット
           </h3>
-          <div className="space-y-2">
-            {siteDetail.conversionEvents.map((event, index) => {
-              // イベントが文字列かオブジェクトかを判定
-              const eventName = typeof event === 'string' ? event : (event.eventName || event.displayName || 'Unknown');
-              const eventDisplay = typeof event === 'string' ? event : (event.displayName || event.eventName || 'Unknown');
-              
-              return (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-dark-3"
-                >
-                  <CheckCircle className="h-4 w-4 text-green-500" />
-                  <div className="flex-1">
-                    <span className="text-dark dark:text-white">{eventDisplay}</span>
-                    {typeof event === 'object' && event.description && (
-                      <div className="text-xs text-body-color dark:text-dark-6">
-                        {event.description}
-                      </div>
+
+          <div className="grid grid-cols-[1fr_auto] gap-3">
+            {/* PC */}
+            <div>
+              <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-body-color dark:text-dark-6">
+                <Monitor className="h-4 w-4" />
+                PC
+              </div>
+              {siteDetail.pcScreenshotUrl ? (
+                <div className="overflow-hidden rounded-lg border border-stroke dark:border-dark-3">
+                  <img
+                    src={siteDetail.pcScreenshotUrl}
+                    alt="PC screenshot"
+                    className="w-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
+                  <span className="text-sm text-body-color">未取得</span>
+                </div>
+              )}
+            </div>
+
+            {/* モバイル */}
+            <div className="w-[120px]">
+              <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-body-color dark:text-dark-6">
+                <Smartphone className="h-4 w-4" />
+                モバイル
+              </div>
+              {siteDetail.mobileScreenshotUrl ? (
+                <div className="overflow-hidden rounded-lg border border-stroke dark:border-dark-3">
+                  <img
+                    src={siteDetail.mobileScreenshotUrl}
+                    alt="Mobile screenshot"
+                    className="w-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
+                  <span className="text-sm text-body-color">未取得</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* メタデータ・スクショ再取得（スクリーンショット直下にも同じリンクを配置） */}
+          <div className="mt-4 border-t border-stroke pt-4 dark:border-dark-3">
+            <button
+              onClick={handleRefreshScreenshots}
+              className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              メタデータ・スクリーンショットを再取得
+            </button>
+          </div>
+        </div>
+
+        {/* コンバージョンイベント */}
+        {siteDetail.conversionEvents && siteDetail.conversionEvents.length > 0 && (
+          <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+            <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
+              コンバージョンイベント
+            </h3>
+            <div className="space-y-2">
+              {siteDetail.conversionEvents.map((event, index) => {
+                // イベントが文字列かオブジェクトかを判定
+                const eventName = typeof event === 'string' ? event : (event.eventName || event.displayName || 'Unknown');
+                const eventDisplay = typeof event === 'string' ? event : (event.displayName || event.eventName || 'Unknown');
+
+                return (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 rounded-lg bg-gray-50 px-3 py-2 dark:bg-dark-3"
+                  >
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <div className="flex-1">
+                      <span className="text-dark dark:text-white">{eventDisplay}</span>
+                      {typeof event === 'object' && event.description && (
+                        <div className="text-xs text-body-color dark:text-dark-6">
+                          {event.description}
+                        </div>
+                      )}
+                    </div>
+                    {typeof event === 'object' && event.isActive !== undefined && (
+                      <span className={`text-xs ${event.isActive ? 'text-green-600' : 'text-body-color'}`}>
+                        {event.isActive ? '有効' : '無効'}
+                      </span>
                     )}
                   </div>
-                  {typeof event === 'object' && event.isActive !== undefined && (
-                    <span className={`text-xs ${event.isActive ? 'text-green-600' : 'text-body-color'}`}>
-                      {event.isActive ? '有効' : '無効'}
-                    </span>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ページスクレイピングデータ（user側SiteDetailと同じ構成） */}
       <div className="mt-6 rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
