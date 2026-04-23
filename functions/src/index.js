@@ -510,6 +510,16 @@ export const retryEffectMeasurement = lazyCallable('./callable/retryEffectMeasur
 export const scheduleRemeasurement = lazyCallable('./callable/scheduleRemeasurement.js', 'scheduleRemeasurementCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
+ * 実装検証用 Before スナップショット取得（status → in_progress 遷移時に呼ぶ）
+ * Puppeteer + PSI を使うため 2GiB / 120s、Chromium 起動と PSI_API_KEY が必要
+ */
+export const captureBeforeImplementationSnapshot = lazyCallable(
+  './callable/captureBeforeImplementationSnapshot.js',
+  'captureBeforeImplementationSnapshotCallable',
+  { memory: '2GiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] }
+);
+
+/**
  * 改善モックアップ生成 Callable Function（Gemini 2.5 Flash）
  * 手動トリガー：改善箇所のみの部分HTML生成
  */
@@ -611,14 +621,15 @@ export const checkMetricAlertsScheduled = onSchedule({
 /**
  * 改善効果 After指標自動計測 Scheduled Function
  * 毎日AM4:00(JST)に、計測対象のBefore/After比較を実行
+ * 実装検証の After 側 DOM 取得で Puppeteer を使うため 2GiB、PSI_API_KEY も要
  */
 export const measureImprovementEffects = onSchedule({
   schedule: '0 4 * * *',
   timeZone: 'Asia/Tokyo',
   region: 'asia-northeast1',
-  memory: '512MiB',
+  memory: '2GiB',
   timeoutSeconds: 540,
-  secrets: ['GEMINI_API_KEY'],
+  secrets: ['GEMINI_API_KEY', 'PSI_API_KEY'],
 }, async (event) => {
   const m = await import('./scheduled/measureImprovementEffects.js');
   return m.measureImprovementEffectsHandler(event);

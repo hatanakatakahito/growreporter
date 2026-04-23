@@ -25,6 +25,9 @@ import {
   extractKpiActual,
 } from '../utils/effectMeasurementHelper.js';
 import { generateEffectEvaluation, checkConcurrentTasks } from '../utils/generateEffectEvaluation.js';
+import { scrapeUrlStandalone } from '../utils/unifiedPageScraper.js';
+import { captureAndStoreBeforeScreenshot } from '../utils/captureAndStoreBeforeScreenshot.js';
+import { diffSnapshots } from '../utils/implementationDiff.js';
 
 const MAX_RETRY = 3;
 const BATCH_SIZE = 20; // 1回の実行で処理する最大件数
@@ -491,17 +494,149 @@ async function processItem(db, siteId, siteData, oauth2Client, item) {
 
   console.log(`[measureEffects] Item ${item.id} completed: overallScore=${overallScore.toFixed(1)}, aiEval=${aiEvaluation ? aiEvaluation.achievementLevel : 'skipped'}`);
 
-  // ナレッジ蓄積（匿名化）
+  // ========================================
+  // 実装検証: After スナップショット取得 + Before との diff
+  // ========================================
+  const implCheckBefore = item.effectMeasurement?.before ? item.implementationCheck?.beforeSnapshot : null;
+  let implCheckResult = null;
   try {
-    await saveImprovementKnowledge(db, siteId, siteData, item, category, changes, overallScore, aiEvaluation);
-  } catch (knowledgeErr) {
-    console.warn(`[measureEffects] Knowledge save failed for ${item.id} (non-fatal):`, knowledgeErr.message);
+    implCheckResult = await runImplementationCheck(siteId, siteData, item, implCheckBefore);
+    // implementationCheck.afterSnapshot と diffResult を書き込み
+    await item.ref.update({
+      'implementationCheck.afterSnapshot': implCheckResult.afterSnapshot,
+      'implementationCheck.diffResult': implCheckResult.diffResult,
+    });
+  } catch (implErr) {
+    console.warn(`[measureEffects] Implementation check failed for ${item.id} (non-fatal):`, implErr.message);
+    // 失敗時も diffResult を null で記録
+    try {
+      await item.ref.update({
+        'implementationCheck.diffResult': {
+          implementationVerified: null,
+          changedFields: [],
+          textSimilarity: null,
+          verificationError: implErr.message,
+          checkedAt: FieldValue.serverTimestamp(),
+        },
+      });
+    } catch (_) {}
+  }
+
+  const implementationVerified = implCheckResult?.diffResult?.implementationVerified ?? null;
+
+  // ナレッジ蓄積（匿名化）— implementationVerified === true のときのみ
+  if (implementationVerified === true) {
+    try {
+      await saveImprovementKnowledge(db, siteId, siteData, item, category, changes, overallScore, aiEvaluation);
+    } catch (knowledgeErr) {
+      console.warn(`[measureEffects] Knowledge save failed for ${item.id} (non-fatal):`, knowledgeErr.message);
+    }
+  } else {
+    console.log(`[measureEffects] Knowledge save skipped for ${item.id}: implementationVerified=${implementationVerified}`);
   }
 
   return {
     completed: true,
     overallScore,
     achievementLevel: aiEvaluation?.achievementLevel || null,
+    implementationVerified,
+  };
+}
+
+/**
+ * After スナップショットを取得して Before と diff する
+ * @returns {Promise<{ afterSnapshot: object, diffResult: object }>}
+ */
+async function runImplementationCheck(siteId, siteData, item, beforeSnapshot) {
+  const db = getFirestore();
+
+  // Before が存在しない場合は検証不能（verified=null）
+  if (!beforeSnapshot || !beforeSnapshot.capturedAt) {
+    return {
+      afterSnapshot: null,
+      diffResult: {
+        implementationVerified: null,
+        changedFields: [],
+        textSimilarity: null,
+        verificationError: 'Before snapshot not captured (fast-path skipped or status never went in_progress)',
+        checkedAt: FieldValue.serverTimestamp(),
+      },
+    };
+  }
+
+  // targetUrl: Before で使ったものを優先、なければ改善の targetPageUrl、それもなければトップ
+  let targetUrl = beforeSnapshot.targetUrl
+    || (item.targetPageUrl || '').split(',')[0].trim();
+  if (!targetUrl || targetUrl === '/' || !/^https?:\/\//i.test(targetUrl)) {
+    targetUrl = (siteData.siteUrl || '').trim().replace(/\/+$/, '');
+  }
+  if (!targetUrl) {
+    return {
+      afterSnapshot: null,
+      diffResult: {
+        implementationVerified: null,
+        changedFields: [],
+        textSimilarity: null,
+        verificationError: 'targetUrl が解決できません',
+        checkedAt: FieldValue.serverTimestamp(),
+      },
+    };
+  }
+
+  // DOM + スクショを並列取得
+  const [scrapeResult, screenshotResult] = await Promise.allSettled([
+    scrapeUrlStandalone(targetUrl),
+    captureAndStoreBeforeScreenshot({ siteId, targetPageUrl: targetUrl }),
+  ]);
+
+  const scrapeValue = scrapeResult.status === 'fulfilled' ? scrapeResult.value : null;
+  const screenshotValue = screenshotResult.status === 'fulfilled' ? screenshotResult.value : null;
+
+  // afterSnapshot を Before と同形式で構築
+  const afterSnapshot = {
+    capturedAt: FieldValue.serverTimestamp(),
+    targetUrl,
+    screenshotUrl: screenshotValue?.success ? screenshotValue.screenshotUrl : null,
+    ...(scrapeValue?.success
+      ? {
+          metaTitle: scrapeValue.metaTitle || '',
+          metaDescription: scrapeValue.metaDescription || '',
+          headingStructure: scrapeValue.headingStructure || { h1: 0, h2: 0, h3: 0, h4: 0 },
+          textLength: Number(scrapeValue.textLength || 0),
+          mainText: (scrapeValue.mainText || '').slice(0, 2000),
+          ctaButtons: Array.isArray(scrapeValue.ctaButtons)
+            ? scrapeValue.ctaButtons.slice(0, 20).map(c => ({
+                text: (c?.text || '').slice(0, 200),
+                href: (c?.href || '').slice(0, 500),
+              }))
+            : [],
+          forms: Array.isArray(scrapeValue.forms)
+            ? scrapeValue.forms.slice(0, 10).map(f => ({
+                purpose: f?.purpose || '',
+                fields: Array.isArray(f?.fields) ? f.fields.slice(0, 30) : [],
+                submitText: f?.submitText || '',
+              }))
+            : [],
+          imagesWithAlt: Number(scrapeValue.imagesWithAlt || 0),
+          imagesWithoutAlt: Number(scrapeValue.imagesWithoutAlt || 0),
+          internalLinks: Number(scrapeValue.internalLinks || 0),
+          externalLinks: Number(scrapeValue.externalLinks || 0),
+          error: null,
+        }
+      : {
+          error: scrapeValue?.error || 'scrape failed',
+        }),
+  };
+
+  // Diff 実行
+  const diff = diffSnapshots(beforeSnapshot, afterSnapshot);
+
+  return {
+    afterSnapshot,
+    diffResult: {
+      ...diff,
+      checkedAt: FieldValue.serverTimestamp(),
+    },
   };
 }
 

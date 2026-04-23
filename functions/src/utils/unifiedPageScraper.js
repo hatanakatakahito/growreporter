@@ -673,6 +673,43 @@ async function scrapeSinglePage(page, pageUrl, options = {}) {
   }
 }
 
+// ========== 単一URL: ブラウザライフサイクル込みのスタンドアロンラッパ ==========
+
+/**
+ * 単一 URL をスクレイピングする。ブラウザ起動～クローズまで内部で完結。
+ * 実装検証（`captureBeforeImplementationSnapshot` / measureImprovementEffects の After）で使用。
+ *
+ * @param {string} pageUrl
+ * @param {object} [options]
+ * @param {string} [options.waitUntil='domcontentloaded']
+ * @returns {Promise<object>} scrapeSinglePage の戻り値と同形
+ */
+export async function scrapeUrlStandalone(pageUrl, options = {}) {
+  const { waitUntil = 'domcontentloaded' } = options;
+  let browser = null;
+  try {
+    browser = await launchBrowser();
+    const page = await browser.newPage();
+    await applyBrowserDisguise(page);
+    await page.setViewport(SCREENSHOT_VIEWPORT);
+    await setupRequestInterception(page, 'content');
+    const result = await scrapeSinglePage(page, pageUrl, { waitUntil });
+    return result;
+  } catch (err) {
+    logger.warn(`[scrapeUrlStandalone] エラー: ${pageUrl} - ${err.message}`);
+    return {
+      success: false,
+      url: pageUrl,
+      error: err.message,
+      scrapedAt: new Date().toISOString(),
+    };
+  } finally {
+    if (browser) {
+      try { await browser.close(); } catch (_) {}
+    }
+  }
+}
+
 // ========== メイン: 全ページを並列スクレイピング ==========
 
 /**

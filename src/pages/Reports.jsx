@@ -7,7 +7,7 @@ import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import {
   Clock, Sparkles, Lightbulb, ArrowUpRight, ArrowDownRight, Filter,
-  ChevronDown, ChevronUp, Loader2,
+  ChevronDown, ChevronUp, Loader2, CheckCircle2, AlertTriangle, HelpCircle,
 } from 'lucide-react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
@@ -19,6 +19,7 @@ import {
 } from './ReportsMockup/useReportsData';
 import { FilterBar, PendingDetail, ActionButtons, ChangeIndicator } from './ReportsMockup/ReportsA';
 import EvaluationDialog from '../components/Reports/EvaluationDialog';
+import ImplementationDiffModal from '../components/Reports/ImplementationDiffModal';
 import { usePlan } from '../hooks/usePlan';
 import UpgradeModal from '../components/common/UpgradeModal';
 import { useNavigate } from 'react-router-dom';
@@ -35,6 +36,7 @@ export default function Reports() {
     statusFilter, setStatusFilter, deleteMutation, refresh,
   } = useReportsData();
   const [evalItem, setEvalItem] = useState(null);
+  const [diffItem, setDiffItem] = useState(null);
   const [expandedIds, setExpandedIds] = useState(new Set());
   const toggle = (id) => setExpandedIds(prev => {
     const next = new Set(prev);
@@ -110,7 +112,8 @@ export default function Reports() {
                 {filteredItems.map(item => (
                   <FullCard key={item.id} item={item} siteId={selectedSiteId} onRefresh={refresh}
                     expanded={expandedIds.has(item.id)} onToggle={() => toggle(item.id)}
-                    onEvaluate={() => setEvalItem(item)} onDelete={() => handleDelete(item.id, item.title)} />
+                    onEvaluate={() => setEvalItem(item)} onDelete={() => handleDelete(item.id, item.title)}
+                    onOpenDiff={() => setDiffItem(item)} />
                 ))}
                 {filteredItems.length === 0 && (
                   <div className="rounded-xl border border-stroke bg-white p-8 text-center dark:border-dark-3 dark:bg-dark-2">
@@ -123,16 +126,22 @@ export default function Reports() {
         </div>
       </main>
       <EvaluationDialog isOpen={!!evalItem} onClose={() => setEvalItem(null)} item={evalItem} siteId={selectedSiteId} />
+      <ImplementationDiffModal isOpen={!!diffItem} onClose={() => setDiffItem(null)} item={diffItem} />
     </div>
   );
 }
 
-function FullCard({ item, siteId, onRefresh, onEvaluate, onDelete, expanded, onToggle }) {
+function FullCard({ item, siteId, onRefresh, onEvaluate, onDelete, onOpenDiff, expanded, onToggle }) {
   const em = item.effectMeasurement;
   const { isRetrying, isScheduling, handleRetry, handleSchedule } = useItemActions(siteId, onRefresh);
   const hasMetrics = em?.status === 'completed' && em?.before && em?.after && em?.changes && em?.overallScore != null;
   const isPending = em?.status === 'pending' || em?.status === 'measuring';
   const metrics = hasMetrics ? getPrimaryMetrics(item.category) : [];
+
+  // 実装検証バッジ（verified=true/false/null を判定）
+  const implCheck = item.implementationCheck;
+  const verified = implCheck?.diffResult?.implementationVerified;
+  const hasImplCheck = implCheck?.diffResult !== undefined;
 
   return (
     <div className="rounded-xl border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2 overflow-hidden">
@@ -149,10 +158,33 @@ function FullCard({ item, siteId, onRefresh, onEvaluate, onDelete, expanded, onT
               {categoryLabels[item.category] || 'その他'}
             </span>
           </div>
-          <div className="text-sm text-body-color">
-            {formatDate(item.completedAt)}完了
-            {em?.aiEvaluation?.achievementLevel && ` | 達成度: ${achievementLabels[em.aiEvaluation.achievementLevel]}`}
-            {isPending && ' | 計測待ち'}
+          <div className="flex flex-wrap items-center gap-2 text-sm text-body-color">
+            <span>{formatDate(item.completedAt)}完了</span>
+            {em?.aiEvaluation?.achievementLevel && <span>| 達成度: {achievementLabels[em.aiEvaluation.achievementLevel]}</span>}
+            {isPending && <span>| 計測待ち</span>}
+            {hasImplCheck && (
+              <button
+                onClick={(e) => { e.stopPropagation(); onOpenDiff?.(); }}
+                className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs transition hover:opacity-80"
+                title="実装検証の詳細を表示"
+              >
+                {verified === true && (
+                  <span className="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-green-700 dark:bg-green-900/30 dark:text-green-300">
+                    <CheckCircle2 className="h-3 w-3" />検証済
+                  </span>
+                )}
+                {verified === false && (
+                  <span className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300">
+                    <AlertTriangle className="h-3 w-3" />変化未検出
+                  </span>
+                )}
+                {verified === null && (
+                  <span className="inline-flex items-center gap-1 rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
+                    <HelpCircle className="h-3 w-3" />検証不能
+                  </span>
+                )}
+              </button>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
