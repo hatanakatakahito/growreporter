@@ -121,7 +121,9 @@ async function callGemini(promptText, modelOverride) {
         contents: [{ role: 'user', parts: [{ text: promptText }] }],
         generationConfig: {
           temperature: 0.2, // 推定は保守的に
-          maxOutputTokens: 512,
+          // maxOutputTokens を 2048 に拡張(Pro は thinking mode で内部推論に
+          // トークンを消費するため、旧 512 では出力本文が枯渇するケースがあった)
+          maxOutputTokens: 2048,
           responseMimeType: 'application/json',
         },
       }),
@@ -134,7 +136,22 @@ async function callGemini(promptText, modelOverride) {
   }
 
   const data = await response.json();
-  return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+  // レスポンス本文が空 or 異常に短い場合、原因調査用に finishReason / safetyRatings を出力
+  if (!text || text.length < 50) {
+    const candidate = data.candidates?.[0];
+    logger.warn('[callGemini] 応答が空または異常に短い', {
+      model: geminiModel,
+      textLen: text.length,
+      finishReason: candidate?.finishReason,
+      safetyRatings: candidate?.safetyRatings,
+      usageMetadata: data.usageMetadata,
+      promptFeedback: data.promptFeedback,
+    });
+  }
+
+  return text;
 }
 
 /**
