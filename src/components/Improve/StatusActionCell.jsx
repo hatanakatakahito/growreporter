@@ -1,11 +1,11 @@
-import { ArrowRight, Check, CheckCircle2, Loader2 } from 'lucide-react';
+import { Check, CheckCircle2, Loader2 } from 'lucide-react';
 
 /**
  * 改善タスクのステータスに応じてアクションボタンを出し分けるセル。
  *
  * - draft        → primary の「着手する」ボタン（クリックで in_progress へ）
- * - in_progress  → green の「完了にする」ボタン + サブの「← 起案に戻す」
- * - completed (計測中) → 「効果計測中」表示 + 「← 対応中に戻す」
+ * - in_progress  → green の「完了にする」ボタン + サブの「起案に戻す」
+ * - completed (計測中) → 「効果計測中」表示 + 「対応中に戻す」
  * - completed (計測完了) → 「計測完了 · スコア 〇〇」表示
  * - archived → 表示なし（呼び出し側で別扱い）
  *
@@ -32,9 +32,8 @@ export default function StatusActionCell({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'in_progress'); }}
-          className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary hover:bg-opacity-90 px-3 py-2 text-sm font-semibold text-white shadow-sm transition"
+          className="w-full inline-flex items-center justify-center rounded-lg bg-primary hover:bg-opacity-90 px-3 py-2 text-sm font-semibold text-white shadow-sm transition"
         >
-          <ArrowRight className="h-4 w-4" />
           着手する
         </button>
         {!compact && (
@@ -62,7 +61,7 @@ export default function StatusActionCell({
           onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'draft'); }}
           className="mt-1.5 w-full text-[11px] text-body-color hover:text-dark dark:hover:text-white transition"
         >
-          ← 起案に戻す
+          起案に戻す
         </button>
       </div>
     );
@@ -100,7 +99,7 @@ export default function StatusActionCell({
             onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'in_progress'); }}
             className="mt-1.5 w-full text-[11px] text-body-color hover:text-dark dark:hover:text-white transition"
           >
-            ← 対応中に戻す
+            対応中に戻す
           </button>
         </div>
       );
@@ -120,7 +119,7 @@ export default function StatusActionCell({
           onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'in_progress'); }}
           className="mt-1.5 w-full text-[11px] text-body-color hover:text-dark dark:hover:text-white transition"
         >
-          ← 対応中に戻す
+          対応中に戻す
         </button>
       </div>
     );
