@@ -10,7 +10,7 @@ import DotWaveSpinner from '../components/common/DotWaveSpinner';
 import { setPageTitle } from '../utils/pageTitle';
 import { db, functions } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
-import { collection, query, where, limit, getDocs, updateDoc, doc, deleteDoc, addDoc, serverTimestamp, getDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs, updateDoc, doc, deleteDoc, addDoc, serverTimestamp, getDoc, onSnapshot, deleteField } from 'firebase/firestore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import ImprovementDialog from '../components/Improve/ImprovementDialog';
 import EvaluationModal from '../components/Improve/EvaluationModal';
@@ -20,6 +20,7 @@ import AIGenerationModal from '../components/Improve/AIGenerationModal';
 import ImprovementFocusModal from '../components/Improve/ImprovementFocusModal';
 import ConsultationFormModal from '../components/Improve/ConsultationFormModal';
 import ImplementationCheckGuideDialog from '../components/Improve/ImplementationCheckGuideDialog';
+import StatusActionCell from '../components/Improve/StatusActionCell';
 import UpgradeModal from '../components/common/UpgradeModal';
 import BusinessPlanLockOverlay from '../components/common/BusinessPlanLockOverlay';
 import { usePlan } from '../hooks/usePlan';
@@ -182,6 +183,27 @@ export default function Improve() {
         return next;
       });
     }
+  };
+
+  // モックアップ再生成ハンドラ（既存 mockup フィールドを全消去 → 再実行）
+  const handleRegenerateMockup = async (item) => {
+    if (mockupGeneratingIds.has(item.id)) return;
+    try {
+      await updateDoc(doc(db, 'sites', selectedSiteId, 'improvements', item.id), {
+        mockupHtml: deleteField(),
+        mockupCss: deleteField(),
+        mockupStorageUrl: deleteField(),
+        mockupStoragePath: deleteField(),
+        mockupSourceSnapshotPath: deleteField(),
+        mockupPatchChanges: deleteField(),
+        mockupPatchSummary: deleteField(),
+        mockupMode: deleteField(),
+        mockupGeneratedAt: deleteField(),
+      });
+    } catch (e) {
+      console.warn('[handleRegenerateMockup] フィールドクリア失敗:', e?.message);
+    }
+    handleGenerateMockup(item);
   };
 
   // ページタイトルを設定
@@ -1059,7 +1081,6 @@ export default function Improve() {
                         >
                           <option value="draft">{statusLabels.draft}</option>
                           <option value="in_progress">{statusLabels.in_progress}</option>
-                          <option value="completed">{statusLabels.completed}</option>
                         </select>
                         <Button
                           color="blue"
@@ -1258,21 +1279,12 @@ export default function Improve() {
                                 <div className="text-sm font-semibold text-green-600 dark:text-green-400">{formatEstimatedPriceLabel(item.estimatedLaborHours)} <span className="text-sm font-normal text-body-color">（税別）</span></div>
                                 <div className="text-sm text-body-color mt-0.5">{formatEstimatedDeliveryLabel(item.estimatedLaborHours)}</div>
                               </td>
-                              <td className="py-7 px-4 align-middle" onClick={(e) => e.stopPropagation()}>
-                                <div className="relative inline-block">
-                                  <select
-                                    value={item.status || 'draft'}
-                                    onChange={(e) => handleStatusChange(item, e.target.value)}
-                                    className="appearance-none [background-image:none] rounded-lg border border-stroke dark:border-dark-3 bg-white dark:bg-dark-2 pl-3 pr-8 py-1.5 text-sm text-dark dark:text-white focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
-                                  >
-                                    <option value="draft">{statusLabels.draft}</option>
-                                    <option value="in_progress">{statusLabels.in_progress}</option>
-                                    <option value="completed">{statusLabels.completed}</option>
-                                  </select>
-                                  <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
-                                    <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M5 7.5L10 12.5L15 7.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                                  </span>
-                                </div>
+                              <td className="py-7 px-4 align-middle w-[200px]" onClick={(e) => e.stopPropagation()}>
+                                <StatusActionCell
+                                  item={item}
+                                  onStatusChange={handleStatusChange}
+                                  isViewer={isViewer}
+                                />
                               </td>
                             </tr>
                           );
@@ -1456,25 +1468,18 @@ export default function Improve() {
                         起案に復元
                       </button>
                     ) : (
-                    <div className="relative inline-block">
-                      <select
-                        value={item.status || 'draft'}
-                        onChange={(e) => {
-                          const newStatus = e.target.value;
+                    <div className="min-w-[160px]">
+                      <StatusActionCell
+                        item={item}
+                        onStatusChange={(item, newStatus) => {
                           handleStatusChange(item, newStatus);
                           if (newStatus !== 'completed') {
                             setDrawerItem({ ...item, status: newStatus });
                           }
                         }}
-                        className="appearance-none [background-image:none] text-sm border border-gray-200 dark:border-dark-3 rounded-lg pl-3 pr-8 py-1.5 cursor-pointer bg-white dark:bg-dark-2 text-dark dark:text-white"
-                      >
-                        <option value="draft">{statusLabels.draft}</option>
-                        <option value="in_progress">{statusLabels.in_progress}</option>
-                        <option value="completed">{statusLabels.completed}</option>
-                      </select>
-                      <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2">
-                        <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><path d="M5 7.5L10 12.5L15 7.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </span>
+                        compact
+                        isViewer={isViewer}
+                      />
                     </div>
                     )}
                     {!isViewer && (
@@ -1585,6 +1590,15 @@ export default function Improve() {
                         <div className="flex items-center gap-2">
                           <h3 className="text-sm font-bold text-gray-800 dark:text-white">改善モックアップ</h3>
                           <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-[9px] font-bold text-green-700 dark:text-green-400">AI生成</span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleRegenerateMockup(item); }}
+                            disabled={mockupGeneratingIds.has(item.id)}
+                            className="inline-flex items-center gap-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-dark-3 dark:hover:bg-dark-4 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="モックアップを再生成"
+                          >
+                            <RefreshCw className={`h-3 w-3 ${mockupGeneratingIds.has(item.id) ? 'animate-spin' : ''}`} />
+                            {mockupGeneratingIds.has(item.id) ? '生成中…' : '再生成'}
+                          </button>
                         </div>
                         <div className="flex gap-0.5 bg-gray-200/70 dark:bg-dark-3 rounded-lg p-0.5">
                           {[
@@ -1661,7 +1675,7 @@ export default function Improve() {
                                   ) : (
                                     <iframe
                                       title="改善モックアップ"
-                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:2px;border-radius:4px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;top:-10px;right:-4px;background:#3758F9;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;line-height:1.4;z-index:9999;pointer-events:none;white-space:nowrap;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:4px solid #3758F9;outline-offset:4px;border-radius:6px;position:relative;z-index:1;background-color:rgba(55,88,249,0.06);}[data-changed]::after{content:attr(data-changed);position:absolute;top:-26px;left:0;background:#3758F9;color:#fff;font-size:18px;font-weight:700;padding:3px 10px;border-radius:10px 10px 10px 0;line-height:1.3;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 2px 6px rgba(55,88,249,0.4);max-width:100%;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
                                       className="absolute top-3 left-0 border-0 pointer-events-none"
                                       sandbox="allow-same-origin"
                                       onLoad={(e) => {
@@ -1740,7 +1754,7 @@ export default function Improve() {
                               ) : (
                                 <iframe
                                   title="改善モックアップ"
-                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:2px;border-radius:4px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;top:-10px;right:-4px;background:#3758F9;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;line-height:1.4;z-index:9999;pointer-events:none;white-space:nowrap;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:4px solid #3758F9;outline-offset:4px;border-radius:6px;position:relative;z-index:1;background-color:rgba(55,88,249,0.06);}[data-changed]::after{content:attr(data-changed);position:absolute;top:-26px;left:0;background:#3758F9;color:#fff;font-size:18px;font-weight:700;padding:3px 10px;border-radius:10px 10px 10px 0;line-height:1.3;z-index:9999;pointer-events:none;white-space:nowrap;box-shadow:0 2px 6px rgba(55,88,249,0.4);max-width:100%;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
                                   className="w-full border-0 pointer-events-none"
                                   sandbox="allow-same-origin"
                                   onLoad={(e) => {
