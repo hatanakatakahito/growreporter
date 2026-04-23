@@ -36,11 +36,6 @@ export default function StatusActionCell({
         >
           着手する
         </button>
-        {!compact && (
-          <div className="mt-1.5 text-[11px] text-body-color leading-tight text-center">
-            着手と同時にページ状態を自動記録
-          </div>
-        )}
       </div>
     );
   }
