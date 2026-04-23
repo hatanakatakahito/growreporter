@@ -448,9 +448,9 @@ export default function AdminSiteDetail() {
             サイトスクリーンショット
           </h3>
 
-          <div className="grid grid-cols-[1fr_auto] gap-3">
+          <div className="flex flex-wrap gap-3">
             {/* PC */}
-            <div>
+            <div className="w-[240px]">
               <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-body-color dark:text-dark-6">
                 <Monitor className="h-4 w-4" />
                 PC
@@ -464,14 +464,14 @@ export default function AdminSiteDetail() {
                   />
                 </div>
               ) : (
-                <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
+                <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
                   <span className="text-sm text-body-color">未取得</span>
                 </div>
               )}
             </div>
 
             {/* モバイル */}
-            <div className="w-[120px]">
+            <div className="w-[90px]">
               <div className="mb-2 flex items-center gap-1.5 text-sm font-medium text-body-color dark:text-dark-6">
                 <Smartphone className="h-4 w-4" />
                 モバイル
@@ -485,7 +485,7 @@ export default function AdminSiteDetail() {
                   />
                 </div>
               ) : (
-                <div className="flex h-40 items-center justify-center rounded-lg border border-dashed border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
+                <div className="flex h-32 items-center justify-center rounded-lg border border-dashed border-stroke bg-gray-50 dark:border-dark-3 dark:bg-dark-3">
                   <span className="text-sm text-body-color">未取得</span>
                 </div>
               )}
