@@ -388,6 +388,9 @@ export default function Improve() {
     return null;
   };
 
+  // ステータス絞り込み（アーカイブ表示トグルは useQuery が依存するため最上位で宣言）
+  const [showArchived, setShowArchived] = useState(false);
+
   // 改善課題データの取得
   const { data: improvements = [], isLoading: improvementsLoading } = useQuery({
     queryKey: ['improvements', selectedSiteId, showArchived],
@@ -737,7 +740,6 @@ export default function Improve() {
 
   // ステータス絞り込み
   const [statusFilter, setStatusFilter] = useState('all');
-  const [showArchived, setShowArchived] = useState(false);
   const filteredImprovements = useMemo(() => {
     if (statusFilter === 'all') return improvements;
     return improvements.filter(item => (item.status || 'draft') === statusFilter);
@@ -1743,7 +1745,7 @@ export default function Improve() {
                                   ) : (
                                     <iframe
                                       title="改善モックアップ"
-                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:2px;border-radius:6px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;bottom:100%;left:0;margin-bottom:4px;background:#3758F9;color:#fff;font-size:18px;font-weight:700;padding:3px 10px;border-radius:10px 10px 10px 0;line-height:1.3;z-index:9999;pointer-events:none;white-space:normal;word-break:break-word;box-shadow:0 2px 6px rgba(55,88,249,0.4);max-width:100%;box-sizing:border-box;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;bottom:100%;left:0;margin-bottom:6px;background:#3758F9;color:#fff;font-size:13px;font-weight:700;padding:5px 12px 5px 30px;border-radius:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;box-shadow:0 2px 6px rgba(55,88,249,0.4);z-index:9999;pointer-events:none;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:6px;margin-bottom:9px;width:20px;height:20px;background:rgba(255,255,255,0.32);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;z-index:10000;pointer-events:none;}[data-changed]:not([data-num])::after{padding-left:12px;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
                                       className="absolute top-3 left-0 border-0 pointer-events-none"
                                       sandbox="allow-same-origin allow-scripts"
                                       onLoad={(e) => {
@@ -1822,7 +1824,7 @@ export default function Improve() {
                               ) : (
                                 <iframe
                                   title="改善モックアップ"
-                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:2px;border-radius:6px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;bottom:100%;left:0;margin-bottom:4px;background:#3758F9;color:#fff;font-size:18px;font-weight:700;padding:3px 10px;border-radius:10px 10px 10px 0;line-height:1.3;z-index:9999;pointer-events:none;white-space:normal;word-break:break-word;box-shadow:0 2px 6px rgba(55,88,249,0.4);max-width:100%;box-sizing:border-box;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;bottom:100%;left:0;margin-bottom:6px;background:#3758F9;color:#fff;font-size:13px;font-weight:700;padding:5px 12px 5px 30px;border-radius:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;box-shadow:0 2px 6px rgba(55,88,249,0.4);z-index:9999;pointer-events:none;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:6px;margin-bottom:9px;width:20px;height:20px;background:rgba(255,255,255,0.32);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;z-index:10000;pointer-events:none;}[data-changed]:not([data-num])::after{padding-left:12px;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
                                   className="w-full border-0 pointer-events-none"
                                   sandbox="allow-same-origin allow-scripts"
                                   onLoad={(e) => {

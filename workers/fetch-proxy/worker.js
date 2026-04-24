@@ -73,20 +73,24 @@ async function buildSnapshot(pageUrl) {
   const rawHtml = await htmlRes.text();
   const finalUrl = htmlRes.url || pageUrl; // リダイレクト後URL
 
-  // 1) <script> / <noscript> を除去
-  let html = stripScripts(rawHtml);
+  // 1) lazy-load 属性を src/srcset に解決（script 除去前に実施）
+  //    data-src, data-srcset, data-original, data-lazy-src 等を本物の URL に巻き戻す
+  let html = resolveLazyLoadAttributes(rawHtml);
 
-  // 2) CSS リンクを収集＋フェッチ＋インライン化
+  // 2) <script> / <noscript> を除去
+  html = stripScripts(html);
+
+  // 3) CSS リンクを収集＋フェッチ＋インライン化
   const { html: htmlAfterCss, stats: cssStats } = await inlineStylesheets(html, finalUrl);
   html = htmlAfterCss;
 
-  // 3) 属性URL（img/src, srcset, source, video, iframe, link, a など）を絶対化
+  // 4) 属性URL（img/src, srcset, source, video, iframe, link, a など）を絶対化
   html = absolutizeAttributeUrls(html, finalUrl);
 
-  // 4) インライン style="..." の url(...) を絶対化
+  // 5) インライン style="..." の url(...) を絶対化
   html = absolutizeInlineStyleUrls(html, finalUrl);
 
-  // 5) <base href> を最終URLで固定（念のため）
+  // 6) <base href> を最終URLで固定（念のため）
   html = ensureBaseTag(html, finalUrl);
 
   return {
@@ -99,6 +103,84 @@ async function buildSnapshot(pageUrl) {
       byteLen: html.length,
     },
   };
+}
+
+// ========== lazy-load 解決 ==========
+
+/**
+ * lazy-load 属性を src/srcset に巻き戻す
+ * - data-src / data-original / data-lazy-src / data-actual-src → src
+ * - data-srcset / data-lazy-srcset → srcset
+ * - data-bg / data-background-image → style="background-image:url(...)"
+ * - loading="lazy" → loading="eager"
+ *
+ * 主要 lazy-load ライブラリ (lazysizes, WP Rocket, A3 Lazy Load, Smush, JTB自社実装等) を網羅
+ */
+function resolveLazyLoadAttributes(html) {
+  let result = html;
+
+  // data-{src系} → src への置換（既に src があっても上書き、placeholder は捨てる）
+  // 順序: より一般的な data-src を最後に置いてフォールバック扱いにする
+  const srcAttrs = ['data-original', 'data-lazy-src', 'data-actual-src', 'data-img', 'data-src'];
+  for (const attr of srcAttrs) {
+    // <img|source|video|audio|iframe ... data-xxx="VALUE" ... > を捕捉して
+    // 同タグ内の src="..." を VALUE に書き換え or 追加
+    const re = new RegExp(
+      `(<(?:img|source|video|audio|iframe|picture)\\b[^>]*?)\\s${attr}\\s*=\\s*["']([^"']+)["']([^>]*>)`,
+      'gi'
+    );
+    result = result.replace(re, (_, pre, value, post) => {
+      // 既存 src="..." を上書き
+      const combined = pre + post;
+      if (/\ssrc\s*=\s*["'][^"']*["']/i.test(combined)) {
+        return (pre + post).replace(/(\ssrc\s*=\s*["'])[^"']*(["'])/i, `$1${value}$2`);
+      }
+      // src 属性が無ければ追加
+      return `${pre} src="${value}"${post}`;
+    });
+  }
+
+  // data-{srcset系} → srcset への置換
+  const srcsetAttrs = ['data-lazy-srcset', 'data-srcset'];
+  for (const attr of srcsetAttrs) {
+    const re = new RegExp(
+      `(<(?:img|source|picture)\\b[^>]*?)\\s${attr}\\s*=\\s*["']([^"']+)["']([^>]*>)`,
+      'gi'
+    );
+    result = result.replace(re, (_, pre, value, post) => {
+      const combined = pre + post;
+      if (/\ssrcset\s*=\s*["'][^"']*["']/i.test(combined)) {
+        return (pre + post).replace(/(\ssrcset\s*=\s*["'])[^"']*(["'])/i, `$1${value}$2`);
+      }
+      return `${pre} srcset="${value}"${post}`;
+    });
+  }
+
+  // data-bg / data-background-image / data-background → 背景画像 style に展開
+  const bgAttrs = ['data-bg', 'data-background-image', 'data-background', 'data-bg-image'];
+  for (const attr of bgAttrs) {
+    const re = new RegExp(`(<[a-z][a-z0-9]*\\b[^>]*?)\\s${attr}\\s*=\\s*["']([^"']+)["']([^>]*>)`, 'gi');
+    result = result.replace(re, (_, pre, value, post) => {
+      const bgUrl = /^url\(/i.test(value) ? value : `url('${value}')`;
+      const combined = pre + post;
+      // 既存 style 属性があれば追加、なければ新規
+      if (/\sstyle\s*=\s*["'][^"']*["']/i.test(combined)) {
+        return (pre + post).replace(
+          /(\sstyle\s*=\s*["'])([^"']*)(["'])/i,
+          (_full, sPre, sVal, sSuf) => {
+            const sep = sVal && !sVal.trim().endsWith(';') ? ';' : '';
+            return `${sPre}${sVal}${sep}background-image:${bgUrl};${sSuf}`;
+          }
+        );
+      }
+      return `${pre} style="background-image:${bgUrl};"${post}`;
+    });
+  }
+
+  // loading="lazy" → "eager" （iframe 内では viewport 判定が効かないため）
+  result = result.replace(/(\sloading\s*=\s*["'])lazy(["'])/gi, '$1eager$2');
+
+  return result;
 }
 
 // ========== スクリプト除去 ==========

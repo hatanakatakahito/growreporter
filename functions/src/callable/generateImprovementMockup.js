@@ -814,7 +814,7 @@ ${structuralHtml}
       "action": "replace | append | prepend | insert_after | insert_before | modify_attrs | remove のいずれか",
       "new_html": "新しいHTML（replace/append/prepend/insert_*時のみ）。<style>タグ含むインラインCSSも書いてよい",
       "new_attrs": { "key": "value" },
-      "change_label": "変更内容の短い日本語ラベル（例: CTA追加、見出し変更）"
+      "change_label": "変更内容の短い日本語ラベル（番号バッジに表示するため必ず16字以内、例: CTA追加、見出し変更、フォーム最適化）"
     }
   ],
   "summary": "この改善で何を変えたかの一行要約"
@@ -827,7 +827,8 @@ ${structuralHtml}
 4. 既存のCSSクラス（header, btn, cta 等）は積極的に再利用する
 5. new_html 内で style="..." や <style> タグを使って追加スタイルを付けてよい
 6. 変更箇所は AI 側で data-changed 属性を付けなくてよい（サーバ側で自動付与する）
-7. changes は 1〜5 件程度。冗長な変更は避ける`;
+7. changes は 1〜5 件程度。冗長な変更は避ける
+8. **change_label は必ず 16 字以内**（番号バッジ内に表示するため）。詳細は description で説明し、ラベルは「CTA追加」「サマリー追加」のように短くする`;
 }
 
 function parsePatchJson(rawText) {
@@ -864,10 +865,22 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
     return null;
   }
 
+  // 番号割当: 同じ change_label には同じ番号を割り当てる（出現順）
+  // 例: 3 つのカードに同じ「サマリー追加」が当たる場合は全て [1] になる
+  const labelToNum = new Map();
+  for (const change of changes) {
+    const label = (change?.change_label || '変更').trim();
+    if (!labelToNum.has(label)) {
+      labelToNum.set(label, labelToNum.size + 1);
+    }
+  }
+
   let appliedCount = 0;
   for (const change of changes) {
     const { target_selector, action, new_html, new_attrs, change_label } = change || {};
     if (!target_selector || !action) continue;
+    const label = (change_label || '変更').trim();
+    const num = labelToNum.get(label);
 
     let $target;
     try {
@@ -881,7 +894,7 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
       continue;
     }
 
-    const marked = new_html ? markChangedHtml(new_html, change_label) : '';
+    const marked = new_html ? markChangedHtml(new_html, label, num) : '';
 
     try {
       switch (action) {
@@ -910,7 +923,8 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
           for (const [k, v] of Object.entries(new_attrs)) {
             $target.attr(k, String(v));
           }
-          $target.attr('data-changed', change_label || '属性変更');
+          $target.attr('data-changed', label);
+          $target.attr('data-num', String(num));
           break;
         case 'remove':
           $target.remove();
@@ -925,31 +939,55 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
     }
   }
 
-  // data-changed 用の outline CSS を head に注入
-  const outlineCss = `[data-changed]{outline:2px solid #3758F9 !important;outline-offset:2px !important;border-radius:4px !important;position:relative !important;z-index:1 !important;}[data-changed]::after{content:attr(data-changed);position:absolute;top:-10px;right:-4px;background:#3758F9;color:#fff;font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;line-height:1.4;z-index:9999;pointer-events:none;white-space:nowrap;}`;
+  // data-changed 用 CSS を head に注入（B-C 案: 番号バッジ + 短いラベルピル）
+  // - 同じラベルは同じ番号 → 視覚的にグルーピング
+  // - 番号バッジ（半透明白丸）+ ラベルテキスト = 1 つの blue ピル
+  // - JS 制御の隠れ要素（accordion 回答部分など）も強制表示
+  // - 旧データ（data-num なし）への後方互換あり
+  const outlineCss = [
+    // 変更箇所のアウトライン（薄めの実線）
+    `[data-changed]{outline:2px solid #3758F9 !important;outline-offset:3px !important;border-radius:6px !important;position:relative !important;z-index:1 !important;display:revert !important;visibility:visible !important;opacity:1 !important;max-height:none !important;}`,
+    // ラベルピル本体（番号スペース確保のため左 padding 多め）
+    `[data-changed]::after{content:attr(data-changed);position:absolute;bottom:100%;left:0;margin-bottom:6px;background:#3758F9;color:#fff;font-size:13px;font-weight:700;padding:5px 12px 5px 30px;border-radius:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;box-shadow:0 2px 6px rgba(55,88,249,0.4);z-index:9999;pointer-events:none;}`,
+    // 番号バッジ（半透明白丸、ピルの左端に重ねる）
+    `[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:6px;margin-bottom:9px;width:20px;height:20px;background:rgba(255,255,255,0.32);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;z-index:10000;pointer-events:none;}`,
+    // 後方互換: data-num が無い旧データはピルの左 padding を通常に戻す
+    `[data-changed]:not([data-num])::after{padding-left:12px;}`,
+    // 変更要素の配下の隠れ要素も強制表示（accordion 回答部分など JS 開閉のもの）
+    `[data-changed] *:not(script):not(style):not(meta):not(link):not(noscript):not(template){display:revert !important;visibility:visible !important;opacity:1 !important;max-height:none !important;}`,
+  ].join('');
   if ($('head').length > 0) {
     $('head').append(`<style id="__mockup-outline">${outlineCss}</style>`);
   } else {
     $.root().prepend(`<style id="__mockup-outline">${outlineCss}</style>`);
   }
 
+  // 親フレームに iframe 高さと変更箇所位置を通知するヘルパー script を注入
+  // （iframe は cross-origin で contentDocument にアクセスできないため postMessage で連携）
+  const helperScript = `(function(){function postSize(){try{parent.postMessage({type:'__mockup_size',height:document.documentElement.scrollHeight,width:document.documentElement.scrollWidth},'*');}catch(_){}}function postChangedPositions(){var els=document.querySelectorAll('[data-changed]');if(els.length===0)return;var positions=[];for(var i=0;i<els.length;i++){var el=els[i];var rect=el.getBoundingClientRect();positions.push({top:rect.top+window.pageYOffset,left:rect.left+window.pageXOffset,height:el.offsetHeight,width:el.offsetWidth,label:el.getAttribute('data-changed')||''});}try{parent.postMessage({type:'__mockup_changed_positions',positions:positions},'*');}catch(_){}}function init(){postSize();postChangedPositions();setTimeout(function(){postSize();postChangedPositions();},300);setTimeout(function(){postSize();postChangedPositions();},1500);}if(document.readyState==='complete')init();else window.addEventListener('load',init);})();`;
+  if ($('body').length > 0) {
+    $('body').append(`<script id="__mockup-helper">${helperScript}</script>`);
+  } else {
+    $.root().append(`<script id="__mockup-helper">${helperScript}</script>`);
+  }
+
   return { html: $.html(), appliedCount };
 }
 
 /**
- * 新規追加HTML要素に data-changed 属性を付与する
+ * 新規追加HTML要素に data-changed / data-num 属性を付与する
  * - 単一ルート要素ならその要素に付与
  * - 複数要素ならそれぞれに付与
  */
-function markChangedHtml(html, label) {
+function markChangedHtml(html, label, num) {
   const safeLabel = String(label || '変更').replace(/"/g, '&quot;');
+  const safeNum = num != null ? String(num) : '';
   try {
     const $ = cheerio.load(`<root>${html}</root>`, { decodeEntities: false, xmlMode: false });
     $('root').children().each((_, el) => {
       const $el = $(el);
-      if (!$el.attr('data-changed')) {
-        $el.attr('data-changed', safeLabel);
-      }
+      if (!$el.attr('data-changed')) $el.attr('data-changed', safeLabel);
+      if (safeNum && !$el.attr('data-num')) $el.attr('data-num', safeNum);
     });
     return $('root').html() || html;
   } catch (_) {

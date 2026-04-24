@@ -18,6 +18,10 @@ const CF_PROXY_URL = 'https://growreporter-fetch-proxy.hatanaka-a1e.workers.dev'
 const CF_PROXY_SECRET = '[REDACTED-CF-PROXY-SECRET]';
 const SNAPSHOT_TIMEOUT_MS = 60_000;
 const SNAPSHOT_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+// バージョン: Worker 側のスナップショット生成ロジックを変更したらここをバンプして
+//             既存キャッシュを自動で無効化する（古い snapshot は orphan として残るが
+//             Storage の管理画面で必要に応じて手動削除可）
+const SNAPSHOT_VERSION = 'v2'; // v2: lazy-load 属性解決対応
 
 /**
  * @param {object} params
@@ -45,7 +49,7 @@ export async function captureFullSnapshot({ siteId, pageUrl, forceRefresh = fals
   }
 
   const bucket = getStorage().bucket();
-  const urlHash = crypto.createHash('sha1').update(pageUrl).digest('hex').substring(0, 16);
+  const urlHash = crypto.createHash('sha1').update(`${SNAPSHOT_VERSION}:${pageUrl}`).digest('hex').substring(0, 16);
   const storagePath = `page-snapshots/${siteId}/${urlHash}.html`;
   const file = bucket.file(storagePath);
 
