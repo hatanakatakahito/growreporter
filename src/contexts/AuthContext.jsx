@@ -299,12 +299,11 @@ export const AuthProvider = ({ children }) => {
             const updateData = {
               lastLoginAt: serverTimestamp(),
             };
-            if (currentProfile.aiSummaryUsage === undefined) {
-              updateData.aiSummaryUsage = 0;
-            }
-            if (currentProfile.aiImprovementUsage === undefined) {
-              updateData.aiImprovementUsage = 0;
-            }
+            // セキュリティ強化 (Phase 2-1):
+            //   aiSummaryUsage / aiImprovementUsage はクライアントから書込禁止。
+            //   旧コードでは「未設定なら 0 セット」していたが、サーバ側 planManager.js が
+            //   `userData.aiSummaryUsage || 0` で undefined を 0 として扱うため、
+            //   ここで初期化する必要はなくなった（不正リセット防止のため allowlist 外）。
             if (currentProfile.onboarding === undefined) {
               updateData.onboarding = getDefaultOnboarding();
             }

@@ -170,17 +170,19 @@ export default function AcceptInvitation() {
           {!currentUser && (
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                アカウントをお持ちでない場合は、まず新規登録を行ってください。
+                <strong>{invitation.email}</strong> 宛ての招待です。<br />
+                アカウントをお持ちでない場合はまず新規登録を、すでにお持ちの場合はログインしてください。
+                <span className="block mt-1 text-xs text-blue-700">※ 招待は <strong>{invitation.email}</strong> でログインしている必要があります。</span>
               </p>
               <div className="mt-3 flex gap-3">
                 <Link
-                  to={`/register?redirect=/accept-invitation?token=${token}`}
+                  to={`/register?redirect=/accept-invitation?token=${token}&email=${encodeURIComponent(invitation.email || '')}`}
                   className="flex-1 px-4 py-2 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                 >
                   新規登録
                 </Link>
                 <Link
-                  to={`/login?redirect=/accept-invitation?token=${token}`}
+                  to={`/login?redirect=/accept-invitation?token=${token}&email=${encodeURIComponent(invitation.email || '')}`}
                   className="flex-1 px-4 py-2 text-center border border-blue-600 text-blue-600 rounded-lg hover:bg-blue-50 transition-colors"
                 >
                   ログイン
@@ -188,6 +190,20 @@ export default function AcceptInvitation() {
               </div>
             </div>
           )}
+
+          {/* ログイン済みでも別アドレスの場合の警告 */}
+          {currentUser && currentUser.email &&
+            invitation.email &&
+            currentUser.email.toLowerCase() !== invitation.email.toLowerCase() && (
+              <div className="mb-6 p-4 bg-amber-50 border border-amber-300 rounded-lg">
+                <p className="text-sm text-amber-900">
+                  <strong>⚠ メールアドレスが一致しません</strong><br />
+                  この招待は <strong>{invitation.email}</strong> 宛てに送信されました。
+                  現在ログインしているアカウント (<strong>{currentUser.email}</strong>) では受領できません。
+                  一度ログアウトし、招待先のメールアドレスでログインしてから再度お試しください。
+                </p>
+              </div>
+            )}
 
           {/* 登録済みユーザーの場合 */}
           {currentUser && (
