@@ -14,6 +14,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { logger } from 'firebase-functions/v2';
 import { canEditSite } from '../utils/permissionHelper.js';
+import { getInjectionGuardPreamble, wrapAsUserData } from '../utils/promptSanitizer.js';
 
 const MAX_RETRIES = 2;
 const MAX_FILES_PER_TURN = 5;
@@ -89,6 +90,10 @@ export async function aiChatCallable(req) {
       const siteData = siteDoc.data();
 
       siteDataContext = getChatSystemPrompt(comprehensiveData, siteData);
+      // セキュリティ (Phase 3-3): プロンプトインジェクション対策の前提条件を冒頭に挿入。
+      //   サイトデータ・スクレイピング結果・ユーザーメッセージ・添付ファイル内容に
+      //   攻撃的な命令文が含まれても無視するよう AI に明示する。
+      siteDataContext = getInjectionGuardPreamble() + '\n' + siteDataContext;
     } else if (session?.systemContext) {
       siteDataContext = session.systemContext;
     }
@@ -173,7 +178,11 @@ export async function aiChatCallable(req) {
           });
         } else {
           const extractedText = await extractTextFromFile(fileBuffer, ext, name);
-          userParts.push({ text: `\n\n【添付ファイル: ${name}】\n${extractedText}` });
+          // セキュリティ (Phase 3-3): 添付ファイル本文は外部由来のテキスト。
+          //   <ATTACHED_FILE> タグでラップ + sanitize して、内部の命令文が AI を
+          //   乗っ取らないようにする。getInjectionGuardPreamble の指示と整合。
+          const wrapped = wrapAsUserData(extractedText, { label: 'ATTACHED_FILE', maxChars: 50000 });
+          userParts.push({ text: `\n\n【添付ファイル: ${name}】\n${wrapped}` });
         }
       } catch (attachErr) {
         if (attachErr instanceof HttpsError) throw attachErr;

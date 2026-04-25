@@ -5,6 +5,7 @@ import { checkCanGenerate, incrementGenerationCount } from '../utils/planManager
 import { getCachedAnalysis, saveCachedAnalysis } from '../utils/aiCacheManager.js';
 import { getPromptTemplate } from '../prompts/templates.js';
 import { buildScrapingContextText } from '../prompts/scrapingContextBuilder.js';
+import { wrapAsUserData } from '../utils/promptSanitizer.js';
 import { IMPROVEMENT_FOCUS_LABELS } from '../constants/siteOptions.js';
 import {
   BUSINESS_MODEL_LABELS,
@@ -329,7 +330,11 @@ export async function generateAISummaryCallable(request) {
         sitePurposeText: siteRoleText,
       };
       options.improvementFocus = IMPROVEMENT_FOCUS_LABELS[improvementFocusValue] || IMPROVEMENT_FOCUS_LABELS.balance;
-      options.userNote = userNote || '';
+      // セキュリティ (Phase 3-3): プロンプトインジェクション対策。
+      //   userNote はユーザー自由記述で、`<system>` 等の制御マーカーや
+      //   「以前の指示を無視せよ」型の命令文を含む可能性がある。
+      //   <USER_NOTE> ... </USER_NOTE> でラップし sanitize した上で template に渡す。
+      options.userNote = wrapAsUserData(userNote || '', { label: 'USER_NOTE', maxChars: 2000 });
       options.existingImprovements = existingImprovements || [];
       options.diagnosisData = metrics.diagnosisData || null;
       // コンバージョン設定と目標設定を追加
