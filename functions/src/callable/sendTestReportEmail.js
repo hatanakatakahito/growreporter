@@ -25,8 +25,9 @@ export async function sendTestReportEmailHandler(req) {
     throw new HttpsError('permission-denied', '管理者権限が必要です');
   }
   const adminRole = adminDoc.data().role;
-  if (!['admin', 'editor', 'viewer'].includes(adminRole)) {
-    throw new HttpsError('permission-denied', '管理者権限が必要です');
+  // セキュリティ: テストメール送信は viewer に許可しない（任意アドレスへの送信権限になるため）
+  if (!['admin', 'editor'].includes(adminRole)) {
+    throw new HttpsError('permission-denied', 'テストメール送信には admin または editor ロールが必要です');
   }
   const { recipientEmail, reportType = 'weekly', siteId } = data;
   if (!recipientEmail) {
@@ -42,10 +43,14 @@ export async function sendTestReportEmailHandler(req) {
 
     // アカウント発行メールのテスト送信
     if (reportType === 'account') {
+      // セキュリティ: testPassword は呼出側で必ず指定（fallback で固定値を埋め込まない）
+      if (!data.testPassword || typeof data.testPassword !== 'string' || data.testPassword.length < 6) {
+        throw new HttpsError('invalid-argument', 'testPassword は 6 文字以上の文字列で指定してください');
+      }
       const { subject, html, text } = generateAdminCreatedAccountEmail({
         userName: data.userName || '和波 悠生',
         email: data.testEmail || 'info@grow-reporter.com',
-        password: data.testPassword || '00001724',
+        password: data.testPassword,
       });
       await sendEmailDirect({ to: recipientEmail, subject, html, text });
       return { success: true, message: `アカウント発行テストメールを ${recipientEmail} に送信しました` };

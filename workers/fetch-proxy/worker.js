@@ -20,18 +20,69 @@ const COMMON_FETCH_HEADERS = {
 const ASSET_FETCH_TIMEOUT_MS = 10_000;
 const IMPORT_DEPTH_LIMIT = 2; // @import のネスト解決深さ上限
 
+// 許可するオリジン（CORS）。ワイルドカードは廃止し、本番フロントと grow-reporter.com、ローカル開発のみ。
+const ALLOWED_ORIGINS = new Set([
+  'https://grow-reporter.com',
+  'https://growgroupreporter.web.app',
+  'https://growgroupreporter.firebaseapp.com',
+  'http://localhost:5173',
+  'http://localhost:5000',
+  'http://127.0.0.1:5173',
+  'http://127.0.0.1:5000',
+]);
+
+// SSRF 対策: 外部 URL の検証
+function isAllowedTargetUrl(rawUrl) {
+  let parsed;
+  try {
+    parsed = new URL(rawUrl);
+  } catch {
+    return { ok: false, reason: 'invalid URL' };
+  }
+  const protocol = parsed.protocol.toLowerCase();
+  if (protocol !== 'http:' && protocol !== 'https:') {
+    return { ok: false, reason: `disallowed protocol: ${protocol}` };
+  }
+  const host = parsed.hostname.toLowerCase();
+  const privatePatterns = [
+    /^localhost$/,
+    /^127\./,
+    /^10\./,
+    /^192\.168\./,
+    /^172\.(1[6-9]|2[0-9]|3[0-1])\./,
+    /^169\.254\./,
+    /^0\./,
+    /^::1$/,
+    /^fc[0-9a-f]{2}:/,
+    /^fd[0-9a-f]{2}:/,
+    /^fe80:/,
+    /^metadata\.google\.internal$/,
+    /^169\.254\.169\.254$/,
+    /^metadata$/,
+  ];
+  for (const re of privatePatterns) {
+    if (re.test(host)) {
+      return { ok: false, reason: `private/internal host blocked: ${host}` };
+    }
+  }
+  return { ok: true };
+}
+
 export default {
   async fetch(request, env) {
+    const origin = request.headers.get('Origin') || '';
+    const corsAllowed = ALLOWED_ORIGINS.has(origin);
+
     // CORSプリフライト
     if (request.method === 'OPTIONS') {
-      return corsResponse(null, 204);
+      return corsResponse(null, 204, origin, corsAllowed);
     }
 
     if (request.method !== 'POST') {
       return new Response('Method not allowed', { status: 405 });
     }
 
-    // シークレットキー認証
+    // シークレットキー認証（実体はサーバー間呼出。Origin チェックは緩め）
     const secret = request.headers.get('X-Proxy-Secret');
     if (!secret || secret !== env.PROXY_SECRET) {
       return new Response('Unauthorized', { status: 401 });
@@ -40,20 +91,23 @@ export default {
     try {
       const body = await request.json();
       const { url, mode = 'html' } = body;
-      if (!url || !url.startsWith('http')) {
-        return corsJson({ error: 'Invalid URL' }, 400);
+
+      // SSRF 検証: プロトコル / プライベート IP / メタデータ
+      const v = isAllowedTargetUrl(url);
+      if (!v.ok) {
+        return corsJson({ error: `URL blocked: ${v.reason}` }, 400, origin, corsAllowed);
       }
 
       if (mode === 'snapshot') {
-        return corsJson(await buildSnapshot(url));
+        return corsJson(await buildSnapshot(url), 200, origin, corsAllowed);
       }
 
       // デフォルト: HTMLそのまま返却（既存動作）
       const response = await fetch(url, { headers: COMMON_FETCH_HEADERS, redirect: 'follow' });
       const html = await response.text();
-      return corsJson({ status: response.status, html });
+      return corsJson({ status: response.status, html }, 200, origin, corsAllowed);
     } catch (err) {
-      return corsJson({ error: err.message }, 500);
+      return corsJson({ error: err.message }, 500, origin, corsAllowed);
     }
   },
 };
@@ -385,26 +439,31 @@ async function fetchWithTimeout(url, init = {}) {
 
 // ========== レスポンスヘルパ ==========
 
-function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
+function corsHeaders(origin = '', allowed = false) {
+  // 許可オリジンのみ Allow-Origin を返す。それ以外はヘッダ無し（CORS preflight 失敗で拒否される）
+  const headers = {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, X-Proxy-Secret',
+    'Vary': 'Origin',
   };
+  if (allowed && origin) {
+    headers['Access-Control-Allow-Origin'] = origin;
+  }
+  return headers;
 }
 
-function corsJson(obj, status = 200) {
+function corsJson(obj, status = 200, origin = '', allowed = false) {
   return new Response(JSON.stringify(obj), {
     status,
     headers: {
       'Content-Type': 'application/json',
-      ...corsHeaders(),
+      ...corsHeaders(origin, allowed),
     },
   });
 }
 
-function corsResponse(body, status) {
-  return new Response(body, { status, headers: corsHeaders() });
+function corsResponse(body, status, origin = '', allowed = false) {
+  return new Response(body, { status, headers: corsHeaders(origin, allowed) });
 }
 
 function escapeAttr(str) {

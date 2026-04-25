@@ -132,7 +132,7 @@ export const dashboardSteps = [
       title: 'CV内訳タブ',
       description:
         'サイトに設定したコンバージョンイベント（フォーム送信・購入・電話など）の内訳と件数を確認できます。<br><br>' +
-        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">コンバージョン設定を開く</a>',
+        '<a href="/sites/list" target="_blank" rel="noopener noreferrer" style="color: #3758F9; text-decoration: underline; cursor: pointer;">コンバージョン設定を開く</a>',
     },
   },
   {
@@ -141,7 +141,7 @@ export const dashboardSteps = [
       title: '目標タブ',
       description:
         'サイト管理画面で設定した月次目標に対する実績（達成率）を確認できます。目標未達の指標がひと目で分かり、改善優先度の判断に役立ちます。<br><br>' +
-        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">目標設定を開く</a>',
+        '<a href="/sites/list" target="_blank" rel="noopener noreferrer" style="color: #3758F9; text-decoration: underline; cursor: pointer;">目標設定を開く</a>',
     },
   },
   {
@@ -399,7 +399,7 @@ export const analysisSummaryFreeSteps = [
       title: 'CV内訳タブ',
       description:
         'サイトに設定したコンバージョンイベント（フォーム送信・購入・電話など）の内訳と件数を確認できます。<br><br>' +
-        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">コンバージョン設定を開く</a>',
+        '<a href="/sites/list" target="_blank" rel="noopener noreferrer" style="color: #3758F9; text-decoration: underline; cursor: pointer;">コンバージョン設定を開く</a>',
     },
   },
   {
@@ -408,7 +408,7 @@ export const analysisSummaryFreeSteps = [
       title: '目標タブ',
       description:
         'サイト管理画面で設定した月次目標に対する実績（達成率）を確認できます。目標未達の指標がひと目で分かり、改善優先度の判断に役立ちます。<br><br>' +
-        '<a href="/sites/list" target="_blank" rel="noopener" style="color: #3758F9; text-decoration: underline; cursor: pointer;">目標設定を開く</a>',
+        '<a href="/sites/list" target="_blank" rel="noopener noreferrer" style="color: #3758F9; text-decoration: underline; cursor: pointer;">目標設定を開く</a>',
     },
   },
   {

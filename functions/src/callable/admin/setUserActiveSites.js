@@ -44,6 +44,52 @@ export const setUserActiveSitesCallable = async (request) => {
     const userData = userDoc.data();
     const oldActiveSiteIds = userData.activeSiteIds || null;
 
+    // セキュリティ: target ユーザーが所属するアカウントのサイトのみ許可
+    // ユーザー本人がオーナーのアカウント、または memberships に含まれるアカウントが対象
+    if (activeSiteIds.length > 0) {
+      const allowedOwnerIds = new Set();
+      // 自分のアカウント
+      allowedOwnerIds.add(targetUserId);
+      // 所属メンバーシップの accountOwnerId
+      const memberships = userData.memberships || {};
+      Object.keys(memberships).forEach((ownerId) => allowedOwnerIds.add(ownerId));
+      // accountOwnerId フィールド（別アカウントのオーナーになっている可能性）
+      if (userData.accountOwnerId) {
+        allowedOwnerIds.add(userData.accountOwnerId);
+      }
+
+      // 各 siteId のオーナーを取得し、許可された owner かチェック
+      const siteChecks = await Promise.all(
+        activeSiteIds.map(async (siteId) => {
+          if (typeof siteId !== 'string' || !siteId) {
+            return { siteId, ok: false, reason: 'invalid format' };
+          }
+          const siteDoc = await db.collection('sites').doc(siteId).get();
+          if (!siteDoc.exists) {
+            return { siteId, ok: false, reason: 'site not found' };
+          }
+          const ownerId = siteDoc.data()?.userId;
+          if (!ownerId || !allowedOwnerIds.has(ownerId)) {
+            return { siteId, ok: false, reason: `not a member of site owner (${ownerId})` };
+          }
+          return { siteId, ok: true };
+        })
+      );
+
+      const invalid = siteChecks.filter((c) => !c.ok);
+      if (invalid.length > 0) {
+        logger.warn('setUserActiveSites: 不正なサイトIDが含まれていたため拒否', {
+          adminId: uid,
+          targetUserId,
+          invalid,
+        });
+        throw new HttpsError(
+          'permission-denied',
+          `対象ユーザーが所属しないサイトは指定できません: ${invalid.map((i) => i.siteId).join(', ')}`
+        );
+      }
+    }
+
     // activeSiteIds を更新
     await db.collection('users').doc(targetUserId).update({
       activeSiteIds: activeSiteIds.length > 0 ? activeSiteIds : FieldValue.delete(),

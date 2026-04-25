@@ -23,8 +23,15 @@ const BROWSER_HEADERS = {
   'Upgrade-Insecure-Requests': '1',
 };
 
-const CF_PROXY_URL = 'https://growreporter-fetch-proxy.hatanaka-a1e.workers.dev';
-const CF_PROXY_SECRET = '[REDACTED-CF-PROXY-SECRET]';
+// CLI スクリプト: 環境変数から読み取る（手元実行時は `CF_PROXY_SECRET=xxxx node functions/scripts/scraping-diagnosis.js`）
+// または functions/.env を dotenv 等で読み込んだ後に実行する。
+const CF_PROXY_URL = process.env.CF_PROXY_URL || 'https://growreporter-fetch-proxy.hatanaka-a1e.workers.dev';
+const CF_PROXY_SECRET = process.env.CF_PROXY_SECRET || '';
+if (!CF_PROXY_SECRET) {
+  console.error('[scraping-diagnosis] CF_PROXY_SECRET 環境変数が未設定です。');
+  console.error('  例: CF_PROXY_SECRET=xxxx node functions/scripts/scraping-diagnosis.js');
+  process.exit(1);
+}
 
 const SITES = {
   'dormybiz': {

@@ -5,9 +5,14 @@ import { sendEmailDirect } from '../utils/emailSender.js';
 
 /**
  * オーナー権限を譲渡
- * 
+ *
+ * セキュリティ方針:
+ *  - 自アカウントのオーナー本人のみ実行可能。
+ *  - システム管理者(adminUsers admin/editor)による「他人アカウントの所有権移譲」バイパスは廃止した。
+ *    管理者支援用には別途 forceTransferOwnership 専用 Callable を将来追加する。
+ *
  * @param {Object} data - リクエストパラメータ
- * @param {string} data.newOwnerId - 新しいオーナーのUID
+ * @param {string} data.newOwnerId - 新しいオーナーのUID（同一アカウントのメンバーである必要あり）
  * @returns {Object} 譲渡結果
  */
 export const transferOwnershipCallable = async (request) => {
@@ -19,33 +24,33 @@ export const transferOwnershipCallable = async (request) => {
 
   const { newOwnerId } = request.data || {};
 
-  if (!newOwnerId) {
+  if (!newOwnerId || typeof newOwnerId !== 'string') {
     throw new HttpsError('invalid-argument', '新しいオーナーのIDが必要です');
+  }
+
+  if (newOwnerId === uid) {
+    throw new HttpsError('invalid-argument', '自分自身に譲渡することはできません');
   }
 
   try {
     const db = getFirestore();
-    
-    // 1. 現在のユーザーがオーナーまたはシステム管理者かチェック
+
+    // 1. 現在のユーザーがオーナーであることを確認（システム管理者バイパスは廃止）
     const currentUserDoc = await db.collection('users').doc(uid).get();
     if (!currentUserDoc.exists) {
       throw new HttpsError('not-found', 'ユーザーが見つかりません');
     }
-    
+
     const currentUserData = currentUserDoc.data();
     const memberRole = currentUserData.memberRole || 'owner';
-    
-    // システム管理者かチェック
-    const adminDoc = await db.collection('adminUsers').doc(uid).get();
-    const isAdmin = adminDoc.exists && ['admin', 'editor'].includes(adminDoc.data().role);
-    
-    if (memberRole !== 'owner' && !isAdmin) {
-      throw new HttpsError('permission-denied', 'オーナーまたはシステム管理者のみ譲渡できます');
+
+    if (memberRole !== 'owner') {
+      throw new HttpsError('permission-denied', 'オーナーのみ譲渡できます');
     }
-    
+
     const accountOwnerId = currentUserData.accountOwnerId || uid;
-    
-    // 2. 新しいオーナーが同一アカウントのメンバーかチェック（users のみ参照）
+
+    // 2. 新しいオーナーが同一アカウントのメンバーかチェック
     const newOwnerUserDoc = await db.collection('users').doc(newOwnerId).get();
     if (!newOwnerUserDoc.exists) {
       throw new HttpsError('not-found', '指定されたユーザーが見つかりません');
@@ -57,85 +62,117 @@ export const transferOwnershipCallable = async (request) => {
     if (newOwnerUserData.memberRole === 'owner') {
       throw new HttpsError('invalid-argument', '既にオーナーです');
     }
-    
+
     const newOwnerName = newOwnerUserData.name || (newOwnerUserData.lastName && newOwnerUserData.firstName
       ? `${newOwnerUserData.lastName} ${newOwnerUserData.firstName}`
       : '') || newOwnerUserData.displayName || newOwnerUserData.email;
-    
-    // 4. 現在のオーナーの情報
+
     const previousOwnerName = currentUserData.name || (currentUserData.lastName && currentUserData.firstName
       ? `${currentUserData.lastName} ${currentUserData.firstName}`
       : '') || currentUserData.displayName || currentUserData.email;
     const companyName = currentUserData.company || 'グローレポータ';
-    
-    // 5. トランザクションで更新
+
+    // 3. accountMembers の現旧オーナーレコードを事前取得（トランザクション外で読み取り）
+    //    バグ修正: 旧コードでは newOwnerMemberDoc が定義されないまま transaction.update に渡されていた。
+    const [currentOwnerMemberSnapshot, newOwnerMemberSnapshot] = await Promise.all([
+      db.collection('accountMembers')
+        .where('accountOwnerId', '==', accountOwnerId)
+        .where('userId', '==', uid)
+        .where('role', '==', 'owner')
+        .limit(1)
+        .get(),
+      db.collection('accountMembers')
+        .where('accountOwnerId', '==', accountOwnerId)
+        .where('userId', '==', newOwnerId)
+        .limit(1)
+        .get(),
+    ]);
+
+    const currentOwnerMemberDocRef = currentOwnerMemberSnapshot.empty
+      ? null
+      : currentOwnerMemberSnapshot.docs[0].ref;
+    const newOwnerMemberDocRef = newOwnerMemberSnapshot.empty
+      ? null
+      : newOwnerMemberSnapshot.docs[0].ref;
+
+    // 4. トランザクションで原子的に更新
     await db.runTransaction(async (transaction) => {
-      // 5-1. 現在のオーナーのaccountMembersを編集者に変更（システム管理者でない場合のみ）
-      if (memberRole === 'owner') {
-        const currentOwnerMemberSnapshot = await db.collection('accountMembers')
-          .where('accountOwnerId', '==', accountOwnerId)
-          .where('userId', '==', uid)
-          .where('role', '==', 'owner')
-          .limit(1)
-          .get();
-        
-        if (!currentOwnerMemberSnapshot.empty) {
-          transaction.update(currentOwnerMemberSnapshot.docs[0].ref, {
-            role: 'editor',
-            updatedAt: FieldValue.serverTimestamp()
-          });
-        }
-        
-        // 5-2. 現在のオーナーのusersを編集者に変更
-        transaction.update(db.collection('users').doc(uid), {
-          memberRole: 'editor',
-          updatedAt: FieldValue.serverTimestamp()
+      // 現オーナー: accountMembers を editor に
+      if (currentOwnerMemberDocRef) {
+        transaction.update(currentOwnerMemberDocRef, {
+          role: 'editor',
+          updatedAt: FieldValue.serverTimestamp(),
         });
       }
-      
-      // 5-3. 新しいオーナーのaccountMembersをオーナーに変更
-      transaction.update(newOwnerMemberDoc.ref, {
-        role: 'owner',
-        updatedAt: FieldValue.serverTimestamp()
+      // 現オーナー: users.memberRole を editor に
+      transaction.update(db.collection('users').doc(uid), {
+        memberRole: 'editor',
+        updatedAt: FieldValue.serverTimestamp(),
       });
-      
-      // 5-4. 新しいオーナーのusersをオーナーに変更
+
+      // 新オーナー: accountMembers を owner に（存在すれば update、なければ set）
+      if (newOwnerMemberDocRef) {
+        transaction.update(newOwnerMemberDocRef, {
+          role: 'owner',
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      } else {
+        // accountMembers レコードが無い場合は新規作成
+        const newMemberRef = db.collection('accountMembers').doc();
+        transaction.set(newMemberRef, {
+          accountOwnerId,
+          userId: newOwnerId,
+          role: 'owner',
+          status: 'active',
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
+        });
+      }
+
+      // 新オーナー: users.memberRole を owner に
       transaction.update(db.collection('users').doc(newOwnerId), {
         memberRole: 'owner',
-        updatedAt: FieldValue.serverTimestamp()
+        updatedAt: FieldValue.serverTimestamp(),
       });
     });
-    
-    // 6. 全メンバーのaccountOwnerIdを更新（トランザクション外で実行）
+
+    // 5. 全メンバーの accountOwnerId を新オーナーに更新（トランザクション外、500件まで chunked）
     const allMembersSnapshot = await db.collection('accountMembers')
       .where('accountOwnerId', '==', accountOwnerId)
       .where('status', '==', 'active')
       .get();
-    
-    const batch = db.batch();
-    allMembersSnapshot.docs.forEach(doc => {
-      batch.update(doc.ref, {
-        accountOwnerId: newOwnerId,
-        updatedAt: FieldValue.serverTimestamp()
+
+    const memberDocs = allMembersSnapshot.docs;
+    const CHUNK = 450; // Firestore batch 上限 500 未満
+    for (let i = 0; i < memberDocs.length; i += CHUNK) {
+      const batch = db.batch();
+      memberDocs.slice(i, i + CHUNK).forEach((doc) => {
+        batch.update(doc.ref, {
+          accountOwnerId: newOwnerId,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
       });
-    });
-    await batch.commit();
-    
-    // 7. 全サイトのuserIdを更新
+      await batch.commit();
+    }
+
+    // 6. 全サイトの userId を新オーナーに更新
     const allSitesSnapshot = await db.collection('sites')
       .where('userId', '==', accountOwnerId)
       .get();
-    
-    const sitesBatch = db.batch();
-    allSitesSnapshot.docs.forEach(doc => {
-      sitesBatch.update(doc.ref, {
-        userId: newOwnerId,
-        updatedAt: FieldValue.serverTimestamp()
+
+    const siteDocs = allSitesSnapshot.docs;
+    for (let i = 0; i < siteDocs.length; i += CHUNK) {
+      const sitesBatch = db.batch();
+      siteDocs.slice(i, i + CHUNK).forEach((doc) => {
+        sitesBatch.update(doc.ref, {
+          userId: newOwnerId,
+          updatedAt: FieldValue.serverTimestamp(),
+        });
       });
-    });
-    await sitesBatch.commit();
-    
-    // 8. 新しいオーナーに通知メールを送信（SMTP 直接送信）
+      await sitesBatch.commit();
+    }
+
+    // 7. 新オーナーに通知メールを送信（SMTP 直接送信）
     const appUrl = process.env.APP_URL || 'https://grow-reporter.com';
     const subject = `【グローレポータ】${companyName} のオーナー権限が譲渡されました`;
     const html = `
@@ -156,14 +193,18 @@ export const transferOwnershipCallable = async (request) => {
 </body>
 </html>
     `;
-    await sendEmailDirect({ to: newOwnerUserData.email, subject, html });
-    
-    logger.info('Ownership transferred', { 
-      previousOwnerId: uid, 
+    try {
+      await sendEmailDirect({ to: newOwnerUserData.email, subject, html });
+    } catch (mailError) {
+      logger.warn('オーナー譲渡通知メール送信失敗（譲渡自体は完了）', { error: mailError?.message });
+    }
+
+    logger.info('Ownership transferred', {
+      previousOwnerId: uid,
       newOwnerId,
-      accountOwnerId: newOwnerId
+      accountOwnerId: newOwnerId,
     });
-    
+
     return { success: true, message: 'オーナー権限を譲渡しました' };
   } catch (error) {
     logger.error('Error transferring ownership:', error);

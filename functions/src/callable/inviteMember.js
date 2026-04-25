@@ -52,24 +52,30 @@ export const inviteMemberCallable = async (request) => {
     
     const accountOwnerId = userData.accountOwnerId || uid;
     
-    // 2. プラン制限チェック（users コレクションから memberships をカウント）
-    const usersSnapshot = await db.collection('users').get();
-    let currentMemberCount = 0;
-    
-    usersSnapshot.forEach(doc => {
-      const data = doc.data();
-      const memberships = data.memberships || {};
-      if (memberships[accountOwnerId]) {
-        currentMemberCount++;
-      }
-    });
-    
+    // 2. プラン制限チェック
+    //    パフォーマンス改善: 旧実装は users コレクション全件走査 (O(N)) していた。
+    //    accountMembers の active メンバー件数をクエリで取得する (O(1) wrt total users)。
+    //    accountMembers が無い古いアカウントへのフォールバックとして pending invitation 数を加算。
+    const [activeMembersSnap, pendingInvSnap] = await Promise.all([
+      db.collection('accountMembers')
+        .where('accountOwnerId', '==', accountOwnerId)
+        .where('status', '==', 'active')
+        .get(),
+      db.collection('invitations')
+        .where('accountOwnerId', '==', accountOwnerId)
+        .where('status', '==', 'pending')
+        .get(),
+    ]);
+
+    const currentMemberCount = activeMembersSnap.size + pendingInvSnap.size;
+
     const rawPlan = userData.plan || 'free';
-    const plan = (rawPlan === 'standard' || rawPlan === 'premium') ? 'business' : rawPlan;
+    const plan = (rawPlan === 'standard' || rawPlan === 'premium' || rawPlan === 'paid') ? 'business' : rawPlan;
+    // CLAUDE.md 仕様: free=3 / business=実質無制限。customLimits によるオーバーライドは別途 planManager で吸収
     const limits = { free: 3, business: 999999 };
-    
+
     if (currentMemberCount >= limits[plan]) {
-      throw new HttpsError('resource-exhausted', 
+      throw new HttpsError('resource-exhausted',
         `プランの上限（${limits[plan]}人）に達しています`);
     }
     

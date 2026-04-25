@@ -52,10 +52,10 @@ export const adminCreateUserCallable = async (request) => {
     const db = getFirestore();
     const auth = getAuth();
 
-    // 管理者権限チェック（admin or editor）
+    // 管理者権限チェック（admin のみ。editor はプラン任意指定によるアカウント発行はできない）
     const executorAdminDoc = await db.collection('adminUsers').doc(uid).get();
-    if (!executorAdminDoc.exists || !['admin', 'editor'].includes(executorAdminDoc.data()?.role)) {
-      throw new HttpsError('permission-denied', 'この操作は管理者または編集者ロールが必要です');
+    if (!executorAdminDoc.exists || executorAdminDoc.data()?.role !== 'admin') {
+      throw new HttpsError('permission-denied', 'この操作は admin ロールのみ実行できます');
     }
 
     const displayName = name;

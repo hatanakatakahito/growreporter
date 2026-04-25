@@ -27,8 +27,13 @@ dist-ssr
 .env
 .env.*
 !.env.example
+!.env.local.example
 functions/.env
 functions/.env.*
+
+# Firebase Emulator Suite のローカルエクスポート
+firebase-export/
+firebase-export-metadata.json
 
 # Firebase and GCP credentials
 *.json

@@ -13,9 +13,8 @@
 import { getStorage } from 'firebase-admin/storage';
 import { logger } from 'firebase-functions/v2';
 import crypto from 'node:crypto';
+import { fetchViaCloudflareProxy } from './cloudflareProxy.js';
 
-const CF_PROXY_URL = 'https://growreporter-fetch-proxy.hatanaka-a1e.workers.dev';
-const CF_PROXY_SECRET = '[REDACTED-CF-PROXY-SECRET]';
 const SNAPSHOT_TIMEOUT_MS = 60_000;
 const SNAPSHOT_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 // バージョン: Worker 側のスナップショット生成ロジックを変更したらここをバンプして
@@ -80,35 +79,32 @@ export async function captureFullSnapshot({ siteId, pageUrl, forceRefresh = fals
   }
 
   // Worker 経由で snapshot を取得
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), SNAPSHOT_TIMEOUT_MS);
-
+  let data;
   try {
     logger.info(`[captureFullSnapshot] Worker 呼出: ${pageUrl}`);
-    const res = await fetch(CF_PROXY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Proxy-Secret': CF_PROXY_SECRET,
-      },
-      body: JSON.stringify({ url: pageUrl, mode: 'snapshot' }),
-      signal: controller.signal,
+    data = await fetchViaCloudflareProxy({
+      targetUrl: pageUrl,
+      mode: 'snapshot',
+      timeoutMs: SNAPSHOT_TIMEOUT_MS,
     });
-
-    if (!res.ok) {
-      logger.warn(`[captureFullSnapshot] Worker HTTP ${res.status} for ${pageUrl}`);
-      return null;
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      logger.warn(`[captureFullSnapshot] タイムアウト: ${pageUrl}`);
+    } else {
+      logger.error(`[captureFullSnapshot] エラー: ${pageUrl} - ${err.message}`);
     }
+    return null;
+  }
 
-    const data = await res.json();
-    if (!data.html || data.status >= 400) {
-      logger.warn(`[captureFullSnapshot] Worker returned status=${data.status}, error=${data.error}`);
-      return null;
-    }
+  if (!data.html || data.status >= 400) {
+    logger.warn(`[captureFullSnapshot] Worker returned status=${data.status}, error=${data.error}`);
+    return null;
+  }
 
-    const html = data.html;
-    const stats = data.stats || {};
+  const html = data.html;
+  const stats = data.stats || {};
 
+  try {
     // Firebase Storage に保存
     await file.save(html, {
       metadata: {
@@ -137,14 +133,8 @@ export async function captureFullSnapshot({ siteId, pageUrl, forceRefresh = fals
       fromCache: false,
     };
   } catch (err) {
-    if (err.name === 'AbortError') {
-      logger.warn(`[captureFullSnapshot] タイムアウト: ${pageUrl}`);
-    } else {
-      logger.error(`[captureFullSnapshot] エラー: ${pageUrl} - ${err.message}`);
-    }
+    logger.error(`[captureFullSnapshot] Storage 保存エラー: ${pageUrl} - ${err.message}`);
     return null;
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
 

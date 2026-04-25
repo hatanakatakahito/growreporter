@@ -1,8 +1,8 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, GoogleAuthProvider, OAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-import { getFunctions } from 'firebase/functions';
+import { getAuth, GoogleAuthProvider, OAuthProvider, connectAuthEmulator } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
 
 // Firebase設定
 const firebaseConfig = {
@@ -16,6 +16,10 @@ const firebaseConfig = {
 
 // Firebase設定が不完全な場合の警告
 const isFirebaseConfigured = firebaseConfig.apiKey && firebaseConfig.projectId;
+
+// ローカル Emulator Suite を使用するかどうか
+const USE_EMULATOR = import.meta.env.VITE_USE_EMULATOR === 'true';
+const EMULATOR_HOST = import.meta.env.VITE_EMULATOR_HOST || '127.0.0.1';
 
 let app = null;
 let auth = null;
@@ -46,6 +50,19 @@ if (isFirebaseConfigured) {
   microsoftProvider.setCustomParameters({
     prompt: 'login', // アカウント選択を促す
   });
+
+  // ローカル Emulator Suite に接続（VITE_USE_EMULATOR=true のとき）
+  if (USE_EMULATOR) {
+    try {
+      connectAuthEmulator(auth, `http://${EMULATOR_HOST}:9099`, { disableWarnings: true });
+      connectFirestoreEmulator(db, EMULATOR_HOST, 8080);
+      connectStorageEmulator(storage, EMULATOR_HOST, 9199);
+      connectFunctionsEmulator(functions, EMULATOR_HOST, 5001);
+      console.info(`[firebase] Emulator Suite に接続しました (host=${EMULATOR_HOST})`);
+    } catch (err) {
+      console.error('[firebase] Emulator 接続エラー:', err);
+    }
+  }
 } else {
   console.warn('⚠️ Firebase configuration is missing. Please create a .env file with Firebase credentials.');
   console.warn('📝 See FIREBASE_SETUP.md for setup instructions.');
@@ -53,4 +70,3 @@ if (isFirebaseConfigured) {
 
 export { auth, db, storage, functions, googleProvider, microsoftProvider };
 export default app;
-

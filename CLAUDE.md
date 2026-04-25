@@ -108,11 +108,11 @@ export const fetchGA4Data = lazyCallable('./callable/fetchGA4Data.js', 'fetchGA4
 3. OAuth refresh tokens are stored encrypted in Firestore `users/{uid}/oauth_tokens`
 4. AI summaries (Claude API primary, Gemini fallback) are cached in Firestore with generation tracking
 
-### Plan System (3-tier)
+### Plan System (2-tier、旧 standard/premium は business に正規化)
 Defined in `src/constants/plans.js`, enforced dual-layer: client-side via `usePlan` hook, server-side via `functions/src/utils/planManager.js`:
-- **Free**: 1 site, 10 AI summaries/month, 2 improvements/month, 1 member
-- **Standard**: 3 sites, 50 summaries/month, 10 improvements/month, 3 members
-- **Premium**: 10 sites, unlimited summaries/improvements, 5 members
+- **Free**: 1 site、AI 機能(サマリ・改善・チャット・診断)＆エクスポート(Excel/PPTX)はすべて 0、**メンバー招待は最大 3 人**
+- **Business**: 3 sites、AI/エクスポートすべて無制限、メンバー招待は実質無制限
+- 旧プラン (`standard` / `premium` / `paid`) は backend (`planManager.normalizePlan`) で `business` と同等扱いに正規化される
 - Admin can override per-user via `customLimits` collection
 
 ### Firestore Collections

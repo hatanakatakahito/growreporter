@@ -42,32 +42,15 @@ async function applyBrowserDisguise(p) {
 
 // Cloudflare Workers プロキシ経由でHTML取得
 // Google Cloud IP がCloudflareでブロックされるサイトのフォールバック
-const CF_PROXY_URL = 'https://growreporter-fetch-proxy.hatanaka-a1e.workers.dev';
-const CF_PROXY_SECRET = '[REDACTED-CF-PROXY-SECRET]';
-const CF_PROXY_TIMEOUT_MS = 30_000;
+// シークレットは utils/cloudflareProxy.js で集約管理（Firebase Secret Manager 経由）
+import { fetchViaCloudflareProxy } from './cloudflareProxy.js';
 
 async function fetchHtmlViaCloudflareProxy(pageUrl) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), CF_PROXY_TIMEOUT_MS);
-  try {
-    const res = await fetch(CF_PROXY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Proxy-Secret': CF_PROXY_SECRET,
-      },
-      body: JSON.stringify({ url: pageUrl }),
-      signal: controller.signal,
-    });
-    if (!res.ok) throw new Error(`CF proxy returned ${res.status}`);
-    const data = await res.json();
-    if (!data.html || (data.status && data.status >= 400)) {
-      throw new Error(`CF proxy: target returned ${data.status || 'no html'}`);
-    }
-    return { html: data.html, status: data.status || 200 };
-  } finally {
-    clearTimeout(timeoutId);
+  const data = await fetchViaCloudflareProxy({ targetUrl: pageUrl, mode: 'html' });
+  if (!data.html || (data.status && data.status >= 400)) {
+    throw new Error(`CF proxy: target returned ${data.status || 'no html'}`);
   }
+  return { html: data.html, status: data.status || 200 };
 }
 
 // ========== ブラウザ起動 ==========

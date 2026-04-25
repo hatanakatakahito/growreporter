@@ -3,9 +3,38 @@ import { onCall, onRequest } from 'firebase-functions/v2/https';
 import { onDocumentWritten, onDocumentCreated } from 'firebase-functions/v2/firestore';
 import { initializeApp } from 'firebase-admin/app';
 
+/**
+ * 共通シークレット集合
+ *
+ * これらは多くの Callable / Trigger / Scheduled で必要になるため、
+ * lazyCallable のデフォルトとしてバインドしておく。
+ *
+ * 個別の Function で追加シークレットが必要な場合は opts.secrets で渡せる
+ * （重複は自動で除外される）。
+ *
+ * 各シークレット値は Firebase Secret Manager で管理:
+ *   firebase functions:secrets:set CF_PROXY_SECRET
+ *   firebase functions:secrets:set GOOGLE_CLIENT_SECRET
+ *   firebase functions:secrets:set SES_SMTP_USER
+ *   firebase functions:secrets:set SES_SMTP_PASSWORD
+ */
+const SHARED_SECRETS = [
+  'CF_PROXY_SECRET',       // Cloudflare Workers proxy 認証
+  'GOOGLE_CLIENT_SECRET',  // OAuth 2.0 (GA4/GSC) トークン交換・更新
+  'SES_SMTP_USER',         // AWS SES SMTP 認証 (メール送信)
+  'SES_SMTP_PASSWORD',     // AWS SES SMTP 認証 (メール送信)
+];
+
 // デプロイ時のロードタイムアウト回避: callable はすべて遅延読み込み
 function lazyCallable(modulePath, exportName, opts = {}) {
-  return onCall({ region: 'asia-northeast1', cors: true, ...opts }, async (req) => {
+  const { secrets: extraSecrets = [], ...restOpts } = opts;
+  const mergedSecrets = [...new Set([...SHARED_SECRETS, ...extraSecrets])];
+  return onCall({
+    region: 'asia-northeast1',
+    cors: true,
+    ...restOpts,
+    secrets: mergedSecrets,
+  }, async (req) => {
     const m = await import(modulePath);
     return m[exportName](req);
   });
@@ -136,6 +165,7 @@ export const fetchMetadata = onCall({
   timeoutSeconds: 120,
   region: 'asia-northeast1',
   cors: true,
+  secrets: ['CF_PROXY_SECRET'],
 }, async (request) => {
   const { fetchMetadataCallable } = await import('./callable/fetchMetadata.js');
   return fetchMetadataCallable(request);
@@ -149,7 +179,8 @@ export const refreshSiteMetadataAndScreenshots = onCall({
   timeoutSeconds: 180,
   region: 'asia-northeast1',
   cors: true,
-  secrets: ['PSI_API_KEY'],
+  // PSI_API_KEY: PageSpeed Insights / CF_PROXY_SECRET: Worker proxy 経由メタデータ取得
+  secrets: ['PSI_API_KEY', 'CF_PROXY_SECRET'],
 }, async (request) => {
   const { refreshSiteMetadataAndScreenshotsCallableWithCatch } = await import('./callable/refreshSiteMetadataAndScreenshots.js');
   return refreshSiteMetadataAndScreenshotsCallableWithCatch(request);
@@ -194,7 +225,11 @@ export const siteCreatedSheetsExport = onDocumentWritten({
   region: 'asia-northeast1',
   memory: '2GiB',
   timeoutSeconds: 540,
-  secrets: ['PSI_API_KEY'],
+  // PSI_API_KEY: スクリーンショット
+  // CF_PROXY_SECRET: スクレイピング/メタデータ取得 (Worker proxy 経由)
+  // GOOGLE_CLIENT_SECRET: GA4/GSC OAuth リフレッシュ (tokenManager 経由)
+  // SES_SMTP_USER/PASSWORD: 完了通知メール送信
+  secrets: ['PSI_API_KEY', 'CF_PROXY_SECRET', 'GOOGLE_CLIENT_SECRET', 'SES_SMTP_USER', 'SES_SMTP_PASSWORD'],
 }, async (event) => {
   const m = await import('./triggers/onSiteCreated.js');
   return m.onSiteCreatedTrigger(event);
@@ -219,7 +254,9 @@ export const onScrapingJobCreated = onDocumentCreated(
     concurrency: 1,
     // PSI_API_KEY: 既存のスクリーンショット取得用
     // GEMINI_API_KEY: スクレイピング完了時のタクソノミー V2 自動判定(Phase E)で使用
-    secrets: ['PSI_API_KEY', 'GEMINI_API_KEY'],
+    // CF_PROXY_SECRET: Worker proxy 経由のスクレイピングフォールバック
+    // GOOGLE_CLIENT_SECRET: GA4 fetch 内部呼出時に使用される可能性
+    secrets: ['PSI_API_KEY', 'GEMINI_API_KEY', 'CF_PROXY_SECRET', 'GOOGLE_CLIENT_SECRET'],
   },
   async (event) => {
     const { onScrapingJobCreatedHandler } = await import('./triggers/onScrapingJobCreated.js');
@@ -237,7 +274,8 @@ export const onUpgradeInquiryCreated = onDocumentCreated(
     region: 'asia-northeast1',
     memory: '256MiB',
     timeoutSeconds: 60,
-    secrets: ['BOARD_API_KEY', 'BOARD_API_TOKEN'],
+    // BOARD: 見積/請求書連携 / SES: 通知メール送信
+    secrets: ['BOARD_API_KEY', 'BOARD_API_TOKEN', 'SES_SMTP_USER', 'SES_SMTP_PASSWORD'],
   },
   async (event) => {
     const { onUpgradeInquiryCreatedHandler } = await import('./triggers/onUpgradeInquiryCreated.js');
@@ -255,6 +293,7 @@ export const onUserFeedbackCreated = onDocumentCreated(
     region: 'asia-northeast1',
     memory: '256MiB',
     timeoutSeconds: 60,
+    secrets: ['SES_SMTP_USER', 'SES_SMTP_PASSWORD'],
   },
   async (event) => {
     const { onUserFeedbackCreatedHandler } = await import('./triggers/onUserFeedbackCreated.js');
@@ -272,6 +311,7 @@ export const onUserCreated = onDocumentCreated(
     region: 'asia-northeast1',
     memory: '256MiB',
     timeoutSeconds: 30,
+    secrets: ['SES_SMTP_USER', 'SES_SMTP_PASSWORD'],
   },
   async (event) => {
     const { onUserCreatedHandler } = await import('./triggers/onUserCreated.js');
@@ -478,6 +518,9 @@ export const scrapeTop100Pages = onCall({
   memory: '256MiB',
   timeoutSeconds: 30,
   cors: true,
+  // CF_PROXY_SECRET: スクレイピング Worker proxy 経由フォールバック
+  // GOOGLE_CLIENT_SECRET: GA4 上位ページ取得時 OAuth 経由
+  secrets: ['CF_PROXY_SECRET', 'GOOGLE_CLIENT_SECRET'],
 }, async (request) => {
   const { scrapeTop100PagesHandler } = await import('./callable/scrapeTop100Pages.js');
   return scrapeTop100PagesHandler(request);
@@ -502,6 +545,13 @@ export const submitImprovementConsultation = lazyCallable('./callable/submitImpr
 export const generateImprovements = lazyCallable('./callable/generateImprovements.js', 'generateImprovementsCallable', { memory: '2GiB', timeoutSeconds: 300, secrets: ['GEMINI_API_KEY'] });
 
 /**
+ * 手動改善案 AI 補完 Callable Function
+ * ユーザー入力（対象 + 改善方向）から AI が完全な改善案 JSON を生成
+ * Firestore 保存はクライアント側で実行
+ */
+export const expandManualImprovement = lazyCallable('./callable/expandManualImprovement.js', 'expandManualImprovementCallable', { memory: '512MiB', timeoutSeconds: 90, secrets: ['GEMINI_API_KEY'] });
+
+/**
  * 改善効果測定 Before指標スナップショット取得
  * 改善タスク完了時にGA4/GSCのBefore期間データを自動取得・保存
  */
@@ -516,7 +566,7 @@ export const scheduleRemeasurement = lazyCallable('./callable/scheduleRemeasurem
 export const captureBeforeImplementationSnapshot = lazyCallable(
   './callable/captureBeforeImplementationSnapshot.js',
   'captureBeforeImplementationSnapshotCallable',
-  { memory: '2GiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] }
+  { memory: '2GiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] } // CF_PROXY_SECRET / GOOGLE_CLIENT_SECRET / SES_* は SHARED_SECRETS でバインド済
 );
 
 /**
@@ -551,6 +601,7 @@ export const sendWeeklyReports = onSchedule({
   region: 'asia-northeast1',
   memory: '512MiB',
   timeoutSeconds: 540,
+  secrets: ['GOOGLE_CLIENT_SECRET', 'SES_SMTP_USER', 'SES_SMTP_PASSWORD'],
 }, async (event) => {
   const m = await import('./scheduled/sendWeeklyReports.js');
   return m.sendWeeklyReportsHandler(event);
@@ -566,6 +617,7 @@ export const sendMonthlyReports = onSchedule({
   region: 'asia-northeast1',
   memory: '512MiB',
   timeoutSeconds: 540,
+  secrets: ['GOOGLE_CLIENT_SECRET', 'SES_SMTP_USER', 'SES_SMTP_PASSWORD'],
 }, async (event) => {
   const m = await import('./scheduled/sendMonthlyReports.js');
   return m.sendMonthlyReportsHandler(event);
@@ -598,6 +650,7 @@ export const checkContractRenewals = onSchedule({
   region: 'asia-northeast1',
   memory: '256MiB',
   timeoutSeconds: 60,
+  secrets: ['SES_SMTP_USER', 'SES_SMTP_PASSWORD'],
 }, async (event) => {
   const m = await import('./scheduled/checkContractRenewals.js');
   return m.checkContractRenewalsHandler(event);
@@ -612,7 +665,7 @@ export const checkMetricAlertsScheduled = onSchedule({
   region: 'asia-northeast1',
   memory: '512MiB',
   timeoutSeconds: 540,
-  secrets: ['GEMINI_API_KEY'],
+  secrets: ['GEMINI_API_KEY', 'GOOGLE_CLIENT_SECRET', 'SES_SMTP_USER', 'SES_SMTP_PASSWORD'],
 }, async (event) => {
   const m = await import('./scheduled/checkMetricAlerts.js');
   return m.runCheckMetricAlerts();
@@ -629,7 +682,8 @@ export const measureImprovementEffects = onSchedule({
   region: 'asia-northeast1',
   memory: '2GiB',
   timeoutSeconds: 540,
-  secrets: ['GEMINI_API_KEY', 'PSI_API_KEY'],
+  // GEMINI: AI 評価 / PSI: スクリーンショット / CF_PROXY: スクレイピング / GOOGLE_CLIENT_SECRET: GA4
+  secrets: ['GEMINI_API_KEY', 'PSI_API_KEY', 'CF_PROXY_SECRET', 'GOOGLE_CLIENT_SECRET'],
 }, async (event) => {
   const m = await import('./scheduled/measureImprovementEffects.js');
   return m.measureImprovementEffectsHandler(event);

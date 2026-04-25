@@ -126,13 +126,49 @@ const MARKDOWN_COMPONENTS = {
   blockquote: ({ children }) => (
     <blockquote style={{ borderLeft: '4px solid rgba(55,88,249,0.3)', paddingLeft: '16px', fontStyle: 'italic', color: '#637381', margin: '12px 0' }}>{children}</blockquote>
   ),
-  a: ({ children, href }) => (
-    <a href={href} target="_blank" rel="noopener noreferrer" style={{ color: '#3758F9', textDecoration: 'none' }}>{children}</a>
-  ),
+  a: ({ children, href }) => {
+    // セキュリティ: AI 生成テキストに javascript:/data:/file: などが混入してもクリック実行されないよう、
+    // http(s)/mailto/tel/相対 URL のみ許可。それ以外は無効化してテキストだけ表示する。
+    const safeHref = isSafeUrl(href) ? href : null;
+    if (!safeHref) {
+      return <span style={{ color: '#637381' }}>{children}</span>;
+    }
+    return (
+      <a href={safeHref} target="_blank" rel="noopener noreferrer" style={{ color: '#3758F9', textDecoration: 'none' }}>{children}</a>
+    );
+  },
+  img: ({ src, alt }) => {
+    // セキュリティ: javascript: などのスキームを画像の src に入れられないようにする
+    if (!isSafeUrl(src) || /^javascript:/i.test(src || '')) {
+      return null;
+    }
+    return <img src={src} alt={alt || ''} style={{ maxWidth: '100%' }} />;
+  },
   strong: ({ children }) => (
     <strong style={{ color: '#1B2559', fontWeight: 700 }}>{children}</strong>
   ),
 };
+
+/**
+ * URL が安全に表示・遷移できるスキームか判定する。
+ * - http / https / mailto / tel / 相対パスは安全
+ * - javascript: / data: / file: / blob: 等は危険なので false
+ */
+function isSafeUrl(url) {
+  if (!url || typeof url !== 'string') return false;
+  const trimmed = url.trim();
+  if (!trimmed) return false;
+  // 相対 URL or フラグメント or 同一オリジン path
+  if (/^(\/|#|\?|\.{1,2}\/)/.test(trimmed)) return true;
+  // 絶対 URL: スキーム allowlist
+  const m = /^([a-zA-Z][a-zA-Z0-9+.-]*):/.exec(trimmed);
+  if (!m) {
+    // スキーム無し（例: "example.com/path"）→ 相対扱いで OK
+    return true;
+  }
+  const scheme = m[1].toLowerCase();
+  return ['http', 'https', 'mailto', 'tel'].includes(scheme);
+}
 
 const DEFAULT_SUGGEST_QUESTIONS = [
   '前月分のアクセス状況を表組でまとめて',

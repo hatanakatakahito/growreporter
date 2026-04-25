@@ -1,21 +1,45 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
+import { fetchViaCloudflareProxy, validateExternalFetchUrl } from '../utils/cloudflareProxy.js';
 
 /**
  * サイトのメタデータを取得
  * 1. 素の fetch で取得を試みる
  * 2. 403等で失敗した場合、Puppeteer（Chromium）でフォールバック
+ * 3. それでも駄目なら Cloudflare Workers プロキシでフォールバック
+ *
+ * セキュリティ:
+ *  - 認証必須（誰でも呼べる「無料 SSRF プロキシ」化を防ぐ）
+ *  - URL の SSRF 検証（http/https のみ、private/loopback/メタデータ IP を拒否）
+ *  - リダイレクトは fetch 既定（最大 20 ホップ）から短縮、各ホップは Worker 側で最終 URL を返却
+ *  - CF Proxy Secret は Firebase Secret Manager で管理（CF_PROXY_SECRET）
  */
 export const fetchMetadataCallable = async (request) => {
-  const { siteUrl } = request.data;
+  // 認証チェック
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'fetchMetadata は認証が必要です');
+  }
+
+  const { siteUrl } = request.data || {};
 
   if (!siteUrl) {
     throw new HttpsError('invalid-argument', 'Site URL is required');
   }
 
+  // URL 正規化（ユーザーが http(s):// なしで打ち込むケースのため）
+  const normalizedUrl = siteUrl.startsWith('http://') || siteUrl.startsWith('https://')
+    ? siteUrl
+    : `https://${siteUrl}`;
+
+  // SSRF 検証
+  const validation = validateExternalFetchUrl(normalizedUrl);
+  if (!validation.ok) {
+    logger.warn('[fetchMetadata] SSRF 検証で拒否', { url: normalizedUrl, reason: validation.reason, uid: request.auth.uid });
+    throw new HttpsError('invalid-argument', `指定された URL は取得できません: ${validation.reason}`);
+  }
+
   try {
-    const normalizedUrl = siteUrl.startsWith('http') ? siteUrl : `https://${siteUrl}`;
-    logger.info(`[fetchMetadata] Fetching metadata for: ${normalizedUrl}`);
+    logger.info(`[fetchMetadata] Fetching metadata for: ${normalizedUrl}`, { uid: request.auth.uid });
 
     // Step 1: 素の fetch で試行
     let html = null;
@@ -37,7 +61,11 @@ export const fetchMetadataCallable = async (request) => {
     // Step 3: Cloudflare Workers プロキシでフォールバック（Google Cloud IP ブロック回避）
     if (!html) {
       try {
-        html = await _fetchWithCloudflareProxy(normalizedUrl);
+        const data = await fetchViaCloudflareProxy({ targetUrl: normalizedUrl, mode: 'html' });
+        if (!data.html || data.status >= 400) {
+          throw new Error(`target returned ${data.status}`);
+        }
+        html = data.html;
       } catch (cfErr) {
         logger.error(`[fetchMetadata] Cloudflare proxy also failed: ${cfErr.message}`);
         throw new Error(`All fetch methods failed for ${normalizedUrl}`);
@@ -57,39 +85,62 @@ export const fetchMetadataCallable = async (request) => {
     return { success: true, metadata };
   } catch (error) {
     logger.error('[fetchMetadata] Error:', error);
+    if (error instanceof HttpsError) throw error;
     throw new HttpsError('internal', `Failed to fetch metadata: ${error.message}`);
   }
 };
 
 /**
  * 素の HTTP fetch でHTML取得
+ * リダイレクトは追従するが、最大 5 ホップに制限し、各ホップで再 SSRF 検証
  */
 async function _fetchWithHttp(url) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-  const response = await fetch(url, {
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
-      'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
-      'Cache-Control': 'no-cache',
-      'Sec-Fetch-Dest': 'document',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'none',
-      'Sec-Fetch-User': '?1',
-      'Upgrade-Insecure-Requests': '1',
-    },
-    redirect: 'follow',
-    signal: controller.signal,
-  });
-  clearTimeout(timeoutId);
+  try {
+    let currentUrl = url;
+    for (let hop = 0; hop < 5; hop++) {
+      const v = validateExternalFetchUrl(currentUrl);
+      if (!v.ok) {
+        throw new Error(`redirect to disallowed URL: ${v.reason}`);
+      }
+      const response = await fetch(currentUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+          'Accept-Language': 'ja,en-US;q=0.9,en;q=0.8',
+          'Cache-Control': 'no-cache',
+          'Sec-Fetch-Dest': 'document',
+          'Sec-Fetch-Mode': 'navigate',
+          'Sec-Fetch-Site': 'none',
+          'Sec-Fetch-User': '?1',
+          'Upgrade-Insecure-Requests': '1',
+        },
+        redirect: 'manual',
+        signal: controller.signal,
+      });
 
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get('location');
+        if (!location) {
+          throw new Error(`HTTP ${response.status} without Location header`);
+        }
+        // 相対 URL を絶対化
+        currentUrl = new URL(location, currentUrl).toString();
+        continue;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
+      }
+
+      return await response.text();
+    }
+    throw new Error('Too many redirects (>5 hops)');
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  return await response.text();
 }
 
 /**
@@ -125,8 +176,15 @@ async function _fetchWithPuppeteer(url) {
     });
 
     // ページ読み込み（画像・フォント等は不要なのでブロック）
+    // 加えて、リクエストごとに再 SSRF 検証してプライベート IP への遷移を防ぐ
     await page.setRequestInterception(true);
     page.on('request', (req) => {
+      const reqUrl = req.url();
+      const v = validateExternalFetchUrl(reqUrl);
+      if (!v.ok && req.isNavigationRequest()) {
+        req.abort('blockedbyclient');
+        return;
+      }
       const type = req.resourceType();
       if (['image', 'font', 'media', 'stylesheet'].includes(type)) {
         req.abort();
@@ -221,39 +279,4 @@ function decodeHtmlEntities(text) {
     '&nbsp;': ' ',
   };
   return text.replace(/&[#\w]+;/g, (entity) => entities[entity] || entity);
-}
-
-/**
- * Cloudflare Workers プロキシ経由でHTML取得
- * Google Cloud IPがブロックされるサイトに対してCloudflareのIPで回避
- */
-const CF_PROXY_URL = 'https://growreporter-fetch-proxy.hatanaka-a1e.workers.dev';
-const CF_PROXY_SECRET = '[REDACTED-CF-PROXY-SECRET]';
-
-async function _fetchWithCloudflareProxy(url) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-  const res = await fetch(CF_PROXY_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Proxy-Secret': CF_PROXY_SECRET,
-    },
-    body: JSON.stringify({ url }),
-    signal: controller.signal,
-  });
-  clearTimeout(timeoutId);
-
-  if (!res.ok) {
-    throw new Error(`Cloudflare proxy returned ${res.status}`);
-  }
-
-  const data = await res.json();
-  if (!data.html || data.status >= 400) {
-    throw new Error(`Cloudflare proxy: target returned ${data.status}`);
-  }
-
-  logger.info(`[fetchMetadata] Cloudflare proxy success: ${data.html.length} bytes`);
-  return data.html;
 }

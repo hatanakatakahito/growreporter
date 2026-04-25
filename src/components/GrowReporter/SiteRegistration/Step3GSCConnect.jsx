@@ -135,6 +135,15 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
         throw new Error('Google Client IDが設定されていません');
       }
 
+      // OAuth 2.0 state パラメータを乱数化（CSRF 対策）。プロバイダ識別はプレフィックスで残す。
+      const stateNonceArr = new Uint8Array(32);
+      window.crypto.getRandomValues(stateNonceArr);
+      const stateNonce = Array.from(stateNonceArr)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+      const stateValue = `gsc-${stateNonce}`;
+      sessionStorage.setItem('oauth_state_gsc', stateValue);
+
       // OAuth 2.0認可URLを構築
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       authUrl.searchParams.append('client_id', clientId);
@@ -144,7 +153,7 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
       authUrl.searchParams.append('access_type', 'offline');
       authUrl.searchParams.append('prompt', 'consent'); // 常に同意画面を表示してリフレッシュトークンを確実に取得
       authUrl.searchParams.append('include_granted_scopes', 'true');
-      authUrl.searchParams.append('state', 'gsc'); // プロバイダー識別用
+      authUrl.searchParams.append('state', stateValue); // CSRF 対策: 乱数 nonce 付き
 
       console.log('[GSCConnect] 認可URLを生成:', authUrl.toString());
 
@@ -170,7 +179,7 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
       localStorage.removeItem('oauth_callback_result');
 
       // ポップアップからのメッセージを待機（localStorageとpostMessageの両方をサポート）
-      const authCode = await new Promise((resolve, reject) => {
+      const authResult = await new Promise((resolve, reject) => {
         const timeout = setTimeout(() => {
           cleanup();
           reject(new Error('認証がタイムアウトしました。もう一度お試しください。'));
@@ -197,7 +206,7 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
               cleanup();
               localStorage.removeItem('oauth_callback_result'); // クリーンアップ
               console.log('[GSCConnect] Received via postMessage');
-              resolve(event.data.code);
+              resolve({ code: event.data.code, state: event.data.state });
             }
           } else if (event.data.type === 'OAUTH_ERROR') {
             if (!isResolved) {
@@ -229,7 +238,7 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
                   cleanup();
                   localStorage.removeItem('oauth_callback_result'); // クリーンアップ
                   console.log('[GSCConnect] Received via localStorage');
-                  resolve(result.code);
+                  resolve({ code: result.code, state: result.state });
                 }
               } else if (result.type === 'OAUTH_ERROR') {
                 if (!isResolved) {
@@ -255,7 +264,15 @@ export default function Step3GSCConnect({ siteData, setSiteData }) {
         checkLocalStorage();
       });
 
+      // CSRF 対策: 受領した state が事前に保存したものと一致するか検証
+      const expectedState = sessionStorage.getItem('oauth_state_gsc');
+      sessionStorage.removeItem('oauth_state_gsc');
+      if (!expectedState || authResult.state !== expectedState) {
+        throw new Error('OAuth state が一致しません。再度お試しください（CSRF 防止）');
+      }
+
       console.log('[GSCConnect] 認可コード取得成功');
+      const authCode = authResult.code;
 
       // Cloud Functionで認可コードをトークンに交換
       const exchangeOAuthCode = httpsCallable(functions, 'exchangeOAuthCode');
