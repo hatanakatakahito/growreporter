@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { doc, updateDoc } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { setPageTitle } from '../utils/pageTitle';
+import { Button } from '@/components/ui/button';
 
 /**
  * プロフィール編集画面
@@ -134,20 +135,22 @@ export default function AccountProfile() {
 
             {/* ボタン */}
             <div className="flex items-center gap-4 pt-4">
-              <button
+              <Button
+                variant="primary"
+                size="lg"
                 type="submit"
                 disabled={isSaving}
-                className="px-6 py-3 bg-primary text-white rounded-lg hover:opacity-90 transition-opacity font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSaving ? '保存中...' : '保存する'}
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
+                size="lg"
                 type="button"
                 onClick={() => navigate('/account/settings')}
-                className="px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors font-medium"
               >
                 キャンセル
-              </button>
+              </Button>
             </div>
           </form>
         </div>

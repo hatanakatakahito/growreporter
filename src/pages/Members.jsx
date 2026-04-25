@@ -199,7 +199,7 @@ export default function Members() {
           {isOwner && (
             <div data-tour="members-invite">
               <Button
-                color="blue"
+                variant="primary"
                 onClick={() => setShowInviteModal(true)}
                 disabled={!canInvite || isProcessing}
               >

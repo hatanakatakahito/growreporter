@@ -204,9 +204,8 @@ export default function AccountSettings() {
             </p>
           </div>
           <Button
-            outline
+            variant="secondary"
             type="button"
-            className="bg-white"
             onClick={handleLogout}
           >
             <svg data-slot="icon" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -248,12 +247,9 @@ export default function AccountSettings() {
             <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">プロフィール</h2>
-                <Link
-                  to="/account/profile"
-                  className="inline-flex items-center px-4 py-2 rounded-lg border border-stroke bg-white text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-                >
+                <Button variant="secondary" href="/account/profile">
                   編集する
-                </Link>
+                </Button>
               </div>
               <dl className="divide-y divide-gray-100 dark:divide-dark-3">
                 <div className="grid grid-cols-3 gap-4 py-3">
@@ -377,13 +373,14 @@ export default function AccountSettings() {
                         </div>
                       ) : p.price > (plan?.price || 0) ? (
                         userProfile?.memberRole === 'owner' ? (
-                          <button
+                          <Button
+                            variant="upgrade"
                             type="button"
                             onClick={() => setIsUpgradeModalOpen(true)}
-                            className="w-full rounded-lg bg-primary py-2.5 text-center text-sm font-semibold text-white transition hover:opacity-90"
+                            className="w-full"
                           >
                             アップグレード
-                          </button>
+                          </Button>
                         ) : (
                           <div className="rounded-lg border border-gray-200 py-2.5 text-center text-xs text-gray-500 dark:border-dark-3">
                             オーナーのみ変更可能
@@ -412,12 +409,9 @@ export default function AccountSettings() {
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-white">登録しているサイト</h2>
                   <p className="mt-0.5 text-sm text-gray-600 dark:text-dark-6">クリックでサイト詳細・設定編集へ</p>
                 </div>
-                <Link
-                  to="/sites/new"
-                  className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
-                >
+                <Button variant="primary" href="/sites/new">
                   サイトを追加
-                </Link>
+                </Button>
               </div>
               {sites && sites.length > 0 ? (
                 <ul className="space-y-3">
@@ -444,18 +438,12 @@ export default function AccountSettings() {
                 <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-6 text-center dark:border-dark-3 dark:bg-dark-3">
                   <p className="text-sm text-gray-600 dark:text-dark-6 mb-4">サイトがありません</p>
                   <div className="flex flex-wrap justify-center gap-3">
-                    <Link
-                      to="/sites/list"
-                      className="inline-flex items-center px-4 py-2 rounded-lg border border-gray-300 text-gray-700 text-sm font-medium hover:bg-gray-50 dark:border-dark-3 dark:text-white"
-                    >
+                    <Button variant="secondary" href="/sites/list">
                       サイト一覧
-                    </Link>
-                    <Link
-                      to="/sites/new"
-                      className="inline-flex items-center px-4 py-2 rounded-lg bg-primary text-white text-sm font-medium hover:opacity-90 transition-opacity"
-                    >
+                    </Button>
+                    <Button variant="primary" href="/sites/new">
                       サイトを追加
-                    </Link>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -543,12 +531,9 @@ export default function AccountSettings() {
                     </span>
                   </div>
                 </div>
-                <Link
-                  to="/members"
-                  className="flex-shrink-0 px-6 py-3 bg-primary text-white rounded-lg hover:opacity-90 transition-opacity font-medium"
-                >
+                <Button variant="primary" size="lg" href="/members" className="flex-shrink-0">
                   メンバー管理を開く
-                </Link>
+                </Button>
               </div>
             </div>
           </div>
@@ -615,7 +600,7 @@ export default function AccountSettings() {
 
             <div className="flex gap-3">
               <Button
-                outline
+                variant="ghost"
                 onClick={() => { setShowDeleteAccount(false); setDeleteError(null); }}
                 disabled={deleteLoading}
                 className="flex-1"
@@ -623,7 +608,7 @@ export default function AccountSettings() {
                 キャンセル
               </Button>
               <Button
-                color="red"
+                variant="danger"
                 onClick={handleDeleteAccount}
                 disabled={deleteLoading}
                 className="flex-1"

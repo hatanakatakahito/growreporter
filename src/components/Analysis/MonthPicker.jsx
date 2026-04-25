@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { format, startOfMonth, endOfMonth, subMonths, addYears, subYears } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Button } from '../ui/button';
 
 const PRESETS = [
   { label: '先月', getMonth: () => subMonths(new Date(), 1) },
@@ -168,19 +169,23 @@ export default function MonthPicker({ dateRange, onDateRangeChange }) {
               )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                pill
                 onClick={handleCancel}
-                className="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium text-gray-500 transition hover:bg-gray-100"
               >
                 キャンセル
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                pill
                 onClick={handleApply}
                 disabled={!selectedMonth}
-                className="whitespace-nowrap rounded-full bg-primary px-4 py-1.5 text-[12px] font-medium text-white transition hover:bg-opacity-90 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
                 適用
-              </button>
+              </Button>
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { setPageTitle } from '../utils/pageTitle';
+import { Button } from '@/components/ui/button';
 
 /**
  * プロフィール編集画面（アカウント設定から遷移）
@@ -288,20 +289,20 @@ export default function ProfileEdit() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={() => navigate('/account/settings?tab=profile')}
-                className="px-4 py-2 rounded-lg border border-gray-300 dark:border-dark-3 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-3"
               >
                 キャンセル
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 type="submit"
                 disabled={isSubmitting}
-                className="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? '保存中...' : '保存する'}
-              </button>
+              </Button>
             </div>
           </form>
         </div>

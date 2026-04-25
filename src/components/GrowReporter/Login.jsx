@@ -342,7 +342,8 @@ export default function Login() {
                 {/* 送信ボタン */}
                 <Button
                   type="submit"
-                  color="blue"
+                  variant="primary"
+                  size="lg"
                   disabled={isSubmitting}
                   className="mb-4 w-full"
                 >
@@ -354,11 +355,13 @@ export default function Login() {
               <div className="my-6 border-t border-gray-200 dark:border-dark-3"></div>
 
               {/* Googleログインボタン */}
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="lg"
                 onClick={handleGoogleSignIn}
                 disabled={isSubmitting}
-                className="mb-2 flex w-full items-center justify-center gap-3 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
+                className="mb-2 w-full py-3"
               >
                 <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <g clipPath="url(#clip0_google)">
@@ -374,14 +377,16 @@ export default function Login() {
                   </defs>
                 </svg>
                 Googleでログイン
-              </button>
+              </Button>
 
               {/* Microsoftログインボタン */}
-              <button
+              <Button
                 type="button"
+                variant="secondary"
+                size="lg"
                 onClick={handleMicrosoftSignIn}
                 disabled={isSubmitting}
-                className="mb-0 flex w-full items-center justify-center gap-3 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full py-3"
               >
                 <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M0 0H10V10H0V0Z" fill="#F25022"/>
@@ -390,7 +395,7 @@ export default function Login() {
                   <path d="M11 11H21V21H11V11Z" fill="#FFB900"/>
                 </svg>
                 Microsoftでログイン
-              </button>
+              </Button>
 
               {/* 法的リンク */}
               <div className="mt-6 flex flex-wrap justify-center gap-x-4 gap-y-1 text-xs text-gray-400">

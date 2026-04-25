@@ -181,7 +181,7 @@ export default function CompleteProfile() {
               </button>
               <button type="button" onClick={() => setSelectedPlan('business')}
                 className={`relative rounded-xl border-2 px-4 py-3 text-center transition ${selectedPlan === 'business' ? 'border-pink-500 bg-pink-50 dark:bg-pink-900/10' : 'border-stroke bg-white hover:border-gray-300 dark:border-dark-3 dark:bg-dark-2'}`}>
-                <span className="absolute -top-2 right-3 rounded-full bg-gradient-to-r from-blue-500 to-pink-500 px-2 py-0.5 text-[9px] font-bold text-white">おすすめ</span>
+                <span className="absolute -top-2 right-3 rounded-full bg-gradient-business px-2 py-0.5 text-[9px] font-bold text-white">おすすめ</span>
                 <div className={`text-sm font-bold ${selectedPlan === 'business' ? 'text-pink-600' : 'text-dark dark:text-white'}`}>ビジネスプラン</div>
                 <div className="text-[11px] text-body-color dark:text-dark-6">¥49,800/月 / 全機能</div>
               </button>
@@ -257,7 +257,13 @@ export default function CompleteProfile() {
                 </div>
               )}
 
-              <Button type="submit" color="blue" disabled={isSubmitting} className="w-full">
+              <Button
+                type="submit"
+                variant={selectedPlan === 'business' ? 'upgrade' : 'primary'}
+                size="lg"
+                disabled={isSubmitting}
+                className="w-full"
+              >
                 {isSubmitting ? '保存中...' : selectedPlan === 'business' ? 'ビジネスプランに申し込む' : 'サイト登録へ'}
               </Button>
             </form>

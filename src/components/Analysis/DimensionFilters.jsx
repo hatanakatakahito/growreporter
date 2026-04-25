@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
 import DotWaveSpinner from '../common/DotWaveSpinner';
+import { Button } from '../ui/button';
 
 /**
  * 利用可能なGA4ディメンション一覧
@@ -317,13 +318,15 @@ export default function DimensionFilters({
 
       {/* 全クリアボタン */}
       {hasActiveFilters && (
-        <button
+        <Button
+          variant="ghost"
+          size="sm"
+          pill
           onClick={() => onFiltersChange({})}
-          className="flex items-center gap-1 rounded-full px-2 py-1.5 text-xs text-body-color hover:text-primary"
         >
-          <X className="h-3 w-3" />
+          <X data-slot="icon" />
           すべてクリア
-        </button>
+        </Button>
       )}
     </div>
   );

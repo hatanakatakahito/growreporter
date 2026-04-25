@@ -122,9 +122,9 @@ export default function MemoNotificationModal({ isOpen, onClose, unreadMemos, on
       </DialogBody>
 
       <DialogActions>
-        <Button plain onClick={handleClose}>閉じる</Button>
+        <Button variant="ghost" onClick={handleClose}>閉じる</Button>
         {unreadMemos.length > 0 && (
-          <Button color="blue" onClick={handleMarkAsRead}>
+          <Button variant="primary" onClick={handleMarkAsRead}>
             すべて既読にする
           </Button>
         )}

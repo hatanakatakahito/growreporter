@@ -165,15 +165,15 @@ export default function EvaluationDialog({ isOpen, onClose, item, siteId }) {
 
       <DialogActions>
         {isReadOnly ? (
-          <Button color="blue" onClick={onClose}>
+          <Button variant="primary" onClick={onClose}>
             閉じる
           </Button>
         ) : (
           <>
-            <Button plain onClick={onClose} disabled={isSaving}>
+            <Button variant="ghost" onClick={onClose} disabled={isSaving}>
               キャンセル
             </Button>
-            <Button color="blue" type="submit" form="evaluation-form" disabled={isSaving}>
+            <Button variant="primary" type="submit" form="evaluation-form" disabled={isSaving}>
               {isSaving ? '保存中...' : '評価を保存'}
             </Button>
           </>

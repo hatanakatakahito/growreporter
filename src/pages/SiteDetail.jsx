@@ -167,21 +167,15 @@ export default function SiteDetail() {
   const needsGSC = !siteDetail.hasGSC;
   const dashboardOrSettingsLink =
     needsGA4 || needsGSC ? (
-      <Link
-        to={`/sites/${siteId}/edit?step=${needsGA4 ? 2 : 3}`}
-        className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-      >
-        <BarChart3 className="h-4 w-4" />
+      <Button variant="primary" href={`/sites/${siteId}/edit?step=${needsGA4 ? 2 : 3}`}>
+        <BarChart3 data-slot="icon" />
         サイト設定を開く
-      </Link>
+      </Button>
     ) : (
-      <Link
-        to={`/dashboard?siteId=${siteId}`}
-        className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-      >
-        <BarChart3 className="h-4 w-4" />
+      <Button variant="primary" href={`/dashboard?siteId=${siteId}`}>
+        <BarChart3 data-slot="icon" />
         ダッシュボードを開く
-      </Link>
+      </Button>
     );
 
   return (
@@ -644,7 +638,7 @@ export default function SiteDetail() {
 
             <div className="flex gap-3">
               <Button
-                outline
+                variant="ghost"
                 onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
                 disabled={deleteLoading}
                 className="flex-1"
@@ -652,7 +646,7 @@ export default function SiteDetail() {
                 キャンセル
               </Button>
               <Button
-                color="red"
+                variant="danger"
                 onClick={handleDeleteSite}
                 disabled={deleteLoading}
                 className="flex-1"

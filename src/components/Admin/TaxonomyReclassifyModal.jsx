@@ -125,11 +125,12 @@ export default function TaxonomyReclassifyModal({ site, onClose, onSuccess }) {
           <p className="text-xs text-body-color dark:text-dark-6">
             このサイトのURLをもとにAIで再推定できます
           </p>
-          <button
+          <Button
+            variant="ai"
+            size="sm"
             type="button"
             onClick={handleInfer}
             disabled={isInferring}
-            className="flex items-center gap-1 rounded-md bg-gradient-primary px-3 py-1.5 text-xs font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {isInferring ? (
               <>
@@ -138,11 +139,11 @@ export default function TaxonomyReclassifyModal({ site, onClose, onSuccess }) {
               </>
             ) : (
               <>
-                <Wand2 className="h-3.5 w-3.5" />
+                <Wand2 data-slot="icon" />
                 AIで再推定
               </>
             )}
-          </button>
+          </Button>
         </div>
 
         <div className="space-y-4">
@@ -179,10 +180,10 @@ export default function TaxonomyReclassifyModal({ site, onClose, onSuccess }) {
       </DialogBody>
 
       <DialogActions>
-        <Button plain onClick={onClose} disabled={loading}>
+        <Button variant="ghost" onClick={onClose} disabled={loading}>
           キャンセル
         </Button>
-        <Button color="blue" onClick={handleSubmit} disabled={!canSubmit || loading}>
+        <Button variant="primary" onClick={handleSubmit} disabled={!canSubmit || loading}>
           {loading ? (
             <>
               <DotWaveSpinner size="xs" variant="white" />

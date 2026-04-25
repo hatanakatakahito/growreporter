@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
+import { Button } from '../../components/ui/button';
 import {
   ResponsiveContainer,
   BarChart,
@@ -240,12 +241,13 @@ export default function Keywords() {
                 Googleアカウントで認証し、Search Consoleサイトにアクセスします<br />
                 <span className="text-gray-500">※ 流入キーワードデータを表示するには、Search Consoleとの連携が必要です</span>
               </p>
-              <a
+              <Button
+                variant="primary"
+                size="lg"
                 href={`/sites/${selectedSiteId}/edit?step=3`}
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-8 py-3 text-sm font-medium text-white transition hover:bg-opacity-90"
               >
                 Googleアカウントで接続
-              </a>
+              </Button>
             </div>
           ) : isLoading ? (
             <LoadingSpinner message="データを読み込んでいます..." />

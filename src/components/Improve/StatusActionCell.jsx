@@ -1,10 +1,11 @@
-import { Check, CheckCircle2, Loader2 } from 'lucide-react';
+import { CheckCircle2, Loader2 } from 'lucide-react';
+import { Button } from '../ui/button';
 
 /**
  * 改善タスクのステータスに応じてアクションボタンを出し分けるセル。
  *
  * - draft        → primary の「着手する」ボタン（クリックで in_progress へ）
- * - in_progress  → green の「完了にする」ボタン + サブの「起案に戻す」
+ * - in_progress  → success の「完了にする」ボタン + ghost の「起案に戻す」
  * - completed (計測中) → 「効果計測中」表示 + 「対応中に戻す」
  * - completed (計測完了) → 「計測完了 · スコア 〇〇」表示
  * - archived → 表示なし（呼び出し側で別扱い）
@@ -16,6 +17,7 @@ export default function StatusActionCell({
   onStatusChange,
   compact = false,
   isViewer = false,
+  horizontal = false,
   className = '',
 }) {
   const status = item.status || 'draft';
@@ -27,30 +29,79 @@ export default function StatusActionCell({
   }
 
   if (status === 'draft') {
+    if (horizontal) {
+      return (
+        <div className={`flex items-center gap-2 ${className}`}>
+          <Button
+            variant="primary"
+            size="md"
+            onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'in_progress'); }}
+          >
+            着手する
+          </Button>
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'archived'); }}
+          >
+            見送り
+          </Button>
+        </div>
+      );
+    }
     return (
       <div className={className}>
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="md"
+          className="w-full"
           onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'in_progress'); }}
-          className="w-full inline-flex items-center justify-center rounded-lg bg-primary hover:bg-opacity-90 px-3 py-2 text-sm font-semibold text-white shadow-sm transition"
         >
           着手する
-        </button>
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="mt-1.5 w-full"
+          onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'archived'); }}
+        >
+          見送り
+        </Button>
       </div>
     );
   }
 
   if (status === 'in_progress') {
+    if (horizontal) {
+      return (
+        <div className={`flex items-center gap-2 ${className}`}>
+          <Button
+            variant="success"
+            size="md"
+            onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'completed'); }}
+          >
+            完了にする
+          </Button>
+          <Button
+            variant="ghost"
+            size="md"
+            onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'draft'); }}
+          >
+            起案に戻す
+          </Button>
+        </div>
+      );
+    }
     return (
       <div className={className}>
-        <button
-          type="button"
+        <Button
+          variant="success"
+          size="md"
+          className="w-full"
           onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'completed'); }}
-          className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg bg-green-600 hover:bg-green-700 px-3 py-2 text-sm font-semibold text-white shadow-sm transition"
         >
-          <Check className="h-4 w-4" />
           完了にする
-        </button>
+        </Button>
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onStatusChange(item, 'draft'); }}

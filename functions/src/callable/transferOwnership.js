@@ -148,7 +148,7 @@ export const transferOwnershipCallable = async (request) => {
     <p>${previousOwnerName} さんから、<strong>${companyName}</strong> のオーナー権限が譲渡されました。</p>
     <p>今後、あなたがこのアカウントのオーナーとして、メンバー管理やプラン変更などの全ての操作が可能になります。</p>
     <p style="margin-top: 30px;">
-      <a href="${appUrl}/members" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px;">
+      <a href="${appUrl}/members" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px;">
         メンバー管理画面を開く
       </a>
     </p>

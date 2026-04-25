@@ -121,23 +121,19 @@ export default function ConsultationFormModal({ isOpen, onClose, siteName, siteU
             <p className="mb-2 text-sm text-body-color">
               改善内容の詳細は Excel でダウンロードできます。
             </p>
-            <button
-              type="button"
-              onClick={handleDownloadExcel}
-              className="inline-flex items-center gap-2 rounded-lg border border-primary bg-white px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/5 dark:bg-dark-2"
-            >
-              <Download className="h-4 w-4" />
+            <Button variant="secondary" onClick={handleDownloadExcel}>
+              <Download className="h-4 w-4" data-slot="icon" />
               改善内容の Excel をダウンロード
-            </button>
+            </Button>
           </div>
         </form>
       </DialogBody>
 
       <DialogActions>
-        <Button plain onClick={onClose} disabled={isSending}>
+        <Button variant="ghost" onClick={onClose} disabled={isSending}>
           キャンセル
         </Button>
-        <Button color="blue" type="submit" form="consultation-form" disabled={isSending}>
+        <Button variant="primary" type="submit" form="consultation-form" disabled={isSending}>
           <Send className="h-4 w-4" data-slot="icon" />
           {isSending ? '送信中...' : '送信'}
         </Button>

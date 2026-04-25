@@ -303,7 +303,7 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
                   }
                 }}
                 disabled={isFetchingScreenshot}
-                className="inline-flex items-center gap-2 rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:opacity-50"
+                className="inline-flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3 disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 ${isFetchingScreenshot ? 'animate-spin' : ''}`} />
                 {isFetchingScreenshot ? '取得中...' : 'スクショを再取得'}
@@ -315,14 +315,14 @@ export default function ImprovementDialog({ isOpen, onClose, siteId, editingItem
 
       <DialogActions>
         {editingItem?.id && (
-          <Button color="red" outline onClick={handleDelete} className="sm:mr-auto">
+          <Button variant="danger-outline" onClick={handleDelete} className="sm:mr-auto">
             削除
           </Button>
         )}
-        <Button plain onClick={onClose} disabled={isSaving}>
+        <Button variant="ghost" onClick={onClose} disabled={isSaving}>
           キャンセル
         </Button>
-        <Button color="blue" type="submit" form="improvement-form" disabled={isSaving}>
+        <Button variant="primary" type="submit" form="improvement-form" disabled={isSaving}>
           {isSaving ? '保存中...' : '保存'}
         </Button>
       </DialogActions>

@@ -8,6 +8,7 @@ import { BarChart3, Sparkles, Zap } from 'lucide-react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
 import toast from 'react-hot-toast';
+import { Button } from '../../components/ui/button';
 
 /**
  * アドミンダッシュボード
@@ -74,15 +75,12 @@ export default function AdminDashboard() {
             全体の統計と使用状況
           </p>
         </div>
-        <button
-          onClick={refetch}
-          className="rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-        >
-          <svg className="h-4 w-4 inline mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <Button variant="secondary" onClick={refetch}>
+          <svg data-slot="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
           </svg>
           更新
-        </button>
+        </Button>
       </div>
 
       {/* 統計カード */}
@@ -268,14 +266,15 @@ export default function AdminDashboard() {
               全サイトのGA4データを取得し、サマリーページのAI分析を一括生成します
             </p>
           </div>
-          <button
+          <Button
+            variant="ai"
+            size="lg"
             onClick={handleBatchGenerateAI}
             disabled={batchRunning}
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-sm font-medium text-white transition hover:from-blue-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            <Zap className={`h-4 w-4 ${batchRunning ? 'animate-pulse' : ''}`} />
+            <Zap data-slot="icon" className={batchRunning ? 'animate-pulse' : ''} />
             {batchRunning ? '生成中...' : '一括生成'}
-          </button>
+          </Button>
         </div>
 
         {batchResult && (

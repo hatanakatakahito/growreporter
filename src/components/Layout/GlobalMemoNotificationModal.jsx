@@ -277,7 +277,7 @@ export default function GlobalMemoNotificationModal({
 
       <DialogActions className="!justify-center">
         {totalCount > 0 && (
-          <Button color="blue" onClick={handleMarkAllAsRead}>
+          <Button variant="primary" onClick={handleMarkAllAsRead}>
             すべて既読にする
           </Button>
         )}

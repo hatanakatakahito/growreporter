@@ -11,6 +11,7 @@ import ReactMarkdown from 'react-markdown';
 import DotWaveSpinner from '../common/DotWaveSpinner';
 import UpgradeModal from '../common/UpgradeModal';
 import BusinessPlanLockOverlay from '../common/BusinessPlanLockOverlay';
+import { Button } from '../ui/button';
 import { collection, addDoc, serverTimestamp, query, where, getDocs } from 'firebase/firestore';
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 
@@ -190,7 +191,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
           {/* ヘッダー */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-ai">
                 <Sparkles className="h-5 w-5 text-white" />
               </div>
               <div>
@@ -198,14 +199,14 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
                 <p className="text-xs text-gray-500 dark:text-gray-400">2026/04/04 01:08 生成</p>
               </div>
             </div>
-            <button disabled className="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300">
-              <RefreshCw className="h-4 w-4" />
+            <Button variant="secondary" disabled>
+              <RefreshCw className="h-4 w-4" data-slot="icon" />
               再分析
-            </button>
+            </Button>
           </div>
 
           {/* AI分析サマリ */}
-          <div className="rounded-lg bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 px-10 py-8">
+          <div className="rounded-lg bg-gradient-ai-soft dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 px-10 py-8">
             <div className="text-sm text-gray-800 dark:text-gray-200">
               <p className="leading-relaxed">
                 当期のセッション数は6,373回、ページビューは17,484回でした。
@@ -248,13 +249,10 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
           <div className="flex-1">
             <h3 className="text-sm font-medium text-red-800 dark:text-red-200">エラーが発生しました</h3>
             <p className="mt-1 text-sm text-red-700 dark:text-red-300">{error}</p>
-            <button
-              onClick={() => loadAnalysis(false)}
-              className="mt-3 inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700"
-            >
-              <RefreshCw className="h-4 w-4" />
+            <Button variant="primary" size="sm" onClick={() => loadAnalysis(false)} className="mt-3">
+              <RefreshCw className="h-4 w-4" data-slot="icon" />
               再試行
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -266,7 +264,7 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
       {/* ヘッダー */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500">
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-ai">
             <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
@@ -279,27 +277,27 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
             )}
           </div>
         </div>
-        
-        <button
-            data-tour="ai-summary-regenerate"
-            onClick={() => {
-              if (planId === 'free') {
-                setIsUpgradeModalOpen(true);
-              } else {
-                loadAnalysis(true);
-              }
-            }}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-dark-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-dark-3 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            再分析
-          </button>
+
+        <Button
+          variant="secondary"
+          data-tour="ai-summary-regenerate"
+          onClick={() => {
+            if (planId === 'free') {
+              setIsUpgradeModalOpen(true);
+            } else {
+              loadAnalysis(true);
+            }
+          }}
+          disabled={isLoading}
+        >
+          <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} data-slot="icon" />
+          再分析
+        </Button>
       </div>
 
       {/* AI分析サマリ */}
       {summary && (
-        <div data-tour="ai-summary-body" className="rounded-lg bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 px-10 py-8">
+        <div data-tour="ai-summary-body" className="rounded-lg bg-gradient-ai-soft dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 px-10 py-8">
           {pageType === 'comprehensive_analysis' || pageType === 'comprehensive_improvement' ? (
             <div className="prose prose-sm dark:prose-invert max-w-none">
               <ReactMarkdown>{summary}</ReactMarkdown>
@@ -374,26 +372,21 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
                     )}
                   </div>
                   
-                  <button
-                    onClick={() => addTaskMutation.mutate(rec)}
-                    disabled={isAdded || addTaskMutation.isPending}
-                    className={`
-                      inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-colors
-                      ${isAdded
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 cursor-not-allowed'
-                        : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }
-                    `}
-                  >
-                    {isAdded ? (
-                      <>
-                        <Check className="h-3.5 w-3.5" />
-                        追加済み
-                      </>
-                    ) : (
-                      '+ タスクに追加'
-                    )}
-                  </button>
+                  {isAdded ? (
+                    <span className="inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                      <Check className="h-3.5 w-3.5" />
+                      追加済み
+                    </span>
+                  ) : (
+                    <Button
+                      variant="ai"
+                      size="sm"
+                      onClick={() => addTaskMutation.mutate(rec)}
+                      disabled={addTaskMutation.isPending}
+                    >
+                      + タスクに追加
+                    </Button>
+                  )}
                 </div>
               </div>
             );
@@ -404,27 +397,29 @@ export default function AIAnalysisSection({ pageType, rawData, metrics, period, 
       {/* サイト改善画面へのリンク */}
       <div data-tour="ai-summary-actions" className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 flex flex-col items-center">
         <div className="flex items-center gap-3">
-          <button
+          <Button
+            variant="ai"
+            size="lg"
             onClick={() => {
               const pagePath = location.pathname.replace('/analysis/', '').replace('/', '');
               navigate(`/ai-chat?from=${pagePath || 'comprehensive'}`);
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-sm font-medium text-white hover:from-blue-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" data-slot="icon"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>
             AIに質問する
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ai"
+            size="lg"
             onClick={() => {
               if (!selectedSiteId) return;
               navigate('/improve');
             }}
-            className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-sm font-medium text-white hover:from-blue-600 hover:to-pink-600 transition-all shadow-md hover:shadow-lg"
           >
-            <Sparkles className="h-4 w-4" />
+            <Sparkles className="h-4 w-4" data-slot="icon" />
             サイト改善案を生成する
-            <ArrowRight className="h-4 w-4" />
-          </button>
+            <ArrowRight className="h-4 w-4" data-slot="icon" />
+          </Button>
         </div>
         <p className="mt-2 text-xs text-gray-500 dark:text-gray-400 text-center">
           過去365日分のデータを分析し、最適な改善提案を生成します

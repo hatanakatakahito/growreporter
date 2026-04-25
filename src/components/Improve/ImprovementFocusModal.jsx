@@ -105,10 +105,11 @@ export default function ImprovementFocusModal({ isOpen, onClose, onConfirm, site
         </div>
       </DialogBody>
       <DialogActions>
-        <Button plain onClick={onClose}>
+        <Button variant="ghost" onClick={onClose}>
           キャンセル
         </Button>
-        <Button color="blue" onClick={handleConfirm}>
+        <Button variant="ai" onClick={handleConfirm}>
+          <Sparkles className="h-4 w-4" data-slot="icon" />
           生成する
         </Button>
       </DialogActions>

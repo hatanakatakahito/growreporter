@@ -142,7 +142,8 @@ Defined in `src/constants/plans.js`, enforced dual-layer: client-side via `usePl
 - **Date handling**: `date-fns` (both frontend and backend)
 - **Excel export**: `xlsx-js-style`
 - **Cloud Functions**: Always use the `lazyCallable()` pattern in `index.js` for new callable functions. Direct `onCall` is used only for functions needing custom request shape (e.g., `fetchMetadata`, `scrapeTop100Pages`)
-- **Tailwind custom colors**: `primary` (blue #3758F9 with blue/purple AI gradient), `secondary` (#13C296 green), `dark` scale (dark → dark-8)
+- **Tailwind custom colors**: `primary` (#3758F9), `secondary` (#13C296 green), `dark` scale (dark → dark-8). Gradients: `bg-gradient-primary` (blue→purple, onboarding only), `bg-gradient-ai` (blue→purple→pink 3-color, AI features), `bg-gradient-business` (red→pink, plan upgrade)
+- **Button regulation**: Always use `<Button variant="...">` from `src/components/ui/button.jsx`. Available variants: `primary` / `secondary` / `ghost` / `success` / `danger` / `danger-outline` / `ai` / `upgrade`. **Do NOT** inline `bg-blue-*`, `bg-green-*`, `bg-red-*`, `bg-primary`, or `from-* to-*` gradients on `<button>` elements. Full spec: [docs/UI_BUTTON_REGULATION.md](docs/UI_BUTTON_REGULATION.md). AI gradient = `bg-gradient-ai` (blue→purple→pink, 3-color), Upgrade gradient = `bg-gradient-business` (red→pink, matches Business plan badge).
 
 ## Environment Variables
 

@@ -8,6 +8,7 @@ import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import DotWaveSpinner from '../../../components/common/DotWaveSpinner';
 import { Search, Download, ChevronLeft, ChevronRight, Globe, AlertTriangle, CheckCircle, XCircle, BarChart3, Trash2, AlertCircle } from 'lucide-react';
+import { Button } from '../../../components/ui/button';
 import { BUSINESS_MODEL_LABELS } from '../../../constants/businessModels';
 import { SITE_ROLE_LABELS } from '../../../constants/siteRoles';
 import { INDUSTRY_MAJOR_LABELS } from '../../../constants/industriesV2';
@@ -188,23 +189,20 @@ export default function AdminSiteList() {
                 className="w-full rounded-lg border border-stroke bg-white py-2 pl-10 pr-4 text-sm transition-all duration-200 focus:border-primary-mid focus:outline-none focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:bg-dark dark:text-white"
               />
             </div>
-            <button
-              onClick={handleSearch}
-              className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-            >
+            <Button variant="primary" size="lg" onClick={handleSearch}>
               検索
-            </button>
+            </Button>
           </div>
 
           {/* CSVエクスポート */}
-          <button
+          <Button
+            variant="secondary"
             onClick={handleExportCSV}
             disabled={!sites || sites.length === 0}
-            className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
           >
-            <Download className="h-4 w-4" />
+            <Download data-slot="icon" />
             <span>CSVエクスポート</span>
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -314,31 +312,33 @@ export default function AdminSiteList() {
                       </td>
                       <td className="px-4 py-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <button
+                          <Button
+                            variant="secondary"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleSiteClick(site.siteId);
                             }}
-                            className="rounded-lg border border-stroke bg-white px-3 py-1.5 text-xs font-medium text-dark transition hover:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
                             title="サイト詳細"
                           >
                             詳細
-                          </button>
-                          <button
+                          </Button>
+                          <Button
+                            variant="danger-outline"
+                            size="sm"
                             onClick={(e) => {
                               e.stopPropagation();
                               setDeleteTarget(site);
                             }}
-                            className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-medium text-red-500 transition hover:bg-red-50 dark:border-red-900/50 dark:bg-dark-2 dark:hover:bg-red-900/20"
                             title="サイト削除"
                           >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
+                            <Trash2 data-slot="icon" />
+                          </Button>
                           {!site.isOrphan && (() => {
                             // GA4とGSCの未設定状況を確認
                             const needsGA4 = !site.hasGA4;
                             const needsGSC = !site.hasGSC;
-                            
+
                             // 両方設定済みならダッシュボードへ、未設定があればサイト設定へ
                             if (needsGA4 || needsGSC) {
                               // 未設定がある場合はサイト設定画面へ（STEP2またはSTEP3）
@@ -349,7 +349,7 @@ export default function AdminSiteList() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition hover:bg-opacity-90"
+                                  className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-opacity-90"
                                   title="サイト設定"
                                 >
                                   <BarChart3 className="h-3 w-3" />
@@ -364,7 +364,7 @@ export default function AdminSiteList() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   onClick={(e) => e.stopPropagation()}
-                                  className="flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition hover:bg-opacity-90"
+                                  className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition hover:bg-opacity-90"
                                   title="ダッシュボードを開く"
                                 >
                                   <BarChart3 className="h-3 w-3" />
@@ -389,25 +389,25 @@ export default function AdminSiteList() {
                   {Math.min(pagination.currentPage * pagination.limit, pagination.totalCount)}件を表示
                 </div>
                 <div className="flex items-center gap-2">
-                  <button
+                  <Button
+                    variant="secondary"
                     onClick={() => handlePageChange(pagination.currentPage - 1)}
                     disabled={!pagination.hasPrevPage}
-                    className="flex items-center gap-1 rounded-lg border border-stroke bg-white px-3 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
                   >
-                    <ChevronLeft className="h-4 w-4" />
+                    <ChevronLeft data-slot="icon" />
                     <span>前へ</span>
-                  </button>
+                  </Button>
                   <div className="text-sm text-body-color dark:text-dark-6">
                     {pagination.currentPage} / {pagination.totalPages}
                   </div>
-                  <button
+                  <Button
+                    variant="secondary"
                     onClick={() => handlePageChange(pagination.currentPage + 1)}
                     disabled={!pagination.hasNextPage}
-                    className="flex items-center gap-1 rounded-lg border border-stroke bg-white px-3 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
                   >
                     <span>次へ</span>
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
+                    <ChevronRight data-slot="icon" />
+                  </Button>
                 </div>
               </div>
             )}
@@ -470,17 +470,19 @@ export default function AdminSiteList() {
             )}
 
             <div className="flex gap-3">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => { setDeleteTarget(null); setDeleteError(null); }}
                 disabled={deleteLoading}
-                className="flex-1 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                className="flex-1"
               >
                 キャンセル
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="danger"
                 onClick={handleDeleteSite}
                 disabled={deleteLoading}
-                className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-red-600 disabled:opacity-50"
+                className="flex-1"
               >
                 {deleteLoading ? (
                   <>
@@ -490,7 +492,7 @@ export default function AdminSiteList() {
                 ) : (
                   '削除する'
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>

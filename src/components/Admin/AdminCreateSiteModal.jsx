@@ -131,10 +131,10 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
         </DialogBody>
 
         <DialogActions>
-          <Button plain onClick={() => { setShowConfirm(false); setError(null); }} disabled={loading}>
+          <Button variant="ghost" onClick={() => { setShowConfirm(false); setError(null); }} disabled={loading}>
             戻る
           </Button>
-          <Button color="blue" onClick={handleCreate} disabled={loading}>
+          <Button variant="primary" onClick={handleCreate} disabled={loading}>
             {loading ? (
               <>
                 <DotWaveSpinner size="xs" variant="white" />
@@ -174,10 +174,10 @@ export default function AdminCreateSiteModal({ targetUserId, targetUserName, onC
       </form>
 
       <DialogActions>
-        <Button plain onClick={onClose}>
+        <Button variant="ghost" onClick={onClose}>
           キャンセル
         </Button>
-        <Button color="blue" type="submit" form="create-site-form" disabled={!isValid()}>
+        <Button variant="primary" type="submit" form="create-site-form" disabled={!isValid()}>
           確認画面へ
         </Button>
       </DialogActions>

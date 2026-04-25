@@ -97,7 +97,7 @@ function generateInvitationEmailHtml(data) {
         <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
           
           <tr>
-            <td style="background-color: #667eea; padding: 30px; text-align: center;">
+            <td style="background-color: #3758F9; padding: 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">グローレポータ</h1>
               <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">メンバー招待</p>
             </td>
@@ -113,7 +113,7 @@ function generateInvitationEmailHtml(data) {
                 <strong>${companyName}</strong> のメンバーとして招待されました。
               </p>
               
-              <div style="background-color: #f9fafb; border-left: 4px solid #667eea; padding: 15px; margin: 20px 0;">
+              <div style="background-color: #f9fafb; border-left: 4px solid #3758F9; padding: 15px; margin: 20px 0;">
                 <p style="margin: 0; color: #374151; font-size: 14px;">
                   <strong>権限:</strong> ${role}
                 </p>
@@ -126,7 +126,7 @@ function generateInvitationEmailHtml(data) {
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${invitationUrl}" style="display: inline-block; background-color: #667eea; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                    <a href="${invitationUrl}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
                       招待を承認する
                     </a>
                   </td>
@@ -134,7 +134,7 @@ function generateInvitationEmailHtml(data) {
               </table>
               <p style="margin: 16px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
                 ボタンが表示されない場合は、以下のリンクをクリックしてください：<br>
-                <a href="${invitationUrl}" style="color: #667eea; text-decoration: underline; word-break: break-all;">${invitationUrl}</a>
+                <a href="${invitationUrl}" style="color: #3758F9; text-decoration: underline; word-break: break-all;">${invitationUrl}</a>
               </p>
               <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
                 ※ この招待は <strong>${expiresAt}</strong> まで有効です。<br>

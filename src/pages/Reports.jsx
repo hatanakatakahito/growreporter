@@ -20,6 +20,7 @@ import {
 import { FilterBar, PendingDetail, ActionButtons, ChangeIndicator } from './ReportsMockup/ReportsA';
 import EvaluationDialog from '../components/Reports/EvaluationDialog';
 import ImplementationDiffModal from '../components/Reports/ImplementationDiffModal';
+import { Button } from '@/components/ui/button';
 import { usePlan } from '../hooks/usePlan';
 import UpgradeModal from '../components/common/UpgradeModal';
 import { useNavigate } from 'react-router-dom';
@@ -325,11 +326,10 @@ function NextStepButton({ item, siteId, onRefresh }) {
     <div className="border-t border-stroke dark:border-dark-3 px-5 py-3 flex items-center gap-3">
       <Sparkles className="h-4 w-4 text-primary shrink-0" />
       <span className="text-sm text-body-color">この結果をもとに次の改善提案を生成できます</span>
-      <button onClick={handleGenerate} disabled={isGenerating}
-        className="ml-auto inline-flex items-center gap-1.5 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50 disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3">
-        {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+      <Button variant="ai" size="sm" onClick={handleGenerate} disabled={isGenerating} className="ml-auto">
+        {isGenerating ? <Loader2 data-slot="icon" className="animate-spin" /> : <Sparkles data-slot="icon" />}
         次ステップ提案を生成
-      </button>
+      </Button>
     </div>
   );
 }

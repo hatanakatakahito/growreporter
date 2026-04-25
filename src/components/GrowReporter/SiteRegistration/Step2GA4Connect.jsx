@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import Select from 'react-select';
+import { ChevronDown } from 'lucide-react';
+import PickerModal from './PickerModal';
 import { useAuth } from '../../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { db, functions } from '../../../config/firebase';
@@ -15,6 +16,7 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
   const [properties, setProperties] = useState([]);
   const [isLoadingProperties, setIsLoadingProperties] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [showPropertyPicker, setShowPropertyPicker] = useState(false);
 
   // コンポーネントマウント時のログ
   useEffect(() => {
@@ -459,7 +461,8 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
           <Button
             onClick={handleConnect}
             disabled={isConnecting}
-            color="blue"
+            variant="primary"
+            size="lg"
           >
             {isConnecting ? (
               <>
@@ -474,32 +477,6 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
       ) : (
         // 接続済み状態
         <>
-          {/* 接続済みメッセージ */}
-          <div className="flex items-center gap-3 rounded-lg bg-green-50 p-4 dark:bg-green-900/20">
-            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-              <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-              </svg>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-green-800 dark:text-green-300">
-                Googleアカウントに接続済みです
-                {token.google_account && ` (${token.google_account})`}
-              </p>
-            </div>
-            <button
-              onClick={handleDisconnect}
-              disabled={isDisconnecting}
-              className="flex items-center gap-1.5 rounded-md border border-red-300 bg-white px-3 py-1.5 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-700 dark:bg-dark-2 dark:text-red-400 dark:hover:bg-red-900/20"
-              title="接続を解除"
-            >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-              解除
-            </button>
-          </div>
-
           {/* プロパティ選択 */}
           <div>
             <label htmlFor="ga4-property" className="mb-2.5 flex items-center gap-2 text-sm font-medium text-dark dark:text-white">
@@ -508,91 +485,32 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
             </label>
 
             {isLoadingProperties ? (
-              <div className="flex items-center gap-2 rounded-md border border-stroke bg-transparent px-5 py-3 text-body-color dark:border-dark-3">
+              <div className="flex items-center gap-2 rounded-md border border-stroke bg-transparent px-5 py-3 text-sm text-body-color dark:border-dark-3">
                 <DotWaveSpinner size="sm" />
                 プロパティを読み込み中...
               </div>
             ) : properties.length > 0 ? (
-              <>
-                <Select
-                  id="ga4-property"
-                  options={properties.map(property => ({
-                    value: property.id,
-                    label: `${property.name} (${property.account})`,
-                    accountId: property.accountId,
-                    account: property.account,
-                  }))}
-                  value={(() => {
-                    // デバッグ用
-                    console.log('[GA4Connect] Select value計算:', {
-                      ga4PropertyId: siteData.ga4PropertyId,
-                      ga4PropertyName: siteData.ga4PropertyName,
-                      ga4AccountName: siteData.ga4AccountName,
-                      ga4AccountId: siteData.ga4AccountId,
-                    });
-                    
-                    if (siteData.ga4PropertyId) {
-                      // プロパティ一覧から該当するものを探す
-                      const matchedProperty = properties.find(p => p.id === siteData.ga4PropertyId);
-                      
-                      if (matchedProperty) {
-                        console.log('[GA4Connect] マッチしたプロパティ:', matchedProperty);
-                        return {
-                          value: matchedProperty.id,
-                          label: `${matchedProperty.name} (${matchedProperty.account})`,
-                          accountId: matchedProperty.accountId,
-                          account: matchedProperty.account,
-                        };
-                      } else {
-                        console.log('[GA4Connect] プロパティが見つかりません。保存されたデータを使用');
-                        // プロパティ一覧にない場合は、保存されたデータを使用
-                        if (siteData.ga4PropertyName && siteData.ga4AccountName) {
-                          return {
-                            value: siteData.ga4PropertyId,
-                            label: `${siteData.ga4PropertyName} (${siteData.ga4AccountName})`,
-                            accountId: siteData.ga4AccountId,
-                            account: siteData.ga4AccountName,
-                          };
-                        }
-                      }
-                    }
-                    
-                    return null;
-                  })()}
-                  onChange={handlePropertySelect}
-                  placeholder="プロパティ名、アカウント名、IDで検索..."
-                  noOptionsMessage={() => "該当するプロパティが見つかりません"}
-                  isSearchable={true}
-                  isClearable={false}
-                  classNames={{
-                    control: () => 'w-full rounded-md border border-stroke bg-transparent px-2 py-1 text-dark dark:border-dark-3 dark:text-white',
-                    menu: () => 'mt-2 rounded-md border border-stroke bg-white shadow-lg dark:border-dark-3 dark:bg-dark-2',
-                    option: ({ isFocused, isSelected }) => 
-                      `px-5 py-3 cursor-pointer ${
-                        isSelected ? 'bg-primary text-white' : 
-                        isFocused ? 'bg-gray-100 dark:bg-dark-3' : ''
-                      }`,
-                    placeholder: () => 'text-body-color',
-                    input: () => 'text-dark dark:text-white',
-                    singleValue: () => 'text-dark dark:text-white',
-                  }}
-                  styles={{
-                    control: (base, state) => ({
-                      ...base,
-                      minHeight: '48px',
-                      borderColor: state.isFocused ? '#3C50E0' : '#E5E7EB',
-                      boxShadow: 'none',
-                      '&:hover': {
-                        borderColor: '#3C50E0',
-                      },
-                    }),
-                  }}
-                />
-                <p className="mt-2 text-xs text-body-color">
-                  {properties.length} 件のプロパティが見つかりました
-                  {token.google_account && ` (${token.google_account})`}
-                </p>
-              </>
+              (() => {
+                const matched = properties.find((p) => p.id === siteData.ga4PropertyId);
+                const display = matched
+                  ? `${matched.name} (${matched.account})`
+                  : siteData.ga4PropertyId && siteData.ga4PropertyName && siteData.ga4AccountName
+                    ? `${siteData.ga4PropertyName} (${siteData.ga4AccountName})`
+                    : null;
+                return (
+                  <button
+                    type="button"
+                    id="ga4-property"
+                    onClick={() => setShowPropertyPicker(true)}
+                    className="flex w-full items-center justify-between gap-2 rounded-md border border-stroke bg-white px-4 py-3 text-left text-sm transition hover:border-primary focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 dark:border-dark-3 dark:bg-dark-2"
+                  >
+                    <span className={`truncate ${display ? 'text-dark dark:text-white' : 'text-body-color'}`}>
+                      {display || `選択してください (${properties.length} 件のプロパティ)`}
+                    </span>
+                    <ChevronDown className="h-4 w-4 flex-shrink-0 text-body-color" />
+                  </button>
+                );
+              })()
             ) : (
               <div className="rounded-lg border border-orange-200 bg-orange-50 p-4 dark:border-orange-900/30 dark:bg-orange-900/20">
                 <p className="text-sm text-orange-800 dark:text-orange-300">
@@ -601,34 +519,72 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
                 </p>
               </div>
             )}
+
+            {/* 接続状態 + 解除 (セレクト下、右寄せ) */}
+            <div className="mt-2 flex items-center justify-end gap-2">
+              {token.google_account && (
+                <span className="inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-400">
+                  <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  {token.google_account}
+                </span>
+              )}
+              <Button
+                type="button"
+                variant="danger-outline"
+                size="sm"
+                onClick={handleDisconnect}
+                disabled={isDisconnecting}
+                title="接続を解除"
+              >
+                <svg data-slot="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+                解除
+              </Button>
+            </div>
           </div>
 
-          {/* 選択済みプロパティの表示 */}
-          {siteData.ga4PropertyId && (
-            <div className="flex items-center gap-3 rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">
-              <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
-                <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-                  <strong>{siteData.ga4PropertyName}</strong> を選択しました
-                  {token.google_account && ` (アカウント: ${token.google_account})`}
-                </p>
-              </div>
-            </div>
-          )}
+          {/* プロパティ選択モーダル */}
+          <PickerModal
+            open={showPropertyPicker}
+            onClose={() => setShowPropertyPicker(false)}
+            title="GA4 プロパティを選択"
+            searchPlaceholder="プロパティ名・アカウント名・ID で検索..."
+            items={properties.map((p) => ({
+              key: p.id,
+              primary: p.name,
+              secondary: `${p.account} • ID: ${p.id}`,
+              searchText: `${p.name} ${p.account} ${p.id}`,
+            }))}
+            selectedKey={siteData.ga4PropertyId}
+            onSelect={(key) => {
+              const property = properties.find((p) => p.id === key);
+              if (property) {
+                handlePropertySelect({
+                  value: property.id,
+                  label: `${property.name} (${property.account})`,
+                  accountId: property.accountId,
+                  account: property.account,
+                });
+              }
+              setShowPropertyPicker(false);
+            }}
+            emptyMessage="該当するプロパティが見つかりません"
+          />
 
-          {/* 再接続ボタン */}
-          <Button
-            onClick={handleConnect}
-            disabled={isConnecting}
-            outline
-            className="w-full"
-          >
-            別のGoogleアカウントで接続・再接続
-          </Button>
+          {/* 再接続テキストリンク */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={handleConnect}
+              disabled={isConnecting}
+              className="text-sm text-body-color underline underline-offset-2 hover:text-dark disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              別のGoogleアカウントで接続・再接続
+            </button>
+          </div>
         </>
       )}
     </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
 import DotWaveSpinner from '../common/DotWaveSpinner';
+import { Button } from '../ui/button';
 
 /**
  * AI改善案生成ローディングオーバーレイ
@@ -22,12 +23,9 @@ export default function AIGenerationModal({ isOpen, onCancel }) {
           少々お待ちください。
         </p>
         {onCancel && (
-          <button
-            onClick={onCancel}
-            className="mt-8 text-xs text-gray-400 transition hover:text-gray-600"
-          >
+          <Button variant="ghost" size="sm" onClick={onCancel} className="mt-8">
             キャンセル
-          </button>
+          </Button>
         )}
       </div>
     </div>,

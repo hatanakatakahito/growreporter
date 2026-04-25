@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { setPageTitle } from '../utils/pageTitle';
 import logoImg from '../assets/img/logo.svg';
 import loginIllustration from '../assets/img/login.svg';
+import { Button } from '@/components/ui/button';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -171,13 +172,15 @@ export default function ForgotPassword() {
                 </p>
 
                 {/* 送信ボタン */}
-                <button
+                <Button
+                  variant="primary"
+                  size="lg"
                   type="submit"
                   disabled={isSubmitting || !email}
-                  className="mb-4 w-full rounded-md bg-primary px-4 py-3 text-center text-sm font-medium text-white hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="mb-4 w-full"
                 >
                   {isSubmitting ? '送信中...' : 'リセットメールを送信'}
-                </button>
+                </Button>
               </form>
 
               <div className="text-center">

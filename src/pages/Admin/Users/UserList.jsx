@@ -9,6 +9,7 @@ import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
 import AdminCreateUserModal from '../../../components/Admin/AdminCreateUserModal';
 import AdminCreateSiteModal from '../../../components/Admin/AdminCreateSiteModal';
 import { Search, Download, ChevronLeft, ChevronRight, Edit2, UserPlus } from 'lucide-react';
+import { Button } from '../../../components/ui/button';
 
 /**
  * ユーザー一覧
@@ -134,49 +135,39 @@ export default function UserList() {
                 className="w-full rounded-lg border border-stroke bg-white py-2 pl-10 pr-4 text-sm transition-all duration-200 focus:border-primary-mid focus:outline-none focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:bg-dark dark:text-white"
               />
             </div>
-            <button
-              onClick={handleSearch}
-              className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-            >
+            <Button variant="primary" size="lg" onClick={handleSearch}>
               検索
-            </button>
+            </Button>
           </div>
 
           {/* プランフィルタ */}
           <div className="flex gap-2">
             {['all', 'free', 'business'].map((plan) => (
-              <button
+              <Button
                 key={plan}
+                variant={currentParams.planFilter === plan ? 'primary' : 'ghost'}
                 onClick={() => handlePlanFilter(plan)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
-                  currentParams.planFilter === plan
-                    ? 'bg-primary text-white transition hover:bg-opacity-90'
-                    : 'bg-gray-100 text-body-color hover:bg-gray-200 dark:bg-dark-3 dark:text-dark-6 dark:hover:bg-dark'
-                }`}
               >
                 {plan === 'all' ? 'すべて' : getPlanDisplayName(plan)}
-              </button>
+              </Button>
             ))}
           </div>
 
           <div className="flex gap-2">
             {/* ユーザー作成 */}
-            <button
-              onClick={() => setShowCreateUserModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-            >
-              <UserPlus className="h-4 w-4" />
+            <Button variant="primary" onClick={() => setShowCreateUserModal(true)}>
+              <UserPlus data-slot="icon" />
               ユーザー作成
-            </button>
+            </Button>
             {/* CSVエクスポート */}
-            <button
+            <Button
+              variant="secondary"
               onClick={handleExportCSV}
               disabled={!users || users.length === 0}
-              className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
             >
-              <Download className="h-4 w-4" />
+              <Download data-slot="icon" />
               CSVエクスポート
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -304,13 +295,14 @@ export default function UserList() {
                         }) : '-'}
                       </td>
                       <td className="px-4 py-4 text-center">
-                        <button
+                        <Button
+                          variant="secondary"
+                          size="sm"
                           onClick={(e) => handleOpenPlanModal(e, user)}
-                          className="inline-flex items-center gap-1 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/20"
                         >
-                          <Edit2 className="h-3 w-3" />
+                          <Edit2 data-slot="icon" />
                           プラン変更
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))}
@@ -327,25 +319,25 @@ export default function UserList() {
                 〜{Math.min(pagination.currentPage * pagination.limit, pagination.totalCount)}件を表示
               </p>
               <div className="flex gap-2">
-                <button
+                <Button
+                  variant="secondary"
                   onClick={() => handlePageChange(pagination.currentPage - 1)}
                   disabled={!pagination.hasPrevPage}
-                  className="flex items-center gap-1 rounded-lg border border-stroke bg-white px-3 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
                 >
-                  <ChevronLeft className="h-4 w-4" />
+                  <ChevronLeft data-slot="icon" />
                   前へ
-                </button>
+                </Button>
                 <span className="flex items-center px-3 text-sm text-body-color dark:text-dark-6">
                   {pagination.currentPage} / {pagination.totalPages}
                 </span>
-                <button
+                <Button
+                  variant="secondary"
                   onClick={() => handlePageChange(pagination.currentPage + 1)}
                   disabled={!pagination.hasNextPage}
-                  className="flex items-center gap-1 rounded-lg border border-stroke bg-white px-3 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
                 >
                   次へ
-                  <ChevronRight className="h-4 w-4" />
-                </button>
+                  <ChevronRight data-slot="icon" />
+                </Button>
               </div>
             </div>
           )}

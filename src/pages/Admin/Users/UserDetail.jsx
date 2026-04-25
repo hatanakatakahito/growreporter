@@ -31,6 +31,7 @@ import { doc, getDoc, updateDoc, deleteField, onSnapshot } from 'firebase/firest
 import { db } from '../../../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../../config/firebase';
+import { Button } from '../../../components/ui/button';
 
 /**
  * ユーザー詳細画面
@@ -217,12 +218,13 @@ export default function UserDetail() {
       {/* ヘッダー */}
       <div className="mb-6 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <button
+          <Button
+            variant="secondary"
             onClick={() => navigate('/admin/users')}
-            className="flex h-10 w-10 items-center justify-center rounded-lg border border-stroke bg-white transition hover:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:hover:bg-dark-3"
+            className="!h-10 !w-10 !p-0"
           >
-            <ArrowLeft className="h-5 w-5 text-dark dark:text-white" />
-          </button>
+            <ArrowLeft data-slot="icon" />
+          </Button>
           <div>
             <h2 className="text-2xl font-bold text-dark dark:text-white">
               ユーザー詳細
@@ -233,22 +235,22 @@ export default function UserDetail() {
           </div>
         </div>
         <div className="flex gap-2">
-          <button
+          <Button
+            variant="primary"
             onClick={() => setShowPlanModal(true)}
             disabled={isDeleting}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50"
           >
-            <Edit2 className="h-4 w-4" />
+            <Edit2 data-slot="icon" />
             プラン変更
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="danger-outline"
             onClick={handleDeleteUser}
             disabled={isDeleting}
-            className="flex items-center gap-2 rounded-lg border-2 border-red-500 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:bg-dark-2 dark:hover:bg-red-900/20"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 data-slot="icon" />
             {isDeleting ? '削除中...' : 'ユーザーを削除'}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -426,41 +428,35 @@ export default function UserDetail() {
           <h3 className="text-lg font-semibold text-dark dark:text-white">登録サイト一覧</h3>
           <div className="flex gap-2">
             {/* サイト登録ボタン */}
-            <button
-              onClick={() => setShowCreateSiteModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-            >
-              <Plus className="h-4 w-4" />
+            <Button variant="primary" onClick={() => setShowCreateSiteModal(true)}>
+              <Plus data-slot="icon" />
               サイト登録
-            </button>
+            </Button>
             {/* 有効サイト管理 */}
             {userDetail.sites && userDetail.sites.length > 1 && (
               editingActiveSites ? (
                 <>
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={() => setEditingActiveSites(false)}
                     disabled={isSavingActiveSites}
-                    className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-body-color transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:hover:bg-dark-3"
                   >
                     キャンセル
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="primary"
                     onClick={handleSaveActiveSites}
                     disabled={isSavingActiveSites || editActiveSiteIds.length === 0}
-                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:opacity-50"
                   >
-                    <Save className="h-4 w-4" />
+                    <Save data-slot="icon" />
                     {isSavingActiveSites ? '保存中...' : '保存'}
-                  </button>
+                  </Button>
                 </>
               ) : (
-                <button
-                  onClick={handleStartEditActiveSites}
-                  className="flex items-center gap-2 rounded-lg bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/20"
-                >
-                  <Edit2 className="h-4 w-4" />
+                <Button variant="secondary" onClick={handleStartEditActiveSites}>
+                  <Edit2 data-slot="icon" />
                   有効サイト管理
-                </button>
+                </Button>
               )
             )}
           </div>
@@ -558,20 +554,14 @@ export default function UserDetail() {
           <h3 className="text-lg font-semibold text-dark dark:text-white">個別制限</h3>
           <div className="flex gap-2">
             {customLimits && (
-              <button
-                onClick={handleRemoveCustomLimits}
-                className="rounded-lg border border-red-500 bg-white px-4 py-2 text-sm font-medium text-red-500 transition hover:bg-red-50 dark:bg-dark-2 dark:hover:bg-red-900/20"
-              >
+              <Button variant="danger-outline" onClick={handleRemoveCustomLimits}>
                 削除
-              </button>
+              </Button>
             )}
-            <button
-              onClick={() => setShowCustomLimitsModal(true)}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-            >
-              <Edit2 className="h-4 w-4" />
+            <Button variant="primary" onClick={() => setShowCustomLimitsModal(true)}>
+              <Edit2 data-slot="icon" />
               {customLimits ? '編集' : '設定'}
-            </button>
+            </Button>
           </div>
         </div>
 

@@ -117,11 +117,11 @@ export default function InviteMemberModal({ onClose, currentMemberCount, maxMemb
         </form>
       </DialogBody>
       <DialogActions>
-        <Button plain onClick={onClose} disabled={isSubmitting}>
+        <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
           キャンセル
         </Button>
         <Button
-          color="blue"
+          variant="primary"
           type="submit"
           form="invite-form"
           disabled={!canInvite || isSubmitting}

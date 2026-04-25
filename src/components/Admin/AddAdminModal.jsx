@@ -131,10 +131,10 @@ export default function AddAdminModal({ onClose, onSuccess }) {
       </form>
 
       <DialogActions>
-        <Button plain onClick={onClose} disabled={loading}>
+        <Button variant="ghost" onClick={onClose} disabled={loading}>
           キャンセル
         </Button>
-        <Button color="blue" type="submit" form="add-admin-form" disabled={loading}>
+        <Button variant="primary" type="submit" form="add-admin-form" disabled={loading}>
           {loading && <DotWaveSpinner size="xs" variant="white" />}
           {loading ? '追加中...' : '追加'}
         </Button>

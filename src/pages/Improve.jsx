@@ -5,7 +5,7 @@ import { useSidebar } from '../contexts/SidebarContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, X, FileText, Clock, TrendingUp, ChevronLeft, ChevronRight, AlertCircle, RefreshCw } from 'lucide-react';
+import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, X, FileText, Clock, TrendingUp, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, LayoutDashboard } from 'lucide-react';
 import DotWaveSpinner from '../components/common/DotWaveSpinner';
 import { setPageTitle } from '../utils/pageTitle';
 import { db, functions } from '../config/firebase';
@@ -69,6 +69,53 @@ const priorityColors = {
  * 新フォーマット (【現状の問題】...【提案内容】...【なぜ効くか】...) は分解、
  * 旧フォーマット（長文1パラグラフ）は { legacy: text } として返す。
  */
+// 丸数字 → 算用数字マップ
+const CIRCLED_NUM_MAP = { '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10 };
+
+// 【提案内容】本文から「①<タイトル>（：or \n）<補足>」形式の項目を抽出
+// 2 件以上抽出できた場合のみ配列を返す。それ未満は null（legacy 段落描画にフォールバック）
+// title/detail の区切りは、改行 or 全角コロン（：）or 半角コロン（:）のうち最も早い位置
+function parseProposals(text) {
+  if (!text || typeof text !== 'string') return null;
+  const re = /([①②③④⑤⑥⑦⑧⑨⑩])\s*([\s\S]*?)(?=[①②③④⑤⑥⑦⑧⑨⑩]|$)/g;
+  const items = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const num = CIRCLED_NUM_MAP[m[1]];
+    const body = (m[2] || '').trim();
+    if (!body) continue;
+    // 区切り候補の中で最も早いものを採用
+    const nlIdx = body.indexOf('\n');
+    const fullColonIdx = body.indexOf('：');
+    const halfColonIdx = body.indexOf(':');
+    const candidates = [nlIdx, fullColonIdx, halfColonIdx].filter(i => i >= 0);
+    let splitIdx = candidates.length ? Math.min(...candidates) : -1;
+    // フォールバック: コロン/改行が無い場合、先頭 6〜40 字のあとに来る半角スペース/全角スペースで分割
+    // （AI がタイトル + 半角スペース + 説明文 で返した場合に対応）
+    if (splitIdx < 0) {
+      const spaceRe = /[ 　]/g;
+      let match;
+      while ((match = spaceRe.exec(body)) !== null) {
+        if (match.index >= 6 && match.index <= 40) {
+          splitIdx = match.index;
+          break;
+        }
+      }
+    }
+    let title, detail;
+    if (splitIdx < 0) {
+      title = body;
+      detail = '';
+    } else {
+      title = body.slice(0, splitIdx).trim();
+      // 区切り文字自体は捨てる（: or ： or \n or space のいずれも 1 文字）
+      detail = body.slice(splitIdx + 1).trim();
+    }
+    items.push({ num, title, detail });
+  }
+  return items.length >= 2 ? items : null;
+}
+
 function parseDescriptionSections(text) {
   if (!text || typeof text !== 'string') return { legacy: '—' };
   const SECTION_KEYS = [
@@ -92,6 +139,11 @@ function parseDescriptionSections(text) {
     const body = text.slice(contentStart, contentEnd).trim();
     if (body) result[section.key] = body;
   });
+  // 提案内容から番号付き項目を抽出（抽出できれば proposals 追加、失敗時は legacy 段落描画）
+  if (result.solution) {
+    const proposals = parseProposals(result.solution);
+    if (proposals) result.proposals = proposals;
+  }
   return result;
 }
 
@@ -136,6 +188,14 @@ export default function Improve() {
   const mockupScrollRef = useRef(null);
   // モックアップ生成後の自動スクロール完了を改善案IDで管理（無限再スクロール防止）
   const autoScrolledRef = useRef(new Set());
+  // バッジクリック時に左パネルでハイライトする description 抜粋
+  const [highlightedExcerpt, setHighlightedExcerpt] = useState(null);
+  // 提案項目番号ハイライト（モックアップバッジクリック/ホバー時に該当カードを黄色化）
+  const [highlightedProposalNum, setHighlightedProposalNum] = useState(null);
+  // 変更箇所の位置情報キャッシュ（chip クリックでスクロールに使う）
+  const [mockupPositions, setMockupPositions] = useState([]);
+  // 変更 chip の展開状態（全件表示をデフォルト）
+  const [mockupChipsExpanded, setMockupChipsExpanded] = useState(true);
 
   // スクレイピング状況
   const [scrapingStatus, setScrapingStatus] = useState(null);
@@ -193,6 +253,8 @@ export default function Improve() {
   // モックアップ再生成ハンドラ（既存 mockup フィールドを全消去 → 再実行）
   const handleRegenerateMockup = async (item) => {
     if (mockupGeneratingIds.has(item.id)) return;
+    // 先にローカル描画を止める（古い iframe が生成中に映らないように）
+    setMockupGeneratingIds(prev => new Set([...prev, item.id]));
     try {
       await updateDoc(doc(db, 'sites', selectedSiteId, 'improvements', item.id), {
         mockupHtml: deleteField(),
@@ -205,9 +267,13 @@ export default function Improve() {
         mockupMode: deleteField(),
         mockupGeneratedAt: deleteField(),
       });
+      // Firestore クリア直後に React Query キャッシュを無効化し、
+      // 「モックアップ未生成」UI を即座に表示する
+      await queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
     } catch (e) {
       console.warn('[handleRegenerateMockup] フィールドクリア失敗:', e?.message);
     }
+    // handleGenerateMockup 側でも mockupGeneratingIds に追加するが冪等
     handleGenerateMockup(item);
   };
 
@@ -430,6 +496,11 @@ export default function Improve() {
         if (hasMockup(updated) && !hasMockup(drawerItem)) {
           setDrawerTab('after');
         }
+        // 再生成時は auto-scroll 履歴をクリアして次の位置情報到着でスクロールが走るようにする
+        if (updated.mockupStorageUrl !== drawerItem.mockupStorageUrl) {
+          autoScrolledRef.current.delete(drawerItem.id);
+          setMockupPositions([]);
+        }
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -515,10 +586,29 @@ export default function Improve() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [drawerItem?.id, selectedSiteId]);
 
-  // ドロワー切替時に自動スクロール履歴をリセット（同じ改善案を再度開いた時にも再スクロール）
+  // ドロワー切替時に自動スクロール履歴 + ハイライト + chip 展開状態をリセット
   useEffect(() => {
     autoScrolledRef.current.delete(drawerItem?.id);
+    setHighlightedExcerpt(null);
+    setHighlightedProposalNum(null);
+    setMockupPositions([]);
+    setMockupChipsExpanded(true);
   }, [drawerItem?.id]);
+
+  // iframe 内のある位置まで外側コンテナをスクロール（chip クリック / 自動スクロール共通）
+  function scrollContainerToPosition(pos) {
+    if (!pos) return;
+    const scale = drawerTab === 'compare' ? 0.5 : 1;
+    const container = mockupScrollRef.current;
+    if (!container) return;
+    const iframe = container.querySelector('iframe[title="改善モックアップ"]');
+    if (!iframe) return;
+    const iframeRect = iframe.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    const iframeTopInContainer = iframeRect.top - containerRect.top + container.scrollTop;
+    const targetScrollTop = iframeTopInContainer + pos.top * scale - container.clientHeight * 0.25;
+    container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+  }
 
   // iframe (snapshot_patch モックアップ) からの postMessage を受信
   // - __mockup_size: iframe の高さを反映
@@ -531,32 +621,54 @@ export default function Improve() {
         if (e.data.height && typeof e.data.height === 'number') {
           setAfterIframeHeight(e.data.height);
         }
+      } else if (e.data.type === '__mockup_changed_clicked') {
+        // バッジクリック: active=false (2回目クリック) のときだけクリア
+        // active=true のときは excerpt + 項目番号をセット
+        if (e.data.active === false) {
+          setHighlightedExcerpt(null);
+          setHighlightedProposalNum(null);
+          return;
+        }
+        const numRaw = e.data.num || '';
+        const parsedNum = Number(numRaw);
+        if (Number.isFinite(parsedNum) && parsedNum > 0) {
+          setHighlightedProposalNum(parsedNum);
+        }
+        const label = String(e.data.label || '');
+        const changes = drawerItem.mockupPatchChanges || [];
+        const change = changes.find(c => (c?.change_label || '') === label);
+        const excerpt = change?.description_excerpt || null;
+        if (excerpt) setHighlightedExcerpt(excerpt);
+        return;
+      } else if (e.data.type === '__mockup_changed_hovered') {
+        // バッジホバー → 左パネルの該当項目カードを黄色ハイライト + excerpt (旧形式フォールバック)
+        const numRaw = e.data.num || '';
+        const parsedNum = Number(numRaw);
+        if (Number.isFinite(parsedNum) && parsedNum > 0) {
+          setHighlightedProposalNum(parsedNum);
+        }
+        const label = String(e.data.label || '');
+        const changes = drawerItem.mockupPatchChanges || [];
+        const change = changes.find(c => (c?.change_label || '') === label);
+        const excerpt = change?.description_excerpt || null;
+        if (excerpt) setHighlightedExcerpt(excerpt);
+        return;
+      } else if (e.data.type === '__mockup_changed_deselected') {
+        setHighlightedExcerpt(null);
+        setHighlightedProposalNum(null);
+        return;
       } else if (e.data.type === '__mockup_changed_positions') {
         const positions = e.data.positions;
         if (!Array.isArray(positions) || positions.length === 0) return;
-        if (autoScrolledRef.current.has(drawerItem.id)) return;
-        autoScrolledRef.current.add(drawerItem.id);
-        // 最初の変更箇所までスクロール
-        const target = positions[0];
-        // compare タブは scale(0.5)、それ以外は等倍
-        const scale = drawerTab === 'compare' ? 0.5 : 1;
-        const container = mockupScrollRef.current;
-        if (!container) return;
-        // iframe 親要素までの相対位置 + iframe 内の Y 座標 × scale
-        // iframe 親(div) の getBoundingClientRect で container 基準の offsetTop を求める
-        const iframe = container.querySelector('iframe[title="改善モックアップ"]');
-        if (!iframe) return;
-        const iframeRect = iframe.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        const iframeTopInContainer = iframeRect.top - containerRect.top + container.scrollTop;
-        const targetScrollTop =
-          iframeTopInContainer + target.top * scale - container.clientHeight * 0.3;
-        container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
+        // chip クリック用に位置情報を保存（初期自動スクロールはユーザー要望で廃止）
+        setMockupPositions(positions);
       }
     }
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [drawerItem?.id, drawerTab]);
+    // drawerItem 全体を依存に入れる: mockupPatchChanges が再生成で更新されたときに
+    // handler を新しいクロージャで再登録する（stale closure 対策）
+  }, [drawerItem, drawerTab]);
 
   // 更新mutation
   const updateMutation = useMutation({
@@ -661,6 +773,16 @@ export default function Improve() {
       updateMutation.mutate({ id: item.id, data: updateData });
       triggerBeforeImplementationSnapshot(item.id);
       return;
+    } else if (newStatus === 'archived') {
+      // 見送り: archivedAt + archivedReason='skipped' を付与してアーカイブ
+      updateData.archivedAt = serverTimestamp();
+      updateData.archivedReason = 'skipped';
+      updateMutation.mutate({ id: item.id, data: updateData }, {
+        onSuccess: () => {
+          toast.success('見送りとしてアーカイブしました');
+          if (drawerItem?.id === item.id) closeDrawer();
+        },
+      });
     } else {
       // 完了→他ステータスへの差し戻し時: effectMeasurementをsuspendedに
       if (item.status === 'completed' && item.effectMeasurement) {
@@ -738,12 +860,61 @@ export default function Improve() {
     }
   };
 
-  // ステータス絞り込み
+  // ステータス絞り込み + 検索 + 優先度/カテゴリ filter
   const [statusFilter, setStatusFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState(() => new Set(['high', 'medium', 'low']));
+  const [categoryFilter, setCategoryFilter] = useState(() => new Set(['acquisition', 'content', 'design', 'feature', 'other']));
+
+  // ステータス別件数（KPI バッジ用）
+  const statusCounts = useMemo(() => {
+    const counts = { all: 0, draft: 0, in_progress: 0, completed: 0, archived: 0 };
+    for (const it of improvements) {
+      const s = it.status || 'draft';
+      counts.all++;
+      if (counts[s] != null) counts[s]++;
+    }
+    return counts;
+  }, [improvements]);
+
+  const togglePriorityFilter = (val) => {
+    setPriorityFilter(prev => {
+      const next = new Set(prev);
+      if (next.has(val)) next.delete(val); else next.add(val);
+      return next;
+    });
+  };
+  const toggleCategoryFilter = (val) => {
+    setCategoryFilter(prev => {
+      const next = new Set(prev);
+      if (next.has(val)) next.delete(val); else next.add(val);
+      return next;
+    });
+  };
+
   const filteredImprovements = useMemo(() => {
-    if (statusFilter === 'all') return improvements;
-    return improvements.filter(item => (item.status || 'draft') === statusFilter);
-  }, [improvements, statusFilter]);
+    let list = improvements;
+    if (statusFilter !== 'all') {
+      list = list.filter(item => (item.status || 'draft') === statusFilter);
+    }
+    // 優先度 filter（priorityFilter が空の場合は全件除外しない: 空セットのときは無視）
+    if (priorityFilter.size > 0 && priorityFilter.size < 3) {
+      list = list.filter(item => priorityFilter.has(item.priority || ''));
+    }
+    if (categoryFilter.size > 0 && categoryFilter.size < 5) {
+      list = list.filter(item => categoryFilter.has(item.category || ''));
+    }
+    const q = searchQuery.trim().toLowerCase();
+    if (q) {
+      list = list.filter(item => {
+        const t = (item.title || '').toLowerCase();
+        const d = (item.description || '').toLowerCase();
+        const u = (item.targetPageUrl || '').toLowerCase();
+        return t.includes(q) || d.includes(q) || u.includes(q);
+      });
+    }
+    return list;
+  }, [improvements, statusFilter, priorityFilter, categoryFilter, searchQuery]);
 
   const categoryOrder = ['acquisition', 'content', 'design', 'feature', 'other'];
   const priorityOrder = ['high', 'medium', 'low'];
@@ -887,27 +1058,27 @@ export default function Improve() {
             !isViewer && (
               <>
                 {/* ツアー時: 空状態のヒーローCTAがある時は data-tour をそちらに譲る（querySelectorが先頭を拾う対策） */}
-                <button
+                <Button
+                  variant="ai"
                   data-tour={sortedImprovements.length === 0 ? undefined : 'improve-ai-generate'}
                   onClick={() => {
                     if (!selectedSiteId) return;
                     setIsFocusModalOpen(true);
                   }}
-                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-4 py-2 text-sm font-medium text-white hover:from-blue-600 hover:to-pink-600"
                 >
-                  <Sparkles className="h-4 w-4" />
+                  <Sparkles data-slot="icon" className="h-4 w-4" />
                   AI改善案生成
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   data-tour={sortedImprovements.length === 0 ? undefined : 'improve-manual-add'}
                   onClick={() => {
                     setEditingItem(null);
                     setIsDialogOpen(true);
                   }}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
                 >
                   手動で追加
-                </button>
+                </Button>
               </>
             )
           }
@@ -916,19 +1087,21 @@ export default function Improve() {
               const canExport = checkCanGenerate('excelExport');
               return (
                 <div className="relative" ref={downloadMenuRef}>
-                  <button
+                  <Button
+                    variant="ghost"
+                    size="sm"
                     onClick={() => !isExporting && setIsDownloadMenuOpen(!isDownloadMenuOpen)}
                     disabled={isExporting}
-                    className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className="h-10"
                     title="改善内容ダウンロード"
                   >
                     {isExporting ? (
                       <DotWaveSpinner size="xs" />
                     ) : (
-                      <Download className="h-4 w-4" />
+                      <Download data-slot="icon" className="h-4 w-4" />
                     )}
                     <span>ダウンロード</span>
-                  </button>
+                  </Button>
                   {isDownloadMenuOpen && (
                     <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">
                       <button
@@ -1014,38 +1187,120 @@ export default function Improve() {
                 <span className="text-xs text-body-color">月次自動生成 {selectedSite?.autoImprovementEnabled ? 'ON' : 'OFF'}</span>
               </div>
             </div>
-            <div data-tour="improve-status-filter" className="flex flex-wrap items-center gap-3">
-              {/* ステータス絞り込み */}
-              {improvements.length > 0 && (
-                <>
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="rounded-lg border border-stroke bg-white px-3 py-2 text-sm text-dark dark:border-dark-3 dark:bg-dark-2 dark:text-white focus:ring-2 focus:ring-primary focus:border-primary"
-                  >
-                    <option value="all">すべてのステータス</option>
-                    <option value="draft">{statusLabels.draft}</option>
-                    <option value="in_progress">{statusLabels.in_progress}</option>
-                    <option value="completed">{statusLabels.completed}</option>
-                    {showArchived && <option value="archived">{statusLabels.archived}</option>}
-                  </select>
-                  <label className="inline-flex items-center gap-1.5 text-xs text-body-color cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      checked={showArchived}
-                      onChange={(e) => {
-                        const next = e.target.checked;
-                        setShowArchived(next);
-                        if (!next && statusFilter === 'archived') setStatusFilter('all');
-                      }}
-                      className="h-3.5 w-3.5 rounded border-stroke text-primary focus:ring-primary dark:border-dark-3"
-                    />
-                    アーカイブも表示
-                  </label>
-                </>
-              )}
-            </div>
+            {/* KPI バッジ（起案/対応中/完了 件数） */}
+            {improvements.length > 0 && (
+              <div className="flex items-center gap-[18px] px-[22px] py-[11px] bg-gradient-to-r from-blue-50 to-purple-50 dark:from-dark-3 dark:to-dark-2 rounded-lg">
+                <div className="text-center">
+                  <div className="text-[13px] text-body-color font-medium">起案</div>
+                  <div className="text-xl font-bold text-dark dark:text-white">{statusCounts.draft}</div>
+                </div>
+                <div className="w-px h-10 bg-gray-200 dark:bg-dark-3"></div>
+                <div className="text-center">
+                  <div className="text-[13px] text-body-color font-medium">対応中</div>
+                  <div className="text-xl font-bold text-blue-600 dark:text-blue-400">{statusCounts.in_progress}</div>
+                </div>
+                <div className="w-px h-10 bg-gray-200 dark:bg-dark-3"></div>
+                <div className="text-center">
+                  <div className="text-[13px] text-body-color font-medium">完了</div>
+                  <div className="text-xl font-bold text-green-600 dark:text-green-400">{statusCounts.completed}</div>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* スマートツールバー */}
+          {improvements.length > 0 && (
+            <div data-tour="improve-status-filter" className="bg-white dark:bg-dark-2 rounded-lg shadow-sm mb-4">
+              {/* 上段: 検索 + ステータスチップ */}
+              <div className="p-3 border-b border-gray-100 dark:border-dark-3 flex items-center gap-3 flex-wrap">
+                <div className="relative flex-1 min-w-[240px] max-w-md">
+                  <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="改善案を検索..."
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-dark-3 dark:bg-dark rounded-lg focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary"
+                  />
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs text-body-color font-medium">ステータス:</span>
+                  {[
+                    { key: 'all', label: 'すべて', count: statusCounts.all },
+                    { key: 'draft', label: '起案', count: statusCounts.draft },
+                    { key: 'in_progress', label: '対応中', count: statusCounts.in_progress },
+                    { key: 'completed', label: '完了', count: statusCounts.completed },
+                  ].map(t => (
+                    <button
+                      key={t.key}
+                      onClick={() => setStatusFilter(t.key)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                        statusFilter === t.key
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-white dark:bg-dark border-gray-200 dark:border-dark-3 text-body-color hover:border-gray-400'
+                      }`}
+                    >
+                      {t.label} ({t.count})
+                    </button>
+                  ))}
+                  {showArchived && (
+                    <button
+                      onClick={() => setStatusFilter('archived')}
+                      className={`px-3 py-1 rounded-full text-xs font-medium border transition ${
+                        statusFilter === 'archived'
+                          ? 'bg-gray-500 text-white border-gray-500'
+                          : 'bg-white dark:bg-dark border-gray-200 dark:border-dark-3 text-gray-400 hover:border-gray-400'
+                      }`}
+                    >
+                      アーカイブ ({statusCounts.archived})
+                    </button>
+                  )}
+                </div>
+                <label className="ml-auto inline-flex items-center gap-1.5 text-xs text-body-color cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showArchived}
+                    onChange={(e) => {
+                      const next = e.target.checked;
+                      setShowArchived(next);
+                      if (!next && statusFilter === 'archived') setStatusFilter('all');
+                    }}
+                    className="h-3.5 w-3.5 rounded border-stroke text-primary focus:ring-primary dark:border-dark-3"
+                  />
+                  アーカイブも表示
+                </label>
+              </div>
+
+              {/* 下段: 優先度・カテゴリ filter */}
+              <div className="px-3 py-2 bg-gray-50 dark:bg-dark/50 flex items-center gap-3 text-xs flex-wrap">
+                <span className="text-body-color font-medium">優先度:</span>
+                {[
+                  { key: 'high', label: '高', cls: 'bg-red-100 text-red-700' },
+                  { key: 'medium', label: '中', cls: 'bg-amber-100 text-amber-700' },
+                  { key: 'low', label: '低', cls: 'bg-gray-100 text-gray-700' },
+                ].map(p => (
+                  <label key={p.key} className="inline-flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" className="rounded" checked={priorityFilter.has(p.key)} onChange={() => togglePriorityFilter(p.key)} />
+                    <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${p.cls}`}>{p.label}</span>
+                  </label>
+                ))}
+                <span className="text-gray-300 dark:text-dark-3 mx-1">|</span>
+                <span className="text-body-color font-medium">カテゴリ:</span>
+                {[
+                  { key: 'acquisition', label: '集客' },
+                  { key: 'content', label: 'コンテンツ' },
+                  { key: 'design', label: 'デザイン' },
+                  { key: 'feature', label: '機能' },
+                  { key: 'other', label: 'その他' },
+                ].map(c => (
+                  <label key={c.key} className="inline-flex items-center gap-1 cursor-pointer">
+                    <input type="checkbox" className="rounded" checked={categoryFilter.has(c.key)} onChange={() => toggleCategoryFilter(c.key)} />
+                    <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-100 text-gray-700">{c.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
 
           <ImprovementFocusModal
             isOpen={isFocusModalOpen}
@@ -1108,7 +1363,7 @@ export default function Improve() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-body-color shrink-0">編集</span>
                         <Button
-                          outline
+                          variant="secondary"
                           type="button"
                           onClick={() => {
                             const firstId = Array.from(detailViewSelectedIds)[0];
@@ -1123,7 +1378,7 @@ export default function Improve() {
                           選択した1件を編集
                         </Button>
                         <Button
-                          outline
+                          variant="ghost"
                           type="button"
                           onClick={clearDetailViewSelection}
                         >
@@ -1134,7 +1389,7 @@ export default function Improve() {
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-body-color shrink-0">削除</span>
                         <Button
-                          color="red"
+                          variant="danger"
                           type="button"
                           onClick={handleBulkDeleteDetailView}
                         >
@@ -1153,7 +1408,7 @@ export default function Improve() {
                           <option value="in_progress">{statusLabels.in_progress}</option>
                         </select>
                         <Button
-                          color="blue"
+                          variant="primary"
                           type="button"
                           onClick={() => {
                             const sel = document.getElementById('bulk-status-detail');
@@ -1184,27 +1439,27 @@ export default function Improve() {
                             )}
                           </th>
                         )}
-                        <th className="w-[8%] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
-                          <button type="button" onClick={() => handleSort('category')} className="inline-flex items-center gap-0.5 hover:opacity-80" title="クリックで並び替え">
-                            カテゴリ
-                            {sortKey === 'category' && (sortOrder === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)}
-                          </button>
-                        </th>
-                        <th className="w-[6%] text-left py-3 px-3 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
+                        <th className="w-[70px] min-w-[70px] text-left py-3 px-3 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
                           <button type="button" onClick={(e) => { e.stopPropagation(); handleSort('priority'); }} className="inline-flex items-center gap-0.5 hover:opacity-80 whitespace-nowrap" title="クリックで並び替え">
                             優先度
                             {sortKey === 'priority' && (sortOrder === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)}
                           </button>
                         </th>
-                        <th className="min-w-[200px] w-[52%] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">改善内容</th>
-                        <th className="w-[100px] min-w-[100px] py-3 px-2 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3 text-center whitespace-nowrap">モック</th>
-                        <th className="w-[14%] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
-                          <button type="button" onClick={(e) => { e.stopPropagation(); handleSort('estimatedLaborHours'); }} className="inline-flex items-center gap-0.5 hover:opacity-80" title="クリックで並び替え">
+                        <th className="w-[110px] min-w-[110px] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
+                          <button type="button" onClick={() => handleSort('category')} className="inline-flex items-center gap-0.5 hover:opacity-80" title="クリックで並び替え">
+                            カテゴリ
+                            {sortKey === 'category' && (sortOrder === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)}
+                          </button>
+                        </th>
+                        <th className="min-w-[200px] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">改善内容</th>
+                        <th className="w-[120px] min-w-[120px] py-3 px-2 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3 text-center whitespace-nowrap">モック</th>
+                        <th className="w-[160px] min-w-[160px] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
+                          <button type="button" onClick={(e) => { e.stopPropagation(); handleSort('estimatedLaborHours'); }} className="inline-flex items-center gap-0.5 hover:opacity-80 whitespace-nowrap" title="クリックで並び替え">
                             目安料金・納期
                             {sortKey === 'estimatedLaborHours' && (sortOrder === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)}
                           </button>
                         </th>
-                        <th className="w-[10%] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
+                        <th className="w-[180px] min-w-[180px] text-left py-3 px-4 bg-gray-50 dark:bg-dark-3 text-sm font-semibold text-body-color border-b border-stroke dark:border-dark-3">
                           <button type="button" onClick={(e) => { e.stopPropagation(); handleSort('status'); }} className="inline-flex items-center gap-0.5 hover:opacity-80" title="クリックで並び替え">
                             ステータス
                             {sortKey === 'status' && (sortOrder === 'asc' ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />)}
@@ -1234,17 +1489,18 @@ export default function Improve() {
                             {!isViewer && (
                               <>
                                 {/* CTAボタン */}
-                                <button
+                                <Button
+                                  variant="ai"
+                                  size="lg"
                                   data-tour="improve-empty-hero-cta"
                                   onClick={() => {
                                     if (!selectedSiteId) return;
                                     setIsFocusModalOpen(true);
                                   }}
-                                  className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-base font-semibold text-white shadow-md"
                                 >
-                                  <Sparkles className="h-5 w-5" />
+                                  <Sparkles data-slot="icon" className="h-5 w-5" />
                                   AI改善案を生成する
-                                </button>
+                                </Button>
 
                                 {/* サブリンク */}
                                 <button
@@ -1283,54 +1539,56 @@ export default function Improve() {
                                   />
                                 </td>
                               )}
-                              <td className="py-7 px-4 align-middle">
-                                {item.category && categoryLabels[item.category] && (
-                                  <span className={`inline-block rounded px-2.5 py-0.5 text-sm font-medium whitespace-nowrap ${categoryColors[item.category] || categoryColors.other}`}>
-                                    {categoryLabels[item.category]}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="py-7 px-3 align-middle">
+                              <td className="py-3.5 px-3 align-middle">
                                 {item.priority && priorityLabels[item.priority] && (
                                   <span className={`inline-block rounded px-2.5 py-0.5 text-sm font-medium whitespace-nowrap ${priorityColors[item.priority] || ''}`}>
                                     {priorityLabels[item.priority]}
                                   </span>
                                 )}
                               </td>
-                              <td className="py-7 px-4 align-middle">
-                                <div className="text-sm font-medium text-dark dark:text-white leading-snug">{item.title}</div>
-                                {(item.targetPageUrl || '').trim() && (
-                                  <a
-                                    href={item.targetPageUrl.startsWith('http') ? item.targetPageUrl : `${siteUrl}${item.targetPageUrl.startsWith('/') ? '' : '/'}${item.targetPageUrl}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1 mt-0.5 text-xs text-primary/70 hover:text-primary hover:underline"
-                                    title="対象ページを新しいタブで開く"
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <ExternalLink className="h-2.5 w-2.5 shrink-0" />
-                                    対象ページ
-                                  </a>
+                              <td className="py-3.5 px-4 align-middle">
+                                {item.category && categoryLabels[item.category] && (
+                                  <span className="inline-block rounded px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap bg-gray-100 text-gray-700 dark:bg-dark-3 dark:text-gray-300">
+                                    {categoryLabels[item.category]}
+                                  </span>
                                 )}
-                                <div className="text-sm text-body-color mt-1 line-clamp-1">{item.description || '—'}</div>
-                                {item.status === 'draft' && item.createdAt && (() => {
-                                  const created = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
-                                  const days = Math.floor((Date.now() - created.getTime()) / (24 * 60 * 60 * 1000));
-                                  if (days > 0) return <span className={`text-xs ${days > 60 ? 'text-red-500' : days > 30 ? 'text-amber-600' : 'text-body-color'}`}>{days}日前に提案</span>;
-                                  return null;
-                                })()}
                               </td>
-                              <td className="py-7 px-2 align-middle text-center w-[100px] min-w-[100px]" onClick={(e) => e.stopPropagation()}>
+                              <td className="py-3.5 px-4 align-middle">
+                                <div className="text-sm font-medium text-dark dark:text-white leading-snug">{item.title}</div>
+                                <div className="mt-1 flex items-center gap-2 text-[11px] text-body-color">
+                                  {(item.targetPageUrl || '').trim() && (
+                                    <a
+                                      href={item.targetPageUrl.startsWith('http') ? item.targetPageUrl : `${siteUrl}${item.targetPageUrl.startsWith('/') ? '' : '/'}${item.targetPageUrl}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1 text-primary/70 hover:text-primary hover:underline"
+                                      title="対象ページを新しいタブで開く"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <ExternalLink className="h-2.5 w-2.5 shrink-0" />
+                                      対象ページ
+                                    </a>
+                                  )}
+                                  {item.status === 'draft' && item.createdAt && (() => {
+                                    const created = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
+                                    const days = Math.floor((Date.now() - created.getTime()) / (24 * 60 * 60 * 1000));
+                                    if (days > 0) return <><span className="text-gray-300 dark:text-dark-3">·</span><span className={`${days > 60 ? 'text-red-500' : days > 30 ? 'text-amber-600' : 'text-body-color'}`}>{days}日前に提案</span></>;
+                                    return null;
+                                  })()}
+                                </div>
+                              </td>
+                              <td className="py-3.5 px-2 align-middle text-center w-[100px] min-w-[100px]" onClick={(e) => e.stopPropagation()}>
                                 {hasMockup(item) ? (
-                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-green-50 dark:bg-green-900/20 px-2 py-1 text-[10px] font-bold text-green-600 dark:text-green-400" title="モックアップ生成済み">
-                                    <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="m4.5 12.75 6 6 9-13.5" /></svg>
-                                    モック
+                                  <span className="inline-flex items-center gap-1 text-xs text-green-700 dark:text-green-400 font-medium" title="モックアップ生成済み">
+                                    <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
+                                    モック生成済
                                   </span>
                                 ) : item.mockupSkipped ? (
-                                  <span className="text-body-color text-sm">—</span>
+                                  <span className="text-[11px] text-gray-400">対象外</span>
                                 ) : item.targetPageUrl ? (
-                                  <button
-                                    className="inline-flex items-center gap-0.5 rounded-full bg-primary/10 hover:bg-primary/20 px-2 py-1 text-[10px] font-bold text-primary transition cursor-pointer"
+                                  <Button
+                                    variant="ai"
+                                    size="sm"
                                     title="モックアップを生成する"
                                     onClick={(e) => { e.stopPropagation(); handleGenerateMockup(item); }}
                                     disabled={mockupGeneratingIds.has(item.id)}
@@ -1338,18 +1596,18 @@ export default function Improve() {
                                     {mockupGeneratingIds.has(item.id) ? (
                                       <><DotWaveSpinner size="xs" />生成中</>
                                     ) : (
-                                      <><Sparkles className="h-2.5 w-2.5" />モック</>
+                                      <><Sparkles data-slot="icon" className="h-3 w-3" />モック生成</>
                                     )}
-                                  </button>
+                                  </Button>
                                 ) : (
-                                  <span className="text-body-color text-sm">—</span>
+                                  <span className="text-[11px] text-gray-400">対象外</span>
                                 )}
                               </td>
-                              <td className="py-7 px-4 align-middle">
-                                <div className="text-sm font-semibold text-green-600 dark:text-green-400">{formatEstimatedPriceLabel(item.estimatedLaborHours)} <span className="text-sm font-normal text-body-color">（税別）</span></div>
-                                <div className="text-sm text-body-color mt-0.5">{formatEstimatedDeliveryLabel(item.estimatedLaborHours)}</div>
+                              <td className="py-3.5 px-4 align-middle">
+                                <div className="text-xs font-semibold text-dark dark:text-white">{formatEstimatedPriceLabel(item.estimatedLaborHours)} <span className="text-[11px] font-normal text-body-color">（税別）</span></div>
+                                <div className="text-[11px] text-body-color mt-0.5">{formatEstimatedDeliveryLabel(item.estimatedLaborHours)}</div>
                               </td>
-                              <td className="py-7 px-4 align-middle w-[200px]" onClick={(e) => e.stopPropagation()}>
+                              <td className="py-3.5 px-4 align-middle w-[200px]" onClick={(e) => e.stopPropagation()}>
                                 <StatusActionCell
                                   item={item}
                                   onStatusChange={handleStatusChange}
@@ -1367,14 +1625,15 @@ export default function Improve() {
                 {/* 修正内容を制作会社に相談するボタン */}
                 {improvements.length > 0 && !isViewer && (
                   <div className="mt-6 flex justify-center">
-                    <button
+                    <Button
+                      variant="primary"
+                      size="lg"
                       type="button"
                       onClick={() => setIsConsultationModalOpen(true)}
-                      className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-3 text-sm font-medium text-white shadow-md transition-all hover:from-blue-600 hover:to-pink-600 hover:shadow-lg"
                     >
-                      <Mail className="h-5 w-5" />
+                      <Mail data-slot="icon" className="h-5 w-5" />
                       修正内容を制作会社に相談する
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -1495,36 +1754,49 @@ export default function Improve() {
             <div className="relative bg-white dark:bg-dark-2 rounded-xl shadow-2xl flex flex-col overflow-hidden" style={{ width: '95vw', height: '95vh' }}>
 
               {/* ドロワーヘッダー */}
-              <div className="px-4 sm:px-10 py-5 border-b border-gray-200 dark:border-dark-3 shrink-0">
-                <div className="flex items-center justify-between mb-2">
-                  <h2 className="text-lg font-bold text-dark dark:text-white flex-1 min-w-0 mr-4 line-clamp-2">{item.title}</h2>
-                  <button onClick={closeDrawer} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3 shrink-0">
-                    <X className="w-5 h-5" />
-                  </button>
-                </div>
-                <div className="flex items-center gap-3 flex-wrap">
-                  {fullTargetUrl && (
-                    <>
-                      <a href={fullTargetUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-xs text-primary hover:underline">
-                        <ExternalLink className="w-3.5 h-3.5" />
-                        対象ページを開く
-                      </a>
-                      <span className="text-gray-300 dark:text-dark-3">|</span>
-                    </>
-                  )}
-                  {item.category && categoryLabels[item.category] && (
-                    <span className={`px-2.5 py-1 rounded text-xs font-semibold ${categoryColors[item.category] || categoryColors.other}`}>
-                      {categoryLabels[item.category]}
-                    </span>
-                  )}
-                  {item.priority && priorityLabels[item.priority] && (
-                    <span className={`px-2.5 py-1 rounded text-xs font-semibold ${priorityColors[item.priority] || ''}`}>
-                      優先度: {priorityLabels[item.priority]}
-                    </span>
-                  )}
-                  <div className="ml-auto flex items-center gap-2">
+              <div className="px-6 py-4 border-b border-gray-200 dark:border-dark-3 shrink-0">
+                <div className="flex items-start justify-between gap-4">
+                  {/* 左: バッジ群 + タイトル */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      {item.priority && priorityLabels[item.priority] && (
+                        <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${priorityColors[item.priority] || ''}`}>
+                          優先度: {priorityLabels[item.priority]}
+                        </span>
+                      )}
+                      {item.category && categoryLabels[item.category] && (
+                        <span className="px-2 py-0.5 rounded text-[11px] font-semibold bg-gray-100 text-gray-700 dark:bg-dark-3 dark:text-gray-300">
+                          {categoryLabels[item.category]}
+                        </span>
+                      )}
+                      {fullTargetUrl && (
+                        <a href={fullTargetUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-0.5 text-xs text-primary hover:underline font-medium">
+                          対象ページを開く
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                      {item.status === 'draft' && item.createdAt && (() => {
+                        const created = item.createdAt?.toDate ? item.createdAt.toDate() : new Date(item.createdAt);
+                        const days = Math.floor((Date.now() - created.getTime()) / (24 * 60 * 60 * 1000));
+                        if (days > 0) {
+                          return (
+                            <>
+                              <span className="text-gray-300 dark:text-dark-3">·</span>
+                              <span className={`text-[11px] font-medium ${days > 60 ? 'text-red-500' : days > 30 ? 'text-amber-600' : 'text-body-color'}`}>{days}日前に提案</span>
+                            </>
+                          );
+                        }
+                        return null;
+                      })()}
+                    </div>
+                    <h2 className="text-lg font-bold text-dark dark:text-white leading-tight line-clamp-2">{item.title}</h2>
+                  </div>
+                  {/* 右: アクションボタン群 + ナビ + 閉じる */}
+                  <div className="flex items-center gap-2 shrink-0">
                     {item.status === 'archived' ? (
-                      <button
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={async () => {
                           await updateDoc(doc(db, 'sites', selectedSiteId, 'improvements', item.id), {
                             status: 'draft', isStale: false, archivedAt: null, archivedReason: null,
@@ -1533,12 +1805,10 @@ export default function Improve() {
                           queryClient.invalidateQueries({ queryKey: ['improvements'] });
                           toast.success('提案を復元しました');
                         }}
-                        className="text-sm border border-gray-200 dark:border-dark-3 rounded-lg px-3 py-1.5 text-primary hover:bg-gray-50 dark:hover:bg-dark-3"
                       >
                         起案に復元
-                      </button>
+                      </Button>
                     ) : (
-                    <div className="min-w-[160px]">
                       <StatusActionCell
                         item={item}
                         onStatusChange={(item, newStatus) => {
@@ -1548,21 +1818,45 @@ export default function Improve() {
                           }
                         }}
                         compact
+                        horizontal
                         isViewer={isViewer}
                       />
-                    </div>
                     )}
                     {!isViewer && (
-                      <button
+                      <Button
+                        variant="secondary"
+                        size="sm"
                         onClick={() => {
                           setEditingItem(item);
                           setIsDialogOpen(true);
                         }}
-                        className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 border border-gray-200 dark:border-dark-3 rounded-lg px-3 py-1.5"
                       >
                         編集
-                      </button>
+                      </Button>
                     )}
+                    {/* 前後ナビゲーション */}
+                    <div className="flex items-center gap-0.5 ml-1">
+                      <button
+                        onClick={() => navigateDrawer(-1)}
+                        disabled={!hasPrev}
+                        className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-dark-3 p-2 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="前の改善"
+                      >
+                        <ChevronLeft className="w-4 h-4" />
+                      </button>
+                      <span className="text-xs text-gray-500 font-medium tabular-nums px-1">{currentIdx + 1} / {sortedImprovements.length}</span>
+                      <button
+                        onClick={() => navigateDrawer(1)}
+                        disabled={!hasNext}
+                        className="text-gray-400 hover:text-gray-700 hover:bg-gray-100 dark:hover:bg-dark-3 p-2 rounded-lg transition disabled:opacity-30 disabled:cursor-not-allowed"
+                        title="次の改善"
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <button onClick={closeDrawer} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-3" title="閉じる">
+                      <X className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1570,73 +1864,93 @@ export default function Improve() {
               {/* ドロワーコンテンツ */}
               <div className="flex-1 overflow-hidden flex">
 
-                {/* 左カラム: テキスト情報 */}
-                <div className={`shrink-0 border-r border-gray-100 dark:border-dark-3 overflow-y-auto p-8 ${hasMockup(item) || (item.targetPageUrl && !item.mockupSkipped) ? 'w-full sm:w-[480px]' : 'w-full border-r-0'}`}>
-                  <div className={`${!hasMockup(item) && (!item.targetPageUrl || item.mockupSkipped) ? 'max-w-3xl mx-auto' : ''}`}>
-                    <div className="mb-6">
-                      <h3 className="text-sm font-bold text-gray-800 dark:text-white mb-3 flex items-center gap-1.5">
-                        <FileText className="w-4 h-4 text-primary" />
-                        改善内容
-                      </h3>
-                      {(() => {
-                        const sections = parseDescriptionSections(item.description);
-                        if (sections.legacy !== undefined) {
-                          return <p className="text-sm text-gray-700 dark:text-gray-300 leading-7">{sections.legacy}</p>;
-                        }
-                        const blocks = [
-                          { key: 'problem', label: '現状の問題' },
-                          { key: 'solution', label: '提案内容' },
-                          { key: 'rationale', label: 'なぜ効くか' },
-                        ];
+                {/* 左カラム: 改善内容（スクロール + sticky bottom） */}
+                <div className={`shrink-0 border-r border-gray-100 dark:border-dark-3 flex flex-col ${hasMockup(item) || (item.targetPageUrl && !item.mockupSkipped) ? 'w-full sm:w-[540px]' : 'w-full border-r-0'}`}>
+                  {/* 改善内容ヘッダー */}
+                  <div className="px-6 py-3.5 border-b border-gray-100 dark:border-dark-3 bg-white dark:bg-dark-2 flex items-center shrink-0">
+                    <h3 className="text-base font-bold text-gray-900 dark:text-white">改善内容</h3>
+                  </div>
+
+                  {/* スクロール可能エリア */}
+                  <div className={`flex-1 overflow-y-auto px-6 py-5 ${!hasMockup(item) && (!item.targetPageUrl || item.mockupSkipped) ? 'max-w-3xl mx-auto w-full' : ''}`}>
+                    {(() => {
+                      const sections = parseDescriptionSections(item.description);
+                      const renderWithHighlight = (text) => {
+                        if (!text || !highlightedExcerpt) return text;
+                        const idx = text.indexOf(highlightedExcerpt);
+                        if (idx < 0) return text;
                         return (
-                          <div className="space-y-4">
-                            {blocks.map((b) => (
-                              sections[b.key] ? (
-                                <div key={b.key}>
-                                  <div className="text-xs font-bold text-primary mb-1">{b.label}</div>
-                                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-7">{sections[b.key]}</p>
-                                </div>
-                              ) : null
-                            ))}
-                          </div>
+                          <>
+                            {text.slice(0, idx)}
+                            <mark className="bg-yellow-200 dark:bg-yellow-300/40 text-inherit px-0.5 rounded transition-colors">
+                              {highlightedExcerpt}
+                            </mark>
+                            {text.slice(idx + highlightedExcerpt.length)}
+                          </>
                         );
-                      })()}
-                    </div>
+                      };
+                      if (sections.legacy !== undefined) {
+                        return <p className="text-sm text-gray-700 dark:text-gray-300 leading-7">{renderWithHighlight(sections.legacy)}</p>;
+                      }
+                      return (
+                        <>
+                          {/* 現状の問題（アコーディオン、デフォ展開） */}
+                          {sections.problem && (
+                            <details className="mb-5 group" open>
+                              <summary className="cursor-pointer list-none flex items-center justify-between hover:opacity-80">
+                                <div className="text-[13px] font-bold text-primary tracking-wide">現状の問題</div>
+                                <ChevronDown className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" />
+                              </summary>
+                              <p className="text-sm text-gray-700 dark:text-gray-300 leading-7 pt-2">{renderWithHighlight(sections.problem)}</p>
+                            </details>
+                          )}
 
-                    {item.expectedImpact && (
-                      <div className="bg-green-50 dark:bg-green-900/20 rounded-xl p-4 mb-6">
-                        <div className="text-sm font-bold text-green-800 dark:text-green-300 mb-1.5 flex items-center gap-1.5">
-                          <TrendingUp className="w-4 h-4" />
-                          期待する効果
-                        </div>
-                        <p className="text-sm text-green-800 dark:text-green-300">{item.expectedImpact}</p>
-                      </div>
-                    )}
+                          {/* 提案内容（常時展開、カード） */}
+                          {sections.solution && (
+                            <section className="mb-5">
+                              <div className="text-[13px] font-bold text-primary tracking-wide mb-2">提案内容</div>
+                              {sections.proposals ? (
+                                <ol className="space-y-2.5">
+                                  {sections.proposals.map((p) => (
+                                    <li
+                                      key={p.num}
+                                      className={`flex gap-2.5 p-3 rounded-xl transition-colors ${
+                                        highlightedProposalNum === p.num
+                                          ? 'bg-yellow-100 dark:bg-yellow-300/20'
+                                          : 'bg-gray-50 dark:bg-dark-3/40 hover:bg-gray-100 dark:hover:bg-dark-3/60'
+                                      }`}
+                                    >
+                                      <span className="shrink-0 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold">
+                                        {p.num}
+                                      </span>
+                                      <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-semibold text-gray-900 dark:text-white">{p.title}</div>
+                                        {p.detail && (
+                                          <p className="text-xs text-gray-700 dark:text-gray-300 leading-6 mt-1">{p.detail}</p>
+                                        )}
+                                      </div>
+                                    </li>
+                                  ))}
+                                </ol>
+                              ) : (
+                                <p className="text-sm text-gray-700 dark:text-gray-300 leading-7">{renderWithHighlight(sections.solution)}</p>
+                              )}
+                            </section>
+                          )}
 
-                    <hr className="border-gray-200 dark:border-dark-3 mb-6" />
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
-                      <div className="bg-gray-50 dark:bg-dark-3 rounded-xl p-5">
-                        <div className="text-sm font-bold text-gray-800 dark:text-white mb-1.5 flex items-center gap-1.5">
-                          <span className="text-green-600 text-base font-bold">¥</span>
-                          目安料金
-                        </div>
-                        <div className={`font-bold text-gray-900 dark:text-white ${hasMockup(item) || (item.targetPageUrl && !item.mockupSkipped) ? 'text-lg' : 'text-xl'}`}>
-                          {formatEstimatedPriceLabel(item.estimatedLaborHours)}
-                        </div>
-                        <div className="text-xs text-body-color mt-0.5">（税別）</div>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-dark-3 rounded-xl p-5">
-                        <div className="text-sm font-bold text-gray-800 dark:text-white mb-1.5 flex items-center gap-1.5">
-                          <Clock className="w-4 h-4 text-blue-500" />
-                          目安納期
-                        </div>
-                        <div className={`font-bold text-gray-900 dark:text-white ${hasMockup(item) || (item.targetPageUrl && !item.mockupSkipped) ? 'text-lg' : 'text-xl'}`}>
-                          {formatEstimatedDeliveryLabel(item.estimatedLaborHours)}
-                        </div>
-                      </div>
-                    </div>
-                    <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-5">※目安料金・納期についてはAIが算出した目安となり実際の料金・納期とは異なる可能性があります。</p>
+                          {/* なぜ効くか（アコーディオン、デフォ展開） */}
+                          {sections.rationale && (
+                            <details className="mb-5 group" open>
+                              <summary className="cursor-pointer list-none flex items-center justify-between hover:opacity-80">
+                                <div className="text-[13px] font-bold text-primary tracking-wide">なぜ効くか</div>
+                                <ChevronDown className="w-4 h-4 text-gray-400 transition-transform group-open:rotate-180" />
+                              </summary>
+                              <p className="text-sm text-gray-700 dark:text-gray-300 leading-7 pt-2">{renderWithHighlight(sections.rationale)}</p>
+                            </details>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {/* 効果計測パネル（完了タスクのみ） */}
                     <EffectMeasurementPanel
@@ -1648,48 +1962,174 @@ export default function Improve() {
                       }}
                     />
                   </div>
+
+                  {/* 固定ボトムパネル（スクロール非依存・常時表示） */}
+                  <div className="border-t-2 border-gray-200 dark:border-dark-3 bg-white dark:bg-dark-2 px-5 py-2.5 shrink-0">
+                    {item.expectedImpact && (
+                      <div className="flex items-center gap-2 px-2.5 py-1.5 mb-2 rounded-lg bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-900/20 dark:to-teal-900/20 border border-green-200 dark:border-green-800">
+                        <TrendingUp className="w-3.5 h-3.5 text-green-700 dark:text-green-400 shrink-0" />
+                        <span className="text-[11px] font-bold text-green-800 dark:text-green-300 shrink-0">期待する効果</span>
+                        <span className="text-gray-300 dark:text-dark-3 shrink-0">·</span>
+                        <p className="text-xs font-semibold text-gray-900 dark:text-white leading-snug">{item.expectedImpact}</p>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <div className="border border-gray-200 dark:border-dark-3 rounded-lg px-2.5 py-1 flex-1 flex items-baseline gap-1.5">
+                        <span className="text-[10px] text-body-color font-medium shrink-0">料金</span>
+                        <span className="font-bold text-gray-900 dark:text-white text-sm">{formatEstimatedPriceLabel(item.estimatedLaborHours)}</span>
+                        <span className="text-[9px] text-gray-400">（税別）</span>
+                      </div>
+                      <div className="border border-gray-200 dark:border-dark-3 rounded-lg px-2.5 py-1 flex-1 flex items-baseline gap-1.5">
+                        <span className="text-[10px] text-body-color font-medium shrink-0">納期</span>
+                        <span className="font-bold text-gray-900 dark:text-white text-sm">{formatEstimatedDeliveryLabel(item.estimatedLaborHours)}</span>
+                      </div>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        type="button"
+                        onClick={() => setIsConsultationModalOpen(true)}
+                        className="shrink-0"
+                      >
+                        <Mail data-slot="icon" className="w-3.5 h-3.5" />
+                        制作会社に相談
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* 右カラム: モックアップ（モックアップ対象の場合のみ表示） */}
                 {(hasMockup(item) || (item.targetPageUrl && !item.mockupSkipped)) && (
-                <div ref={mockupScrollRef} className="flex-1 overflow-y-auto bg-gray-50/50 dark:bg-dark">
-                  {hasMockup(item) ? (
+                <div ref={mockupScrollRef} className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
+                  {/* 生成中は古い iframe を一切描画せずプレースホルダを表示 */}
+                  {hasMockup(item) && !mockupGeneratingIds.has(item.id) ? (
                     <>
-                      {/* タブ（sticky） */}
-                      <div className="sticky top-0 z-10 bg-gray-50/95 dark:bg-dark/95 backdrop-blur px-4 sm:px-8 pt-5 pb-3 flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-bold text-gray-800 dark:text-white">改善モックアップ</h3>
-                          <span className="rounded-full bg-green-100 dark:bg-green-900/30 px-2 py-0.5 text-[9px] font-bold text-green-700 dark:text-green-400">AI生成</span>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleRegenerateMockup(item); }}
-                            disabled={mockupGeneratingIds.has(item.id)}
-                            className="inline-flex items-center gap-1 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-dark-3 dark:hover:bg-dark-4 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300 transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="モックアップを再生成"
-                          >
-                            <RefreshCw className={`h-3 w-3 ${mockupGeneratingIds.has(item.id) ? 'animate-spin' : ''}`} />
-                            {mockupGeneratingIds.has(item.id) ? '生成中…' : '再生成'}
-                          </button>
-                        </div>
-                        <div className="flex gap-0.5 bg-gray-200/70 dark:bg-dark-3 rounded-lg p-0.5">
-                          {[
-                            { key: 'compare', label: '並べて比較' },
-                            { key: 'before', label: 'Before' },
-                            { key: 'after', label: 'After' },
-                          ].map(tab => (
-                            <button
-                              key={tab.key}
-                              onClick={() => setDrawerTab(tab.key)}
-                              className={`px-4 py-1.5 rounded-md text-xs font-medium transition ${drawerTab === tab.key ? 'bg-white dark:bg-dark-2 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer'}`}
-                            >
-                              {tab.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
+                      {/* タブ + タイトル + 変更 chip（統合ヘッダ、sticky） */}
+                      {(() => {
+                        // chips: 同一 change_label は同一番号 → dedupe
+                        // label 先頭に丸数字があれば提案項目番号を優先採用 (backend labelToNum と整合)
+                        const labelToNum = new Map();
+                        const chips = [];
+                        let fallbackCounter = 0;
+                        for (const c of (Array.isArray(item.mockupPatchChanges) ? item.mockupPatchChanges : [])) {
+                          const label = (c?.change_label || '変更').trim();
+                          if (labelToNum.has(label)) continue;
+                          const firstChar = label.charAt(0);
+                          const circled = CIRCLED_NUM_MAP[firstChar];
+                          let num;
+                          if (circled) {
+                            num = circled;
+                          } else {
+                            fallbackCounter++;
+                            num = fallbackCounter;
+                          }
+                          labelToNum.set(label, num);
+                          chips.push({ num, label });
+                        }
+                        // num 昇順でソート（提案 ①②③ の順に表示）
+                        chips.sort((a, b) => a.num - b.num);
+                        const showChips = chips.length > 0 && drawerTab !== 'before';
+                        // 表示対象: 3 件以上かつ折り畳み中は先頭 2 件のみ、それ以外は全件
+                        const COLLAPSE_THRESHOLD = 3;
+                        const collapsible = chips.length >= COLLAPSE_THRESHOLD;
+                        const shownChips = (collapsible && !mockupChipsExpanded) ? chips.slice(0, 2) : chips;
+                        const remaining = chips.length - shownChips.length;
+                        const handleChipClick = (chip) => {
+                          const pos = mockupPositions.find(p => String(p.num) === String(chip.num));
+                          if (pos) scrollContainerToPosition(pos);
+                          setHighlightedProposalNum(chip.num);
+                          const change = item.mockupPatchChanges.find(c => (c?.change_label || '') === chip.label);
+                          if (change?.description_excerpt) setHighlightedExcerpt(change.description_excerpt);
+                        };
+                        return (
+                          <div className="sticky top-0 z-10 shrink-0">
+                            {/* 1 段目: タイトル + 再生成 + 変更件数 | タブ（白背景 + 下罫線） */}
+                            <div className="bg-white dark:bg-dark-2 border-b border-gray-200 dark:border-dark-3 px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
+                              <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                                <h3 className="shrink-0 text-base font-bold text-gray-800 dark:text-white">改善モックアップ</h3>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  pill
+                                  onClick={(e) => { e.stopPropagation(); handleRegenerateMockup(item); }}
+                                  disabled={mockupGeneratingIds.has(item.id)}
+                                  className="shrink-0"
+                                  title="モックアップを再生成"
+                                >
+                                  <RefreshCw data-slot="icon" className={`h-3 w-3 ${mockupGeneratingIds.has(item.id) ? 'animate-spin' : ''}`} />
+                                  {mockupGeneratingIds.has(item.id) ? '生成中…' : '再生成'}
+                                </Button>
+                                {showChips && (
+                                  <>
+                                    <span className="shrink-0 text-gray-300 dark:text-dark-3">｜</span>
+                                    <span className="shrink-0 text-xs font-bold text-primary">変更 {chips.length} 件</span>
+                                  </>
+                                )}
+                              </div>
+                              <div className="shrink-0 flex gap-0.5 bg-gray-200/70 dark:bg-dark-3 rounded-lg p-0.5">
+                                {[
+                                  { key: 'compare', label: '並べて比較' },
+                                  { key: 'before', label: 'Before' },
+                                  { key: 'after', label: 'After' },
+                                ].map(tab => (
+                                  <button
+                                    key={tab.key}
+                                    onClick={() => setDrawerTab(tab.key)}
+                                    className={`px-4 py-1.5 rounded-md text-xs font-medium transition ${drawerTab === tab.key ? 'bg-white dark:bg-dark-2 text-gray-900 dark:text-white shadow-sm' : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 cursor-pointer'}`}
+                                  >
+                                    {tab.label}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            {/* 2 段目: chips（変更内容バッジ）（白背景 + うっすら下罫線） */}
+                            {showChips && (
+                              <div className="bg-white dark:bg-dark-2 border-b border-gray-100 dark:border-dark-3 px-6 py-2.5 flex items-center gap-2 flex-wrap">
+                                {shownChips.map(chip => {
+                                  // 表示用ラベル: 先頭の丸数字とその後の空白を除去（バッジと重複するため）
+                                  const displayLabel = chip.label.replace(/^[①②③④⑤⑥⑦⑧⑨⑩]\s*/, '');
+                                  const isActive = highlightedProposalNum === chip.num;
+                                  return (
+                                  <button
+                                    key={chip.num}
+                                    onClick={() => handleChipClick(chip)}
+                                    className={`shrink-0 inline-flex items-center gap-1.5 pl-1 pr-3 py-1 rounded-full transition cursor-pointer text-xs font-medium ${
+                                      isActive
+                                        ? 'bg-yellow-100 text-primary ring-2 ring-primary/30'
+                                        : 'bg-gray-100 hover:bg-primary/10 text-gray-700 hover:text-primary'
+                                    }`}
+                                    title={displayLabel}
+                                  >
+                                    <span className="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center text-[10px] font-bold">{chip.num}</span>
+                                    <span className="whitespace-nowrap">{displayLabel}</span>
+                                  </button>
+                                  );
+                                })}
+                                {collapsible && !mockupChipsExpanded && remaining > 0 && (
+                                  <button
+                                    onClick={() => setMockupChipsExpanded(true)}
+                                    className="shrink-0 inline-flex items-center gap-1 px-3 py-0.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary transition cursor-pointer text-xs font-semibold"
+                                  >
+                                    +{remaining} 件 <ChevronDown className="w-3 h-3" />
+                                  </button>
+                                )}
+                                {collapsible && mockupChipsExpanded && (
+                                  <button
+                                    onClick={() => setMockupChipsExpanded(false)}
+                                    className="ml-auto shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 transition cursor-pointer text-[11px]"
+                                    title="折りたたむ"
+                                  >
+                                    <ChevronUp className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
 
                       {/* 並べて比較 */}
                       {drawerTab === 'compare' && (
-                        <div className="px-4 sm:px-8 pb-8">
+                        <div className="p-6">
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                               <div className="text-xs font-semibold text-gray-400 mb-2">Before（現在）</div>
@@ -1731,8 +2171,8 @@ export default function Improve() {
                                   {item.mockupStorageUrl ? (
                                     <iframe
                                       title="改善モックアップ"
-                                      src={item.mockupStorageUrl}
-                                      className="absolute top-3 left-0 border-0 pointer-events-none"
+                                      src={item.mockupStorageUrl + (item.mockupGeneratedAt?.seconds ? `?v=${item.mockupGeneratedAt.seconds}` : '')}
+                                      className="absolute top-3 left-0 border-0"
                                       sandbox="allow-same-origin allow-scripts"
                                       onLoad={(e) => {
                                         try {
@@ -1745,8 +2185,8 @@ export default function Improve() {
                                   ) : (
                                     <iframe
                                       title="改善モックアップ"
-                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;bottom:100%;left:0;margin-bottom:6px;background:#3758F9;color:#fff;font-size:13px;font-weight:700;padding:5px 12px 5px 30px;border-radius:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;box-shadow:0 2px 6px rgba(55,88,249,0.4);z-index:9999;pointer-events:none;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:6px;margin-bottom:9px;width:20px;height:20px;background:rgba(255,255,255,0.32);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;z-index:10000;pointer-events:none;}[data-changed]:not([data-num])::after{padding-left:12px;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
-                                      className="absolute top-3 left-0 border-0 pointer-events-none"
+                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:0;margin-bottom:6px;width:28px;height:28px;background:#3758F9;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(55,88,249,0.4);border:2px solid white;z-index:10001;pointer-events:auto;cursor:pointer;}[data-changed] [data-changed]{outline-color:rgba(55,88,249,0.55);outline-width:2px;}[data-changed] [data-changed]::before{width:24px;height:24px;font-size:12px;margin-bottom:8px;left:34px;background:#6366f1;}[data-changed] [data-changed] [data-changed]::before{left:64px;background:#818cf8;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                      className="absolute top-3 left-0 border-0"
                                       sandbox="allow-same-origin allow-scripts"
                                       onLoad={(e) => {
                                         try {
@@ -1766,7 +2206,7 @@ export default function Improve() {
 
                       {/* Before単体 */}
                       {drawerTab === 'before' && (
-                        <div className="px-4 sm:px-8 pb-8">
+                        <div className="p-6">
                           <div className="text-xs font-semibold text-gray-400 mb-2">Before（現在）</div>
                           {/* ブラウザフレーム */}
                           <div className="rounded-xl overflow-hidden border border-gray-200 dark:border-dark-3 shadow-lg">
@@ -1794,7 +2234,7 @@ export default function Improve() {
 
                       {/* After単体 */}
                       {drawerTab === 'after' && (
-                        <div className="px-4 sm:px-8 pb-8">
+                        <div className="p-6">
                           <div className="text-xs font-semibold text-primary mb-2">After（改善案適用後）</div>
                           {/* ブラウザフレーム */}
                           <div className="rounded-xl overflow-hidden border border-primary/30 shadow-lg">
@@ -1810,8 +2250,8 @@ export default function Improve() {
                               {item.mockupStorageUrl ? (
                                 <iframe
                                   title="改善モックアップ"
-                                  src={item.mockupStorageUrl}
-                                  className="w-full border-0 pointer-events-none"
+                                  src={item.mockupStorageUrl + (item.mockupGeneratedAt?.seconds ? `?v=${item.mockupGeneratedAt.seconds}` : '')}
+                                  className="w-full border-0"
                                   sandbox="allow-same-origin allow-scripts"
                                   onLoad={(e) => {
                                     try {
@@ -1824,8 +2264,8 @@ export default function Improve() {
                               ) : (
                                 <iframe
                                   title="改善モックアップ"
-                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:2px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed]::after{content:attr(data-changed);position:absolute;bottom:100%;left:0;margin-bottom:6px;background:#3758F9;color:#fff;font-size:13px;font-weight:700;padding:5px 12px 5px 30px;border-radius:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;box-shadow:0 2px 6px rgba(55,88,249,0.4);z-index:9999;pointer-events:none;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:6px;margin-bottom:9px;width:20px;height:20px;background:rgba(255,255,255,0.32);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;z-index:10000;pointer-events:none;}[data-changed]:not([data-num])::after{padding-left:12px;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
-                                  className="w-full border-0 pointer-events-none"
+                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:0;margin-bottom:6px;width:28px;height:28px;background:#3758F9;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(55,88,249,0.4);border:2px solid white;z-index:10001;pointer-events:auto;cursor:pointer;}[data-changed] [data-changed]{outline-color:rgba(55,88,249,0.55);outline-width:2px;}[data-changed] [data-changed]::before{width:24px;height:24px;font-size:12px;margin-bottom:8px;left:34px;background:#6366f1;}[data-changed] [data-changed] [data-changed]::before{left:64px;background:#818cf8;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                  className="w-full border-0"
                                   sandbox="allow-same-origin allow-scripts"
                                   onLoad={(e) => {
                                     try {
@@ -1844,13 +2284,11 @@ export default function Improve() {
                   ) : item.targetPageUrl && !hasMockup(item) && !item.mockupSkipped ? (
                     <>
                       {/* ヘッダー（sticky） */}
-                      <div className="sticky top-0 z-10 bg-gray-50/95 dark:bg-dark/95 backdrop-blur px-4 sm:px-8 pt-5 pb-3 flex items-center">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-bold text-gray-800 dark:text-white">改善モックアップ</h3>
-                        </div>
+                      <div className="sticky top-0 z-10 shrink-0 bg-white dark:bg-dark-2 border-b border-gray-200 dark:border-dark-3 px-6 py-3 flex items-center">
+                        <h3 className="text-base font-bold text-gray-800 dark:text-white">改善モックアップ</h3>
                       </div>
                       {/* 並べて比較レイアウト: Before + After(未生成) */}
-                      <div className="px-4 sm:px-8 pb-8">
+                      <div className="p-6">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           {/* Before */}
                           <div>
@@ -1899,13 +2337,14 @@ export default function Improve() {
                                       </div>
                                       <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">モックアップ生成に失敗しました</p>
                                       <p className="text-xs text-gray-400 dark:text-gray-500 mb-4">時間をおいてからお試しください</p>
-                                      <button
+                                      <Button
+                                        variant="primary"
+                                        size="lg"
                                         onClick={() => handleGenerateMockup(item)}
-                                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white hover:bg-primary/90 transition cursor-pointer shadow-sm"
                                       >
-                                        <RefreshCw className="h-4 w-4" />
+                                        <RefreshCw data-slot="icon" className="h-4 w-4" />
                                         再試行する
-                                      </button>
+                                      </Button>
                                     </>
                                   ) : (
                                     // デフォルト/生成中: ドロワー開時に自動発火するのでスピナー1種類でOK
@@ -1928,51 +2367,34 @@ export default function Improve() {
                 )}
               </div>
 
-              {/* ドロワーフッター */}
-              <div className="px-10 py-4 border-t border-gray-200 dark:border-dark-3 flex items-center justify-between shrink-0 bg-gray-50/80 dark:bg-dark-3">
+              {/* ドロワーフッター（コンパクト：削除 + キーボードヒント） */}
+              <div className="px-6 py-2.5 border-t border-gray-100 dark:border-dark-3 flex items-center justify-between shrink-0 bg-gray-50/80 dark:bg-dark-3">
                 {!isViewer ? (
-                  <div className="flex items-center gap-3">
-                    <button
-                      type="button"
-                      onClick={() => setIsConsultationModalOpen(true)}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:from-blue-600 hover:to-pink-600 hover:shadow-md"
-                    >
-                      <Mail className="h-4 w-4" />
-                      制作会社に相談する
-                    </button>
-                    <Button
-                      color="red"
-                      outline
-                      onClick={() => {
-                        if (window.confirm('この改善案を削除しますか？')) {
-                          deleteMutation.mutate(item.id);
-                          closeDrawer();
-                        }
-                      }}
-                    >
-                      削除
-                    </Button>
-                  </div>
+                  <Button
+                    variant="danger-outline"
+                    size="sm"
+                    onClick={() => {
+                      if (window.confirm('この改善案を削除しますか？')) {
+                        deleteMutation.mutate(item.id);
+                        closeDrawer();
+                      }
+                    }}
+                  >
+                    <Trash2 data-slot="icon" className="w-3.5 h-3.5" />
+                    この改善案を削除
+                  </Button>
                 ) : <div />}
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => navigateDrawer(-1)}
-                    disabled={!hasPrev}
-                    className={`text-sm font-medium border rounded-lg px-5 py-2 transition ${hasPrev ? 'border-gray-300 dark:border-dark-3 text-gray-700 dark:text-gray-200 bg-white dark:bg-dark-2 hover:bg-gray-100 dark:hover:bg-dark-3 shadow-sm' : 'border-gray-200 dark:border-dark-3 text-gray-300 dark:text-dark-3 cursor-not-allowed'}`}
-                  >
-                    <ChevronLeft className="h-4 w-4 inline -mt-0.5" /> 前
-                  </button>
-                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400">{currentIdx + 1} / {sortedImprovements.length}</span>
-                  <button
-                    onClick={() => navigateDrawer(1)}
-                    disabled={!hasNext}
-                    className={`text-sm font-medium border rounded-lg px-5 py-2 transition ${hasNext ? 'border-gray-300 dark:border-dark-3 text-gray-700 dark:text-gray-200 bg-white dark:bg-dark-2 hover:bg-gray-100 dark:hover:bg-dark-3 shadow-sm' : 'border-gray-200 dark:border-dark-3 text-gray-300 dark:text-dark-3 cursor-not-allowed'}`}
-                  >
-                    次 <ChevronRight className="h-4 w-4 inline -mt-0.5" />
-                  </button>
-                </div>
+                <span className="text-[11px] text-gray-500">
+                  <kbd className="px-1.5 py-0.5 bg-white dark:bg-dark-2 border border-gray-200 dark:border-dark-3 rounded text-[10px]">←</kbd>
+                  <kbd className="ml-1 px-1.5 py-0.5 bg-white dark:bg-dark-2 border border-gray-200 dark:border-dark-3 rounded text-[10px]">→</kbd>
+                  <span className="ml-1">前後の改善</span>
+                  <span className="mx-2 text-gray-300 dark:text-dark-3">|</span>
+                  <kbd className="px-1.5 py-0.5 bg-white dark:bg-dark-2 border border-gray-200 dark:border-dark-3 rounded text-[10px]">Esc</kbd>
+                  <span className="ml-1">閉じる</span>
+                </span>
               </div>
             </div>
+
           </div>,
           document.body
         );

@@ -1,6 +1,27 @@
-import React, { useState, useEffect, useRef, Component } from 'react';
+import React, { Component, useEffect, useMemo, useRef, useState } from 'react';
+import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { addDoc, collection, deleteField, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
+import { httpsCallable } from 'firebase/functions';
+import toast from 'react-hot-toast';
+import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
 
-// エラーバウンダリ（子コンポーネントのクラッシュをキャッチして白画面を防ぐ）
+import { useAuth } from '../../../contexts/AuthContext';
+import { useSite } from '../../../contexts/SiteContext';
+import { useAdmin } from '../../../hooks/useAdmin';
+import { db, functions } from '../../../config/firebase';
+import logoImg from '../../../assets/img/logo.svg';
+
+import UpgradeModal from '../../common/UpgradeModal';
+import DotWaveSpinner from '../../common/DotWaveSpinner';
+import { Button } from '../../ui/button';
+import StepIndicator from './StepIndicator';
+import Step1BasicInfo from './Step1BasicInfo';
+import Step2GA4Connect from './Step2GA4Connect';
+import Step3GSCConnect from './Step3GSCConnect';
+import Step4ConversionSettings from './Step4ConversionSettings';
+import Step5KPISettings from './Step5KPISettings';
+
+// 子コンポーネントのクラッシュをキャッチして白画面を防ぐエラーバウンダリ
 class StepErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { hasError: false, error: null }; }
   static getDerivedStateFromError(error) { return { hasError: true, error }; }
@@ -11,60 +32,112 @@ class StepErrorBoundary extends Component {
         <div className="p-8 text-center">
           <p className="text-red-600 font-medium mb-2">エラーが発生しました</p>
           <p className="text-sm text-body-color mb-4">{this.state.error?.message || '予期しないエラーです'}</p>
-          <button onClick={() => this.setState({ hasError: false, error: null })} className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90">
+          <Button
+            variant="primary"
+            onClick={() => this.setState({ hasError: false, error: null })}
+          >
             再試行
-          </button>
+          </Button>
         </div>
       );
     }
     return this.props.children;
   }
 }
-import { useNavigate, useLocation, useSearchParams, useParams } from 'react-router-dom';
-import { useAuth } from '../../../contexts/AuthContext';
-import { useSite } from '../../../contexts/SiteContext';
-import { useAdmin } from '../../../hooks/useAdmin';
-import { db, functions } from '../../../config/firebase';
-import { collection, addDoc, doc, getDoc, updateDoc, serverTimestamp, query, where, getDocs, deleteField } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import logoImg from '../../../assets/img/logo.svg';
-import toast from 'react-hot-toast';
-import UpgradeModal from '../../common/UpgradeModal';
-import DotWaveSpinner from '../../common/DotWaveSpinner';
-import StepIndicator from './StepIndicator';
-import Step1BasicInfo from './Step1BasicInfo';
-import Step2GA4Connect from './Step2GA4Connect';
-import Step3GSCConnect from './Step3GSCConnect';
-import Step4ConversionSettings from './Step4ConversionSettings';
-import Step5KPISettings from './Step5KPISettings';
 
-// V1 レガシーフィールド。保存時に payload から除外し、updateDoc 時は deleteField() で Firestore から削除する。
+// 各ステップの表示情報 (見出し + サブタイトル)
+const STEP_INFO = {
+  1: { title: '基本情報', subtitle: 'サイト名と URL を入力してください。' },
+  2: { title: 'Google Analytics 4 連携', subtitle: 'サイトのアクセス数・ユーザー行動が自動で取り込まれ、ダッシュボードに反映されます。' },
+  3: { title: 'Google Search Console 連携', subtitle: 'どんな検索キーワードで訪れたか・掲載順位がわかり、SEO 改善に役立ちます。' },
+  4: { title: 'コンバージョン設定', subtitle: 'お問い合わせ・購入など「成果」を登録すると、達成数や流入経路が分析できます。' },
+  5: { title: '目標設定', subtitle: '月間の目標値を決めておくと、ダッシュボードで達成率が一目でわかります。' },
+};
+
+// 任意ステップを設定するメリット (早期完了時の確認ダイアログで訴求)
+const STEP_BENEFITS = {
+  3: {
+    benefit: '検索キーワード・掲載順位・クリック率がわかり、SEO 改善の打ち手を具体化できます。',
+    missing: '未設定だと、ユーザーがどんな検索ワードで流入したかが取得できません。',
+  },
+  4: {
+    benefit: 'お問い合わせ・購入などの「成果」が計測でき、どの流入経路が売上に貢献しているかが分析できます。',
+    missing: '未設定だと、達成数や CVR が計測できず、施策の効果測定ができません。',
+  },
+  5: {
+    benefit: '月間の目標達成率がダッシュボードで一目でわかり、進捗管理や振り返りに使えます。',
+    missing: '未設定だと、達成率や目標に対する進捗が可視化されません。',
+  },
+};
+
+// 各ステップが「埋まっているか」の判定 (フッターの完了カウント・保存済バッジ用)
+function isStepFilled(stepNumber, siteData) {
+  if (!siteData) return false;
+  switch (stepNumber) {
+    case 1: return !!(siteData.siteName && siteData.siteUrl);
+    case 2: return !!siteData.ga4PropertyId;
+    case 3: return !!siteData.gscSiteUrl;
+    case 4: return (siteData.conversionEvents?.length || 0) > 0;
+    case 5: return (siteData.kpiSettings?.kpiList?.length || 0) > 0;
+    default: return false;
+  }
+}
+
+// 保存状態バッジ
+function SaveBadge({ isSaving, savedAt, filled, required }) {
+  if (isSaving) {
+    return (
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-blue-700">
+        <span className="inline-block w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        保存中…
+      </span>
+    );
+  }
+  if (savedAt) {
+    const t = savedAt.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-green-50 px-2.5 py-1 text-xs font-medium text-green-700">
+        <Check className="w-3.5 h-3.5" />
+        保存済 · {t}
+      </span>
+    );
+  }
+  if (filled) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
+        入力済
+      </span>
+    );
+  }
+  // 未保存: 必須/任意ラベルで出し分け
+  if (required) {
+    return (
+      <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-1 text-xs font-medium text-primary">
+        必須
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+      任意
+    </span>
+  );
+}
+
+// V1 レガシーフィールド (industry/siteType/sitePurpose/businessType) を保存時に除外する。
+// updateDoc 時は deleteField() で Firestore からも消す。
 const LEGACY_TAXONOMY_FIELDS = ['industry', 'siteType', 'sitePurpose', 'businessType'];
 
-/**
- * siteData から Firestore 保存用の payload を構築する。
- * - レガシーフィールド(industry/siteType/sitePurpose/businessType)を除外
- * - 必ず taxonomyVersion: 2 を含める
- */
 function buildSavePayload(baseData) {
   const cleaned = { ...baseData };
-  LEGACY_TAXONOMY_FIELDS.forEach((key) => {
-    delete cleaned[key];
-  });
+  LEGACY_TAXONOMY_FIELDS.forEach((key) => { delete cleaned[key]; });
   cleaned.taxonomyVersion = 2;
   return cleaned;
 }
 
-/**
- * 既存 V1 サイト更新時に、Firestore 上の旧フィールドを削除するための sentinel を追加。
- * 新規 addDoc では使わない（そもそも書き込まない）。
- */
 function legacyDeletionSentinels() {
   const sentinels = {};
-  LEGACY_TAXONOMY_FIELDS.forEach((key) => {
-    sentinels[key] = deleteField();
-  });
+  LEGACY_TAXONOMY_FIELDS.forEach((key) => { sentinels[key] = deleteField(); });
   return sentinels;
 }
 
@@ -73,22 +146,12 @@ export default function SiteRegistration({ mode = 'new' }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { siteId: siteIdFromParams } = useParams();
-  const { currentUser, userProfile } = useAuth();
+  const { currentUser } = useAuth();
   const { maxSites, allSites, isLoading: isSiteLoading } = useSite();
   const { isAdmin, loading: isAdminLoading } = useAdmin();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
-  const stepParam = parseInt(searchParams.get('step')) || 1;
-
-  // ビジネスプラン申込後のトースト表示（1回のみ）
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('business_inquiry') === '1') {
-      window.history.replaceState({}, '', window.location.pathname);
-      toast.success('ビジネスプランのお申し込みを受け付けました。担当者より折り返しご連絡いたします。', { duration: 8000, id: 'business-inquiry-toast' });
-    }
-  }, []);
-  // 編集モードの場合はURLパラメータから、新規作成の場合はクエリパラメータから取得
+  const stepParam = parseInt(searchParams.get('step'), 10) || 1;
   const siteIdParam = mode === 'edit' ? siteIdFromParams : searchParams.get('siteId');
 
   const [currentStep, setCurrentStep] = useState(stepParam);
@@ -98,33 +161,32 @@ export default function SiteRegistration({ mode = 'new' }) {
   const [error, setError] = useState('');
   const [isAdminEditingOtherSite, setIsAdminEditingOtherSite] = useState(false);
   const [siteOwnerUserId, setSiteOwnerUserId] = useState(null);
-  /** Step1の最新値（保存タイミングのずれで industry/siteType/sitePurpose が抜けないようにする） */
+  // 各ステップが当セッションで保存された時刻を記録 (見出しの保存済バッジに使用)
+  const [stepSavedAt, setStepSavedAt] = useState({});
+  // 早期完了確認ダイアログ表示
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
+  // Step1 の最新値 (保存タイミングのずれで siteName/siteUrl が抜けないようにする)
   const step1LatestRef = useRef({});
 
   const [siteData, setSiteData] = useState({
     siteName: '',
     siteUrl: '',
-    // タクソノミー V2 はユーザーに入力させない。サイト登録完了後のスクレイピング処理
-    // （onScrapingJobCreated）で 100ページ情報を元に AI が裏で自動判定・保存する。
+    // タクソノミー V2 はユーザに入力させない (登録完了後のスクレイピングで AI が自動判定)
     taxonomyVersion: 2,
     metaTitle: '',
     metaDescription: '',
     pcScreenshotUrl: '',
     mobileScreenshotUrl: '',
-    // STEP 2: GA4連携
     ga4PropertyId: '',
     ga4PropertyName: '',
     ga4AccountId: '',
     ga4AccountName: '',
     ga4OauthTokenId: '',
     ga4GoogleAccount: '',
-    // STEP 3: GSC連携
     gscSiteUrl: '',
     gscOauthTokenId: '',
     gscGoogleAccount: '',
-    // STEP 4: コンバージョン設定
     conversionEvents: [],
-    // STEP 5: 目標設定
     kpiSettings: {
       targetSessions: 0,
       targetUsers: 0,
@@ -132,150 +194,138 @@ export default function SiteRegistration({ mode = 'new' }) {
       targetConversionRate: 0,
       kpiList: [],
     },
-    // メタ情報
     setupStep: 1,
     setupCompleted: false,
   });
 
-  // 新規作成時のサイト上限チェック（読み込み完了後のみ判定／運営側管理者は無制限）
+  // ビジネスプラン申込後のトースト
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('business_inquiry') === '1') {
+      window.history.replaceState({}, '', window.location.pathname);
+      toast.success('ビジネスプランのお申し込みを受け付けました。担当者より折り返しご連絡いたします。', { duration: 8000, id: 'business-inquiry-toast' });
+    }
+  }, []);
+
+  // プラン上限チェック (新規 + setupCompleted=true のみカウント / 運営側 admin は無制限)
   useEffect(() => {
     if (mode !== 'new' || isSiteLoading || isAdminLoading) return;
     if (isAdmin) return;
-    // setupCompleted === true のサイトだけカウント（登録途中は除外）
-    const completedSites = allSites.filter(s => s.setupCompleted === true);
+    const completedSites = allSites.filter((s) => s.setupCompleted === true);
     if (completedSites.length >= maxSites) {
       setIsUpgradeModalOpen(true);
     }
   }, [mode, allSites, maxSites, isSiteLoading, isAdmin, isAdminLoading]);
 
-  // URLパラメータの変更を監視
+  // ?step=N の変化を currentStep に反映
   useEffect(() => {
-    const step = parseInt(searchParams.get('step')) || 1;
+    const step = parseInt(searchParams.get('step'), 10) || 1;
     setCurrentStep(step);
   }, [searchParams]);
 
-  // 既存サイトデータの読み込み（編集モード）
+  // 編集モード: 既存サイトのデータを読み込み
   useEffect(() => {
     const loadSiteData = async () => {
-      console.log('[SiteRegistration] loadSiteData:', { mode, siteIdParam });
-      
-      if (mode === 'edit' && siteIdParam) {
-        setIsLoading(true);
-        try {
-          console.log('[SiteRegistration] サイトデータ読み込み開始:', siteIdParam);
-          const siteDoc = await getDoc(doc(db, 'sites', siteIdParam));
-          
-          if (siteDoc.exists()) {
-            const data = siteDoc.data();
-            console.log('[SiteRegistration] サイトデータ取得成功:', data);
-            
-            // 権限チェック
-            const isDirectOwner = data.userId === currentUser.uid;
-            
-            if (!isDirectOwner) {
-              // 1. 同じアカウントのメンバーかチェック
-              const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
-              const userData = userDoc.data();
-              const memberships = userData?.memberships || {};
-              const isMember = memberships[data.userId] !== undefined;
-              
-              // 2. システム管理者かチェック
-              const adminDoc = await getDoc(doc(db, 'adminUsers', currentUser.uid));
-              const isAdmin = adminDoc.exists() && ['admin', 'editor'].includes(adminDoc.data().role);
-              
-              if (!isMember && !isAdmin) {
-                setError('このサイトを編集する権限がありません');
-                setIsLoading(false);
-                return;
-              }
-              
-              if (isAdmin) {
-                setIsAdminEditingOtherSite(true);
-                setSiteOwnerUserId(data.userId);
-                console.log('[SiteRegistration] 管理者による他ユーザーサイトの代理設定');
-              } else {
-                console.log('[SiteRegistration] メンバーによるサイト編集');
-              }
-            }
-            
-            setSiteData({
-              siteName: data.siteName || '',
-              siteUrl: data.siteUrl || '',
-              // タクソノミー V2 は裏データ（編集モードでは表示しない）。Firestore の現状値をそのまま保持しておく。
-              businessModel: data.businessModel || '',
-              industryMajor: data.industryMajor || '',
-              industryMinor: data.industryMinor || '',
-              siteRole: data.siteRole || '',
-              taxonomyVersion: Number(data.taxonomyVersion) === 2 ? 2 : undefined,
-              needsManualReclassify: !!data.needsManualReclassify,
-              metaTitle: data.metaTitle || '',
-              metaDescription: data.metaDescription || '',
-              pcScreenshotUrl: data.pcScreenshotUrl || '',
-              mobileScreenshotUrl: data.mobileScreenshotUrl || '',
-              ga4PropertyId: data.ga4PropertyId || '',
-              ga4PropertyName: data.ga4PropertyName || '',
-              ga4AccountId: data.ga4AccountId || '',
-              ga4AccountName: data.ga4AccountName || '',
-              ga4OauthTokenId: data.ga4OauthTokenId || '',
-              ga4GoogleAccount: data.ga4GoogleAccount || '',
-              gscSiteUrl: data.gscSiteUrl || '',
-              gscOauthTokenId: data.gscOauthTokenId || '',
-              gscGoogleAccount: data.gscGoogleAccount || '',
-              conversionEvents: data.conversionEvents || [],
-              kpiSettings: data.kpiSettings || {
-                targetSessions: 0,
-                targetUsers: 0,
-                targetConversions: 0,
-                targetConversionRate: 0,
-                kpiList: [],
-              },
-              setupStep: data.setupStep || 1,
-              setupCompleted: data.setupCompleted || false,
-            });
-          } else {
-            console.error('[SiteRegistration] サイトが見つかりません:', siteIdParam);
-            setError('サイトが見つかりません');
-          }
-        } catch (err) {
-          console.error('[SiteRegistration] Error loading site data:', err);
-          setError('サイトデータの読み込みに失敗しました: ' + err.message);
-        } finally {
+      if (mode !== 'edit' || !siteIdParam) return;
+      setIsLoading(true);
+      try {
+        const siteDoc = await getDoc(doc(db, 'sites', siteIdParam));
+        if (!siteDoc.exists()) {
+          setError('サイトが見つかりません');
           setIsLoading(false);
+          return;
         }
-      } else {
-        console.log('[SiteRegistration] 編集モードではない、またはsiteIdがありません');
+        const data = siteDoc.data();
+        const isDirectOwner = data.userId === currentUser?.uid;
+
+        if (!isDirectOwner) {
+          // メンバーシップ or 管理者権限を確認
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+          const userData = userDoc.data();
+          const memberships = userData?.memberships || {};
+          const isMember = memberships[data.userId] !== undefined;
+
+          const adminDoc = await getDoc(doc(db, 'adminUsers', currentUser.uid));
+          const isAdminUser = adminDoc.exists() && ['admin', 'editor'].includes(adminDoc.data().role);
+
+          if (!isMember && !isAdminUser) {
+            setError('このサイトを編集する権限がありません');
+            setIsLoading(false);
+            return;
+          }
+          if (isAdminUser) {
+            setIsAdminEditingOtherSite(true);
+            setSiteOwnerUserId(data.userId);
+          }
+        }
+
+        setSiteData({
+          siteName: data.siteName || '',
+          siteUrl: data.siteUrl || '',
+          businessModel: data.businessModel || '',
+          industryMajor: data.industryMajor || '',
+          industryMinor: data.industryMinor || '',
+          siteRole: data.siteRole || '',
+          taxonomyVersion: Number(data.taxonomyVersion) === 2 ? 2 : undefined,
+          needsManualReclassify: !!data.needsManualReclassify,
+          metaTitle: data.metaTitle || '',
+          metaDescription: data.metaDescription || '',
+          pcScreenshotUrl: data.pcScreenshotUrl || '',
+          mobileScreenshotUrl: data.mobileScreenshotUrl || '',
+          ga4PropertyId: data.ga4PropertyId || '',
+          ga4PropertyName: data.ga4PropertyName || '',
+          ga4AccountId: data.ga4AccountId || '',
+          ga4AccountName: data.ga4AccountName || '',
+          ga4OauthTokenId: data.ga4OauthTokenId || '',
+          ga4GoogleAccount: data.ga4GoogleAccount || '',
+          gscSiteUrl: data.gscSiteUrl || '',
+          gscOauthTokenId: data.gscOauthTokenId || '',
+          gscGoogleAccount: data.gscGoogleAccount || '',
+          conversionEvents: data.conversionEvents || [],
+          kpiSettings: data.kpiSettings || {
+            targetSessions: 0,
+            targetUsers: 0,
+            targetConversions: 0,
+            targetConversionRate: 0,
+            kpiList: [],
+          },
+          userId: data.userId, // Step2/3 の oauth_tokens パス解決に必要
+          setupStep: data.setupStep || 1,
+          setupCompleted: data.setupCompleted || false,
+        });
+      } catch (err) {
+        console.error('[SiteRegistration] Error loading site data:', err);
+        setError('サイトデータの読み込みに失敗しました: ' + err.message);
+      } finally {
+        setIsLoading(false);
       }
     };
-
     loadSiteData();
   }, [mode, siteIdParam, currentUser]);
 
-  // ステップクリック
+  // ステップクリック: 新規モードでは過去ステップのみ、編集モードでは全ステップへ自由ジャンプ可能
   const handleStepClick = (stepNumber) => {
-    if (stepNumber <= currentStep) {
+    if (mode === 'edit' || stepNumber <= currentStep) {
       const params = new URLSearchParams(searchParams);
       params.set('step', stepNumber.toString());
       navigate(`${location.pathname}?${params.toString()}`);
     }
   };
 
-  // バリデーション（useMemoでメモ化してパフォーマンス向上）
-  const canProceed = React.useMemo(() => {
+  // バリデーション
+  const canProceed = useMemo(() => {
     switch (currentStep) {
       case 1: {
-        // 「取得中...」の状態では進めない
         const isMetadataLoading =
           siteData.metaTitle === '取得中...' || siteData.metaDescription === '取得中...';
-        // タクソノミー V2 は裏方化したため、Step1 の必須は siteName + siteUrl のみ。
         return !!(siteData.siteName && siteData.siteUrl && !isMetadataLoading);
       }
       case 2:
         return !!siteData.ga4PropertyId;
       case 3:
-        return true; // Search Console連携は任意（スキップ可能）
       case 4:
       case 5:
-        return true; // 任意項目
+        return true; // 任意
       default:
         return true;
     }
@@ -288,14 +338,13 @@ export default function SiteRegistration({ mode = 'new' }) {
     siteData.ga4PropertyId,
   ]);
 
-  // 保存処理
+  // 保存処理 (次のステップを指定)
   const saveSiteData = async (nextStep) => {
     setIsSaving(true);
     setError('');
 
+    const savedStep = currentStep;
     try {
-      console.log('[SiteRegistration] 保存開始:', { currentUser: currentUser?.uid, siteId, nextStep });
-
       const dataToSave = buildSavePayload({
         ...siteData,
         ...step1LatestRef.current,
@@ -303,43 +352,24 @@ export default function SiteRegistration({ mode = 'new' }) {
         updatedAt: serverTimestamp(),
       });
 
-      console.log('[SiteRegistration] 保存データ:', {
-        metaTitle: dataToSave.metaTitle,
-        metaDescription: dataToSave.metaDescription,
-        pcScreenshotUrl: dataToSave.pcScreenshotUrl ? '(あり)' : '(なし)',
-        mobileScreenshotUrl: dataToSave.mobileScreenshotUrl ? '(あり)' : '(なし)',
-      });
-
       if (siteId) {
-        // 既存サイトの更新（管理者代理編集時はuserIdを上書きしない）
-        console.log('[SiteRegistration] 既存サイト更新:', siteId);
         const updatePayload = { ...dataToSave, ...legacyDeletionSentinels() };
         if (isAdminEditingOtherSite) {
-          // 管理者がOAuth連携した場合、トークンオーナーを管理者に設定
-          if (updatePayload.ga4OauthTokenId) {
-            updatePayload.ga4TokenOwner = currentUser.uid;
-          }
-          if (updatePayload.gscOauthTokenId) {
-            updatePayload.gscTokenOwner = currentUser.uid;
-          }
+          if (updatePayload.ga4OauthTokenId) updatePayload.ga4TokenOwner = currentUser.uid;
+          if (updatePayload.gscOauthTokenId) updatePayload.gscTokenOwner = currentUser.uid;
         } else {
           updatePayload.userId = currentUser.uid;
         }
         await updateDoc(doc(db, 'sites', siteId), updatePayload);
-        console.log('[SiteRegistration] 更新完了:', siteId);
       } else {
-        // 新規サイトの作成
-        console.log('[SiteRegistration] 新規サイト作成:', { userId: currentUser.uid });
+        // 新規作成
         const docRef = await addDoc(collection(db, 'sites'), {
           ...dataToSave,
           userId: currentUser.uid,
           createdAt: serverTimestamp(),
         });
-        console.log('[SiteRegistration] サイト作成成功:', docRef.id);
-        console.log('[SiteRegistration] 保存されたデータを確認してください: Firestore > sites >', docRef.id);
         setSiteId(docRef.id);
-        
-        // URLにsiteIdを追加
+        setStepSavedAt((prev) => ({ ...prev, [savedStep]: new Date() }));
         const params = new URLSearchParams(searchParams);
         params.set('siteId', docRef.id);
         params.set('step', nextStep.toString());
@@ -347,7 +377,7 @@ export default function SiteRegistration({ mode = 'new' }) {
         return;
       }
 
-      // 次のステップへ
+      setStepSavedAt((prev) => ({ ...prev, [savedStep]: new Date() }));
       const params = new URLSearchParams(searchParams);
       params.set('step', nextStep.toString());
       navigate(`${location.pathname}?${params.toString()}`);
@@ -362,7 +392,6 @@ export default function SiteRegistration({ mode = 'new' }) {
   // 次へ
   const handleNext = async () => {
     if (!canProceed) return;
-    
     if (currentStep < 5) {
       await saveSiteData(currentStep + 1);
     }
@@ -377,7 +406,7 @@ export default function SiteRegistration({ mode = 'new' }) {
     }
   };
 
-  // 保存して終了（編集モード用）
+  // 保存して終了 (編集モード用)
   const handleSaveAndExit = async () => {
     setIsSaving(true);
     setError('');
@@ -393,18 +422,13 @@ export default function SiteRegistration({ mode = 'new' }) {
       if (siteId) {
         const updatePayload = { ...dataToSave, ...legacyDeletionSentinels() };
         if (isAdminEditingOtherSite) {
-          if (updatePayload.ga4OauthTokenId) {
-            updatePayload.ga4TokenOwner = currentUser.uid;
-          }
-          if (updatePayload.gscOauthTokenId) {
-            updatePayload.gscTokenOwner = currentUser.uid;
-          }
+          if (updatePayload.ga4OauthTokenId) updatePayload.ga4TokenOwner = currentUser.uid;
+          if (updatePayload.gscOauthTokenId) updatePayload.gscTokenOwner = currentUser.uid;
         } else {
           updatePayload.userId = currentUser.uid;
         }
         await updateDoc(doc(db, 'sites', siteId), updatePayload);
 
-        // 管理者代理編集時は管理者画面へ、それ以外はダッシュボードへ
         if (isAdminEditingOtherSite) {
           window.location.href = siteOwnerUserId ? `/admin/users/${siteOwnerUserId}` : '/admin/users';
         } else {
@@ -425,25 +449,20 @@ export default function SiteRegistration({ mode = 'new' }) {
     setError('');
 
     try {
+      const merged = { ...siteData, ...step1LatestRef.current };
       const finalData = buildSavePayload({
-        ...siteData,
-        ...step1LatestRef.current,
+        ...merged,
         setupStep: 5,
         setupCompleted: true,
         updatedAt: serverTimestamp(),
       });
 
       let completedSiteId = siteId;
-      let isNewSite = !siteId;
+      const isNewSite = !siteId;
 
-      // 管理者代理編集時はトークンオーナーを管理者に設定
       if (isAdminEditingOtherSite) {
-        if (finalData.ga4OauthTokenId) {
-          finalData.ga4TokenOwner = currentUser.uid;
-        }
-        if (finalData.gscOauthTokenId) {
-          finalData.gscTokenOwner = currentUser.uid;
-        }
+        if (finalData.ga4OauthTokenId) finalData.ga4TokenOwner = currentUser.uid;
+        if (finalData.gscOauthTokenId) finalData.gscTokenOwner = currentUser.uid;
       }
 
       if (siteId) {
@@ -460,34 +479,29 @@ export default function SiteRegistration({ mode = 'new' }) {
         completedSiteId = docRef.id;
       }
 
-      // 新規サイト作成時のログを記録（非同期で、エラーは無視）
+      // 新規作成時のログ (失敗しても続行)
       if (isNewSite) {
         try {
-          const userProfile = await getDoc(doc(db, 'users', currentUser.uid));
-          const userData = userProfile.data();
-          const displayName = userData?.lastName && userData?.firstName 
-            ? `${userData.lastName} ${userData.firstName}` 
+          const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+          const userData = userDoc.data();
+          const displayName = userData?.lastName && userData?.firstName
+            ? `${userData.lastName} ${userData.firstName}`
             : currentUser.displayName || '';
-          
           const logSiteCreated = httpsCallable(functions, 'logSiteCreated');
           await logSiteCreated({
             siteId: completedSiteId,
-            siteName: siteData.name,
-            siteUrl: siteData.url,
+            siteName: merged.siteName,
+            siteUrl: merged.siteUrl,
             displayName,
           });
         } catch (logError) {
           console.error('Log site created error:', logError);
-          // ログ記録エラーは無視して処理を続行
         }
       }
 
-      // 管理者が他ユーザーのサイトを設定している場合は管理者ユーザー詳細へ、それ以外は完了画面へ
       if (isAdminEditingOtherSite) {
-        console.log('[SiteRegistration] 管理者による設定完了 - 管理者画面へ遷移');
         window.location.href = siteOwnerUserId ? `/admin/users/${siteOwnerUserId}` : '/admin/users';
       } else {
-        console.log('[SiteRegistration] 通常の設定完了 - 完了画面へ遷移');
         window.location.href = `/sites/complete?siteId=${completedSiteId}`;
       }
     } catch (err) {
@@ -528,40 +542,41 @@ export default function SiteRegistration({ mode = 'new' }) {
 
       {/* ステップインジケーター */}
       <div className="mx-auto max-w-4xl px-6 pb-8">
-        <StepIndicator currentStep={currentStep} onStepClick={handleStepClick} />
+        <StepIndicator
+          currentStep={currentStep}
+          onStepClick={handleStepClick}
+          allowAllSteps={mode === 'edit'}
+        />
       </div>
 
       {/* フォームカード */}
-      <div className="mx-auto max-w-4xl px-6 pb-12">
-        <div className="rounded-xl border border-stroke bg-white shadow-md dark:border-dark-3 dark:bg-dark-2">
-            <div className="border-b border-stroke px-8 py-6 dark:border-dark-3">
-              <h2 className="text-xl font-semibold text-dark dark:text-white">
-                {
-                  currentStep === 1 ? 'サイト基本情報' :
-                  currentStep === 2 ? 'GA4連携' :
-                  currentStep === 3 ? 'Search Console連携' :
-                  currentStep === 4 ? 'コンバージョン設定' :
-                  '目標設定'
-                }
-                {currentStep >= 3 && <span className="ml-2 text-sm text-gray-500">（任意）</span>}
-              </h2>
-              <p className="mt-1 text-sm text-body-color">
-                {
-                  currentStep === 1 ? 'サイト名とURLを入力してください' :
-                  currentStep === 2 ? 'Google Analytics 4のプロパティを連携します' :
-                  currentStep === 3 ? 'Google Search Consoleのサイトを連携します（スキップ可能）' :
-                  currentStep === 4 ? 'コンバージョンイベントを設定します（スキップ可能）' :
-                  '目標を設定します（スキップ可能）'
-                }
-              </p>
-            </div>
-
-            {/* エラーメッセージ */}
-            {error && (
-              <div className="mx-8 mt-6 rounded-lg bg-red-50 p-4 dark:bg-red-900/20">
-                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+      <div className="mx-auto max-w-4xl px-6 pb-32">
+        <div className="rounded-xl border border-stroke bg-white shadow-sm dark:border-dark-3 dark:bg-dark-2">
+          <div className="flex items-center justify-between border-b border-stroke px-8 py-5 dark:border-dark-3">
+            <div className="flex items-start gap-3">
+              <span className="w-8 h-8 rounded-full bg-primary text-white text-sm font-semibold flex items-center justify-center flex-shrink-0">
+                {currentStep}
+              </span>
+              <div>
+                <h2 className="text-lg font-semibold text-dark dark:text-white">
+                  {STEP_INFO[currentStep].title}
+                </h2>
+                <p className="text-xs text-body-color mt-0.5">{STEP_INFO[currentStep].subtitle}</p>
               </div>
-            )}
+            </div>
+            <SaveBadge
+              isSaving={isSaving}
+              savedAt={stepSavedAt[currentStep]}
+              filled={isStepFilled(currentStep, siteData)}
+              required={currentStep === 1 || currentStep === 2}
+            />
+          </div>
+
+          {error && (
+            <div className="mx-8 mt-6 rounded-lg bg-red-50 p-4 dark:bg-red-900/20">
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          )}
 
           {/* ステップコンテンツ */}
           <div className="px-8 py-8">
@@ -586,58 +601,200 @@ export default function SiteRegistration({ mode = 'new' }) {
 
           {/* ボタンエリア */}
           <div className="flex items-center justify-between border-t border-stroke px-8 py-6 dark:border-dark-3">
-            <button
+            <Button
+              variant="ghost"
+              size="lg"
               onClick={handlePrevious}
               disabled={currentStep === 1}
-              className="inline-flex items-center gap-2 rounded-lg border border-stroke px-6 py-2.5 text-sm font-medium text-dark transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft data-slot="icon" />
               戻る
-            </button>
+            </Button>
 
-            <div className="flex gap-3">
+            <div className="flex items-center gap-3">
               {currentStep < 5 ? (
                 <>
+                  {/* 任意ステップ (3, 4) かつ必須完了済みなら、ここで早期完了できるサブボタン */}
+                  {currentStep >= 3 && isStepFilled(1, siteData) && isStepFilled(2, siteData) && (
+                    <Button
+                      variant="secondary"
+                      size="lg"
+                      onClick={() => {
+                        // 任意ステップで未設定があれば確認ダイアログ、なければそのまま完了
+                        const missing = [3, 4, 5].filter((n) => !isStepFilled(n, siteData));
+                        if (missing.length > 0) {
+                          setShowCompleteConfirm(true);
+                        } else {
+                          handleComplete();
+                        }
+                      }}
+                      disabled={isSaving}
+                    >
+                      ここで登録を完了
+                    </Button>
+                  )}
                   {mode === 'edit' && (
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="lg"
                       onClick={handleSaveAndExit}
                       disabled={isSaving}
-                      className="inline-flex items-center gap-2 rounded-lg border-2 border-primary bg-white px-6 py-2.5 text-sm font-medium text-primary transition hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-dark-2"
                     >
                       {isSaving ? '保存中...' : '保存して終了'}
-                    </button>
+                    </Button>
                   )}
-                  <button
+                  <Button
+                    variant="primary"
+                    size="lg"
                     onClick={handleNext}
                     disabled={!canProceed || isSaving}
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isSaving ? '保存中...' : (mode === 'edit' ? '保存して次へ' : '次へ')}
-                    {!isSaving && <ChevronRight className="h-4 w-4" />}
-                  </button>
+                    {isSaving
+                      ? '保存中...'
+                      : mode === 'edit'
+                        ? '保存して次へ'
+                        : currentStep >= 3 && !isStepFilled(currentStep, siteData)
+                          ? 'スキップ'
+                          : '次へ'}
+                    {!isSaving && <ChevronRight data-slot="icon" />}
+                  </Button>
                 </>
               ) : (
-                <button
+                <Button
+                  variant="success"
+                  size="lg"
                   onClick={handleComplete}
                   disabled={isSaving}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {isSaving ? '保存中...' : '完了'}
-                  {!isSaving && <Check className="h-4 w-4" />}
-                </button>
+                  {isSaving ? '保存中...' : '登録を完了する'}
+                </Button>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* 下部フローティングフッター: 進捗表示 (右寄せ) */}
+      {(() => {
+        const filledCount = [1, 2, 3, 4, 5].filter((n) => isStepFilled(n, siteData)).length;
+        const progressPct = Math.round((filledCount / 5) * 100);
+        return (
+          <div className="fixed bottom-0 left-0 right-0 z-40 border-t border-stroke bg-white/95 backdrop-blur shadow-[0_-4px_12px_rgba(0,0,0,0.05)]">
+            <div className="mx-auto max-w-4xl px-6 py-3 flex items-center justify-center gap-4">
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <span className="text-xs font-medium text-dark dark:text-white whitespace-nowrap">{filledCount} / 5 完了</span>
+                <span className="text-xs text-primary font-semibold">{progressPct}%</span>
+              </div>
+              <div className="hidden md:flex items-center gap-1.5">
+                {[1, 2, 3, 4, 5].map((n) => {
+                  const filled = isStepFilled(n, siteData);
+                  const isActive = n === currentStep;
+                  const clickable = mode === 'edit' || n <= currentStep;
+                  return (
+                    <button
+                      key={n}
+                      type="button"
+                      onClick={() => clickable && handleStepClick(n)}
+                      disabled={!clickable}
+                      title={`${n}. ${STEP_INFO[n].title}`}
+                      className={`w-6 h-6 rounded-full text-[10px] font-semibold flex items-center justify-center transition ${
+                        isActive || filled
+                          ? 'bg-primary text-white'
+                          : clickable
+                          ? 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                          : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                      }`}
+                    >
+                      {filled && !isActive ? <Check className="h-3 w-3" /> : n}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* 早期完了確認ダイアログ: 未設定の任意項目とそのメリットを訴求 */}
+      {showCompleteConfirm && (() => {
+        const missing = [3, 4, 5].filter((n) => !isStepFilled(n, siteData));
+        return (
+          <div
+            className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"
+            onClick={() => !isSaving && setShowCompleteConfirm(false)}
+          >
+            <div
+              className="w-full max-w-2xl rounded-lg bg-white shadow-xl flex flex-col max-h-[85vh]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* ヘッダー */}
+              <div className="border-b border-stroke px-6 py-4">
+                <h3 className="text-lg font-semibold text-dark">未設定の項目があります</h3>
+                <p className="mt-1 text-xs text-body-color">
+                  以下を設定すると分析の幅が広がります。後からも設定できますが、最初に入れておくと初回データから活用できます。
+                </p>
+              </div>
+
+              {/* 未設定リスト + メリット */}
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+                {missing.map((n) => (
+                  <div key={n} className="rounded-lg border border-stroke bg-gray-50 p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <span className="flex-shrink-0 w-7 h-7 rounded-full bg-primary text-white text-xs font-semibold flex items-center justify-center">
+                        {n}
+                      </span>
+                      <h4 className="text-sm font-semibold text-dark">{STEP_INFO[n].title}</h4>
+                    </div>
+                    <div className="space-y-1.5 pl-10">
+                      <p className="text-xs text-dark leading-relaxed">
+                        <span className="font-medium text-green-700">設定するメリット:</span>{' '}
+                        {STEP_BENEFITS[n].benefit}
+                      </p>
+                      <p className="text-xs text-dark leading-relaxed">
+                        <span className="font-medium text-red-600">未設定の影響:</span>{' '}
+                        {STEP_BENEFITS[n].missing}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* フッターボタン */}
+              <div className="flex items-center justify-center gap-3 border-t border-stroke px-6 py-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="lg"
+                  onClick={() => setShowCompleteConfirm(false)}
+                  disabled={isSaving}
+                >
+                  戻って設定する
+                </Button>
+                <Button
+                  type="button"
+                  variant="success"
+                  size="lg"
+                  onClick={() => {
+                    setShowCompleteConfirm(false);
+                    handleComplete();
+                  }}
+                  disabled={isSaving}
+                >
+                  {isSaving ? '保存中...' : 'このまま登録を完了'}
+                </Button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* プランアップグレードモーダル */}
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
         onClose={() => {
           setIsUpgradeModalOpen(false);
-          // モーダルを閉じたらサイト一覧に戻す
           if (isAdmin) return;
-          const completedSites = allSites.filter(s => s.setupCompleted === true);
+          const completedSites = allSites.filter((s) => s.setupCompleted === true);
           if (mode === 'new' && completedSites.length >= maxSites) {
             navigate('/sites/list');
           }

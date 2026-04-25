@@ -19,6 +19,7 @@ import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import { useAuth } from '../../contexts/AuthContext';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { Button } from '../../components/ui/button';
 
 /**
  * 逆算フロー画面
@@ -570,13 +571,13 @@ export default function ReverseFlow() {
                       <p className="mb-3 text-xs leading-relaxed text-amber-700 dark:text-amber-300">
                         サイト設定の「コンバージョン定義」でGA4のコンバージョンイベント（お問い合わせ送信、資料請求完了など）を登録してください。
                       </p>
-                      <button
+                      <Button
+                        variant="primary"
                         onClick={() => navigate(`/sites/${selectedSiteId}/edit?step=4`)}
-                        className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
                       >
-                        <Settings className="h-4 w-4" />
+                        <Settings data-slot="icon" />
                         コンバージョンを設定する
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -590,13 +591,13 @@ export default function ReverseFlow() {
               <div className="mb-8 rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
                 <div className="flex items-center justify-between border-b border-stroke p-6 dark:border-dark-3">
                   <h3 className="text-lg font-semibold text-dark dark:text-white">フロー設定</h3>
-                  <button
+                  <Button
+                    variant="primary"
                     onClick={() => handleOpenDialog()}
-                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus data-slot="icon" />
                     新規フロー追加
-                  </button>
+                  </Button>
                 </div>
 
                 <div className="p-6">
@@ -664,20 +665,22 @@ export default function ReverseFlow() {
                               <p className="font-semibold text-dark dark:text-white">{selectedFlow.flow_name}</p>
                             </div>
                             <div className="flex gap-2">
-                              <button
+                              <Button
+                                variant="secondary"
+                                size="sm"
                                 onClick={() => handleOpenDialog(selectedFlow)}
-                                className="inline-flex items-center gap-2 rounded-lg border border-stroke px-3 py-1.5 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark"
                               >
-                                <Edit className="h-4 w-4" />
+                                <Edit data-slot="icon" />
                                 編集
-                              </button>
-                              <button
+                              </Button>
+                              <Button
+                                variant="danger-outline"
+                                size="sm"
                                 onClick={() => handleDeleteFlow(selectedFlow.id)}
-                                className="inline-flex items-center gap-2 rounded-lg border border-stroke px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:border-dark-3 dark:hover:bg-red-900/20"
                               >
-                                <Trash2 className="h-4 w-4" />
+                                <Trash2 data-slot="icon" />
                                 削除
-                              </button>
+                              </Button>
                             </div>
                           </div>
                           <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -1047,19 +1050,19 @@ export default function ReverseFlow() {
             </div>
             
             <div className="mt-6 flex justify-end gap-3">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setIsDialogOpen(false)}
-                className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
               >
                 キャンセル
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
                 onClick={handleSaveFlow}
                 disabled={!flowForm.flow_name || !flowForm.form_page_path || !flowForm.target_cv_event || updateSiteMutation.isPending}
-                className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {updateSiteMutation.isPending ? '保存中...' : '保存'}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1109,18 +1112,20 @@ export default function ReverseFlow() {
             {/* フッター */}
             <div className="border-t border-stroke p-4 dark:border-dark-3">
               <div className="flex gap-3">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={() => setIsConversionAlertOpen(false)}
-                  className="flex-1 rounded-md border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                  className="flex-1"
                 >
                   閉じる
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   onClick={() => navigate(`/sites/${selectedSiteId}/edit?step=4`)}
-                  className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
+                  className="flex-1"
                 >
                   設定する
-                </button>
+                </Button>
               </div>
             </div>
           </div>

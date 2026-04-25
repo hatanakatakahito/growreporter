@@ -177,16 +177,12 @@ export default function SiteList() {
               分析対象のサイトを登録・管理します
             </p>
           </div>
-          <Link
-            to="/sites/new"
-            onClick={handleNewSite}
-            className="flex items-center gap-2 rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <Button variant="primary" size="lg" href="/sites/new" onClick={handleNewSite}>
+            <svg data-slot="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
             新規サイト登録
-          </Link>
+          </Button>
         </div>
 
         <div>
@@ -200,15 +196,12 @@ export default function SiteList() {
               <p className="mb-8 text-body-color">
                 分析を始めるには、まずサイトを登録してください。
               </p>
-              <Link
-                to="/sites/new"
-                className="inline-flex items-center gap-2 rounded-md bg-primary px-8 py-3 text-sm font-medium text-white transition hover:bg-opacity-90"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <Button variant="primary" size="lg" href="/sites/new">
+                <svg data-slot="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 最初のサイトを登録する
-              </Link>
+              </Button>
             </div>
           </div>
         ) : (
@@ -383,7 +376,7 @@ export default function SiteList() {
             </p>
             <div className="flex gap-3">
               <Button
-                outline
+                variant="ghost"
                 onClick={() => setDeleteTarget(null)}
                 disabled={isDeleting}
                 className="flex-1"
@@ -391,7 +384,7 @@ export default function SiteList() {
                 キャンセル
               </Button>
               <Button
-                color="red"
+                variant="danger"
                 onClick={handleDelete}
                 disabled={isDeleting}
                 className="flex-1"

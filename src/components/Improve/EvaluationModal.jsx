@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, CheckCircle } from 'lucide-react';
+import { Button } from '../ui/button';
 
 export default function EvaluationModal({ isOpen, onClose, item, onSave }) {
   const [formData, setFormData] = useState({
@@ -117,19 +118,12 @@ export default function EvaluationModal({ isOpen, onClose, item, onSave }) {
           </div>
 
           <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-            >
+            <Button variant="ghost" onClick={onClose}>
               スキップ
-            </button>
-            <button
-              type="submit"
-              className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90"
-            >
+            </Button>
+            <Button variant="primary" type="submit">
               評価を保存
-            </button>
+            </Button>
           </div>
         </form>
       </div>

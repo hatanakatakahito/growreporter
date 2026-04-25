@@ -285,7 +285,7 @@ export default function Register() {
                         : 'border-stroke bg-white hover:border-gray-300 dark:border-dark-3 dark:bg-dark-2'
                     }`}
                   >
-                    <span className="absolute -top-2 right-3 rounded-full bg-gradient-to-r from-blue-500 to-pink-500 px-2 py-0.5 text-[9px] font-bold text-white">おすすめ</span>
+                    <span className="absolute -top-2 right-3 rounded-full bg-gradient-business px-2 py-0.5 text-[9px] font-bold text-white">おすすめ</span>
                     <div className={`text-sm font-bold ${selectedPlan === 'business' ? 'text-pink-600' : 'text-dark dark:text-white'}`}>ビジネスプラン</div>
                     <div className="text-[11px] text-body-color dark:text-dark-6">¥49,800/月 / 全機能</div>
                   </button>
@@ -318,16 +318,14 @@ export default function Register() {
                 <>
                   <p className="mb-2 text-xs text-body-color dark:text-dark-6">外部アカウントで登録</p>
                   <div className="flex gap-2">
-                    <button type="button" onClick={handleGoogleSignIn} disabled={isSubmitting}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50">
+                    <Button type="button" variant="secondary" size="lg" onClick={handleGoogleSignIn} disabled={isSubmitting} className="flex-1 py-3">
                       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><g clipPath="url(#clip0_google_reg)"><path d="M19.9895 10.1871C19.9895 9.36767 19.9214 8.76973 19.7742 8.14966H10.1992V11.848H15.8195C15.7062 12.7671 15.0943 14.1512 13.7346 15.0813L13.7155 15.2051L16.7429 17.4969L16.9527 17.5174C18.879 15.7789 19.9895 13.221 19.9895 10.1871Z" fill="#4285F4"/><path d="M10.1993 19.9313C12.9527 19.9313 15.2643 19.0454 16.9527 17.5174L13.7346 15.0813C12.8734 15.6682 11.7176 16.0779 10.1993 16.0779C7.50243 16.0779 5.21352 14.3395 4.39759 11.9366L4.27799 11.9465L1.13003 14.3273L1.08887 14.4391C2.76588 17.6945 6.21061 19.9313 10.1993 19.9313Z" fill="#34A853"/><path d="M4.39748 11.9366C4.18219 11.3166 4.05759 10.6521 4.05759 9.96565C4.05759 9.27909 4.18219 8.61473 4.38615 7.99466L4.38045 7.8626L1.19304 5.44366L1.08875 5.49214C0.397576 6.84305 0.000976562 8.36008 0.000976562 9.96565C0.000976562 11.5712 0.397576 13.0882 1.08875 14.4391L4.39748 11.9366Z" fill="#FBBC05"/><path d="M10.1993 3.85336C12.1142 3.85336 13.406 4.66168 14.1425 5.33718L17.0207 2.59107C15.253 0.985496 12.9527 0 10.1993 0C6.2106 0 2.76588 2.23672 1.08887 5.49214L4.38626 7.99466C5.21352 5.59183 7.50242 3.85336 10.1993 3.85336Z" fill="#EB4335"/></g><defs><clipPath id="clip0_google_reg"><rect width="20" height="20" fill="white"/></clipPath></defs></svg>
                       Google
-                    </button>
-                    <button type="button" onClick={handleMicrosoftSignIn} disabled={isSubmitting}
-                      className="flex flex-1 items-center justify-center gap-2 rounded-md border border-stroke bg-transparent px-4 py-3 text-sm font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3 disabled:cursor-not-allowed disabled:opacity-50">
+                    </Button>
+                    <Button type="button" variant="secondary" size="lg" onClick={handleMicrosoftSignIn} disabled={isSubmitting} className="flex-1 py-3">
                       <svg width="20" height="20" viewBox="0 0 21 21" fill="none"><path d="M0 0H10V10H0V0Z" fill="#F25022"/><path d="M11 0H21V10H11V0Z" fill="#7FBA00"/><path d="M0 11H10V21H0V11Z" fill="#00A4EF"/><path d="M11 11H21V21H11V11Z" fill="#FFB900"/></svg>
                       Microsoft
-                    </button>
+                    </Button>
                   </div>
                   {/* 区切り線 */}
                   <div className="relative my-6">
@@ -463,7 +461,13 @@ export default function Register() {
                 </div>
 
                 {/* 送信ボタン */}
-                <Button type="submit" color="blue" disabled={isSubmitting} className="mt-[10px] mb-4 w-full">
+                <Button
+                  type="submit"
+                  variant={selectedPlan === 'business' ? 'upgrade' : 'primary'}
+                  size="lg"
+                  disabled={isSubmitting}
+                  className="mt-[10px] mb-4 w-full"
+                >
                   {isSubmitting ? '処理中...' : selectedPlan === 'business' ? 'ビジネスプランに申し込む' : 'アカウントを作成'}
                 </Button>
               </form>

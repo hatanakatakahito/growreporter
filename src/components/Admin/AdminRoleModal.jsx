@@ -127,10 +127,10 @@ export default function AdminRoleModal({ admin, onClose, onSave }) {
       </DialogBody>
 
       <DialogActions>
-        <Button plain onClick={onClose} disabled={loading}>
+        <Button variant="ghost" onClick={onClose} disabled={loading}>
           キャンセル
         </Button>
-        <Button color="blue" type="submit" form="admin-role-form" disabled={loading}>
+        <Button variant="primary" type="submit" form="admin-role-form" disabled={loading}>
           {loading && <DotWaveSpinner size="xs" variant="white" />}
           {loading ? '変更中...' : '変更'}
         </Button>

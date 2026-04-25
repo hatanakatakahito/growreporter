@@ -40,3 +40,6 @@ functions/.env.*
 
 # Firebase CLI deploy cache
 .firebase/
+
+# Claude Code 作業ディレクトリ
+.claude/

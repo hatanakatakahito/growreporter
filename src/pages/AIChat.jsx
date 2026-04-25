@@ -22,6 +22,7 @@ import { LineChart, Line, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Cart
 import toast from 'react-hot-toast';
 import { useAutoTour } from '../hooks/useAutoTour';
 import TourHelpButton from '../components/Onboarding/TourHelpButton';
+import { Button } from '@/components/ui/button';
 
 const CHART_COLORS = ['#3758F9', '#13C296', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 const ALLOWED_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'xlsx', 'csv', 'pptx', 'docx'];
@@ -545,10 +546,9 @@ export default function AIChat() {
       <div data-tour="ai-chat-sidebar" className={`${showSidebar ? 'w-72' : 'w-0'} shrink-0 border-r border-stroke dark:border-dark-3 bg-white dark:bg-dark-2 flex flex-col transition-all overflow-hidden`}>
         {/* ヘッダー */}
         <div className="p-4 border-b border-stroke dark:border-dark-3">
-          <button data-tour="ai-chat-new-session" onClick={handleNewSession}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary/90 transition">
-            <Plus className="h-4 w-4" /> 新しい会話
-          </button>
+          <Button data-tour="ai-chat-new-session" variant="primary" onClick={handleNewSession} className="w-full">
+            <Plus data-slot="icon" /> 新しい会話
+          </Button>
         </div>
 
         {/* 検索 */}
@@ -753,8 +753,7 @@ export default function AIChat() {
                   onInput={e => { e.target.style.height = '36px'; e.target.style.height = Math.min(e.target.scrollHeight, 120) + 'px'; }}
                 />
                 <button onClick={handleSend} disabled={isSending || (!inputText.trim() && attachments.length === 0)}
-                  className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg text-white hover:opacity-95 disabled:opacity-40 transition"
-                  style={{ background: 'linear-gradient(135deg, #3758F9 0%, #7C3AED 100%)' }}
+                  className="shrink-0 flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-ai hover:bg-gradient-ai-hover text-white shadow-md hover:shadow-lg disabled:opacity-40 transition-all"
                   title="送信">
                   {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </button>
@@ -790,18 +789,15 @@ function ImprovementCard({ data, onAdd }) {
         </div>
       )}
       {onAdd && (
-        <button onClick={handleAdd} disabled={added}
-          className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-medium text-white shadow-sm transition ${
-            added
-              ? 'bg-green-500 cursor-default'
-              : 'bg-gradient-to-r from-blue-500 to-pink-500 hover:from-blue-600 hover:to-pink-600 hover:shadow-md'
-          }`}>
-          {added ? (
-            <><Check className="h-3.5 w-3.5" /> 追加しました</>
-          ) : (
-            <><Plus className="h-3.5 w-3.5" /> 改善タスクに追加</>
-          )}
-        </button>
+        added ? (
+          <Button variant="success" size="sm" disabled>
+            <Check data-slot="icon" /> 追加しました
+          </Button>
+        ) : (
+          <Button variant="ai" size="sm" onClick={handleAdd}>
+            <Plus data-slot="icon" /> 改善タスクに追加
+          </Button>
+        )
       )}
     </div>
   );
@@ -883,16 +879,15 @@ function ChatMessage({ message, onAddImprovement, onEdit, isLast, onRetry, onSel
                 rows={Math.min(editText.split('\n').length + 1, 5)}
               />
               <div className="flex gap-2 justify-end">
-                <button onClick={handleCancelEdit} className="rounded-lg px-3 py-1 text-xs text-body-color hover:bg-gray-100 dark:hover:bg-dark-3">キャンセル</button>
-                <button onClick={handleSubmitEdit} className="rounded-lg bg-primary px-3 py-1 text-xs text-white hover:bg-primary/90">送信</button>
+                <Button variant="ghost" size="sm" onClick={handleCancelEdit}>キャンセル</Button>
+                <Button variant="ai" size="sm" onClick={handleSubmitEdit}>送信</Button>
               </div>
             </div>
           ) : (
             /* 通常表示 */
             <div className="relative">
               <div
-                className="text-white rounded-2xl rounded-tr-md px-4 py-3 shadow-sm leading-relaxed"
-                style={{ background: 'linear-gradient(135deg, #3758F9 0%, #7C3AED 100%)' }}
+                className="text-white rounded-2xl rounded-tr-md px-4 py-3 shadow-sm leading-relaxed bg-gradient-ai"
               >
                 <p className="text-sm whitespace-pre-wrap">{message.text}</p>
                 {message.attachments?.length > 0 && (

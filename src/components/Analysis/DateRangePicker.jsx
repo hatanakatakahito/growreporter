@@ -5,6 +5,7 @@ import { format, subDays, startOfMonth, endOfMonth, subMonths, addMonths, isSame
 import holidayJp from '@holiday-jp/holiday_jp';
 import { Calendar, ChevronLeft, ChevronRight, GitCompareArrows } from 'lucide-react';
 import { useSite } from '../../contexts/SiteContext';
+import { Button } from '../ui/button';
 import 'react-day-picker/style.css';
 
 const PRESETS = [
@@ -370,13 +371,15 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
               )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <button
+              <Button
+                variant="primary"
+                size="sm"
+                pill
                 onClick={handleApply}
                 disabled={mainClickPhase === 'end' || !selectedRange?.from || !selectedRange?.to}
-                className="whitespace-nowrap rounded-full bg-primary px-4 py-1.5 text-[12px] font-medium text-white transition hover:bg-opacity-90 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
                 適用
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -454,19 +457,23 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
               )}
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
+                pill
                 onClick={() => setShowCustomCalendar(false)}
-                className="whitespace-nowrap rounded-full px-3 py-1.5 text-[12px] font-medium text-gray-500 transition hover:bg-gray-100"
               >
                 戻る
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                pill
                 onClick={handleCustomCompApply}
                 disabled={customLeftPhase === 'end' || customRightPhase === 'end' || !customLeftRange?.from || !customLeftRange?.to || !customRightRange?.from || !customRightRange?.to}
-                className="whitespace-nowrap rounded-full bg-blue-600 px-4 py-1.5 text-[12px] font-medium text-white transition hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400 disabled:cursor-not-allowed"
               >
                 適用
-              </button>
+              </Button>
             </div>
           </div>
         </div>

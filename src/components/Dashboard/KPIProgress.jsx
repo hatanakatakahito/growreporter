@@ -1,7 +1,7 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import { Target, Settings } from 'lucide-react';
 import { getLabel, getTargetLabel, resolveAlias } from '../../constants/metrics';
+import { Button } from '../ui/button';
 
 function resolveKpiLabel(metricKey) {
   if (!metricKey) return '';
@@ -41,13 +41,10 @@ export default function KPIProgress({ kpiSettings, metricsData, conversionsData,
         <div className="flex flex-col items-center gap-3 py-6 text-center">
           <Target className="h-10 w-10 text-body-color/40" />
           <p className="text-sm text-body-color">目標が設定されていません</p>
-          <Link
-            to="/sites/list"
-            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-white transition hover:bg-opacity-90"
-          >
-            <Settings className="h-3.5 w-3.5" />
+          <Button variant="primary" size="sm" href="/sites/list">
+            <Settings data-slot="icon" />
             サイト設定で目標を設定
-          </Link>
+          </Button>
         </div>
       </div>
     );

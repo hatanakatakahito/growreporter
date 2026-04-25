@@ -7,6 +7,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { PLANS, PLAN_TYPES, getPlanBadgeColor, isUnlimited } from '../../constants/plans';
 import toast from 'react-hot-toast';
 import { Dialog, DialogBody, DialogActions } from '../ui/dialog';
+import { Button } from '../ui/button';
 import BusinessPlanFormFields, { BUSINESS_FORM_INITIAL } from './BusinessPlanFormFields';
 
 const freePlan = PLANS[PLAN_TYPES.FREE];
@@ -118,7 +119,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
   if (step === 'form') {
     return (
       <Dialog open={isOpen} onClose={handleClose} size="2xl">
-        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 px-6 py-4 dark:border-dark-3 rounded-t-2xl shrink-0">
+        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-business px-6 py-4 dark:border-dark-3 rounded-t-2xl shrink-0">
           <h3 className="text-xl font-semibold text-white">ビジネスプランのお問い合わせ</h3>
           <p className="mt-1 text-sm text-white/80">以下の情報をご入力ください。担当者より折り返しご連絡いたします。</p>
         </div>
@@ -147,16 +148,12 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
                 showEmailField={true}
                 radioNamePrefix="upgrade_"
               />
-              {/* 送信ボタン */}
+              {/* 送信ボタン: アップグレード申込なので variant="upgrade" */}
               <div className="flex justify-center">
-                <button
-                  type="submit"
-                  disabled={isSending}
-                  className="flex items-center gap-2 rounded-lg bg-primary px-10 py-3.5 text-base font-semibold text-white shadow-md transition hover:bg-opacity-90 disabled:opacity-50"
-                >
-                  <Send className="h-5 w-5" />
+                <Button variant="upgrade" size="lg" type="submit" disabled={isSending}>
+                  <Send className="h-5 w-5" data-slot="icon" />
                   {isSending ? '送信中...' : '送信する'}
-                </button>
+                </Button>
               </div>
             </div>
           </DialogBody>
@@ -168,7 +165,7 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
   // ── ステップ1: プラン比較表 ──
   return (
     <Dialog open={isOpen} onClose={handleClose} size="2xl">
-      <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 p-6 dark:border-dark-3 rounded-t-2xl">
+      <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-business p-6 dark:border-dark-3 rounded-t-2xl">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
             <Sparkles className="h-5 w-5 text-white" />
@@ -252,12 +249,9 @@ export default function UpgradeModal({ isOpen, onClose, initialStep = 'compare' 
       </DialogBody>
 
       <DialogActions className="!justify-center !pb-6">
-        <button
-          onClick={() => { initFormFields(); setStep('form'); }}
-          className="rounded-lg bg-gradient-to-r from-blue-500 to-pink-500 px-10 py-3.5 text-base font-semibold text-white shadow-md transition hover:shadow-lg"
-        >
+        <Button variant="upgrade" size="lg" onClick={() => { initFormFields(); setStep('form'); }}>
           ビジネスプランのお問い合わせ
-        </button>
+        </Button>
       </DialogActions>
     </Dialog>
   );

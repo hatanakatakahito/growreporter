@@ -201,7 +201,7 @@ export default function AcceptInvitation() {
               <Button
                 onClick={handleAccept}
                 disabled={isAccepting}
-                color="blue"
+                variant="primary"
                 className="flex-1"
               >
                 {isAccepting ? '承認中...' : '招待を承認する'}

@@ -7,6 +7,11 @@ import { useAuth } from '../../contexts/AuthContext';
  * AI分析フローティングボタン
  * 全ページ統一の右下固定ボタン
  * クリックでAI分析タブへスクロール
+ *
+ * 注: 80x80 の円形＋カラム配置（アイコン上、ラベル下）が独自要件のため、
+ * 共通 Button comp ではなく直接 button を使用。色は variant="ai" と同じ
+ * `bg-gradient-ai` トークンに統一。
+ *
  * @param {function} onScrollToAI - AI分析タブへスクロールする関数
  */
 export default function AIFloatingButton({ onScrollToAI }) {
@@ -41,7 +46,7 @@ export default function AIFloatingButton({ onScrollToAI }) {
     <div className="fixed bottom-6 right-6 z-30 hidden md:block">
       <button
         onClick={handleClick}
-        className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-pink-500 text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl ${shouldAnimate ? 'animate-bounce-once' : ''}`}
+        className={`relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-ai hover:bg-gradient-ai-hover text-white shadow-lg transition-all hover:scale-105 hover:shadow-xl ${shouldAnimate ? 'animate-bounce-once' : ''}`}
         aria-label="AI分析を見る"
       >
         <div className="flex flex-col items-center">
@@ -52,4 +57,3 @@ export default function AIFloatingButton({ onScrollToAI }) {
     </div>
   );
 }
-

@@ -3,6 +3,7 @@ import { BookOpen } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlan } from '../../hooks/usePlan';
 import { startOnboardingTour } from '../../utils/startOnboardingTour';
+import { Button } from '../ui/button';
 
 /**
  * 「使い方」ボタン
@@ -26,14 +27,16 @@ export default function TourHelpButton({ tourId, className = '' }) {
   };
 
   return (
-    <button
-      type="button"
+    <Button
+      variant="primary"
+      size="sm"
+      pill
       onClick={handleClick}
-      className={`hidden md:inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary text-white px-3 py-1 text-xs font-medium whitespace-nowrap ${className}`}
+      className={`hidden md:inline-flex shrink-0 whitespace-nowrap ${className}`}
       title="このページの使い方を見る"
     >
-      <BookOpen className="h-3.5 w-3.5" />
+      <BookOpen className="h-3.5 w-3.5" data-slot="icon" />
       <span>使い方</span>
-    </button>
+    </Button>
   );
 }

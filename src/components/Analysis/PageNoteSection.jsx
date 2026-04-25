@@ -9,6 +9,7 @@ import NoteHistoryCard from './NoteHistoryCard';
 import { deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import DotWaveSpinner from '../common/DotWaveSpinner';
+import { Button } from '../ui/button';
 
 /**
  * ページメモセクションコンポーネント
@@ -190,14 +191,15 @@ export default function PageNoteSection({ userId, siteId, pageType, dateRange })
           </button>
 
           {canEdit && (
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={handleSave}
               disabled={isSaving || !content.trim()}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white transition hover:bg-primary/90 disabled:opacity-50"
             >
-              <Save className="h-3.5 w-3.5" />
+              <Save data-slot="icon" />
               {isSaving ? '保存中...' : '保存'}
-            </button>
+            </Button>
           )}
         </div>
       </div>

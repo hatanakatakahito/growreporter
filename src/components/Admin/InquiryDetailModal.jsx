@@ -198,23 +198,25 @@ export default function InquiryDetailModal({ isOpen, onClose, inquiry, onStatusU
                   </div>
                 )}
                 <div className="flex items-center gap-3">
-                  <a
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     href={`https://the-board.jp/projects/${inquiry.boardProjectId}/edit`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 rounded-lg border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white"
                   >
-                    <ExternalLink className="h-3.5 w-3.5" />
+                    <ExternalLink data-slot="icon" />
                     boardで開く
-                  </a>
-                  <button
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
                     onClick={handleSyncBoard}
                     disabled={isSyncing}
-                    className="flex items-center gap-1.5 rounded-lg border border-primary/30 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/5 disabled:opacity-50"
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                    <RefreshCw data-slot="icon" className={isSyncing ? 'animate-spin' : ''} />
                     {isSyncing ? '同期中...' : 'boardから同期'}
-                  </button>
+                  </Button>
                   {inquiry.boardSyncedAt && (
                     <span className="text-[10px] text-body-color">最終同期: {formatDate(inquiry.boardSyncedAt)}</span>
                   )}
@@ -225,14 +227,15 @@ export default function InquiryDetailModal({ isOpen, onClose, inquiry, onStatusU
                 <div className="mb-2 rounded bg-red-50 p-2 text-xs text-red-600 dark:bg-red-900/20 dark:text-red-300">
                   {inquiry.boardError}
                 </div>
-                <button
+                <Button
+                  variant="primary"
+                  size="sm"
                   onClick={handleRetryBoard}
                   disabled={isRetrying}
-                  className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary/90 disabled:opacity-50"
                 >
-                  <RefreshCw className={`h-3.5 w-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+                  <RefreshCw data-slot="icon" className={isRetrying ? 'animate-spin' : ''} />
                   {isRetrying ? '再作成中...' : '再試行'}
-                </button>
+                </Button>
               </div>
             ) : (
               <div className="text-xs text-body-color">未連携</div>
@@ -293,9 +296,9 @@ export default function InquiryDetailModal({ isOpen, onClose, inquiry, onStatusU
       </DialogBody>
 
       <DialogActions>
-        <Button plain onClick={onClose}>閉じる</Button>
+        <Button variant="ghost" onClick={onClose}>閉じる</Button>
         <Button
-          color="blue"
+          variant="primary"
           onClick={handleUpdateStatus}
           disabled={isUpdating || (status === inquiry.status && adminNote === (inquiry.adminNote || ''))}
         >

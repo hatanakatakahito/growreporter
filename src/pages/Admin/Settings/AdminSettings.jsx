@@ -9,6 +9,7 @@ import AddAdminModal from '../../../components/Admin/AddAdminModal';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
 import { Settings, UserPlus, Shield, Edit2, Trash2, AlertCircle, X, CheckCircle, XCircle } from 'lucide-react';
+import { Button } from '../../../components/ui/button';
 
 /**
  * 管理者一覧・管理画面
@@ -116,13 +117,10 @@ export default function AdminSettings() {
           </p>
         </div>
         {canAddAdmin && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-          >
-            <UserPlus className="h-4 w-4" />
+          <Button variant="primary" onClick={() => setShowAddModal(true)}>
+            <UserPlus data-slot="icon" />
             管理者を追加
-          </button>
+          </Button>
         )}
       </div>
 
@@ -217,25 +215,29 @@ export default function AdminSettings() {
                       <td className="px-4 py-3">
                         <div className="flex justify-end gap-2">
                           {canEditRole && admin.uid !== userProfile?.uid && (
-                            <button
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => {
                                 setSelectedAdmin(admin);
                                 setShowRoleModal(true);
                               }}
-                              className="rounded-lg p-2 text-blue-600 transition hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20"
                               title="権限変更"
+                              className="!px-2"
                             >
-                              <Edit2 className="h-4 w-4" />
-                            </button>
+                              <Edit2 data-slot="icon" />
+                            </Button>
                           )}
                           {canDeleteAdmin && admin.uid !== userProfile?.uid && (
-                            <button
+                            <Button
+                              variant="danger-outline"
+                              size="sm"
                               onClick={() => handleDelete(admin)}
-                              className="rounded-lg p-2 text-red-600 transition hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                               title="削除"
+                              className="!px-2"
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                              <Trash2 data-slot="icon" />
+                            </Button>
                           )}
                         </div>
                       </td>
@@ -286,12 +288,14 @@ export default function AdminSettings() {
                 <Shield className="h-5 w-5 text-primary" />
                 <h3 className="text-lg font-bold text-dark dark:text-white">権限一覧</h3>
               </div>
-              <button
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => setShowPermissionsModal(false)}
-                className="rounded-lg p-1 text-body-color transition hover:bg-gray-100 dark:hover:bg-dark-3"
+                className="!px-2"
               >
-                <X className="h-5 w-5" />
-              </button>
+                <X data-slot="icon" />
+              </Button>
             </div>
 
             {/* 比較表 */}
@@ -356,12 +360,9 @@ export default function AdminSettings() {
 
             {/* フッター */}
             <div className="border-t border-stroke p-4 text-center dark:border-dark-3">
-              <button
-                onClick={() => setShowPermissionsModal(false)}
-                className="rounded-lg border border-stroke bg-white px-6 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
-              >
+              <Button variant="ghost" onClick={() => setShowPermissionsModal(false)}>
                 閉じる
-              </button>
+              </Button>
             </div>
           </div>
         </div>

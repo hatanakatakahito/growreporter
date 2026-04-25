@@ -7,6 +7,7 @@ import { Search, ChevronLeft, ChevronRight, AlertTriangle, Clock, Download, Tras
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../../config/firebase';
 import toast from 'react-hot-toast';
+import { Button } from '../../../components/ui/button';
 
 const STATUS_OPTIONS = [
   { value: 'all', label: 'すべて' },
@@ -228,52 +229,45 @@ export default function InquiryList() {
                 className="w-full rounded-lg border border-stroke bg-white py-2 pl-10 pr-4 text-sm transition-all duration-200 focus:border-primary-mid focus:outline-none focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:bg-dark dark:text-white"
               />
             </div>
-            <button
-              onClick={handleSearch}
-              className="rounded-lg bg-primary px-6 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
-            >
+            <Button variant="primary" size="lg" onClick={handleSearch}>
               検索
-            </button>
+            </Button>
           </div>
 
           {/* ステータスフィルタ */}
           <div className="flex gap-2">
             {STATUS_OPTIONS.map(opt => (
-              <button
+              <Button
                 key={opt.value}
+                variant={currentParams.statusFilter === opt.value ? 'primary' : 'ghost'}
                 onClick={() => handleStatusFilter(opt.value)}
-                className={`rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200 ${
-                  currentParams.statusFilter === opt.value
-                    ? 'bg-primary text-white transition hover:bg-opacity-90'
-                    : 'bg-gray-100 text-body-color hover:bg-gray-200 dark:bg-dark-3 dark:text-dark-6 dark:hover:bg-dark'
-                }`}
               >
                 {opt.label}
-              </button>
+              </Button>
             ))}
           </div>
 
           <div className="flex gap-2">
             {/* 一括削除 */}
             {selectedIds.size > 0 && (
-              <button
+              <Button
+                variant="danger-outline"
                 onClick={handleDeleteSelected}
                 disabled={isDeleting}
-                className="flex items-center gap-2 rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:bg-dark-2 dark:text-red-400"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 data-slot="icon" />
                 {isDeleting ? '削除中...' : `${selectedIds.size}件を削除`}
-              </button>
+              </Button>
             )}
             {/* CSVエクスポート */}
-            <button
+            <Button
+              variant="secondary"
               onClick={handleExportCSV}
               disabled={!inquiries || inquiries.length === 0}
-              className="flex items-center gap-2 rounded-lg border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-100 disabled:opacity-50 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
             >
-              <Download className="h-4 w-4" />
+              <Download data-slot="icon" />
               CSVエクスポート
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -395,12 +389,13 @@ export default function InquiryList() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <button
+                    <Button
+                      variant="secondary"
+                      size="sm"
                       onClick={(e) => { e.stopPropagation(); handleOpenDetail(inquiry); }}
-                      className="rounded-lg border border-stroke px-3 py-1 text-xs font-medium text-dark hover:bg-gray-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
                     >
                       詳細
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))
@@ -415,21 +410,23 @@ export default function InquiryList() {
         <div className="mt-4 flex items-center justify-between text-sm text-body-color">
           <span>{pagination.totalCount}件中 {(pagination.currentPage - 1) * pagination.limit + 1}〜{Math.min(pagination.currentPage * pagination.limit, pagination.totalCount)}件</span>
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => handlePageChange(pagination.currentPage - 1)}
               disabled={!pagination.hasPrevPage}
-              className="flex items-center gap-1 rounded-lg border border-stroke px-3 py-1.5 text-xs disabled:opacity-40 dark:border-dark-3"
             >
-              <ChevronLeft className="h-3.5 w-3.5" /> 前へ
-            </button>
+              <ChevronLeft data-slot="icon" /> 前へ
+            </Button>
             <span className="text-xs">{pagination.currentPage} / {pagination.totalPages}</span>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => handlePageChange(pagination.currentPage + 1)}
               disabled={!pagination.hasNextPage}
-              className="flex items-center gap-1 rounded-lg border border-stroke px-3 py-1.5 text-xs disabled:opacity-40 dark:border-dark-3"
             >
-              次へ <ChevronRight className="h-3.5 w-3.5" />
-            </button>
+              次へ <ChevronRight data-slot="icon" />
+            </Button>
           </div>
         </div>
       )}

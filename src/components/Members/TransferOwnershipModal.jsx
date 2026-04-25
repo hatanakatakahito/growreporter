@@ -89,10 +89,10 @@ export default function TransferOwnershipModal({ member, onClose }) {
       </DialogBody>
 
       <DialogActions>
-        <Button plain onClick={onClose} disabled={isSubmitting}>
+        <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
           キャンセル
         </Button>
-        <Button color="red" onClick={handleTransfer} disabled={isSubmitting}>
+        <Button variant="danger" onClick={handleTransfer} disabled={isSubmitting}>
           {isSubmitting ? '譲渡中...' : 'オーナー権限を譲渡'}
         </Button>
       </DialogActions>

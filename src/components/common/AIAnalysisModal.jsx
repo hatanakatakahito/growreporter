@@ -424,17 +424,18 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
                                 追加済み
                               </div>
                             ) : (
-                              <button
+                              <Button
+                                variant="ai"
+                                size="sm"
                                 onClick={(e) => {
                                   e.preventDefault();
                                   e.stopPropagation();
                                   addTaskMutation.mutate(rec);
                                 }}
                                 disabled={addTaskMutation.isPending}
-                                className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-primary rounded hover:bg-opacity-90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                               >
                                 {addTaskMutation.isPending ? '追加中...' : 'タスク追加'}
-                              </button>
+                              </Button>
                             )}
                           </div>
                         </div>
@@ -451,14 +452,10 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
                     <p className="text-sm text-body-color mb-4">
                       より詳細な改善提案をご覧になりたい場合は、サイト改善画面へ移動してください。
                     </p>
-                    <Link
-                      to="/improve?openAI=true"
-                      onClick={onClose}
-                      className="inline-flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-opacity-90"
-                    >
-                      <Sparkles className="h-4 w-4" />
+                    <Button variant="ai" size="lg" href="/improve?openAI=true" onClick={onClose}>
+                      <Sparkles className="h-4 w-4" data-slot="icon" />
                       サイト改善を起案する
-                    </Link>
+                    </Button>
                   </div>
                 </div>
               )}
@@ -469,7 +466,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
                   {generatedAt && `最終生成: ${format(generatedAt, 'yyyy/MM/dd HH:mm')}`}
                 </span>
                 <Button
-                  outline
+                  variant="secondary"
                   onClick={() => {
                     if (planId === 'free') {
                       setIsUpgradeModalOpen(true);
@@ -479,7 +476,7 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
                   }}
                   disabled={isLoading}
                 >
-                  <RefreshCw className="h-4 w-4" />
+                  <RefreshCw className="h-4 w-4" data-slot="icon" />
                   再分析
                 </Button>
               </div>

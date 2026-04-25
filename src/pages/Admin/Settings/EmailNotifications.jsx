@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import { setPageTitle } from '../../../utils/pageTitle';
 import DotWaveSpinner from '../../../components/common/DotWaveSpinner';
 import { getLabel } from '../../../constants/metrics';
+import { Button } from '../../../components/ui/button';
 
 /**
  * メール通知設定画面（管理者用）
@@ -425,14 +426,10 @@ export default function EmailNotifications() {
 
       {/* 保存ボタン */}
       <div className="flex items-center gap-4">
-        <button
-          onClick={handleSave}
-          disabled={saving}
-          className="flex items-center gap-2 rounded-lg bg-primary px-6 py-3 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Save className="h-4 w-4" />
+        <Button variant="primary" size="lg" onClick={handleSave} disabled={saving}>
+          <Save data-slot="icon" />
           {saving ? '保存中...' : '設定を保存'}
-        </button>
+        </Button>
       </div>
 
       {/* テスト送信セクション */}
@@ -541,32 +538,32 @@ export default function EmailNotifications() {
 
           {/* 送信ボタン群 */}
           <div className="flex flex-wrap items-center gap-3">
-            <button
+            <Button
+              variant="primary"
               onClick={() => handleTestSend('weekly')}
               disabled={!selectedUserId || !selectedSiteId || sendingType !== null}
-              className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Mail className="h-4 w-4" />
+              <Mail data-slot="icon" />
               {sendingType === 'weekly' ? '送信中...' : '週次レポート送信'}
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="primary"
               onClick={() => handleTestSend('monthly')}
               disabled={!selectedUserId || !selectedSiteId || sendingType !== null}
-              className="flex items-center gap-2 rounded-lg bg-secondary px-4 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Mail className="h-4 w-4" />
+              <Mail data-slot="icon" />
               {sendingType === 'monthly' ? '送信中...' : '月次レポート送信'}
-            </button>
+            </Button>
 
-            <button
+            <Button
+              variant="primary"
               onClick={() => handleTestSend('alert')}
               disabled={!selectedUserId || !selectedSiteId || sendingType !== null}
-              className="flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle data-slot="icon" />
               {sendingType === 'alert' ? '送信中...' : 'アラート通知送信'}
-            </button>
+            </Button>
           </div>
 
           <div className="rounded-lg bg-blue-50 p-4 dark:bg-blue-900/20">

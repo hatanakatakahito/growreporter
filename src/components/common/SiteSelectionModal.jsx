@@ -37,8 +37,8 @@ export default function SiteSelectionModal() {
   return (
     <>
       <Dialog open={needsSiteSelection} onClose={() => {}} size="lg">
-        {/* カスタムヘッダー */}
-        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-gradient-to-r from-blue-500 to-pink-500 p-6 dark:border-dark-3 rounded-t-2xl">
+        {/* カスタムヘッダー: サイト切替モーダルは AI でも upgrade でもないため bg-primary 単色に統一 */}
+        <div className="-mx-(--gutter) -mt-(--gutter) border-b border-stroke bg-primary p-6 dark:border-dark-3 rounded-t-2xl">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20 backdrop-blur-sm">
               <AlertCircle className="h-5 w-5 text-white" />
@@ -111,15 +111,12 @@ export default function SiteSelectionModal() {
         </DialogBody>
 
         <DialogActions>
-          <Button
-            outline
-            onClick={() => setIsUpgradeModalOpen(true)}
-          >
-            <ArrowUpCircle className="h-4 w-4" />
+          <Button variant="upgrade" onClick={() => setIsUpgradeModalOpen(true)}>
+            <ArrowUpCircle className="h-4 w-4" data-slot="icon" />
             プランをアップグレードする
           </Button>
           <Button
-            color="blue"
+            variant="primary"
             onClick={handleConfirm}
             disabled={selectedIds.length === 0 || selectedIds.length > maxSites}
           >

@@ -86,12 +86,12 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
         </DialogBody>
 
         <DialogActions>
-          <Button plain onClick={onClose}>
+          <Button variant="ghost" onClick={onClose}>
             閉じる
           </Button>
           {onProceedToSiteRegistration && (
             <Button
-              color="blue"
+              variant="primary"
               onClick={() => {
                 onProceedToSiteRegistration({
                   uid: createdUser.uid,
@@ -100,7 +100,7 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
                 onClose();
               }}
             >
-              <Globe className="h-4 w-4" />
+              <Globe data-slot="icon" />
               続けてサイトを登録する
             </Button>
           )}
@@ -175,10 +175,10 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
         </DialogBody>
 
         <DialogActions>
-          <Button plain onClick={() => { setShowConfirm(false); setError(null); }} disabled={loading}>
+          <Button variant="ghost" onClick={() => { setShowConfirm(false); setError(null); }} disabled={loading}>
             戻る
           </Button>
-          <Button color="blue" onClick={handleCreate} disabled={loading}>
+          <Button variant="primary" onClick={handleCreate} disabled={loading}>
             {loading ? (
               <>
                 <DotWaveSpinner size="xs" variant="white" />
@@ -337,10 +337,10 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
       </form>
 
       <DialogActions>
-        <Button plain onClick={onClose}>
+        <Button variant="ghost" onClick={onClose}>
           キャンセル
         </Button>
-        <Button color="blue" type="submit" form="create-user-form" disabled={!isValid}>
+        <Button variant="primary" type="submit" form="create-user-form" disabled={!isValid}>
           確認画面へ
         </Button>
       </DialogActions>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { X, CheckCircle, Calendar, TrendingUp, Sparkles } from 'lucide-react';
+import { Button } from '../ui/button';
 
 /**
  * 改善タスク完了ダイアログ
@@ -105,22 +106,12 @@ export default function CompletionDialog({ isOpen, onClose, item, onConfirm, isL
 
         {/* アクションボタン */}
         <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isLoading}
-            className="rounded-lg border border-stroke px-4 py-2 text-sm font-medium text-dark hover:bg-gray-2 disabled:opacity-50 dark:border-dark-3 dark:text-white dark:hover:bg-dark-3"
-          >
+          <Button variant="ghost" onClick={onClose} disabled={isLoading}>
             キャンセル
-          </button>
-          <button
-            type="button"
-            onClick={handleConfirm}
-            disabled={!effectiveDate || isLoading}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary/90 disabled:opacity-50"
-          >
+          </Button>
+          <Button variant="success" onClick={handleConfirm} disabled={!effectiveDate || isLoading}>
             {isLoading ? '計測を開始中...' : '完了にして計測を開始'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

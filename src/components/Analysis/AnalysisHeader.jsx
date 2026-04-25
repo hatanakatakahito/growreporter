@@ -8,6 +8,7 @@ import { usePlan } from '../../hooks/usePlan';
 import UpgradeModal from '../common/UpgradeModal';
 import DateRangePicker from './DateRangePicker';
 import MonthPicker from './MonthPicker';
+import { Button } from '../ui/button';
 
 const ExcelIcon = ({ className, disabled }) => (
   <svg className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -188,23 +189,23 @@ export default function AnalysisHeader({
               {/* ダウンロードメニュー（ダッシュボード・分析画面のみ、スマホ非表示） */}
               {showExport && (
                 <div data-tour="analysis-export" className="relative" ref={downloadMenuRef}>
-                  <button
+                  <Button
+                    variant="secondary"
                     onClick={() => {
                       if (isExporting || !selectedSiteId) return;
                       if (isFree) { setShowUpgradeModal(true); return; }
                       setIsDownloadMenuOpen(!isDownloadMenuOpen);
                     }}
                     disabled={isExporting || !selectedSiteId}
-                    className={`flex h-10 items-center gap-1.5 rounded-lg px-3 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700 ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
                     title="レポートダウンロード"
                   >
                     {isExporting ? (
                       <DotWaveSpinner size="xs" />
                     ) : (
-                      <Download className="h-4 w-4" />
+                      <Download data-slot="icon" />
                     )}
                     <span>ダウンロード</span>
-                  </button>
+                  </Button>
 
                   {isDownloadMenuOpen && (
                     <div className="absolute right-0 top-full z-50 mt-2 w-56 rounded-lg border border-gray-200 bg-white py-1 shadow-lg">

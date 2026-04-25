@@ -122,10 +122,10 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
         </DialogBody>
 
         <DialogActions>
-          <Button plain onClick={() => setShowConfirm(false)} disabled={loading}>
+          <Button variant="ghost" onClick={() => setShowConfirm(false)} disabled={loading}>
             キャンセル
           </Button>
-          <Button color="blue" onClick={handleChangePlan} disabled={loading}>
+          <Button variant="primary" onClick={handleChangePlan} disabled={loading}>
             {loading ? (
               <>
                 <DotWaveSpinner size="xs" variant="white" />
@@ -220,10 +220,10 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
       </form>
 
       <DialogActions>
-        <Button plain onClick={onClose}>
+        <Button variant="ghost" onClick={onClose}>
           キャンセル
         </Button>
-        <Button color="blue" type="submit" form="plan-change-form" disabled={selectedPlan === currentPlan}>
+        <Button variant="primary" type="submit" form="plan-change-form" disabled={selectedPlan === currentPlan}>
           確認画面へ
         </Button>
       </DialogActions>

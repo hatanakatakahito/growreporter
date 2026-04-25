@@ -726,72 +726,133 @@ export function buildStructuralHtml(html) {
 /**
  * Gemini に JSON パッチを生成させる
  */
+const CIRCLED_PATCH_MAP = { '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10 };
+
+function extractItemNumbers(description) {
+  const solMatch = (description || '').match(/【\s*提案内容\s*】([\s\S]*?)(?=【|$)/);
+  const target = solMatch ? solMatch[1] : '';
+  const nums = new Set();
+  for (const ch of target) {
+    if (CIRCLED_PATCH_MAP[ch]) nums.add(CIRCLED_PATCH_MAP[ch]);
+  }
+  return [...nums].sort((a, b) => a - b);
+}
+
+function patchesCoverageGap(changes, expectedNums) {
+  if (expectedNums.length < 2) return [];
+  const covered = new Set();
+  for (const c of (changes || [])) {
+    const first = (c.change_label || '').trim().charAt(0);
+    const n = CIRCLED_PATCH_MAP[first];
+    if (n) covered.add(n);
+  }
+  return expectedNums.filter(n => !covered.has(n));
+}
+
 export async function requestPatchFromGemini({ apiKey, improvement, structuralHtml }) {
   const systemInstruction =
     'あなたはWebサイト改善のエキスパートです。指定された改善案を、対象ページのDOMに対して適用するための最小限のJSONパッチを返してください。返答は必ず指定されたJSON形式のみで、説明文やマークダウンは不要です。';
 
-  const prompt = buildPatchPrompt(improvement, structuralHtml);
+  const basePrompt = buildPatchPrompt(improvement, structuralHtml);
+  const expectedNums = extractItemNumbers(improvement?.description);
 
-  const body = {
-    system_instruction: { parts: [{ text: systemInstruction }] },
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: {
-      temperature: 0.4,
-      maxOutputTokens: 8192,
-      thinkingConfig: { thinkingBudget: 1024 },
-      responseMimeType: 'application/json',
-    },
-  };
+  // Coverage 不足時にフィードバック付きでリトライするループ
+  // MAX_RETRIES(通常2) + カバレッジリトライ上限(3) の組み合わせ
+  const MAX_COVERAGE_RETRIES = 3;
+  let lastParsed = null;
+  let feedbackSuffix = '';
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      const res = await fetch(
-        `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
+  for (let cvAttempt = 0; cvAttempt <= MAX_COVERAGE_RETRIES; cvAttempt++) {
+    const prompt = basePrompt + feedbackSuffix;
+    const body = {
+      system_instruction: { parts: [{ text: systemInstruction }] },
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+        temperature: 0.4,
+        maxOutputTokens: 8192,
+        thinkingConfig: { thinkingBudget: 1024 },
+        responseMimeType: 'application/json',
+      },
+    };
+
+    let parsed = null;
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const res = await fetch(
+          `${GEMINI_API_BASE}/${GEMINI_MODEL}:generateContent?key=${apiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+          }
+        );
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '');
+          const retriable = res.status === 429 || res.status >= 500;
+          console.warn(`[requestPatchFromGemini] HTTP ${res.status} (retriable=${retriable}): ${errText.substring(0, 200)}`);
+          if (!retriable || attempt >= MAX_RETRIES) break;
+          await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+          continue;
         }
-      );
-      if (!res.ok) {
-        const errText = await res.text().catch(() => '');
-        const retriable = res.status === 429 || res.status >= 500;
-        console.warn(`[requestPatchFromGemini] HTTP ${res.status} (retriable=${retriable}): ${errText.substring(0, 200)}`);
-        if (!retriable || attempt >= MAX_RETRIES) return null;
+        const data = await res.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const finishReason = data.candidates?.[0]?.finishReason;
+        if (!rawText) {
+          console.warn(`[requestPatchFromGemini] empty response (finishReason=${finishReason})`);
+          if (finishReason === 'SAFETY' || finishReason === 'RECITATION') break;
+          if (attempt >= MAX_RETRIES) break;
+          await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+          continue;
+        }
+        const p = parsePatchJson(rawText);
+        if (!p) {
+          console.warn(`[requestPatchFromGemini] JSON parse failed, rawText head: ${rawText.substring(0, 300)}`);
+          if (attempt >= MAX_RETRIES) break;
+          await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
+          continue;
+        }
+        parsed = p;
+        break;
+      } catch (err) {
+        console.warn(`[requestPatchFromGemini] exception (attempt=${attempt}): ${err.message}`);
+        if (attempt >= MAX_RETRIES) break;
         await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
-        continue;
       }
-      const data = await res.json();
-      const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      const finishReason = data.candidates?.[0]?.finishReason;
-      if (!rawText) {
-        console.warn(`[requestPatchFromGemini] empty response (finishReason=${finishReason})`);
-        if (finishReason === 'SAFETY' || finishReason === 'RECITATION') return null;
-        if (attempt >= MAX_RETRIES) return null;
-        await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
-        continue;
-      }
-      const parsed = parsePatchJson(rawText);
-      if (!parsed) {
-        console.warn(`[requestPatchFromGemini] JSON parse failed, rawText head: ${rawText.substring(0, 300)}`);
-        if (attempt >= MAX_RETRIES) return null;
-        await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
-        continue;
+    }
+
+    if (!parsed) return lastParsed; // null or previous best
+    lastParsed = parsed;
+
+    // カバレッジチェック: 全項目が change_label でカバーされているか
+    const missing = patchesCoverageGap(parsed.changes, expectedNums);
+    if (missing.length === 0) {
+      if (cvAttempt > 0) {
+        console.log(`[requestPatchFromGemini] coverage achieved after ${cvAttempt} retry(ies)`);
       }
       return parsed;
-    } catch (err) {
-      console.warn(`[requestPatchFromGemini] exception (attempt=${attempt}): ${err.message}`);
-      if (attempt >= MAX_RETRIES) return null;
-      await new Promise(r => setTimeout(r, (attempt + 1) * 1000));
     }
+    if (cvAttempt >= MAX_COVERAGE_RETRIES) {
+      console.warn(`[requestPatchFromGemini] coverage incomplete after ${cvAttempt} retry(ies): missing ${missing.join(',')}`);
+      return parsed;
+    }
+    // 次の試行用のフィードバック付加
+    const missingCircled = missing.map(n => Object.keys(CIRCLED_PATCH_MAP).find(k => CIRCLED_PATCH_MAP[k] === n)).join('、');
+    feedbackSuffix = `\n\n## ★再試行★\n前回の応答では ${missingCircled} の項目のパッチが生成されていませんでした。今回は必ず ${missingCircled} を含む **すべての番号項目** に対応するパッチを別々に生成してください。各項目の change_label は必ず対応する丸数字で始めてください。`;
+    console.warn(`[requestPatchFromGemini] coverage missing ${missing.join(',')}, retrying (${cvAttempt + 1}/${MAX_COVERAGE_RETRIES})`);
   }
-  return null;
+  return lastParsed;
 }
 
 function buildPatchPrompt(improvement, structuralHtml) {
   const { title, description, expectedImpact, category } = improvement;
+  // 説明テキストから①②③…の番号を抽出し、必須カバー項目としてプロンプト先頭で明示する
+  const circledRegex = /[①②③④⑤⑥⑦⑧⑨⑩]/g;
+  const foundCircled = Array.from(new Set((description || '').match(circledRegex) || []));
+  const mandatoryItemsSection = foundCircled.length >= 2
+    ? `\n## ★最重要★ 必須カバー項目\n改善案の「説明」には ${foundCircled.join('、')} の番号付き項目が含まれています。\n**${foundCircled.join('、')} すべてについて、それぞれ最低 1 つの patch を必ず生成してください**。\n「検討します」「〜の方が効果的」といった柔らかい表現の項目も、具体的な DOM 変更として実装化すること（視覚的でない項目は目次ジャンプ・バッジ・注意書き等に翻訳）。\n**項目数 ≤ パッチ数** を厳守。項目をまとめたり、他項目のパッチに含めたりしてはいけない。\n`
+    : '';
   return `以下の改善案を、対象ページのDOMに対して適用するための最小限のパッチをJSONで返してください。
-
+${mandatoryItemsSection}
 ## 改善案
 タイトル: ${title || ''}
 説明: ${description || ''}
@@ -814,7 +875,8 @@ ${structuralHtml}
       "action": "replace | append | prepend | insert_after | insert_before | modify_attrs | remove のいずれか",
       "new_html": "新しいHTML（replace/append/prepend/insert_*時のみ）。<style>タグ含むインラインCSSも書いてよい",
       "new_attrs": { "key": "value" },
-      "change_label": "変更内容の短い日本語ラベル（番号バッジに表示するため必ず16字以内、例: CTA追加、見出し変更、フォーム最適化）"
+      "change_label": "変更内容を端的に表すタイトル（日本語、目安 12-25 字、省略表現「…」は不可、改行許可されるので全文で書く）",
+      "description_excerpt": "改善案の『説明』テキストから、この変更が具体的に対応する文の抜粋（30〜100字程度、原文をそのままコピー）。バッジクリック時に左パネルの該当箇所をハイライトするため、必ず説明テキスト内に実在する文字列を返すこと。一致しない／要約は不可"
     }
   ],
   "summary": "この改善で何を変えたかの一行要約"
@@ -826,9 +888,26 @@ ${structuralHtml}
 3. 新規要素追加時は、既存の色・フォント・ボタンスタイルを踏襲し違和感がないようにする
 4. 既存のCSSクラス（header, btn, cta 等）は積極的に再利用する
 5. new_html 内で style="..." や <style> タグを使って追加スタイルを付けてよい
+5-1. **プレースホルダ禁止**: \`{{変数名}}\` \`\${変数}\` \`[TODO]\` のようなテンプレート記法は一切使わない。すべて具体的なサンプル値で埋める。例: × \`{{customer_name}}\` → ○ 「株式会社ABC様」／× \`{{case_detail_url}}\` → ○ \`/case/detail-001/\`（実在しなくても相対パス例で可）。会社名・数値・URL は現実的なダミーを入れて完成形で見せる
 6. 変更箇所は AI 側で data-changed 属性を付けなくてよい（サーバ側で自動付与する）
-7. changes は 1〜5 件程度。冗長な変更は避ける
-8. **change_label は必ず 16 字以内**（番号バッジ内に表示するため）。詳細は description で説明し、ラベルは「CTA追加」「サマリー追加」のように短くする`;
+7. changes は 1〜5 件程度。**同じ概念変更が複数要素に及ぶ場合は、複数要素にマッチするセレクタで 1 パッチにまとめる**（例: .faq-answer を個別に 3 パッチに分けず、.faq-answer 全体を 1 パッチで replace）。**改善案に①②③の番号付き項目がある場合は、項目数に応じてパッチを配分し、全項目を必ずカバーすること**（5 パッチ上限の中で項目数を優先し、1 項目 1 パッチを基本にする）。**視覚化しにくい項目（アンカーリンク・ID 設定・SEO 最適化など）も、ユーザーに見える形に翻訳してパッチ化する**（例: アンカーリンク → FAQ 冒頭に目次ジャンプリンクを追加、ID 設定 → 「このページのトップへ」ボタンを追加）
+8. **change_label は省略せず端的な完全文**（「…」「など」は禁止）。目安 12-25 字で、内容が明確に伝わる日本語で書く（例: 「メインCTA文言と装飾を変更」「部署名を任意項目に変更」）。**改善案の説明に①②③の番号付き項目がある場合は、項目番号（丸数字）を先頭に付け、続くタイトルをそのまま change_label に使う（例: 説明の「①「特徴」セクションのタイトルを「導入事例」に変更」→ change_label = 「①「特徴」セクションのタイトルを「導入事例」に変更」）**
+9. **description_excerpt は上記「説明」テキスト内の実在する文字列**を必ず使う（クリック時の文字列マッチに使うため）。複数の changes が同じ文に対応する場合は同じ excerpt を返してよい
+10. **隠れた要素・条件付き表示エリアへのパッチ配置を避ける**: モックアップは静的に表示するため、以下のような「ユーザー操作で初めて表示される領域」をパッチ対象にしない。代わりに **常時表示されている領域** に挿入すること:
+    - アコーディオン・折りたたみコンテンツの中身（クリックで開く部分）
+    - タブの非アクティブパネル
+    - モーダル・ポップアップ・ツールチップの中身
+    - 「他の項目も追加」「詳細を表示」等のチェックボックス/トグル ON で表示される領域
+    - ドロップダウンメニュー内の項目
+    - フォーム送信後にのみ表示されるサンクスエリア・完了メッセージ
+    - \`display: none\` / \`visibility: hidden\` / \`max-height: 0\` が CSS で初期適用されている要素
+    - 上記要素にしか追加できない場合は、代わりに **そのトリガー要素の隣（外側）** に新規セクションを作って挿入する（例: アコーディオンの中ではなくアコーディオン直下）
+11. **レイアウト破壊禁止**: 以下を必ず守ること
+    - \`position: absolute\` / \`position: fixed\` は使用禁止（元サイトの上に被せない）
+    - ヘッダー・ナビなど**横幅が詰まっている flex/grid コンテナ**には新規要素を追加しない（オーバーフローで既存メニューを押し出すため）
+    - 新規追加する要素は親コンテナの幅に収まること（幅固定や min-width を無理に指定しない）
+    - style 属性 / style タグを書く場合は \`max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere;\` を含め、親のフローに従うこと
+    - 要素の追加はページ本文の**縦フロー方向**（セクション間、フォーム下、コンテンツ末尾など空間がある場所）に限定する`;
 }
 
 function parsePatchJson(rawText) {
@@ -865,13 +944,23 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
     return null;
   }
 
-  // 番号割当: 同じ change_label には同じ番号を割り当てる（出現順）
-  // 例: 3 つのカードに同じ「サマリー追加」が当たる場合は全て [1] になる
+  // 番号割当: 同じ change_label には同じ番号を割り当てる
+  // - change_label 先頭に丸数字 (①②③...) がある場合は提案項目番号を優先採用
+  //   → 提案の「② メインCTA変更」と モックアップバッジ「②」が 1:1 で一致
+  // - 丸数字がない場合は出現順の fallback カウンタで採番
+  const CIRCLED_NUM_MAP = { '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10 };
   const labelToNum = new Map();
+  let fallbackCounter = 0;
   for (const change of changes) {
     const label = (change?.change_label || '変更').trim();
-    if (!labelToNum.has(label)) {
-      labelToNum.set(label, labelToNum.size + 1);
+    if (labelToNum.has(label)) continue;
+    const firstChar = label.charAt(0);
+    const circled = CIRCLED_NUM_MAP[firstChar];
+    if (circled) {
+      labelToNum.set(label, circled);
+    } else {
+      fallbackCounter++;
+      labelToNum.set(label, fallbackCounter);
     }
   }
 
@@ -898,10 +987,24 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
 
     try {
       switch (action) {
-        case 'replace':
+        case 'replace': {
           if (!marked) continue;
-          $target.replaceWith(marked);
+          // 既に data-changed が付いている (別パッチで同じ要素が先にマーク済) の場合は
+          // 新 HTML を span でラップして既存ラベルを保持し、両方のバッジを表示する
+          const existingLabel = $target.attr('data-changed');
+          const existingNum = $target.attr('data-num');
+          if (existingLabel) {
+            const safeExistingLabel = String(existingLabel).replace(/"/g, '&quot;');
+            const existingNumAttr = existingNum ? ` data-num="${String(existingNum).replace(/"/g, '&quot;')}"` : '';
+            const wrapped =
+              `<span data-changed="${safeExistingLabel}"${existingNumAttr} ` +
+              `style="display:inline-block;position:relative;">${marked}</span>`;
+            $target.replaceWith(wrapped);
+          } else {
+            $target.replaceWith(marked);
+          }
           break;
+        }
         case 'append':
           if (!marked) continue;
           $target.append(marked);
@@ -918,17 +1021,48 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
           if (!marked) continue;
           $target.before(marked);
           break;
-        case 'modify_attrs':
+        case 'modify_attrs': {
           if (!new_attrs || typeof new_attrs !== 'object') continue;
+          // 属性更新は元要素に対して行う
           for (const [k, v] of Object.entries(new_attrs)) {
-            $target.attr(k, String(v));
+            let val = String(v);
+            // style 属性は badge を隠すプロパティ (overflow:hidden 等) を除去
+            if (k.toLowerCase() === 'style') {
+              val = sanitizeStyleForBadge(val);
+            }
+            $target.attr(k, val);
           }
-          $target.attr('data-changed', label);
-          $target.attr('data-num', String(num));
+          // 既に data-changed が付いている (= 別パッチで同じ要素が既にマーク済) の場合は
+          // span でラップしてネストさせ、両方のバッジを表示する（上書きで ③ が消える問題への対処）
+          const existingLabel = $target.attr('data-changed');
+          if (existingLabel) {
+            const safeLabelAttr = label.replace(/"/g, '&quot;');
+            $target.wrap(
+              `<span data-changed="${safeLabelAttr}" data-num="${num}" ` +
+              `style="display:inline-block;position:relative;"></span>`
+            );
+          } else {
+            // data-changed / data-num は疑似要素描画のため、void 要素なら span ラッパーに付与
+            const $marker = wrapVoidElementIfNeeded($, $target);
+            $marker.attr('data-changed', label);
+            $marker.attr('data-num', String(num));
+          }
           break;
-        case 'remove':
+        }
+        case 'remove': {
+          // 削除位置にマーカー要素を挿入してバッジ表示を維持
+          // （action=remove は元要素を消すため、data-changed を付ける先が無く見えなくなる問題への対処）
+          const safeLabelAttr = label.replace(/"/g, '&quot;');
+          const removeMarker =
+            `<span data-changed="${safeLabelAttr}" data-num="${num}" ` +
+            `style="display:inline-block;padding:3px 10px;margin:4px 0;` +
+            `font-size:11px;font-weight:600;color:#b91c1c;` +
+            `background:rgba(239,68,68,0.08);border:1px dashed #ef4444;` +
+            `border-radius:4px;">× 削除</span>`;
+          $target.before(removeMarker);
           $target.remove();
           break;
+        }
         default:
           console.warn(`[applyPatchesToSnapshot] 未知のaction: ${action}`);
           continue;
@@ -939,22 +1073,39 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
     }
   }
 
-  // data-changed 用 CSS を head に注入（B-C 案: 番号バッジ + 短いラベルピル）
-  // - 同じラベルは同じ番号 → 視覚的にグルーピング
-  // - 番号バッジ（半透明白丸）+ ラベルテキスト = 1 つの blue ピル
-  // - JS 制御の隠れ要素（accordion 回答部分など）も強制表示
-  // - 旧データ（data-num なし）への後方互換あり
+  // 入れ子 data-changed の重複排除は行わない（両方を表示するが、CSS で内側は薄く表示）
+  // → 必要ならここで $('[data-changed] [data-changed]') を処理
+
+  // data-changed 用 CSS を head に注入（インラインラベル方式）
+  // - アウトライン + 番号バッジ + 横に並ぶラベルピル（常時表示）
+  // - ラベルは要素の「外側の上」に配置 → コンテンツを覆わない
+  // - クリック: 親フレームの左パネル description を黄色ハイライト
+  // - body 全体 pointer-events: none、[data-changed] のみ受ける（リンク誤クリック防止）
+  // - 子要素も pointer-events: none
   const outlineCss = [
-    // 変更箇所のアウトライン（薄めの実線）
-    `[data-changed]{outline:2px solid #3758F9 !important;outline-offset:3px !important;border-radius:6px !important;position:relative !important;z-index:1 !important;display:revert !important;visibility:visible !important;opacity:1 !important;max-height:none !important;}`,
-    // ラベルピル本体（番号スペース確保のため左 padding 多め）
-    `[data-changed]::after{content:attr(data-changed);position:absolute;bottom:100%;left:0;margin-bottom:6px;background:#3758F9;color:#fff;font-size:13px;font-weight:700;padding:5px 12px 5px 30px;border-radius:14px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;box-sizing:border-box;box-shadow:0 2px 6px rgba(55,88,249,0.4);z-index:9999;pointer-events:none;}`,
-    // 番号バッジ（半透明白丸、ピルの左端に重ねる）
-    `[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:6px;margin-bottom:9px;width:20px;height:20px;background:rgba(255,255,255,0.32);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;z-index:10000;pointer-events:none;}`,
-    // 後方互換: data-num が無い旧データはピルの左 padding を通常に戻す
-    `[data-changed]:not([data-num])::after{padding-left:12px;}`,
-    // 変更要素の配下の隠れ要素も強制表示（accordion 回答部分など JS 開閉のもの）
-    `[data-changed] *:not(script):not(style):not(meta):not(link):not(noscript):not(template){display:revert !important;visibility:visible !important;opacity:1 !important;max-height:none !important;}`,
+    // body 全体は不可、変更要素だけ受ける
+    `body{pointer-events:none !important;}`,
+    // 変更箇所のアウトライン（クリック可）
+    // overflow:visible を強制 → ::before バッジが bottom:100% で外側に出ても親の overflow:hidden で消えないように
+    `[data-changed]{outline:3px solid #3758F9 !important;outline-offset:3px !important;border-radius:6px !important;position:relative !important;overflow:visible !important;z-index:1 !important;pointer-events:auto !important;cursor:pointer !important;transition:outline-width 0.15s, box-shadow 0.15s !important;}`,
+    `[data-changed]:hover{outline-width:4px !important;}`,
+    `[data-changed].__mockup-active{outline-width:5px !important;box-shadow:0 0 0 8px rgba(55,88,249,0.15) !important;}`,
+    // 番号バッジ（常時表示）
+    // pointer-events: auto 明示 → バッジ上のホバー/クリックが親 data-changed のイベントとして発火
+    `[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:0;margin-bottom:6px;width:28px;height:28px;background:#3758F9;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(55,88,249,0.4);border:2px solid white;z-index:10001;pointer-events:auto;cursor:pointer;transition:transform 0.15s;}`,
+    `[data-changed]:hover::before{transform:scale(1.1);}`,
+    `[data-changed].__mockup-active::before{transform:scale(1.2);background:#1e3a8a;}`,
+    // ラベルピルは廃止（チップバーとホバー時の左パネルハイライトで十分、重なり問題も回避）
+    // 入れ子 data-changed: 内側のバッジは外側の右横に並列配置（重ならない）
+    `[data-changed] [data-changed]{outline-color:rgba(55,88,249,0.55) !important;outline-width:2px !important;}`,
+    `[data-changed] [data-changed]::before{width:24px;height:24px;font-size:12px;margin-bottom:8px;left:34px;background:#6366f1;}`,
+    // 3 段ネスト対応
+    `[data-changed] [data-changed] [data-changed]::before{left:64px;background:#818cf8;}`,
+    // data-num が無い旧データは番号バッジを非表示
+    `[data-changed]:not([data-num])::before{content:none !important;}`,
+    // 変更要素の配下: クリック無効化（誤クリック防止）+ レイアウトは触らない
+    // ただしネストした data-changed はクリック可能にする（:not([data-changed])）
+    `[data-changed] *:not([data-changed]):not(script):not(style):not(meta):not(link):not(noscript):not(template){pointer-events:none !important;}`,
   ].join('');
   if ($('head').length > 0) {
     $('head').append(`<style id="__mockup-outline">${outlineCss}</style>`);
@@ -962,9 +1113,11 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
     $.root().prepend(`<style id="__mockup-outline">${outlineCss}</style>`);
   }
 
-  // 親フレームに iframe 高さと変更箇所位置を通知するヘルパー script を注入
+  // 親フレームに iframe 高さと変更箇所位置を通知 + バッジクリックを通知するヘルパー script を注入
   // （iframe は cross-origin で contentDocument にアクセスできないため postMessage で連携）
-  const helperScript = `(function(){function postSize(){try{parent.postMessage({type:'__mockup_size',height:document.documentElement.scrollHeight,width:document.documentElement.scrollWidth},'*');}catch(_){}}function postChangedPositions(){var els=document.querySelectorAll('[data-changed]');if(els.length===0)return;var positions=[];for(var i=0;i<els.length;i++){var el=els[i];var rect=el.getBoundingClientRect();positions.push({top:rect.top+window.pageYOffset,left:rect.left+window.pageXOffset,height:el.offsetHeight,width:el.offsetWidth,label:el.getAttribute('data-changed')||''});}try{parent.postMessage({type:'__mockup_changed_positions',positions:positions},'*');}catch(_){}}function init(){postSize();postChangedPositions();setTimeout(function(){postSize();postChangedPositions();},300);setTimeout(function(){postSize();postChangedPositions();},1500);}if(document.readyState==='complete')init();else window.addEventListener('load',init);})();`;
+  // unhideHidden: [data-changed] 配下で実際に display:none / visibility:hidden の要素のみ強制表示
+  // （CSS で blanket display:revert すると flex/grid が壊れるため、JS で個別対応）
+  const helperScript = `(function(){function postSize(){try{parent.postMessage({type:'__mockup_size',height:document.documentElement.scrollHeight,width:document.documentElement.scrollWidth},'*');}catch(_){}}function postChangedPositions(){var els=document.querySelectorAll('[data-changed]');if(els.length===0)return;var positions=[];for(var i=0;i<els.length;i++){var el=els[i];var rect=el.getBoundingClientRect();positions.push({top:rect.top+window.pageYOffset,left:rect.left+window.pageXOffset,height:el.offsetHeight,width:el.offsetWidth,label:el.getAttribute('data-changed')||'',num:el.getAttribute('data-num')||''});}try{parent.postMessage({type:'__mockup_changed_positions',positions:positions},'*');}catch(_){}}function unhideHiddenInChanged(){var changedEls=document.querySelectorAll('[data-changed]');for(var i=0;i<changedEls.length;i++){var ce=changedEls[i];try{var ccs=getComputedStyle(ce);if(ccs.display==='none'){ce.style.setProperty('display','revert','important');}if(ccs.visibility==='hidden'){ce.style.setProperty('visibility','visible','important');}if(parseFloat(ccs.maxHeight)===0){ce.style.setProperty('max-height','none','important');}}catch(_){}var anc=ce.parentElement;while(anc&&anc!==document.body&&anc!==document.documentElement){try{var as=getComputedStyle(anc);if(as.display==='none'){anc.style.setProperty('display','revert','important');}if(as.visibility==='hidden'){anc.style.setProperty('visibility','visible','important');}if(parseFloat(as.maxHeight)===0){anc.style.setProperty('max-height','none','important');}if(parseFloat(as.height)===0&&as.overflow==='hidden'){anc.style.setProperty('height','auto','important');}}catch(_){}anc=anc.parentElement;}var children=ce.querySelectorAll('*');for(var j=0;j<children.length;j++){var child=children[j];try{var cs=getComputedStyle(child);if(cs.display==='none'){child.style.setProperty('display','revert','important');}if(cs.visibility==='hidden'){child.style.setProperty('visibility','visible','important');}if(parseFloat(cs.maxHeight)===0){child.style.setProperty('max-height','none','important');}}catch(_){}}}}function waitImagesThenPositions(){var imgs=Array.prototype.slice.call(document.images);var pending=0;for(var i=0;i<imgs.length;i++){if(!imgs[i].complete)pending++;}var done=false;var finish=function(){if(done)return;done=true;postSize();postChangedPositions();};if(pending===0){finish();return;}imgs.forEach(function(img){if(img.complete)return;var on=function(){if(--pending===0)finish();};img.addEventListener('load',on);img.addEventListener('error',on);});setTimeout(finish,4000);}function setActive(el){var prev=document.querySelector('[data-changed].__mockup-active');if(prev&&prev!==el)prev.classList.remove('__mockup-active');if(el)el.classList.toggle('__mockup-active');}function attachClickHandlers(){var els=document.querySelectorAll('[data-changed]');for(var i=0;i<els.length;i++){var el=els[i];if(el.__mockupClickBound)continue;el.__mockupClickBound=true;el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var t=e.currentTarget;setActive(t);var rect=t.getBoundingClientRect();try{parent.postMessage({type:'__mockup_changed_clicked',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||'',rect:{top:rect.top,left:rect.left,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height},active:t.classList.contains('__mockup-active')},'*');}catch(_){}});el.addEventListener('mouseenter',function(e){var t=e.currentTarget;try{parent.postMessage({type:'__mockup_changed_hovered',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||''},'*');}catch(_){}});}document.addEventListener('click',function(e){if(!e.target.closest('[data-changed]')){setActive(null);try{parent.postMessage({type:'__mockup_changed_deselected'},'*');}catch(_){}}});}function init(){postSize();attachClickHandlers();unhideHiddenInChanged();postChangedPositions();setTimeout(function(){postSize();postChangedPositions();unhideHiddenInChanged();},300);setTimeout(function(){postSize();attachClickHandlers();postChangedPositions();unhideHiddenInChanged();},1200);setTimeout(function(){postChangedPositions();},3000);waitImagesThenPositions();}if(document.readyState==='complete')init();else window.addEventListener('load',init);})();`;
   if ($('body').length > 0) {
     $('body').append(`<script id="__mockup-helper">${helperScript}</script>`);
   } else {
@@ -975,22 +1128,186 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
 }
 
 /**
+ * style 文字列から badge を隠すプロパティ (overflow / clip / clip-path) を除去する
+ * - [data-changed]::before は bottom:100% で要素外側に配置されるため、
+ *   overflow:hidden を親に付けると完全に見えなくなる
+ * - sanitizeGeneratedHtml は new_html のインライン style が対象だが、
+ *   modify_attrs の new_attrs.style も同じ問題が起きるため別関数で対応
+ */
+function sanitizeStyleForBadge(style) {
+  if (!style || typeof style !== 'string') return style;
+  return style
+    .replace(/overflow(-x|-y)?\s*:\s*(hidden|clip|scroll|auto)\s*(!important)?\s*;?/gi, '')
+    .replace(/clip(-path)?\s*:\s*[^;]+;?/gi, '')
+    .replace(/;;+/g, ';')
+    .replace(/^;|;$/g, '')
+    .trim();
+}
+
+/**
+ * void / replaced 要素のタグ名（::before / ::after が描画されない要素）
+ * これらに data-changed を直接付けると番号バッジが出ないため、span でラップする
+ */
+const VOID_OR_REPLACED_TAGS = new Set([
+  'input', 'img', 'textarea', 'select', 'br', 'hr',
+  'source', 'video', 'audio', 'iframe', 'embed', 'object',
+  'canvas', 'progress', 'meter',
+]);
+
+/**
+ * void / replaced 要素なら span でラップし、ラッパー側を返す。それ以外はそのまま返す。
+ * @returns {cheerio.Cheerio} data-changed を付与すべき対象
+ */
+function wrapVoidElementIfNeeded($, $target) {
+  const el = $target[0];
+  if (!el || !el.tagName) return $target;
+  const tag = el.tagName.toLowerCase();
+  if (!VOID_OR_REPLACED_TAGS.has(tag)) return $target;
+  // 既に span ラッパーで囲まれていたら使い回す
+  const $parent = $target.parent();
+  if ($parent[0]?.tagName?.toLowerCase() === 'span' && $parent.hasClass('__mockup-void-wrap')) {
+    return $parent;
+  }
+  $target.wrap('<span class="__mockup-void-wrap" style="display:inline-block;position:relative;"></span>');
+  return $target.parent();
+}
+
+/**
+ * Gemini が生成した new_html からレイアウト破壊系の CSS を除去し、安全な属性を付与する
+ * - position: absolute / fixed を削除（要素外に飛び出して元レイアウトを壊すため）
+ * - transform: translate/fixed-position 系を削除
+ * - 極端に大きい固定 width (>800px) を削除
+ * - max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; を追加
+ * - <style> タグ内からも同様にフィルタ
+ */
+/**
+ * プレースホルダ（{{var}} / ${var} / [TODO]）をサンプル値に置換する
+ * AI がテンプレート変数を残してしまった場合の安全網
+ */
+function replacePlaceholders(html) {
+  if (!html) return html;
+  const PLACEHOLDER_SAMPLES = {
+    customer_name: '株式会社サンプル様',
+    company_name: '株式会社サンプル',
+    customer: '株式会社サンプル様',
+    user_name: '田中様',
+    name: 'サンプル太郎',
+    service_name: 'サンプルサービス',
+    product_name: 'サンプル商品',
+    impact_value: '30%',
+    value: '100',
+    amount: '100,000円',
+    price: '10,000円',
+    percentage: '25%',
+    percent: '25%',
+    count: '100',
+    number: '100',
+    date: '2025年1月1日',
+    year: '2025',
+    url: '/sample/',
+    link: '/sample/',
+    case_detail_url: '/case/sample/',
+    detail_url: '/detail/sample/',
+    href: '/sample/',
+    title: 'サンプルタイトル',
+    description: 'サンプル説明',
+    text: 'サンプルテキスト',
+    image_url: '/images/sample.jpg',
+    image: '/images/sample.jpg',
+    icon: '★',
+    email: 'sample@example.com',
+    phone: '03-0000-0000',
+    address: '東京都サンプル区1-1-1',
+  };
+  const getSample = (varName) => {
+    const key = varName.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (PLACEHOLDER_SAMPLES[key]) return PLACEHOLDER_SAMPLES[key];
+    // キーワードマッチ
+    for (const [k, v] of Object.entries(PLACEHOLDER_SAMPLES)) {
+      if (key.includes(k)) return v;
+    }
+    return 'サンプル';
+  };
+  return html
+    // {{var_name}} → サンプル値
+    .replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}\}/g, (_, v) => getSample(v))
+    // ${var_name} → サンプル値
+    .replace(/\$\{\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*\}/g, (_, v) => getSample(v))
+    // [TODO] / [TODO: xxx] → サンプル
+    .replace(/\[TODO(?::\s*[^\]]+)?\]/gi, 'サンプル');
+}
+
+export function sanitizeGeneratedHtml(html) {
+  if (!html || typeof html !== 'string') return html;
+  // プレースホルダを置換（安全網）: AI が {{var}} / ${var} / [TODO] を残した場合、
+  // 変数名から推定したサンプル値に置換する
+  html = replacePlaceholders(html);
+  try {
+    const $ = cheerio.load(`<root>${html}</root>`, { decodeEntities: false, xmlMode: false });
+
+    // インライン style 属性のサニタイズ
+    $('root *[style]').each((_, el) => {
+      const $el = $(el);
+      let style = $el.attr('style') || '';
+      // 危険な宣言を除去
+      style = style
+        .replace(/position\s*:\s*(absolute|fixed|sticky)\s*(!important)?\s*;?/gi, '')
+        .replace(/transform\s*:\s*[^;]+;?/gi, '')
+        // overflow:hidden は [data-changed]::before バッジをクリップするため除去
+        .replace(/overflow(-x|-y)?\s*:\s*(hidden|clip)\s*(!important)?\s*;?/gi, '')
+        .replace(/clip(-path)?\s*:\s*[^;]+;?/gi, '')
+        // 800px 超の固定 width/min-width を削除（単位 px のみ）
+        .replace(/(?:^|;)\s*(?:min-)?width\s*:\s*(\d+)\s*px\s*(!important)?\s*;?/gi,
+          (m, n) => (Number(n) > 800 ? '' : m));
+      // 安全プロパティを末尾に付与（重複は気にしない、後勝ちで効く）
+      if (!/max-width\s*:/i.test(style)) style += ';max-width:100%';
+      if (!/box-sizing\s*:/i.test(style)) style += ';box-sizing:border-box';
+      if (!/overflow-wrap\s*:/i.test(style)) style += ';overflow-wrap:anywhere';
+      $el.attr('style', style.replace(/;;+/g, ';').replace(/^;|;$/g, ''));
+    });
+
+    // <style> タグ内の危険ルールを軽くフィルタ（完全ではないが position:absolute/fixed は削る）
+    $('root style').each((_, el) => {
+      const $el = $(el);
+      let css = $el.html() || '';
+      css = css.replace(/position\s*:\s*(absolute|fixed|sticky)\s*(!important)?\s*;?/gi, '');
+      $el.text(css);
+    });
+
+    return $('root').html() || html;
+  } catch (err) {
+    console.warn(`[sanitizeGeneratedHtml] エラー: ${err.message}`);
+    return html;
+  }
+}
+
+/**
  * 新規追加HTML要素に data-changed / data-num 属性を付与する
  * - 単一ルート要素ならその要素に付与
  * - 複数要素ならそれぞれに付与
+ * - void/replaced 要素 (input/select/img 等) は span でラップしてから付与
+ *   （疑似要素 ::before / ::after が描画されないため）
  */
 function markChangedHtml(html, label, num) {
   const safeLabel = String(label || '変更').replace(/"/g, '&quot;');
   const safeNum = num != null ? String(num) : '';
+  // サニタイズを先にかけてから data-changed を付与
+  let sanitized = sanitizeGeneratedHtml(html);
+  // テキストのみ（タグなし）の new_html は span でラップして data-changed を付けられるようにする
+  // 例: Gemini が「新しい文言」だけを返した場合、そのままだと DOM 要素がなく属性が付与できない
+  if (!/<[a-zA-Z!/]/.test(sanitized)) {
+    sanitized = `<span>${sanitized}</span>`;
+  }
   try {
-    const $ = cheerio.load(`<root>${html}</root>`, { decodeEntities: false, xmlMode: false });
+    const $ = cheerio.load(`<root>${sanitized}</root>`, { decodeEntities: false, xmlMode: false });
     $('root').children().each((_, el) => {
-      const $el = $(el);
+      let $el = $(el);
+      $el = wrapVoidElementIfNeeded($, $el);
       if (!$el.attr('data-changed')) $el.attr('data-changed', safeLabel);
       if (safeNum && !$el.attr('data-num')) $el.attr('data-num', safeNum);
     });
-    return $('root').html() || html;
+    return $('root').html() || sanitized;
   } catch (_) {
-    return html;
+    return sanitized;
   }
 }

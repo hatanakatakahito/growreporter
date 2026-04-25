@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle } from 'lucide-react';
+import { Button } from '../ui/button';
 
 /**
  * エラーアラートコンポーネント
@@ -12,12 +13,9 @@ export default function ErrorAlert({ message = 'エラーが発生しました',
       </div>
       <p className="mt-4 text-sm font-medium text-red-600">{message}</p>
       {onRetry && (
-        <button
-          onClick={onRetry}
-          className="mt-4 rounded-md bg-primary px-6 py-2 text-sm font-medium text-white hover:bg-opacity-90"
-        >
+        <Button variant="primary" size="md" onClick={onRetry} className="mt-4">
           再試行
-        </button>
+        </Button>
       )}
     </div>
   );

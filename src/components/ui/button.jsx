@@ -3,39 +3,103 @@ import clsx from 'clsx'
 import React, { forwardRef } from 'react'
 import { Link } from './link'
 
+/**
+ * GrowReporter ボタンレギュレーション
+ * 詳細: docs/UI_BUTTON_REGULATION.md
+ *
+ * 使い方:
+ *   <Button variant="primary">保存</Button>
+ *   <Button variant="ai" size="lg">AI分析を生成</Button>
+ *   <Button variant="upgrade">ビジネスプランに申し込む</Button>
+ *
+ * variant: primary | secondary | ghost | success | danger | ai | upgrade
+ * size:    sm | md (default) | lg
+ * pill:    true で rounded-full（角丸の代わりに完全円形）
+ *
+ * 後方互換: 既存の color="blue" / outline / plain も引き続き動作する（順次 variant へ移行）。
+ */
+
+const sizeClasses = {
+  sm: 'px-3 py-1.5 text-xs gap-1.5',
+  md: 'px-4 py-2 text-sm gap-2',
+  lg: 'px-6 py-2.5 text-sm gap-2',
+}
+
+const variantClasses = {
+  primary: [
+    'bg-primary text-white',
+    'hover:bg-opacity-90',
+    'shadow-sm',
+  ],
+  secondary: [
+    'bg-white text-dark border border-stroke',
+    'hover:bg-gray-50',
+    'dark:bg-dark-2 dark:text-white dark:border-dark-3 dark:hover:bg-dark-3',
+  ],
+  ghost: [
+    'bg-transparent text-body-color',
+    'hover:bg-gray-100 hover:text-dark',
+    'dark:hover:bg-dark-3 dark:hover:text-white',
+  ],
+  success: [
+    'bg-green-600 text-white',
+    'hover:bg-green-700',
+    'shadow-sm',
+  ],
+  danger: [
+    'bg-red-600 text-white',
+    'hover:bg-red-700',
+    'shadow-sm',
+  ],
+  'danger-outline': [
+    'bg-white text-red-600 border border-red-200',
+    'hover:bg-red-50',
+    'dark:bg-dark-2 dark:border-red-900/40 dark:hover:bg-red-900/20',
+  ],
+  ai: [
+    'bg-gradient-ai text-white',
+    'hover:bg-gradient-ai-hover',
+    'shadow-md hover:shadow-lg transition-all',
+  ],
+  upgrade: [
+    'bg-gradient-business text-white',
+    'hover:bg-gradient-business-hover',
+    'shadow-md hover:shadow-lg transition-all',
+  ],
+}
+
 const styles = {
   base: [
     // Base
-    'relative isolate inline-flex items-baseline justify-center gap-x-2 rounded-lg border text-base/6 font-semibold',
-    // Sizing
-    'px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6',
+    'relative isolate inline-flex items-center justify-center font-semibold',
+    'transition-colors',
     // Focus
-    'focus:not-data-focus:outline-hidden data-focus:outline-2 data-focus:outline-offset-2 data-focus:outline-blue-500',
+    'focus:not-data-focus:outline-hidden data-focus:outline-2 data-focus:outline-offset-2 data-focus:outline-primary',
     // Disabled
+    'data-disabled:opacity-50 data-disabled:cursor-not-allowed disabled:opacity-50 disabled:cursor-not-allowed',
+    // Icon (catalyst 流の data-slot=icon でアイコン用余白を自動調整)
+    '*:data-[slot=icon]:-mx-0.5 *:data-[slot=icon]:my-0.5 *:data-[slot=icon]:size-4 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center forced-colors:[--btn-icon:ButtonText] forced-colors:data-hover:[--btn-icon:ButtonText]',
+  ],
+  // ----- 後方互換（既存 color/outline/plain 用、これまでどおり Catalyst スタイル） -----
+  legacyBase: [
+    'relative isolate inline-flex items-baseline justify-center gap-x-2 rounded-lg border text-base/6 font-semibold',
+    'px-[calc(--spacing(3.5)-1px)] py-[calc(--spacing(2.5)-1px)] sm:px-[calc(--spacing(3)-1px)] sm:py-[calc(--spacing(1.5)-1px)] sm:text-sm/6',
+    'focus:not-data-focus:outline-hidden data-focus:outline-2 data-focus:outline-offset-2 data-focus:outline-blue-500',
     'data-disabled:opacity-50',
-    // Icon
     '*:data-[slot=icon]:-mx-0.5 *:data-[slot=icon]:my-0.5 *:data-[slot=icon]:size-5 *:data-[slot=icon]:shrink-0 *:data-[slot=icon]:self-center *:data-[slot=icon]:text-(--btn-icon) sm:*:data-[slot=icon]:my-1 sm:*:data-[slot=icon]:size-4 forced-colors:[--btn-icon:ButtonText] forced-colors:data-hover:[--btn-icon:ButtonText]',
   ],
   solid: [
-    // Flat button background
     'border-transparent bg-(--btn-bg)',
-    // Hover overlay
     'data-active:brightness-90 data-hover:brightness-95',
   ],
   outline: [
-    // Base
     'border-zinc-950/10 text-zinc-950 data-active:bg-zinc-950/2.5 data-hover:bg-zinc-950/2.5',
-    // Dark mode
     'dark:border-white/15 dark:text-white dark:[--btn-bg:transparent] dark:data-active:bg-white/5 dark:data-hover:bg-white/5',
-    // Icon
     '[--btn-icon:var(--color-zinc-500)] data-active:[--btn-icon:var(--color-zinc-700)] data-hover:[--btn-icon:var(--color-zinc-700)] dark:data-active:[--btn-icon:var(--color-zinc-400)] dark:data-hover:[--btn-icon:var(--color-zinc-400)]',
   ],
   plain: [
-    // Base
     'border-transparent text-zinc-950 data-active:bg-zinc-950/5 data-hover:bg-zinc-950/5',
-    // Dark mode
     'dark:text-white dark:data-active:bg-white/10 dark:data-hover:bg-white/10',
-    // Icon
     '[--btn-icon:var(--color-zinc-500)] data-active:[--btn-icon:var(--color-zinc-700)] data-hover:[--btn-icon:var(--color-zinc-700)] dark:[--btn-icon:var(--color-zinc-500)] dark:data-active:[--btn-icon:var(--color-zinc-400)] dark:data-hover:[--btn-icon:var(--color-zinc-400)]',
   ],
   colors: {
@@ -138,12 +202,38 @@ const styles = {
   },
 }
 
-export const Button = forwardRef(function Button({ color, outline, plain, className, children, ...props }, ref) {
-  let classes = clsx(
-    className,
-    styles.base,
-    outline ? styles.outline : plain ? styles.plain : clsx(styles.solid, styles.colors[color ?? 'dark/zinc'])
-  )
+export const Button = forwardRef(function Button(
+  { variant, size = 'md', pill = false, color, outline, plain, className, children, ...props },
+  ref
+) {
+  let classes
+
+  if (variant) {
+    // 新 variant ベース
+    const shape = pill ? 'rounded-full' : 'rounded-lg'
+    const variantStyle = variantClasses[variant]
+    if (!variantStyle) {
+      console.warn(`[Button] Unknown variant: ${variant}. Use one of: ${Object.keys(variantClasses).join(', ')}`)
+    }
+    classes = clsx(
+      className,
+      styles.base,
+      shape,
+      sizeClasses[size] || sizeClasses.md,
+      variantStyle
+    )
+  } else {
+    // 既存 color/outline/plain（後方互換）
+    classes = clsx(
+      className,
+      styles.legacyBase,
+      outline
+        ? styles.outline
+        : plain
+          ? styles.plain
+          : clsx(styles.solid, styles.colors[color ?? 'dark/zinc'])
+    )
+  }
 
   return typeof props.href === 'string' ? (
     <Link {...props} className={classes} ref={ref}>

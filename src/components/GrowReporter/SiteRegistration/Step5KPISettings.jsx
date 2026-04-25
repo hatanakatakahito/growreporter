@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getLabel, getTargetLabel } from '../../../constants/metrics';
+import { Button } from '../../ui/button';
 
 export default function Step5KPISettings({ siteData, setSiteData }) {
   const [error, setError] = useState(null);
@@ -119,25 +120,6 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
 
   return (
     <div className="space-y-6">
-      {/* 説明 */}
-      <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-900/30 dark:bg-blue-900/20">
-        <div className="flex items-start gap-3">
-          <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
-            <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-          </div>
-          <div className="flex-1">
-            <p className="text-sm font-medium text-blue-800 dark:text-blue-300">
-              サイトの目標値を設定してください
-            </p>
-            <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
-              設定した目標は分析画面で継続的に表示され、目標達成状況を確認できます。
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* エラーメッセージ */}
       {error && (
         <div className="flex items-start gap-3 rounded-lg bg-red-50 p-4 dark:bg-red-900/20">
@@ -154,8 +136,8 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
 
       {/* カスタム目標設定（任意） */}
       <div className="rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
-        <h3 className="mb-4 text-lg font-semibold text-dark dark:text-white">
-          カスタム目標設定（任意）
+        <h3 className="mb-4 text-base font-semibold text-dark dark:text-white">
+          カスタム目標設定
         </h3>
         
         <form onSubmit={handleAddKPI} className="space-y-4">
@@ -169,7 +151,7 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
                 <select
                   value={selectedMetric}
                   onChange={(e) => setSelectedMetric(e.target.value)}
-                  className="w-full appearance-none [background-image:none] rounded-md border border-stroke bg-transparent px-4 py-2 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
+                  className="w-full appearance-none [background-image:none] rounded-md border border-stroke bg-transparent px-4 py-2 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
                 >
                   <option value="">選択してください</option>
                   
@@ -213,19 +195,20 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
                 value={targetValue}
                 onChange={(e) => setTargetValue(e.target.value)}
                 placeholder="数値を入力"
-                className="w-full rounded-md border border-stroke bg-transparent px-4 py-2 text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
+                className="w-full rounded-md border border-stroke bg-transparent px-4 py-2 text-sm text-dark outline-none transition focus:border-primary dark:border-dark-3 dark:text-white dark:focus:border-primary"
               />
             </div>
 
             {/* 追加ボタン */}
             <div className="flex items-end">
-              <button
+              <Button
                 type="submit"
+                variant="primary"
                 disabled={!selectedMetric || !targetValue}
-                className="rounded-md bg-primary px-8 py-2 text-sm font-medium text-white transition hover:bg-opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="px-8"
               >
                 追加
-              </button>
+              </Button>
             </div>
           </div>
         </form>
@@ -240,10 +223,10 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
               className="flex items-center justify-between rounded-md border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark-2"
             >
               <div className="flex-1">
-                <div className="font-medium text-dark dark:text-white">
+                <div className="text-sm font-medium text-dark dark:text-white">
                   {kpi.label}
                 </div>
-                <div className="mt-1 text-sm text-body-color">
+                <div className="mt-1 text-xs text-body-color">
                   目標値: {kpi.target.toLocaleString()}
                 </div>
               </div>
@@ -261,19 +244,6 @@ export default function Step5KPISettings({ siteData, setSiteData }) {
         </div>
       )}
 
-      {/* スキップ可能の注意 */}
-      {kpiList.length === 0 && (
-        <div className="rounded-lg border border-stroke bg-white p-4 dark:border-dark-3 dark:bg-dark-2">
-          <div className="flex items-start gap-2">
-            <svg className="h-5 w-5 flex-shrink-0 text-primary" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-            </svg>
-            <p className="text-sm text-body-color">
-              目標設定は任意です。後から設定することもできます。
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

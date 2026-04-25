@@ -34,6 +34,12 @@ module.exports = {
       },
       backgroundImage: {
         'gradient-primary': 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+        'gradient-ai': 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%)',
+        'gradient-ai-hover': 'linear-gradient(135deg, #2563eb 0%, #7c3aed 50%, #db2777 100%)',
+        'gradient-ai-soft': 'linear-gradient(135deg, #dbeafe 0%, #ede9fe 50%, #fce7f3 100%)',
+        'gradient-business': 'linear-gradient(135deg, #f87171 0%, #ec4899 100%)',
+        'gradient-business-hover': 'linear-gradient(135deg, #ef4444 0%, #db2777 100%)',
+        'gradient-business-soft': 'linear-gradient(135deg, #fee2e2 0%, #fce7f3 100%)',
       },
       animation: {
         'bounce-once': 'pulse-scale 0.6s ease-in-out',

@@ -149,7 +149,7 @@ function generateMemberAddedEmailHtml(data) {
         <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
           
           <tr>
-            <td style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; text-align: center;">
+            <td style="background-color: #3758F9; padding: 30px; text-align: center;">
               <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">グローレポータ</h1>
               <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">メンバー参加通知</p>
             </td>
@@ -184,7 +184,7 @@ function generateMemberAddedEmailHtml(data) {
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${process.env.APP_URL || 'https://grow-reporter.com'}/members" style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                    <a href="${process.env.APP_URL || 'https://grow-reporter.com'}/members" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
                       メンバー管理を開く
                     </a>
                   </td>

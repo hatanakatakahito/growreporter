@@ -178,10 +178,10 @@ export default function CustomLimitsModal({ user, currentLimits, onClose, onSave
       </DialogBody>
 
       <DialogActions>
-        <Button plain onClick={onClose} disabled={loading}>
+        <Button variant="ghost" onClick={onClose} disabled={loading}>
           キャンセル
         </Button>
-        <Button color="blue" type="submit" form="custom-limits-form" disabled={loading}>
+        <Button variant="primary" type="submit" form="custom-limits-form" disabled={loading}>
           {loading && <DotWaveSpinner size="xs" variant="white" />}
           {loading ? '保存中...' : '保存'}
         </Button>

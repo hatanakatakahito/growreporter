@@ -40,6 +40,39 @@
     #3b82f6 0%,
     #8b5cf6 100%
   );
+  --background-image-gradient-ai: linear-gradient(
+    135deg,
+    #3b82f6 0%,
+    #8b5cf6 50%,
+    #ec4899 100%
+  );
+  --background-image-gradient-ai-hover: linear-gradient(
+    135deg,
+    #2563eb 0%,
+    #7c3aed 50%,
+    #db2777 100%
+  );
+  --background-image-gradient-ai-soft: linear-gradient(
+    135deg,
+    #dbeafe 0%,
+    #ede9fe 50%,
+    #fce7f3 100%
+  );
+  --background-image-gradient-business: linear-gradient(
+    135deg,
+    #f87171 0%,
+    #ec4899 100%
+  );
+  --background-image-gradient-business-hover: linear-gradient(
+    135deg,
+    #ef4444 0%,
+    #db2777 100%
+  );
+  --background-image-gradient-business-soft: linear-gradient(
+    135deg,
+    #fee2e2 0%,
+    #fce7f3 100%
+  );
 
   --animate-bounce-once: pulse-scale 0.6s ease-in-out;
 
@@ -288,11 +321,49 @@ div[class*="fixed"][class*="inset-0"][class*="z-50"] {
   box-shadow: none;
 }
 
-/* スクロールバーを美しく */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.1); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(0, 0, 0, 0.2); }
+/* ============================================================
+   スクロールバー統一スタイル
+   - 改善ドロワー内の「改善内容」スクロールを基準色（5px / 薄グレー）に
+   - Webkit (Chrome / Edge / Safari) と Firefox 両対応
+   - ダークモード対応
+   - .scrollbar-hide ユーティリティは維持（横スクロールタブ等で個別に非表示にする箇所用）
+   ============================================================ */
+
+/* Webkit 系: html / body / 内部 div など全スクロール領域に適用 */
+*::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 3px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.2);
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox 用 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.1) transparent;
+}
+
+/* ダークモード: 暗背景でも視認できる薄白系に */
+.dark *::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+.dark * {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
 
 /* AI分析ボタンのアニメーション */
 @keyframes ai-pulse {

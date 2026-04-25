@@ -5,6 +5,7 @@ import { getTooltip } from '../../constants/tooltips';
 import { useTableColumns } from '../../hooks/useTableColumns';
 import ColumnToggle from '../common/ColumnToggle';
 import ComparisonBadge from './ComparisonBadge';
+import { Button } from '../ui/button';
 
 /**
  * ツールチップコンポーネント（Portal使用）
@@ -449,23 +450,25 @@ export default function DataTable({
             {Math.min(currentPage * pageSize, sortedData.length)}件を表示
           </div>
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setCurrentPage(currentPage - 1)}
               disabled={currentPage === 1}
-              className="rounded-md border border-stroke px-3 py-1 text-sm text-dark transition hover:bg-gray-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               前へ
-            </button>
+            </Button>
             <span className="text-sm text-body-color">
               {currentPage} / {totalPages}
             </span>
-            <button
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setCurrentPage(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="rounded-md border border-stroke px-3 py-1 text-sm text-dark transition hover:bg-gray-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               次へ
-            </button>
+            </Button>
           </div>
         </div>
       )}

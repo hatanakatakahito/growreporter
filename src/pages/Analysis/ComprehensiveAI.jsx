@@ -19,6 +19,7 @@ import LoadingSpinner from '../../components/common/LoadingSpinner';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import UpgradeModal from '../../components/common/UpgradeModal';
 import { setPageTitle } from '../../utils/pageTitle';
+import { Button } from '../../components/ui/button';
 import { format, sub, startOfMonth } from 'date-fns';
 import {
   Sparkles,
@@ -504,13 +505,15 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
           <div className="flex-1">
             <h3 className="text-sm font-medium text-red-800">エラーが発生しました</h3>
             <p className="mt-1 text-sm text-red-700">{error}</p>
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => loadAnalysis(false)}
-              className="mt-3 inline-flex items-center gap-2 rounded-md bg-red-600 px-3 py-2 text-sm font-medium text-white hover:bg-red-700"
+              className="mt-3"
             >
-              <RefreshCw className="h-4 w-4" />
+              <RefreshCw data-slot="icon" />
               再試行
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -552,7 +555,7 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
         {/* ヘッダー */}
         <div className="mb-5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-gradient-to-br from-blue-500 to-pink-500">
+            <div className="flex h-10 w-10 items-center justify-center rounded-[10px] bg-gradient-ai">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -565,7 +568,8 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
               )}
             </div>
           </div>
-          <button
+          <Button
+            variant="ai"
             data-tour="comp-ai-regenerate"
             onClick={() => {
               if (planId === 'free') {
@@ -575,11 +579,10 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
               }
             }}
             disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition hover:border-primary hover:text-primary disabled:opacity-50"
           >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw data-slot="icon" className={isLoading ? 'animate-spin' : ''} />
             再分析
-          </button>
+          </Button>
         </div>
 
         {/* サイト健全性スコア＋サマリー */}
@@ -700,15 +703,15 @@ function ComprehensiveAIContent({ rawData, dateRange, selectedSite, onLimitExcee
 
         {/* 「改善する」への導線 */}
         <div className="flex flex-col items-center pt-6" style={{ borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: '8px' }}>
-          <button
+          <Button
+            variant="ai"
+            size="lg"
             onClick={() => navigate('/improve')}
-            className="inline-flex items-center gap-2 rounded-[10px] px-7 py-3 text-sm font-semibold text-white transition-all hover:-translate-y-px"
-            style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 4px 12px rgba(59,130,246,0.3)' }}
           >
-            <Sparkles className="h-4 w-4" />
+            <Sparkles data-slot="icon" />
             サイト改善案を生成する
-            <ArrowRight className="h-4 w-4" />
-          </button>
+            <ArrowRight data-slot="icon" />
+          </Button>
           <p className="mt-2 text-xs text-gray-500">
             この分析結果をもとに、具体的な改善施策を生成します
           </p>

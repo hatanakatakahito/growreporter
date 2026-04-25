@@ -20,6 +20,7 @@ import DimensionFilters, { buildGA4DimensionFilter } from '../../components/Anal
 import { mergeComparisonRows } from '../../utils/comparisonHelpers';
 import { useAuth } from '../../contexts/AuthContext';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { Button } from '../../components/ui/button';
 import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import {
   ResponsiveContainer,
@@ -647,18 +648,20 @@ export default function AcquisitionChannels() {
             {/* フッター */}
             <div className="border-t border-stroke p-4 dark:border-dark-3">
               <div className="flex gap-3">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={() => setIsConversionAlertOpen(false)}
-                  className="flex-1 rounded-md border border-stroke bg-white px-4 py-2 text-sm font-medium text-dark transition hover:bg-gray-2 dark:border-dark-3 dark:bg-dark-2 dark:text-white dark:hover:bg-dark-3"
+                  className="flex-1"
                 >
                   閉じる
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="primary"
                   onClick={() => navigate(`/sites/${selectedSiteId}/edit?step=4`)}
-                  className="flex-1 rounded-md bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-opacity-90"
+                  className="flex-1"
                 >
                   設定する
-                </button>
+                </Button>
               </div>
             </div>
           </div>
