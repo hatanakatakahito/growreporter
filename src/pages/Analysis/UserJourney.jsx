@@ -253,13 +253,15 @@ function NodeDetailPanel({ node, onClear }) {
     );
   }
 
+  const detail = node.detail || {};
+
   return (
     <div className="w-[380px] shrink-0 rounded-lg border border-stroke bg-white p-6 self-start">
       {/* ヘッダー */}
       <div className="flex items-start justify-between mb-4">
         <div className="min-w-0">
           <span className="text-[11px] uppercase tracking-wide text-body-color font-medium">選択中のノード</span>
-          <h3 className="text-lg font-semibold text-primary mt-0.5 truncate">{node.name}</h3>
+          <h3 className="text-lg font-semibold text-primary mt-0.5 truncate" title={node.name}>{node.name}</h3>
           <div className="flex items-center gap-1.5 text-xs text-body-color mt-1">
             <FileText className="h-3.5 w-3.5" />
             <span>{getNodeTypeLabel(node.type)}</span>
@@ -274,18 +276,49 @@ function NodeDetailPanel({ node, onClear }) {
         </button>
       </div>
 
-      {/* メトリクス 2x2 */}
+      {/* 共通メトリクス 2x2 */}
       <div className="grid grid-cols-2 gap-2 mb-4 pb-4 border-b border-stroke">
-        <MetricCard label="通過セッション" value={node.value?.toLocaleString() || '-'} change={node.change} />
+        <MetricCard label="セッション/件数" value={node.value?.toLocaleString() || '-'} change={node.change} />
         <MetricCard label="シェア" value={node.share != null ? `${(node.share * 100).toFixed(1)}%` : '-'} />
-        <MetricCard label="タイプ" value={getNodeTypeLabel(node.type)} />
-        <MetricCard label="重要度" value="高" highlight />
+        {node.type === 'lp' && detail.cvRate != null && (
+          <MetricCard label="CV 率" value={`${(detail.cvRate * 100).toFixed(2)}%`} highlight={detail.cvRate >= 0.05} />
+        )}
+        {node.type === 'lp' && detail.bounceRate != null && (
+          <MetricCard label="直帰率（参考）" value={`${(detail.bounceRate * 100).toFixed(1)}%`} />
+        )}
+        {node.type !== 'lp' && (
+          <>
+            <MetricCard label="タイプ" value={getNodeTypeLabel(node.type)} />
+            {node.type === 'cv' && detail.cvRate != null && (
+              <MetricCard label="CV 率" value={`${(detail.cvRate * 100).toFixed(2)}%`} highlight />
+            )}
+          </>
+        )}
       </div>
 
-      <div className="text-xs text-body-color text-center">
-        詳細メトリクス・GSC キーワード・次のページ TOP 5 は<br/>
-        Phase 2 でバックエンド連携時に実装予定
-      </div>
+      {/* 詳細セクション（ノードタイプ別） */}
+      {node.type === 'lp' && (
+        <LPDetail detail={detail} />
+      )}
+      {node.type === 'source' && (
+        <SourceDetail detail={detail} />
+      )}
+      {node.type === 'middle' && (
+        <MiddleDetail detail={detail} />
+      )}
+      {node.type === 'cv' && (
+        <CvDetail detail={detail} />
+      )}
+      {node.type === 'exit' && (
+        <div className="text-xs text-body-color">
+          サイトを離脱したセッションの集計です
+        </div>
+      )}
+      {node.type === 'keyword' && (
+        <div className="text-xs text-body-color">
+          流入キーワード/参照元単位のノードです。GSC キーワード詳細はこのノードを通過した LP を選択して確認できます
+        </div>
+      )}
     </div>
   );
 }
@@ -301,6 +334,138 @@ function MetricCard({ label, value, change, highlight }) {
         </div>
       )}
     </div>
+  );
+}
+
+function DetailListSection({ title, icon, items, emptyMessage = 'データなし', renderItem }) {
+  if (!items || items.length === 0) {
+    return (
+      <div className="mb-4">
+        <div className="text-[11px] font-semibold text-body-color uppercase mb-2 inline-flex items-center gap-1.5">
+          {icon}
+          {title}
+        </div>
+        <div className="text-xs text-body-color">{emptyMessage}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="mb-4">
+      <div className="text-[11px] font-semibold text-body-color uppercase mb-2 inline-flex items-center gap-1.5">
+        {icon}
+        {title}
+      </div>
+      <div className="space-y-1.5">
+        {items.map((item, i) => renderItem(item, i))}
+      </div>
+    </div>
+  );
+}
+
+function LPDetail({ detail }) {
+  return (
+    <>
+      <DetailListSection
+        title="流入元 TOP 5"
+        items={detail.inboundSources}
+        renderItem={(s, i) => (
+          <div key={i} className="flex items-center gap-2 text-sm">
+            <span className="flex-1 truncate text-dark">{s.name}</span>
+            <span className="font-mono text-primary text-xs">{s.value.toLocaleString()}</span>
+            <span className="text-[10px] text-body-color w-10 text-right">{(s.share * 100).toFixed(0)}%</span>
+          </div>
+        )}
+      />
+      {detail.gscKeywords && detail.gscKeywords.length > 0 && (
+        <DetailListSection
+          title="流入キーワード TOP 5 (GSC)"
+          icon={<Search className="h-3 w-3" />}
+          items={detail.gscKeywords}
+          renderItem={(k, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm">
+              <span className="flex-1 truncate text-dark" title={k.query}>{k.query}</span>
+              <span className="font-mono text-primary text-xs">{k.clicks?.toLocaleString() || 0}</span>
+              <span className="text-[10px] text-body-color w-12 text-right">{k.position?.toFixed(1) || '-'}位</span>
+            </div>
+          )}
+        />
+      )}
+      <DetailListSection
+        title="次に訪れたページ TOP 5"
+        items={detail.nextPages}
+        emptyMessage="次ページデータなし"
+        renderItem={(p, i) => (
+          <div key={i} className="flex items-center gap-2 text-sm">
+            <span className={`flex-1 truncate ${p.isBounce ? 'text-body-color' : 'text-dark'}`} title={p.name}>
+              {p.name}
+            </span>
+            <span className={`font-mono text-xs ${p.isBounce ? 'text-body-color' : 'text-primary'}`}>{p.value.toLocaleString()}</span>
+            <span className="text-[10px] text-body-color w-10 text-right">{(p.share * 100).toFixed(0)}%</span>
+          </div>
+        )}
+      />
+      {detail.cvBreakdown && detail.cvBreakdown.length > 0 && (
+        <DetailListSection
+          title="CV 内訳"
+          items={detail.cvBreakdown}
+          renderItem={(c, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm">
+              <span className="flex-1 truncate text-dark">{c.displayName}</span>
+              <span className="font-mono text-emerald-600 text-xs font-semibold">{c.count.toLocaleString()}</span>
+            </div>
+          )}
+        />
+      )}
+    </>
+  );
+}
+
+function SourceDetail({ detail }) {
+  return (
+    <DetailListSection
+      title="主要 LP TOP 5"
+      items={detail.topLPs}
+      emptyMessage="LP データなし"
+      renderItem={(lp, i) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <span className="flex-1 truncate text-dark" title={lp.name}>{lp.name}</span>
+          <span className="font-mono text-primary text-xs">{lp.value.toLocaleString()}</span>
+          <span className="text-[10px] text-body-color w-10 text-right">{(lp.share * 100).toFixed(0)}%</span>
+        </div>
+      )}
+    />
+  );
+}
+
+function MiddleDetail({ detail }) {
+  return (
+    <DetailListSection
+      title="この中間ページに流入した LP TOP 5"
+      items={detail.inboundLPs}
+      emptyMessage="流入元 LP データなし"
+      renderItem={(lp, i) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <span className="flex-1 truncate text-dark" title={lp.name}>{lp.name}</span>
+          <span className="font-mono text-primary text-xs">{lp.value.toLocaleString()}</span>
+        </div>
+      )}
+    />
+  );
+}
+
+function CvDetail({ detail }) {
+  return (
+    <DetailListSection
+      title="この CV に至った LP TOP 5"
+      items={detail.inboundLPs}
+      emptyMessage="LP データなし"
+      renderItem={(lp, i) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <span className="flex-1 truncate text-dark" title={lp.name}>{lp.name}</span>
+          <span className="font-mono text-emerald-600 text-xs font-semibold">{lp.value.toLocaleString()}</span>
+        </div>
+      )}
+    />
   );
 }
 

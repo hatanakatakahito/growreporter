@@ -249,6 +249,25 @@ export async function fetchGA4UserJourneyDataCallable(request) {
       compAggregations = aggregateComparisonData(compChannelRows, compCvRows);
     }
 
+    // GSC: ページ → キーワード逆引きマップを buildJourneyData の前に作成
+    const gscDataResult = gscResult.status === 'fulfilled' ? gscResult.value : null;
+    const pageToKeywords = {};
+    if (gscEnabled && Array.isArray(gscDataResult)) {
+      gscDataResult.forEach((r) => {
+        if (!pageToKeywords[r.page]) pageToKeywords[r.page] = [];
+        pageToKeywords[r.page].push({
+          query: r.query,
+          clicks: r.clicks,
+          impressions: r.impressions,
+          ctr: r.ctr,
+          position: r.position,
+        });
+      });
+      Object.keys(pageToKeywords).forEach((p) => {
+        pageToKeywords[p].sort((a, b) => b.clicks - a.clicks);
+      });
+    }
+
     // データ整形
     const journey = buildJourneyData({
       channelLPRows: channelLPResult.status === 'fulfilled' ? channelLPResult.value.data?.rows || [] : [],
@@ -260,7 +279,8 @@ export async function fetchGA4UserJourneyDataCallable(request) {
       bounceRate: totalResult.status === 'fulfilled'
         ? parseFloat(totalResult.value.data?.rows?.[0]?.metricValues?.[1]?.value || 0)
         : 0,
-      gscData: gscResult.status === 'fulfilled' ? gscResult.value : null,
+      gscData: gscDataResult,
+      pageToKeywords,
       conversionEvents: siteData.conversionEvents || [],
       cvEventDisplayMap,
       gscEnabled,
@@ -494,6 +514,7 @@ function buildJourneyData({
   totalSessions,
   bounceRate,
   gscData,
+  pageToKeywords = {},
   conversionEvents,
   cvEventDisplayMap,
   gscEnabled,
@@ -598,6 +619,11 @@ function buildJourneyData({
       const change = compAggregations
         ? computeChange(value, compAggregations.sourceAgg?.[sourceType])
         : null;
+      // detail: この流入元の上位 LP（最大 5 件）
+      const lpEntries = Object.entries(sourceLPSessions[sourceType] || {})
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 5)
+        .map(([lp, sessions]) => ({ name: lp, value: sessions, share: value > 0 ? sessions / value : 0 }));
       nodes.push({
         id: `src-${sourceType}`,
         column: 0,
@@ -606,6 +632,9 @@ function buildJourneyData({
         value,
         share: totalSessions > 0 ? value / totalSessions : 0,
         change,
+        detail: {
+          topLPs: lpEntries,
+        },
       });
     }
   });
@@ -681,11 +710,60 @@ function buildJourneyData({
 
   // direct は KW 列スキップ → 後でリンクで直接 LP に接続
 
-  // 列 2: LP
+  // 列 2: LP（詳細データ付き）
   topLPs.forEach((lp, idx) => {
     const change = compAggregations
       ? computeChange(lpAgg[lp], compAggregations.lpAgg?.[lp])
       : null;
+
+    // 流入元 TOP 5（このLPに来たソース別セッション）
+    const inboundSources = ['organic', 'paid', 'sns', 'direct', 'referral']
+      .map((st) => {
+        const sessions = sourceLPSessions[st]?.[lp] || 0;
+        return sessions > 0
+          ? { name: SOURCE_LABELS[st], sourceType: st, value: sessions, share: lpAgg[lp] > 0 ? sessions / lpAgg[lp] : 0 }
+          : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
+    // 次のページ TOP 5（中間ページ別セッション）
+    const nextPagesEntries = topMiddlePages
+      .map((mid) => ({
+        name: mid,
+        value: lpToMiddleFlow[`${lp}|||${mid}`] || 0,
+        isBounce: false,
+      }))
+      .filter((e) => e.value > 0)
+      .sort((a, b) => b.value - a.value);
+    // 直帰を最後に追加（推定: LP セッション × bounceRate）
+    const lpBounce = Math.round((lpAgg[lp] || 0) * (bounceRate || 0));
+    if (lpBounce > 0) {
+      nextPagesEntries.push({ name: '直帰', value: lpBounce, isBounce: true });
+    }
+    const nextPages = nextPagesEntries
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5)
+      .map((e) => ({ ...e, share: lpAgg[lp] > 0 ? e.value / lpAgg[lp] : 0 }));
+
+    // GSC キーワード TOP 5（GSC 連携時のみ）
+    const gscKeywords = (pageToKeywords[lp] || [])
+      .slice(0, 5)
+      .map((k) => ({ query: k.query, clicks: k.clicks, position: k.position, ctr: k.ctr, impressions: k.impressions }));
+
+    // この LP からの CV 集計
+    const cvFromLP = Object.entries(lpToCvFlow)
+      .filter(([key]) => key.startsWith(`${lp}|||`))
+      .map(([key, count]) => ({
+        eventName: key.split('|||')[1],
+        displayName: cvEventDisplayMap[key.split('|||')[1]] || key.split('|||')[1],
+        count,
+      }))
+      .sort((a, b) => b.count - a.count);
+    const totalCvFromLP = cvFromLP.reduce((s, c) => s + c.count, 0);
+    const cvRate = lpAgg[lp] > 0 ? totalCvFromLP / lpAgg[lp] : 0;
+
     nodes.push({
       id: `lp-${idx}`,
       column: 2,
@@ -693,6 +771,14 @@ function buildJourneyData({
       type: 'lp',
       value: lpAgg[lp],
       change,
+      detail: {
+        inboundSources,
+        nextPages,
+        gscKeywords,
+        cvBreakdown: cvFromLP,
+        cvRate,
+        bounceRate: bounceRate || 0, // サイト全体平均（LP 個別は GA4 標準では取れない）
+      },
     });
   });
   if (otherLPSessions > 0) {
@@ -773,14 +859,27 @@ function buildJourneyData({
     });
   }
 
-  // 列 3: 中間ページ
+  // 列 3: 中間ページ（詳細データ付き）
   topMiddlePages.forEach((page, idx) => {
+    // この中間ページへ流入する LP TOP 5
+    const inboundLPs = topLPs
+      .map((lp) => ({
+        name: lp,
+        value: lpToMiddleFlow[`${lp}|||${page}`] || 0,
+      }))
+      .filter((e) => e.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
     nodes.push({
       id: `mid-${idx}`,
       column: 3,
       name: page,
       type: 'middle',
       value: middlePageAgg[page],
+      detail: {
+        inboundLPs,
+      },
     });
   });
   // 直帰ノードを追加
@@ -819,12 +918,23 @@ function buildJourneyData({
   }
 
   // 列 4: 結果
-  // CV ノード
+  // CV ノード（詳細データ付き）
   Object.entries(cvAgg).forEach(([eventName, count]) => {
     const displayName = cvEventDisplayMap[eventName] || eventName;
     const change = compAggregations
       ? computeChange(count, compAggregations.cvAgg?.[eventName])
       : null;
+
+    // この CV に至った LP TOP 5
+    const inboundLPs = topLPs
+      .map((lp) => ({
+        name: lp,
+        value: lpToCvFlow[`${lp}|||${eventName}`] || 0,
+      }))
+      .filter((e) => e.value > 0)
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5);
+
     nodes.push({
       id: `cv-${eventName}`,
       column: 4,
@@ -833,6 +943,10 @@ function buildJourneyData({
       value: count,
       share: totalSessions > 0 ? count / totalSessions : 0,
       change,
+      detail: {
+        inboundLPs,
+        cvRate: totalSessions > 0 ? count / totalSessions : 0,
+      },
     });
   });
   // 離脱ノード
@@ -891,18 +1005,7 @@ function buildJourneyData({
   });
 
   // ===== ストーリーカード TOP 3 =====
-  // GSC: ページ → キーワード逆引きマップ
-  const pageToKeywords = {}; // page → [{ query, clicks }]
-  if (gscEnabled && Array.isArray(gscData)) {
-    gscData.forEach((r) => {
-      if (!pageToKeywords[r.page]) pageToKeywords[r.page] = [];
-      pageToKeywords[r.page].push({ query: r.query, clicks: r.clicks });
-    });
-    Object.keys(pageToKeywords).forEach((p) => {
-      pageToKeywords[p].sort((a, b) => b.clicks - a.clicks);
-    });
-  }
-
+  // pageToKeywords は引数で渡される（GSC データから事前構築）
   const storyTop3 = buildStoryTop3({
     detailPaths,
     totalSessions,
