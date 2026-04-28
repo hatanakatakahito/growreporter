@@ -209,6 +209,8 @@ export default function Sidebar() {
             { label: 'ページフロー', path: '/analysis/page-flow' },
           ]
         },
+        // 管理者プレビュー: ユーザージャーニー（feature flag）
+        { label: 'ユーザージャーニー', path: '/analysis/user-journey', adminOnly: true },
         {
           label: 'コンバージョン',
           hasSubmenu: true,
@@ -329,7 +331,7 @@ export default function Sidebar() {
                   </button>
                   {isAnalysisOpen && isSidebarOpen && (
                     <ul className={`ml-2 mt-2 space-y-1 border-l ${t.subBorder} pl-2`}>
-                      {item.submenu.map((subItem, subIndex) => (
+                      {item.submenu.filter(s => !s.adminOnly || isAdmin).map((subItem, subIndex) => (
                         <li key={subIndex}>
                           {subItem.hasSubmenu ? (
                             /* サブアコーディオン（時系列・集客・ページ・コンバージョン） */

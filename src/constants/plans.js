@@ -148,6 +148,7 @@ export const PAGE_TYPES = {
   PAGE_FLOW: 'pageFlow',
   CONVERSIONS: 'conversions',
   REVERSE_FLOW: 'reverseFlow',
+  USER_JOURNEY: 'userJourney',
   MONTHLY: 'analysis/month',
   COMPREHENSIVE_ANALYSIS: 'comprehensive_analysis',
 };

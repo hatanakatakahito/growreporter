@@ -6,6 +6,7 @@ import { useSidebar } from '../../contexts/SidebarContext';
 import { useSite } from '../../contexts/SiteContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlan } from '../../hooks/usePlan';
+import { useAdmin } from '../../hooks/useAdmin';
 import { useGlobalMemoNotifications } from '../../hooks/useGlobalMemoNotifications';
 import { useGlobalAlertNotifications } from '../../hooks/useGlobalAlertNotifications';
 import GlobalNotificationModal from './GlobalMemoNotificationModal';
@@ -100,6 +101,7 @@ function MobileDrawer({ isOpen, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isFree } = usePlan();
+  const { isAdmin } = useAdmin();
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
@@ -134,6 +136,7 @@ function MobileDrawer({ isOpen, onClose }) {
     { label: 'コンテンツ分析', path: '/analysis/content', indent: 2 },
     { label: 'ページ分類別', path: '/analysis/page-categories', indent: 2 },
     { label: 'ランディングページ', path: '/analysis/landing-pages', indent: 2 },
+    ...(isAdmin ? [{ label: 'ユーザージャーニー', path: '/analysis/user-journey', indent: true }] : []),
     { groupLabel: 'コンバージョン' },
     { label: 'コンバージョン一覧', path: '/analysis/conversions', indent: 2 },
     { label: '逆算フロー', path: '/analysis/reverse-flow', indent: 2 },

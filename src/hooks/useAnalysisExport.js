@@ -285,6 +285,13 @@ const AI_SHEET_CONFIG = [
     getCompRawData: () => null,
     hasData: (d) => Array.isArray(d.reverseFlows) && d.reverseFlows.length > 0,
   },
+  {
+    exportKey: 'analysis/user-journey',
+    pageType: 'userJourney',
+    getRawData: (d) => d.userJourney,
+    getCompRawData: () => null,
+    hasData: (d) => !!(d.userJourney?.nodes?.length),
+  },
 ];
 
 // 未生成かつデータありの AI シートをバックエンドで自動生成して aiAnalysis にマージ
@@ -356,6 +363,7 @@ function buildCustomSheetsPayload(allData) {
     users: allData.demographics,
     conversions: allData.conversions,
     reverseFlows: allData.reverseFlows || [],
+    userJourney: allData.userJourney || null,
     improvements: (allData.improvements || []).map((item) => {
       const price = formatEstimatedPriceLabel(item.estimatedLaborHours);
       const delivery = formatEstimatedDeliveryLabel(item.estimatedLaborHours);
@@ -673,6 +681,27 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
       : Promise.resolve(null);
   }
 
+  // ユーザージャーニー（管理者向けプレビュー機能のため、エラー時は無視）
+  const ujCompStart = comparisonDateRange
+    ? (typeof comparisonDateRange.from === 'string' ? comparisonDateRange.from : format(comparisonDateRange.from, 'yyyy-MM-dd'))
+    : null;
+  const ujCompEnd = comparisonDateRange
+    ? (typeof comparisonDateRange.to === 'string' ? comparisonDateRange.to : format(comparisonDateRange.to, 'yyyy-MM-dd'))
+    : null;
+  const fetchUserJourney = httpsCallable(functions, 'fetchGA4UserJourneyData');
+  promises.userJourney = fetchUserJourney({
+    siteId: selectedSiteId,
+    startDate,
+    endDate,
+    compStartDate: ujCompStart,
+    compEndDate: ujCompEnd,
+  })
+    .then((r) => r.data)
+    .catch((e) => {
+      console.warn('[Export] userJourney fetch failed (skip):', e.message);
+      return null;
+    });
+
   // 逆算フロー（設定がある場合のみ）
   if (reverseFlowSettings.length > 0) {
     promises.reverseFlows = Promise.all(
@@ -769,6 +798,7 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
     externalLinks: results.externalLinks,
     conversions: results.conversions,
     reverseFlows: results.reverseFlows || [],
+    userJourney: results.userJourney || null,
     improvements: results.improvements || [],
     aiAnalysis: results.aiAnalysis || {},
     memos: results.allMemos || {},

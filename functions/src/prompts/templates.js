@@ -147,6 +147,8 @@ export function getPromptTemplate(pageType, period, metrics, startDate, endDate,
     comprehensive_analysis: getComprehensiveAnalysisPrompt,
     pageFlow: getPageFlowPrompt,
     page_flow: getPageFlowPrompt,
+    userJourney: getUserJourneyPrompt,
+    'analysis/user-journey': getUserJourneyPrompt,
   };
 
   const templateFunc = templates[pageType];
@@ -521,6 +523,70 @@ function getReverseFlowPrompt(period, metrics) {
 - 全体コンバージョン率 (${startLabel}→コンバージョン完了): ${overallCVR.toFixed(2)}%${monthlyText}
 ${getComparisonContextBlock(metrics)}
 ${getCommonOutputRules(!!metrics.comparisonMetrics)}
+${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
+}
+
+// ==================== ユーザージャーニー分析 ====================
+
+function getUserJourneyPrompt(period, metrics) {
+  const totalSessions = metrics.totalSessions || 0;
+  const sourceBreakdown = metrics.sourceBreakdown || []; // [{ name, value, share, sourceType }]
+  const topLPs = metrics.topLPs || []; // [{ name, value }]
+  const cvBreakdown = metrics.cvBreakdown || []; // [{ name, value, share }]
+  const totalCv = metrics.totalCv || 0;
+  const totalExit = metrics.totalExit || 0;
+  const overallCvRate = totalSessions > 0 ? (totalCv / totalSessions) * 100 : 0;
+  const detailPaths = metrics.detailPaths || []; // [{ source, lp, middle, result, sessions, cvRate }]
+  const gscEnabled = metrics.gscEnabled !== false;
+
+  let sourcesText = '';
+  if (sourceBreakdown.length > 0) {
+    sourcesText = '\n\n【流入元別セッション】\n' + sourceBreakdown
+      .map((s) => `- ${s.name}: ${s.value.toLocaleString()}件 (${(s.share * 100).toFixed(1)}%)`)
+      .join('\n');
+  }
+
+  let lpsText = '';
+  if (topLPs.length > 0) {
+    lpsText = '\n\n【主要ランディングページ TOP 5】\n' + topLPs.slice(0, 5)
+      .map((lp, i) => `${i + 1}. ${lp.name}: ${lp.value.toLocaleString()}セッション`)
+      .join('\n');
+  }
+
+  let cvsText = '';
+  if (cvBreakdown.length > 0) {
+    cvsText = '\n\n【コンバージョン内訳】\n' + cvBreakdown
+      .map((c) => `- ${c.name}: ${c.value.toLocaleString()}件 (CV 率 ${(c.share * 100).toFixed(2)}%)`)
+      .join('\n');
+  }
+
+  let pathsText = '';
+  if (detailPaths.length > 0) {
+    pathsText = '\n\n【主要ジャーニーパス TOP 6】\n' + detailPaths.slice(0, 6)
+      .map((p, i) => `${i + 1}. ${p.source} → ${p.lp}${p.middle ? ` → ${p.middle}` : ''} → ${p.result} | ${p.sessions.toLocaleString()}セッション / CV 率 ${p.cvRate.toFixed(1)}%`)
+      .join('\n');
+  }
+
+  const gscNote = gscEnabled
+    ? ''
+    : '\n\n【補足】Search Console 未連携のためオーガニックキーワード列は集約表示。連携で詳細分析が可能になる。';
+
+  return `
+あなたはWebサイト分析の専門家です。${period}のユーザージャーニーデータを分析してください。
+流入元から最終結果（CV/離脱）までの 5層フロー（流入元 → KW/参照元 → ランディングページ → 中間ページ → 結果）を踏まえ、サイトの稼ぎ頭となるジャーニーパターンと改善余地の大きいパターンを浮き彫りにしてください。
+
+【当期データ】
+- 総セッション: ${totalSessions.toLocaleString()}件
+- 総コンバージョン: ${totalCv.toLocaleString()}件
+- 全体 CV 率: ${overallCvRate.toFixed(2)}%
+- 離脱: ${totalExit.toLocaleString()}件${sourcesText}${lpsText}${cvsText}${pathsText}${gscNote}
+${getComparisonContextBlock(metrics)}
+${getCommonOutputRules(!!metrics.comparisonMetrics)}
+
+【追加の出力ルール】
+- 「最大ジャーニー（流入元 → LP → 中間 → 結果）」を 1 つ特定し、なぜ機能しているか / さらに伸ばす方法を述べる
+- 改善余地の大きいパターン（流入が多いが CV 率が低い等）を 1-2 個挙げる
+- KW/参照元 列の活用度（GSC が連携されている場合は具体的なキーワードクラスタの傾向）に触れる
 ${getCommonOutputRulesFooter()}${getScrapingContextBlock(metrics)}`;
 }
 
@@ -1822,7 +1888,28 @@ ${userNoteBlock}${improvementFocusLine}${existingImprovementsText}
 タイトル: 具体的なタイトル。ページパス・URLを明記
 説明: 必ず以下の3ブロック構造で記述する。各ブロックは見出し記号を必ず付けて、分量は各80〜150文字を目安とする（不足する場合のみ短くても可）。${siteContext?.siteRoleText || siteContext?.siteTypeText || 'このサイト役割'}／${siteContext?.industryText || 'この業種'}にとってなぜ有効かを含めること。マークダウン記号（**、#、-、*）や番号リストは使わない。
 【現状の問題】現状の実文言・実数値を引用し、何が問題か・なぜ改善が必要かを説明
-【提案内容】①、②、③…の番号付き項目形式で記述。各項目は「①<変更タイトル>：<補足説明>」の形（タイトルの直後に全角コロン「：」を置き、その後に補足説明を続ける。例: ①CTA文言の見直し：送信ボタンを「資料をダウンロードする」に変更し、Before/Afterで…）
+【提案内容】①、②、③…の番号付き項目で 2〜4 個記述。
+
+★★★ 提案内容の絶対フォーマット (違反は絶対不可、フロント UI が parse できなくなる) ★★★
+各項目は必ず以下の構造:
+  「①<変更タイトル: 8〜20字>：<補足説明: 60〜120字>」
+
+  - <変更タイトル> は何を変えるかを名詞句で簡潔に表現 (動詞「〜を〜する」形でも可)
+  - 直後に必ず「：」(全角コロン) を置く
+  - その後に補足説明を続ける (具体的な実装方法・なぜ効くか)
+  - 例文を真似る形で必ずこの構造に従うこと
+
+良い例 (この形を厳守):
+  ①CTA文言の具体化：送信ボタンの文言を「お問い合わせ」から「無料相談を予約する」に変更し、ユーザーの行動を具体化することでCV率向上を狙う
+  ②フォーム項目数の削減：必須項目を10→5項目に減らし、入力負担を軽減して離脱率を下げる
+  ③信頼バッジの追加：会社実績・受賞歴をフォーム横に配置し、最終クリック直前の不安を解消する
+
+悪い例 (絶対に出してはいけない):
+  ❌「①「Google Mapを見る」のリンクをクリックした際に、地図がサイト内に直接表示されるように、埋め込み（iframe）などの実装を行います。」
+  → タイトルが無く全部説明文になっている。フロント UI で parse できず title が空になる。
+  ✅ 正しい形:「①Google Mapの埋め込み実装：「Google Mapを見る」リンクをクリックすると地図がサイト内に直接表示されるよう、iframe での埋め込み実装を行う」
+
+★ 各項目で「：」(全角コロン) は必須。これが無いと提案が表示できない。
 【なぜ効くか】この施策がユーザー行動・検索エンジン・コンバージョンにどう作用するか
 重複判定用ラベル: この施策のテーマを1〜3語で（例: alt属性, h1タグ, 記事CTA）
 カテゴリー: acquisition | content | design | feature | other
@@ -1857,6 +1944,162 @@ ${userNoteBlock}${improvementFocusLine}${existingImprovementsText}
 `;
 }
 
+
+// ==================== 手動改善案 AI 補完プロンプト ====================
+
+/**
+ * ユーザーが入力した「対象 + 改善方向」を、改善案として完全な情報に補完するプロンプト。
+ * 制作会社への修正依頼の意思整理ツールとして使うため、
+ * 専門用語不要・口語入力 OK の前提で、AI が title/description/期待効果/料金等を自動補完する。
+ *
+ * @param {object} input
+ * @param {'existing_single'|'existing_template'|'new_page'} input.targetType
+ * @param {string|null} input.targetPageUrl - existing_* のみ
+ * @param {string} input.userIntent - フリーテキスト改善方向（必須）
+ * @param {string|null} input.targetSection - 対象セクション（任意、プリセット or 'other'）
+ * @param {string|null} input.targetSectionDetail - section==='other' 時の詳細
+ * @param {string[]} input.referenceUrls - 参考他社 URL（あれば）
+ * @param {object} pageData
+ * @param {string|null} pageData.snapshotHtml - 対象ページの構造 HTML（existing_*）
+ * @param {object|null} pageData.scrapingData - pageScrapingData（あれば）
+ * @param {object} siteContext - industry/siteRole/sitePurpose 等
+ * @param {object[]} referenceData - 参考 URL のサマリ（あれば）
+ * @returns {string}
+ */
+export function getManualImprovementExpansionPrompt(input, pageData, siteContext, referenceData) {
+  const {
+    targetType,
+    targetPageUrl,
+    userIntent,
+    targetSection,
+    targetSectionDetail,
+    referenceUrls = [],
+  } = input || {};
+
+  const sectionLabelMap = {
+    header: 'ヘッダー',
+    first_view: 'ファーストビュー',
+    body: '本文',
+    cta: 'CTA',
+    form: 'フォーム',
+    faq: 'FAQ',
+    footer: 'フッター',
+    other: 'その他',
+  };
+
+  const targetTypeText = {
+    existing_single: '既存ページ（単一 URL）に対する改善',
+    existing_template: '同一テンプレートで生成される複数ページ（商品詳細・事例詳細など）に対する共通改善。代表 URL を 1 つ提示しているが、提案は同テンプレ全ページに適用される前提で考えること',
+    new_page: '新規ページの提案。サイトに該当ページがまだ存在しないため、新たに追加するページの目的・構成を考えること',
+  }[targetType] || '改善対象タイプ不明';
+
+  const sectionText = targetSection
+    ? `\n## ユーザーが指定した対象セクション\n主に「${sectionLabelMap[targetSection] || targetSection}」セクションに関する改善${
+        targetSection === 'other' && targetSectionDetail ? `（具体的には: ${targetSectionDetail}）` : ''
+      }`
+    : '';
+
+  const pageSnapshotText = pageData?.snapshotHtml
+    ? `\n## 対象ページの構造 HTML\n（<style>中身と data URI は省略）\n\`\`\`html\n${pageData.snapshotHtml.substring(0, 30000)}\n\`\`\``
+    : '';
+
+  const scrapingSummary = pageData?.scrapingData
+    ? `\n## 対象ページのスクレイピングデータ要約\nメタタイトル: ${pageData.scrapingData.metaTitle || '(なし)'}\nメタ説明: ${pageData.scrapingData.metaDescription || '(なし)'}\nPV: ${pageData.scrapingData.pageViews || 0} / ユーザー数: ${pageData.scrapingData.users || 0}`
+    : '';
+
+  const referenceText = referenceUrls.length > 0
+    ? `\n## ユーザーが参考にしたい他社 URL\n${referenceUrls.map((u, i) => `${i + 1}. ${u}`).join('\n')}\n（参考画像があれば multimodal 入力で添付されている）`
+    : '';
+
+  const referenceDataText = referenceData?.length
+    ? `\n## 参考 URL の構造要約\n${referenceData.map((r, i) => `[${i + 1}] ${r.url}\n  タイトル: ${r.title || '(なし)'}\n  ${r.summary || ''}`).join('\n\n')}`
+    : '';
+
+  const siteContextText = `\n## サイトコンテキスト\n業種: ${siteContext?.industry || siteContext?.industryText || '(不明)'}\nサイト役割: ${siteContext?.siteRole || siteContext?.siteRoleText || '(不明)'}\nサイト目的: ${siteContext?.sitePurpose || '(不明)'}`;
+
+  return `あなたは Web サイト改善のエキスパート兼コンサルタントです。
+ユーザーが「修正依頼を制作会社に送る前の意思整理」のために改善案を入力しました。
+ユーザー入力（しばしば素人の口語表現）を受け取り、制作会社が見積を切れる粒度で改善案を補完してください。
+
+## ユーザー入力
+
+### 改善対象タイプ
+${targetTypeText}
+
+### 対象 URL
+${targetPageUrl || '(新規ページのため URL なし)'}
+
+### ユーザーが望む改善（口語フリーテキスト）
+${userIntent}
+${sectionText}
+${referenceText}
+${siteContextText}
+${pageSnapshotText}
+${scrapingSummary}
+${referenceDataText}
+
+## 出力形式
+
+JSON のみ返答してください。説明文・マークダウンは不要。
+
+\`\`\`json
+{
+  "title": "改善案のタイトル（具体的、ページパス・URL を含む。30〜60 字目安）",
+  "description": "【現状の問題】〜【提案内容】〜【なぜ効くか】の 3 ブロック必須形式。詳細は下記ルール参照",
+  "category": "acquisition | content | design | feature | other のいずれか",
+  "priority": "high | medium | low のいずれか",
+  "expectedImpact": "定量的な期待効果（例: CVR 0.5%→1.0%、月間問い合わせ +5件）。AI による推定値、見積依頼時の参考",
+  "estimatedLaborHours": 0.5〜100 の数値。AI による推定、見積依頼時の参考,
+  "targetArea": "ヘッダー・フッター等の対象箇所（特定ページなら空欄でも可）"
+}
+\`\`\`
+
+## description のフォーマットルール
+
+3 ブロック構造を厳守:
+
+【現状の問題】
+現状の実文言・実数値を引用し、何が問題か・なぜ改善が必要かを 80〜150 字で記述。
+${targetType === 'new_page' ? 'new_page の場合は「該当ページが存在しない」観点で書く。サイトのコンテキストから「なぜこのページが必要か」を説明。' : ''}
+
+【提案内容】
+①、②、③…の番号付き項目で 2〜4 個記述。
+
+★★★ 提案内容の絶対フォーマット (違反は絶対不可、フロント UI が parse できなくなる) ★★★
+各項目は必ず以下の構造:
+  「①<変更タイトル: 8〜20字>：<補足説明: 60〜120字>」
+
+  - <変更タイトル> は何を変えるかを名詞句で簡潔に表現
+  - 直後に必ず「：」(全角コロン) を置く
+  - その後に補足説明を続ける (具体的な実装方法・なぜ効くか)
+
+良い例 (この形を厳守):
+  ①CTA文言の具体化：送信ボタンの文言を「お問い合わせ」から「無料相談を予約する」に変更し、ユーザーの行動を具体化することでCV率向上を狙う
+  ②フォーム項目数の削減：必須項目を10→5項目に減らし、入力負担を軽減して離脱率を下げる
+  ③信頼バッジの追加：会社実績・受賞歴をフォーム横に配置し、最終クリック直前の不安を解消する
+
+悪い例 (絶対に出してはいけない):
+  ❌「①「Google Mapを見る」のリンクをクリックした際に、地図がサイト内に直接表示されるように、埋め込み（iframe）などの実装を行います。」
+  → タイトルが無く全部説明文。フロント UI で title が空になり提案内容として表示されない。
+  ✅ 正しい形:「①Google Mapの埋め込み実装：「Google Mapを見る」リンクをクリックすると地図がサイト内に直接表示されるよう、iframe での埋め込み実装を行う」
+
+★ 各項目で「：」(全角コロン) は必須。これが無いと提案が表示できない。
+${targetType === 'existing_template' ? '同テンプレ複数ページに共通する変更として記述すること（例: 「事例カード共通の変更」）。' : ''}
+${targetSection ? `主に「${sectionLabelMap[targetSection] || targetSection}」セクションに関する内容を中心に。` : ''}
+
+【なぜ効くか】
+この施策がユーザー行動・検索エンジン・コンバージョンにどう作用するかを 80〜150 字で記述。
+
+## 重要な指示
+
+- ユーザー入力が短く曖昧でも、対象ページの構造・サイトコンテキストを踏まえて具体的な提案に補完すること
+- ユーザーが「もっと目立たせたい」のような口語で書いていたら、AI が「具体的にどこをどう」を判断して描写すること
+- 専門用語はマーケティング担当者にもわかるレベルに（CVR、CTR、A/B テスト等は OK、HTTP/CSS の専門は避ける）
+- マークダウン記号（**、#、-、*）や番号リスト（1. 2. 3.）は description 内では禁止。①②③（丸数字）のみ使用
+- ${targetType === 'new_page' ? 'new_page の場合: estimatedLaborHours は新規ページ作成相応の値（10〜40 時間目安）' : '既存ページ改善の estimatedLaborHours は 0.5〜20 時間目安'}
+- 不確実な数値は出さない。expectedImpact は「○○%→○○%」のような目安レンジで OK
+`;
+}
 
 // ==================== 改善効果AI評価プロンプト ====================
 

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
+import { useAdmin } from '../../hooks/useAdmin';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import { setPageTitle } from '../../utils/pageTitle';
 import {
@@ -19,6 +20,7 @@ import {
   FolderTree,
   Target,
   GitMerge,
+  Network,
   Sparkles,
 } from 'lucide-react';
 
@@ -28,6 +30,7 @@ import {
  */
 export default function AnalysisNavigation() {
   const { dateRange, updateDateRange } = useSite();
+  const { isAdmin } = useAdmin();
 
   // ページタイトルを設定
   useEffect(() => {
@@ -144,6 +147,18 @@ export default function AnalysisNavigation() {
             },
           ],
         },
+        // ユーザージャーニー（管理者プレビュー）
+        ...(isAdmin ? [{
+          title: 'ジャーニー分析',
+          items: [
+            {
+              icon: <Network className="h-6 w-6" />,
+              title: 'ユーザージャーニー',
+              description: '流入元から最終結果までの 5 層フローをサンキー図で可視化し、主要パターンを AI が要約します。',
+              path: '/analysis/user-journey',
+            },
+          ],
+        }] : []),
         {
           title: 'コンバージョン分析',
           items: [

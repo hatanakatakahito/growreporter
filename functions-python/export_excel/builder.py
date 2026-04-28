@@ -40,6 +40,7 @@ from .sheets.users import create_users_sheet
 from .sheets.conversions import create_conversions_sheet
 from .sheets.improvements import create_improvements_sheet
 from .sheets.reverse_flow import create_reverse_flow_sheet
+from .sheets.user_journey import create_user_journey_sheet
 from .styles import (
     AI_CONTENT_STYLE,
     AI_PLACEHOLDER_STYLE,
@@ -234,6 +235,18 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             sheet_subtitle=sheet_subtitle,
         )
 
+    # ─── 17.5 ユーザージャーニー ─────────────────────────
+    user_journey = custom.get("userJourney")
+    if user_journey and user_journey.get("nodes"):
+        create_user_journey_sheet(
+            workbook,
+            user_journey=user_journey,
+            ai_data=ai_analysis.get("analysis/user-journey"),
+            memos=memos.get("analysis/user-journey"),
+            formats=formats,
+            sheet_subtitle=sheet_subtitle,
+        )
+
     # ─── 18. 改善提案 ───────────────────────────────────
     improvements = custom.get("improvements")
     if improvements and len(improvements) > 0:
@@ -358,6 +371,8 @@ def _compute_available_sheets(custom: dict, sheets_data: dict) -> list[str]:
         names.append("コンバージョン一覧")
     if custom.get("reverseFlows"):
         names.append("逆算フロー")
+    if custom.get("userJourney") and custom["userJourney"].get("nodes"):
+        names.append("ユーザージャーニー")
     if custom.get("improvements"):
         names.append("改善提案")
     return names

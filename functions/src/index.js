@@ -118,6 +118,12 @@ export const fetchGA4PagePaths = lazyCallable('./callable/fetchGA4PagePaths.js',
 export const fetchGA4PageTransition = lazyCallable('./callable/fetchGA4PageTransition.js', 'fetchGA4PageTransitionCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
+ * GA4 ユーザージャーニーデータ取得 Callable Function
+ * 5層フロー (流入元 → KW → LP → 中間 → 結果) を GA4 + GSC から構築
+ */
+export const fetchGA4UserJourneyData = lazyCallable('./callable/fetchGA4UserJourneyData.js', 'fetchGA4UserJourneyDataCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['GEMINI_API_KEY'] });
+
+/**
  * GSCデータ取得 Callable Function
  * フロントエンドから呼び出されるAPI
  */
@@ -132,12 +138,12 @@ export const captureScreenshot = lazyCallable('./callable/captureScreenshot.js',
 /**
  * 改善モーダル Before 枠用のオンデマンドスクショ取得（PSI）
  */
-export const captureBeforeScreenshot = lazyCallable('./callable/captureBeforeScreenshot.js', 'captureBeforeScreenshotCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] });
+export const captureBeforeScreenshot = lazyCallable('./callable/captureBeforeScreenshot.js', 'captureBeforeScreenshotCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY', 'CF_PROXY_SECRET'] });
 
 /**
  * サイトPV上位10ページのBefore予熱（方針選択モーダル開時に呼出）
  */
-export const preheatSitePageScreenshots = lazyCallable('./callable/preheatSitePageScreenshots.js', 'preheatSitePageScreenshotsCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] });
+export const preheatSitePageScreenshots = lazyCallable('./callable/preheatSitePageScreenshots.js', 'preheatSitePageScreenshotsCallable', { memory: '512MiB', timeoutSeconds: 540, secrets: ['PSI_API_KEY', 'CF_PROXY_SECRET'] });
 
 
 /**
@@ -511,6 +517,18 @@ export const adminDeleteSite = lazyCallable('./callable/admin/adminDeleteSite.js
 export const adminUpdateSiteTaxonomy = lazyCallable('./callable/admin/adminUpdateSiteTaxonomy.js', 'adminUpdateSiteTaxonomyCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
+ * 改善ロジック統一化プラン (Phase 5-A) のマイグレーション運用ツール:
+ *   全サイトの Before スクショを render+shot ベースで一括再撮影。
+ *   timeoutSeconds: 3600 (60min)、サイト間で 30s stagger。
+ *   進捗は adminJobs/{jobId} を参照。
+ */
+export const regenerateAllSiteScreenshots = lazyCallable(
+  './callable/admin/regenerateAllSiteScreenshots.js',
+  'regenerateAllSiteScreenshotsCallable',
+  { memory: '512MiB', timeoutSeconds: 3600, secrets: ['CF_PROXY_SECRET'] }
+);
+
+/**
  * GA4上位100ページスクレイピング Callable Function（遅延読み込み）
  */
 export const scrapeTop100Pages = onCall({
@@ -549,7 +567,7 @@ export const generateImprovements = lazyCallable('./callable/generateImprovement
  * ユーザー入力（対象 + 改善方向）から AI が完全な改善案 JSON を生成
  * Firestore 保存はクライアント側で実行
  */
-export const expandManualImprovement = lazyCallable('./callable/expandManualImprovement.js', 'expandManualImprovementCallable', { memory: '512MiB', timeoutSeconds: 90, secrets: ['GEMINI_API_KEY'] });
+export const expandManualImprovement = lazyCallable('./callable/expandManualImprovement.js', 'expandManualImprovementCallable', { memory: '512MiB', timeoutSeconds: 180, secrets: ['GEMINI_API_KEY', 'PSI_API_KEY', 'CF_PROXY_SECRET'] });
 
 /**
  * 改善効果測定 Before指標スナップショット取得
@@ -573,7 +591,7 @@ export const captureBeforeImplementationSnapshot = lazyCallable(
  * 改善モックアップ生成 Callable Function（Gemini 2.5 Flash）
  * 手動トリガー：改善箇所のみの部分HTML生成
  */
-export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '512MiB', timeoutSeconds: 300, secrets: ['GEMINI_API_KEY'] });
+export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '512MiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY', 'PSI_API_KEY', 'CF_PROXY_SECRET'] });
 
 /**
  * プランアップグレードお問い合わせ送信

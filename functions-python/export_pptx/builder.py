@@ -238,6 +238,12 @@ def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
         ai_data=ai.get("analysis/reverse-flow"),
         memos=memos.get("analysis/reverse-flow") or memos.get("reverseFlow"),
     )
+    _create_user_journey_slide(
+        prs, ctx,
+        user_journey=custom.get("userJourney"),
+        ai_data=ai.get("analysis/user-journey"),
+        memos=memos.get("analysis/user-journey") or memos.get("userJourney"),
+    )
 
     # 8. Appendix
     _create_section_divider(prs, ctx, "Appendix")
@@ -2467,6 +2473,60 @@ def _create_reverse_flow_slide(
     )
     _add_slide_footer(slide, ctx)
     _create_ai_slide(prs, ctx, "逆算フロー", ai_data, memos)
+
+
+# ─── 17.5 ユーザージャーニー ────────────────────────────
+
+
+def _create_user_journey_slide(
+    prs: Presentation, ctx: _Ctx,
+    user_journey: dict | None,
+    ai_data: dict | None,
+    memos: list | None,
+) -> None:
+    """ユーザージャーニー（5層フロー）スライド: 主要ジャーニー TOP 3 + 詳細パス TOP 6"""
+    if not user_journey or not user_journey.get("nodes"):
+        return
+
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _fill_slide_bg(slide, Color.WHITE)
+    _add_slide_title(slide, ctx, "ユーザージャーニー")
+
+    has_ai = bool(ai_data and ai_data.get("summary"))
+    layout = calc_table_only_layout(has_ai)
+
+    detail_paths = user_journey.get("detailPaths") or []
+    headers = [
+        {"label": "#", "align": "right"},
+        {"label": "流入元", "align": "left"},
+        {"label": "ランディング", "align": "left"},
+        {"label": "中間", "align": "left"},
+        {"label": "結果", "align": "left"},
+        {"label": "セッション", "align": "right"},
+        {"label": "CV 率", "align": "right"},
+    ]
+    rows_out = []
+    for p in detail_paths[:8]:
+        if not isinstance(p, dict):
+            continue
+        rows_out.append([
+            str(p.get("rank") or ""),
+            p.get("source") or "",
+            p.get("lp") or "",
+            p.get("middle") or "—",
+            p.get("result") or "",
+            format_number(p.get("sessions") or 0),
+            f"{float(p.get('cvRate') or 0):.1f}%",
+        ])
+
+    if rows_out:
+        tbl_h = 0.4 * (len(rows_out) + 1)
+        _build_table(
+            slide, headers, rows_out, [0.5, 1.5, 2.8, 1.8, 1.2, 1.3, 1.0],
+            x=MARGIN_X, y=layout["table_y"], h=tbl_h,
+        )
+    _add_slide_footer(slide, ctx)
+    _create_ai_slide(prs, ctx, "ユーザージャーニー", ai_data, memos)
 
 
 # ─── 19. Appendix 用語集 ────────────────────────────────
