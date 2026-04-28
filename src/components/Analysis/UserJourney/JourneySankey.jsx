@@ -37,6 +37,7 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
   const containerRef = useRef(null);
   const [containerWidth, setContainerWidth] = useState(1100);
   const [zoom, setZoom] = useState(1);
+  const [selectedLinkIdx, setSelectedLinkIdx] = useState(null);
 
   // ResizeObserver でコンテナ幅を追跡
   useEffect(() => {
@@ -131,7 +132,33 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
         </button>
       </div>
 
-      <div style={{ overflow: 'auto' }}>
+      {/* 選択中リンクの詳細パネル（左上フローティング） */}
+      {selectedLinkIdx !== null && layoutLinks[selectedLinkIdx] && (
+        <div className="absolute top-3 left-3 z-10 bg-white border border-stroke rounded-md shadow-md px-4 py-3 max-w-sm">
+          <div className="flex items-start justify-between gap-3 mb-1.5">
+            <span className="text-[10px] uppercase tracking-wide text-body-color font-semibold">選択中の経路</span>
+            <button
+              onClick={() => setSelectedLinkIdx(null)}
+              className="text-[11px] text-primary hover:underline shrink-0"
+            >
+              クリア
+            </button>
+          </div>
+          <div className="text-sm font-semibold text-dark mb-1">
+            <span className="text-primary">{layoutLinks[selectedLinkIdx].source.name}</span>
+            <span className="text-body-color mx-1.5">→</span>
+            <span className="text-primary">{layoutLinks[selectedLinkIdx].target.name}</span>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-body-color">
+            <span>セッション: <span className="font-mono font-semibold text-dark">{layoutLinks[selectedLinkIdx].value.toLocaleString()}</span></span>
+            {layoutLinks[selectedLinkIdx].isDirect && (
+              <span className="rounded-sm bg-gray-100 text-body-color px-1.5 py-0.5 text-[10px] font-medium">直接アクセス（KW スキップ）</span>
+            )}
+          </div>
+        </div>
+      )}
+
+      <div style={{ overflow: 'auto' }} onClick={() => setSelectedLinkIdx(null)}>
         <svg
           width={containerWidth - 48}
           height={height}
@@ -163,20 +190,38 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
             );
           })}
 
-          {/* リンク（フロー） */}
+          {/* リンク（フロー） - 二層構造で見た目とクリック領域を分離 */}
           <g fill="none">
             {layoutLinks.map((l, i) => {
               const sourceColor = l.isDirect ? '#94A3B8' : getNodeColor(l.source);
+              const baseOpacity = l.isDirect ? 0.5 : 0.35;
+              const isHighlighted = selectedLinkIdx === i;
+              const isDimmed = selectedLinkIdx !== null && !isHighlighted;
+              const opacity = isHighlighted ? 0.85 : isDimmed ? 0.08 : baseOpacity;
               return (
-                <path
-                  key={i}
-                  d={linkPath(l)}
-                  stroke={sourceColor}
-                  strokeWidth={Math.max(1, l.width)}
-                  strokeOpacity={l.isDirect ? 0.5 : 0.35}
-                  strokeDasharray={l.isDirect ? '4 3' : null}
-                  className="sankey-link"
-                />
+                <g key={i}>
+                  {/* 見た目のパス */}
+                  <path
+                    d={linkPath(l)}
+                    stroke={sourceColor}
+                    strokeWidth={Math.max(1, l.width)}
+                    strokeOpacity={opacity}
+                    strokeDasharray={l.isDirect ? '4 3' : null}
+                    className="sankey-link"
+                    style={{ transition: 'stroke-opacity 0.15s' }}
+                  />
+                  {/* クリック領域（透明、最低 12px の判定領域） */}
+                  <path
+                    d={linkPath(l)}
+                    stroke="transparent"
+                    strokeWidth={Math.max(12, l.width)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedLinkIdx(isHighlighted ? null : i);
+                    }}
+                    style={{ cursor: 'pointer' }}
+                  />
+                </g>
               );
             })}
           </g>
@@ -202,7 +247,11 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
                 <g
                   key={i}
                   className="cursor-pointer"
-                  onClick={() => onNodeClick && onNodeClick(n)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedLinkIdx(null);
+                    onNodeClick && onNodeClick(n);
+                  }}
                 >
                   <rect
                     x={n.x0}
