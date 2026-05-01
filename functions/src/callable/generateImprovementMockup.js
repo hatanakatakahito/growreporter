@@ -18,6 +18,16 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import * as cheerio from 'cheerio';
 import { captureFullSnapshot, readSnapshotHtml } from '../utils/captureFullSnapshot.js';
+import { captureBrowserRendering, readBrowserRenderedHtml } from '../utils/captureBrowserRendering.js';
+import { captureBrowserScreenshot } from '../utils/captureBrowserScreenshot.js';
+
+/**
+ * Cloudflare Browser Rendering 経路を使うか判定。
+ * 環境変数 USE_BROWSER_RENDERING=true で有効化（未設定なら旧 PSI/CF Worker snapshot 経路）。
+ */
+function isBrowserRenderingEnabled() {
+  return process.env.USE_BROWSER_RENDERING === 'true';
+}
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -71,8 +81,22 @@ export async function generateImprovementMockupCallable(req) {
       'リダイレクト', '301', '302', '404',
       'アクセシビリティ', 'WCAG',
     ];
-    const titleAndDesc = `${improvement.title || ''} ${improvement.description || ''}`;
-    const isNonVisual = NON_VISUAL_KEYWORDS.some(kw => titleAndDesc.toLowerCase().includes(kw.toLowerCase()));
+    // 判定対象テキストから URL を除去（URL 内の "https"/"404" 等が誤マッチするため）
+    const titleAndDescRaw = `${improvement.title || ''} ${improvement.description || ''}`;
+    const titleAndDesc = titleAndDescRaw.replace(/https?:\/\/[^\s）)」』】＞>"']+/gi, '');
+    // ASCII の短縮キーワードは単語境界マッチ（"INP" が "input" にマッチする等の誤判定回避）
+    // 日本語キーワードは includes でそのまま判定
+    const titleAndDescLower = titleAndDesc.toLowerCase();
+    const isNonVisual = NON_VISUAL_KEYWORDS.some(kw => {
+      const lower = kw.toLowerCase();
+      // 半角英数字・記号のみで構成されるキーワードは単語境界で判定
+      if (/^[\x20-\x7E]+$/.test(kw)) {
+        const escaped = lower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`(?:^|[^a-z0-9])${escaped}(?![a-z0-9])`, 'i');
+        return re.test(titleAndDescLower);
+      }
+      return titleAndDescLower.includes(lower);
+    });
     if (isNonVisual) {
       console.log(`[generateImprovementMockup] Skipped (non-visual): ${improvementId} — "${improvement.title}"`);
       await db.doc(`sites/${siteId}/improvements/${improvementId}`).update({
@@ -179,66 +203,57 @@ export async function generateImprovementMockupCallable(req) {
       }
     }
 
-    // 1d. 既存スクショが無ければ PSI API でオンデマンド撮影（PC + Mobile）
+    // 1d. 既存スクショが無ければオンデマンド撮影
+    //     CF Worker Browser Rendering で PC のみ撮影 (PSI 経路は廃止)
+    //     Workers Free は 20s 1 ブラウザ制限があるため PC + Mobile 並列は避ける
     //     撮影結果は pageScreenshots に保存し、次回以降の再利用を可能にする
     if (!beforeScreenshotBase64 && improvement.targetPageUrl) {
       try {
-        console.log(`[generateImprovementMockup] On-demand PSI capture: ${improvement.targetPageUrl}`);
-        const { captureSingleScreenshot } = await import('../utils/captureSingleScreenshot.js');
+        console.log(`[generateImprovementMockup] On-demand Browser Rendering capture: ${improvement.targetPageUrl}`);
         const { FieldValue } = await import('firebase-admin/firestore');
 
-        // サイト所有者 uid を Storage パス用に取得
         const siteDoc = await db.collection('sites').doc(siteId).get();
-        const siteOwnerId = siteDoc.data()?.userId || userId;
+        const siteOwnerId = siteDoc.data()?.userId;
         const pagePath = (() => {
           try { return new URL(improvement.targetPageUrl).pathname; } catch { return '/'; }
         })();
 
-        // PC + Mobile を並列取得
-        const [pcResult, mobileResult] = await Promise.all([
-          captureSingleScreenshot({
+        if (siteOwnerId) {
+          const pcResult = await captureBrowserScreenshot({
             url: improvement.targetPageUrl,
             deviceType: 'pc',
             userId: siteOwnerId,
             options: { storagePathPrefix: 'page-screenshots', siteId, pagePath },
-          }),
-          captureSingleScreenshot({
-            url: improvement.targetPageUrl,
-            deviceType: 'mobile',
-            userId: siteOwnerId,
-            options: { storagePathPrefix: 'page-screenshots', siteId, pagePath },
-          }),
-        ]);
-
-        if (pcResult?.imageUrl || mobileResult?.imageUrl) {
-          // pageScreenshots に保存（PC を screenshotUrl に、Mobile を screenshotUrlMobile に）
-          await db.collection('sites').doc(siteId).collection('pageScreenshots').add({
-            url: improvement.targetPageUrl,
-            pagePath,
-            screenshotUrl: pcResult?.imageUrl || null,
-            screenshotUrlMobile: mobileResult?.imageUrl || null,
-            imageSize: pcResult?.imageSize || 0,
-            mobileImageSize: mobileResult?.imageSize || 0,
-            screenshotType: pcResult?.screenshotType || mobileResult?.screenshotType || null,
-            source: 'on-demand-psi',
-            capturedAt: FieldValue.serverTimestamp(),
           });
-          // _meta 更新（Improve.jsx の realtime listener を発火させる）
-          await db.collection('sites').doc(siteId).collection('pageScreenshots').doc('_meta').set({
-            lastCapturedAt: FieldValue.serverTimestamp(),
-          }, { merge: true });
 
-          // Gemini 入力用に PC 版を base64 化（モックアップ生成は従来通り PC ベース）
-          const primaryUrl = pcResult?.imageUrl || mobileResult?.imageUrl;
-          const res = await fetch(primaryUrl);
-          if (res.ok) {
-            const buffer = await res.arrayBuffer();
-            beforeScreenshotBase64 = `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`;
-            screenshotSource = 'on-demand-psi';
+          if (pcResult?.imageUrl) {
+            await db.collection('sites').doc(siteId).collection('pageScreenshots').add({
+              url: improvement.targetPageUrl,
+              pagePath,
+              screenshotUrl: pcResult.imageUrl,
+              screenshotUrlMobile: null,
+              imageSize: pcResult?.imageSize || 0,
+              mobileImageSize: 0,
+              screenshotType: pcResult?.screenshotType || null,
+              source: 'on-demand-browser-rendering',
+              capturedAt: FieldValue.serverTimestamp(),
+            });
+            // _meta 更新（Improve.jsx の realtime listener を発火させる）
+            await db.collection('sites').doc(siteId).collection('pageScreenshots').doc('_meta').set({
+              lastCapturedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+
+            // Gemini 入力用に PC 版を base64 化（モックアップ生成は従来通り PC ベース）
+            const res = await fetch(pcResult.imageUrl);
+            if (res.ok) {
+              const buffer = await res.arrayBuffer();
+              beforeScreenshotBase64 = `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`;
+              screenshotSource = 'on-demand-browser-rendering';
+            }
           }
         }
       } catch (e) {
-        console.warn(`[generateImprovementMockup] On-demand PSI capture failed: ${e.message}`);
+        console.warn(`[generateImprovementMockup] On-demand capture failed: ${e.message}`);
       }
     }
 
@@ -606,17 +621,41 @@ function extractHtmlCss(rawText) {
 
 /**
  * Snapshot ベースで完全再現モックアップを生成する。失敗時は null を返す。
+ *
+ * USE_BROWSER_RENDERING=true なら Cloudflare Browser Rendering 経路（JS 実行後の DOM）を使用。
+ * 未設定なら従来の CF Worker snapshot 経路（素 HTML + CSS インライン化 + enhance 補正）。
  */
 async function trySnapshotBasedMockup({ siteId, improvementId, improvement, apiKey, db }) {
-  // 1) スナップショット取得（24h キャッシュ）
-  const snap = await captureFullSnapshot({ siteId, pageUrl: improvement.targetPageUrl });
-  if (!snap) {
-    console.log(`[snapshot_patch] snapshot capture failed for ${improvement.targetPageUrl}`);
-    return null;
+  // 1) ベース HTML を取得（24h キャッシュ）
+  let snapshotHtml = null;
+  let sourcePath = null;
+  let sourceMode = 'snapshot';
+
+  if (isBrowserRenderingEnabled()) {
+    sourceMode = 'browser-rendering';
+    const rendering = await captureBrowserRendering({
+      siteId,
+      pageUrl: improvement.targetPageUrl,
+      viewport: 'pc',
+    });
+    if (!rendering) {
+      console.log(`[snapshot_patch] browser-rendering capture failed for ${improvement.targetPageUrl}`);
+      return null;
+    }
+    snapshotHtml = await readBrowserRenderedHtml(rendering.storagePath);
+    sourcePath = rendering.storagePath;
+  } else {
+    const snap = await captureFullSnapshot({ siteId, pageUrl: improvement.targetPageUrl });
+    if (!snap) {
+      console.log(`[snapshot_patch] snapshot capture failed for ${improvement.targetPageUrl}`);
+      return null;
+    }
+    snapshotHtml = await readSnapshotHtml(snap.storagePath);
+    sourcePath = snap.storagePath;
   }
-  const snapshotHtml = await readSnapshotHtml(snap.storagePath);
+
   if (!snapshotHtml) {
-    console.log(`[snapshot_patch] snapshot HTML read failed: ${snap.storagePath}`);
+    console.log(`[snapshot_patch] HTML read failed (${sourceMode}): ${sourcePath}`);
     return null;
   }
 
@@ -659,7 +698,8 @@ async function trySnapshotBasedMockup({ siteId, improvementId, improvement, apiK
   await db.doc(`sites/${siteId}/improvements/${improvementId}`).update({
     mockupStorageUrl,
     mockupStoragePath: mockupPath,
-    mockupSourceSnapshotPath: snap.storagePath,
+    mockupSourceSnapshotPath: sourcePath,
+    mockupSourceMode: sourceMode,
     mockupPatchChanges: patch.changes,
     mockupPatchSummary: patch.summary || '',
     mockupMode: 'snapshot_patch',
@@ -823,22 +863,60 @@ export async function requestPatchFromGemini({ apiKey, improvement, structuralHt
     if (!parsed) return lastParsed; // null or previous best
     lastParsed = parsed;
 
-    // カバレッジチェック: 全項目が change_label でカバーされているか
+    // 1) セレクタ実在検証: AI の target_selector が構造 HTML 内に実在するかを cheerio で検証
+    //    AI のハルシネーション (例: 実在しない `.l-recruit-form__resume` 等の BEM 命名) を検出して再試行
+    let failedSelectors = [];
+    try {
+      const $struct = cheerio.load(structuralHtml, { decodeEntities: false });
+      for (const change of parsed.changes || []) {
+        const sel = change?.target_selector;
+        if (!sel || typeof sel !== 'string') continue;
+        try {
+          if ($struct(sel).length === 0) {
+            failedSelectors.push({ selector: sel, label: change.change_label || '(no label)' });
+          }
+        } catch (e) {
+          failedSelectors.push({ selector: sel, label: change.change_label || '(no label)', error: e.message });
+        }
+      }
+    } catch (e) {
+      console.warn(`[requestPatchFromGemini] selector validation failed: ${e.message}`);
+    }
+
+    // 2) カバレッジチェック: 全項目が change_label でカバーされているか
     const missing = patchesCoverageGap(parsed.changes, expectedNums);
-    if (missing.length === 0) {
+
+    // 両方クリアなら完了
+    if (failedSelectors.length === 0 && missing.length === 0) {
       if (cvAttempt > 0) {
-        console.log(`[requestPatchFromGemini] coverage achieved after ${cvAttempt} retry(ies)`);
+        console.log(`[requestPatchFromGemini] all checks passed after ${cvAttempt} retry(ies)`);
       }
       return parsed;
     }
     if (cvAttempt >= MAX_COVERAGE_RETRIES) {
-      console.warn(`[requestPatchFromGemini] coverage incomplete after ${cvAttempt} retry(ies): missing ${missing.join(',')}`);
+      if (failedSelectors.length > 0) console.warn(`[requestPatchFromGemini] selector validation incomplete: ${failedSelectors.length} failed`);
+      if (missing.length > 0) console.warn(`[requestPatchFromGemini] coverage incomplete: missing ${missing.join(',')}`);
       return parsed;
     }
+
     // 次の試行用のフィードバック付加
-    const missingCircled = missing.map(n => Object.keys(CIRCLED_PATCH_MAP).find(k => CIRCLED_PATCH_MAP[k] === n)).join('、');
-    feedbackSuffix = `\n\n## ★再試行★\n前回の応答では ${missingCircled} の項目のパッチが生成されていませんでした。今回は必ず ${missingCircled} を含む **すべての番号項目** に対応するパッチを別々に生成してください。各項目の change_label は必ず対応する丸数字で始めてください。`;
-    console.warn(`[requestPatchFromGemini] coverage missing ${missing.join(',')}, retrying (${cvAttempt + 1}/${MAX_COVERAGE_RETRIES})`);
+    let parts = [];
+    if (failedSelectors.length > 0) {
+      parts.push(
+        `### ★selector 不一致検出★\n以下の target_selector は構造 HTML 内に**実在しません** (cheerio で 0 件)。代わりに **構造 HTML に実際に書かれているクラス名・ID・タグ** を使ってください:\n` +
+        failedSelectors.map(f => `- "${f.selector}" (label: ${f.label})${f.error ? ' — ' + f.error : ''}`).join('\n') +
+        `\n\n★絶対ルール★\n- target_selector は構造 HTML に実在するもの限定 (BEM 風の創作命名は禁止)\n- 実在クラスが微妙な場合は tag selector + nth-child や属性セレクタを使う\n- セレクタを書く前に必ず構造 HTML を grep してそのクラス名が存在することを確認すること`
+      );
+      console.warn(`[requestPatchFromGemini] ${failedSelectors.length} selectors not found, retrying (${cvAttempt + 1}/${MAX_COVERAGE_RETRIES})`);
+    }
+    if (missing.length > 0) {
+      const missingCircled = missing.map(n => Object.keys(CIRCLED_PATCH_MAP).find(k => CIRCLED_PATCH_MAP[k] === n)).join('、');
+      parts.push(
+        `### ★番号項目カバレッジ不足★\n前回の応答では ${missingCircled} の項目のパッチが生成されていませんでした。今回は必ず ${missingCircled} を含む **すべての番号項目** に対応するパッチを別々に生成してください。各項目の change_label は必ず対応する丸数字で始めてください。`
+      );
+      console.warn(`[requestPatchFromGemini] coverage missing ${missing.join(',')}, retrying (${cvAttempt + 1}/${MAX_COVERAGE_RETRIES})`);
+    }
+    feedbackSuffix = `\n\n## ★再試行フィードバック★\n${parts.join('\n\n')}`;
   }
   return lastParsed;
 }
@@ -907,7 +985,13 @@ ${structuralHtml}
     - ヘッダー・ナビなど**横幅が詰まっている flex/grid コンテナ**には新規要素を追加しない（オーバーフローで既存メニューを押し出すため）
     - 新規追加する要素は親コンテナの幅に収まること（幅固定や min-width を無理に指定しない）
     - style 属性 / style タグを書く場合は \`max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere;\` を含め、親のフローに従うこと
-    - 要素の追加はページ本文の**縦フロー方向**（セクション間、フォーム下、コンテンツ末尾など空間がある場所）に限定する`;
+    - 要素の追加はページ本文の**縦フロー方向**（セクション間、フォーム下、コンテンツ末尾など空間がある場所）に限定する
+12. **絵文字禁止 / アイコンは inline SVG**: 装飾アイコンを使う場合、**絵文字（📈 ✨ 🎯 💼 ⭐ 等）は使用禁止**。チープでビジネスサイトに合わない。代わりに **inline SVG** を直接 HTML に書く。例:
+    - ○ \`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/></svg>\` (グラフアイコン)
+    - ○ \`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>\`
+    - × \`📈\` \`✨\` \`🎯\` 等の絵文字
+    - SVG が思いつかない場合は、CSS の border / background-color で図形を作る（円・四角・三角）か、シンプルな数字（①②③）で代替
+    - Heroicons / Lucide / Feather 等のオープンソース SVG パスを inline で使うのが理想`;
 }
 
 function parsePatchJson(rawText) {
@@ -944,9 +1028,11 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
     return null;
   }
 
-  // 番号割当: 同じ change_label には同じ番号を割り当てる
-  // - change_label 先頭に丸数字 (①②③...) がある場合は提案項目番号を優先採用
-  //   → 提案の「② メインCTA変更」と モックアップバッジ「②」が 1:1 で一致
+  // 番号割当: 提案項目（左パネル ①②③）と mockup バッジを 1:1 対応させる
+  // - change_label 先頭の丸数字 (①②③...) があれば提案項目番号として採用
+  //   → 複数パッチが同じ提案項目に属する場合は同じ番号を共有 (例: ① h2 タグ →
+  //     会社概要・名古屋・東京の 3 箇所すべてバッジ ①)
+  // - フロント側は num で dedupe して左パネルと同じ件数のチップを表示
   // - 丸数字がない場合は出現順の fallback カウンタで採番
   const CIRCLED_NUM_MAP = { '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10 };
   const labelToNum = new Map();
@@ -1076,6 +1162,40 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
   // 入れ子 data-changed の重複排除は行わない（両方を表示するが、CSS で内側は薄く表示）
   // → 必要ならここで $('[data-changed] [data-changed]') を処理
 
+  // ========================================================
+  // フッター余白の根本対処: <footer> 以降の兄弟要素を物理削除
+  // ========================================================
+  // 多くのコーポレートサイトは body 末尾に以下を持つ:
+  //   - back-to-top FAB / page-top ボタン (`<a class="back-to-top">` 等)
+  //   - tracking pixel iframe / ポップアップ用空 div / モーダルコンテナ
+  //   - 100vh の min-height を持つ装飾要素
+  // これらを CSS で隠しても div 自体の height は残るため、iframe srcDoc で
+  // 巨大な空白として描画される。HTML から物理的に削除すれば確実に余白が消える。
+  //
+  // 戦略:
+  //   1. <footer> 要素を見つける (body 直下で最後の <footer>、または class に footer を含む要素)
+  //   2. その要素より後ろにある全兄弟要素を削除
+  //   3. 念のため class/id に back-to-top / pagetop / totop を含む要素も全削除
+  try {
+    // 1) body 直下の <footer> またはそれ相当を検出
+    const $footers = $('body > footer, body > [class*="footer"]:not([class*="footer-"]), body > [id*="footer"]:not([id*="footer-"])');
+    if ($footers.length > 0) {
+      // 最後の footer を採用 (複数ある場合)
+      const $lastFooter = $footers.last();
+      // その後ろの兄弟をすべて削除
+      $lastFooter.nextAll().remove();
+    }
+    // 2) どこにあろうと back-to-top 系・pagetop 系・totop 系は削除
+    //    (page-top__inner 等のサブ要素を誤爆しないため :not で完全一致系を弾く)
+    $(
+      '[class*="back-to-top"],[id*="back-to-top"],' +
+      '[class*="pagetop"],[id*="pagetop"],' +
+      '[class*="totop"],[id*="totop"]'
+    ).remove();
+  } catch (err) {
+    console.warn(`[applyPatchesToSnapshot] footer 末尾要素削除に失敗: ${err.message}`);
+  }
+
   // data-changed 用 CSS を head に注入（インラインラベル方式）
   // - アウトライン + 番号バッジ + 横に並ぶラベルピル（常時表示）
   // - ラベルは要素の「外側の上」に配置 → コンテンツを覆わない
@@ -1085,27 +1205,88 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
   const outlineCss = [
     // body 全体は不可、変更要素だけ受ける
     `body{pointer-events:none !important;}`,
-    // 変更箇所のアウトライン（クリック可）
-    // overflow:visible を強制 → ::before バッジが bottom:100% で外側に出ても親の overflow:hidden で消えないように
-    `[data-changed]{outline:3px solid #3758F9 !important;outline-offset:3px !important;border-radius:6px !important;position:relative !important;overflow:visible !important;z-index:1 !important;pointer-events:auto !important;cursor:pointer !important;transition:outline-width 0.15s, box-shadow 0.15s !important;}`,
-    `[data-changed]:hover{outline-width:4px !important;}`,
-    `[data-changed].__mockup-active{outline-width:5px !important;box-shadow:0 0 0 8px rgba(55,88,249,0.15) !important;}`,
-    // 番号バッジ（常時表示）
+    // 変更箇所の枠線（クリック可）
+    // ::after 擬似要素で要素の「内側」に枠を描画する (top/left/right/bottom: 10px 各)
+    // outline 方式は要素の外側に描画されるため、フル幅セクション (width:100% / margin:0)
+    // では viewport 外にはみ出して見切れる問題があった。inset 10px なら必ず内側に余白を
+    // とって描かれるため、どんなレイアウトでもセクション内に収まる。
+    // data-changed 自体は常時 visible (元 CSS の transition: opacity で初期 0 になるケース対策)
+    `[data-changed]{position:relative !important;overflow:visible !important;z-index:1 !important;pointer-events:auto !important;cursor:pointer !important;visibility:visible !important;opacity:1 !important;}`,
+    `[data-changed]::after{content:'' !important;position:absolute !important;top:10px !important;left:10px !important;right:10px !important;bottom:10px !important;border:3px solid #3758F9 !important;border-radius:8px !important;pointer-events:none !important;transition:border-width 0.15s, box-shadow 0.15s !important;z-index:9998 !important;}`,
+    `[data-changed]:hover::after{border-width:4px !important;}`,
+    `[data-changed].__mockup-active::after{border-width:5px !important;box-shadow:0 0 0 8px rgba(55,88,249,0.15) !important;}`,
+    // 番号バッジ（常時表示）— 枠 (10px 内側) のさらに内側に配置
     // pointer-events: auto 明示 → バッジ上のホバー/クリックが親 data-changed のイベントとして発火
-    `[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:0;margin-bottom:6px;width:28px;height:28px;background:#3758F9;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(55,88,249,0.4);border:2px solid white;z-index:10001;pointer-events:auto;cursor:pointer;transition:transform 0.15s;}`,
+    // バッジの width/height/min-width/max-width に !important 必須:
+    //   元サイトの ::before に幅指定 (例: width:100%) があると、私の width:28px が override されて楕円形に伸びる
+    //   min-width/max-width も設定して flex container 等での flex-grow による伸縮も防ぐ
+    `[data-changed][data-num]::before{content:attr(data-num) !important;position:absolute !important;top:14px !important;left:14px !important;width:28px !important;height:28px !important;min-width:28px !important;max-width:28px !important;min-height:28px !important;max-height:28px !important;background:#3758F9 !important;color:#fff !important;border-radius:50% !important;display:flex !important;align-items:center !important;justify-content:center !important;font-size:13px !important;font-weight:800 !important;box-shadow:0 2px 6px rgba(55,88,249,0.4) !important;border:2px solid white !important;z-index:10001 !important;pointer-events:auto !important;cursor:pointer !important;transition:transform 0.15s !important;opacity:1 !important;visibility:visible !important;flex-shrink:0 !important;}`,
     `[data-changed]:hover::before{transform:scale(1.1);}`,
     `[data-changed].__mockup-active::before{transform:scale(1.2);background:#1e3a8a;}`,
-    // ラベルピルは廃止（チップバーとホバー時の左パネルハイライトで十分、重なり問題も回避）
-    // 入れ子 data-changed: 内側のバッジは外側の右横に並列配置（重ならない）
-    `[data-changed] [data-changed]{outline-color:rgba(55,88,249,0.55) !important;outline-width:2px !important;}`,
-    `[data-changed] [data-changed]::before{width:24px;height:24px;font-size:12px;margin-bottom:8px;left:34px;background:#6366f1;}`,
-    // 3 段ネスト対応
-    `[data-changed] [data-changed] [data-changed]::before{left:64px;background:#818cf8;}`,
+    // 入れ子 data-changed: 内側枠は薄く細く + バッジは外側の右横に並列配置（重ならない）
+    `[data-changed] [data-changed]::after{border-color:rgba(55,88,249,0.55) !important;border-width:2px !important;}`,
+    // 入れ子 data-changed: ①と同じ 28px サイズで右側に並列配置 (色だけ薄紫で区別)
+    `[data-changed] [data-changed]::before{width:28px !important;height:28px !important;min-width:28px !important;max-width:28px !important;min-height:28px !important;max-height:28px !important;font-size:13px !important;top:14px !important;left:52px !important;background:#6366f1 !important;}`,
+    // 3 段ネスト対応 (28px、さらに右配置)
+    `[data-changed] [data-changed] [data-changed]::before{width:28px !important;height:28px !important;min-width:28px !important;max-width:28px !important;font-size:13px !important;top:14px !important;left:90px !important;background:#818cf8 !important;}`,
     // data-num が無い旧データは番号バッジを非表示
     `[data-changed]:not([data-num])::before{content:none !important;}`,
     // 変更要素の配下: クリック無効化（誤クリック防止）+ レイアウトは触らない
     // ただしネストした data-changed はクリック可能にする（:not([data-changed])）
     `[data-changed] *:not([data-changed]):not(script):not(style):not(meta):not(link):not(noscript):not(template){pointer-events:none !important;}`,
+    // ========================================================
+    // iframe 表示用 hero 補正
+    // 1) visibility:visible 強制 (全 hero 系)
+    //    - 実サイトの CSS で hero に `visibility:hidden` が当てられているケース対策
+    //    - 例: `.c-main-visual-recruit { visibility: hidden }` を JS で visible 切替
+    //    - iframe srcDoc では外部 JS の CORS 制約等で切替が走らず hidden のまま残る
+    //    - サイズには影響しないので全要素対象 (__inner / __text なども含む)
+    // 2) hero 高さ固定 (親コンテナと __image のみに限定)
+    //    - 100vh hero が iframe 内で巨大化する問題への対処
+    //    - Browser Rendering 撮影時 viewport (900px) と同値に固定
+    //    - selector を __ (BEM modifier) なしの親 + __image のみに絞る
+    //      理由: __inner / __text は position:absolute + top:50% でキャッチコピーを配置
+    //            しているため、height 強制すると配置が崩れる
+    //
+    // selector の方針:
+    //   固有性の高い複合語 (main-visual / key-visual / mainvisual / keyvisual) のみ対象
+    //   略語マッチ (hero, kv-, -kv, mv-, -mv) は誤爆リスクが高いため使わない
+    // ========================================================
+    // visibility/opacity 強制 (全 hero 系、サイズに影響しない)
+    `[class*="main-visual"],[class*="mainvisual"],[class*="key-visual"],[class*="keyvisual"]{` +
+    `visibility:visible !important;opacity:1 !important;}`,
+    // height 強制 (親コンテナ = __ なし、または image を含む子要素)
+    // __inner / __text / __scroll などはキャッチコピー配置のため触らない
+    // 高さは Browser Rendering 撮影 viewport の高さ (900px) と一致させて aspect 不一致を回避
+    //
+    // 重要: image 系の selector は [class*="main-visual"][class*="image"] のように
+    //   2 つの attribute selector を組み合わせる必要がある。
+    //   理由: 実サイトのクラス名は `c-main-visual-recruit__image` のように
+    //         間に `-recruit` 等の修飾子が入るため、`[class*="main-visual__image"]` では
+    //         連続文字列としてマッチせず override が無効化される (BEM 命名の罠)。
+    //   両方の部分文字列を含む条件にすれば、間に何が入ってもマッチする。
+    `[class*="main-visual"]:not([class*="__"]),` +
+    `[class*="mainvisual"]:not([class*="__"]),` +
+    `[class*="key-visual"]:not([class*="__"]),` +
+    `[class*="keyvisual"]:not([class*="__"]),` +
+    `[class*="main-visual"][class*="image"],` +
+    `[class*="mainvisual"][class*="image"],` +
+    `[class*="key-visual"][class*="image"],` +
+    `[class*="keyvisual"][class*="image"]{` +
+    `height:900px !important;min-height:0 !important;max-height:900px !important;}`,
+    // html/body は 100vh が effective にならないように auto に
+    `html,body{height:auto !important;min-height:0 !important;}`,
+    // ========================================================
+    // ScrollReveal / AOS / GSAP 等のアニメ系を iframe 内で無効化
+    // - iframe sandbox=allow-scripts では外部 JS が実行されて sr クラスや data-sr-id が
+    //   再追加され、worker.js での解除が無効化される
+    // - CSS で要素自体を強制可視化 (アニメは見せないが、表示確実性を優先)
+    // ========================================================
+    `[data-sr-id],[data-sr],[data-aos],[data-aos-delay],` +
+    `html.sr [data-sr-id],html.sr-init [data-sr-id],` +
+    `.sr [data-sr-id],.sr-init [data-sr-id]{` +
+    `visibility:visible !important;opacity:1 !important;` +
+    `transform:none !important;}`,
   ].join('');
   if ($('head').length > 0) {
     $('head').append(`<style id="__mockup-outline">${outlineCss}</style>`);
@@ -1117,7 +1298,7 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
   // （iframe は cross-origin で contentDocument にアクセスできないため postMessage で連携）
   // unhideHidden: [data-changed] 配下で実際に display:none / visibility:hidden の要素のみ強制表示
   // （CSS で blanket display:revert すると flex/grid が壊れるため、JS で個別対応）
-  const helperScript = `(function(){function postSize(){try{parent.postMessage({type:'__mockup_size',height:document.documentElement.scrollHeight,width:document.documentElement.scrollWidth},'*');}catch(_){}}function postChangedPositions(){var els=document.querySelectorAll('[data-changed]');if(els.length===0)return;var positions=[];for(var i=0;i<els.length;i++){var el=els[i];var rect=el.getBoundingClientRect();positions.push({top:rect.top+window.pageYOffset,left:rect.left+window.pageXOffset,height:el.offsetHeight,width:el.offsetWidth,label:el.getAttribute('data-changed')||'',num:el.getAttribute('data-num')||''});}try{parent.postMessage({type:'__mockup_changed_positions',positions:positions},'*');}catch(_){}}function unhideHiddenInChanged(){var changedEls=document.querySelectorAll('[data-changed]');for(var i=0;i<changedEls.length;i++){var ce=changedEls[i];try{var ccs=getComputedStyle(ce);if(ccs.display==='none'){ce.style.setProperty('display','revert','important');}if(ccs.visibility==='hidden'){ce.style.setProperty('visibility','visible','important');}if(parseFloat(ccs.maxHeight)===0){ce.style.setProperty('max-height','none','important');}}catch(_){}var anc=ce.parentElement;while(anc&&anc!==document.body&&anc!==document.documentElement){try{var as=getComputedStyle(anc);if(as.display==='none'){anc.style.setProperty('display','revert','important');}if(as.visibility==='hidden'){anc.style.setProperty('visibility','visible','important');}if(parseFloat(as.maxHeight)===0){anc.style.setProperty('max-height','none','important');}if(parseFloat(as.height)===0&&as.overflow==='hidden'){anc.style.setProperty('height','auto','important');}}catch(_){}anc=anc.parentElement;}var children=ce.querySelectorAll('*');for(var j=0;j<children.length;j++){var child=children[j];try{var cs=getComputedStyle(child);if(cs.display==='none'){child.style.setProperty('display','revert','important');}if(cs.visibility==='hidden'){child.style.setProperty('visibility','visible','important');}if(parseFloat(cs.maxHeight)===0){child.style.setProperty('max-height','none','important');}}catch(_){}}}}function waitImagesThenPositions(){var imgs=Array.prototype.slice.call(document.images);var pending=0;for(var i=0;i<imgs.length;i++){if(!imgs[i].complete)pending++;}var done=false;var finish=function(){if(done)return;done=true;postSize();postChangedPositions();};if(pending===0){finish();return;}imgs.forEach(function(img){if(img.complete)return;var on=function(){if(--pending===0)finish();};img.addEventListener('load',on);img.addEventListener('error',on);});setTimeout(finish,4000);}function setActive(el){var prev=document.querySelector('[data-changed].__mockup-active');if(prev&&prev!==el)prev.classList.remove('__mockup-active');if(el)el.classList.toggle('__mockup-active');}function attachClickHandlers(){var els=document.querySelectorAll('[data-changed]');for(var i=0;i<els.length;i++){var el=els[i];if(el.__mockupClickBound)continue;el.__mockupClickBound=true;el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var t=e.currentTarget;setActive(t);var rect=t.getBoundingClientRect();try{parent.postMessage({type:'__mockup_changed_clicked',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||'',rect:{top:rect.top,left:rect.left,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height},active:t.classList.contains('__mockup-active')},'*');}catch(_){}});el.addEventListener('mouseenter',function(e){var t=e.currentTarget;try{parent.postMessage({type:'__mockup_changed_hovered',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||''},'*');}catch(_){}});}document.addEventListener('click',function(e){if(!e.target.closest('[data-changed]')){setActive(null);try{parent.postMessage({type:'__mockup_changed_deselected'},'*');}catch(_){}}});}function init(){postSize();attachClickHandlers();unhideHiddenInChanged();postChangedPositions();setTimeout(function(){postSize();postChangedPositions();unhideHiddenInChanged();},300);setTimeout(function(){postSize();attachClickHandlers();postChangedPositions();unhideHiddenInChanged();},1200);setTimeout(function(){postChangedPositions();},3000);waitImagesThenPositions();}if(document.readyState==='complete')init();else window.addEventListener('load',init);})();`;
+  const helperScript = `(function(){function postSize(){try{parent.postMessage({type:'__mockup_size',height:document.documentElement.scrollHeight,width:document.documentElement.scrollWidth},'*');}catch(_){}}function postChangedPositions(){var els=document.querySelectorAll('[data-changed]');if(els.length===0)return;var positions=[];for(var i=0;i<els.length;i++){var el=els[i];var rect=el.getBoundingClientRect();positions.push({top:rect.top+window.pageYOffset,left:rect.left+window.pageXOffset,height:el.offsetHeight,width:el.offsetWidth,label:el.getAttribute('data-changed')||'',num:el.getAttribute('data-num')||''});}try{parent.postMessage({type:'__mockup_changed_positions',positions:positions},'*');}catch(_){}}function unhideHiddenInChanged(){var changedEls=document.querySelectorAll('[data-changed]');for(var i=0;i<changedEls.length;i++){var ce=changedEls[i];try{var ccs=getComputedStyle(ce);if(ccs.display==='none'){ce.style.setProperty('display','revert','important');}if(ccs.visibility==='hidden'){ce.style.setProperty('visibility','visible','important');}if(parseFloat(ccs.maxHeight)===0){ce.style.setProperty('max-height','none','important');}}catch(_){}/* 祖先 unhide ループは削除（slidebar-menu 等の意図的に display:none の要素まで visible にしてしまう副作用への対処）。AI prompt で「隠れた要素・条件付き表示エリアへのパッチ配置を避ける」と既に指示しているため、祖先 unhide は不要 */var children=ce.querySelectorAll('*');for(var j=0;j<children.length;j++){var child=children[j];try{var cs=getComputedStyle(child);if(cs.display==='none'){child.style.setProperty('display','revert','important');}if(cs.visibility==='hidden'){child.style.setProperty('visibility','visible','important');}if(parseFloat(cs.maxHeight)===0){child.style.setProperty('max-height','none','important');}}catch(_){}}}}function waitImagesThenPositions(){var imgs=Array.prototype.slice.call(document.images);var pending=0;for(var i=0;i<imgs.length;i++){if(!imgs[i].complete)pending++;}var done=false;var finish=function(){if(done)return;done=true;postSize();postChangedPositions();};if(pending===0){finish();return;}imgs.forEach(function(img){if(img.complete)return;var on=function(){if(--pending===0)finish();};img.addEventListener('load',on);img.addEventListener('error',on);});setTimeout(finish,4000);}function setActive(el){var prev=document.querySelector('[data-changed].__mockup-active');if(prev&&prev!==el)prev.classList.remove('__mockup-active');if(el)el.classList.toggle('__mockup-active');}function attachClickHandlers(){var els=document.querySelectorAll('[data-changed]');for(var i=0;i<els.length;i++){var el=els[i];if(el.__mockupClickBound)continue;el.__mockupClickBound=true;el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var t=e.currentTarget;setActive(t);var rect=t.getBoundingClientRect();try{parent.postMessage({type:'__mockup_changed_clicked',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||'',rect:{top:rect.top,left:rect.left,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height},active:t.classList.contains('__mockup-active')},'*');}catch(_){}});el.addEventListener('mouseenter',function(e){var t=e.currentTarget;try{parent.postMessage({type:'__mockup_changed_hovered',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||''},'*');}catch(_){}});}document.addEventListener('click',function(e){if(!e.target.closest('[data-changed]')){setActive(null);try{parent.postMessage({type:'__mockup_changed_deselected'},'*');}catch(_){}}});}function init(){postSize();attachClickHandlers();unhideHiddenInChanged();postChangedPositions();setTimeout(function(){postSize();postChangedPositions();unhideHiddenInChanged();},300);setTimeout(function(){postSize();attachClickHandlers();postChangedPositions();unhideHiddenInChanged();},1200);setTimeout(function(){postChangedPositions();},3000);waitImagesThenPositions();}if(document.readyState==='complete')init();else window.addEventListener('load',init);})();`;
   if ($('body').length > 0) {
     $('body').append(`<script id="__mockup-helper">${helperScript}</script>`);
   } else {

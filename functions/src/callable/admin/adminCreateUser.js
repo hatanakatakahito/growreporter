@@ -11,9 +11,16 @@ import { generateAdminCreatedAccountEmail } from '../../utils/emailTemplates.js'
  * Firebase Auth + Firestore usersドキュメントを作成
  *
  * @param {Object} data.email - メールアドレス（必須）
- * @param {string} data.name - 氏名（必須）
+ * @param {string} data.name - 氏名（任意、lastName/firstName から自動生成）
+ * @param {string} data.lastName - 姓（推奨・通常ユーザー登録と同等）
+ * @param {string} data.firstName - 名（推奨・通常ユーザー登録と同等）
  * @param {string} data.company - 組織名（必須）
+ * @param {string} data.department - 部署名（任意）
  * @param {string} data.phoneNumber - 電話番号（必須）
+ * @param {string} data.zipCode - 郵便番号（任意）
+ * @param {string} data.prefecture - 都道府県（任意）
+ * @param {string} data.city - 市区町村（任意）
+ * @param {string} data.building - 建物名（任意）
  * @param {string} data.plan - プラン（任意、デフォルト 'free'）
  * @param {boolean} data.sendWelcomeEmail - ウェルカムメール送信（任意、デフォルト true）
  * @returns {Object} 作成結果
@@ -27,17 +34,28 @@ export const adminCreateUserCallable = async (request) => {
 
   const {
     email,
-    name,
+    name = '',
+    lastName = '',
+    firstName = '',
     company,
+    department = '',
     phoneNumber,
+    zipCode = '',
+    prefecture = '',
+    city = '',
+    building = '',
     plan = 'free',
     password = '',
     sendWelcomeEmail = true,
   } = request.data || {};
 
+  // 表示名の正規化: name 優先、なければ lastName + firstName から構築
+  const computedDisplayName = (name && name.trim())
+    || `${(lastName || '').trim()} ${(firstName || '').trim()}`.trim();
+
   // バリデーション
-  if (!email || !name || !company || !phoneNumber) {
-    throw new HttpsError('invalid-argument', 'メール、氏名、組織名、電話番号は必須です');
+  if (!email || !computedDisplayName || !company || !phoneNumber) {
+    throw new HttpsError('invalid-argument', 'メール、氏名（姓・名）、組織名、電話番号は必須です');
   }
 
   if (password && password.length < 6) {
@@ -58,7 +76,7 @@ export const adminCreateUserCallable = async (request) => {
       throw new HttpsError('permission-denied', 'この操作は admin ロールのみ実行できます');
     }
 
-    const displayName = name;
+    const displayName = computedDisplayName;
 
     // Firebase Authでユーザー作成
     const createParams = { email, displayName };
@@ -84,9 +102,16 @@ export const adminCreateUserCallable = async (request) => {
       uid: newUid,
       email,
       displayName,
-      name,
+      name: displayName,
+      lastName: lastName || '',
+      firstName: firstName || '',
       company,
+      department: department || '',
       phoneNumber,
+      zipCode: zipCode || '',
+      prefecture: prefecture || '',
+      city: city || '',
+      building: building || '',
       industry: '',
       photoURL: '',
       plan,

@@ -104,11 +104,15 @@ export const transferOwnershipCallable = async (request) => {
           updatedAt: FieldValue.serverTimestamp(),
         });
       }
-      // 現オーナー: users.memberRole を editor に
-      transaction.update(db.collection('users').doc(uid), {
+      // 現オーナー: users.memberRole を editor に + memberships マップも更新
+      const currentOwnerUpdate = {
         memberRole: 'editor',
         updatedAt: FieldValue.serverTimestamp(),
-      });
+      };
+      if (currentUserData.memberships && currentUserData.memberships[accountOwnerId]) {
+        currentOwnerUpdate[`memberships.${accountOwnerId}.role`] = 'editor';
+      }
+      transaction.update(db.collection('users').doc(uid), currentOwnerUpdate);
 
       // 新オーナー: accountMembers を owner に（存在すれば update、なければ set）
       if (newOwnerMemberDocRef) {
@@ -129,11 +133,19 @@ export const transferOwnershipCallable = async (request) => {
         });
       }
 
-      // 新オーナー: users.memberRole を owner に
-      transaction.update(db.collection('users').doc(newOwnerId), {
+      // 新オーナー: users.memberRole を owner に + memberships マップも更新
+      // editor / viewer から昇格する場合は allowedSiteIds を削除（owner は全サイト閲覧可）
+      const newOwnerUpdate = {
         memberRole: 'owner',
         updatedAt: FieldValue.serverTimestamp(),
-      });
+      };
+      if (newOwnerUserData.memberRole === 'editor' || newOwnerUserData.memberRole === 'viewer') {
+        newOwnerUpdate.allowedSiteIds = FieldValue.delete();
+      }
+      if (newOwnerUserData.memberships && newOwnerUserData.memberships[accountOwnerId]) {
+        newOwnerUpdate[`memberships.${accountOwnerId}.role`] = 'owner';
+      }
+      transaction.update(db.collection('users').doc(newOwnerId), newOwnerUpdate);
     });
 
     // 5. 全メンバーの accountOwnerId を新オーナーに更新（トランザクション外、500件まで chunked）

@@ -57,13 +57,24 @@ export const updateMemberRoleCallable = async (request) => {
     }
     
     // 3. ユーザーの memberRole を更新（users のみ。accountMembers は参照しない）
-    await db.collection('users').doc(memberId).update({
+    //    新仕様: editor / viewer ともに allowedSiteIds でサイト指定式
+    //    - editor ↔ viewer の切替: allowedSiteIds は維持（同じサイトを引き継ぐ）
+    //    - 必要に応じてオーナーが「サイト割当」UI で個別調整する
+    const updateData = {
       memberRole: newRole,
       updatedAt: FieldValue.serverTimestamp()
-    });
-    
-    logger.info('Member role updated', { memberId, newRole });
-    
+    };
+
+    // memberships マップ内のロールも整合させる
+    if (memberData.memberships && memberData.memberships[accountOwnerId]) {
+      updateData[`memberships.${accountOwnerId}.role`] = newRole;
+    }
+
+    const previousRole = memberData.memberRole;
+    await db.collection('users').doc(memberId).update(updateData);
+
+    logger.info('Member role updated', { memberId, previousRole, newRole });
+
     return { success: true, message: '権限を更新しました' };
   } catch (error) {
     logger.error('Error updating member role:', error);

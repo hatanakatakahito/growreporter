@@ -2,16 +2,25 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
 import { User, CreditCard, Globe, Mail, Users, Check, X } from 'lucide-react';
-import { PLANS, PLAN_TYPES, isUnlimited } from '../constants/plans';
+import { PLANS, PLAN_TYPES, isUnlimited, getPlanBadgeColor, EXTRA_SITE_UNIT_PRICE } from '../constants/plans';
 import UpgradeModal from '../components/common/UpgradeModal';
 import { useAuth } from '../contexts/AuthContext';
 import { useSite } from '../contexts/SiteContext';
 import { usePlan } from '../hooks/usePlan';
 import { useAccountMembers } from '../hooks/useAccountMembers';
-import { getPlanBadgeColor } from '../constants/plans';
 // Plan comparison table features
 const PLAN_FEATURES = [
-  { label: '登録サイト数', getValue: (p) => `${p.features.maxSites}サイト` },
+  {
+    label: '登録サイト数',
+    getValue: (p) => {
+      const base = `${p.features.maxSites}サイト`;
+      // Business のみ追加オプション併記
+      if (p.id === PLAN_TYPES.BUSINESS) {
+        return `${base}（追加 +¥${EXTRA_SITE_UNIT_PRICE.toLocaleString()}/サイト/月）`;
+      }
+      return base;
+    },
+  },
   { label: 'メンバー招待', getValue: (p) => isUnlimited(p.features.maxMembers) ? '無制限' : `${p.features.maxMembers}人` },
   { label: 'AI分析サマリー', getValue: (p) => p.features.aiSummaryMonthly === 0 ? '不可' : (isUnlimited(p.features.aiSummaryMonthly) ? '無制限' : `${p.features.aiSummaryMonthly}回`) },
   { label: 'AI改善提案', getValue: (p) => p.features.aiImprovementMonthly === 0 ? '不可' : (isUnlimited(p.features.aiImprovementMonthly) ? '無制限' : `${p.features.aiImprovementMonthly}回`) },
@@ -30,13 +39,16 @@ import { useAutoTour } from '../hooks/useAutoTour';
 import { useOnboarding } from '../hooks/useOnboarding';
 import TourHelpButton from '../components/Onboarding/TourHelpButton';
 
-const TABS = [
+const ALL_TABS = [
   { id: 'profile', label: 'プロフィール', icon: User },
   { id: 'plan', label: 'プラン確認', icon: CreditCard },
   { id: 'sites', label: '登録サイト', icon: Globe },
   { id: 'email', label: 'メール通知', icon: Mail },
   { id: 'members', label: 'メンバー管理', icon: Users },
 ];
+
+// viewer は plan / members タブを非表示。sites は読取専用で残す
+const VIEWER_TABS = ALL_TABS.filter((t) => !['plan', 'members'].includes(t.id));
 
 /**
  * アカウント設定画面（タブ式）
@@ -61,13 +73,16 @@ export default function AccountSettings() {
   useAutoTour('accountSettings');
   const { userProfile, currentUser, logout } = useAuth();
   const { sites } = useSite();
-  const { plan } = usePlan();
+  const { plan, effectiveMaxSites } = usePlan();
   const { activeMemberCount } = useAccountMembers();
+
+  const isViewer = userProfile?.memberRole === 'viewer';
+  const TABS = useMemo(() => (isViewer ? VIEWER_TABS : ALL_TABS), [isViewer]);
 
   const activeTab = useMemo(() => {
     const t = searchParams.get('tab');
     return TABS.some((x) => x.id === t) ? t : 'profile';
-  }, [searchParams]);
+  }, [searchParams, TABS]);
 
   const handleTabChange = (tabId) => {
     const next = new URLSearchParams(searchParams);
@@ -80,6 +95,7 @@ export default function AccountSettings() {
   const [alertEmail, setAlertEmail] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
+  const [isAddonModalOpen, setIsAddonModalOpen] = useState(false);
   const [showDeleteAccount, setShowDeleteAccount] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
@@ -195,8 +211,8 @@ export default function AccountSettings() {
         {/* ヘッダー */}
         <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">アカウント設定</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">アカウント設定</h1>
               <TourHelpButton tourId="accountSettings" />
             </div>
             <p className="mt-2 text-sm text-gray-600 dark:text-dark-6">
@@ -307,6 +323,30 @@ export default function AccountSettings() {
               </p>
             </div>
 
+            {/* サイト追加オプション（Business + オーナーのみ表示） */}
+            {plan?.id === PLAN_TYPES.BUSINESS && userProfile?.memberRole === 'owner' && (() => {
+              const extra = effectiveMaxSites - (plan?.features?.maxSites || 0);
+              return (
+                <div className="mx-auto max-w-3xl rounded-xl border border-stroke bg-white p-5 dark:border-dark-3 dark:bg-dark-2">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">サイト追加オプション</h3>
+                      <p className="mt-1 text-xs text-gray-500 dark:text-dark-6">
+                        基本3サイトに加え、1サイトあたり ¥{EXTRA_SITE_UNIT_PRICE.toLocaleString()}/月（税別）で追加できます。
+                      </p>
+                      <p className="mt-2 text-xs text-gray-700 dark:text-gray-300">
+                        現在: 基本{plan?.features?.maxSites || 3}サイト
+                        {extra > 0 ? ` + 追加${extra}サイト = 合計${effectiveMaxSites}サイト` : '（追加なし）'}
+                      </p>
+                    </div>
+                    <Button variant="upgrade" type="button" onClick={() => setIsAddonModalOpen(true)}>
+                      サイト追加を申し込む
+                    </Button>
+                  </div>
+                </div>
+              );
+            })()}
+
             {/* プラン比較カード */}
             <div className="mx-auto grid max-w-3xl grid-cols-1 gap-6 md:grid-cols-2">
               {[PLANS[PLAN_TYPES.FREE], PLANS[PLAN_TYPES.BUSINESS]].map((p) => {
@@ -406,52 +446,84 @@ export default function AccountSettings() {
             <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
               <div className="mb-4 flex items-center justify-between">
                 <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">登録しているサイト</h2>
-                  <p className="mt-0.5 text-sm text-gray-600 dark:text-dark-6">クリックでサイト詳細・設定編集へ</p>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {isViewer ? '閲覧可能なサイト' : '登録しているサイト'}
+                  </h2>
+                  <p className="mt-0.5 text-sm text-gray-600 dark:text-dark-6">
+                    {isViewer ? 'オーナーが割り当てたサイトのみ表示されます' : 'クリックでサイト詳細・設定編集へ'}
+                  </p>
                 </div>
-                <Button variant="primary" href="/sites/new">
-                  サイトを追加
-                </Button>
+                {!isViewer && (
+                  <Button variant="primary" href="/sites/new">
+                    サイトを追加
+                  </Button>
+                )}
               </div>
               {sites && sites.length > 0 ? (
                 <ul className="space-y-3">
-                  {sites.map((site) => (
-                    <li key={site.id}>
-                      <Link
-                        to={`/sites/${site.id}`}
-                        className="block p-4 rounded-lg border border-gray-200 hover:border-primary/40 hover:bg-gray-50/80 transition-colors group dark:border-dark-3 dark:hover:bg-dark-3"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-gray-900 dark:text-white group-hover:text-primary">
-                              {site.siteName || '名称未設定'}
-                            </p>
-                            <p className="text-sm text-gray-500 dark:text-dark-6 mt-0.5">{site.siteUrl || '-'}</p>
+                  {sites.map((site) => {
+                    if (isViewer) {
+                      // viewer は read-only。サイト詳細ページへのリンクを開かないため div で表示
+                      return (
+                        <li key={site.id}>
+                          <div className="block p-4 rounded-lg border border-gray-200 dark:border-dark-3">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-medium text-gray-900 dark:text-white">
+                                  {site.siteName || '名称未設定'}
+                                </p>
+                                <p className="text-sm text-gray-500 dark:text-dark-6 mt-0.5">{site.siteUrl || '-'}</p>
+                              </div>
+                              <span className="text-xs text-gray-400">閲覧のみ</span>
+                            </div>
                           </div>
-                          <span className="text-sm text-primary font-medium">管理へ</span>
-                        </div>
-                      </Link>
-                    </li>
-                  ))}
+                        </li>
+                      );
+                    }
+                    return (
+                      <li key={site.id}>
+                        <Link
+                          to={`/sites/${site.id}`}
+                          className="block p-4 rounded-lg border border-gray-200 hover:border-primary/40 hover:bg-gray-50/80 transition-colors group dark:border-dark-3 dark:hover:bg-dark-3"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-gray-900 dark:text-white group-hover:text-primary">
+                                {site.siteName || '名称未設定'}
+                              </p>
+                              <p className="text-sm text-gray-500 dark:text-dark-6 mt-0.5">{site.siteUrl || '-'}</p>
+                            </div>
+                            <span className="text-sm text-primary font-medium">管理へ</span>
+                          </div>
+                        </Link>
+                      </li>
+                    );
+                  })}
                 </ul>
               ) : (
                 <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-6 text-center dark:border-dark-3 dark:bg-dark-3">
-                  <p className="text-sm text-gray-600 dark:text-dark-6 mb-4">サイトがありません</p>
-                  <div className="flex flex-wrap justify-center gap-3">
-                    <Button variant="secondary" href="/sites/list">
-                      サイト一覧
-                    </Button>
-                    <Button variant="primary" href="/sites/new">
-                      サイトを追加
-                    </Button>
-                  </div>
+                  <p className="text-sm text-gray-600 dark:text-dark-6 mb-4">
+                    {isViewer ? '閲覧可能なサイトがありません' : 'サイトがありません'}
+                  </p>
+                  {!isViewer && (
+                    <div className="flex flex-wrap justify-center gap-3">
+                      <Button variant="secondary" href="/sites/list">
+                        サイト一覧
+                      </Button>
+                      <Button variant="primary" href="/sites/new">
+                        サイトを追加
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
-              <div className="mt-4 text-right">
-                <Link to="/sites/list" className="text-xs text-primary hover:underline">
-                  すべてのサイトを管理 →
-                </Link>
-              </div>
+              {!isViewer && (
+                <div className="mt-4 text-right">
+                  <Link to="/sites/list" className="text-xs text-primary hover:underline">
+                    すべてのサイトを管理 →
+                  </Link>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -556,6 +628,13 @@ export default function AccountSettings() {
       </div>
 
       {/* アップグレードモーダル */}
+      {/* サイト追加オプション専用モーダル（オーナーのみが Business 状態で開ける） */}
+      <UpgradeModal
+        isOpen={isAddonModalOpen}
+        onClose={() => setIsAddonModalOpen(false)}
+        mode="addon"
+      />
+
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}

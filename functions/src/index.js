@@ -1,6 +1,6 @@
 import { onSchedule } from 'firebase-functions/v2/scheduler';
 import { onCall, onRequest } from 'firebase-functions/v2/https';
-import { onDocumentWritten, onDocumentCreated } from 'firebase-functions/v2/firestore';
+import { onDocumentWritten, onDocumentCreated, onDocumentDeleted } from 'firebase-functions/v2/firestore';
 import { initializeApp } from 'firebase-admin/app';
 
 /**
@@ -130,20 +130,42 @@ export const fetchGA4UserJourneyData = lazyCallable('./callable/fetchGA4UserJour
 export const fetchGSCData = lazyCallable('./callable/fetchGSCData.js', 'fetchGSCDataCallable', { memory: '512MiB', timeoutSeconds: 60 });
 
 /**
- * スクリーンショット取得 Callable Function
- * サイトのスクリーンショットを自動取得
+ * 流入キーワード V2: ファネル分類 + クラスタリング + CV 貢献スコア計算
+ * Gemini API を使うため secrets / timeout は十分に確保
  */
-export const captureScreenshot = lazyCallable('./callable/captureScreenshot.js', 'captureScreenshotCallable', { memory: '1GiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] });
+export const fetchGSCKeywordsV2Data = lazyCallable(
+  './callable/fetchGSCKeywordsV2Data.js',
+  'fetchGSCKeywordsV2DataCallable',
+  { memory: '1GiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY'] }
+);
 
 /**
- * 改善モーダル Before 枠用のオンデマンドスクショ取得（PSI）
+ * 流入キーワード V2: AI 再分類（オンデマンド）
  */
-export const captureBeforeScreenshot = lazyCallable('./callable/captureBeforeScreenshot.js', 'captureBeforeScreenshotCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY', 'CF_PROXY_SECRET'] });
+export const classifyKeywordsV2 = lazyCallable(
+  './callable/classifyKeywordsV2.js',
+  'classifyKeywordsV2Callable',
+  { memory: '256MiB', timeoutSeconds: 60 }
+);
+
+/**
+ * 流入キーワード V2: Title/Description 改善案 3 パターン生成（オンデマンド）
+ */
+export const generateKeywordTitleSuggestionsV2 = lazyCallable(
+  './callable/generateKeywordTitleSuggestionsV2.js',
+  'generateKeywordTitleSuggestionsV2Callable',
+  { memory: '512MiB', timeoutSeconds: 60, secrets: ['GEMINI_API_KEY'] }
+);
+
+/**
+ * 改善モーダル Before 枠用のオンデマンドスクショ取得 (CF Worker Browser Rendering 経由)
+ */
+export const captureBeforeScreenshot = lazyCallable('./callable/captureBeforeScreenshot.js', 'captureBeforeScreenshotCallable', { memory: '512MiB', timeoutSeconds: 120, secrets: ['CF_PROXY_SECRET'] });
 
 /**
  * サイトPV上位10ページのBefore予熱（方針選択モーダル開時に呼出）
  */
-export const preheatSitePageScreenshots = lazyCallable('./callable/preheatSitePageScreenshots.js', 'preheatSitePageScreenshotsCallable', { memory: '512MiB', timeoutSeconds: 540, secrets: ['PSI_API_KEY', 'CF_PROXY_SECRET'] });
+export const preheatSitePageScreenshots = lazyCallable('./callable/preheatSitePageScreenshots.js', 'preheatSitePageScreenshotsCallable', { memory: '512MiB', timeoutSeconds: 540, secrets: ['CF_PROXY_SECRET'] });
 
 
 /**
@@ -185,8 +207,8 @@ export const refreshSiteMetadataAndScreenshots = onCall({
   timeoutSeconds: 180,
   region: 'asia-northeast1',
   cors: true,
-  // PSI_API_KEY: PageSpeed Insights / CF_PROXY_SECRET: Worker proxy 経由メタデータ取得
-  secrets: ['PSI_API_KEY', 'CF_PROXY_SECRET'],
+  // CF_PROXY_SECRET: Worker proxy 経由メタデータ取得 + Browser Rendering スクショ取得
+  secrets: ['CF_PROXY_SECRET'],
 }, async (request) => {
   const { refreshSiteMetadataAndScreenshotsCallableWithCatch } = await import('./callable/refreshSiteMetadataAndScreenshots.js');
   return refreshSiteMetadataAndScreenshotsCallableWithCatch(request);
@@ -231,11 +253,10 @@ export const siteCreatedSheetsExport = onDocumentWritten({
   region: 'asia-northeast1',
   memory: '2GiB',
   timeoutSeconds: 540,
-  // PSI_API_KEY: スクリーンショット
-  // CF_PROXY_SECRET: スクレイピング/メタデータ取得 (Worker proxy 経由)
+  // CF_PROXY_SECRET: スクレイピング/メタデータ/Browser Rendering スクショ取得 (Worker proxy 経由)
   // GOOGLE_CLIENT_SECRET: GA4/GSC OAuth リフレッシュ (tokenManager 経由)
   // SES_SMTP_USER/PASSWORD: 完了通知メール送信
-  secrets: ['PSI_API_KEY', 'CF_PROXY_SECRET', 'GOOGLE_CLIENT_SECRET', 'SES_SMTP_USER', 'SES_SMTP_PASSWORD'],
+  secrets: ['CF_PROXY_SECRET', 'GOOGLE_CLIENT_SECRET', 'SES_SMTP_USER', 'SES_SMTP_PASSWORD'],
 }, async (event) => {
   const m = await import('./triggers/onSiteCreated.js');
   return m.onSiteCreatedTrigger(event);
@@ -258,11 +279,10 @@ export const onScrapingJobCreated = onDocumentCreated(
     timeoutSeconds: 540,
     maxInstances: 3,
     concurrency: 1,
-    // PSI_API_KEY: 既存のスクリーンショット取得用
     // GEMINI_API_KEY: スクレイピング完了時のタクソノミー V2 自動判定(Phase E)で使用
-    // CF_PROXY_SECRET: Worker proxy 経由のスクレイピングフォールバック
+    // CF_PROXY_SECRET: Worker proxy 経由のスクレイピングフォールバック + Browser Rendering スクショ取得
     // GOOGLE_CLIENT_SECRET: GA4 fetch 内部呼出時に使用される可能性
-    secrets: ['PSI_API_KEY', 'GEMINI_API_KEY', 'CF_PROXY_SECRET', 'GOOGLE_CLIENT_SECRET'],
+    secrets: ['GEMINI_API_KEY', 'CF_PROXY_SECRET', 'GOOGLE_CLIENT_SECRET'],
   },
   async (event) => {
     const { onScrapingJobCreatedHandler } = await import('./triggers/onScrapingJobCreated.js');
@@ -308,6 +328,23 @@ export const onUserFeedbackCreated = onDocumentCreated(
 );
 
 /**
+ * サイト削除トリガー（遅延読み込み）
+ * sites/{siteId} 削除時に viewer の allowedSiteIds から自動除去
+ */
+export const onSiteDeleted = onDocumentDeleted(
+  {
+    document: 'sites/{siteId}',
+    region: 'asia-northeast1',
+    memory: '256MiB',
+    timeoutSeconds: 60,
+  },
+  async (event) => {
+    const { onSiteDeletedHandler } = await import('./triggers/onSiteDeleted.js');
+    return onSiteDeletedHandler(event);
+  }
+);
+
+/**
  * ユーザー新規登録トリガー（遅延読み込み）
  * users ドキュメント作成時にウェルカムメールを送信
  */
@@ -345,6 +382,7 @@ export const resetMonthlyLimits = onSchedule({
  * （スクレイピング完了後にスクリーンショット撮影も自動実行される）
  */
 export { monthlyRescrapeAllSites } from './scheduled/monthlyRescrapeAllSites.js';
+export { monthlyKeywordReclassify } from './scheduled/monthlyKeywordReclassify.js';
 
 /**
  * 管理者ダッシュボード統計データ取得 Callable Function
@@ -469,6 +507,32 @@ export const removeCustomLimits = lazyCallable('./callable/admin/removeCustomLim
 export const setUserActiveSites = lazyCallable('./callable/admin/setUserActiveSites.js', 'setUserActiveSitesCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
+ * アカウント情報メール送信 Callable Function（§16）
+ * admin が任意のタイミングで対象ユーザーにアカウント情報メールを送信する。
+ * パスワードリセットリンク経由（Firebase Auth）。
+ * SES SMTP 認証は SHARED_SECRETS で自動付与。
+ */
+export const sendAccountCredentialsEmail = lazyCallable('./callable/admin/sendAccountCredentialsEmail.js', 'sendAccountCredentialsEmailCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
+ * board 取り込み Callable Function（§15）
+ * board で先行作成された案件・見積を grow-reporter の upgradeInquiries に取り込む。
+ * dryRun=true で preview 取得（DB 書き込みなし）、false で本番取り込み。
+ * board API 呼出のため timeout を長めに。
+ */
+export const importBoardProject = lazyCallable('./callable/admin/importBoardProject.js', 'importBoardProjectCallable', {
+  memory: '256MiB',
+  timeoutSeconds: 60,
+  secrets: ['BOARD_API_KEY', 'BOARD_API_TOKEN'],
+});
+
+/**
+ * inquiry とユーザーの後付け紐付け Callable Function（§15 Phase 2）
+ * uid=null で取り込まれた inquiry に、後から admin が uid を紐付ける。
+ */
+export const linkInquiryToUser = lazyCallable('./callable/admin/linkInquiryToUser.js', 'linkInquiryToUserCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
  * 管理者一覧取得 Callable Function
  * すべての管理者情報を取得
  */
@@ -567,7 +631,7 @@ export const generateImprovements = lazyCallable('./callable/generateImprovement
  * ユーザー入力（対象 + 改善方向）から AI が完全な改善案 JSON を生成
  * Firestore 保存はクライアント側で実行
  */
-export const expandManualImprovement = lazyCallable('./callable/expandManualImprovement.js', 'expandManualImprovementCallable', { memory: '512MiB', timeoutSeconds: 180, secrets: ['GEMINI_API_KEY', 'PSI_API_KEY', 'CF_PROXY_SECRET'] });
+export const expandManualImprovement = lazyCallable('./callable/expandManualImprovement.js', 'expandManualImprovementCallable', { memory: '512MiB', timeoutSeconds: 180, secrets: ['GEMINI_API_KEY', 'CF_PROXY_SECRET'] });
 
 /**
  * 改善効果測定 Before指標スナップショット取得
@@ -579,19 +643,35 @@ export const scheduleRemeasurement = lazyCallable('./callable/scheduleRemeasurem
 
 /**
  * 実装検証用 Before スナップショット取得（status → in_progress 遷移時に呼ぶ）
- * Puppeteer + PSI を使うため 2GiB / 120s、Chromium 起動と PSI_API_KEY が必要
+ * CF Worker Browser Rendering 経由でスクショ取得
  */
 export const captureBeforeImplementationSnapshot = lazyCallable(
   './callable/captureBeforeImplementationSnapshot.js',
   'captureBeforeImplementationSnapshotCallable',
-  { memory: '2GiB', timeoutSeconds: 120, secrets: ['PSI_API_KEY'] } // CF_PROXY_SECRET / GOOGLE_CLIENT_SECRET / SES_* は SHARED_SECRETS でバインド済
+  { memory: '2GiB', timeoutSeconds: 120, secrets: ['CF_PROXY_SECRET'] }
 );
 
 /**
  * 改善モックアップ生成 Callable Function（Gemini 2.5 Flash）
  * 手動トリガー：改善箇所のみの部分HTML生成
  */
-export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '512MiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY', 'PSI_API_KEY', 'CF_PROXY_SECRET'] });
+export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '512MiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY', 'CF_PROXY_SECRET'] });
+
+/**
+ * 改善モックアップ HTML 配信プロキシ (HTTP, public)
+ * Firebase Hosting の rewrite (firebase.json: /page-mockups/** → serveMockup) で
+ * grow-reporter.com 配下の URL として Storage の HTML を配信する
+ *
+ * invoker: 'public' は Cloud Run (Functions v2) の IAM を allUsers / run.invoker に
+ * 設定するため必須。これがないと Hosting からの呼び出しが 403 になる。
+ */
+export const serveMockup = onRequest(
+  { region: 'asia-northeast1', memory: '256MiB', timeoutSeconds: 30, cors: false, invoker: 'public' },
+  async (req, res) => {
+    const m = await import('./callable/serveMockup.js');
+    return m.serveMockupRequest(req, res);
+  }
+);
 
 /**
  * プランアップグレードお問い合わせ送信
@@ -692,7 +772,7 @@ export const checkMetricAlertsScheduled = onSchedule({
 /**
  * 改善効果 After指標自動計測 Scheduled Function
  * 毎日AM4:00(JST)に、計測対象のBefore/After比較を実行
- * 実装検証の After 側 DOM 取得で Puppeteer を使うため 2GiB、PSI_API_KEY も要
+ * 実装検証の After 側 DOM 取得で Puppeteer を使うため 2GiB
  */
 export const measureImprovementEffects = onSchedule({
   schedule: '0 4 * * *',
@@ -700,8 +780,8 @@ export const measureImprovementEffects = onSchedule({
   region: 'asia-northeast1',
   memory: '2GiB',
   timeoutSeconds: 540,
-  // GEMINI: AI 評価 / PSI: スクリーンショット / CF_PROXY: スクレイピング / GOOGLE_CLIENT_SECRET: GA4
-  secrets: ['GEMINI_API_KEY', 'PSI_API_KEY', 'CF_PROXY_SECRET', 'GOOGLE_CLIENT_SECRET'],
+  // GEMINI: AI 評価 / CF_PROXY: スクレイピング + Browser Rendering スクショ / GOOGLE_CLIENT_SECRET: GA4
+  secrets: ['GEMINI_API_KEY', 'CF_PROXY_SECRET', 'GOOGLE_CLIENT_SECRET'],
 }, async (event) => {
   const m = await import('./scheduled/measureImprovementEffects.js');
   return m.measureImprovementEffectsHandler(event);
@@ -782,6 +862,12 @@ export const updateMemberRole = lazyCallable('./callable/updateMemberRole.js', '
  * 現在のオーナーが他のメンバーにオーナー権限を譲渡
  */
 export const transferOwnership = lazyCallable('./callable/transferOwnership.js', 'transferOwnershipCallable', { memory: '256MiB', timeoutSeconds: 60 });
+
+/**
+ * viewer の allowedSiteIds 更新 Callable Function
+ * オーナーが viewer の閲覧可能サイトを変更
+ */
+export const updateViewerAllowedSites = lazyCallable('./callable/updateViewerAllowedSites.js', 'updateViewerAllowedSitesCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
  * データマイグレーション実行

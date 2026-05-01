@@ -298,12 +298,62 @@ export const analysisChannelsSteps = makeAnalysisSteps(
   'AIがチャネル別の強弱を分析し、伸びしろのあるチャネルや注力すべき経路を具体的に提案します。'
 );
 
-// ── 流入キーワード ──────────────────────────────
-export const analysisKeywordsSteps = makeAnalysisSteps(
-  'Search Console のキーワードデータの対象期間を設定します。検索クエリごとのクリック数・表示回数・掲載順位・CTRを確認できます。',
-  'AIがキーワードの順位変動やCTR改善余地を分析し、SEO施策の優先順位を提案します。',
-  { hasFilters: false }
-);
+// ── 流入キーワード（V2: ファネル + 関係図 + チャンス象限 + 改善候補 + CV 貢献 + 表/グラフ） ──
+export const analysisKeywordsSteps = [
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
+    popover: {
+      title: '期間設定',
+      description: 'Search Console のキーワードデータの対象期間を設定します。比較期間と組み合わせて推移も確認できます。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_VIEW_TABS),
+    popover: {
+      title: '新しいタブ構成',
+      description:
+        '初期表示は「ファネル」（AI が KW を 5 層に自動分類）。関係図・チャンス象限・改善候補・CV 貢献など、目的別のビューに切り替えられます。表形式・グラフ形式は従来どおり末尾のタブに残しています。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_COLUMN_TOGGLE),
+    popover: {
+      title: '表示項目の切替',
+      description:
+        '表形式タブで列の表示・並び替えができます。設定はブラウザに保存され次回も復元されます。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_EXPORT),
+    popover: {
+      title: 'Excel / PowerPoint でダウンロード',
+      description:
+        'ファネル分類とトップ KW を Excel / PowerPoint で出力できます。クライアントへの提案資料がワンクリックで作れます。',
+    },
+    businessOnly: true,
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_AI_TAB),
+    popover: {
+      title: 'AI 分析タブ',
+      description:
+        'AI がファネルの構成比・機会損失・主要ジャーニーパスを分析し、SEO 施策の優先順位を提案します。',
+      side: 'bottom',
+      align: 'start',
+    },
+    businessOnly: true,
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_NOTE),
+    popover: {
+      title: 'メモ機能',
+      description: 'キーワード分析の気付きをメモとして残せます。チームメンバーとも共有可能です。',
+      side: 'top',
+      align: 'start',
+    },
+  },
+  TOUR_GUIDE_TOGGLE_STEP,
+];
 
 // ── 被リンク元 ────────────────────────────────
 export const analysisReferralsSteps = makeAnalysisSteps(
@@ -375,6 +425,13 @@ export const analysisUsersSteps = makeAnalysisSteps(
   'ユーザー属性分析の対象期間を設定します。性別・年齢・デバイス・地域などのデモグラフィックデータを確認できます。',
   'AIがユーザー属性の構成比を分析し、ターゲット層へのリーチ状況や改善余地を提案します。',
   { hasColumnToggle: false, hasFilters: false, hasViewTabs: false }
+);
+
+// ── ユーザージャーニー ───────────────────────────
+export const analysisUserJourneySteps = makeAnalysisSteps(
+  'ユーザージャーニー分析の対象期間を設定します。流入から成果までの 5 層フロー（流入元 → KW/参照元 → LP → 中間 → 結果）を期間ごとに俯瞰できます。',
+  'AIが主要ジャーニーパターンと改善余地の大きいパターンを自動で解説します。流入が多くても CV 率が低いパスを優先的に特定します。',
+  { hasColumnToggle: true, hasFilters: false, hasViewTabs: false }
 );
 
 // ── 全体サマリー（無料プラン向け） ──────────────────────
@@ -753,6 +810,7 @@ export const TOUR_STEPS_BY_ID = {
   analysisExternalLinks: analysisExternalLinksSteps,
   analysisFileDownloads: analysisFileDownloadsSteps,
   analysisUsers: analysisUsersSteps,
+  analysisUserJourney: analysisUserJourneySteps,
   // 分析（特殊）
   analysisSummaryFree: analysisSummaryFreeSteps,
   analysisExport: analysisExportSteps,
@@ -787,6 +845,7 @@ export const TOUR_PLAN_REQUIRED = {
   analysisExternalLinks: 'free',
   analysisFileDownloads: 'free',
   analysisUsers: 'free',
+  analysisUserJourney: 'free',
   analysisSummaryFree: 'free',
   analysisExport: 'business',
   analysisSummary: 'business',

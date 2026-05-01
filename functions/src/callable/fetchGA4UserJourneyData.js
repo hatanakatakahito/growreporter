@@ -373,7 +373,8 @@ async function generateStoryCommentsWithGemini(stories, siteData) {
     })
     .join('\n');
 
-  const prompt = `あなたは Web サイトのアクセス分析専門家です。${siteName} の主要ジャーニー TOP 3 パターンに対して、それぞれ 1-2 文の改善示唆コメントを日本語で生成してください。${ctx}
+  const exampleArray = `[${stories.map((_, i) => `"コメント${i + 1}の内容"`).join(', ')}]`;
+  const prompt = `あなたは Web サイトのアクセス分析専門家です。${siteName} の主要ジャーニー上位 ${stories.length} パターンに対して、それぞれ 1-2 文の改善示唆コメントを日本語で生成してください。${ctx}
 
 【入力ジャーニー】
 ${storyDescriptions}
@@ -382,9 +383,9 @@ ${storyDescriptions}
 - 各パターンに対して 1-2 文のコメントのみ生成（具体的で実行可能な示唆）
 - 数値・KW・ページ名を引用して具体的に書く
 - 性質「success」: 成功要因と更に伸ばす方法 / 「warning」: 改善余地が大きい点と具体策 / 「normal」: 中位パターンの伸ばし方
-- 出力は必ず以下の純粋な JSON 配列形式（マークダウンや余計な説明文・コードブロック・前後のテキストは絶対に付けない）
+- 出力は必ず以下の純粋な JSON 配列形式（マークダウンや余計な説明文・コードブロック・前後のテキストは絶対に付けない）。配列の長さは入力件数（${stories.length} 件）と完全に一致させること
 
-["コメント1の内容", "コメント2の内容", "コメント3の内容"]`;
+${exampleArray}`;
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`,
@@ -395,7 +396,7 @@ ${storyDescriptions}
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
           temperature: 0.7,
-          maxOutputTokens: 800,
+          maxOutputTokens: 1600,
           responseMimeType: 'application/json',
         },
       }),
@@ -1042,7 +1043,7 @@ function buildStoryTop3({ detailPaths, totalSessions, pageToKeywords }) {
     referral: '参照元ドメイン',
   };
 
-  return detailPaths.slice(0, 3).map((path, idx) => {
+  return detailPaths.slice(0, 6).map((path, idx) => {
     const sourceType = sourceLabelToType[path.source] || 'direct';
     const sharePct = totalSessions > 0 ? Math.round((path.sessions / totalSessions) * 100) : 0;
 

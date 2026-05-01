@@ -59,17 +59,53 @@ CATEGORY_LABELS = {
 PRIORITY_LABELS = {"high": "高", "medium": "中", "low": "低"}
 STATUS_LABELS = {"draft": "起案", "in_progress": "対応中", "completed": "完了"}
 
-COL_WIDTHS = [4, 12, 6, 50, 40, 60, 40, 24]
+# Firebase Hosting rewrite (firebase.json: /page-mockups/** → serveMockup) で
+# Storage 直 URL を隠して自社ドメインで配信
+MOCKUP_SHARE_BASE_URL = "https://grow-reporter.com"
+
+# 列順は exportImprovementsToExcel.js (フロント側) と揃える
+# モックアップURL 列を 対象URL の隣 (index 5) に挿入
+COL_WIDTHS = [4, 12, 6, 50, 40, 60, 60, 40, 24]
 HEADERS = [
     "No.",
     "カテゴリ",
     "優先度",
     "タイトル",
     "対象URL",
+    "モックアップURL",
     "説明",
     "期待効果",
     "目安料金・納期",
 ]
+# モックアップURL 列のインデックス (ハイパーリンク化対象)
+MOCKUP_URL_COL_INDEX = 5
+
+
+def _build_mockup_share_url(mockup_storage_url: str) -> str:
+    """mockupStorageUrl から siteId / improvementId を抽出して
+    grow-reporter.com 形式の共有 URL を組み立てる。未生成 (None / 空) の場合は空文字を返す。
+    """
+    if not mockup_storage_url:
+        return ""
+    m = re.search(r"/page-mockups/([^/]+)/([^/]+)\.html", str(mockup_storage_url))
+    if not m:
+        return ""
+    return f"{MOCKUP_SHARE_BASE_URL}/page-mockups/{m.group(1)}/{m.group(2)}.html"
+
+
+def _get_mockup_cell_display(item: dict) -> tuple[str, bool]:
+    """モックアップ列に表示する値を決定。
+    返り値: (表示文字列, is_url)
+    - URL あり: (URL, True) → ハイパーリンク化
+    - URL なし + mockupSkipped=True: ("対応不要", False) → プレーンテキスト
+    - URL なし + 通常: ("未生成", False) → プレーンテキスト
+    """
+    url = _build_mockup_share_url(item.get("mockupStorageUrl"))
+    if url:
+        return (url, True)
+    if item.get("mockupSkipped"):
+        return ("対応不要", False)
+    return ("未生成", False)
 
 
 def create_improvements_sheet(workbook, improvements: list, formats: dict, sheet_subtitle: str | None = None):
@@ -104,17 +140,43 @@ def create_improvements_sheet(workbook, improvements: list, formats: dict, sheet
         _get_timestamp(x.get("createdAt")),
     ))
 
+    # ハイパーリンク用フォーマット (モックアップURL 列専用、青色 + 下線)
+    # ゼブラに合わせて 2 種類用意
+    link_fmt = workbook.add_format({
+        "font_name": "Yu Gothic",
+        "font_size": 10,
+        "font_color": "#0563C1",
+        "underline": 1,
+        "text_wrap": True,
+        "valign": "vcenter",
+        "border": 1,
+        "border_color": "#E5E7EB",
+    })
+    link_fmt_alt = workbook.add_format({
+        "font_name": "Yu Gothic",
+        "font_size": 10,
+        "font_color": "#0563C1",
+        "underline": 1,
+        "text_wrap": True,
+        "valign": "vcenter",
+        "bg_color": "#F5F7FF",
+        "border": 1,
+        "border_color": "#E5E7EB",
+    })
+
     # 各行の値を先に組み立てて、最大必要高さを 1 つだけ計算 → 全行統一
     rows_data = []
     for item in sorted_items:
         cat = item.get("category") or ""
         pri = item.get("priority") or ""
+        mockup_text, _ = _get_mockup_cell_display(item)
         rows_data.append([
             "",  # No. は数値、改行なし
             CATEGORY_LABELS.get(cat, cat),
             PRIORITY_LABELS.get(pri, pri),
             item.get("title") or "",
             (item.get("targetPageUrl") or "").strip(),
+            mockup_text,
             _format_description_with_sections(item.get("description") or ""),
             item.get("expectedImpact") or "",
             item.get("costDeliveryLabel") or "要相談",
@@ -131,6 +193,7 @@ def create_improvements_sheet(workbook, improvements: list, formats: dict, sheet
         is_alt = (idx % 2 == 1)
         data_fmt = formats["data_alt"] if is_alt else formats["data"]
         num_fmt = formats["number_alt"] if is_alt else formats["number"]
+        cur_link_fmt = link_fmt_alt if is_alt else link_fmt
 
         ws.write_number(row, 0, idx + 1, num_fmt)
 
@@ -142,9 +205,20 @@ def create_improvements_sheet(workbook, improvements: list, formats: dict, sheet
 
         ws.write(row, 3, item.get("title") or "", data_fmt)
         ws.write(row, 4, (item.get("targetPageUrl") or "").strip(), data_fmt)
-        ws.write(row, 5, _format_description_with_sections(item.get("description") or ""), data_fmt)
-        ws.write(row, 6, item.get("expectedImpact") or "", data_fmt)
-        ws.write(row, 7, item.get("costDeliveryLabel") or "要相談", data_fmt)
+
+        # モックアップURL 列:
+        #   - URL あり: ハイパーリンク化
+        #   - URL なし + mockupSkipped: "対応不要" (プレーンテキスト)
+        #   - URL なし + 通常: "未生成" (プレーンテキスト)
+        mockup_text, mockup_is_url = _get_mockup_cell_display(item)
+        if mockup_is_url:
+            ws.write_url(row, 5, mockup_text, cur_link_fmt, mockup_text)
+        else:
+            ws.write(row, 5, mockup_text, data_fmt)
+
+        ws.write(row, 6, _format_description_with_sections(item.get("description") or ""), data_fmt)
+        ws.write(row, 7, item.get("expectedImpact") or "", data_fmt)
+        ws.write(row, 8, item.get("costDeliveryLabel") or "要相談", data_fmt)
 
     return ws
 

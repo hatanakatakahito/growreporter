@@ -75,7 +75,7 @@ export default function Sidebar() {
   const [isHelpOpen, setIsHelpOpen] = useState(false);
   const [isAccountOpen, setIsAccountOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const { isFree } = usePlan();
+  const { isFree, plan, planId } = usePlan();
 
   // テーマオブジェクト
   const t = SIDEBAR_THEMES[isDarkSidebar ? 'dark' : 'white'];
@@ -89,9 +89,11 @@ export default function Sidebar() {
 
   const userInitial = getUserName().charAt(0);
 
-  const userPlan = userProfile?.plan || 'free';
+  // viewer/editor の場合は usePlan() がオーナーのプランを返すため、
+  // userProfile.plan ではなく usePlan() の結果を使用する
+  const userPlan = planId || 'free';
   const planBadgeColor = getPlanBadgeColor(userPlan);
-  const planLabel = getPlanDisplayName(userPlan);
+  const planLabel = plan?.displayName || getPlanDisplayName(userPlan);
 
   // 現在のパスに基づいてメニューを開く
   useEffect(() => {

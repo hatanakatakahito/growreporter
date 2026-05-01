@@ -78,40 +78,31 @@ export async function onScrapingJobCreatedHandler(event) {
       }
 
       // ========================================
-      // Phase D: サイトスクショ取得（Puppeteer → PSI フォールバック）
+      // Phase D: サイトサムネ取得 (CF Worker Browser Rendering 経由 viewport モード)
+      // PC + Mobile を 1 アクセスで同時取得。スクレイピング完了直後に確実に最新サムネを保存する。
       // ========================================
       if (siteUrl && (!siteData?.pcScreenshotUrl || !siteData?.mobileScreenshotUrl)) {
         try {
-          const { captureScreenshotCallable } = await import('../callable/captureScreenshot.js');
-          const ownerUid = siteData?.userId || null;
-
-          if (!siteData?.pcScreenshotUrl) {
-            try {
-              const pcResult = await captureScreenshotCallable({
-                data: { siteUrl, deviceType: 'pc' },
-                auth: ownerUid ? { uid: ownerUid } : undefined,
-              });
-              if (pcResult?.imageUrl) siteUpdate.pcScreenshotUrl = pcResult.imageUrl;
-              logger.info('[onScrapingJobCreated] PCスクショ取得完了', { siteId });
-            } catch (e) {
-              logger.warn('[onScrapingJobCreated] PCスクショ取得エラー', { siteId, error: e.message });
-            }
-          }
-
-          if (!siteData?.mobileScreenshotUrl) {
-            try {
-              const mobileResult = await captureScreenshotCallable({
-                data: { siteUrl, deviceType: 'mobile' },
-                auth: ownerUid ? { uid: ownerUid } : undefined,
-              });
-              if (mobileResult?.imageUrl) siteUpdate.mobileScreenshotUrl = mobileResult.imageUrl;
-              logger.info('[onScrapingJobCreated] モバイルスクショ取得完了', { siteId });
-            } catch (e) {
-              logger.warn('[onScrapingJobCreated] モバイルスクショ取得エラー', { siteId, error: e.message });
-            }
+          const { refreshSiteThumbnails } = await import('../utils/refreshSiteThumbnails.js');
+          const result = await refreshSiteThumbnails({
+            siteId,
+            siteUrl,
+            forceRefresh: false,
+            persist: false, // siteUpdate に含めて 1 回の write にまとめる
+          });
+          if (result?.error) {
+            logger.warn('[onScrapingJobCreated] サムネ取得エラー', { siteId, error: result.error, message: result.message });
+          } else {
+            if (result?.pcScreenshotUrl) siteUpdate.pcScreenshotUrl = result.pcScreenshotUrl;
+            if (result?.mobileScreenshotUrl) siteUpdate.mobileScreenshotUrl = result.mobileScreenshotUrl;
+            logger.info('[onScrapingJobCreated] サムネ取得完了', {
+              siteId,
+              pc: !!result?.pcScreenshotUrl,
+              mobile: !!result?.mobileScreenshotUrl,
+            });
           }
         } catch (importError) {
-          logger.warn('[onScrapingJobCreated] captureScreenshot読み込みエラー', { siteId, error: importError.message });
+          logger.warn('[onScrapingJobCreated] refreshSiteThumbnails 読み込みエラー', { siteId, error: importError.message });
         }
       }
 
@@ -217,21 +208,6 @@ export async function onScrapingJobCreatedHandler(event) {
           siteId,
           error: taxonomyError.message,
         });
-      }
-
-      // ========================================
-      // サイト診断
-      // ========================================
-      try {
-        const diagModule = await import('../utils/runSiteDiagnosis.js').catch(() => null);
-        if (diagModule?.runSiteDiagnosisInternal) {
-          const diagResult = await diagModule.runSiteDiagnosisInternal(siteId);
-          if (diagResult) {
-            logger.info('[onScrapingJobCreated] サイト診断完了', { siteId, overallScore: diagResult.overallScore });
-          }
-        }
-      } catch (diagError) {
-        logger.warn('[onScrapingJobCreated] サイト診断スキップ', { siteId, error: diagError.message });
       }
 
       // ========================================

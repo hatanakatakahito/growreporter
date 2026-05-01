@@ -241,13 +241,13 @@ export default function LandingPages() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-bold text-dark dark:text-white">
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-2xl font-bold text-dark dark:text-white">
                   エンゲージメント - ランディングページ
                 </h2>
                 <TourHelpButton tourId="analysisLandingPages" />
               </div>
-              <p className="mt-0.5 text-sm text-body-color">
+              <p className="mt-1 text-sm text-body-color">
                 ユーザーが最初に訪問したページ（ランディングページ）を確認できます
               </p>
             </div>

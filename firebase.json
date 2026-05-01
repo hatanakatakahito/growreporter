@@ -12,6 +12,13 @@
         "destination": "/lp/index.html"
       },
       {
+        "source": "/page-mockups/**",
+        "function": {
+          "functionId": "serveMockup",
+          "region": "asia-northeast1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

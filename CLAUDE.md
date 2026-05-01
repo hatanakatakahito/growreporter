@@ -125,8 +125,14 @@ Defined in `src/constants/plans.js`, enforced dual-layer: client-side via `usePl
 
 ### Security
 - Firestore security rules in `firestore.rules` (~210 lines) implement RBAC
-- Helper functions: `isAuthenticated()`, `isAdminUser()`, `isAccountMember()`, `isOwnerOrEditor()`
+- Helper functions: `isAuthenticated()`, `isAdminUser()`, `isAccountMember()`, `isOwnerOrEditor()`, `viewerCanReadSite()`
 - Member roles: owner, editor, viewer (at account level)
+- **viewer は `users.allowedSiteIds` 配列に含まれるサイトのみ閲覧可**（`firestore.rules` 内 `viewerCanReadSite(siteId)` で強制）。owner/editor は無条件で全サイト読取可
+- viewer の AI 生成・Excel/PPTX エクスポートはオーナーのプラン枠を消費して実行可能
+- viewer の手動編集（改善案/メモ等）は不可（既存 `isOwnerOrEditor` ガードで自動的に拒否）
+- **重要**: `isSafeSelfUpdate` の allowlist に `allowedSiteIds` を追加してはならない。書込は Cloud Function `updateViewerAllowedSites`（Admin SDK）経由のみ。同様に `memberRole` / `accountOwnerId` / `memberships` も allowlist 外で維持
+- viewer の閲覧サイト管理 UI: `Members.jsx` の「サイト割当」ボタン → `AssignSitesModal.jsx`
+- サイト削除時は `onSiteDeleted` トリガーで全 viewer の `allowedSiteIds` から自動除去
 - Admin roles: admin, editor, viewer (at platform level)
 - Two-tier identity: users can be both account owners AND members of other accounts via `memberships` map
 

@@ -88,7 +88,6 @@ export async function fetchComprehensiveDataForImprovement(siteId, options = {})
     externalLinksResult,
     scrollEventsResult,
     scrapingDataResult,
-    diagnosisDataResult,
     aiAnalysisResult,
   ] = await Promise.allSettled([
     // 全体サマリー
@@ -125,8 +124,6 @@ export async function fetchComprehensiveDataForImprovement(siteId, options = {})
     ga4Client ? fetchGA4ScrollEvents(ga4Client, ga4PropertyId, recentStart, recentEnd) : null,
     // スクレイピングデータ
     fetchScrapingData(db, siteId),
-    // サイト診断キャッシュ
-    fetchDiagnosisCache(db, siteId),
     // AI総合分析キャッシュ
     fetchAIAnalysisCache(db, siteId),
   ]);
@@ -189,7 +186,6 @@ export async function fetchComprehensiveDataForImprovement(siteId, options = {})
     reverseFlow: reverseFlowData,
     aiComprehensiveAnalysis: resolve(aiAnalysisResult),
     scrapingData: resolve(scrapingDataResult),
-    diagnosisData: resolve(diagnosisDataResult),
     // 前年同月データ（過去比較用）
     prevYear: {
       period: { startDate: prevYearStart, endDate: prevYearEnd },
@@ -713,17 +709,6 @@ async function fetchScrapingData(db, siteId) {
     logger.warn('[serverDataFetcher] スクレイピングデータ取得エラー:', e.message);
     return { pages: [], meta: null, totalPages: 0 };
   }
-}
-
-async function fetchDiagnosisCache(db, siteId) {
-  try {
-    const doc = await db.collection('sites').doc(siteId).collection('diagnosisCache').doc('latest').get();
-    if (!doc.exists) return null;
-    const data = doc.data();
-    const timestamp = data.timestamp?.toMillis?.() || data.timestamp?.seconds * 1000 || 0;
-    if (Date.now() - timestamp > 24 * 60 * 60 * 1000) return null;
-    return data.result || null;
-  } catch { return null; }
 }
 
 async function fetchAIAnalysisCache(db, siteId) {

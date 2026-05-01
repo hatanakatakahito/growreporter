@@ -25,8 +25,9 @@ import {
 
 const incrementExportUsageFn = httpsCallable(functions, 'incrementExportUsage');
 // Python Cloud Function (codebase: python-export)
-const generateExcelFn = httpsCallable(functions, 'generate_analysis_excel');
-const generatePptxFn = httpsCallable(functions, 'generate_analysis_pptx');
+// 1 年分の生成で 3〜5 分かかる場合があるので timeout を 9 分（CF 側 540s に合わせる）
+const generateExcelFn = httpsCallable(functions, 'generate_analysis_excel', { timeout: 540_000 });
+const generatePptxFn = httpsCallable(functions, 'generate_analysis_pptx', { timeout: 540_000 });
 
 // 画面で表示している可視列 + adapt 済みの行データをまとめた「sheets」オブジェクトを構築
 function buildSheetsPayload(allData) {
@@ -364,6 +365,7 @@ function buildCustomSheetsPayload(allData) {
     conversions: allData.conversions,
     reverseFlows: allData.reverseFlows || [],
     userJourney: allData.userJourney || null,
+    keywordsFunnel: allData.keywordsFunnel || null,
     improvements: (allData.improvements || []).map((item) => {
       const price = formatEstimatedPriceLabel(item.estimatedLaborHours);
       const delivery = formatEstimatedDeliveryLabel(item.estimatedLaborHours);
@@ -702,6 +704,36 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
       return null;
     });
 
+  // 流入キーワード V2（GSC 連携時のみ・失敗時は無視）
+  if (hasGSC) {
+    const fetchKeywordsV2 = httpsCallable(functions, 'fetchGSCKeywordsV2Data');
+    const compRange = comparisonDateRange
+      ? {
+          startDate:
+            typeof comparisonDateRange.from === 'string'
+              ? comparisonDateRange.from
+              : format(comparisonDateRange.from, 'yyyy-MM-dd'),
+          endDate:
+            typeof comparisonDateRange.to === 'string'
+              ? comparisonDateRange.to
+              : format(comparisonDateRange.to, 'yyyy-MM-dd'),
+        }
+      : null;
+    promises.keywordsFunnel = fetchKeywordsV2({
+      siteId: selectedSiteId,
+      startDate,
+      endDate,
+      comparisonRange: compRange,
+    })
+      .then((r) => r.data)
+      .catch((e) => {
+        console.warn('[Export] keywordsFunnel fetch failed (skip):', e.message);
+        return null;
+      });
+  } else {
+    promises.keywordsFunnel = Promise.resolve(null);
+  }
+
   // 逆算フロー（設定がある場合のみ）
   if (reverseFlowSettings.length > 0) {
     promises.reverseFlows = Promise.all(
@@ -799,6 +831,7 @@ async function fetchAllData(selectedSiteId, selectedSite, dateRange, currentUser
     conversions: results.conversions,
     reverseFlows: results.reverseFlows || [],
     userJourney: results.userJourney || null,
+    keywordsFunnel: results.keywordsFunnel || null,
     improvements: results.improvements || [],
     aiAnalysis: results.aiAnalysis || {},
     memos: results.allMemos || {},
@@ -848,11 +881,18 @@ async function fetchAllAIAnalysis(siteId, userId, pageTypes, startDate, endDate)
     if (snapshot.empty) return result;
 
     // pageTypeごとに最新のキャッシュを選択
+    // 重要: 画面側 (getCachedAnalysis) と同じく userId でフィルタする。
+    // saveCachedAnalysis は .add() で毎回新規 doc を作るため、サイト × pageType ×
+    // period に対して複数 doc が並列で存在しうる。userId でフィルタしないと
+    // 別ユーザーが過去に生成した古い AI を選んでしまい、画面と Excel が食い違う。
+    // userId が揃えば画面と Excel が必ず同じキャッシュ doc を参照する。
     const candidates = {};
     for (const doc of snapshot.docs) {
       const data = doc.data();
       const pt = data.pageType;
       if (!pt) continue;
+      // 自分のキャッシュ以外はスキップ（画面と同じ条件で参照する）
+      if (userId && data.userId && data.userId !== userId) continue;
       // Firestore pageType をエクスポートキーに変換（直接一致 or マッピング）
       const exportKey = pageTypes.includes(pt) ? pt : PAGETYPE_TO_EXPORT_KEY[pt];
       if (!exportKey || !pageTypes.includes(exportKey)) continue;

@@ -23,6 +23,7 @@ export const inviteMemberCallable = async (request) => {
   const {
     email,
     role = 'viewer',
+    allowedSiteIds = [],
   } = request.data || {};
 
   if (!email) {
@@ -31,6 +32,14 @@ export const inviteMemberCallable = async (request) => {
 
   if (!['editor', 'viewer'].includes(role)) {
     throw new HttpsError('invalid-argument', '無効な権限です');
+  }
+
+  // editor / viewer どちらも招待時に対象サイトを 1 つ以上指定する必要がある
+  // （オーナー以外はサイト指定式）
+  if (role === 'editor' || role === 'viewer') {
+    if (!Array.isArray(allowedSiteIds) || allowedSiteIds.length === 0) {
+      throw new HttpsError('invalid-argument', '対象のサイトを 1 つ以上選択してください');
+    }
   }
 
   try {
@@ -106,13 +115,28 @@ export const inviteMemberCallable = async (request) => {
       }
     }
     
+    // 4.5 editor/viewer の場合、allowedSiteIds が実際に accountOwnerId のサイトであることを検証
+    let validatedAllowedSiteIds = [];
+    if ((role === 'editor' || role === 'viewer') && allowedSiteIds.length > 0) {
+      const siteSnaps = await Promise.all(
+        allowedSiteIds.map((sid) => db.collection('sites').doc(sid).get())
+      );
+      const ownedSiteIds = siteSnaps
+        .filter((s) => s.exists && s.data().userId === accountOwnerId)
+        .map((s) => s.id);
+      if (ownedSiteIds.length !== allowedSiteIds.length) {
+        throw new HttpsError('invalid-argument', '指定したサイトの一部があなたのアカウントに存在しません');
+      }
+      validatedAllowedSiteIds = ownedSiteIds;
+    }
+
     // 5. 招待トークンを生成
     const token = uuidv4();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7日間有効
-    
+
     // 6. 招待ドキュメントを作成
-    const invitationRef = await db.collection('invitations').add({
+    const invitationData = {
       accountOwnerId,
       email: email.toLowerCase(),
       role,
@@ -123,7 +147,11 @@ export const inviteMemberCallable = async (request) => {
       invitedByName: userData.name || `${userData.lastName || ''} ${userData.firstName || ''}`.trim() || userData.email,
       accountOwnerName: userData.company || 'グローレポータ',
       createdAt: FieldValue.serverTimestamp()
-    });
+    };
+    if (role === 'editor' || role === 'viewer') {
+      invitationData.allowedSiteIds = validatedAllowedSiteIds;
+    }
+    const invitationRef = await db.collection('invitations').add(invitationData);
     
     // 7. 招待メールを送信（Trigger Email 拡張用: subject + text 必須の場合は text も渡す）
     const appUrl = process.env.APP_URL || 'https://grow-reporter.com';
@@ -133,6 +161,7 @@ export const inviteMemberCallable = async (request) => {
       inviterName: userData.name || `${userData.lastName || ''} ${userData.firstName || ''}`.trim() || userData.email,
       companyName: userData.company || 'グローレポータ',
       role: role === 'editor' ? '編集者' : '閲覧者',
+      allowedSiteCount: (role === 'editor' || role === 'viewer') ? validatedAllowedSiteIds.length : null,
       invitationUrl,
       expiresAt: expiresAt.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })
     });
@@ -173,8 +202,11 @@ export const inviteMemberCallable = async (request) => {
  * 招待メールHTMLを生成
  */
 function generateInvitationEmailHtml(data) {
-  const { inviterName, companyName, role, invitationUrl, expiresAt } = data;
-  
+  const { inviterName, companyName, role, allowedSiteCount, invitationUrl, expiresAt } = data;
+  const accessScopeText = (allowedSiteCount != null)
+    ? `指定された ${allowedSiteCount} サイトのみ${role === '編集者' ? '編集・閲覧' : '閲覧'}可能です`
+    : `${companyName} の全サイトのデータにアクセスできるようになります`;
+
   return `
 <!DOCTYPE html>
 <html lang="ja">
@@ -212,7 +244,7 @@ function generateInvitationEmailHtml(data) {
               </div>
               
               <p style="margin: 20px 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                招待を承認すると、${companyName} の全サイトのデータにアクセスできるようになります。
+                招待を承認すると、${accessScopeText}。
               </p>
               
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">

@@ -2,13 +2,13 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { fetchMetadataCallable } from './fetchMetadata.js';
-import { captureScreenshotCallable } from './captureScreenshot.js';
+import { refreshSiteThumbnails } from '../utils/refreshSiteThumbnails.js';
 import { canEditSite } from '../utils/permissionHelper.js';
 
 /**
  * メタデータ・スクリーンショットを再取得して sites を更新する
  * メタデータ: fetchMetadata（素fetch→Puppeteerフォールバック）
- * スクリーンショット: captureScreenshot（PSI API 一元化）
+ * スクリーンショット: refreshSiteThumbnails (CF Worker Browser Rendering 経由 viewport モード)
  */
 export const refreshSiteMetadataAndScreenshotsCallable = async (request) => {
   const uid = request.auth?.uid;
@@ -43,7 +43,7 @@ export const refreshSiteMetadataAndScreenshotsCallable = async (request) => {
 
   // メタデータ: fetchMetadata（素fetch → Puppeteerフォールバック）
   try {
-    const metadataResult = await fetchMetadataCallable({ data: { siteUrl } });
+    const metadataResult = await fetchMetadataCallable({ data: { siteUrl }, auth: request.auth });
     const metadata = metadataResult?.metadata;
     if (metadata?.title || metadata?.ogTitle) {
       updateData.metaTitle = metadata.title || metadata.ogTitle;
@@ -58,25 +58,21 @@ export const refreshSiteMetadataAndScreenshotsCallable = async (request) => {
     logger.warn('[refreshSiteMetadataAndScreenshots] メタデータ取得エラー', { siteId, error: e.message });
   }
 
-  // スクリーンショット: captureScreenshot（Puppeteer → PSIフォールバック）
+  // スクリーンショット: CF Worker Browser Rendering 経由 viewport モード (PC + Mobile を 1 アクセスで取得)
+  // refreshSiteThumbnails が内部で sites doc に pcScreenshotUrl/mobileScreenshotUrl を update する。
+  // 以降 updateData にはマージしない (二重 update 回避)。
+  let thumbResult = null;
   try {
-    const pcResult = await captureScreenshotCallable({
-      data: { siteUrl, deviceType: 'pc' },
-      auth: request.auth,
+    thumbResult = await refreshSiteThumbnails({
+      siteId,
+      siteUrl,
+      forceRefresh: true,
+      persist: false, // 下の siteRef.update に任せて 1 回の write にまとめる
     });
-    if (pcResult?.imageUrl) updateData.pcScreenshotUrl = pcResult.imageUrl;
+    if (thumbResult?.pcScreenshotUrl) updateData.pcScreenshotUrl = thumbResult.pcScreenshotUrl;
+    if (thumbResult?.mobileScreenshotUrl) updateData.mobileScreenshotUrl = thumbResult.mobileScreenshotUrl;
   } catch (e) {
-    logger.warn('[refreshSiteMetadataAndScreenshots] PCスクショ取得エラー', { siteId, error: e.message });
-  }
-
-  try {
-    const mobileResult = await captureScreenshotCallable({
-      data: { siteUrl, deviceType: 'mobile' },
-      auth: request.auth,
-    });
-    if (mobileResult?.imageUrl) updateData.mobileScreenshotUrl = mobileResult.imageUrl;
-  } catch (e) {
-    logger.warn('[refreshSiteMetadataAndScreenshots] モバイルスクショ取得エラー', { siteId, error: e.message });
+    logger.warn('[refreshSiteMetadataAndScreenshots] スクショ取得エラー', { siteId, error: e.message });
   }
 
   if (Object.keys(updateData).length > 0) {

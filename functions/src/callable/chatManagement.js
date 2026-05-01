@@ -13,7 +13,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { logger } from 'firebase-functions/v2';
-import { canEditSite } from '../utils/permissionHelper.js';
+import { canAccessSite, canEditSite } from '../utils/permissionHelper.js';
 
 /**
  * チャット会話一覧を取得
@@ -24,8 +24,9 @@ export async function getChatSessionsCallable(req) {
   const { siteId, includeArchived = false } = req.data;
   if (!siteId) throw new HttpsError('invalid-argument', 'siteIdが必要です');
 
-  const canEdit = await canEditSite(req.auth.uid, siteId);
-  if (!canEdit) throw new HttpsError('permission-denied', 'アクセス権がありません');
+  // セッション一覧は閲覧操作なので viewer も可
+  const hasAccess = await canAccessSite(req.auth.uid, siteId);
+  if (!hasAccess) throw new HttpsError('permission-denied', 'アクセス権がありません');
 
   const db = getFirestore();
   let q = db.collection('sites').doc(siteId).collection('chatSessions')
@@ -71,8 +72,9 @@ export async function deleteChatSessionCallable(req) {
   const { siteId, sessionId } = req.data;
   if (!siteId || !sessionId) throw new HttpsError('invalid-argument', 'siteId, sessionIdが必要です');
 
-  const canEdit = await canEditSite(req.auth.uid, siteId);
-  if (!canEdit) throw new HttpsError('permission-denied', 'アクセス権がありません');
+  // 自分の作ったセッションを削除する操作なので viewer も可
+  const hasAccess = await canAccessSite(req.auth.uid, siteId);
+  if (!hasAccess) throw new HttpsError('permission-denied', 'アクセス権がありません');
 
   const db = getFirestore();
   const sessionRef = db.collection('sites').doc(siteId).collection('chatSessions').doc(sessionId);
@@ -177,8 +179,9 @@ export async function searchChatSessionsCallable(req) {
   const { siteId, query } = req.data;
   if (!siteId || !query?.trim()) throw new HttpsError('invalid-argument', 'siteIdとqueryが必要です');
 
-  const canEdit = await canEditSite(req.auth.uid, siteId);
-  if (!canEdit) throw new HttpsError('permission-denied', 'アクセス権がありません');
+  // 検索は閲覧操作なので viewer も可
+  const hasAccess = await canAccessSite(req.auth.uid, siteId);
+  if (!hasAccess) throw new HttpsError('permission-denied', 'アクセス権がありません');
 
   const db = getFirestore();
   const snap = await db.collection('sites').doc(siteId).collection('chatSessions')
@@ -266,7 +269,8 @@ export async function getChatMessagesCallable(req) {
   const { siteId, sessionId } = req.data;
   if (!siteId || !sessionId) throw new HttpsError('invalid-argument', 'siteIdとsessionIdが必要です');
 
-  const canEdit = await canEditSite(req.auth.uid, siteId);
+  // メッセージ取得は閲覧操作なので viewer も可
+  const canEdit = await canAccessSite(req.auth.uid, siteId);
   if (!canEdit) throw new HttpsError('permission-denied', 'アクセス権がありません');
 
   const db = getFirestore();

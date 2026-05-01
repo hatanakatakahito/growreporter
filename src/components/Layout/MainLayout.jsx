@@ -11,9 +11,10 @@ import { useGlobalMemoNotifications } from '../../hooks/useGlobalMemoNotificatio
 import { useGlobalAlertNotifications } from '../../hooks/useGlobalAlertNotifications';
 import GlobalNotificationModal from './GlobalMemoNotificationModal';
 import DateRangePicker from '../Analysis/DateRangePicker';
-import SiteSelectionModal from '../common/SiteSelectionModal';
 import UpgradeModal from '../common/UpgradeModal';
 import FeedbackModal from '../Feedback/FeedbackModal';
+import ViewerEmptyPlaceholder from '../common/ViewerEmptyPlaceholder';
+import SiteSelectionModal from '../common/SiteSelectionModal';
 import logoImg from '../../assets/img/logo.svg';
 
 /**
@@ -237,7 +238,7 @@ function MobileDrawer({ isOpen, onClose }) {
  */
 export default function MainLayout() {
   const { isSidebarOpen } = useSidebar();
-  const { sites, isLoading, needsSiteSelection } = useSite();
+  const { sites, isLoading, isMember, memberHasNoAllowedSites } = useSite();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -250,7 +251,18 @@ export default function MainLayout() {
     return () => window.removeEventListener('feedback:open', handler);
   }, []);
 
-  if (!isLoading && sites.length === 0) {
+  // メンバー（editor/viewer）で割当サイトが無い場合、専用プレースホルダーを表示
+  // ただしアカウント設定画面（プロフィール・通知）は引き続きアクセス可能にする
+  if (!isLoading && memberHasNoAllowedSites) {
+    const isAccountSettings = location.pathname.startsWith('/account/settings')
+      || location.pathname.startsWith('/account/profile');
+    if (!isAccountSettings) {
+      return <ViewerEmptyPlaceholder />;
+    }
+  }
+
+  // メンバーはサイト追加 UI に遷移させない（オーナーが割当待ち = プレースホルダー表示）
+  if (!isLoading && sites.length === 0 && !isMember) {
     return <Navigate to="/sites/new" replace />;
   }
 
@@ -287,14 +299,16 @@ export default function MainLayout() {
       />
 
 
-      {/* サイト選択モーダル */}
-      <SiteSelectionModal />
-
       {/* 意見箱モーダル */}
       <FeedbackModal
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
       />
+
+      {/* サイト選択モーダル
+          プラン解約 / 追加サイトオプション解約 / 期限切れで
+          登録サイト数が effectiveMaxSites を超えた場合に表示される */}
+      <SiteSelectionModal />
     </div>
   );
 }

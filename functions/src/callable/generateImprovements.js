@@ -10,7 +10,7 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
-import { canEditSite } from '../utils/permissionHelper.js';
+import { canAccessSite } from '../utils/permissionHelper.js';
 import { fetchComprehensiveDataForImprovement } from '../utils/serverComprehensiveDataFetcher.js';
 
 const JACCARD_THRESHOLD = 0.5;
@@ -72,8 +72,19 @@ const NON_VISUAL_KEYWORDS = [
 ];
 
 function isNonVisual(title, description) {
-  const text = `${title || ''} ${description || ''}`.toLowerCase();
-  return NON_VISUAL_KEYWORDS.some(kw => text.includes(kw.toLowerCase()));
+  // URL を除去してから判定（URL 内の "https"/"404" 等が誤マッチするため）
+  const raw = `${title || ''} ${description || ''}`;
+  const text = raw.replace(/https?:\/\/[^\s）)」』】＞>"']+/gi, '').toLowerCase();
+  return NON_VISUAL_KEYWORDS.some(kw => {
+    const lower = kw.toLowerCase();
+    // ASCII のみ（INP, 404, HTTPS 等）は単語境界マッチで誤判定回避
+    if (/^[\x20-\x7E]+$/.test(kw)) {
+      const escaped = lower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const re = new RegExp(`(?:^|[^a-z0-9])${escaped}(?![a-z0-9])`, 'i');
+      return re.test(text);
+    }
+    return text.includes(lower);
+  });
 }
 
 // カテゴリ/優先度の正規化
@@ -118,8 +129,10 @@ export async function generateImprovementsCallable(req) {
   }
 
   // 権限チェック
-  const canEdit = await canEditSite(userId, siteId);
-  if (!canEdit) {
+  // viewer も AI 改善案生成は許可（オーナーのプラン枠を消費）。
+  // 手動編集は Firestore Rules / 個別 callable 側でブロックする。
+  const hasAccess = await canAccessSite(userId, siteId);
+  if (!hasAccess) {
     throw new HttpsError('permission-denied', 'このサイトの改善案を生成する権限がありません');
   }
 

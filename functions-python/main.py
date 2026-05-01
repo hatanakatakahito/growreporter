@@ -29,8 +29,8 @@ REGION = "asia-northeast1"
 
 @https_fn.on_call(
     region=REGION,
-    memory=options.MemoryOption.GB_1,
-    timeout_sec=120,
+    memory=options.MemoryOption.GB_2,
+    timeout_sec=540,
     cors=options.CorsOptions(
         cors_origins=["*"],
         cors_methods=["get", "post"],
@@ -75,8 +75,8 @@ def generate_analysis_excel(req: https_fn.CallableRequest) -> dict[str, Any]:
 
 @https_fn.on_call(
     region=REGION,
-    memory=options.MemoryOption.GB_1,
-    timeout_sec=120,
+    memory=options.MemoryOption.GB_2,
+    timeout_sec=540,
     cors=options.CorsOptions(
         cors_origins=["*"],
         cors_methods=["get", "post"],

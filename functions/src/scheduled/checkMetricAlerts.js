@@ -6,6 +6,7 @@ import { generateBatchedAlertEmailTemplate, normalizePlan } from '../utils/email
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { generateBatchedAlertHypotheses } from '../utils/alertHypotheses.js';
 import { getLabel } from '../constants/metrics.js';
+import { canUserReceiveSiteNotification } from '../utils/notificationHelper.js';
 
 const ALERT_THRESHOLD_PERCENT = 50;
 // 閾値判定対象の指標キー一覧（ga4ServerHelper 由来のフィールド名）
@@ -36,8 +37,10 @@ async function getAlertRecipientsForSite(db, siteId, membersByOwner = null) {
   const seen = new Set();
   const recipients = [];
 
-  const add = (userId, email) => {
+  const add = (userId, email, memberRole, allowedSiteIds) => {
     if (!email || seen.has(userId)) return;
+    // viewer はサイト割当外なら通知しない
+    if (!canUserReceiveSiteNotification({ memberRole, allowedSiteIds }, siteId)) return;
     seen.add(userId);
     recipients.push({ userId, email });
   };
@@ -45,11 +48,13 @@ async function getAlertRecipientsForSite(db, siteId, membersByOwner = null) {
   const ownerDoc = await db.collection('users').doc(siteOwnerId).get();
   if (ownerDoc.exists) {
     const ns = ownerDoc.data().notificationSettings || {};
-    if (ns.alertEmail !== false) add(siteOwnerId, ownerDoc.data().email);
+    if (ns.alertEmail !== false) add(siteOwnerId, ownerDoc.data().email, 'owner', null);
   }
 
   if (membersByOwner && membersByOwner.has(siteOwnerId)) {
-    for (const m of membersByOwner.get(siteOwnerId)) add(m.userId, m.email);
+    for (const m of membersByOwner.get(siteOwnerId)) {
+      add(m.userId, m.email, m.memberRole, m.allowedSiteIds);
+    }
   }
 
   const accountMembersSnap = await db
@@ -61,8 +66,11 @@ async function getAlertRecipientsForSite(db, siteId, membersByOwner = null) {
     if (!memberUserId) continue;
     const userDoc = await db.collection('users').doc(memberUserId).get();
     if (!userDoc.exists) continue;
-    const ns = userDoc.data().notificationSettings || {};
-    if (ns.alertEmail !== false) add(memberUserId, userDoc.data().email);
+    const userData = userDoc.data();
+    const ns = userData.notificationSettings || {};
+    if (ns.alertEmail !== false) {
+      add(memberUserId, userData.email, userData.memberRole, userData.allowedSiteIds);
+    }
   }
 
   return recipients;
@@ -81,7 +89,12 @@ async function buildMembersByOwnerForAlerts(db) {
     const accountOwnerId = data.accountOwnerId;
     if (!accountOwnerId) continue;
     if (!map.has(accountOwnerId)) map.set(accountOwnerId, []);
-    map.get(accountOwnerId).push({ userId: doc.id, email });
+    map.get(accountOwnerId).push({
+      userId: doc.id,
+      email,
+      memberRole: data.memberRole || 'editor',
+      allowedSiteIds: Array.isArray(data.allowedSiteIds) ? data.allowedSiteIds : [],
+    });
   }
   return map;
 }

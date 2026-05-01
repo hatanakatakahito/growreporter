@@ -381,17 +381,15 @@ export default function Register() {
                   <label className={labelClass}>電話番号 <span className="text-red-500">*</span></label>
                   <input type="tel" value={phoneNumber}
                     onChange={(e) => {
-                      // 全角→半角変換 + ハイフン自動付与
-                      let v = e.target.value
+                      // 全角→半角変換 + ハイフン・空白・括弧を自動削除（ProfileEdit と統一）
+                      const cleaned = e.target.value
                         .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
-                        .replace(/[ー−‐―]/g, '-')
-                        .replace(/[^0-9-]/g, '');
-                      const digits = v.replace(/-/g, '');
-                      if (digits.length === 11) v = `${digits.slice(0,3)}-${digits.slice(3,7)}-${digits.slice(7)}`;
-                      else if (digits.length === 10) v = `${digits.slice(0,2)}-${digits.slice(2,6)}-${digits.slice(6)}`;
-                      setPhoneNumber(v);
+                        .replace(/[-\s()ー−‐―]/g, '')
+                        .replace(/[^0-9]/g, '');
+                      setPhoneNumber(cleaned);
                     }}
-                    placeholder="090-1234-5678" required className={inputClass} />
+                    placeholder="09012345678（ハイフンなし）" required className={inputClass} />
+                  <p className="mt-1 text-xs text-body-color">※ハイフンは自動で削除されます</p>
                 </div>
 
                 {/* メールアドレス */}

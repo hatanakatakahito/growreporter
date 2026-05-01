@@ -57,7 +57,7 @@ export default function Reports() {
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-6">
-            <div className="mb-1 flex items-center gap-2 flex-wrap">
+            <div className="mb-1 flex items-center gap-3 flex-wrap">
               <h2 className="text-2xl font-bold text-dark dark:text-white">評価する</h2>
               <TourHelpButton tourId="reports" />
             </div>

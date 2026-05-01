@@ -89,9 +89,9 @@ export const acceptInvitationCallable = async (request) => {
       invitedBy: invitation.invitedBy,
       invitedByName: invitation.invitedByName || ''
     };
-    
+
     const joinedAt = FieldValue.serverTimestamp();
-    await db.collection('users').doc(uid).update({
+    const updateData = {
       accountOwnerId: invitation.accountOwnerId,
       memberRole: invitation.role,
       joinedAt,
@@ -99,7 +99,14 @@ export const acceptInvitationCallable = async (request) => {
       invitedByName: invitation.invitedByName || null,
       memberships,
       updatedAt: FieldValue.serverTimestamp()
-    });
+    };
+    // editor / viewer どちらも allowedSiteIds でサイト指定式（オーナーは除外）
+    if (invitation.role === 'editor' || invitation.role === 'viewer') {
+      updateData.allowedSiteIds = Array.isArray(invitation.allowedSiteIds) ? invitation.allowedSiteIds : [];
+    } else {
+      updateData.allowedSiteIds = FieldValue.delete();
+    }
+    await db.collection('users').doc(uid).update(updateData);
     
     // 6. 招待ステータスを更新
     await invitationDoc.ref.update({

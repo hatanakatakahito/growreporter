@@ -13,7 +13,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { logger } from 'firebase-functions/v2';
-import { canEditSite } from '../utils/permissionHelper.js';
+import { canAccessSite } from '../utils/permissionHelper.js';
 import { getInjectionGuardPreamble, wrapAsUserData } from '../utils/promptSanitizer.js';
 
 const MAX_RETRIES = 2;
@@ -38,8 +38,9 @@ export async function aiChatCallable(req) {
   if (!message?.trim()) throw new HttpsError('invalid-argument', 'メッセージが必要です');
 
   // 権限チェック
-  const canEdit = await canEditSite(userId, siteId);
-  if (!canEdit) throw new HttpsError('permission-denied', 'このサイトへのアクセス権がありません');
+  // viewer も AI チャット利用可（オーナーのプラン枠を消費）
+  const hasAccess = await canAccessSite(userId, siteId);
+  if (!hasAccess) throw new HttpsError('permission-denied', 'このサイトへのアクセス権がありません');
 
   const db = getFirestore();
 

@@ -78,7 +78,9 @@ export default function AcceptInvitation() {
 
       if (result.data.success) {
         alert('招待を承認しました！ダッシュボードに移動します。');
-        navigate('/');
+        // viewer も含め全ロールでダッシュボードへ直行（サイト登録ウィザードはスキップ）
+        // viewer かつ allowedSiteIds が空の場合は MainLayout が ViewerEmptyPlaceholder を表示
+        navigate('/dashboard');
       }
     } catch (err) {
       console.error('Error accepting invitation:', err);
@@ -155,6 +157,12 @@ export default function AcceptInvitation() {
                 <dt className="text-sm font-medium text-gray-500">権限</dt>
                 <dd className="text-sm text-gray-900">{roleText}</dd>
               </div>
+              {invitation.role === 'viewer' && Array.isArray(invitation.allowedSiteIds) && (
+                <div>
+                  <dt className="text-sm font-medium text-gray-500">閲覧可能サイト数</dt>
+                  <dd className="text-sm text-gray-900">{invitation.allowedSiteIds.length} サイト</dd>
+                </div>
+              )}
               <div>
                 <dt className="text-sm font-medium text-gray-500">有効期限</dt>
                 <dd className="text-sm text-gray-900">{expiresAtText}</dd>
@@ -163,7 +171,9 @@ export default function AcceptInvitation() {
           </div>
 
           <p className="text-sm text-gray-600 mb-6">
-            招待を承認すると、{invitation.accountOwnerName} の全サイトのデータにアクセスできるようになります。
+            {invitation.role === 'viewer'
+              ? `招待を承認すると、${invitation.accountOwnerName} の指定された ${Array.isArray(invitation.allowedSiteIds) ? invitation.allowedSiteIds.length : 0} サイトのみ閲覧できるようになります。`
+              : `招待を承認すると、${invitation.accountOwnerName} の全サイトのデータにアクセスできるようになります。`}
           </p>
 
           {/* 未登録ユーザーの場合 */}

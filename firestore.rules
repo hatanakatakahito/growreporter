@@ -40,10 +40,24 @@ service cloud.firestore {
       return isAccountMember(accountOwnerId) && getMemberRole() in ['owner', 'editor'];
     }
 
+    // メンバー（editor/viewer）がこのサイトにアクセスできるか
+    // owner は無制限。editor/viewer は users.allowedSiteIds に siteId が含まれている場合のみ可
+    function memberCanReadSite(siteId) {
+      let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return getMemberRole() == 'owner' ||
+             ('allowedSiteIds' in userDoc.data && siteId in userDoc.data.allowedSiteIds);
+    }
+
+    // 後方互換のためのエイリアス（旧名）
+    function viewerCanReadSite(siteId) {
+      return memberCanReadSite(siteId);
+    }
+
     // ユーザー本人による「安全な field allowlist 更新」かチェック
     // Critical: role / plan / accountOwnerId / memberRole / memberships /
-    //   aiSummaryUsage / aiImprovementUsage / customLimits 等は本人書込禁止。
-    //   これらは Cloud Functions (Admin SDK) のみで更新する。
+    //   aiSummaryUsage / aiImprovementUsage / customLimits / allowedSiteIds 等は本人書込禁止。
+    //   特に allowedSiteIds は viewer のサイトアクセス制御の根幹。本人が書き換え可能だと
+    //   仕様が破綻する。Cloud Function updateViewerAllowedSites (Admin SDK) のみで更新する。
     function isSafeSelfUpdate(userId) {
       return request.auth != null && request.auth.uid == userId &&
         request.resource.data.diff(resource.data).affectedKeys().hasOnly([
@@ -134,9 +148,10 @@ service cloud.firestore {
       // 読み取り: 自分のサイト / 同一アカウントメンバー / 管理者
       // (legacy データの !('userId' in resource.data) 緩和を撤廃。
       //  既存 legacy データは別途 backfill migration が必要)
+      // viewer の場合は allowedSiteIds に含まれるサイトのみ読取可
       allow read: if request.auth != null &&
         (resource.data.userId == request.auth.uid ||
-         isAccountMember(resource.data.userId) ||
+         (isAccountMember(resource.data.userId) && viewerCanReadSite(siteId)) ||
          isAdminUser());
 
       // 作成: 本人またはアカウントオーナー/編集者
@@ -144,56 +159,56 @@ service cloud.firestore {
         (request.resource.data.userId == request.auth.uid ||
          isOwnerOrEditor(request.resource.data.userId));
 
-      // 更新: 本人 / アカウントオーナー・編集者 / システム編集者・管理者
+      // 更新: 本人 / アカウントオーナー・編集者（割当サイトに限る） / システム編集者・管理者
       allow update: if request.auth != null &&
         (
           resource.data.userId == request.auth.uid &&
           request.resource.data.userId == request.auth.uid
         ) ||
-        isOwnerOrEditor(resource.data.userId) ||
+        (isOwnerOrEditor(resource.data.userId) && memberCanReadSite(siteId)) ||
         isEditorOrAdmin();
 
-      // 削除: 本人 / アカウントオーナー・編集者
+      // 削除: 本人 / アカウントオーナー・編集者（割当サイトに限る）
       allow delete: if request.auth != null &&
         (resource.data.userId == request.auth.uid ||
-         isOwnerOrEditor(resource.data.userId));
+         (isOwnerOrEditor(resource.data.userId) && memberCanReadSite(siteId)));
 
       // アラートサブコレクション（読み取りのみ。書込は Functions）
       match /alerts/{alertId} {
         allow read: if request.auth != null && (
           isAdminUser() ||
           get(/databases/$(database)/documents/sites/$(siteId)).data.userId == request.auth.uid ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && viewerCanReadSite(siteId))
         );
         allow write: if false;
       }
-      // 改善課題（読み取りは全メンバー可、書き込みはオーナー・編集者のみ）
+      // 改善課題（割当サイトでオーナー・編集者は書込可、メンバーは閲覧）
       match /improvements/{improvementId} {
         allow read: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && memberCanReadSite(siteId))
         );
         allow create, update, delete: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isOwnerOrEditor(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isOwnerOrEditor(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && memberCanReadSite(siteId))
         );
       }
-      // ページメモ（読み取りは全メンバー可、書き込みはオーナー・編集者のみ）
+      // ページメモ（割当サイトでオーナー・編集者は書込可、メンバーは閲覧）
       match /pageNotes/{noteId} {
         allow read: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && memberCanReadSite(siteId))
         );
         allow write: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isOwnerOrEditor(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isOwnerOrEditor(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && memberCanReadSite(siteId))
         );
       }
       // ページスクリーンショット（読取は全メンバー可。書込は Functions）
       match /pageScreenshots/{ssId} {
         allow read: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && viewerCanReadSite(siteId))
         );
         allow write: if false;
       }
@@ -201,28 +216,28 @@ service cloud.firestore {
       match /pageScrapingData/{dataId} {
         allow read: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && viewerCanReadSite(siteId))
         );
         allow write: if false;
       }
       match /pageScrapingMeta/{metaId} {
         allow read: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && viewerCanReadSite(siteId))
         );
         allow write: if false;
       }
       match /scrapingProgress/{progressId} {
         allow read: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && viewerCanReadSite(siteId))
         );
         allow write: if false;
       }
       match /scrapingErrors/{errorId} {
         allow read: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && viewerCanReadSite(siteId))
         );
         allow write: if false;
       }
@@ -230,22 +245,14 @@ service cloud.firestore {
       match /aiAnalysisCache/{cacheId} {
         allow read: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && viewerCanReadSite(siteId))
         );
         allow write: if false;
       }
       match /aiSummaries/{summaryId} {
         allow read: if request.auth != null && (
           isAdminUser() || isSiteOwner(siteId) ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
-        );
-        allow write: if false;
-      }
-      // サイト診断キャッシュ（読取は全メンバー可、書込は Functions）
-      match /diagnosisCache/{docId} {
-        allow read: if request.auth != null && (
-          isAdminUser() || isSiteOwner(siteId) ||
-          isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId)
+          (isAccountMember(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) && viewerCanReadSite(siteId))
         );
         allow write: if false;
       }
@@ -310,14 +317,26 @@ service cloud.firestore {
     // ====================================================================
     match /upgradeInquiries/{inquiryId} {
       // 作成: 認証ユーザーが自分の uid を含むものだけ。フィールド allowlist で injection 防止。
+      // 既存フィールドに加え、サイト追加オプション (v5.8.0) と board 取り込み (v5.9.0) のフィールド:
+      //   extraSitesCount     : 追加サイト数 (0 以上)
+      //   extraSitesMonths    : 課金月数 (new=12 or 1, addon=残月数)
+      //   inquiryType         : 'new_business' | 'addon_only'
+      //   baseProjectId       : addon_only 時の既存案件 ID
+      //   mergeStrategy       : 'overwrite' | 'add' | 'max' (board 取り込み重複処理)
+      //   renewedFrom         : renewal の場合、元 inquiry ID
+      //   boardImportedAt/By  : 板取り込み時刻 / 取り込み admin
+      // 注: importBoardProject 経由は Admin SDK で rules バイパス。一般ユーザーから board_import を作れない。
       allow create: if request.auth != null &&
         request.resource.data.uid == request.auth.uid &&
         request.resource.data.keys().hasOnly([
-          'uid', 'email', 'name', 'company', 'department',
-          'phoneNumber', 'zipCode', 'prefecture', 'city', 'building',
-          'plan', 'message', 'paymentTiming', 'startDatePref', 'startDate', 'startMonth',
+          'uid', 'email', 'name', 'company', 'companyName', 'department',
+          'phone', 'phoneNumber', 'zipCode', 'prefecture', 'city', 'building',
+          'plan', 'selectedPlan', 'message',
+          'paymentTiming', 'startDatePref', 'startDate', 'startMonth',
           'lastName', 'firstName',
-          'createdAt', 'status'
+          'source', 'createdAt', 'status',
+          'extraSitesCount', 'extraSitesMonths', 'inquiryType', 'baseProjectId',
+          'mergeStrategy', 'renewedFrom'
         ]);
       allow read: if request.auth != null && (
         isAdminUser() ||

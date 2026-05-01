@@ -77,51 +77,37 @@ export async function onSiteChangedHandler(event) {
   }
 
   // ========================================
-  // 2. スクリーンショット取得（Puppeteer→PSIフォールバック）
+  // 2. スクリーンショット取得（CF Worker Browser Rendering 経由 viewport モード）
   // ========================================
-  const ownerUid = afterData.userId || null;
+  // PC + Mobile を 1 アクセスで同時取得。siteUrl 変更検知時は強制再撮影 (forceRefresh: true)。
   const screenshotData = {};
 
   try {
-    const { captureScreenshotCallable } = await import('../callable/captureScreenshot.js');
-
-    // PC版スクリーンショット取得
-    if (!afterData.pcScreenshotUrl) {
-      logger.info('PC版スクリーンショット取得開始', { siteId, siteUrl });
-      try {
-        const pcResult = await captureScreenshotCallable({
-          data: { siteUrl, deviceType: 'pc' },
-          auth: ownerUid ? { uid: ownerUid } : undefined,
-        });
-        if (pcResult?.imageUrl) screenshotData.pcScreenshotUrl = pcResult.imageUrl;
-        logger.info('PC版スクリーンショット取得完了', { siteId, hasUrl: !!pcResult?.imageUrl });
-      } catch (pcError) {
-        logger.error('PC版スクリーンショット取得エラー', { siteId, error: pcError.message });
+    const needsCapture = !afterData.pcScreenshotUrl || !afterData.mobileScreenshotUrl || beforeData?.siteUrl !== siteUrl;
+    if (needsCapture) {
+      logger.info('スクリーンショット取得開始', { siteId, siteUrl, urlChanged: beforeData?.siteUrl !== siteUrl });
+      const { refreshSiteThumbnails } = await import('../utils/refreshSiteThumbnails.js');
+      const result = await refreshSiteThumbnails({
+        siteId,
+        siteUrl,
+        forceRefresh: beforeData?.siteUrl !== siteUrl, // siteUrl 変更時は cache を bypass
+        persist: false, // 下の siteRef.update に任せて 1 回の write にまとめる
+      });
+      if (result?.error) {
+        logger.warn('スクリーンショット取得エラー', { siteId, error: result.error, message: result.message });
+      } else {
+        if (result?.pcScreenshotUrl) screenshotData.pcScreenshotUrl = result.pcScreenshotUrl;
+        if (result?.mobileScreenshotUrl) screenshotData.mobileScreenshotUrl = result.mobileScreenshotUrl;
       }
     }
 
-    // モバイル版スクリーンショット取得
-    if (!afterData.mobileScreenshotUrl) {
-      logger.info('モバイル版スクリーンショット取得開始', { siteId, siteUrl });
-      try {
-        const mobileResult = await captureScreenshotCallable({
-          data: { siteUrl, deviceType: 'mobile' },
-          auth: ownerUid ? { uid: ownerUid } : undefined,
-        });
-        if (mobileResult?.imageUrl) screenshotData.mobileScreenshotUrl = mobileResult.imageUrl;
-        logger.info('モバイル版スクリーンショット取得完了', { siteId, hasUrl: !!mobileResult?.imageUrl });
-      } catch (mobileError) {
-        logger.error('モバイル版スクリーンショット取得エラー', { siteId, error: mobileError.message });
-      }
-    }
-
-    // スクリーンショットが取れたらFirestore更新
+    // スクリーンショットが取れたら Firestore 更新
     if (Object.keys(screenshotData).length > 0) {
       await db.collection('sites').doc(siteId).update(screenshotData);
       logger.info('スクリーンショットをFirestoreに保存', { siteId, fields: Object.keys(screenshotData) });
     }
   } catch (importError) {
-    logger.error('captureScreenshotモジュール読み込みエラー', { siteId, error: importError.message });
+    logger.error('refreshSiteThumbnailsモジュール読み込みエラー', { siteId, error: importError.message });
   }
 
   // 結果ログ

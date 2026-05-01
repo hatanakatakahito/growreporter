@@ -97,6 +97,11 @@ export const getAdminUsersCallable = async (request) => {
         memberRole: data.memberRole || 'owner',
         createdAt: toISOString(data.createdAt) || null,
         lastLoginAt: toISOString(data.lastLoginAt) || null,
+        // サイト追加オプション（v5.8.0）— PlanChangeModal で正しい初期値を表示するため必須
+        extraSitesCount: Number(data.extraSitesCount) || 0,
+        extraSitesValidUntil: toISOString(data.extraSitesValidUntil) || null,
+        extraSitesBoardProjectId: data.extraSitesBoardProjectId || null,
+        boardProjectId: data.boardProjectId || null,
         // 使用状況（後で取得）
         aiSummaryUsage: 0,
         aiImprovementUsage: 0,

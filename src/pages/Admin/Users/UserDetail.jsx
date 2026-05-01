@@ -25,8 +25,10 @@ import {
   CheckCircle,
   XCircle,
   Save,
-  Plus
+  Plus,
+  Send
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { doc, getDoc, updateDoc, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -51,6 +53,7 @@ export default function UserDetail() {
   const [editActiveSiteIds, setEditActiveSiteIds] = useState([]);
   const [isSavingActiveSites, setIsSavingActiveSites] = useState(false);
   const [liveActiveSiteIds, setLiveActiveSiteIds] = useState(null);
+  const [isSendingCredentials, setIsSendingCredentials] = useState(false);
 
   useEffect(() => {
     setPageTitle('ユーザー詳細');
@@ -111,6 +114,35 @@ export default function UserDetail() {
       await loadCustomLimits();
     } catch (err) {
       console.error('個別制限の削除エラー:', err);
+    }
+  };
+
+  // §16: アカウント情報メール送信
+  const handleSendCredentials = async () => {
+    if (!userDetail?.email) {
+      toast.error('対象ユーザーのメールアドレスが登録されていません');
+      return;
+    }
+    if (!confirm(`${userDetail.email} にアカウント情報メールを送信します。\nパスワードリセットリンクを含むメールが届きます。\n\nよろしいですか？`)) {
+      return;
+    }
+    setIsSendingCredentials(true);
+    try {
+      const fn = httpsCallable(functions, 'sendAccountCredentialsEmail');
+      const result = await fn({ targetUserId: uid });
+      if (result.data?.success) {
+        toast.success(`${result.data.sentTo} にアカウント情報メールを送信しました`);
+        setSuccessMessage(`アカウント情報メールを送信しました（${result.data.sentTo}）`);
+        setTimeout(() => setSuccessMessage(''), 6000);
+        refetch();
+      } else {
+        toast.error('メール送信に失敗しました');
+      }
+    } catch (err) {
+      console.error('[UserDetail] sendAccountCredentialsEmail error:', err);
+      toast.error(err?.message || 'メール送信に失敗しました');
+    } finally {
+      setIsSendingCredentials(false);
     }
   };
 
@@ -234,7 +266,7 @@ export default function UserDetail() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="primary"
             onClick={() => setShowPlanModal(true)}
@@ -324,14 +356,45 @@ export default function UserDetail() {
           </div>
 
           <div className="space-y-4">
-            <div>
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="text-body-color dark:text-dark-6">サイト登録数</span>
-                <span className="font-semibold text-dark dark:text-white">
-                  {userDetail.usage.sites}
-                </span>
-              </div>
-            </div>
+            {(() => {
+              const planConfig = PLANS[userDetail.plan] || PLANS.free;
+              const baseMaxSites = planConfig.features.maxSites;
+              const extraSitesCount = Number(userDetail.extraSitesCount) || 0;
+              const validUntil = userDetail.extraSitesValidUntil
+                ? new Date(userDetail.extraSitesValidUntil)
+                : null;
+              const isExpired = validUntil && validUntil < new Date();
+              const effectiveExtra = isExpired ? 0 : extraSitesCount;
+              const effectiveMaxSites = baseMaxSites + effectiveExtra;
+
+              return (
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="text-body-color dark:text-dark-6">
+                      サイト登録数 / 上限
+                    </span>
+                    <span className="font-semibold text-dark dark:text-white">
+                      {userDetail.usage.sites} / {effectiveMaxSites}
+                      {effectiveExtra > 0 && (
+                        <span className="ml-1 text-xs font-normal text-body-color">
+                          （基本{baseMaxSites} + 追加{effectiveExtra}）
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {extraSitesCount > 0 && (
+                    <p className="mt-1 text-xs text-body-color dark:text-dark-6">
+                      追加サイトオプション: {extraSitesCount}サイト
+                      {validUntil && (
+                        <span className={isExpired ? ' text-red-500' : ''}>
+                          {' '}（{isExpired ? '期限切れ: ' : '有効期限: '}{validUntil.toLocaleDateString('ja-JP')}）
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {(() => {
               const planConfig = PLANS[userDetail.plan] || PLANS.free;
@@ -463,12 +526,21 @@ export default function UserDetail() {
         </div>
 
         {/* 編集モード時の説明 */}
-        {editingActiveSites && (
-          <div className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
-            有効にするサイトを選択してください。プラン上限（{PLANS[userDetail.plan]?.features?.maxSites || 1}サイト）を超えるサイトがある場合、選択されたサイトのみがユーザーに表示されます。
-            チェックを全て外すとフィルタが解除されます。
-          </div>
-        )}
+        {editingActiveSites && (() => {
+          const baseMax = PLANS[userDetail.plan]?.features?.maxSites || 1;
+          const extra = Number(userDetail.extraSitesCount) || 0;
+          const validUntil = userDetail.extraSitesValidUntil
+            ? new Date(userDetail.extraSitesValidUntil)
+            : null;
+          const isExpired = validUntil && validUntil < new Date();
+          const effective = baseMax + (isExpired ? 0 : extra);
+          return (
+            <div className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+              有効にするサイトを選択してください。サイト登録上限（{effective}サイト{extra > 0 && !isExpired ? `: 基本${baseMax} + 追加${extra}` : ''}）を超えるサイトがある場合、選択されたサイトのみがユーザーに表示されます。
+              チェックを全て外すとフィルタが解除されます。
+            </div>
+          );
+        })()}
 
         {/* 現在のactiveSiteIds表示（編集モード外） */}
         {!editingActiveSites && liveActiveSiteIds && liveActiveSiteIds.length > 0 && (
@@ -546,6 +618,54 @@ export default function UserDetail() {
         ) : (
           <p className="text-center text-body-color dark:text-dark-6">登録されているサイトがありません</p>
         )}
+      </div>
+
+      {/* §16: アカウント情報メール（登録サイト一覧と同じセクション形式） */}
+      <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-dark dark:text-white">アカウント情報メール</h3>
+            <p className="mt-0.5 text-xs text-body-color dark:text-dark-6">
+              顧客にログイン情報（パスワードリセットリンク）をメールで通知します
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            onClick={handleSendCredentials}
+            disabled={isDeleting || isSendingCredentials || !userDetail?.email}
+            title="パスワードリセットリンクを含むアカウント情報メールを顧客に送信します"
+          >
+            <Send data-slot="icon" />
+            {isSendingCredentials ? '送信中...' : 'メールで送信'}
+          </Button>
+        </div>
+        <div className="rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
+          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs text-body-color dark:text-dark-6">送信先メールアドレス</p>
+              <p className="font-medium text-dark dark:text-white">
+                {userDetail?.email || <span className="text-body-color">未登録</span>}
+              </p>
+            </div>
+            <div>
+              <p className="mb-1 text-xs text-body-color dark:text-dark-6">最終送信日時</p>
+              <p className="font-medium text-dark dark:text-white">
+                {userDetail?.credentialsEmailSentAt ? (
+                  new Date(userDetail.credentialsEmailSentAt).toLocaleString('ja-JP', {
+                    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+                  })
+                ) : (
+                  <span className="text-body-color">未送信</span>
+                )}
+              </p>
+            </div>
+          </div>
+          {userDetail?.credentialsEmailSentAt && (
+            <p className="mt-3 text-xs text-body-color dark:text-dark-6">
+              ※ 何度でも再送信できます。リンクの有効期限は 72 時間です。
+            </p>
+          )}
+        </div>
       </div>
 
       {/* 個別制限 */}

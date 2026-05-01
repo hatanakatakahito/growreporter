@@ -43,6 +43,8 @@ export const getInvitationByTokenCallable = async (request) => {
       accountOwnerName: data.accountOwnerName || '',
       invitedByName: data.invitedByName || '',
       role: data.role || 'viewer',
+      // viewer 招待の場合、閲覧可能サイト数を承認画面で表示するため返す
+      allowedSiteIds: data.role === 'viewer' && Array.isArray(data.allowedSiteIds) ? data.allowedSiteIds : null,
       expiresAt: expiresAt ? expiresAt.toISOString() : null,
     };
   } catch (error) {

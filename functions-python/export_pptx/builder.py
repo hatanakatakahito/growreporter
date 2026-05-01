@@ -116,13 +116,51 @@ def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
     if d_to and len(d_to) >= 7:
         ctx.year_month = f"'{d_to[2:4]}.{d_to[5:7]}"
     # セクション番号管理 (中表紙の通し番号 + 総数)
+    # 各セクションは中身が 1 件以上ある場合のみ中表紙を出すため動的計算
     ctx.section_index = 0
-    ctx.section_total = 6  # トレンド/ユーザー/集客/コンテンツ/コンバージョン/Appendix
+    def _has_rows(key: str) -> bool:
+        s = sheets.get(key)
+        return bool(s and s.get("rows"))
+
+    has_analysis = bool(custom.get("summary") or custom.get("users"))
+    has_timeline = any(_has_rows(k) for k in ("monthly", "daily", "weekly", "hourly"))
+    kw_v2 = custom.get("keywordsFunnel")
+    has_marketing = bool(
+        _has_rows("channels")
+        or (kw_v2 and (kw_v2.get("funnel") or kw_v2.get("keywords")))
+        or _has_rows("referrals")
+    )
+    user_journey = custom.get("userJourney")
+    has_pages = bool(
+        any(_has_rows(k) for k in ("pages", "pageCategories", "landingPages", "fileDownloads", "externalLinks"))
+        or (user_journey and user_journey.get("nodes"))
+    )
+    has_conversion = bool(
+        (custom.get("conversions") and custom["conversions"].get("data"))
+        or custom.get("reverseFlows")
+    )
+    has_improvements = bool(custom.get("improvements"))
+    ctx.section_total = sum([
+        int(has_analysis), int(has_timeline), int(has_marketing), int(has_pages),
+        int(has_conversion), int(has_improvements), 1,  # Appendix は常に出す
+    ])
+
+    # ナビ順 (アプリと完全一致):
+    #  分析: 全体サマリー → ユーザー属性
+    #  時系列: 月別 → 日別 → 曜日別 → 時間帯別
+    #  集客: 集客チャネル → 流入キーワード元 → 被リンク元
+    #  ページ: ページ別 → ページ分類別 → ランディングページ →
+    #         ファイルダウンロード → 外部リンククリック → ユーザージャーニー
+    #  コンバージョン: コンバージョン一覧 → 逆算フロー
+    #  (改善アクション)
+    #  Appendix
 
     # 1. 表紙
     _create_cover_slide(prs, ctx, site_name, custom.get("siteUrl") or "", date_range, comp_range)
 
-    # 2. 全体サマリー
+    # ── 分析 ──
+    if has_analysis:
+        _create_section_divider(prs, ctx, "分析", eyebrow="ANALYSIS")
     _create_summary_slide(
         prs, ctx,
         summary=custom.get("summary"),
@@ -132,9 +170,17 @@ def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
         ai_data=ai.get("analysis/summary"),
         memos=memos.get("analysis/summary") or memos.get("summary"),
     )
+    _create_users_donut_slide(prs, ctx, demographics=custom.get("users"))
+    _create_users_region_slide(
+        prs, ctx,
+        demographics=custom.get("users"),
+        ai_data=ai.get("analysis/users"),
+        memos=memos.get("analysis/users") or memos.get("users"),
+    )
 
-    # 3. トレンド分析
-    _create_section_divider(prs, ctx, "トレンド分析")
+    # ── 時系列 ──
+    if has_timeline:
+        _create_section_divider(prs, ctx, "時系列", eyebrow="TIMELINE")
     _create_monthly_slides(
         prs, ctx,
         monthly_sheet=sheets.get("monthly"),
@@ -160,27 +206,19 @@ def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
         memos=memos.get("analysis/hour") or memos.get("hour"),
     )
 
-    # 4. ユーザー分析
-    _create_section_divider(prs, ctx, "ユーザー分析")
-    _create_users_donut_slide(prs, ctx, demographics=custom.get("users"))
-    _create_users_region_slide(
-        prs, ctx,
-        demographics=custom.get("users"),
-        ai_data=ai.get("analysis/users"),
-        memos=memos.get("analysis/users") or memos.get("users"),
-    )
-
-    # 5. 集客分析
-    _create_section_divider(prs, ctx, "集客分析")
+    # ── 集客 ──
+    if has_marketing:
+        _create_section_divider(prs, ctx, "集客", eyebrow="MARKETING")
     _create_channels_slide(
         prs, ctx,
         channels_sheet=sheets.get("channels"),
         ai_data=ai.get("analysis/channels"),
         memos=memos.get("analysis/channels") or memos.get("channels"),
     )
-    _create_keywords_slide(
+    # 流入キーワード元 = V2 ファネル (旧 Top 20 はナビから外れたため非表示)
+    _create_keywords_funnel_slide(
         prs, ctx,
-        keywords_sheet=sheets.get("keywords"),
+        keywords_v2=custom.get("keywordsFunnel"),
         ai_data=ai.get("analysis/keywords"),
         memos=memos.get("analysis/keywords") or memos.get("keywords"),
     )
@@ -191,8 +229,9 @@ def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
         memos=memos.get("analysis/referrals") or memos.get("referrals"),
     )
 
-    # 6. コンテンツ分析
-    _create_section_divider(prs, ctx, "コンテンツ分析")
+    # ── ページ ──
+    if has_pages:
+        _create_section_divider(prs, ctx, "ページ", eyebrow="PAGES")
     _create_pages_slide(
         prs, ctx,
         pages_sheet=sheets.get("pages"),
@@ -223,9 +262,16 @@ def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
         ai_data=ai.get("analysis/external-links"),
         memos=memos.get("analysis/external-links") or memos.get("externalLinks"),
     )
+    _create_user_journey_slide(
+        prs, ctx,
+        user_journey=custom.get("userJourney"),
+        ai_data=ai.get("analysis/user-journey"),
+        memos=memos.get("analysis/user-journey") or memos.get("userJourney"),
+    )
 
-    # 7. コンバージョン分析
-    _create_section_divider(prs, ctx, "コンバージョン分析")
+    # ── コンバージョン ──
+    if has_conversion:
+        _create_section_divider(prs, ctx, "コンバージョン", eyebrow="CONVERSION")
     _create_conversions_slides(
         prs, ctx,
         conversions=custom.get("conversions"),
@@ -238,15 +284,14 @@ def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
         ai_data=ai.get("analysis/reverse-flow"),
         memos=memos.get("analysis/reverse-flow") or memos.get("reverseFlow"),
     )
-    _create_user_journey_slide(
-        prs, ctx,
-        user_journey=custom.get("userJourney"),
-        ai_data=ai.get("analysis/user-journey"),
-        memos=memos.get("analysis/user-journey") or memos.get("userJourney"),
-    )
 
-    # 8. Appendix
-    _create_section_divider(prs, ctx, "Appendix")
+    # ── 改善アクション (improvements がある場合のみ) ──
+    if custom.get("improvements"):
+        _create_section_divider(prs, ctx, "改善アクション", eyebrow="ACTION")
+        _create_improvements_slide(prs, ctx, custom.get("improvements"))
+
+    # ── Appendix (用語解説) ──
+    _create_section_divider(prs, ctx, "用語解説", eyebrow="APPENDIX")
     _create_appendix_slide(prs, ctx)
 
     prs.save(buffer)
@@ -1057,12 +1102,10 @@ def _create_summary_slide(
             )
             kpi_end_y += tbl_h + 0.1
 
-    # AI + メモ
-    ai_y = kpi_end_y + 0.1
-    ai_h = max(FOOTER_Y - ai_y - 0.05, 0)
-    _add_ai_and_memo_footer(slide, ai_data, memos, ai_y, ai_h)
-
     _add_slide_footer(slide, ctx)
+
+    # AI 分析は独立スライドへ (本スライドの下にはみ出す問題を回避)
+    _create_ai_slide(prs, ctx, "全体サマリー", ai_data, memos)
 
 
 def _get_kpi_actual(kpi: dict, summary: dict | None) -> Any:
@@ -1094,11 +1137,12 @@ SECTION_DESCRIPTIONS = {
     "集客分析": "チャネル・キーワード・参照元から、流入の量と質を多角的に分析します。",
     "コンテンツ分析": "ページ別・分類別・LP・ファイル DL・外部リンクの利用状況を確認できます。",
     "コンバージョン分析": "コンバージョン推移と、フォーム到達までの逆算フローによるファネル分析を確認できます。",
-    "Appendix": "用語・指標の説明と補足情報をまとめています。",
+    "改善アクション": "AI が抽出した改善提案を、優先度・カテゴリ・期待効果と合わせて一覧化します。\nモックアップ生成済みの提案は、共有 URL から After 画面をその場で確認できます。",
+    "用語解説": "用語・指標の説明と補足情報をまとめています。",
 }
 
 
-def _create_section_divider(prs: Presentation, ctx: _Ctx, title: str) -> None:
+def _create_section_divider(prs: Presentation, ctx: _Ctx, title: str, *, eyebrow: str = "基本レポート") -> None:
     """中表紙: 薄背景 + 巨大薄色番号 + SECTION/CHAPTER ラベル + タイトル + 説明 + 専用フッター"""
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     _fill_slide_bg(slide, Color.BG_SOFT)
@@ -1126,7 +1170,7 @@ def _create_section_divider(prs: Presentation, ctx: _Ctx, title: str) -> None:
     stf.vertical_anchor = MSO_ANCHOR.MIDDLE
     sp = stf.paragraphs[0]
     sr = sp.add_run()
-    sr.text = f"SECTION / {sec_num_str} / 基本レポート"
+    sr.text = f"SECTION / {sec_num_str} / {eyebrow}"
     sr.font.name = FONT_FACE
     sr.font.size = Pt(10)
     sr.font.color.rgb = Color.PRIMARY
@@ -1192,7 +1236,7 @@ def _create_section_divider(prs: Presentation, ctx: _Ctx, title: str) -> None:
     etf.margin_right = 0
     ep = etf.paragraphs[0]
     er = ep.add_run()
-    er.text = "基本レポート"
+    er.text = eyebrow
     er.font.name = FONT_FACE
     er.font.size = Pt(13)
     er.font.bold = True
@@ -1931,6 +1975,110 @@ def _create_channels_slide(
 # ─── 10. 流入キーワード ──────────────────────────────────
 
 
+_FUNNEL_LABELS_JA = {
+    "branded": "指名",
+    "pureIntent": "純顕在",
+    "intent": "顕在",
+    "latent": "潜在",
+    "noise": "無関係",
+}
+
+
+def _create_keywords_funnel_slide(
+    prs: Presentation, ctx: _Ctx,
+    keywords_v2: dict | None,
+    ai_data: dict | None,
+    memos: list | None,
+) -> None:
+    """流入キーワード元（V2 ファネル）スライド: 5 層集計 + クラスタ TOP + 改善候補 + AI 分析"""
+    if not keywords_v2 or not keywords_v2.get("funnel"):
+        return
+
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _fill_slide_bg(slide, Color.WHITE)
+    _add_slide_title(slide, ctx, "流入キーワード元")
+
+    funnel = keywords_v2.get("funnel") or {}
+    clusters = keywords_v2.get("clusters") or []
+    keywords_list = keywords_v2.get("keywords") or []
+
+    layout = calc_table_only_layout(has_ai=False)
+
+    # 5 層テーブル
+    headers = [
+        {"label": "層", "align": "left"},
+        {"label": "KW数", "align": "right"},
+        {"label": "表示", "align": "right"},
+        {"label": "クリック", "align": "right"},
+        {"label": "CTR", "align": "right"},
+        {"label": "平均順位", "align": "right"},
+        {"label": "推定 CV", "align": "right"},
+        {"label": "主要 KW", "align": "left"},
+    ]
+    rows_out = []
+    for layer_key in ["branded", "pureIntent", "intent", "latent", "noise"]:
+        f = funnel.get(layer_key)
+        if not f:
+            continue
+        rows_out.append([
+            _FUNNEL_LABELS_JA.get(layer_key, layer_key),
+            format_number(f.get("count") or 0),
+            format_number(f.get("impressions") or 0),
+            format_number(f.get("clicks") or 0),
+            f"{float(f.get('ctr') or 0):.2f}%",
+            f"{float(f.get('avgPosition') or 0):.1f} 位",
+            format_number(f.get("estimatedCV") or 0),
+            " / ".join((f.get("topKeywords") or [])[:3]),
+        ])
+
+    if rows_out:
+        tbl_h = 0.4 * (len(rows_out) + 1)
+        # 列幅合計 = CONTENT_W (10.2) に収まるよう調整（旧: 10.4 でスライド右端からはみ出ていた）
+        _build_table(
+            slide, headers, rows_out, [0.9, 0.7, 1.0, 1.0, 0.8, 1.0, 0.9, 3.9],
+            x=MARGIN_X, y=layout["table_y"], h=tbl_h,
+            font_size=get_table_font_size(len(rows_out)),
+        )
+
+    # クラスタ TOP（あれば）+ 改善候補（あれば）を 2 カラムで下部に
+    cluster_top = sorted(clusters, key=lambda c: -(c.get("clicks") or 0))[:3]
+    ctr_loss_top = sorted(
+        [k for k in keywords_list if k.get("ctrLossFlag") and (k.get("potentialClicks") or 0) > 0],
+        key=lambda k: -(k.get("potentialClicks") or 0),
+    )[:3]
+
+    bottom_y = layout["table_y"] + 0.4 * (len(rows_out) + 1) + 0.3
+    # 残り高さに収まる範囲でテキストボックスを配置
+    available_h = max(0.6, FOOTER_Y - bottom_y - 0.1)
+    box_h = min(1.6, available_h)
+    if (cluster_top or ctr_loss_top) and bottom_y + 0.6 < FOOTER_Y:
+        # 簡易テキストで補足表示
+        from pptx.util import Inches as _In
+        from pptx.util import Pt as _Pt
+        # CONTENT_W に収めてスライド右端のオーバーフローを回避（旧: 11" → 0.4" はみ出し）
+        tx = slide.shapes.add_textbox(_In(MARGIN_X), _In(bottom_y), _In(CONTENT_W), _In(box_h))
+        tf = tx.text_frame
+        tf.word_wrap = True
+        tf.paragraphs[0].text = "意味的クラスタ TOP 3 / 改善候補 TOP 3"
+        tf.paragraphs[0].runs[0].font.size = _Pt(12)
+        tf.paragraphs[0].runs[0].font.bold = True
+        if cluster_top:
+            for c in cluster_top:
+                p = tf.add_paragraph()
+                p.text = f"・[クラスタ] {c.get('name')}: {c.get('keywordCount') or 0} KW / クリック {format_number(c.get('clicks'))} / 中心 {c.get('centerKeyword') or '-'}"
+                p.runs[0].font.size = _Pt(10)
+        if ctr_loss_top:
+            for k in ctr_loss_top:
+                p = tf.add_paragraph()
+                p.text = f"・[改善候補] {k.get('query')}: 表示 {format_number(k.get('impressions'))} / 順位 {float(k.get('position') or 0):.1f}位 / 潜在 +{format_number(k.get('potentialClicks'))} クリック"
+                p.runs[0].font.size = _Pt(10)
+
+    _add_slide_footer(slide, ctx)
+
+    # AI 分析スライドは _create_ai_slide で統一（user_journey と同じ作法）
+    _create_ai_slide(prs, ctx, "流入キーワード元", ai_data, memos)
+
+
 def _create_keywords_slide(
     prs: Presentation, ctx: _Ctx,
     keywords_sheet: dict | None,
@@ -2521,9 +2669,11 @@ def _create_user_journey_slide(
 
     if rows_out:
         tbl_h = 0.4 * (len(rows_out) + 1)
+        # 結果列 (CV イベント名 14+ 文字) を広め、その分 流入元/セッション を圧縮。合計 = CONTENT_W (10.2)
         _build_table(
-            slide, headers, rows_out, [0.5, 1.5, 2.8, 1.8, 1.2, 1.3, 1.0],
+            slide, headers, rows_out, [0.5, 1.3, 3.0, 1.8, 1.5, 1.1, 1.0],
             x=MARGIN_X, y=layout["table_y"], h=tbl_h,
+            font_size=get_table_font_size(len(rows_out)),
         )
     _add_slide_footer(slide, ctx)
     _create_ai_slide(prs, ctx, "ユーザージャーニー", ai_data, memos)
@@ -2563,6 +2713,175 @@ def _build_appendix_terms() -> list[tuple[str, str]]:
 
 
 APPENDIX_TERMS = _build_appendix_terms()
+
+
+# ─── 改善提案アクションプラン (1 スライド一覧) ────────────────
+
+import re as _re
+
+_IMPR_MOCKUP_SHARE_BASE_URL = "https://grow-reporter.com"
+_IMPR_CATEGORY_LABELS = {
+    "acquisition": "集客",
+    "content": "コンテンツ",
+    "design": "デザイン",
+    "feature": "機能",
+    "other": "その他",
+}
+_IMPR_PRIORITY_LABELS = {"high": "高", "medium": "中", "low": "低"}
+
+
+def _impr_build_mockup_share_url(mockup_storage_url):
+    if not mockup_storage_url:
+        return ""
+    m = _re.search(r"/page-mockups/([^/]+)/([^/]+)\.html", str(mockup_storage_url))
+    if not m:
+        return ""
+    return f"{_IMPR_MOCKUP_SHARE_BASE_URL}/page-mockups/{m.group(1)}/{m.group(2)}.html"
+
+
+def _impr_get_timestamp(ts) -> float:
+    if ts is None:
+        return 0
+    if isinstance(ts, (int, float)):
+        return float(ts)
+    if isinstance(ts, dict):
+        return float(ts.get("seconds") or ts.get("_seconds") or 0)
+    return 0
+
+
+def _create_improvements_slide(prs: Presentation, ctx: _Ctx, improvements: list | None) -> None:
+    """改善提案アクションプラン (複数スライド分割、1 スライド最大 10 件)。
+    - URL あり: 「モックアップを開く」(ハイパーリンク)
+    - mockupSkipped: 「対応不要」
+    - 通常: 「未生成」
+    """
+    if not improvements:
+        return
+
+    sorted_items = sorted(
+        improvements,
+        key=lambda x: (
+            x.get("order") if x.get("order") is not None else 999999,
+            _impr_get_timestamp(x.get("createdAt")),
+        ),
+    )
+
+    PER_SLIDE = 10
+    total = len(sorted_items)
+    total_pages = (total + PER_SLIDE - 1) // PER_SLIDE
+
+    # タイトル列に期待効果を 2 段目に積むレイアウト (期待効果列は削除して横幅圧縮)
+    # CONTENT_W = SLIDE_W (11.0) - 2 * MARGIN_X (0.4) = 10.2
+    headers = [
+        {"label": "No.", "align": "center"},
+        {"label": "カテゴリ", "align": "center"},
+        {"label": "優先度", "align": "center"},
+        {"label": "タイトル / 期待効果", "align": "left"},
+        {"label": "モックアップ", "align": "center"},
+    ]
+    col_widths = [0.35, 0.95, 0.55, 5.6, 2.75]  # 合計 = 10.2
+    TITLE_COL = 3
+    MOCKUP_COL = 4
+
+    # 全ページで行高さを統一するため、PER_SLIDE 件想定の row 高さを基準にする
+    # _build_table は h / rows_n で行高さを決めるため、少ない行のページでは
+    # 個別に小さい h を渡すことで巨大化を防ぐ
+    table_h_full = FOOTER_Y - CONTENT_Y - 0.15
+    uniform_row_h = table_h_full / (PER_SLIDE + 1)  # +1 はヘッダー行
+
+    for page_idx in range(total_pages):
+        start = page_idx * PER_SLIDE
+        end = min(start + PER_SLIDE, total)
+        chunk = sorted_items[start:end]
+
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        _fill_slide_bg(slide, Color.WHITE)
+        # ページ番号付きタイトル (複数スライドの場合のみ)
+        title_label = "改善提案アクションプラン"
+        if total_pages > 1:
+            title_label = f"改善提案アクションプラン（{page_idx + 1}/{total_pages}）"
+        _add_slide_title(slide, ctx, title_label)
+
+        table_y = CONTENT_Y
+        # 行高さを統一: このスライドの行数 + ヘッダー = (n + 1) * uniform_row_h
+        table_h = uniform_row_h * (len(chunk) + 1)
+
+        # 表示用テキストと URL を事前計算
+        mockup_cells: list[tuple[str, str | None]] = []
+        for item in chunk:
+            url = _impr_build_mockup_share_url(item.get("mockupStorageUrl"))
+            if url:
+                mockup_cells.append(("モックアップを開く", url))
+            elif item.get("mockupSkipped"):
+                mockup_cells.append(("対応不要", None))
+            else:
+                mockup_cells.append(("未生成", None))
+
+        rows_data = []
+        for i, item in enumerate(chunk):
+            cat = item.get("category") or ""
+            pri = item.get("priority") or ""
+            # タイトル列はあとで 2 段組に上書きするため、いったんタイトルだけ入れる
+            rows_data.append([
+                str(start + i + 1),
+                _IMPR_CATEGORY_LABELS.get(cat, cat),
+                _IMPR_PRIORITY_LABELS.get(pri, pri),
+                item.get("title") or "",
+                mockup_cells[i][0],
+            ])
+
+        _build_table(
+            slide, headers, rows_data, col_widths,
+            x=MARGIN_X, y=table_y, h=table_h,
+            font_size=get_table_font_size(len(rows_data)),
+        )
+
+        last_shape = slide.shapes[-1]
+        if last_shape.has_table:
+            table = last_shape.table
+            font_size_data = get_table_font_size(len(rows_data))
+            # 1) タイトル列を「タイトル + 期待効果」の 2 段組に上書き
+            for i, item in enumerate(chunk):
+                cell = table.cell(i + 1, TITLE_COL)
+                title_text = item.get("title") or ""
+                impact_text = item.get("expectedImpact") or ""
+                # クリアして 2 パラグラフ追加
+                cell.text = ""
+                tf = cell.text_frame
+                tf.word_wrap = True
+                tf.vertical_anchor = MSO_ANCHOR.MIDDLE
+                # 1 段目: タイトル
+                p1 = tf.paragraphs[0]
+                p1.alignment = PP_ALIGN.LEFT
+                r1 = p1.add_run()
+                r1.text = title_text
+                r1.font.name = FONT_FACE
+                r1.font.size = Pt(font_size_data)
+                r1.font.color.rgb = Color.DARK
+                # 2 段目: 期待効果 (グレー、小さめ)
+                if impact_text:
+                    p2 = tf.add_paragraph()
+                    p2.alignment = PP_ALIGN.LEFT
+                    p2.line_spacing = 1.3
+                    r2 = p2.add_run()
+                    r2.text = impact_text
+                    r2.font.name = FONT_FACE
+                    r2.font.size = Pt(max(font_size_data - 1.5, 7.5))
+                    r2.font.color.rgb = RGBColor(0x6B, 0x72, 0x80)  # gray-500
+
+            # 2) モックアップ列の URL 行をハイパーリンク化
+            for r, (_text, url) in enumerate(mockup_cells, start=1):
+                if not url:
+                    continue
+                cell = table.cell(r, MOCKUP_COL)
+                p = cell.text_frame.paragraphs[0]
+                if p.runs:
+                    run = p.runs[0]
+                    run.hyperlink.address = url
+                    run.font.color.rgb = RGBColor(0x05, 0x63, 0xC1)
+                    run.font.underline = True
+
+        _add_slide_footer(slide, ctx)
 
 
 def _create_appendix_slide(prs: Presentation, ctx: _Ctx) -> None:

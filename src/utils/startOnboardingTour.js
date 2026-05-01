@@ -33,6 +33,7 @@ const STEP_TITLE = {
   analysisExternalLinks: '外部リンククリック',
   analysisFileDownloads: 'ファイルダウンロード',
   analysisUsers: 'ユーザー属性',
+  analysisUserJourney: 'ユーザージャーニー',
   analysisSummaryFree: '全体サマリー',
   analysisExport: 'レポートダウンロード',
   analysisSummary: 'AI分析',

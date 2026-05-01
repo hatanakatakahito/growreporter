@@ -2,10 +2,20 @@
  * Cloudflare Worker: HTMLフェッチプロキシ / 完全スナップショット生成
  *
  * モード:
- *   mode: 'html'     — 対象URLのHTMLをそのまま返す（既存動作、デフォルト）
- *   mode: 'snapshot' — 外部CSSをインライン化し、画像/フォントURLを絶対化した
- *                      自己完結HTMLを返す（改善モックアップの完全再現用）
+ *   mode: 'html'        — 対象URLのHTMLをそのまま返す（既存動作、デフォルト）
+ *   mode: 'snapshot'    — 外部CSSをインライン化し、画像/フォントURLを絶対化した
+ *                          自己完結HTMLを返す（改善モックアップの完全再現用）
+ *   mode: 'render'      — Browser Rendering で JS 実行後の DOM (HTML) を返す
+ *                          lazy-load 全発火、networkidle 待機まで実施
+ *   mode: 'screenshot'  — Browser Rendering でフルページ JPEG を base64 で返す
+ *   mode: 'render+shot' — 1 アクセスで HTML と JPEG を同時に返す（改善ロジック統一化用）
+ *                          visual 確定後に screenshot を撮り、その後で iframe srcDoc 用の
+ *                          HTML 処理 (CSS インライン化 + script 削除) を続行
+ *
+ * Browser Rendering モード ('render' | 'screenshot' | 'render+shot') は env.BROWSER バインディングを使用。
+ * Workers Free では 1日10分・同時3ブラウザまで。本番ロールアウト時に Workers Paid 検討。
  */
+import puppeteer from '@cloudflare/puppeteer';
 
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
@@ -90,7 +100,7 @@ export default {
 
     try {
       const body = await request.json();
-      const { url, mode = 'html' } = body;
+      const { url, mode = 'html', viewport = 'pc', fullPage = true } = body;
 
       // SSRF 検証: プロトコル / プライベート IP / メタデータ
       const v = isAllowedTargetUrl(url);
@@ -102,6 +112,13 @@ export default {
         return corsJson(await buildSnapshot(url), 200, origin, corsAllowed);
       }
 
+      if (mode === 'render' || mode === 'screenshot' || mode === 'render+shot') {
+        if (!env.BROWSER) {
+          return corsJson({ error: 'Browser Rendering binding (BROWSER) not configured' }, 500, origin, corsAllowed);
+        }
+        return corsJson(await renderWithBrowser(env.BROWSER, url, mode, viewport, fullPage), 200, origin, corsAllowed);
+      }
+
       // デフォルト: HTMLそのまま返却（既存動作）
       const response = await fetch(url, { headers: COMMON_FETCH_HEADERS, redirect: 'follow' });
       const html = await response.text();
@@ -111,6 +128,395 @@ export default {
     }
   },
 };
+
+// ========== Browser Rendering モード ==========
+
+/**
+ * Browser Rendering でページを開き、JS 実行後の HTML またはスクショを返す。
+ *
+ * 共通処理:
+ *   1. viewport 設定（pc=1920x1080, mobile=412x915）
+ *   2. networkidle0 で goto（最大 50s）
+ *   3. lazy-load 全発火のため最下までスクロール → 戻す
+ *   4. 画像読込待ち（最大 2s）
+ *
+ * @param {Fetcher} browserBinding env.BROWSER
+ * @param {string} pageUrl 撮影対象 URL（SSRF 検証済）
+ * @param {'render'|'screenshot'|'render+shot'} mode
+ *   - 'render': HTML のみ返却
+ *   - 'screenshot': screenshot のみ返却（HTML 処理スキップ）
+ *   - 'render+shot': screenshot を撮ってから HTML 処理を続行し、両方返却
+ * @param {'pc'|'mobile'} viewport
+ * @param {boolean} [fullPage=true] - true: ページ全体撮影 (デフォルト互換)、false: viewport のみ撮影 (サムネ用)
+ * @returns {Promise<{status: number, html?: string, screenshot?: string, finalUrl?: string, error?: string}>}
+ */
+async function renderWithBrowser(browserBinding, pageUrl, mode, viewport, fullPage = true) {
+  const VIEWPORT_PRESETS = {
+    // PC: ノートパソコン標準サイズ (1400×900)
+    // - フル HD (1920) より狭めに取ることで iframe srcDoc 表示時の文字サイズが読みやすくなる
+    // - 1400 はノート PC の中位サイズ (1366〜1440 帯) の代表値
+    // - hero CSS の height (generateImprovementMockup.js 内 900px) と一致させて aspect 不一致を回避
+    pc: { width: 1400, height: 900, deviceScaleFactor: 1, isMobile: false },
+    mobile: { width: 412, height: 915, deviceScaleFactor: 2, isMobile: true },
+  };
+  const vp = VIEWPORT_PRESETS[viewport] || VIEWPORT_PRESETS.pc;
+
+  let browser;
+  try {
+    browser = await puppeteer.launch(browserBinding);
+    const page = await browser.newPage();
+    await page.setViewport(vp);
+    if (vp.isMobile) {
+      // mobile UA を明示的に設定（一部サイトは UA で出し分け）
+      await page.setUserAgent(
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 ' +
+        '(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+      );
+    } else {
+      await page.setUserAgent(USER_AGENT);
+    }
+
+    // navigation: networkidle0 を試みつつ、長時間ロードでも 50s で諦める
+    const response = await page.goto(pageUrl, {
+      waitUntil: 'networkidle0',
+      timeout: 50_000,
+    }).catch((e) => {
+      // networkidle まで届かなくても DOMContentLoaded で進める
+      return null;
+    });
+
+    // ========================================================
+    // Lazy-load 強制対策（Browser Rendering でも漏れる lazy-load を確実に発火）
+    // - background-image を JS で動的に付与する実装（フッターヒーロー等）に対応
+    // - <img loading="lazy"> を eager 化
+    // - lazy 系 CSS の opacity 0 / visibility hidden を上書き
+    // ========================================================
+    await page.evaluate(() => {
+      // 1) img loading=lazy を eager に
+      document.querySelectorAll('img[loading="lazy"]').forEach((img) => {
+        try { img.loading = 'eager'; } catch (_) {}
+      });
+
+      // 2) data-bg / data-background-image 等を style="background-image:url(...)" に展開
+      const bgAttrs = ['data-bg', 'data-background-image', 'data-background', 'data-bg-image'];
+      const sel = bgAttrs.map((a) => `[${a}]`).join(',');
+      document.querySelectorAll(sel).forEach((el) => {
+        for (const attr of bgAttrs) {
+          const v = el.getAttribute(attr);
+          if (!v) continue;
+          const cur = el.getAttribute('style') || '';
+          if (/background-image/i.test(cur)) break; // 既に背景画像あり
+          const urlExpr = /^url\(/i.test(v) ? v : `url('${v}')`;
+          const sep = cur && !cur.trim().endsWith(';') ? ';' : '';
+          el.setAttribute('style', `${cur}${sep}background-image:${urlExpr};background-size:cover;background-position:center;`);
+          break;
+        }
+      });
+
+      // 3) data-src / data-srcset を src / srcset に展開（src が空 or プレースホルダなら）
+      document.querySelectorAll('img[data-src]').forEach((img) => {
+        const ds = img.getAttribute('data-src');
+        const cur = img.getAttribute('src') || '';
+        if (ds && (!cur || /data:image\/svg/.test(cur))) {
+          try { img.src = ds; } catch (_) {}
+        }
+      });
+      document.querySelectorAll('img[data-srcset], source[data-srcset]').forEach((el) => {
+        const ds = el.getAttribute('data-srcset');
+        const cur = el.getAttribute('srcset') || '';
+        if (ds && !cur) {
+          try { el.srcset = ds; } catch (_) {}
+        }
+      });
+
+      // 4) 強制可視化 CSS 注入 + background-attachment:fixed → scroll 強制
+      //    Puppeteer の fullPage screenshot は background-attachment:fixed と相性が悪く、
+      //    各 viewport ずつ撮影 + 結合する仕組みのため、fixed 背景が描画されない / 位置がずれる
+      //    既知の問題。すべての要素で scroll に強制する。
+      if (!document.getElementById('__force-visible')) {
+        const style = document.createElement('style');
+        style.id = '__force-visible';
+        style.textContent = `
+[data-src],[data-srcset],[data-lazy-src],[data-original],
+.lazy,.lazyloading,.lazyload,.lazyloaded{
+opacity:1 !important;visibility:visible !important;
+}
+*,*::before,*::after{
+background-attachment:scroll !important;
+}`;
+        document.head.appendChild(style);
+      }
+    });
+
+    // ========================================================
+    // 2-pass autoScroll で lazy-load を確実に発火させる
+    // ========================================================
+    // 1 回目: ゆっくり最下までスクロール → IntersectionObserver 発火
+    await autoScrollToBottom(page);
+    try {
+      await page.waitForNetworkIdle({ idleTime: 1000, timeout: 5000 });
+    } catch (_) { /* 5s 経過しても進める */ }
+
+    // 2 回目: 先頭に戻して再度最下まで → 1 回目で起動した lazy-load の fetch 完了 + 取りこぼし回収
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await new Promise((r) => setTimeout(r, 600));
+    await autoScrollToBottom(page);
+    try {
+      await page.waitForNetworkIdle({ idleTime: 500, timeout: 3000 });
+    } catch (_) { /* 進める */ }
+
+    // 撮影前に先頭へ戻す（fade-in / parallax の安定化、ただし fullPage screenshot 自体は全域撮るので位置は問題ない）
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await new Promise((r) => setTimeout(r, 600));
+
+    // 画像読込待ち（最大 5s）
+    await page.evaluate(async () => {
+      const imgs = Array.from(document.images);
+      await Promise.race([
+        Promise.all(
+          imgs.map((img) =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise((r) => {
+                  img.addEventListener('load', r, { once: true });
+                  img.addEventListener('error', r, { once: true });
+                })
+          )
+        ),
+        new Promise((r) => setTimeout(r, 5000)),
+      ]);
+    });
+
+    // ========================================================
+    // ScrollReveal 等の動的 hidden を解除
+    // - <html class="sr"> + 配下の要素に inline style="visibility:hidden;opacity:0;transform:translateY(...)" が付与される
+    // - iframe srcDoc では scroll event が発火しないため visible 切替が走らず真っ白になる
+    // - root から sr クラスを除去 + inline style を強制リセット
+    // ========================================================
+    await page.evaluate(() => {
+      // 1) html / body の ScrollReveal 系クラスを除去
+      const root = document.documentElement;
+      ['sr', 'sr-init'].forEach((cls) => {
+        if (root.classList.contains(cls)) root.classList.remove(cls);
+      });
+      const body = document.body;
+      if (body) {
+        ['sr', 'sr-init'].forEach((cls) => {
+          if (body.classList.contains(cls)) body.classList.remove(cls);
+        });
+      }
+
+      // 2) inline style の visibility:hidden / opacity:0 / transform を解除
+      //    要素自身に inline で隠される ScrollReveal / GSAP / AOS 系を一括解除
+      document.querySelectorAll('[style]').forEach((el) => {
+        const s = el.style;
+        if (s.visibility === 'hidden') s.visibility = 'visible';
+        if (s.opacity && parseFloat(s.opacity) < 0.1) s.opacity = '1';
+        // transform: translate(...) や scale(0) などの「初期非表示状態」をリセット
+        // ※ rotate(45deg) などの装飾用 transform は残したいが、ここでは一律 none で割り切る
+        if (s.transform && /translate|scale\s*\(\s*0/i.test(s.transform)) {
+          s.transform = 'none';
+        }
+      });
+    });
+
+    const finalUrl = page.url();
+
+    // ========================================================
+    // Google Maps iframe (会社概要 / アクセス等) のレンダ補助
+    // - <iframe src="https://www.google.com/maps/embed?..."> は networkidle 後も
+    //   タイルを追加 fetch するため、スクショ時に空白で残るケースが多い
+    // - 該当 iframe を scrollIntoView して lazy-load を発火させ、追加で 4s 待機
+    // - 該当 iframe が無ければスキップ (待機時間を浪費しない)
+    // ========================================================
+    const hasGoogleMaps = await page.evaluate(() => {
+      const iframes = document.querySelectorAll(
+        'iframe[src*="google.com/maps"], iframe[src*="maps.google.com"], iframe[src*="google.co.jp/maps"]'
+      );
+      if (iframes.length === 0) return false;
+      iframes.forEach((iframe) => {
+        try {
+          // loading="lazy" を eager に切替（既に eager ならノーオペ）
+          if (iframe.loading === 'lazy') iframe.loading = 'eager';
+          iframe.scrollIntoView({ block: 'center' });
+        } catch (_) {}
+      });
+      return true;
+    });
+    if (hasGoogleMaps) {
+      await new Promise((r) => setTimeout(r, 4000));
+      // 撮影前にページ先頭に戻す（fullPage 撮影なので位置は無関係だが描画安定のため）
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await new Promise((r) => setTimeout(r, 300));
+    }
+
+    // 'screenshot' / 'render+shot' は visual 確定後に screenshot を撮る
+    // (CSS インライン化や script 削除前の DOM 状態でピクセル化することで、
+    //  実サイトの見た目と完全一致させる)
+    let screenshotBase64 = null;
+    let screenshotByteLen = 0;
+    if (mode === 'screenshot' || mode === 'render+shot') {
+      const buf = await page.screenshot({
+        fullPage: fullPage !== false,
+        type: 'jpeg',
+        quality: 85,
+      });
+      screenshotBase64 = arrayBufferToBase64(buf);
+      screenshotByteLen = buf.length || buf.byteLength || 0;
+    }
+
+    if (mode === 'screenshot') {
+      return {
+        status: 200,
+        screenshot: screenshotBase64,
+        finalUrl,
+        viewport,
+        byteLen: screenshotByteLen,
+      };
+    }
+
+    // mode === 'render' or 'render+shot' — HTML 処理を続行
+    // ScrollReveal などのスクロール検知ライブラリが残した visibility:hidden / opacity:0 を解除
+    // - iframe srcDoc では document の scroll event がほぼ発生しないため、
+    //   ScrollReveal で hidden 状態のまま残った要素は永久に表示されない
+    // - <html class="sr"> や 個別要素の inline style で hidden になっているものを強制解除
+    await page.evaluate(() => {
+      try {
+        document.documentElement.classList.remove('sr');
+      } catch (_) {}
+      const hiddenSel = '[style*="visibility: hidden"],[style*="visibility:hidden"],[style*="opacity: 0"],[style*="opacity:0"]';
+      document.querySelectorAll(hiddenSel).forEach((el) => {
+        try {
+          el.style.removeProperty('visibility');
+          el.style.removeProperty('opacity');
+          el.style.removeProperty('transform');
+        } catch (_) {}
+      });
+      // ScrollReveal 系が data 属性で管理している場合の保険
+      document.querySelectorAll('[data-sr-id],[data-sr]').forEach((el) => {
+        try {
+          el.style.removeProperty('visibility');
+          el.style.removeProperty('opacity');
+          el.style.removeProperty('transform');
+        } catch (_) {}
+      });
+    });
+
+    // iframe srcDoc 表示用: 外部 CSS をブラウザ内で fetch して <style> にインライン化
+    // - iframe では cross-origin / CORS で外部 CSS の読み込みが失敗するケースがある
+    // - インライン化することで iframe srcDoc でも実サイトと同等のレンダリングになる
+    // - Browser Rendering の puppeteer から直接 fetch するため CORS の制約を受けない
+    await page.evaluate(async () => {
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+      await Promise.all(
+        links.map(async (link) => {
+          try {
+            const href = link.href;
+            if (!href || href.startsWith('data:') || href.startsWith('blob:')) return;
+            const res = await fetch(href, { credentials: 'omit' });
+            if (!res.ok) return;
+            let css = await res.text();
+            // CSS 内の url(...) 相対パスを CSS ファイルの絶対 URL ベースで解決
+            css = css.replace(/url\(\s*(['"]?)([^'")\s]+)\1\s*\)/g, (m, q, u) => {
+              if (/^(data:|https?:\/\/|\/\/|#|mailto:|tel:)/i.test(u)) return m;
+              try {
+                return `url(${q}${new URL(u, href).toString()}${q})`;
+              } catch {
+                return m;
+              }
+            });
+            const style = document.createElement('style');
+            style.setAttribute('data-inlined-from', href);
+            style.textContent = css;
+            link.replaceWith(style);
+          } catch (_) {
+            // fetch 失敗時はそのまま残す（ブラウザのフォールバックに任せる）
+          }
+        })
+      );
+    });
+
+    // ========================================================
+    // 全 <script> タグを削除（iframe srcDoc で JS 実行を完全に無効化）
+    // - iframe sandbox=allow-scripts では外部 ScrollReveal / GSAP / AOS などの JS が再実行される
+    // - これらが要素に inline style="visibility:hidden" を再追加 → CSS の !important でも負ける
+    // - JS 自体を削除すれば再実行されない → worker 側で解除した状態が iframe でも維持される
+    // - Browser Rendering 内では既に JS 実行済 (autoScroll 等で lazy-load 解決済) なので、
+    //   DOM 状態は維持される。iframe 表示 (= static screenshot 用途) では JS 不要。
+    // - generateImprovementMockup 側で helper script (postMessage 等) を別途注入するため、
+    //   フロント側の機能は別途確保される。
+    // ========================================================
+    await page.evaluate(() => {
+      document.querySelectorAll('script').forEach((s) => {
+        try { s.remove(); } catch (_) {}
+      });
+    });
+
+    const html = await page.content();
+    return {
+      status: response?.status() || 200,
+      html,
+      ...(mode === 'render+shot' && {
+        screenshot: screenshotBase64,
+        screenshotByteLen,
+      }),
+      finalUrl,
+      viewport,
+      byteLen: html.length,
+    };
+  } catch (err) {
+    return { status: 500, error: `browser-render: ${err.message}` };
+  } finally {
+    if (browser) {
+      try {
+        await browser.close();
+      } catch (_) { /* noop */ }
+    }
+  }
+}
+
+/**
+ * IntersectionObserver / lazyload 系を発火させるため、ページ全体をスクロールして最下まで降りる。
+ *
+ * チューニング:
+ *   - distance 600 / interval 250ms: 各位置で IntersectionObserver の発火を待つ（早すぎるスクロールで欠落するセクションがあった）
+ *   - 最下点到達後 1.5s 停留: stagger animation や遅延 fetch される画像の完了を待つ
+ *   - 上限 60s: 異常な長尺ページでの暴走防止
+ */
+async function autoScrollToBottom(page) {
+  await page.evaluate(async () => {
+    await new Promise((resolve) => {
+      const distance = 600;
+      const interval = 250;
+      const settleAtBottom = 1500;
+      let total = 0;
+      const max = 60_000;
+      const timer = setInterval(() => {
+        const sh = document.body.scrollHeight;
+        window.scrollBy(0, distance);
+        total += distance;
+        if (total >= sh + 500 || total >= max) {
+          clearInterval(timer);
+          // 最下点で stagger animation / 遅延 lazy-load の完了待ち
+          setTimeout(resolve, settleAtBottom);
+        }
+      }, interval);
+    });
+  });
+}
+
+/**
+ * Uint8Array / ArrayBuffer を base64 文字列に変換
+ */
+function arrayBufferToBase64(buf) {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
 
 // ========== スナップショット生成 ==========
 

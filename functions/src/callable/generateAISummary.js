@@ -13,7 +13,7 @@ import {
   INDUSTRY_MAJOR_LABELS,
   formatIndustry,
 } from '../constants/siteOptionsV2.js';
-import { canAccessSite, canEditSite } from '../utils/permissionHelper.js';
+import { canAccessSite } from '../utils/permissionHelper.js';
 
 // 改善ロジック統一化プラン (Phase 3-c + Files API 対応):
 //   pageScreenshots は URL × deviceType (pc|mobile) で 2 ドキュメントずつ保存される。
@@ -257,12 +257,12 @@ export async function generateAISummaryCallable(request) {
 
     const siteData = siteDoc.data();
     
-    // AI生成は編集権限が必要（閲覧者は不可）
-    const canEdit = await canEditSite(userId, siteId);
-    if (!canEdit) {
+    // viewer も AI 分析生成は許可（オーナーのプラン枠を消費）
+    const hasAccess = await canAccessSite(userId, siteId);
+    if (!hasAccess) {
       throw new HttpsError(
         'permission-denied',
-        'AI分析を生成する権限がありません（編集者以上の権限が必要です）'
+        'AI分析を生成する権限がありません'
       );
     }
 
@@ -465,7 +465,6 @@ export async function generateAISummaryCallable(request) {
       //   <USER_NOTE> ... </USER_NOTE> でラップし sanitize した上で template に渡す。
       options.userNote = wrapAsUserData(userNote || '', { label: 'USER_NOTE', maxChars: 2000 });
       options.existingImprovements = existingImprovements || [];
-      options.diagnosisData = metrics.diagnosisData || null;
       // コンバージョン設定と目標設定を追加
       options.conversionGoals = siteData.conversionGoals || [];
       options.kpiSettings = siteData.kpiSettings || [];
@@ -1589,7 +1588,30 @@ function formatRawDataToMetrics(rawData, pageType) {
       };
 
     case 'keywords':
-      // 流入キーワード分析：fetchGSCData の結果
+      // V2 形式（fetchGSCKeywordsV2Data の結果）— funnel / clusters を含む
+      if (rawData.funnel && Array.isArray(rawData.keywords)) {
+        const kwTopText = rawData.keywords
+          .slice(0, 10)
+          .map((k) =>
+            `${k.query}: ${k.clicks}クリック, ${k.impressions}表示, CTR ${(k.ctr * 100).toFixed(2)}%, 平均順位 ${k.position.toFixed(1)}`
+          )
+          .join('\n');
+        return {
+          totalClicks: rawData.metrics?.totalClicks || 0,
+          totalImpressions: rawData.metrics?.totalImpressions || 0,
+          avgCTR: (rawData.metrics?.avgCTR || 0) / 100, // V2 は % 値で返るため 0-1 系に戻す
+          avgPosition: rawData.metrics?.avgPosition || 0,
+          keywordCount: rawData.metrics?.keywordCount || rawData.keywords.length,
+          estimatedCV: rawData.metrics?.estimatedCV || 0,
+          funnel: rawData.funnel,
+          clusters: rawData.clusters || [],
+          topKeywordsText: kwTopText,
+          keywordsData: rawData.keywords,
+          hasGSCConnection: true,
+        };
+      }
+
+      // 旧形式（fetchGSCData の結果）— 後方互換維持
       const topQueries = rawData.topQueries || [];
       const totalClicks = rawData.metrics?.clicks || 0;
       const totalImpressions = rawData.metrics?.impressions || 0;
@@ -1913,9 +1935,8 @@ function formatRawDataToMetrics(rawData, pageType) {
         reverseFlow: rawData.reverseFlow || [],
         // AI総合分析
         aiComprehensiveAnalysis: rawData.aiComprehensiveAnalysis || null,
-        // スクレイピング・診断・構造
+        // スクレイピング・構造
         scrapingData: rawData.scrapingData || { pages: [], meta: null, totalPages: 0 },
-        diagnosisData: rawData.diagnosisData || null,
         improvementKnowledge: rawData.improvementKnowledge || [],
       };
 

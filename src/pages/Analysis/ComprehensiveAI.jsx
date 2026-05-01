@@ -293,11 +293,11 @@ export default function ComprehensiveAI() {
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
         <div data-tour="comp-ai-root" className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg font-bold text-dark dark:text-white">分析する - AI総合分析</h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-2xl font-bold text-dark dark:text-white">分析する - AI総合分析</h2>
               <TourHelpButton tourId="comprehensiveAI" />
             </div>
-            <p className="mt-0.5 text-sm text-body-color">
+            <p className="mt-1 text-sm text-body-color">
               全データを横断してAIが自動分析し、サイトの現状を明らかにします
             </p>
           </div>

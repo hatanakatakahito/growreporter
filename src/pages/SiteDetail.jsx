@@ -30,6 +30,7 @@ export default function SiteDetail() {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState(null);
+  const [isRefreshingMeta, setIsRefreshingMeta] = useState(false);
 
   useEffect(() => {
     setPageTitle('サイト詳細');
@@ -299,25 +300,31 @@ export default function SiteDetail() {
           <div className="mt-4 border-t border-stroke pt-4 dark:border-dark-3">
             <button
               onClick={async () => {
+                if (isRefreshingMeta) return;
+                setIsRefreshingMeta(true);
+                toast.loading('メタデータ・スクリーンショットを再取得中... (1〜2分)', { id: 'refresh-meta', duration: Infinity });
                 try {
-                  toast.loading('メタデータ・スクリーンショットを再取得中...', { id: 'refresh-meta' });
-                  const refresh = httpsCallable(functions, 'refreshSiteMetadataAndScreenshots', { timeout: 120_000 });
+                  // CF Worker Browser Rendering で PC + Mobile を撮影するため最大 ~90s かかる
+                  const refresh = httpsCallable(functions, 'refreshSiteMetadataAndScreenshots', { timeout: 180_000 });
                   const result = await refresh({ siteId });
                   const fields = result.data?.updatedFields || [];
                   if (fields.length > 0) {
-                    toast.success(`再取得完了（${fields.length}件更新）`, { id: 'refresh-meta' });
+                    toast.success(`再取得完了（${fields.length}件更新: ${fields.join(', ')}）`, { id: 'refresh-meta', duration: 5000 });
                   } else {
-                    toast.success('再取得完了（更新なし）', { id: 'refresh-meta' });
+                    toast.success('再取得完了（更新なし）', { id: 'refresh-meta', duration: 5000 });
                   }
                   refetch();
                 } catch (e) {
-                  toast.error(`再取得に失敗しました: ${e.message}`, { id: 'refresh-meta' });
+                  toast.error(`再取得に失敗しました: ${e.message}`, { id: 'refresh-meta', duration: 8000 });
+                } finally {
+                  setIsRefreshingMeta(false);
                 }
               }}
-              className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition"
+              disabled={isRefreshingMeta}
+              className="flex items-center gap-1.5 text-sm text-primary hover:text-primary/80 transition disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
-              メタデータ・スクリーンショットを再取得
+              <RefreshCw className={`h-3.5 w-3.5 ${isRefreshingMeta ? 'animate-spin' : ''}`} />
+              {isRefreshingMeta ? 'メタデータ・スクリーンショット再取得中...' : 'メタデータ・スクリーンショットを再取得'}
             </button>
           </div>
         </div>

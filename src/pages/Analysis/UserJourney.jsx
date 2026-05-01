@@ -4,18 +4,22 @@ import { useSite } from '../../contexts/SiteContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useUserJourney } from '../../hooks/useUserJourney';
+import { useTableColumns } from '../../hooks/useTableColumns';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
+import ColumnToggle from '../../components/common/ColumnToggle';
 import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
 import AIFloatingButton from '../../components/common/AIFloatingButton';
 import JourneySankey from '../../components/Analysis/UserJourney/JourneySankey';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { Button } from '../../components/ui/button';
 import { setPageTitle } from '../../utils/pageTitle';
 import { PAGE_TYPES } from '../../constants/plans';
-import { Search, Link as LinkIcon, FileText, X, ArrowRight, Sparkles, ChevronDown, Filter } from 'lucide-react';
+import { Search, FileText, X, ArrowRight, Filter } from 'lucide-react';
 
 /**
  * ユーザージャーニー分析画面
@@ -28,7 +32,7 @@ import { Search, Link as LinkIcon, FileText, X, ArrowRight, Sparkles, ChevronDow
  *   ④ メモ & AI 詳細分析タブ
  */
 export default function UserJourney() {
-  const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
+  const { selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
   const navigate = useNavigate();
@@ -55,8 +59,6 @@ export default function UserJourney() {
     dateRange.to,
     isComparing ? comparisonDateRange : null
   );
-
-  const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
 
   const selectedNode = useMemo(() => {
     if (!data?.nodes) return null;
@@ -96,47 +98,26 @@ export default function UserJourney() {
           {/* ページタイトル */}
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-bold text-dark dark:text-white">分析する - ユーザージャーニー</h2>
-                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 text-amber-700 px-2 py-0.5 text-[11px] font-medium">
-                  プレビュー
-                </span>
-                {hasGSCConnection ? (
-                  <span className="inline-flex items-center gap-1 rounded-md bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[11px] font-medium">
-                    <LinkIcon className="h-3 w-3" />
-                    GSC 連携中
-                  </span>
-                ) : (
-                  <Link
-                    to={`/sites/${selectedSiteId}/edit?step=2`}
-                    className="inline-flex items-center gap-1 rounded-md bg-rose-50 text-rose-700 px-2 py-0.5 text-[11px] font-medium hover:bg-rose-100"
-                  >
-                    GSC 未連携 - 連携する
-                  </Link>
-                )}
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-2xl font-bold text-dark dark:text-white">分析する - ユーザージャーニー</h2>
+                <TourHelpButton tourId="analysisUserJourney" />
               </div>
-              <p className="mt-0.5 text-sm text-body-color">流入から成果までの流れを俯瞰とストーリーの両面で把握できます</p>
+              <p className="mt-1 text-sm text-body-color">流入から成果までの流れを俯瞰とストーリーの両面で把握できます</p>
             </div>
-            <div className="flex flex-shrink-0 items-center gap-2 pt-0.5">
-              <div className="relative">
-                <select className="appearance-none rounded-md border border-stroke bg-white py-1.5 pl-3 pr-8 text-xs font-medium text-dark hover:border-primary">
-                  <option>入口の粒度: チャネル</option>
-                  <option>入口の粒度: GSC キーワード</option>
-                  <option>入口の粒度: 参照元ドメイン</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-body-color" />
-              </div>
-              <div className="relative">
-                <select className="appearance-none rounded-md border border-stroke bg-white py-1.5 pl-3 pr-8 text-xs font-medium text-dark hover:border-primary">
-                  <option>表示: 上位ノードのみ</option>
-                  <option>表示: 全ノード</option>
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-body-color" />
-              </div>
-              <button className="flex items-center gap-1.5 rounded-md border border-stroke bg-white px-3 py-1.5 text-xs font-medium text-dark hover:border-primary">
-                <Filter className="h-3.5 w-3.5 text-body-color" />
+            <div className="flex flex-shrink-0 items-center gap-2 pt-0.5" data-tour="analysis-dimension-filters">
+              <JourneySelect ariaLabel="入口の粒度">
+                <option>入口の粒度: チャネル</option>
+                <option>入口の粒度: GSC キーワード</option>
+                <option>入口の粒度: 参照元ドメイン</option>
+              </JourneySelect>
+              <JourneySelect ariaLabel="表示">
+                <option>表示: 上位ノードのみ</option>
+                <option>表示: 全ノード</option>
+              </JourneySelect>
+              <Button variant="secondary" size="md">
+                <Filter className="h-4 w-4" data-slot="icon" />
                 <span>絞り込み</span>
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -145,7 +126,7 @@ export default function UserJourney() {
           ) : isError ? (
             <ErrorAlert message={error?.message || 'データの読み込みに失敗しました。'} />
           ) : !data ? (
-            <div className="rounded-lg border border-stroke bg-white p-12 text-center">
+            <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
               <p className="text-body-color">表示するデータがありません。</p>
             </div>
           ) : (
@@ -153,9 +134,9 @@ export default function UserJourney() {
               {/* ① 全体マップ + ノード詳細（横並び） */}
               <div className="flex gap-6 mb-6">
                 {/* サンキー（左、フレックス） */}
-                <div className="flex-1 min-w-0 rounded-lg border border-stroke bg-white p-6">
+                <div className="flex-1 min-w-0 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-dark">ジャーニー俯瞰マップ</h3>
+                    <h3 className="text-lg font-semibold text-dark dark:text-white">ジャーニー俯瞰マップ</h3>
                     <div className="flex gap-3 text-[11px] text-body-color">
                       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-primary"></span>流入</span>
                       <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: '#A78BFA' }}></span>LP</span>
@@ -180,7 +161,11 @@ export default function UserJourney() {
               </div>
 
               {/* ② 主要ジャーニー TOP 3 */}
-              <StoryTop3 stories={data.storyTop3} sortBy={storyCardSort} onSortChange={setStoryCardSort} />
+              <StoryTop3
+                stories={data.storyTop3}
+                sortBy={storyCardSort}
+                onSortChange={setStoryCardSort}
+              />
 
               {/* ③ 詳細パステーブル */}
               <DetailPathTable paths={data.detailPaths} />
@@ -242,10 +227,33 @@ export default function UserJourney() {
 
 // ===== サブコンポーネント =====
 
+/**
+ * 分析画面共通スタイルのセレクトボックス（他画面と同じ角丸・枠線・カスタム矢印）
+ */
+function JourneySelect({ value, onChange, ariaLabel, children }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={onChange}
+        aria-label={ariaLabel}
+        className="appearance-none [background-image:none] rounded-md border border-stroke bg-transparent py-2 px-4 pr-10 text-sm text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+      >
+        {children}
+      </select>
+      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5 7.5L10 12.5L15 7.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+    </div>
+  );
+}
+
 function NodeDetailPanel({ node, onClear }) {
   if (!node) {
     return (
-      <div className="w-[380px] shrink-0 rounded-lg border border-stroke bg-white p-6 self-start">
+      <div className="w-[380px] shrink-0 rounded-lg border border-stroke bg-white p-6 self-start dark:border-dark-3 dark:bg-dark-2">
         <div className="text-xs text-body-color text-center py-8">
           サンキー図のノードをクリックすると詳細が表示されます
         </div>
@@ -256,7 +264,7 @@ function NodeDetailPanel({ node, onClear }) {
   const detail = node.detail || {};
 
   return (
-    <div className="w-[380px] shrink-0 rounded-lg border border-stroke bg-white p-6 self-start">
+    <div className="w-[380px] shrink-0 rounded-lg border border-stroke bg-white p-6 self-start dark:border-dark-3 dark:bg-dark-2">
       {/* ヘッダー */}
       <div className="flex items-start justify-between mb-4">
         <div className="min-w-0">
@@ -277,7 +285,7 @@ function NodeDetailPanel({ node, onClear }) {
       </div>
 
       {/* 共通メトリクス 2x2 */}
-      <div className="grid grid-cols-2 gap-2 mb-4 pb-4 border-b border-stroke">
+      <div className="grid grid-cols-2 gap-2 mb-4 pb-4 border-b border-stroke dark:border-dark-3">
         <MetricCard label="セッション/件数" value={node.value?.toLocaleString() || '-'} change={node.change} />
         <MetricCard label="シェア" value={node.share != null ? `${(node.share * 100).toFixed(1)}%` : '-'} />
         {node.type === 'lp' && detail.cvRate != null && (
@@ -482,34 +490,113 @@ function getNodeTypeLabel(type) {
 }
 
 function StoryTop3({ stories, sortBy, onSortChange }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // sortBy に応じて並び替え。rank ラベルは元のランク（選定時の順位）を保持
+  const sortedStories = useMemo(() => {
+    if (!stories?.length) return [];
+    const arr = [...stories];
+    if (sortBy === 'cvRate') {
+      arr.sort((a, b) => (b.cvRate ?? 0) - (a.cvRate ?? 0));
+    } else if (sortBy === 'improvement') {
+      // 改善余地 = セッション × max(0, 5 - CV率) … トラフィック多×CV率低 を上位へ
+      const score = (s) => (s.sessions ?? 0) * Math.max(0, 5 - (s.cvRate ?? 0));
+      arr.sort((a, b) => score(b) - score(a));
+    } else {
+      arr.sort((a, b) => (b.sessions ?? 0) - (a.sessions ?? 0));
+    }
+    return arr;
+  }, [stories, sortBy]);
+
+  const topStories = sortedStories.slice(0, 3);
+  const hasMore = sortedStories.length > 3;
+
   if (!stories?.length) return null;
 
   return (
     <div className="mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-semibold text-dark">主要ジャーニー TOP 3</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-dark dark:text-white">主要ジャーニー TOP 3</h3>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-body-color">並び順:</span>
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => onSortChange(e.target.value)}
-              className="appearance-none rounded-md border border-stroke bg-white py-1.5 pl-3 pr-8 text-xs font-medium text-dark hover:border-primary"
-            >
-              <option value="sessions">セッション数順</option>
-              <option value="cvRate">CV 率順</option>
-              <option value="improvement">改善余地順</option>
-            </select>
-            <ChevronDown className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-body-color" />
-          </div>
-          <button className="text-xs text-primary hover:underline">すべて表示</button>
+          <span className="text-sm text-body-color">並び順:</span>
+          <JourneySelect
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value)}
+            ariaLabel="並び順"
+          >
+            <option value="sessions">セッション数順</option>
+            <option value="cvRate">CV 率順</option>
+            <option value="improvement">改善余地順</option>
+          </JourneySelect>
+          {hasMore && (
+            <Button variant="secondary" size="md" onClick={() => setIsModalOpen(true)}>
+              すべて表示 ({sortedStories.length}件)
+            </Button>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-6">
-        {stories.map((s) => (
+        {topStories.map((s) => (
           <StoryCard key={s.id} story={s} />
         ))}
+      </div>
+
+      {isModalOpen && (
+        <StoryAllModal
+          stories={sortedStories}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function StoryAllModal({ stories, onClose }) {
+  // ESC キーで閉じる
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    // モーダル表示中は背景スクロールを止める
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-2xl dark:bg-dark-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-stroke bg-white px-6 py-4 dark:border-dark-3 dark:bg-dark-2">
+          <h3 className="text-lg font-semibold text-dark dark:text-white">
+            主要ジャーニー全{stories.length}件
+          </h3>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-body-color hover:bg-gray-100 hover:text-dark transition-colors dark:hover:bg-dark-3 dark:hover:text-white"
+            type="button"
+            aria-label="閉じる"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {stories.map((s) => (
+              <StoryCard key={s.id} story={s} />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -593,54 +680,129 @@ function StoryCard({ story }) {
   );
 }
 
+const PATH_COLUMNS = [
+  {
+    key: 'rank',
+    label: '#',
+    align: 'left',
+    required: true,
+    renderCell: (p) => <span className="font-mono text-body-color">{p.rank}</span>,
+  },
+  {
+    key: 'source',
+    label: '流入元',
+    align: 'left',
+    renderCell: (p) => <SourceBadge label={p.source} color={p.sourceColor} />,
+  },
+  {
+    key: 'lp',
+    label: 'ランディング',
+    align: 'left',
+    renderCell: (p) => <span className="font-mono text-dark">{p.lp}</span>,
+  },
+  {
+    key: 'middle',
+    label: '中間',
+    align: 'left',
+    renderCell: (p) => <span className="font-mono text-dark">{p.middle || '—'}</span>,
+  },
+  {
+    key: 'result',
+    label: '結果',
+    align: 'left',
+    renderCell: (p) =>
+      p.result === '離脱' ? (
+        <span className="text-body-color">{p.result}</span>
+      ) : (
+        <span className="text-emerald-700 font-medium">{p.result}</span>
+      ),
+  },
+  {
+    key: 'sessions',
+    label: 'セッション',
+    align: 'right',
+    renderCell: (p) => <span className="font-mono text-dark">{p.sessions.toLocaleString()}</span>,
+  },
+  {
+    key: 'cvRate',
+    label: 'CV 率',
+    align: 'right',
+    renderCell: (p) => (
+      <span className={`font-semibold ${p.cvRate >= 5 ? 'text-emerald-600' : 'text-rose-600'}`}>
+        {p.cvRate}%
+      </span>
+    ),
+  },
+  {
+    key: 'change',
+    label: '前期比',
+    align: 'right',
+    renderCell: (p) => (
+      <span
+        className={`text-xs ${
+          p.change > 0 ? 'text-emerald-600' : p.change < 0 ? 'text-rose-600' : 'text-body-color'
+        }`}
+      >
+        {p.change > 0 ? '+' : ''}
+        {Math.round(p.change * 100)}%
+      </span>
+    ),
+  },
+];
+
 function DetailPathTable({ paths }) {
+  const { visibleColumns, orderedVisibleColumns, columnOrder, toggleColumn, moveColumn, resetToDefault } =
+    useTableColumns('analysis:user-journey:detail-paths', PATH_COLUMNS);
+
+  const renderColumns = useMemo(
+    () => orderedVisibleColumns.map((key) => PATH_COLUMNS.find((c) => c.key === key)).filter(Boolean),
+    [orderedVisibleColumns]
+  );
+
   if (!paths?.length) return null;
 
   return (
-    <div className="rounded-lg border border-stroke bg-white p-6">
+    <div id="detail-path-table" className="rounded-lg border border-stroke bg-white p-6 scroll-mt-4 dark:border-dark-3 dark:bg-dark-2">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-dark">詳細パスデータ</h3>
-        <div className="flex items-center gap-2">
-          <button className="inline-flex items-center gap-1.5 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:border-primary">
-            列の表示
-          </button>
+        <h3 className="text-lg font-semibold text-dark dark:text-white">詳細パスデータ</h3>
+        <div data-tour="analysis-column-toggle">
+          <ColumnToggle
+            columns={PATH_COLUMNS}
+            visibleColumns={visibleColumns}
+            columnOrder={columnOrder}
+            onToggleColumn={toggleColumn}
+            onMoveColumn={moveColumn}
+            onResetColumns={resetToDefault}
+          />
         </div>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-stroke">
-              <th className="whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark">#</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark">流入元</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark">ランディング</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark">中間</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left text-sm font-semibold text-dark">結果</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-dark">セッション</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-dark">CV 率</th>
-              <th className="whitespace-nowrap px-4 py-3 text-right text-sm font-semibold text-dark">前期比</th>
+            <tr className="border-b border-stroke dark:border-dark-3">
+              {renderColumns.map((col) => (
+                <th
+                  key={col.key}
+                  className={`whitespace-nowrap px-4 py-3 text-sm font-semibold text-dark dark:text-white ${
+                    col.align === 'right' ? 'text-right' : 'text-left'
+                  }`}
+                >
+                  {col.label}
+                </th>
+              ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-stroke">
+          <tbody className="divide-y divide-stroke dark:divide-dark-3">
             {paths.map((p) => (
-              <tr key={p.rank} className="hover:bg-blue-50/30 transition-colors">
-                <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-body-color">{p.rank}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm">
-                  <SourceBadge label={p.source} color={p.sourceColor} />
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-dark">{p.lp}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-dark">{p.middle || '—'}</td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm">
-                  {p.result === '離脱' ? (
-                    <span className="text-body-color">{p.result}</span>
-                  ) : (
-                    <span className="text-emerald-700 font-medium">{p.result}</span>
-                  )}
-                </td>
-                <td className="whitespace-nowrap px-4 py-3 text-sm text-right font-mono text-dark">{p.sessions.toLocaleString()}</td>
-                <td className={`whitespace-nowrap px-4 py-3 text-sm text-right font-semibold ${p.cvRate >= 5 ? 'text-emerald-600' : 'text-rose-600'}`}>{p.cvRate}%</td>
-                <td className={`whitespace-nowrap px-4 py-3 text-xs text-right ${p.change > 0 ? 'text-emerald-600' : p.change < 0 ? 'text-rose-600' : 'text-body-color'}`}>
-                  {p.change > 0 ? '+' : ''}{Math.round(p.change * 100)}%
-                </td>
+              <tr key={p.rank} className="hover:bg-blue-50/30 transition-colors dark:hover:bg-dark-3/30">
+                {renderColumns.map((col) => (
+                  <td
+                    key={col.key}
+                    className={`whitespace-nowrap px-4 py-3 text-sm ${col.align === 'right' ? 'text-right' : 'text-left'}`}
+                  >
+                    {col.renderCell(p)}
+                  </td>
+                ))}
               </tr>
             ))}
           </tbody>

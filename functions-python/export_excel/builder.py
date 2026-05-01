@@ -41,6 +41,7 @@ from .sheets.conversions import create_conversions_sheet
 from .sheets.improvements import create_improvements_sheet
 from .sheets.reverse_flow import create_reverse_flow_sheet
 from .sheets.user_journey import create_user_journey_sheet
+from .sheets.keywords_funnel import create_keywords_funnel_sheet
 from .styles import (
     AI_CONTENT_STYLE,
     AI_PLACEHOLDER_STYLE,
@@ -81,19 +82,23 @@ from .styles import (
 
 
 # 動的シート名マッピング (クライアントのキー → Excel シート名 + 比較 join key)
+# ナビ順: 時系列 → 集客 (channels のみ／流入KWファネルは custom 経由) → ページ
+# 旧 "流入キーワード" Top20 は "流入KWファネル"（custom）が代替するため削除
 DYNAMIC_SHEETS = [
+    # ── 時系列 ──
     ("monthly", "月別", None),
     ("daily", "日別", "date"),
     ("weekly", "曜日別", None),
     ("hourly", "時間帯別", None),
+    # ── 集客（流入KWファネルは custom で別ハンドリング） ──
     ("channels", "集客チャネル", "channelName"),
-    ("keywords", "流入キーワード", None),
     ("referrals", "被リンク元", "source"),
+    # ── ページ ──
     ("pages", "ページ別", "path"),
     ("pageCategories", "ページ分類別", None),
     ("landingPages", "ランディングページ", "path"),
-    ("fileDownloads", "ファイルDL", None),
-    ("externalLinks", "外部リンク", None),
+    ("fileDownloads", "ファイルダウンロード", None),
+    ("externalLinks", "外部リンククリック", None),
 ]
 
 
@@ -149,7 +154,43 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
     # サブタイトル文字列（全シートで共通）
     sheet_subtitle = _make_sheet_subtitle(date_range, comparison_range)
 
-    # ─── 2. 全体サマリー ─────────────────────────────────
+    # ナビ順 (アプリと完全一致):
+    #  分析する: 全体サマリー → ユーザー属性
+    #  時系列:   月別 → 日別 → 曜日別 → 時間帯別
+    #  集客:     集客チャネル → 流入キーワード元(=流入KWファネル) → 被リンク元
+    #  ページ:   ページ別 → ページ分類別 → ランディングページ → ファイルダウンロード →
+    #           外部リンククリック → ユーザージャーニー
+    #  コンバージョン: コンバージョン一覧 → 逆算フロー
+    #  その他:   改善提案
+
+    def _build_dynamic(key: str):
+        sheet_payload = sheets_data.get(key)
+        if not sheet_payload:
+            return
+        rows = sheet_payload.get("rows") or []
+        if not rows:
+            return
+        # DYNAMIC_SHEETS から sheet_name と join_key を引く
+        spec = next(((k, n, j) for k, n, j in DYNAMIC_SHEETS if k == key), None)
+        if spec is None:
+            return
+        _, sheet_name, join_key = spec
+        ai_key = SHEET_TO_AI_KEY.get(key)
+        build_dynamic_sheet(
+            workbook,
+            sheet_name=safe_sheet_name(sheet_name),
+            visible_columns=sheet_payload.get("visibleColumns") or [],
+            rows=rows,
+            comp_rows=sheet_payload.get("compRows"),
+            comp_join_key=join_key,
+            ai_data=ai_analysis.get(ai_key) if ai_key else None,
+            memos=memos.get(ai_key) if ai_key else None,
+            formats=formats,
+            chart_key=key,
+            sheet_subtitle=sheet_subtitle,
+        )
+
+    # ── 分析する ──
     if custom.get("summary"):
         create_summary_sheet(
             workbook,
@@ -162,45 +203,6 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             sheet_subtitle=sheet_subtitle,
             monthly_delta=custom.get("monthlyDelta"),
         )
-
-    # ─── 3〜14. 動的カラム系シート ─────────────────────────
-    for key, sheet_name, join_key in DYNAMIC_SHEETS:
-        sheet_payload = sheets_data.get(key)
-        if not sheet_payload:
-            continue
-
-        visible_cols = sheet_payload.get("visibleColumns") or []
-        rows = sheet_payload.get("rows") or []
-        comp_rows = sheet_payload.get("compRows")
-
-        if not rows:
-            continue
-
-        ai_key = SHEET_TO_AI_KEY.get(key)
-        ai = ai_analysis.get(ai_key) if ai_key else None
-        mm = memos.get(ai_key) if ai_key else None
-
-        # ユーザー属性シートの直前に 4. ユーザー属性を挟む
-        if key == "hourly" and custom.get("users"):
-            # 月別・日別・曜日別・時間帯別 の後 (2→3→4→5→6) にユーザー属性
-            pass
-
-        build_dynamic_sheet(
-            workbook,
-            sheet_name=safe_sheet_name(sheet_name),
-            visible_columns=visible_cols,
-            rows=rows,
-            comp_rows=comp_rows,
-            comp_join_key=join_key,
-            ai_data=ai,
-            memos=mm,
-            formats=formats,
-            chart_key=key,
-            sheet_subtitle=sheet_subtitle,
-        )
-
-    # ─── 4. ユーザー属性 (カスタムレイアウト) ───────────────
-    # Phase 2/3 では動的シートの後に挿入
     if custom.get("users"):
         create_users_sheet(
             workbook,
@@ -211,31 +213,27 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             sheet_subtitle=sheet_subtitle,
         )
 
-    # ─── 16. コンバージョン一覧 ────────────────────────────
-    if custom.get("conversions"):
-        create_conversions_sheet(
+    # ── 時系列 ──
+    for k in ("monthly", "daily", "weekly", "hourly"):
+        _build_dynamic(k)
+
+    # ── 集客 ──
+    _build_dynamic("channels")
+    keywords_v2 = custom.get("keywordsFunnel")
+    if keywords_v2 and (keywords_v2.get("funnel") or keywords_v2.get("keywords")):
+        create_keywords_funnel_sheet(
             workbook,
-            conversions=custom["conversions"],
-            conversion_events=custom.get("conversionEvents") or [],
-            ai_data=ai_analysis.get("analysis/conversions"),
-            memos=memos.get("analysis/conversions"),
+            keywords_v2=keywords_v2,
+            ai_data=ai_analysis.get("analysis/keywords"),
+            memos=memos.get("analysis/keywords"),
             formats=formats,
             sheet_subtitle=sheet_subtitle,
         )
+    _build_dynamic("referrals")
 
-    # ─── 17. 逆算フロー ─────────────────────────────────
-    reverse_flows = custom.get("reverseFlows")
-    if reverse_flows:
-        create_reverse_flow_sheet(
-            workbook,
-            reverse_flows=reverse_flows,
-            ai_data=ai_analysis.get("analysis/reverse-flow"),
-            memos=memos.get("analysis/reverse-flow"),
-            formats=formats,
-            sheet_subtitle=sheet_subtitle,
-        )
-
-    # ─── 17.5 ユーザージャーニー ─────────────────────────
+    # ── ページ ──
+    for k in ("pages", "pageCategories", "landingPages", "fileDownloads", "externalLinks"):
+        _build_dynamic(k)
     user_journey = custom.get("userJourney")
     if user_journey and user_journey.get("nodes"):
         create_user_journey_sheet(
@@ -247,7 +245,29 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
             sheet_subtitle=sheet_subtitle,
         )
 
-    # ─── 18. 改善提案 ───────────────────────────────────
+    # ── コンバージョン ──
+    if custom.get("conversions"):
+        create_conversions_sheet(
+            workbook,
+            conversions=custom["conversions"],
+            conversion_events=custom.get("conversionEvents") or [],
+            ai_data=ai_analysis.get("analysis/conversions"),
+            memos=memos.get("analysis/conversions"),
+            formats=formats,
+            sheet_subtitle=sheet_subtitle,
+        )
+    reverse_flows = custom.get("reverseFlows")
+    if reverse_flows:
+        create_reverse_flow_sheet(
+            workbook,
+            reverse_flows=reverse_flows,
+            ai_data=ai_analysis.get("analysis/reverse-flow"),
+            memos=memos.get("analysis/reverse-flow"),
+            formats=formats,
+            sheet_subtitle=sheet_subtitle,
+        )
+
+    # ── その他 ──
     improvements = custom.get("improvements")
     if improvements and len(improvements) > 0:
         create_improvements_sheet(workbook, improvements, formats, sheet_subtitle=sheet_subtitle)
@@ -335,44 +355,52 @@ def _make_sheet_subtitle(date_range: dict | None, comp_range: dict | None = None
 
 
 def _compute_available_sheets(custom: dict, sheets_data: dict) -> list[str]:
-    """実際にデータが存在するシート名を列挙（目次に載せる順）。"""
+    """実際にデータが存在するシート名を列挙（目次に載せる順 = ナビ順）。"""
     names = []
+    # 分析する
     if custom.get("summary"):
         names.append("全体サマリー")
-    # dynamic sheets
-    dyn_order = [
+    if custom.get("users"):
+        names.append("ユーザー属性")
+    # 時系列
+    for key, label in (
         ("monthly", "月別"),
         ("daily", "日別"),
         ("weekly", "曜日別"),
         ("hourly", "時間帯別"),
-        ("channels", "集客チャネル"),
-        ("keywords", "流入キーワード"),
-        ("referrals", "被リンク元"),
+    ):
+        s = sheets_data.get(key)
+        if s and s.get("rows"):
+            names.append(label)
+    # 集客
+    s = sheets_data.get("channels")
+    if s and s.get("rows"):
+        names.append("集客チャネル")
+    kw_v2 = custom.get("keywordsFunnel")
+    if kw_v2 and (kw_v2.get("funnel") or kw_v2.get("keywords")):
+        names.append("流入キーワード元")
+    s = sheets_data.get("referrals")
+    if s and s.get("rows"):
+        names.append("被リンク元")
+    # ページ
+    for key, label in (
         ("pages", "ページ別"),
         ("pageCategories", "ページ分類別"),
         ("landingPages", "ランディングページ"),
-        ("fileDownloads", "ファイルDL"),
-        ("externalLinks", "外部リンク"),
-    ]
-    for key, label in dyn_order:
+        ("fileDownloads", "ファイルダウンロード"),
+        ("externalLinks", "外部リンククリック"),
+    ):
         s = sheets_data.get(key)
         if s and s.get("rows"):
-            # ユーザー属性を hourly の直後に挿入（builder 順と一致）
             names.append(label)
-    # ユーザー属性
-    if custom.get("users"):
-        # hourly の後に入れる
-        try:
-            idx = names.index("時間帯別")
-            names.insert(idx + 1, "ユーザー属性")
-        except ValueError:
-            names.append("ユーザー属性")
+    if custom.get("userJourney") and custom["userJourney"].get("nodes"):
+        names.append("ユーザージャーニー")
+    # コンバージョン
     if custom.get("conversions"):
         names.append("コンバージョン一覧")
     if custom.get("reverseFlows"):
         names.append("逆算フロー")
-    if custom.get("userJourney") and custom["userJourney"].get("nodes"):
-        names.append("ユーザージャーニー")
+    # その他
     if custom.get("improvements"):
         names.append("改善提案")
     return names

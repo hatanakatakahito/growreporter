@@ -10,6 +10,7 @@ import { SidebarProvider } from './contexts/SidebarContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/GrowReporter/Login';
 import Register from './components/GrowReporter/Register';
+import AuthAction from './components/GrowReporter/AuthAction';
 import CompleteProfile from './components/GrowReporter/CompleteProfile';
 import SiteRegistration from './components/GrowReporter/SiteRegistration/index';
 import Complete from './components/GrowReporter/SiteRegistration/Complete';
@@ -99,6 +100,9 @@ function App() {
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            {/* Firebase Auth Action ハンドラー（パスワードリセット・メール検証）
+                Firebase Console → Templates で Action URL を https://grow-reporter.com/auth/action に設定 */}
+            <Route path="/auth/action" element={<AuthAction />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/commercial-transaction" element={<CommercialTransaction />} />

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
 import { sankey, sankeyLinkHorizontal, sankeyLeft } from 'd3-sankey';
-import { ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, Maximize2, Minimize2 } from 'lucide-react';
 
 /**
  * 5層サンキー図コンポーネント
@@ -38,6 +38,8 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
   const [containerWidth, setContainerWidth] = useState(1100);
   const [zoom, setZoom] = useState(1);
   const [selectedLinkIdx, setSelectedLinkIdx] = useState(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenHeight, setFullscreenHeight] = useState(0);
 
   // ResizeObserver でコンテナ幅を追跡
   useEffect(() => {
@@ -52,6 +54,29 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
     observer.observe(containerRef.current);
     return () => observer.disconnect();
   }, []);
+
+  // フルスクリーン状態を追跡（Esc でも解除されるため fullscreenchange を監視）
+  useEffect(() => {
+    const handleChange = () => {
+      const active = document.fullscreenElement === containerRef.current;
+      setIsFullscreen(active);
+      setFullscreenHeight(active ? window.innerHeight : 0);
+    };
+    document.addEventListener('fullscreenchange', handleChange);
+    return () => document.removeEventListener('fullscreenchange', handleChange);
+  }, []);
+
+  const handleToggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+      } else if (containerRef.current?.requestFullscreen) {
+        await containerRef.current.requestFullscreen();
+      }
+    } catch (e) {
+      console.warn('[JourneySankey] fullscreen toggle failed:', e);
+    }
+  };
 
   // d3-sankey でレイアウト計算
   const { nodes: layoutNodes, links: layoutLinks } = useMemo(() => {
@@ -72,14 +97,16 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
 
     const padding = 24;
     const width = containerWidth - padding * 2;
-    const innerHeight = height - 60;
+    const effectiveHeight = isFullscreen && fullscreenHeight ? fullscreenHeight - 32 : height;
+    const innerHeight = effectiveHeight - 60;
 
+    // 最右列のラベル（"採用エントリー完了"等の日本語）が収まるよう右余白を 200px 確保
     const sankeyGen = sankey()
       .nodeId((d) => d.id)
       .nodeWidth(14)
       .nodePadding(14)
       .nodeAlign(sankeyLeft)
-      .extent([[80, 50], [width - 100, innerHeight]]);
+      .extent([[80, 50], [width - 200, innerHeight]]);
 
     try {
       const layout = sankeyGen({
@@ -91,16 +118,34 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
       console.warn('[JourneySankey] sankey layout failed:', e);
       return { nodes: [], links: [] };
     }
-  }, [data, containerWidth, height]);
+  }, [data, containerWidth, height, isFullscreen, fullscreenHeight]);
 
-  const handleZoomIn = () => setZoom((z) => Math.min(z + 0.2, 2));
-  const handleZoomOut = () => setZoom((z) => Math.max(z - 0.2, 0.5));
+  const svgHeight = isFullscreen && fullscreenHeight ? fullscreenHeight - 32 : height;
+
+  const handleZoomIn = () => setZoom((z) => Math.min(Math.round((z + 0.05) * 100) / 100, 2));
+  const handleZoomOut = () => setZoom((z) => Math.max(Math.round((z - 0.05) * 100) / 100, 0.5));
   const handleZoomReset = () => setZoom(1);
+
+  // マウスホイールで 5% 刻みズーム（passive: false で preventDefault 可能に）
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handleWheel = (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 0.05 : -0.05;
+      setZoom((z) => Math.min(Math.max(Math.round((z + delta) * 100) / 100, 0.5), 2));
+    };
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => el.removeEventListener('wheel', handleWheel);
+  }, []);
 
   const linkPath = sankeyLinkHorizontal();
 
   return (
-    <div ref={containerRef} className="rounded-md bg-slate-50/60 p-4 relative">
+    <div
+      ref={containerRef}
+      className={`rounded-md p-4 relative ${isFullscreen ? 'bg-white overflow-auto' : 'bg-slate-50/60'}`}
+    >
       {/* ズームコントロール（列ヘッダと重ならないよう右下に配置） */}
       <div className="absolute bottom-3 right-3 z-10 inline-flex items-center bg-white border border-stroke rounded-md shadow-sm">
         <button
@@ -111,9 +156,14 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
         >
           <ZoomOut className="h-4 w-4 text-dark" />
         </button>
-        <span className="px-2.5 text-xs font-medium text-dark border-l border-r border-stroke min-w-[52px] text-center select-none">
+        <button
+          onClick={handleZoomReset}
+          className="px-2.5 h-8 text-xs font-medium text-dark border-l border-r border-stroke min-w-[52px] text-center hover:bg-gray-50 transition-colors"
+          title="等倍に戻す"
+          type="button"
+        >
           {Math.round(zoom * 100)}%
-        </span>
+        </button>
         <button
           onClick={handleZoomIn}
           className="flex h-8 w-8 items-center justify-center hover:bg-gray-50 transition-colors"
@@ -123,36 +173,47 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
           <ZoomIn className="h-4 w-4 text-dark" />
         </button>
         <button
-          onClick={handleZoomReset}
+          onClick={handleToggleFullscreen}
           className="flex h-8 w-8 items-center justify-center hover:bg-gray-50 border-l border-stroke rounded-r-md transition-colors"
-          title="表示にフィット"
+          title={isFullscreen ? '全画面解除' : '全画面表示'}
           type="button"
         >
-          <Maximize2 className="h-4 w-4 text-dark" />
+          {isFullscreen ? (
+            <Minimize2 className="h-4 w-4 text-dark" />
+          ) : (
+            <Maximize2 className="h-4 w-4 text-dark" />
+          )}
         </button>
       </div>
 
       {/* 選択中リンクの詳細パネル（左上フローティング） */}
       {selectedLinkIdx !== null && layoutLinks[selectedLinkIdx] && (
-        <div className="absolute top-3 left-3 z-10 bg-white border border-stroke rounded-md shadow-md px-4 py-3 max-w-sm">
-          <div className="flex items-start justify-between gap-3 mb-1.5">
-            <span className="text-[10px] uppercase tracking-wide text-body-color font-semibold">選択中の経路</span>
+        <div className="absolute top-4 left-4 z-10 bg-white border-2 border-primary rounded-lg shadow-xl px-5 py-4 max-w-md">
+          <div className="flex items-start justify-between gap-4 mb-2">
+            <span className="text-xs uppercase tracking-wide text-primary font-bold">選択中の経路</span>
             <button
               onClick={() => setSelectedLinkIdx(null)}
-              className="text-[11px] text-primary hover:underline shrink-0"
+              className="text-xs text-primary font-medium hover:underline shrink-0"
             >
               クリア
             </button>
           </div>
-          <div className="text-sm font-semibold text-dark mb-1">
+          <div className="text-lg font-bold text-dark mb-2 leading-snug">
             <span className="text-primary">{layoutLinks[selectedLinkIdx].source.name}</span>
-            <span className="text-body-color mx-1.5">→</span>
+            <span className="text-body-color mx-2">→</span>
             <span className="text-primary">{layoutLinks[selectedLinkIdx].target.name}</span>
           </div>
-          <div className="flex items-center gap-3 text-xs text-body-color">
-            <span>セッション: <span className="font-mono font-semibold text-dark">{layoutLinks[selectedLinkIdx].value.toLocaleString()}</span></span>
+          <div className="flex items-center gap-3 text-sm text-body-color">
+            <span>
+              セッション:{' '}
+              <span className="font-mono font-bold text-dark text-base">
+                {layoutLinks[selectedLinkIdx].value.toLocaleString()}
+              </span>
+            </span>
             {layoutLinks[selectedLinkIdx].isDirect && (
-              <span className="rounded-sm bg-gray-100 text-body-color px-1.5 py-0.5 text-[10px] font-medium">直接アクセス（KW スキップ）</span>
+              <span className="rounded bg-gray-100 text-dark px-2 py-1 text-xs font-medium">
+                直接アクセス（KW スキップ）
+              </span>
             )}
           </div>
         </div>
@@ -160,13 +221,13 @@ export default function JourneySankey({ data, selectedNodeId, onNodeClick, heigh
 
       <div style={{ overflow: 'auto' }} onClick={() => setSelectedLinkIdx(null)}>
         <svg
-          width={containerWidth - 48}
-          height={height}
+          width={(containerWidth - 48) * zoom}
+          height={svgHeight * zoom}
+          viewBox={`0 0 ${containerWidth - 48} ${svgHeight}`}
+          preserveAspectRatio="xMinYMin meet"
           style={{
             display: 'block',
-            transform: `scale(${zoom})`,
-            transformOrigin: 'top left',
-            transition: 'transform 0.2s ease-out',
+            transition: 'width 0.15s ease-out, height 0.15s ease-out',
           }}
         >
           {/* 列ヘッダー（y=24 で十分な上余白を確保） */}
