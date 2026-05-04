@@ -197,6 +197,7 @@ export default function AdminSiteList() {
           {/* CSVエクスポート */}
           <Button
             variant="secondary"
+            className="min-w-[180px]"
             onClick={handleExportCSV}
             disabled={!sites || sites.length === 0}
           >
@@ -250,8 +251,18 @@ export default function AdminSiteList() {
                             <Globe className="h-5 w-5 text-primary" />
                           </div>
                           <div>
-                            <div className="font-medium text-dark dark:text-white">
-                              {site.siteName || '名称未設定'}
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-dark dark:text-white">
+                                {site.siteName || '名称未設定'}
+                              </span>
+                              {site._transferredFromUid && (
+                                <span
+                                  className="inline-flex items-center rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+                                  title={`管理者から ${site._transferredAt ? new Date(site._transferredAt).toLocaleDateString('ja-JP') : ''} に移管されたサイトです`}
+                                >
+                                  移管済
+                                </span>
+                              )}
                             </div>
                             <div className="text-xs text-body-color dark:text-dark-6">
                               {site.siteUrl}

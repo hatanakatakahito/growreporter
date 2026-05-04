@@ -1310,6 +1310,257 @@ ${loginUrl}
 }
 
 /**
+ * サイト引き継ぎ通知メール (既存ユーザー向け)
+ * adminTransferSiteOwnership で当社が代行作成したサイトを既存ユーザーに移管したとき送信。
+ * 新規作成ユーザーは generateAccountCredentialsEmail で別途案内されるため対象外。
+ *
+ * @param {Object} data
+ * @param {string} data.userName - 顧客の表示名
+ * @param {number} data.siteCount - 引き継ぎサイト数
+ * @param {Array<{siteName, siteUrl}>} data.siteList - サイト情報配列
+ * @param {string} data.dashboardUrl - ダッシュボード URL
+ */
+export function generateSiteTransferNotificationEmail(data) {
+  const { userName, siteCount, siteList = [], dashboardUrl } = data;
+  const displayName = userName || 'ユーザー';
+  const subject = `【グローレポータ】${siteCount} 件のサイトがアカウントに追加されました`;
+
+  const siteListHtml = siteList
+    .map(s => `<li style="margin: 6px 0; color: #1f2937;">
+      <strong>${s.siteName || ''}</strong>${s.siteUrl ? ` — <a href="${s.siteUrl}" style="color: #3758F9; text-decoration: none;">${s.siteUrl}</a>` : ''}
+    </li>`)
+    .join('');
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', Meiryo, sans-serif; background-color: #f3f4f6;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+          <tr>
+            <td style="background-color: #3758F9; padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">グローレポータ</h1>
+              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">サイト引き継ぎのご案内</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
+                ${displayName} 様
+              </h2>
+
+              <p style="margin: 0 0 20px 0; color: #1f2937; font-size: 16px; line-height: 1.6;">
+                当社で代行運用していた以下の <strong>${siteCount} 件のサイト</strong>が、お客様のアカウントに追加されました。
+              </p>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f9fafb; border-radius: 8px; margin: 24px 0;">
+                <tr>
+                  <td style="padding: 20px 24px;">
+                    <ul style="margin: 0; padding-left: 20px;">${siteListHtml}</ul>
+                  </td>
+                </tr>
+              </table>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 12px 0 24px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${dashboardUrl}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                      ダッシュボードで確認する
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <div style="background-color: #eff6ff; border-left: 4px solid #3758F9; padding: 16px; margin: 24px 0; border-radius: 4px;">
+                <p style="margin: 0; color: #1e40af; font-size: 13px; line-height: 1.6;">
+                  <strong>OAuth 連携について</strong><br>
+                  GA4 / Search Console の連携は引き続き当社の Google アカウントで代行運用しています。データ取得は問題なく継続されます。お客様自身の Google アカウントで連携し直したい場合は、サイト詳細画面から切り替え可能です。
+                </p>
+              </div>
+
+              <p style="margin: 24px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+                ご不明な点がございましたら、担当者までお気軽にお問い合わせください。
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">
+                &copy; 2026 グローレポータ by Grow Group
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  const siteListText = siteList
+    .map(s => `・${s.siteName || ''}${s.siteUrl ? ` (${s.siteUrl})` : ''}`)
+    .join('\n');
+
+  const text = `
+${displayName} 様
+
+当社で代行運用していた以下の ${siteCount} 件のサイトが、お客様のアカウントに追加されました。
+
+${siteListText}
+
+■ ダッシュボードで確認
+${dashboardUrl}
+
+■ OAuth 連携について
+GA4 / Search Console の連携は引き続き当社の Google アカウントで代行運用しています。
+データ取得は問題なく継続されます。お客様自身の Google アカウントで連携し直したい場合は、
+サイト詳細画面から切り替え可能です。
+
+ご不明な点がございましたら、担当者までお気軽にお問い合わせください。
+
+────────────────────────
+グローレポータ運営チーム
+────────────────────────
+  `;
+
+  return { subject, html, text };
+}
+
+/**
+ * パスワード再設定メール（顧客自己申請用・ブランド統一）
+ * sendPasswordResetByEmail callable から呼ばれる。
+ * Firebase Console テンプレートを経由せず、自社 SES で送信することで
+ * メール本文・件名・送信元を「グローレポータ」表記に統一する。
+ *
+ * @param {Object} data
+ * @param {string} data.userName - 表示名（無ければ "ユーザー"）
+ * @param {string} data.email - 送信先メールアドレス
+ * @param {string} data.resetLink - https://grow-reporter.com/auth/action?... に書き換え済みリンク
+ */
+export function generatePasswordResetEmail(data) {
+  const { userName, email, resetLink } = data;
+  const displayName = userName || 'ユーザー';
+  const loginUrl = 'https://grow-reporter.com/login';
+  const subject = '【グローレポータ】パスワード再設定のご案内';
+
+  const html = `
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Noto Sans JP', Meiryo, sans-serif; background-color: #f3f4f6;">
+  <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f3f4f6; padding: 40px 20px;">
+    <tr>
+      <td align="center">
+        <table cellpadding="0" cellspacing="0" border="0" width="600" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+
+          <tr>
+            <td style="background-color: #3758F9; padding: 30px; text-align: center;">
+              <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 700;">グローレポータ</h1>
+              <p style="margin: 10px 0 0 0; color: #e0e7ff; font-size: 14px;">パスワード再設定のご案内</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding: 40px 30px;">
+              <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
+                ${displayName} 様
+              </h2>
+
+              <p style="margin: 0 0 20px 0; color: #1f2937; font-size: 16px; line-height: 1.6;">
+                グローレポータからパスワード再設定のリクエストを受け付けました。<br>
+                下のボタンから新しいパスワードを設定してください。
+              </p>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="background-color: #f9fafb; border-radius: 8px; margin: 24px 0;">
+                <tr>
+                  <td style="padding: 20px 24px;">
+                    <p style="margin: 0 0 8px 0; color: #374151; font-size: 13px;">対象アカウント</p>
+                    <p style="margin: 0; color: #1f2937; font-size: 16px; font-weight: 600;">${email}</p>
+                  </td>
+                </tr>
+              </table>
+
+              <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 12px 0 24px 0;">
+                <tr>
+                  <td align="center">
+                    <a href="${resetLink}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                      新しいパスワードを設定する
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin: 20px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+                ※ このリンクの有効期限は 1 時間です。期限が切れた場合は、再度パスワード再設定をリクエストしてください。<br>
+                ※ お心当たりが無い場合は、このメールを破棄してください。アカウントへの影響はありません。<br>
+                ※ パスワード設定後、こちらのページからログインできます:
+                <a href="${loginUrl}" style="color: #3758F9; text-decoration: none;">${loginUrl}</a>
+              </p>
+
+              <p style="margin: 24px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
+                ご不明な点がございましたら、担当者までお気軽にお問い合わせください。
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color: #f9fafb; padding: 20px 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+              <p style="margin: 0; color: #6b7280; font-size: 12px;">
+                &copy; 2026 グローレポータ by Grow Group
+              </p>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+  `;
+
+  const text = `
+${displayName} 様
+
+グローレポータからパスワード再設定のリクエストを受け付けました。
+下のリンクから新しいパスワードを設定してください。
+
+■ 対象アカウント
+${email}
+
+■ パスワード再設定 URL（1 時間有効）
+${resetLink}
+
+※ お心当たりが無い場合は、このメールを破棄してください。アカウントへの影響はありません。
+
+■ ログインページ
+${loginUrl}
+
+ご不明な点がございましたら、担当者までお気軽にお問い合わせください。
+
+────────────────────────
+グローレポータ運営チーム
+────────────────────────
+  `;
+
+  return { subject, html, text };
+}
+
+/**
  * メール送信（Amazon SES使用）
  * 注意: SES SMTP認証情報は環境変数に設定してください
  * firebase functions:config:set ses.smtp_host="email-smtp.ap-northeast-1.amazonaws.com"

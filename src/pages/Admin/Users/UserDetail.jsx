@@ -9,8 +9,13 @@ import ErrorAlert from '../../../components/common/ErrorAlert';
 import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
 import CustomLimitsModal from '../../../components/Admin/CustomLimitsModal';
 import AdminCreateSiteModal from '../../../components/Admin/AdminCreateSiteModal';
+import SiteTransferModal from '../../../components/Admin/SiteTransferModal';
+import SiteReverseTransferModal from '../../../components/Admin/SiteReverseTransferModal';
+import { useAuth } from '../../../contexts/AuthContext';
 import {
   ArrowLeft,
+  ArrowRight,
+  Forward,
   User,
   Mail,
   Calendar,
@@ -46,6 +51,9 @@ export default function UserDetail() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showCustomLimitsModal, setShowCustomLimitsModal] = useState(false);
   const [showCreateSiteModal, setShowCreateSiteModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [reverseTargetSites, setReverseTargetSites] = useState(null); // null = closed
+  const { currentUser } = useAuth();
   const [customLimits, setCustomLimitsData] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -269,6 +277,7 @@ export default function UserDetail() {
         <div className="flex flex-wrap gap-2">
           <Button
             variant="primary"
+            className="min-w-[180px]"
             onClick={() => setShowPlanModal(true)}
             disabled={isDeleting}
           >
@@ -277,6 +286,7 @@ export default function UserDetail() {
           </Button>
           <Button
             variant="danger-outline"
+            className="min-w-[180px]"
             onClick={handleDeleteUser}
             disabled={isDeleting}
           >
@@ -491,7 +501,7 @@ export default function UserDetail() {
           <h3 className="text-lg font-semibold text-dark dark:text-white">登録サイト一覧</h3>
           <div className="flex gap-2">
             {/* サイト登録ボタン */}
-            <Button variant="primary" onClick={() => setShowCreateSiteModal(true)}>
+            <Button variant="primary" className="min-w-[180px]" onClick={() => setShowCreateSiteModal(true)}>
               <Plus data-slot="icon" />
               サイト登録
             </Button>
@@ -620,6 +630,58 @@ export default function UserDetail() {
         )}
       </div>
 
+      {/* サイト引き渡し / 取り戻し (自分自身のページでは表示しない) */}
+      {currentUser?.uid !== userDetail?.uid && (
+      <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-dark dark:text-white">サイト引き渡し</h3>
+            <p className="mt-0.5 text-xs text-body-color dark:text-dark-6">
+              当社代行作成サイトをこのユーザーに引き渡します。OAuth トークンは当社が引き続き保持します。
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            className="min-w-[180px]"
+            onClick={() => setShowTransferModal(true)}
+            disabled={!userDetail?.uid || userDetail?.memberRole === 'editor' || userDetail?.memberRole === 'viewer'}
+            title={userDetail?.memberRole === 'editor' || userDetail?.memberRole === 'viewer' ? '移管先は owner ロールのみです' : ''}
+          >
+            <Forward data-slot="icon" />
+            サイトを引き渡す
+          </Button>
+        </div>
+
+        {/* 取り戻し: 移管されたサイトを admin に戻す */}
+        {(() => {
+          const transferredSites = (userDetail?.sites || []).filter(s => s._transferredFromUid === currentUser?.uid);
+          if (transferredSites.length === 0) return null;
+          return (
+            <div className="rounded-lg bg-amber-50 p-4 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/50">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    あなたが過去に引き渡したサイト: {transferredSites.length} 件
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                    誤操作のリカバリーや顧客退会対応に使用してください
+                  </p>
+                </div>
+                <Button
+                  variant="danger-outline"
+                  size="sm"
+                  onClick={() => setReverseTargetSites(transferredSites)}
+                >
+                  <ArrowLeft data-slot="icon" />
+                  サイトを取り戻す
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+      )}
+
       {/* §16: アカウント情報メール（登録サイト一覧と同じセクション形式） */}
       <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
         <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
@@ -631,6 +693,7 @@ export default function UserDetail() {
           </div>
           <Button
             variant="primary"
+            className="min-w-[180px]"
             onClick={handleSendCredentials}
             disabled={isDeleting || isSendingCredentials || !userDetail?.email}
             title="パスワードリセットリンクを含むアカウント情報メールを顧客に送信します"
@@ -678,7 +741,7 @@ export default function UserDetail() {
                 削除
               </Button>
             )}
-            <Button variant="primary" onClick={() => setShowCustomLimitsModal(true)}>
+            <Button variant="primary" className="min-w-[180px]" onClick={() => setShowCustomLimitsModal(true)}>
               <Edit2 data-slot="icon" />
               {customLimits ? '編集' : '設定'}
             </Button>
@@ -843,6 +906,37 @@ export default function UserDetail() {
             setSuccessMessage(message);
             setTimeout(() => setSuccessMessage(''), 5000);
             refetch();
+          }}
+        />
+      )}
+
+      {/* サイト引き渡しモーダル */}
+      {showTransferModal && currentUser && userDetail && (
+        <SiteTransferModal
+          isOpen={showTransferModal}
+          onClose={() => setShowTransferModal(false)}
+          initialNewOwnerUid={userDetail.uid}
+          initialNewOwnerData={userDetail}
+          adminUid={currentUser.uid}
+          onTransferred={() => {
+            refetch();
+            setSuccessMessage('サイトを引き渡しました');
+            setTimeout(() => setSuccessMessage(''), 5000);
+          }}
+        />
+      )}
+
+      {/* サイト取り戻しモーダル */}
+      {reverseTargetSites && (
+        <SiteReverseTransferModal
+          isOpen={!!reverseTargetSites}
+          onClose={() => setReverseTargetSites(null)}
+          targetSites={reverseTargetSites}
+          currentOwner={userDetail}
+          onReversed={() => {
+            refetch();
+            setSuccessMessage('サイトを取り戻しました');
+            setTimeout(() => setSuccessMessage(''), 5000);
           }}
         />
       )}

@@ -126,7 +126,7 @@ def build_excel_workbook(buffer: io.BytesIO, data: dict[str, Any]) -> None:
     # フォーマット辞書 (全シートで共有)
     formats = _create_formats(workbook)
 
-    site_name = data.get("siteName") or "GrowReporter"
+    site_name = data.get("siteName") or "グローレポータ"
     date_range = data.get("dateRange") or {}
     comparison_range = data.get("comparisonRange")
 

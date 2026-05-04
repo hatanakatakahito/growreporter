@@ -385,9 +385,8 @@ export default function AIAnalysisModal({ pageType, rawData, metrics, period, on
               {/* comprehensive_improvementの場合のみ推奨アクションを表示 */}
               {pageType === 'comprehensive_improvement' && recommendations && recommendations.length > 0 && (
                 <div className="mt-6 pt-6 border-t border-stroke dark:border-dark-3">
-                  <h4 className="text-base font-semibold text-dark dark:text-white mb-4 flex items-center gap-2">
-                    <span>💡</span>
-                    <span>おすすめの改善タスク</span>
+                  <h4 className="text-base font-semibold text-dark dark:text-white mb-4">
+                    おすすめの改善タスク
                   </h4>
                   <div className="space-y-3">
                     {recommendations.map((rec, index) => {

@@ -9,7 +9,8 @@ import DotWaveSpinner from '../components/common/DotWaveSpinner';
 import { functions } from '../config/firebase';
 import { db } from '../config/firebase';
 import { doc, getDoc, getDocFromServer, updateDoc } from 'firebase/firestore';
-import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, Copy, Check, AlertCircle, Sparkles } from 'lucide-react';
+import { Globe, BarChart3, CheckCircle, XCircle, Search, RefreshCw, Copy, Check, AlertCircle, Sparkles, Info, ExternalLink } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { BUSINESS_MODEL_LABELS } from '../constants/businessModels';
@@ -23,6 +24,7 @@ export default function SiteDetail() {
   const { siteId } = useParams();
   const navigate = useNavigate();
   const { siteDetail, loading, error, refetch } = useSiteDetail(siteId);
+  const { currentUser } = useAuth();
   const [scrapingStatus, setScrapingStatus] = useState(null);
   const [isScrapingLoading, setIsScrapingLoading] = useState(false);
   const [scrapingError, setScrapingError] = useState(null);
@@ -265,6 +267,61 @@ export default function SiteDetail() {
             <BarChart3 className="h-5 w-5" />
             データ収集設定
           </h3>
+
+          {/* OAuth 代行運用バッジ (admin が連携設定したサイトの場合) */}
+          {(() => {
+            const ga4Delegated = siteDetail.ga4TokenOwner && siteDetail.ga4TokenOwner !== currentUser?.uid;
+            const gscDelegated = siteDetail.gscTokenOwner && siteDetail.gscTokenOwner !== currentUser?.uid;
+            if (!ga4Delegated && !gscDelegated) return null;
+            const handleClaim = async (provider) => {
+              if (!confirm(`${provider === 'ga4' ? 'GA4' : 'Search Console'} の連携をお客様自身の Google アカウントに切り替えます。\n\n事前にアカウント設定で OAuth 連携を完了していない場合はエラーになります。よろしいですか？`)) return;
+              try {
+                const fn = httpsCallable(functions, 'claimSiteTokenOwnership');
+                await fn({ siteId, provider });
+                toast.success(`${provider === 'ga4' ? 'GA4' : 'Search Console'} の連携をお客様アカウントに切り替えました`);
+                refetch();
+              } catch (err) {
+                toast.error(`切替失敗: ${err.message}`);
+              }
+            };
+            return (
+              <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-900/50 dark:bg-blue-900/20">
+                <div className="flex items-start gap-2">
+                  <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-blue-900 dark:text-blue-200">
+                      OAuth 連携: 当社が代行運用中
+                    </p>
+                    <p className="mt-1 text-xs text-blue-700 dark:text-blue-300">
+                      このサイトの GA4 / Search Console データ取得は当社の Google アカウントで稼働しています。
+                      お客様自身の Google アカウントで連携し直したい場合は、まずアカウント設定で連携を完了してから下のボタンをクリックしてください。
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {ga4Delegated && (
+                        <button
+                          type="button"
+                          onClick={() => handleClaim('ga4')}
+                          className="inline-flex items-center gap-1 rounded border border-blue-300 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-dark-2 dark:text-blue-300"
+                        >
+                          GA4 を自分の Google で再連携 <ExternalLink className="h-3 w-3" />
+                        </button>
+                      )}
+                      {gscDelegated && (
+                        <button
+                          type="button"
+                          onClick={() => handleClaim('gsc')}
+                          className="inline-flex items-center gap-1 rounded border border-blue-300 bg-white px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-100 dark:border-blue-700 dark:bg-dark-2 dark:text-blue-300"
+                        >
+                          GSC を自分の Google で再連携 <ExternalLink className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>

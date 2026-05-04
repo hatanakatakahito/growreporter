@@ -112,12 +112,12 @@ function UnlinkedUserBanner({ inquiry, onLinked }) {
         </div>
         {searchResult && !searchResult.found && (
           <div className="mt-2 text-xs text-orange-700 dark:text-orange-300">
-            ⚠ 該当するユーザーが見つかりません。/admin/users で新規作成してから紐付けてください。
+            該当するユーザーが見つかりません。/admin/users で新規作成してから紐付けてください。
           </div>
         )}
         {searchResult?.found && searchResult.multiple && (
           <div className="mt-2 text-xs text-red-700 dark:text-red-300">
-            ⚠ 複数のユーザーが該当しています。データ整合性を確認してください。
+            複数のユーザーが該当しています。データ整合性を確認してください。
           </div>
         )}
         {searchResult?.found && !searchResult.multiple && (
@@ -135,7 +135,7 @@ function UnlinkedUserBanner({ inquiry, onLinked }) {
       </div>
 
       <p className="mt-3 text-xs text-orange-700 dark:text-orange-300">
-        💡 新規ユーザーが必要な場合は、別タブで <a href="/admin/users" target="_blank" rel="noopener noreferrer" className="underline">/admin/users</a> から作成 → このページに戻って email で検索 → 紐付け
+        新規ユーザーが必要な場合は、別タブで <a href="/admin/users" target="_blank" rel="noopener noreferrer" className="underline">/admin/users</a> から作成 → このページに戻って email で検索 → 紐付け
       </p>
     </div>
   );
@@ -407,7 +407,7 @@ export default function InquiryDetailModal({
                     <div className={labelClass}>契約終了日</div>
                     <div className={`${valueClass} ${inquiry.renewalAlert ? 'text-orange-600 font-semibold' : ''}`}>
                       {displayContractEnd}
-                      {inquiry.renewalAlert && ' ⚠ 更新間近'}
+                      {inquiry.renewalAlert && '（更新間近）'}
                     </div>
                   </div>
                 </>

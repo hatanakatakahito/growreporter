@@ -155,13 +155,14 @@ export default function UserList() {
 
           <div className="flex gap-2">
             {/* ユーザー作成 */}
-            <Button variant="primary" onClick={() => setShowCreateUserModal(true)}>
+            <Button variant="primary" className="min-w-[180px]" onClick={() => setShowCreateUserModal(true)}>
               <UserPlus data-slot="icon" />
               ユーザー作成
             </Button>
             {/* CSVエクスポート */}
             <Button
               variant="secondary"
+              className="min-w-[180px]"
               onClick={handleExportCSV}
               disabled={!users || users.length === 0}
             >

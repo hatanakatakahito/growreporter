@@ -50,7 +50,7 @@ def generate_analysis_excel(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         from export_excel.builder import build_excel_workbook
 
-        site_name = data.get("siteName") or "GrowReporter"
+        site_name = data.get("siteName") or "グローレポータ"
         buffer = io.BytesIO()
         build_excel_workbook(buffer, data)
         buffer.seek(0)
@@ -96,7 +96,7 @@ def generate_analysis_pptx(req: https_fn.CallableRequest) -> dict[str, Any]:
     try:
         from export_pptx.builder import build_pptx_presentation
 
-        site_name = data.get("siteName") or "GrowReporter"
+        site_name = data.get("siteName") or "グローレポータ"
         buffer = io.BytesIO()
         build_pptx_presentation(buffer, data)
         buffer.seek(0)

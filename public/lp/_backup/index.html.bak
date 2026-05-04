@@ -4,26 +4,26 @@
     <meta charset="utf-8" />
     <meta http-equiv="x-ua-compatible" content="ie=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
-    <title>GROW REPORTER（グローレポーター）｜GA4 x AI アクセス解析ツール</title>
+    <title>グローレポータ（グローレポーター）｜GA4 x AI アクセス解析ツール</title>
     <meta name="description" content="Google Analytics 4（GA4）とSearch ConsoleのデータをAIが自動で分析・考察し、サイト改善の提案からモックアップまで生成。分析・改善・評価のサイクルでサイトを成長させるアクセス解析ツール。" />
     <meta name="keywords" content="GA4,アクセス解析,AI分析,Google Analytics,Search Console,サイト改善,レポート自動生成,Web解析ツール" />
     <link rel="canonical" href="https://growreporter.web.app/lp/" />
-    <meta property="og:title" content="GROW REPORTER｜GA4 x AI アクセス解析ツール" />
+    <meta property="og:title" content="グローレポータ｜GA4 x AI アクセス解析ツール" />
     <meta property="og:description" content="GA4とSearch ConsoleのデータをAIが自動分析。考察・改善提案・モックアップまで。サイトを成長させるアクセス解析ツール。" />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://growreporter.web.app/lp/" />
     <meta property="og:image" content="https://growreporter.web.app/lp/assets/images/ogp.png" />
-    <meta property="og:site_name" content="GROW REPORTER" />
+    <meta property="og:site_name" content="グローレポータ" />
     <meta property="og:locale" content="ja_JP" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="GROW REPORTER｜GA4 x AI アクセス解析ツール" />
+    <meta name="twitter:title" content="グローレポータ｜GA4 x AI アクセス解析ツール" />
     <meta name="twitter:description" content="GA4とSearch ConsoleのデータをAIが自動分析。考察・改善提案・モックアップまで。" />
     <meta name="twitter:image" content="https://growreporter.web.app/lp/assets/images/ogp.png" />
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "GROW REPORTER",
+      "name": "グローレポータ",
       "applicationCategory": "BusinessApplication",
       "operatingSystem": "Web",
       "description": "GA4とSearch ConsoleのデータをAIが自動で分析・考察し、サイト改善の提案からモックアップまで生成するアクセス解析ツール",
@@ -62,7 +62,7 @@
         <div class="relative -mx-4 flex items-center justify-between">
           <div class="w-60 max-w-full px-4">
             <a href="/lp/" class="block w-full py-5">
-              <img src="assets/images/logo.svg" alt="GROW REPORTER" class="w-full" />
+              <img src="assets/images/logo.svg" alt="グローレポータ" class="w-full" />
             </a>
           </div>
           <div class="flex w-full items-center justify-between px-4">
@@ -164,7 +164,7 @@
               <div class="mt-16">
                 <img
                   src="assets/images/screenshot-dashboard.png"
-                  alt="GROW REPORTER ダッシュボード"
+                  alt="グローレポータ ダッシュボード"
                   class="mx-auto max-w-full rounded-t-xl"
                 />
               </div>
@@ -238,7 +238,7 @@
           <div class="w-full px-4 lg:w-6/12">
             <div class="mb-[60px] max-w-[500px] xl:mb-[70px]">
               <span class="text-primary mb-2 block text-lg font-semibold">
-                GROW REPORTERの特長
+                グローレポータの特長
               </span>
               <h2 class="text-dark text-3xl font-bold sm:text-4xl md:text-[40px]">
                 AIが自動で分析・考察し、<br>改善提案まで行います
@@ -296,7 +296,7 @@
             <div class="top-1/2 right-0 hidden w-1/2 lg:absolute lg:flex lg:-translate-y-1/2">
               <img
                 src="assets/images/screenshot-analysis.png"
-                alt="GROW REPORTER 分析画面"
+                alt="グローレポータ 分析画面"
                 class="ml-auto max-w-full"
               />
             </div>
@@ -664,7 +664,7 @@
                 導入企業の声
               </h2>
               <p class="text-body-color text-base">
-                GROW REPORTERを導入いただいた企業様からの評価をご紹介します。
+                グローレポータを導入いただいた企業様からの評価をご紹介します。
               </p>
             </div>
           </div>
@@ -681,7 +681,7 @@
                 <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
               </div>
               <p class="text-body-color mb-6 text-base">
-                「GA4の操作に苦戦していましたが、GROW REPORTERのおかげでデータを活用できるようになりました。AIの考察が具体的で、上司への報告にもそのまま使えています。」
+                「GA4の操作に苦戦していましたが、グローレポータのおかげでデータを活用できるようになりました。AIの考察が具体的で、上司への報告にもそのまま使えています。」
               </p>
               <div class="flex items-center">
                 <div class="bg-primary/10 mr-4 flex h-[50px] w-[50px] items-center justify-center rounded-full">
@@ -750,7 +750,7 @@
                 <span class="mr-1"><svg width="18" height="16" viewBox="0 0 18 16" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M9.09815 0.360596L11.1054 6.06493H17.601L12.3459 9.5904L14.3532 15.2947L9.09815 11.7693L3.84309 15.2947L5.85035 9.5904L0.595291 6.06493H7.0909L9.09815 0.360596Z" fill="#FBB040"/></svg></span>
               </div>
               <p class="text-body-color mb-6 text-base">
-                「小規模なので専任の分析担当はいませんが、GROW REPORTERが代わりにデータを分析してくれるので、施策の判断に自信が持てるようになりました。」
+                「小規模なので専任の分析担当はいませんが、グローレポータが代わりにデータを分析してくれるので、施策の判断に自信が持てるようになりました。」
               </p>
               <div class="flex items-center">
                 <div class="bg-primary/10 mr-4 flex h-[50px] w-[50px] items-center justify-center rounded-full">
@@ -1010,7 +1010,7 @@
           <div class="w-full px-4 sm:w-2/3 lg:w-4/12 xl:w-3/12">
             <div class="mb-10 w-full">
               <a href="/lp/" class="mb-6 inline-block max-w-[160px]">
-                <img src="./assets/images/logo.svg" alt="GROW REPORTER" class="max-w-full brightness-0 invert" />
+                <img src="./assets/images/logo.svg" alt="グローレポータ" class="max-w-full brightness-0 invert" />
               </a>
               <p class="text-gray-7 mb-7 text-base">
                 GA4 x AIでサイトを成長させる<br>アクセス解析ツール

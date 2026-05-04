@@ -56,7 +56,7 @@ export default function InquiryList() {
   const handleJumpToUnlinked = () => {
     setActiveTab('list');
     setParams({ statusFilter: 'all', page: 1 });
-    toast('未紐付けは「⚠ 未紐付け」バッジで識別できます', { icon: '🔍' });
+    toast('未紐付けは「未紐付け」バッジで識別できます');
   };
 
   // boardProjectId → {start, end} の lookup を作成
@@ -336,6 +336,7 @@ export default function InquiryList() {
             {selectedIds.size > 0 && (
               <Button
                 variant="danger-outline"
+                className="min-w-[180px]"
                 onClick={handleDeleteSelected}
                 disabled={isDeleting}
               >
@@ -346,6 +347,7 @@ export default function InquiryList() {
             {/* §15: board 取り込みボタン */}
             <Button
               variant="primary"
+              className="min-w-[180px]"
               onClick={() => setShowBoardImportModal(true)}
               title="board で先行作成された見積を grow-reporter に取り込みます"
             >
@@ -355,6 +357,7 @@ export default function InquiryList() {
             {/* CSVエクスポート */}
             <Button
               variant="secondary"
+              className="min-w-[180px]"
               onClick={handleExportCSV}
               disabled={!inquiries || inquiries.length === 0}
             >
@@ -446,7 +449,7 @@ export default function InquiryList() {
                       {/* §15: ユーザー未紐付け警告 */}
                       {!inquiry.uid && (
                         <span className="inline-flex items-center rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" title="grow-reporter ユーザーが紐付けされていません">
-                          ⚠ 未紐付け
+                          未紐付け
                         </span>
                       )}
                     </div>

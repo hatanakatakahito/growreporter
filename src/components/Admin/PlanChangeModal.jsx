@@ -265,7 +265,7 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
             </div>
             {isDowngradeToFree && currentExtraSitesCount > 0 && (
               <p className="mt-3 rounded bg-orange-50 p-2 text-xs text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
-                ⚠ free に戻すため、追加サイトオプション {currentExtraSitesCount} サイトもクリアされます
+                free に戻すため、追加サイトオプション {currentExtraSitesCount} サイトもクリアされます
               </p>
             )}
           </div>

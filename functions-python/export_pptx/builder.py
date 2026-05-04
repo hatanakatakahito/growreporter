@@ -98,7 +98,7 @@ def build_pptx_presentation(buffer: io.BytesIO, data: dict[str, Any]) -> None:
 
     ctx = _Ctx()
 
-    site_name = data.get("siteName") or "GrowReporter"
+    site_name = data.get("siteName") or "グローレポータ"
     date_range = data.get("dateRange") or {}
     comp_range = data.get("comparisonRange")
     sheets = data.get("sheets") or {}

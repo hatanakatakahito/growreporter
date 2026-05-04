@@ -397,7 +397,7 @@ export default function BoardImportModal({ isOpen, onClose, onImported }) {
             )}
             {!importResult.uid && (
               <div className="rounded-lg bg-orange-50 p-3 text-xs text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
-                ⚠ ユーザー未紐付け。/admin/users から adminCreateUser でアカウント作成して inquiry と紐付けてください。
+                ユーザー未紐付け。/admin/users から adminCreateUser でアカウント作成して inquiry と紐付けてください。
               </div>
             )}
           </div>

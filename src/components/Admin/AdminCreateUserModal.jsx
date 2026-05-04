@@ -12,7 +12,13 @@ import DotWaveSpinner from '../common/DotWaveSpinner';
  * 通常のユーザー登録（Register.jsx）/ プロフィール編集（ProfileEdit.jsx）と
  * 同等のフィールド構成（lastName/firstName 分割、部署、住所等）。
  */
-export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSiteRegistration }) {
+export default function AdminCreateUserModal({
+  onClose,
+  onSuccess,
+  onProceedToSiteRegistration,
+  proceedButtonLabel = '続けてサイトを登録する',
+  proceedButtonIcon: ProceedIcon = null, // null=デフォルト Globe アイコン
+}) {
   const [formData, setFormData] = useState({
     company: '',
     department: '',
@@ -148,8 +154,8 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
                 onClose();
               }}
             >
-              <Globe data-slot="icon" />
-              続けてサイトを登録する
+              {ProceedIcon ? <ProceedIcon data-slot="icon" /> : <Globe data-slot="icon" />}
+              {proceedButtonLabel}
             </Button>
           )}
         </DialogActions>
@@ -256,7 +262,7 @@ export default function AdminCreateUserModal({ onClose, onSuccess, onProceedToSi
   return (
     <Dialog open={true} onClose={onClose} size="2xl">
       <DialogTitle>ユーザー作成</DialogTitle>
-      <DialogDescription>新しいユーザーアカウントを作成します（通常の signup と同じ項目）</DialogDescription>
+      <DialogDescription>新しいユーザーアカウントを作成します</DialogDescription>
 
       <form id="create-user-form" onSubmit={handleSubmit}>
         <DialogBody className="!overflow-y-auto" style={{ maxHeight: 'calc(80vh - 140px)' }}>

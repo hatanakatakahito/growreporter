@@ -1,5 +1,5 @@
 /**
- * GrowReporter 営業資料 v2 — 完全オリジナル
+ * グローレポータ 営業資料 v2 — 完全オリジナル
  * LPスクショを主役にしたクリーンなデザイン
  */
 import pptxgen from "pptxgenjs";
@@ -60,7 +60,7 @@ let pg = 0;
   const s = pptx.addSlide();
   s.background = { color: C.dark };
 
-  s.addText("GrowReporter", {
+  s.addText("グローレポータ", {
     x: 0.8, y: 0.6, w: 5, h: 0.5,
     fontSize: 15, bold: true, color: C.primary, fontFace: FONT_EN,
   });
@@ -135,14 +135,14 @@ let pg = 0;
     x: 3.0, y: 6.3, w: 7.3, h: 0.55, rectRadius: 0.08,
     fill: { color: C.primary },
   });
-  s.addText("GrowReporter なら、すべて解決いたします", {
+  s.addText("グローレポータ なら、すべて解決いたします", {
     x: 3.0, y: 6.3, w: 7.3, h: 0.55,
     fontSize: 15, bold: true, color: C.white, fontFace: FONT, align: "center",
   });
 }
 
 // ════════════════════════════════════════════════════════
-// 3. GrowReporter とは
+// 3. グローレポータ とは
 // ════════════════════════════════════════════════════════
 {
   pg++;
@@ -150,7 +150,7 @@ let pg = 0;
   s.background = { color: C.white };
   accentBar(s); copyright(s); pageNum(s, pg);
 
-  s.addText("GrowReporter とは", {
+  s.addText("グローレポータ とは", {
     x: 0.8, y: 0.4, w: 10, h: 0.7,
     fontSize: 24, bold: true, color: C.dark, fontFace: FONT,
   });
@@ -181,7 +181,7 @@ const strengths = [
   },
   {
     num: "02", title: "「次に何をすべきか」まで提案",
-    body: "一般的なツールはデータを見せるだけ。\nGrowReporter は AI が考察・改善提案・\nモックアップ画像まで一気通貫で生成。\n「数字は見た、で、どうすれば？」に答えます。",
+    body: "一般的なツールはデータを見せるだけ。\nグローレポータ は AI が考察・改善提案・\nモックアップ画像まで一気通貫で生成。\n「数字は見た、で、どうすれば？」に答えます。",
     note: "※ GA4やLooker Studioでは改善提案はできません",
     img: `${IMG}/about02.png`, imgRight: false,
   },
@@ -321,7 +321,7 @@ strengths.forEach((st) => {
   });
 
   const rows = [
-    ["", "GA4", "Looker Studio", "GrowReporter"],
+    ["", "GA4", "Looker Studio", "グローレポータ"],
     ["AI分析・考察", "△ データ表示のみ", "△ 可視化のみ", "◎ AIが自動考察"],
     ["改善提案", "✕ 非対応", "✕ 非対応", "◎ 提案+モックアップ"],
     ["AIチャット", "✕ 非対応", "✕ 非対応", "◎ 対話形式で質問"],
@@ -541,7 +541,7 @@ strengths.forEach((st) => {
     ["所在地", "東京都新宿区西新宿3-3-13 西新宿水間ビル2F"],
     ["代表", "代表取締役　畑中 貴仁"],
     ["資本金", "500万円"],
-    ["事業内容", "Webサイト制作・Webマーケティング支援\nアクセス解析AIツール「GrowReporter」開発・運営"],
+    ["事業内容", "Webサイト制作・Webマーケティング支援\nアクセス解析AIツール「グローレポータ」開発・運営"],
     ["URL", "https://and-suspended.com/"],
   ];
 
@@ -606,7 +606,7 @@ strengths.forEach((st) => {
 }
 
 // ── Save ──
-const outPath = "public/lp/GrowReporter_営業資料.pptx";
+const outPath = "public/lp/グローレポータ_営業資料.pptx";
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`✅ 生成完了: ${outPath}`);
 }).catch(console.error);

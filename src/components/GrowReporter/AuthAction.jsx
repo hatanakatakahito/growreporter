@@ -3,7 +3,6 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { getAuth, verifyPasswordResetCode, confirmPasswordReset, applyActionCode, checkActionCode } from 'firebase/auth';
 import { Button } from '@/components/ui/button';
 import logoImg from '../../assets/img/logo.svg';
-import loginIllustration from '../../assets/img/login.svg';
 import { Eye, EyeOff, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
 /**
@@ -125,32 +124,19 @@ export default function AuthAction() {
   };
 
   return (
-    <section className="relative z-10 flex min-h-screen items-center justify-center py-12 lg:py-20" style={{
-      backgroundColor: 'rgb(244, 244, 244)'
-    }}>
+    <section className="relative z-10 flex min-h-screen items-center justify-center py-12 lg:py-20" style={{ backgroundColor: 'rgb(244, 244, 244)' }}>
       <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-[1000px] overflow-hidden rounded-2xl bg-white dark:bg-dark-2 lg:flex">
-
-          {/* 左側：イラストエリア */}
-          <div className="flex w-full items-center justify-center bg-[#F9FAFB] px-6 py-10 dark:bg-dark-3 lg:w-1/2 lg:px-8">
-            <div className="w-full max-w-[400px] text-center">
-              <div className="mb-5 flex items-center justify-center">
-                <img src={logoImg} alt="GROW REPORTER" className="h-14 w-auto" />
-              </div>
-              <p className="mb-8 text-center text-sm text-body-color dark:text-dark-6 lg:text-base">
-                グローレポーターは、アクセス解析にAIを掛け合わせ、
-                <br />
-                "次の打ち手"まで導くサイト改善ツールです。
-              </p>
-              <div className="mx-auto flex items-center justify-center">
-                <img src={loginIllustration} alt="" className="w-full max-w-[400px] h-auto" />
-              </div>
+        <div className="mx-auto max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-lg dark:bg-dark-2">
+          {/* ロゴエリア (グラデヘッダー) */}
+          <div className="bg-gradient-primary px-8 py-6 text-center">
+            <div className="flex items-center justify-center">
+              <img src={logoImg} alt="グローレポータ" className="h-10 w-auto brightness-0 invert" />
             </div>
           </div>
 
-          {/* 右側：アクションエリア */}
-          <div className="flex w-full items-center justify-center px-6 py-10 lg:w-1/2 lg:px-8">
-            <div className="w-full max-w-[400px]">
+          {/* フォームエリア */}
+          <div className="flex w-full items-center justify-center px-8 py-10 sm:px-12 lg:px-20">
+            <div className="w-full max-w-[480px]">
               {/* 検証中 */}
               {phase === 'verifying' && (
                 <div className="text-center">
@@ -306,7 +292,6 @@ export default function AuthAction() {
               )}
             </div>
           </div>
-
         </div>
       </div>
     </section>

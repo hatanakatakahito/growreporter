@@ -207,7 +207,7 @@ export default function AcceptInvitation() {
             currentUser.email.toLowerCase() !== invitation.email.toLowerCase() && (
               <div className="mb-6 p-4 bg-amber-50 border border-amber-300 rounded-lg">
                 <p className="text-sm text-amber-900">
-                  <strong>⚠ メールアドレスが一致しません</strong><br />
+                  <strong>メールアドレスが一致しません</strong><br />
                   この招待は <strong>{invitation.email}</strong> 宛てに送信されました。
                   現在ログインしているアカウント (<strong>{currentUser.email}</strong>) では受領できません。
                   一度ログアウトし、招待先のメールアドレスでログインしてから再度お試しください。

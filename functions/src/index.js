@@ -515,6 +515,15 @@ export const setUserActiveSites = lazyCallable('./callable/admin/setUserActiveSi
 export const sendAccountCredentialsEmail = lazyCallable('./callable/admin/sendAccountCredentialsEmail.js', 'sendAccountCredentialsEmailCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
+ * パスワード再設定メール送信 Callable Function（顧客自己申請・認証不要）
+ * Firebase Console テンプレート (https://growgroupreporter.firebaseapp.com/__/auth/action) を経由せず、
+ * 自社 SES + 自社ブランド UI (grow-reporter.com/auth/action) でパスワード再設定を完結させる。
+ * 列挙攻撃対策: ユーザー存在有無・内部エラーに関わらず常に success:true を返す。
+ * SES SMTP / GOOGLE_CLIENT_SECRET は SHARED_SECRETS で自動付与。
+ */
+export const sendPasswordResetByEmail = lazyCallable('./callable/sendPasswordResetByEmail.js', 'sendPasswordResetByEmailCallable', { memory: '256MiB', timeoutSeconds: 30 });
+
+/**
  * board 取り込み Callable Function（§15）
  * board で先行作成された案件・見積を grow-reporter の upgradeInquiries に取り込む。
  * dryRun=true で preview 取得（DB 書き込みなし）、false で本番取り込み。
@@ -574,6 +583,36 @@ export const adminCreateUser = lazyCallable('./callable/admin/adminCreateUser.js
  */
 export const adminCreateSite = lazyCallable('./callable/admin/adminCreateSite.js', 'adminCreateSiteCallable', { memory: '256MiB', timeoutSeconds: 30 });
 export const adminDeleteSite = lazyCallable('./callable/admin/adminDeleteSite.js', 'adminDeleteSiteCallable', { memory: '512MiB', timeoutSeconds: 120 });
+
+/**
+ * 管理者→顧客サイト所有権移管 Callable
+ * 当社代行作成サイトを顧客 (新規 or 既存) に引き渡す。OAuth トークンは admin 保持で代行運用継続。
+ */
+export const adminTransferSiteOwnership = lazyCallable(
+  './callable/admin/adminTransferSiteOwnership.js',
+  'adminTransferSiteOwnershipCallable',
+  { memory: '512MiB', timeoutSeconds: 120, secrets: ['SES_SMTP_USER', 'SES_SMTP_PASSWORD'] }
+);
+
+/**
+ * 管理者←顧客サイト所有権取り戻し Callable
+ * 誤操作や顧客退会対応時に admin がサイトを取り戻す。
+ */
+export const adminReverseSiteOwnership = lazyCallable(
+  './callable/admin/adminReverseSiteOwnership.js',
+  'adminReverseSiteOwnershipCallable',
+  { memory: '512MiB', timeoutSeconds: 120 }
+);
+
+/**
+ * 顧客 OAuth 切替 Callable
+ * 当社代行運用中のサイトを顧客自身の OAuth で再連携する。
+ */
+export const claimSiteTokenOwnership = lazyCallable(
+  './callable/claimSiteTokenOwnership.js',
+  'claimSiteTokenOwnershipCallable',
+  { memory: '256MiB', timeoutSeconds: 30 }
+);
 
 /**
  * タクソノミー V2 の手動再分類（移行スクリプト後の needsManualReclassify=true サイト向け）
