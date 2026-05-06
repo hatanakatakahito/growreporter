@@ -8,6 +8,7 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { functions, db } from '../../config/firebase';
 import { auth } from '../../config/firebase';
 import BusinessPlanFormFields, { BUSINESS_FORM_INITIAL } from '../common/BusinessPlanFormFields';
+import { checkPasswordStrength, strengthLabel } from '../../utils/passwordStrength';
 
 export default function Register() {
   const [email, setEmail] = useState('');
@@ -88,8 +89,11 @@ export default function Register() {
       return;
     }
 
-    if (password.length < 6) {
-      setError('パスワードは6文字以上で入力してください');
+    // セキュリティ (Phase 4-A-10): パスワード強度を検証。
+    //   旧仕様 6 文字以上 → 新仕様 8 文字以上 + 大文字・小文字・数字・記号のうち 3 種類以上。
+    const strengthCheck = checkPasswordStrength(password);
+    if (!strengthCheck.ok) {
+      setError(strengthCheck.reason || 'パスワードが弱すぎます');
       setIsSubmitting(false);
       return;
     }
@@ -413,7 +417,7 @@ export default function Register() {
                   <label className={labelClass}>パスワード <span className="text-red-500">*</span></label>
                   <div className="relative">
                     <input type={showPassword ? "text" : "password"} value={password}
-                      onChange={(e) => setPassword(e.target.value)} placeholder="6文字以上" required
+                      onChange={(e) => setPassword(e.target.value)} placeholder="8文字以上、3種類以上の文字種を含む" required
                       className={`${inputClass} pr-11`} />
                     <button type="button" onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
@@ -424,6 +428,24 @@ export default function Register() {
                       )}
                     </button>
                   </div>
+                  {/* パスワード強度メーター (Phase 4-A-10) */}
+                  {password && (() => {
+                    const strength = checkPasswordStrength(password);
+                    const label = strengthLabel(strength.score);
+                    return (
+                      <div className="mt-2">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 rounded bg-gray-200 overflow-hidden">
+                            <div className="h-full transition-all" style={{ width: `${label.percent}%`, backgroundColor: label.color }} />
+                          </div>
+                          <span className="text-xs font-medium" style={{ color: label.color }}>{label.label}</span>
+                        </div>
+                        {!strength.ok && strength.reason && (
+                          <p className="mt-1 text-xs text-red-600">{strength.reason}</p>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
 
                 {/* ビジネスプラン追加項目 */}

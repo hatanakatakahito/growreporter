@@ -15,6 +15,7 @@ import { getStorage } from 'firebase-admin/storage';
 import { logger } from 'firebase-functions/v2';
 import { canAccessSite } from '../utils/permissionHelper.js';
 import { getInjectionGuardPreamble, wrapAsUserData } from '../utils/promptSanitizer.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 const MAX_RETRIES = 2;
 const MAX_FILES_PER_TURN = 5;
@@ -32,6 +33,10 @@ export async function aiChatCallable(req) {
   }
 
   const userId = req.auth.uid;
+
+  // セキュリティ (Phase 4-A-2): レート制限。AI コール乱用による課金枯渇防止
+  await enforceRateLimit({ uid: userId, ...DEFAULT_RATE_LIMITS.aiChat });
+
   const { siteId, sessionId, message, attachments = [], startDate, endDate } = req.data;
 
   if (!siteId) throw new HttpsError('invalid-argument', 'siteIdが必要です');

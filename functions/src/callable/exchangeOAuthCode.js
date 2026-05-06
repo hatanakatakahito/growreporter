@@ -2,6 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { google } from 'googleapis';
+import { safeErrorPayload, redactSensitive } from '../utils/safeLogger.js';
 
 /**
  * OAuth 2.0 認可コードをアクセストークンとリフレッシュトークンに交換
@@ -124,20 +125,23 @@ export async function exchangeOAuthCodeCallable(request) {
     };
     
   } catch (error) {
-    logger.error('[exchangeOAuthCode] Error:', error);
-    
-    // エラーログをFirestoreに保存
+    // セキュリティ (Phase 4-A-6): error / stack には認可コードや refresh_token 断片が
+    //   含まれる可能性があるため、Cloud Logging / Firestore 保存前に必ず redact する。
+    const safe = safeErrorPayload(error);
+    logger.error('[exchangeOAuthCode] Error:', safe.message);
+
+    // エラーログをFirestoreに保存（redact 済の値で）
     try {
       await db.collection('error_logs').add({
         type: 'oauth_exchange_error',
         provider,
         userId,
-        error: error.message,
-        stack: error.stack,
+        error: safe.message,
+        stack: safe.stack,
         timestamp: FieldValue.serverTimestamp(),
       });
     } catch (logError) {
-      logger.error('[exchangeOAuthCode] Error logging failed:', logError);
+      logger.error('[exchangeOAuthCode] Error logging failed:', redactSensitive(logError?.message));
     }
     
     // HttpsErrorの場合はそのまま投げる

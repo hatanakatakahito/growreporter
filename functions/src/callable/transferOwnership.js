@@ -2,6 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { sendEmailDirect } from '../utils/emailSender.js';
+import { escapeHtml, escapeHtmlAndValidateUrl } from '../utils/htmlEscape.js';
 
 /**
  * オーナー権限を譲渡
@@ -187,17 +188,24 @@ export const transferOwnershipCallable = async (request) => {
     // 7. 新オーナーに通知メールを送信（SMTP 直接送信）
     const appUrl = process.env.APP_URL || 'https://grow-reporter.com';
     const subject = `【グローレポータ】${companyName} のオーナー権限が譲渡されました`;
+
+    // XSS 対策: 全変数を escape してから HTML に展開
+    const newOwnerNameH = escapeHtml(newOwnerName);
+    const previousOwnerNameH = escapeHtml(previousOwnerName);
+    const companyNameH = escapeHtml(companyName);
+    const membersUrlH = escapeHtmlAndValidateUrl(`${appUrl}/members`);
+
     const html = `
 <!DOCTYPE html>
 <html lang="ja">
 <body style="font-family: sans-serif; padding: 20px; background-color: #f3f4f6;">
   <div style="max-width: 600px; margin: 0 auto; background-color: #ffffff; padding: 30px; border-radius: 8px;">
     <h2 style="color: #1f2937;">オーナー権限が譲渡されました</h2>
-    <p>${newOwnerName} さん、</p>
-    <p>${previousOwnerName} さんから、<strong>${companyName}</strong> のオーナー権限が譲渡されました。</p>
+    <p>${newOwnerNameH} さん、</p>
+    <p>${previousOwnerNameH} さんから、<strong>${companyNameH}</strong> のオーナー権限が譲渡されました。</p>
     <p>今後、あなたがこのアカウントのオーナーとして、メンバー管理やプラン変更などの全ての操作が可能になります。</p>
     <p style="margin-top: 30px;">
-      <a href="${appUrl}/members" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px;">
+      <a href="${membersUrlH}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 12px 24px; border-radius: 6px;">
         メンバー管理画面を開く
       </a>
     </p>

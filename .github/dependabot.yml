@@ -1,0 +1,83 @@
+# Dependabot 設定 (Phase 4-A-8)
+#
+# 依存関係 CVE の自動検知 + Pull Request 提案。週次でセキュリティアップデートを集約。
+#
+# - GitHub Settings → Code security and analysis で
+#   「Dependabot security updates」を ON にすると、CVE 開示時に即時の PR が来る。
+# - 本ファイルの schedule は「定期版数アップデート」用。security はそれと独立して走る。
+#
+# 公式: https://docs.github.com/code-security/dependabot
+version: 2
+updates:
+  # フロントエンド (Vite + React)
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    target-branch: "master"
+    labels:
+      - "dependencies"
+      - "frontend"
+    commit-message:
+      prefix: "chore(deps)"
+      include: "scope"
+    groups:
+      # 開発依存はまとめて 1 PR に
+      dev-dependencies:
+        dependency-type: "development"
+        update-types:
+          - "minor"
+          - "patch"
+      # production 依存の minor/patch もまとめる
+      production-minor-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      # 大きな互換破壊が含まれる major バージョンは別途手動で対応
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # バックエンド (Cloud Functions Node 20)
+  - package-ecosystem: "npm"
+    directory: "/functions"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:30"
+      timezone: "Asia/Tokyo"
+    open-pull-requests-limit: 5
+    target-branch: "master"
+    labels:
+      - "dependencies"
+      - "backend-functions"
+    commit-message:
+      prefix: "chore(deps-functions)"
+      include: "scope"
+    groups:
+      production-minor-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
+
+  # GitHub Actions ワークフロー
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    open-pull-requests-limit: 3
+    target-branch: "master"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    commit-message:
+      prefix: "chore(deps-actions)"

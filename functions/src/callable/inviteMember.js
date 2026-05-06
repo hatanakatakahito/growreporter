@@ -4,6 +4,8 @@ import { getAuth } from 'firebase-admin/auth';
 import { logger } from 'firebase-functions/v2';
 import { v4 as uuidv4 } from 'uuid';
 import { sendEmailDirect } from '../utils/emailSender.js';
+import { escapeHtml, escapeHtmlAndValidateUrl } from '../utils/htmlEscape.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * メンバーを招待
@@ -19,6 +21,9 @@ export const inviteMemberCallable = async (request) => {
   if (!uid) {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
+
+  // セキュリティ (Phase 4-A-2): レート制限。スパム踏み台防止
+  await enforceRateLimit({ uid, ...DEFAULT_RATE_LIMITS.inviteMember });
 
   const {
     email,
@@ -203,9 +208,17 @@ export const inviteMemberCallable = async (request) => {
  */
 function generateInvitationEmailHtml(data) {
   const { inviterName, companyName, role, allowedSiteCount, invitationUrl, expiresAt } = data;
+
+  // XSS 対策: HTML 文脈に展開する変数は escape 必須
+  const inviterNameH = escapeHtml(inviterName);
+  const companyNameH = escapeHtml(companyName);
+  const roleH = escapeHtml(role);
+  const expiresAtH = escapeHtml(expiresAt);
+  const invitationUrlH = escapeHtmlAndValidateUrl(invitationUrl);
+
   const accessScopeText = (allowedSiteCount != null)
-    ? `指定された ${allowedSiteCount} サイトのみ${role === '編集者' ? '編集・閲覧' : '閲覧'}可能です`
-    : `${companyName} の全サイトのデータにアクセスできるようになります`;
+    ? `指定された ${escapeHtml(allowedSiteCount)} サイトのみ${role === '編集者' ? '編集・閲覧' : '閲覧'}可能です`
+    : `${companyNameH} の全サイトのデータにアクセスできるようになります`;
 
   return `
 <!DOCTYPE html>
@@ -230,27 +243,27 @@ function generateInvitationEmailHtml(data) {
           <tr>
             <td style="padding: 40px 30px;">
               <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
-                ${inviterName} さんから招待が届いています
+                ${inviterNameH} さんから招待が届いています
               </h2>
-              
+
               <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-                <strong>${companyName}</strong> のメンバーとして招待されました。
+                <strong>${companyNameH}</strong> のメンバーとして招待されました。
               </p>
-              
+
               <div style="background-color: #f9fafb; border-left: 4px solid #3758F9; padding: 15px; margin: 20px 0;">
                 <p style="margin: 0; color: #374151; font-size: 14px;">
-                  <strong>権限:</strong> ${role}
+                  <strong>権限:</strong> ${roleH}
                 </p>
               </div>
-              
+
               <p style="margin: 20px 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
                 招待を承認すると、${accessScopeText}。
               </p>
-              
+
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${invitationUrl}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                    <a href="${invitationUrlH}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
                       招待を承認する
                     </a>
                   </td>
@@ -258,10 +271,10 @@ function generateInvitationEmailHtml(data) {
               </table>
               <p style="margin: 16px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
                 ボタンが表示されない場合は、以下のリンクをクリックしてください：<br>
-                <a href="${invitationUrl}" style="color: #3758F9; text-decoration: underline; word-break: break-all;">${invitationUrl}</a>
+                <a href="${invitationUrlH}" style="color: #3758F9; text-decoration: underline; word-break: break-all;">${invitationUrlH}</a>
               </p>
               <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
-                ※ この招待は <strong>${expiresAt}</strong> まで有効です。<br>
+                ※ この招待は <strong>${expiresAtH}</strong> まで有効です。<br>
                 ※ グローレポータのアカウントをお持ちでない場合は、まず新規登録を行ってから招待を承認してください。
               </p>
             </td>

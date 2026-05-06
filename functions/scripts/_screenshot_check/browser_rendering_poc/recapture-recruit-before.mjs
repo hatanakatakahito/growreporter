@@ -17,8 +17,15 @@ const STORAGE_BUCKET = 'growgroupreporter.firebasestorage.app';
 const SITE_ID = 'CZYomSqeTRAnIWgD8Km4';
 const TARGET_URL = 'https://grow-group.jp/recruit/';
 const PAGE_PATH = '/recruit/';
-const WORKER_URL = 'https://growreporter-fetch-proxy.hatanaka-a1e.workers.dev';
-const PROXY_SECRET = 'growreporter-proxy-2026';
+// Worker URL は公開前提。Secret は環境変数経由（Firebase Secret Manager と同じ値）。
+// 実行例: CF_PROXY_SECRET=xxxx node scripts/_screenshot_check/browser_rendering_poc/recapture-recruit-before.mjs
+const WORKER_URL = process.env.CF_PROXY_URL || 'https://growreporter-fetch-proxy.hatanaka-a1e.workers.dev';
+const PROXY_SECRET = process.env.CF_PROXY_SECRET || '';
+if (!PROXY_SECRET) {
+  console.error('[recapture-recruit-before] CF_PROXY_SECRET 環境変数が未設定です。');
+  console.error('  例: CF_PROXY_SECRET=xxxx node scripts/_screenshot_check/browser_rendering_poc/recapture-recruit-before.mjs');
+  process.exit(1);
+}
 
 admin.initializeApp({ projectId: PROJECT_ID, storageBucket: STORAGE_BUCKET });
 const db = admin.firestore();
