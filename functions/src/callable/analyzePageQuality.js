@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import { analyzePageQuality as analyzePageQualityUtil } from '../utils/analyzePageQuality.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * ページ品質分析Callable Function
@@ -16,6 +17,9 @@ export const analyzePageQualityCallable = onCall(
     if (!request.auth) {
       throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
     }
+
+    // Phase 4-A-2: レート制限
+    await enforceRateLimit({ uid: request.auth.uid, ...DEFAULT_RATE_LIMITS.analyzePageQuality });
 
     const { ga4PageData, sitemapPages, landingPageData } = request.data;
 

@@ -3,6 +3,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { escapeHtml, escapeHtmlAndValidateUrl } from '../utils/htmlEscape.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * オーナー権限を譲渡
@@ -22,6 +23,9 @@ export const transferOwnershipCallable = async (request) => {
   if (!uid) {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
+
+  // Phase 4-A-2: レート制限（重要操作なので 1 日 3 回まで）
+  await enforceRateLimit({ uid, ...DEFAULT_RATE_LIMITS.transferOwnership });
 
   const { newOwnerId } = request.data || {};
 

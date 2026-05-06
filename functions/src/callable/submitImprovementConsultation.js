@@ -1,5 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { sendImprovementConsultationEmail } from '../utils/emailSender.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * サイト改善相談フォーム送信（制作会社へ相談する）
@@ -14,6 +15,9 @@ export const submitImprovementConsultationCallable = async (request) => {
   if (!request.auth?.uid) {
     throw new HttpsError('unauthenticated', 'ログインが必要です');
   }
+
+  // Phase 4-A-2: レート制限（フォーム送信スパム防止）
+  await enforceRateLimit({ uid: request.auth.uid, ...DEFAULT_RATE_LIMITS.submitImprovementConsultation });
 
   const {
     siteName = '',

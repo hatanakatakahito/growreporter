@@ -2,6 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { logger } from 'firebase-functions/v2';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * ユーザーが自分のアカウントを削除
@@ -15,6 +16,9 @@ export const deleteAccountCallable = async (request) => {
   if (!uid) {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
+
+  // Phase 4-A-2: レート制限（誤爆・不正アクセス時の連続削除防止）
+  await enforceRateLimit({ uid, ...DEFAULT_RATE_LIMITS.deleteAccount });
 
   try {
     const db = getFirestore();

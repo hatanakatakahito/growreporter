@@ -6,6 +6,7 @@ import { generateEmailTemplate, generateBatchedAlertEmailTemplate, generateAdmin
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { getGA4MetricsForSite } from '../utils/ga4ServerHelper.js';
 import { getLabel } from '../constants/metrics.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * テストメール送信ハンドラ（v2 request）
@@ -29,6 +30,9 @@ export async function sendTestReportEmailHandler(req) {
   if (!['admin', 'editor'].includes(adminRole)) {
     throw new HttpsError('permission-denied', 'テストメール送信には admin または editor ロールが必要です');
   }
+  // Phase 4-A-2: レート制限（管理者経由のメール踏み台防止）
+  await enforceRateLimit({ uid: userId, ...DEFAULT_RATE_LIMITS.sendTestReportEmail });
+
   const { recipientEmail, reportType = 'weekly', siteId } = data;
   if (!recipientEmail) {
     throw new HttpsError('invalid-argument', '送信先メールアドレスが指定されていません');

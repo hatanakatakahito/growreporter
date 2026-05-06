@@ -20,6 +20,7 @@ import * as cheerio from 'cheerio';
 import { captureFullSnapshot, readSnapshotHtml } from '../utils/captureFullSnapshot.js';
 import { captureBrowserRendering, readBrowserRenderedHtml } from '../utils/captureBrowserRendering.js';
 import { captureBrowserScreenshot } from '../utils/captureBrowserScreenshot.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * Cloudflare Browser Rendering 経路を使うか判定。
@@ -43,6 +44,9 @@ export async function generateImprovementMockupCallable(req) {
   if (!req.auth) {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
+
+  // Phase 4-A-2: レート制限（AI + 外部 fetch 課金枯渇防止）
+  await enforceRateLimit({ uid: req.auth.uid, ...DEFAULT_RATE_LIMITS.generateImprovementMockup });
 
   const { siteId, improvementId } = req.data;
 

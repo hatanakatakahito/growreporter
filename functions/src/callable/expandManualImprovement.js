@@ -26,6 +26,7 @@ import { canEditSite } from '../utils/permissionHelper.js';
 import { captureAndStoreBeforeScreenshot } from '../utils/captureAndStoreBeforeScreenshot.js';
 import { captureRenderAndScreenshot, readRenderedHtml } from '../utils/captureRenderAndScreenshot.js';
 import { getManualImprovementExpansionPrompt } from '../prompts/templates.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -446,6 +447,9 @@ export async function expandManualImprovementCallable(req) {
   if (!req.auth) {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
+
+  // Phase 4-A-2: レート制限（AI + 外部 fetch 課金枯渇防止）
+  await enforceRateLimit({ uid: req.auth.uid, ...DEFAULT_RATE_LIMITS.expandManualImprovement });
 
   const {
     siteId,

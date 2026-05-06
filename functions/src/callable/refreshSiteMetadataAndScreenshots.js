@@ -4,6 +4,7 @@ import { logger } from 'firebase-functions/v2';
 import { fetchMetadataCallable } from './fetchMetadata.js';
 import { refreshSiteThumbnails } from '../utils/refreshSiteThumbnails.js';
 import { canEditSite } from '../utils/permissionHelper.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * メタデータ・スクリーンショットを再取得して sites を更新する
@@ -15,6 +16,9 @@ export const refreshSiteMetadataAndScreenshotsCallable = async (request) => {
   if (!uid) {
     throw new HttpsError('unauthenticated', 'ログインが必要です');
   }
+
+  // Phase 4-A-2: レート制限（重い処理 + 外部 fetch 課金 + 踏み台防止）
+  await enforceRateLimit({ uid, ...DEFAULT_RATE_LIMITS.refreshSiteMetadataAndScreenshots });
 
   const { siteId } = request.data || {};
   if (!siteId) {

@@ -6,6 +6,7 @@ import { getCachedAnalysis, saveCachedAnalysis } from '../utils/aiCacheManager.j
 import { getPromptTemplate } from '../prompts/templates.js';
 import { buildScrapingContextText } from '../prompts/scrapingContextBuilder.js';
 import { wrapAsUserData } from '../utils/promptSanitizer.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 import { IMPROVEMENT_FOCUS_LABELS } from '../constants/siteOptions.js';
 import {
   BUSINESS_MODEL_LABELS,
@@ -245,6 +246,9 @@ export async function generateAISummaryCallable(request) {
   }
 
   const userId = request.auth.uid;
+
+  // Phase 4-A-2: レート制限（Gemini API 課金枯渇防止）
+  await enforceRateLimit({ uid: userId, ...DEFAULT_RATE_LIMITS.generateAISummary });
 
   console.log('[generateAISummary] Start:', { userId, siteId, pageType, startDate, endDate, forceRegenerate });
 

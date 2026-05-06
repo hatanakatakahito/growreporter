@@ -1,5 +1,6 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { sendUpgradeInquiryEmail } from '../utils/emailSender.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * プランアップグレードお問い合わせ送信
@@ -16,6 +17,9 @@ export const submitUpgradeInquiryCallable = async (request) => {
   if (!request.auth?.uid) {
     throw new HttpsError('unauthenticated', 'ログインが必要です');
   }
+
+  // Phase 4-A-2: レート制限（プラン問合せスパム防止）
+  await enforceRateLimit({ uid: request.auth.uid, ...DEFAULT_RATE_LIMITS.submitUpgradeInquiry });
 
   const {
     selectedPlan = '',
