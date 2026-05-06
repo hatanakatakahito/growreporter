@@ -16,6 +16,7 @@ import { logger } from 'firebase-functions/v2';
 import { canAccessSite } from '../utils/permissionHelper.js';
 import { getInjectionGuardPreamble, wrapAsUserData } from '../utils/promptSanitizer.js';
 import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
+import { requireDocId, optionalString, optionalMessage, MAX_LONG_MESSAGE_LEN } from '../utils/validators.js';
 
 const MAX_RETRIES = 2;
 const MAX_FILES_PER_TURN = 5;
@@ -37,10 +38,17 @@ export async function aiChatCallable(req) {
   // セキュリティ (Phase 4-A-2): レート制限。AI コール乱用による課金枯渇防止
   await enforceRateLimit({ uid: userId, ...DEFAULT_RATE_LIMITS.aiChat });
 
-  const { siteId, sessionId, message, attachments = [], startDate, endDate } = req.data;
-
-  if (!siteId) throw new HttpsError('invalid-argument', 'siteIdが必要です');
-  if (!message?.trim()) throw new HttpsError('invalid-argument', 'メッセージが必要です');
+  // 入力検証 (Phase 4-B-7)
+  const rawData = req.data || {};
+  const siteId = requireDocId(rawData.siteId, 'siteId');
+  const sessionId = rawData.sessionId ? requireDocId(rawData.sessionId, 'sessionId') : null;
+  const message = optionalMessage(rawData.message, 'message', MAX_LONG_MESSAGE_LEN);
+  if (!message.trim()) {
+    throw new HttpsError('invalid-argument', 'メッセージが必要です');
+  }
+  const attachments = Array.isArray(rawData.attachments) ? rawData.attachments.slice(0, 10) : [];
+  const startDate = optionalString(rawData.startDate, 'startDate', { maxLen: 32 });
+  const endDate = optionalString(rawData.endDate, 'endDate', { maxLen: 32 });
 
   // 権限チェック
   // viewer も AI チャット利用可（オーナーのプラン枠を消費）

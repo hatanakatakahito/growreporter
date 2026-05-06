@@ -27,6 +27,7 @@ import { captureAndStoreBeforeScreenshot } from '../utils/captureAndStoreBeforeS
 import { captureRenderAndScreenshot, readRenderedHtml } from '../utils/captureRenderAndScreenshot.js';
 import { getManualImprovementExpansionPrompt } from '../prompts/templates.js';
 import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
+import { requireDocId, requireEnum, optionalString, optionalMessage, requireArray, requireUrl, MAX_URL_LEN, MAX_USER_NOTE_LEN } from '../utils/validators.js';
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -451,30 +452,30 @@ export async function expandManualImprovementCallable(req) {
   // Phase 4-A-2: レート制限（AI + 外部 fetch 課金枯渇防止）
   await enforceRateLimit({ uid: req.auth.uid, ...DEFAULT_RATE_LIMITS.expandManualImprovement });
 
-  const {
-    siteId,
-    targetType,
-    targetPageUrl,
-    userIntent,
-    targetSection,
-    targetSectionDetail,
-    referenceUrls,
-    referenceImageUrls,
-  } = req.data || {};
+  const rawData = req.data || {};
 
-  // バリデーション
-  if (!siteId || typeof siteId !== 'string') {
-    throw new HttpsError('invalid-argument', 'siteId が必要です');
-  }
-  if (!['existing_single', 'existing_template', 'new_page'].includes(targetType)) {
-    throw new HttpsError('invalid-argument', 'targetType は existing_single | existing_template | new_page のいずれか');
-  }
-  if (targetType !== 'new_page' && !targetPageUrl) {
-    throw new HttpsError('invalid-argument', 'existing_* タイプでは targetPageUrl が必要です');
-  }
-  if (!userIntent || typeof userIntent !== 'string' || userIntent.trim().length < 3) {
+  // 入力検証 (Phase 4-B-7)
+  const siteId = requireDocId(rawData.siteId, 'siteId');
+  const targetType = requireEnum(rawData.targetType, 'targetType', ['existing_single', 'existing_template', 'new_page']);
+  const targetPageUrl = targetType === 'new_page'
+    ? optionalString(rawData.targetPageUrl, 'targetPageUrl', { maxLen: MAX_URL_LEN })
+    : requireUrl(rawData.targetPageUrl, 'targetPageUrl');
+  const userIntent = optionalMessage(rawData.userIntent, 'userIntent', MAX_USER_NOTE_LEN);
+  if (!userIntent || userIntent.trim().length < 3) {
     throw new HttpsError('invalid-argument', '改善方向（userIntent）は 3 文字以上必要です');
   }
+  const targetSection = optionalString(rawData.targetSection, 'targetSection', { maxLen: 100 });
+  const targetSectionDetail = optionalString(rawData.targetSectionDetail, 'targetSectionDetail', { maxLen: 500 });
+  const referenceUrls = rawData.referenceUrls === undefined ? [] : requireArray(
+    rawData.referenceUrls,
+    'referenceUrls',
+    { maxLen: 5, itemValidator: (u, fld) => requireUrl(u, fld) }
+  );
+  const referenceImageUrls = rawData.referenceImageUrls === undefined ? [] : requireArray(
+    rawData.referenceImageUrls,
+    'referenceImageUrls',
+    { maxLen: 5, itemValidator: (u, fld) => requireUrl(u, fld) }
+  );
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {

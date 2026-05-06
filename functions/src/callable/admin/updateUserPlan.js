@@ -2,6 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { sendPlanChangeEmail } from '../../utils/emailSender.js';
+import { requireDocId, requireEnum, optionalMessage } from '../../utils/validators.js';
 
 /**
  * 管理者用ユーザープラン変更
@@ -20,21 +21,14 @@ export const updateUserPlanCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const {
-    targetUserId,
-    newPlan,
-    reason,
-    extraSitesCount: rawExtraSitesCount,
-    extraSitesValidUntil: rawExtraSitesValidUntil,
-  } = request.data || {};
+  const rawData = request.data || {};
 
-  if (!targetUserId) {
-    throw new HttpsError('invalid-argument', '対象ユーザーIDが必要です');
-  }
-
-  if (!newPlan || !['free', 'business'].includes(newPlan)) {
-    throw new HttpsError('invalid-argument', '有効なプランを指定してください');
-  }
+  // 入力検証 (Phase 4-B-7)
+  const targetUserId = requireDocId(rawData.targetUserId, 'targetUserId');
+  const newPlan = requireEnum(rawData.newPlan, 'newPlan', ['free', 'business']);
+  const reason = optionalMessage(rawData.reason, 'reason', 1000);
+  const rawExtraSitesCount = rawData.extraSitesCount;
+  const rawExtraSitesValidUntil = rawData.extraSitesValidUntil;
 
   // extraSites の検証（任意フィールド）
   // - 0 以上の整数のみ許可

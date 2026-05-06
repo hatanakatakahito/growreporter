@@ -21,6 +21,7 @@ import { captureFullSnapshot, readSnapshotHtml } from '../utils/captureFullSnaps
 import { captureBrowserRendering, readBrowserRenderedHtml } from '../utils/captureBrowserRendering.js';
 import { captureBrowserScreenshot } from '../utils/captureBrowserScreenshot.js';
 import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
+import { requireDocId } from '../utils/validators.js';
 
 /**
  * Cloudflare Browser Rendering 経路を使うか判定。
@@ -48,11 +49,9 @@ export async function generateImprovementMockupCallable(req) {
   // Phase 4-A-2: レート制限（AI + 外部 fetch 課金枯渇防止）
   await enforceRateLimit({ uid: req.auth.uid, ...DEFAULT_RATE_LIMITS.generateImprovementMockup });
 
-  const { siteId, improvementId } = req.data;
-
-  if (!siteId || !improvementId) {
-    throw new HttpsError('invalid-argument', 'siteId と improvementId が必要です');
-  }
+  // 入力検証 (Phase 4-B-7)
+  const siteId = requireDocId(req.data?.siteId, 'siteId');
+  const improvementId = requireDocId(req.data?.improvementId, 'improvementId');
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
