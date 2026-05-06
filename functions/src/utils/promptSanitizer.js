@@ -19,6 +19,14 @@
 const DEFAULT_MAX_USER_NOTE_CHARS = 2000;
 const DEFAULT_MAX_SCRAPED_TEXT_CHARS = 2000;
 
+// プロンプト隠匿に使われやすい 0 幅文字
+//   U+200B ZWSP / U+200C ZWNJ / U+200D ZWJ / U+2060 WORD JOINER / U+FEFF BOM
+// eslint-disable-next-line no-misleading-character-class
+const ZERO_WIDTH_RE = /[\u200B\u200C\u200D\u2060\uFEFF]/g;
+
+// {{ }} に挿入する ZWSP（テンプレート構文を AI に解釈させないため）
+const ZWSP = '\u200B';
+
 /**
  * AI に「命令」と誤認させやすい制御マーカーを安全な表現に置換する。
  * @param {string} text
@@ -28,16 +36,18 @@ export function sanitizeControlMarkers(text) {
   if (!text || typeof text !== 'string') return '';
   return text
     // XML スタイルのプロンプト境界タグ
-    .replace(/<\s*\/?\s*(system|assistant|user|instruction|prompt|s)\s*>/gi, (m) => `&lt;${m.slice(1, -1).trim()}&gt;`)
-    // テンプレート構文 {{ }} を見えるテキストに
-    .replace(/\{\{/g, '{​{') // ZWSP 挿入で隣接 { を分断
-    .replace(/\}\}/g, '}​}')
+    .replace(/<\s*\/?\s*(system|assistant|user|instruction|prompt|s)\s*>/gi,
+      (m) => `&lt;${m.slice(1, -1).trim()}&gt;`)
+    // テンプレート構文 {{ }} を分断（隣接 { を ZWSP で割って AI に Mustache 風と誤解されにくくする）
+    .replace(/\{\{/g, `{${ZWSP}{`)
+    .replace(/\}\}/g, `}${ZWSP}}`)
     // ヘディング ### をエスケープ（行頭のみ）
     .replace(/^(#{1,6})\s/gm, '\\$1 ')
     // 区切り --- をエスケープ（行頭のみ）
     .replace(/^---\s*$/gm, '\\---')
-    // 0 幅文字を除去（プロンプト隠匿対策）
-    .replace(/[​‌‍⁠﻿]/g, (c) => `[U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}]`);
+    // 0 幅文字を可視化（プロンプト隠匿対策）
+    .replace(ZERO_WIDTH_RE,
+      (c) => `[U+${c.charCodeAt(0).toString(16).toUpperCase().padStart(4, '0')}]`);
 }
 
 /**

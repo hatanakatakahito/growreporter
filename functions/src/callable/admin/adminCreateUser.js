@@ -9,12 +9,10 @@ import {
   requireEmail,
   requireCompanyName,
   requirePhoneNumber,
-  requireDisplayName,
   optionalDisplayName,
   optionalString,
   requireEnum,
   requireBoolean,
-  optionalString as optStr,
 } from '../../utils/validators.js';
 
 /**

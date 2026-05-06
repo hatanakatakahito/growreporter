@@ -27,42 +27,42 @@ export function redactSensitive(input) {
   if (!s) return '';
 
   // OAuth アクセストークン
-  s = s.replace(/ya29\.[A-Za-z0-9_\-]{20,}/g, '[REDACTED-OAUTH-ACCESS]');
+  s = s.replace(/ya29\.[A-Za-z0-9_-]{20,}/g, '[REDACTED-OAUTH-ACCESS]');
   // OAuth リフレッシュトークン
-  s = s.replace(/1\/\/[A-Za-z0-9_\-]{20,}/g, '[REDACTED-OAUTH-REFRESH]');
+  s = s.replace(/1\/\/[A-Za-z0-9_-]{20,}/g, '[REDACTED-OAUTH-REFRESH]');
   // Google OAuth Client Secret
-  s = s.replace(/GOCSPX-[A-Za-z0-9_\-]{20,}/g, '[REDACTED-GOOGLE-CLIENT-SECRET]');
+  s = s.replace(/GOCSPX-[A-Za-z0-9_-]{20,}/g, '[REDACTED-GOOGLE-CLIENT-SECRET]');
   // Google API key
-  s = s.replace(/AIza[A-Za-z0-9_\-]{30,}/g, '[REDACTED-GOOGLE-API-KEY]');
+  s = s.replace(/AIza[A-Za-z0-9_-]{30,}/g, '[REDACTED-GOOGLE-API-KEY]');
   // AWS Access Key ID
   s = s.replace(/(?<![A-Z0-9])AKIA[A-Z0-9]{16}(?![A-Z0-9])/g, '[REDACTED-AWS-ACCESS-KEY]');
   // AWS SES SMTP password (40 文字 base64 風 + +/=)
-  s = s.replace(/BHDM[A-Za-z0-9+\/=]{30,}/g, '[REDACTED-AWS-SES-PASSWORD]');
+  s = s.replace(/BHDM[A-Za-z0-9+/=]{30,}/g, '[REDACTED-AWS-SES-PASSWORD]');
   // GitHub PAT
   s = s.replace(/ghp_[A-Za-z0-9]{20,}/g, '[REDACTED-GITHUB-PAT]');
   s = s.replace(/github_pat_[A-Za-z0-9_]{20,}/g, '[REDACTED-GITHUB-PAT]');
   // Stripe live/test key
   s = s.replace(/sk_(?:live|test)_[A-Za-z0-9]{20,}/g, '[REDACTED-STRIPE-KEY]');
   // Slack tokens
-  s = s.replace(/xox[bp]-[A-Za-z0-9\-]{10,}/g, '[REDACTED-SLACK-TOKEN]');
+  s = s.replace(/xox[bp]-[A-Za-z0-9-]{10,}/g, '[REDACTED-SLACK-TOKEN]');
   // Anthropic
-  s = s.replace(/sk-ant-[A-Za-z0-9_\-]{20,}/g, '[REDACTED-ANTHROPIC-KEY]');
+  s = s.replace(/sk-ant-[A-Za-z0-9_-]{20,}/g, '[REDACTED-ANTHROPIC-KEY]');
   // OpenAI
   s = s.replace(/sk-[A-Za-z0-9]{40,}/g, '[REDACTED-OPENAI-KEY]');
   // JWT (3 dot-separated base64url segments)
-  s = s.replace(/eyJ[A-Za-z0-9_\-]+\.eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+/g, '[REDACTED-JWT]');
+  s = s.replace(/eyJ[A-Za-z0-9_-]+\.eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g, '[REDACTED-JWT]');
   // Basic auth header
   s = s.replace(/(authorization\s*[:=]\s*['"]?)(?:bearer|basic)\s+\S+/gi, '$1[REDACTED-AUTH]');
   // Inline Cloudflare Worker proxy secret (本番値)
-  s = s.replace(/growreporter-proxy-[A-Za-z0-9_\-]+/g, '[REDACTED-CF-PROXY-SECRET]');
+  s = s.replace(/growreporter-proxy-[A-Za-z0-9_-]+/g, '[REDACTED-CF-PROXY-SECRET]');
   // クレジットカード番号 (Visa/Master/JCB 等の 13-19 桁、ハイフン/空白可)
-  s = s.replace(/\b(?:\d[ \-]*?){13,19}\b/g, (m) => {
+  s = s.replace(/\b(?:\d[ -]*?){13,19}\b/g, (m) => {
     const digits = m.replace(/\D/g, '');
     if (digits.length < 13 || digits.length > 19) return m;
     return '[REDACTED-CARD]';
   });
   // 一般的な API キー風（"key": "..." または key=...）
-  s = s.replace(/(["']?(?:api[_-]?key|apikey|secret|access[_-]?token|client[_-]?secret|password|passwd|pwd)["']?\s*[:=]\s*["']?)[A-Za-z0-9_\-+\/=]{16,}(["']?)/gi,
+  s = s.replace(/(["']?(?:api[_-]?key|apikey|secret|access[_-]?token|client[_-]?secret|password|passwd|pwd)["']?\s*[:=]\s*["']?)[A-Za-z0-9_+/=-]{16,}(["']?)/gi,
     '$1[REDACTED-CREDENTIAL]$2');
 
   return s;
