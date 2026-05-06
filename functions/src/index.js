@@ -725,6 +725,46 @@ export const submitUpgradeInquiry = lazyCallable('./callable/submitUpgradeInquir
 export const batchGenerateAISummaries = lazyCallable('./callable/admin/batchGenerateAISummaries.js', 'batchGenerateAISummariesCallable', { memory: '1GiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY'] });
 
 /**
+ * 管理者用：全サイトのAI分析キャッシュ（aiAnalysisCache）を一括クリア
+ * vivid Phase 2 デプロイ時の混在期間回避用、および将来のプロンプト変更時に使用
+ */
+export const clearAllAICache = lazyCallable('./callable/admin/clearAllAICache.js', 'clearAllAICacheCallable', { memory: '512MiB', timeoutSeconds: 540 });
+
+/**
+ * 管理者用：改善ナレッジ（improvementKnowledge）の業種別ベンチマーク集計取得
+ * vivid Phase 3: /admin/improvement-knowledge マトリクス画面用
+ */
+export const getImprovementBenchmarks = lazyCallable('./callable/admin/getImprovementBenchmarks.js', 'getImprovementBenchmarksCallable', { memory: '512MiB', timeoutSeconds: 60 });
+
+/**
+ * lively-aggregating-bobcat: ベンチマーク用 OAuth トークン管理 callable 群
+ * /admin/industry-benchmarks/tokens 画面で OAuth アカウント追加・テスト・無効化を行う
+ */
+export const getBenchmarkOAuthUrl = lazyCallable('./callable/admin/getBenchmarkOAuthUrl.js', 'getBenchmarkOAuthUrlCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const exchangeBenchmarkOAuthCode = lazyCallable('./callable/admin/exchangeBenchmarkOAuthCode.js', 'exchangeBenchmarkOAuthCodeCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const listBenchmarkTokens = lazyCallable('./callable/admin/listBenchmarkTokens.js', 'listBenchmarkTokensCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const testBenchmarkToken = lazyCallable('./callable/admin/testBenchmarkToken.js', 'testBenchmarkTokenCallable', { memory: '256MiB', timeoutSeconds: 60 });
+export const revokeBenchmarkToken = lazyCallable('./callable/admin/revokeBenchmarkToken.js', 'revokeBenchmarkTokenCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const triggerBenchmarkAggregator = lazyCallable('./callable/admin/triggerBenchmarkAggregator.js', 'triggerBenchmarkAggregatorCallable', { memory: '2GiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY'] });
+export const getBenchmarkOverview = lazyCallable('./callable/admin/getBenchmarkOverview.js', 'getBenchmarkOverviewCallable', { memory: '512MiB', timeoutSeconds: 60 });
+
+/**
+ * lively-aggregating-bobcat: 業界平均ベンチマーク集計バッチ
+ * 毎月1日 02:00 JST に実行
+ */
+export const benchmarkAggregator = onSchedule({
+  schedule: '0 2 1 * *',
+  timeZone: 'Asia/Tokyo',
+  region: 'asia-northeast1',
+  memory: '2GiB',
+  timeoutSeconds: 540,
+  secrets: ['GEMINI_API_KEY'],
+}, async (event) => {
+  const m = await import('./scheduled/benchmarkAggregator.js');
+  return m.benchmarkAggregatorHandler(event);
+});
+
+/**
  * ページスクレイピングデータ定期更新 Scheduled Function
  * 毎日3時実行、最終スクレイピングから30日以上経過したサイトを1サイトずつ再スクレイピング
  */

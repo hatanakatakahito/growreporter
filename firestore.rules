@@ -396,6 +396,61 @@ service cloud.firestore {
     }
 
     // ====================================================================
+    // 改善ナレッジ（vivid Phase 2/3）
+    // 用途:
+    //   - Phase 2 (RAG 注入): Cloud Functions が serverComprehensiveDataFetcher 経由で
+    //     業種・BM・役割でクエリし、AI 改善提案プロンプトに注入
+    //   - Phase 3 (管理画面 /admin/improvement-knowledge): 管理者が業種別マトリクスを閲覧
+    //
+    // セキュリティ:
+    //   - 書込は Cloud Functions（saveImprovementKnowledge in measureImprovementEffects.js）のみ
+    //   - 読取は管理者のみ（一般ユーザー・サイト所有者にも非公開、匿名化されているとはいえ
+    //     直接の生データ閲覧は管理者に限定）
+    //   - Phase 2 の RAG 注入は admin SDK 経由（Cloud Functions）なのでこのルールに影響されない
+    // ====================================================================
+    match /improvementKnowledge/{knowledgeId} {
+      allow read: if request.auth != null && isAdminUser();
+      allow write: if false;
+    }
+
+    // ====================================================================
+    // lively-aggregating-bobcat: 業界平均ベンチマーク基盤（Phase C）
+    // ====================================================================
+
+    // OAuth refresh_token を含むサービストークン台帳
+    // 4 つの運用OAuthアカウント（webmaster@/ads@/analytics@/analytics-02@grow-group.jp 等）
+    // 書込: Cloud Functions（OAuth管理 callable 群）
+    // 読取: 管理者（refresh_token はサーバー側でマスクして返却）
+    match /serviceTokens/{email} {
+      allow read: if request.auth != null && isAdminUser();
+      allow write: if false;
+    }
+
+    // ベンチマーク母集団のドメイン台帳
+    // 各ドメインに対して: アクセス可能アカウント、業種判定、opt-out 状態
+    // 書込: benchmarkAggregator scheduled function
+    // 読取: 管理者
+    match /benchmarkSourceSites/{domain} {
+      allow read: if request.auth != null && isAdminUser();
+      allow write: if false;
+    }
+
+    // 集計済みベンチマーク（業種×役割×期間ごと）
+    // 書込: benchmarkAggregator scheduled function（admin SDK 経由）
+    // 読取: AI 注入の経路は Cloud Functions の admin SDK 経由（rules バイパス）なので、
+    //       client direct read は admin のみに制限してデータ漏洩を防ぐ（moat保護）
+    match /industryBenchmarks/{periodSegment} {
+      allow read: if request.auth != null && isAdminUser();
+      allow write: if false;
+    }
+
+    // 月次バッチ実行ログ
+    match /benchmarkBatchLogs/{period} {
+      allow read: if request.auth != null && isAdminUser();
+      allow write: if false;
+    }
+
+    // ====================================================================
     // collectionGroup: 管理者の全サイト横断クエリ用
     // ====================================================================
     match /{path=**}/improvements/{improvementId} {

@@ -66,6 +66,10 @@ import AdminSettings from './pages/Admin/Settings/AdminSettings';
 import EmailNotifications from './pages/Admin/Settings/EmailNotifications';
 import PlanList from './pages/Admin/PlanList';
 import InquiryList from './pages/Admin/Inquiries/InquiryList';
+import ImprovementKnowledge from './pages/Admin/ImprovementKnowledge';
+import IndustryBenchmarksDashboard from './pages/Admin/IndustryBenchmarks/Dashboard';
+import IndustryBenchmarksTokens from './pages/Admin/IndustryBenchmarks/Tokens';
+import IndustryBenchmarksOAuthCallback from './pages/Admin/IndustryBenchmarks/OAuthCallback';
 
 
 function App() {
@@ -238,6 +242,10 @@ function App() {
               <Route path="logs" element={<ActivityLogs />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="mail" element={<EmailNotifications />} />
+              <Route path="improvement-knowledge" element={<ImprovementKnowledge />} />
+              <Route path="industry-benchmarks" element={<IndustryBenchmarksDashboard />} />
+              <Route path="industry-benchmarks/tokens" element={<IndustryBenchmarksTokens />} />
+              <Route path="industry-benchmarks/oauth-callback" element={<IndustryBenchmarksOAuthCallback />} />
             </Route>
 
                 </Routes>

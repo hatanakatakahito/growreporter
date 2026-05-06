@@ -1366,6 +1366,96 @@ function getComprehensiveImprovementPrompt(period, metrics, startDate, endDate, 
     });
   }
 
+  // ── 業界ベンチマーク（lively Phase C 補強材） ──
+  // 同業種×同役割の N サイトの median/p25/p75 を AI 内部入力として提供
+  // バイアス防止4原則:
+  //   (1) 業界平均は「相場」、自社サイトが「主役」
+  //   (2) p25/p75 を併記し、median を目標化させない
+  //   (3) 緊急度判定にだけ使う（業界平均より大幅悪化 → 優先度高）
+  //   (4) AI 出力に生の数値を含めさせない（定性表現に限定）
+  let industryBenchmarkText = '';
+  const ib = metrics.industryBenchmark;
+  if (ib && typeof ib === 'object' && ib.N >= 10) {
+    const ctx = siteContext || metrics.siteContext || {};
+    const indLabel = ctx.industryMajorText || ctx.industryText || ib.industryMajor || '同業種';
+    const roleLabel = ctx.siteRoleText || (ib.siteRole === 'all' ? '全役割' : ib.siteRole) || '同サイト役割';
+    const m = ib.metrics || {};
+    const g = ib.gsc || {};
+    const fmtPct = (n) => (typeof n === 'number' ? `${(n * 100).toFixed(1)}%` : '-');
+    const fmtNum = (n, dec = 0) => (typeof n === 'number' ? n.toFixed(dec) : '-');
+    const showQ = ib.N >= 30;
+
+    industryBenchmarkText = `\n\n【業界対比情報（参考データ・本サイトのデータが主役）】\n本サイトと同じ ${indLabel} × ${roleLabel} に該当する N=${ib.N} サイトの最新ベンチマーク（${ib.period}期間）:\n`;
+    if (m.bounceRate?.median !== undefined) {
+      industryBenchmarkText += `- 直帰率: 中央値 ${fmtPct(m.bounceRate.median)}${showQ ? `、p25=${fmtPct(m.bounceRate.p25)}、p75=${fmtPct(m.bounceRate.p75)}` : ''}\n`;
+    }
+    if (m.engagementRate?.median !== undefined) {
+      industryBenchmarkText += `- エンゲージメント率: 中央値 ${fmtPct(m.engagementRate.median)}${showQ ? `、p25=${fmtPct(m.engagementRate.p25)}、p75=${fmtPct(m.engagementRate.p75)}` : ''}\n`;
+    }
+    if (m.averageSessionDuration?.median !== undefined) {
+      industryBenchmarkText += `- 平均セッション時間: 中央値 ${fmtNum(m.averageSessionDuration.median, 1)}秒${showQ ? `、p25=${fmtNum(m.averageSessionDuration.p25, 1)}秒、p75=${fmtNum(m.averageSessionDuration.p75, 1)}秒` : ''}\n`;
+    }
+    if (g.ctr?.median !== undefined) {
+      industryBenchmarkText += `- GSC CTR: 中央値 ${fmtPct(g.ctr.median)}${showQ ? `、p25=${fmtPct(g.ctr.p25)}、p75=${fmtPct(g.ctr.p75)}` : ''}\n`;
+    }
+    if (g.position?.median !== undefined) {
+      industryBenchmarkText += `- GSC 平均掲載順位: 中央値 ${fmtNum(g.position.median, 2)}位${showQ ? `、p25=${fmtNum(g.position.p25, 2)}位、p75=${fmtNum(g.position.p75, 2)}位` : ''}\n`;
+    }
+    industryBenchmarkText += `
+【業界対比情報の利用ルール（厳守）】
+1. 上記は「同業他社の相場感」であり、本サイトの目標値ではない
+2. 本サイトのデータと改善余地が分析の主軸。業界平均を「目標」として提示しない
+3. 中央値より悪化している指標は優先的に取り上げる${showQ ? '\n4. 中央値より良好な指標も、p75（トップ25%）との差を見て改善余地があれば提案' : ''}
+${showQ ? '5' : '4'}. **AI 出力に「業界平均」「業界中央値」「N=○○」「○○%」のような生の数値・統計値を一切含めない**
+${showQ ? '6' : '5'}. 同業他社への言及は「同業他社と比較して」「業界相場では」のような定性表現に留める
+${showQ ? '7' : '6'}. 「業界平均と同じだから問題ない」「業界平均を目指しましょう」と書かない
+
+【業界対比情報は補助情報】vivid（同業の成功施策事例）が利用可能ならそちらの優先度が高い。
+`;
+  }
+
+  // ── 同業界の過去成功施策（vivid Phase 2 RAG 注入） ──
+  // improvementKnowledge: 同業種・同BM・同役割で達成度 exceeded/met を獲得した過去施策（最大10件）
+  // serverComprehensiveDataFetcher.fetchImprovementKnowledgeWithFallback で取得済
+  let improvementKnowledgeText = '';
+  const ragItems = Array.isArray(metrics.improvementKnowledge) ? metrics.improvementKnowledge : [];
+  if (ragItems.length > 0) {
+    // siteContext の取得優先順位:
+    //   1. options.siteContext（generateAISummary.js が siteData から *Text ラベル付きで構築）
+    //   2. metrics.siteContext（serverComprehensiveDataFetcher が raw value で構築、フォールバック）
+    // ラベル参照優先順位: *Text → industryText（複合ラベル）→ raw value → デフォルト文字列
+    const ctx = siteContext || metrics.siteContext || {};
+    const industryLabel = ctx.industryMajorText || ctx.industryText || ctx.industryMajor || '同業種';
+    const roleLabel = ctx.siteRoleText || ctx.siteRole || '同サイト役割';
+    const bmLabel = ctx.businessModelText || ctx.businessModel || '同ビジネスモデル';
+
+    improvementKnowledgeText = `\n\n【同業界の過去成功施策（参考データ・本サイトの状況が主役）】\n${industryLabel} × ${roleLabel} × ${bmLabel} の他サイトで、検品済みかつ達成度が exceeded/met に到達した改善（最大10件）:\n\n`;
+    ragItems.slice(0, 10).forEach((item, i) => {
+      const cat = item.category || 'その他';
+      const summary = item.improvementSummary || '(概要なし)';
+      const m = item.metrics || {};
+      const primary = m.primaryMetric || 'KPI';
+      const change = typeof m.changePercent === 'number'
+        ? `${m.changePercent >= 0 ? '+' : ''}${m.changePercent.toFixed(0)}%`
+        : '-';
+      const level = m.achievementLevel || '-';
+      improvementKnowledgeText += `${i + 1}. [${cat}] ${summary}\n   → 主指標 ${primary} が ${change}（達成度: ${level}）\n`;
+    });
+    improvementKnowledgeText += `
+【RAGデータ利用ルール（厳守）】
+1. 上記は「同業他社で検品済みの実証事例」であり、本サイトの確実な処方箋ではない
+2. 本サイトのデータと文脈が分析の主軸。RAGデータは補助的な根拠
+3. 本サイトに応用可能なものを優先。業界横断的提案や応用不能なパターンの強要は禁止
+4. AI 出力には「N=10」「達成度exceeded」「+X%改善」等の生の統計値・件数・%数値を直接書かない
+5. 「同業他社で効果が出ています」「業界の成功パターンとして」等の定性表現で参照する
+6. 業界実績を「目標値」として提示しない（あくまで「同業の成功例」として参考）
+7. 達成度（exceeded/met）と指標変化率（%）はAI内部の優先度判定にのみ使用、ユーザー出力には含めない
+
+【他のRAG情報との優先順位（vivid Phase 2 設計）】
+本サイト固有のデータ > 上記の同業成功施策（vivid） > 一般知識 > 業界平均値（lively, 後日注入予定）
+`;
+  }
+
   // スクレイピングデータ（上位50ページの詳細情報）
   let scrapingDataText = '';
   if (metrics.scrapingData && metrics.scrapingData.pages && metrics.scrapingData.pages.length > 0) {
@@ -1816,11 +1906,12 @@ ${secondaryDataBlocks ? `\n【補助データ】\n${secondaryDataBlocks}` : ''}
 
 ${analysisViewpoints}
 
+${industryBenchmarkText}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 【タスク2】改善施策の提案
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${conversionSettingsText}${task2ScrapingBlock}
-${userNoteBlock}${improvementFocusLine}${existingImprovementsText}
+${userNoteBlock}${improvementFocusLine}${existingImprovementsText}${improvementKnowledgeText}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 【6つの原則】
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

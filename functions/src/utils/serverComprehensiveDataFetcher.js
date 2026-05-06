@@ -9,6 +9,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { google } from 'googleapis';
 import { getAndRefreshToken } from './tokenManager.js';
 import { logger } from 'firebase-functions/v2';
+import { isFeatureEnabled } from './featureFlags.js';
 
 /**
  * 改善案生成のための包括的データを取得（サーバー側）
@@ -68,6 +69,15 @@ export async function fetchComprehensiveDataForImprovement(siteId, options = {})
   const conversionEventNames = (siteData.conversionEvents || [])
     .map(e => e?.eventName)
     .filter(Boolean);
+
+  // サイト属性コンテキスト（vivid Phase 2 RAG 注入と AI プロンプトの文脈付けに使用）
+  // タクソノミー V2 フィールド: businessModel / industryMajor / industryMinor / siteRole
+  const siteContext = {
+    businessModel: siteData.businessModel || null,
+    industryMajor: siteData.industryMajor || null,
+    industryMinor: siteData.industryMinor || null,
+    siteRole: siteData.siteRole || null,
+  };
 
   // Phase 1: 全データソースを並列取得
   const [
@@ -161,8 +171,40 @@ export async function fetchComprehensiveDataForImprovement(siteId, options = {})
     ga4Client ? fetchGA4LandingPages(ga4Client, ga4PropertyId, prevYearStart, prevYearEnd, conversionEventNames) : null,
   ]);
 
+  // Phase 4: improvementKnowledge RAG 取得（vivid Phase 2）
+  // 同業種・同BM・同役割の過去成功施策（exceeded/met）を 4段階フォールバックで最大10件取得
+  // Feature flag (improvementKnowledgeRagInjection) で緊急ロールバック可能
+  let improvementKnowledge = [];
+  try {
+    const ragEnabled = await isFeatureEnabled('improvementKnowledgeRagInjection');
+    if (ragEnabled) {
+      improvementKnowledge = await fetchImprovementKnowledgeWithFallback(db, siteContext);
+    } else {
+      logger.info('[improvementKnowledge] Feature flag OFF, skip RAG injection');
+    }
+  } catch (err) {
+    logger.warn('[improvementKnowledge] RAG fetch failed, continue without injection', { error: err.message });
+  }
+
+  // Phase 5: industryBenchmark 取得（lively-aggregating-bobcat Phase C）
+  // 同業種×同役割の最新ベンチマーク（中央値・四分位）を AI プロンプトの内部入力として使用
+  // 補強材なので、改善実績データ（vivid）よりも優先度は低い
+  // Feature flag (industryBenchmarkInjection) で緊急ロールバック可能
+  let industryBenchmark = null;
+  try {
+    const benchmarkEnabled = await isFeatureEnabled('industryBenchmarkInjection');
+    if (benchmarkEnabled) {
+      industryBenchmark = await fetchLatestIndustryBenchmark(db, siteContext);
+    } else {
+      logger.info('[industryBenchmark] Feature flag OFF, skip injection');
+    }
+  } catch (err) {
+    logger.warn('[industryBenchmark] fetch failed, continue without injection', { error: err.message });
+  }
+
   const comprehensiveData = {
     siteId,
+    siteContext, // vivid Phase 2: サイト属性 (businessModel/industryMajor/industryMinor/siteRole)
     period: {
       recent: { startDate: recentStart, endDate: recentEnd },
     },
@@ -186,6 +228,8 @@ export async function fetchComprehensiveDataForImprovement(siteId, options = {})
     reverseFlow: reverseFlowData,
     aiComprehensiveAnalysis: resolve(aiAnalysisResult),
     scrapingData: resolve(scrapingDataResult),
+    improvementKnowledge, // vivid Phase 2: 同業種・同BM・同役割の過去成功施策（最大10件）
+    industryBenchmark, // lively Phase C: 同業種×同役割の業界ベンチマーク（中央値・四分位）
     // 前年同月データ（過去比較用）
     prevYear: {
       period: { startDate: prevYearStart, endDate: prevYearEnd },
@@ -196,7 +240,9 @@ export async function fetchComprehensiveDataForImprovement(siteId, options = {})
     },
   };
 
-  logger.info(`[serverDataFetcher] 完了: ${Date.now() - startTime}ms`);
+  logger.info(`[serverDataFetcher] 完了: ${Date.now() - startTime}ms`, {
+    improvementKnowledgeCount: improvementKnowledge.length,
+  });
   return comprehensiveData;
 }
 
@@ -723,4 +769,193 @@ async function fetchAIAnalysisCache(db, siteId) {
     if (Date.now() - generatedAt > 7 * 24 * 60 * 60 * 1000) return null;
     return data.summary || null;
   } catch { return null; }
+}
+
+/**
+ * vivid Phase 2: 同業種・同BM・同役割の過去成功施策を 4段階フォールバックで取得。
+ * AI 改善提案プロンプトへの RAG 注入用。
+ *
+ * 4 段階フォールバック仕様 (vivid-swinging-alpaca v1.1 合意済):
+ *   Step 1: BM × 業種大分類 × 役割 × exceeded/met
+ *   Step 2: BM × 業種大分類 × exceeded/met（役割フィルタ除外）
+ *   Step 3: BM × exceeded/met（業種フィルタ除外）
+ *   Step 4: exceeded/met 全体（最終手段）
+ *
+ * 各 step は (10 - 既取得件数) 件で limit、累計で最大 10 件を返す。
+ * siteContext が不完全（businessModel/industryMajor/siteRole のいずれかが null）の場合は空配列。
+ *
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {{businessModel: string|null, industryMajor: string|null, industryMinor: string|null, siteRole: string|null}} siteContext
+ * @returns {Promise<Array<object>>}
+ */
+async function fetchImprovementKnowledgeWithFallback(db, siteContext) {
+  const { businessModel, industryMajor, siteRole } = siteContext || {};
+
+  if (!businessModel || !industryMajor || !siteRole) {
+    logger.info('[improvementKnowledge] siteContext incomplete, skip RAG injection', {
+      siteContext,
+    });
+    return [];
+  }
+
+  const collection = db.collection('improvementKnowledge');
+  const results = [];
+  const seenIds = new Set();
+  const TOTAL_LIMIT = 10;
+
+  const addUnique = (docs) => {
+    for (const doc of docs) {
+      if (seenIds.has(doc.id)) continue;
+      seenIds.add(doc.id);
+      results.push({ id: doc.id, ...doc.data() });
+      if (results.length >= TOTAL_LIMIT) break;
+    }
+  };
+
+  const remaining = () => Math.max(0, TOTAL_LIMIT - results.length);
+
+  // ---- Step 1: BM × 業種大分類 × 役割 × exceeded/met ----
+  try {
+    const step1 = await collection
+      .where('businessModel', '==', businessModel)
+      .where('industryMajor', '==', industryMajor)
+      .where('siteRole', '==', siteRole)
+      .where('metrics.achievementLevel', 'in', ['exceeded', 'met'])
+      .orderBy('metrics.overallScore', 'desc')
+      .limit(TOTAL_LIMIT)
+      .get();
+    addUnique(step1.docs);
+    logger.info('[improvementKnowledge] Step 1 (BM×industry×role×success)', {
+      fetched: step1.size,
+      total: results.length,
+    });
+  } catch (err) {
+    logger.warn('[improvementKnowledge] Step 1 query failed (composite index missing?)', {
+      error: err.message,
+    });
+  }
+  if (results.length >= TOTAL_LIMIT) return results;
+
+  // ---- Step 2: BM × 業種大分類 × exceeded/met（役割フィルタ除外）----
+  try {
+    const step2 = await collection
+      .where('businessModel', '==', businessModel)
+      .where('industryMajor', '==', industryMajor)
+      .where('metrics.achievementLevel', 'in', ['exceeded', 'met'])
+      .orderBy('metrics.overallScore', 'desc')
+      .limit(TOTAL_LIMIT)
+      .get();
+    addUnique(step2.docs);
+    logger.info('[improvementKnowledge] Step 2 (BM×industry×success)', {
+      fetched: step2.size,
+      total: results.length,
+    });
+  } catch (err) {
+    logger.warn('[improvementKnowledge] Step 2 query failed', { error: err.message });
+  }
+  if (results.length >= TOTAL_LIMIT) return results;
+
+  // ---- Step 3: BM × exceeded/met（業種フィルタ除外）----
+  try {
+    const step3 = await collection
+      .where('businessModel', '==', businessModel)
+      .where('metrics.achievementLevel', 'in', ['exceeded', 'met'])
+      .orderBy('metrics.overallScore', 'desc')
+      .limit(TOTAL_LIMIT)
+      .get();
+    addUnique(step3.docs);
+    logger.info('[improvementKnowledge] Step 3 (BM×success)', {
+      fetched: step3.size,
+      total: results.length,
+    });
+  } catch (err) {
+    logger.warn('[improvementKnowledge] Step 3 query failed', { error: err.message });
+  }
+  if (results.length >= TOTAL_LIMIT) return results;
+
+  // ---- Step 4: exceeded/met 全体（最終手段）----
+  try {
+    const step4 = await collection
+      .where('metrics.achievementLevel', 'in', ['exceeded', 'met'])
+      .orderBy('metrics.overallScore', 'desc')
+      .limit(TOTAL_LIMIT)
+      .get();
+    addUnique(step4.docs);
+    logger.info('[improvementKnowledge] Step 4 (success only, final fallback)', {
+      fetched: step4.size,
+      total: results.length,
+    });
+  } catch (err) {
+    logger.warn('[improvementKnowledge] Step 4 query failed', { error: err.message });
+  }
+
+  return results;
+}
+
+/**
+ * lively Phase C: 業界ベンチマークの最新文書を取得
+ *
+ * 取得優先順位（フォールバック）:
+ *   1. (industryMajor, siteRole) で最新 period
+ *   2. (industryMajor, 'all') で最新 period（役割不問）
+ *   3. null（ベンチマーク注入なし）
+ *
+ * @param {FirebaseFirestore.Firestore} db
+ * @param {{industryMajor, siteRole}} siteContext
+ * @returns {Promise<object | null>}
+ */
+async function fetchLatestIndustryBenchmark(db, siteContext) {
+  const { industryMajor, siteRole } = siteContext || {};
+  if (!industryMajor) {
+    logger.info('[industryBenchmark] industryMajor 不明、スキップ');
+    return null;
+  }
+
+  const collection = db.collection('industryBenchmarks');
+
+  // Step 1: industry × role
+  if (siteRole) {
+    try {
+      const snap = await collection
+        .where('industryMajor', '==', industryMajor)
+        .where('siteRole', '==', siteRole)
+        .orderBy('period', 'desc')
+        .limit(1)
+        .get();
+      if (!snap.empty) {
+        const doc = snap.docs[0];
+        logger.info('[industryBenchmark] Step 1 (industry×role) 取得', {
+          industryMajor,
+          siteRole,
+          period: doc.data().period,
+        });
+        return { id: doc.id, ...doc.data() };
+      }
+    } catch (err) {
+      logger.warn('[industryBenchmark] Step 1 query failed', { error: err.message });
+    }
+  }
+
+  // Step 2: industry × all
+  try {
+    const snap = await collection
+      .where('industryMajor', '==', industryMajor)
+      .where('siteRole', '==', 'all')
+      .orderBy('period', 'desc')
+      .limit(1)
+      .get();
+    if (!snap.empty) {
+      const doc = snap.docs[0];
+      logger.info('[industryBenchmark] Step 2 (industry×all) 取得', {
+        industryMajor,
+        period: doc.data().period,
+      });
+      return { id: doc.id, ...doc.data() };
+    }
+  } catch (err) {
+    logger.warn('[industryBenchmark] Step 2 query failed', { error: err.message });
+  }
+
+  logger.info('[industryBenchmark] no benchmark found', { industryMajor, siteRole });
+  return null;
 }
