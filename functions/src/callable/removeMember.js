@@ -3,6 +3,7 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { logger } from 'firebase-functions/v2';
 import { sendEmailDirect } from '../utils/emailSender.js';
+import { requireDocId } from '../utils/validators.js';
 
 /**
  * メンバーを削除
@@ -18,11 +19,8 @@ export const removeMemberCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const { userId } = request.data || {};
-
-  if (!userId) {
-    throw new HttpsError('invalid-argument', 'ユーザーIDが必要です');
-  }
+  // 入力検証 (Phase 4-B-7)
+  const userId = requireDocId(request.data?.userId, 'userId');
 
   try {
     const db = getFirestore();

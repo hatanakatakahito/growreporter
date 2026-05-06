@@ -4,6 +4,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { logger } from 'firebase-functions/v2';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { escapeHtml, escapeHtmlAndValidateUrl } from '../utils/htmlEscape.js';
+import { requireString } from '../utils/validators.js';
 
 /**
  * 招待を承認
@@ -19,11 +20,9 @@ export const acceptInvitationCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const { token } = request.data || {};
-
-  if (!token) {
-    throw new HttpsError('invalid-argument', 'トークンが必要です');
-  }
+  // 入力検証 (Phase 4-B-7): token は UUID v4 想定、最大 256 文字に制限
+  // （Firestore に格納されるサイズ + 改行/制御文字注入を遮断）
+  const token = requireString(request.data?.token, 'token', { maxLen: 256 });
 
   try {
     const db = getFirestore();

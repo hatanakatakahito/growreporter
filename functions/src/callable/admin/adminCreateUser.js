@@ -5,6 +5,17 @@ import { logger } from 'firebase-functions/v2';
 import { logUserActivity, ACTIVITY_ACTIONS } from '../../utils/userActivityLogger.js';
 import { sendEmailDirect } from '../../utils/emailSender.js';
 import { generateAdminCreatedAccountEmail } from '../../utils/emailTemplates.js';
+import {
+  requireEmail,
+  requireCompanyName,
+  requirePhoneNumber,
+  requireDisplayName,
+  optionalDisplayName,
+  optionalString,
+  requireEnum,
+  requireBoolean,
+  optionalString as optStr,
+} from '../../utils/validators.js';
 
 /**
  * 管理者がユーザーを新規作成
@@ -32,38 +43,36 @@ export const adminCreateUserCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const {
-    email,
-    name = '',
-    lastName = '',
-    firstName = '',
-    company,
-    department = '',
-    phoneNumber,
-    zipCode = '',
-    prefecture = '',
-    city = '',
-    building = '',
-    plan = 'free',
-    password = '',
-    sendWelcomeEmail = true,
-  } = request.data || {};
+  const rawData = request.data || {};
+
+  // 入力検証 (Phase 4-B-7): 管理者発行アカウントは値が DB に長期保存されるため厳格にチェック
+  const email = requireEmail(rawData.email, 'email');
+  const name = optionalDisplayName(rawData.name, 'name');
+  const lastName = optionalDisplayName(rawData.lastName, 'lastName');
+  const firstName = optionalDisplayName(rawData.firstName, 'firstName');
+  const company = requireCompanyName(rawData.company, 'company');
+  const department = optionalDisplayName(rawData.department, 'department');
+  const phoneNumber = requirePhoneNumber(rawData.phoneNumber, 'phoneNumber');
+  const zipCode = optionalString(rawData.zipCode, 'zipCode', { maxLen: 16 });
+  const prefecture = optionalString(rawData.prefecture, 'prefecture', { maxLen: 32 });
+  const city = optionalString(rawData.city, 'city', { maxLen: 100 });
+  const building = optionalString(rawData.building, 'building', { maxLen: 200 });
+  const plan = requireEnum(rawData.plan || 'free', 'plan', ['free', 'business', 'standard', 'premium']);
+  const password = rawData.password ? optionalString(rawData.password, 'password', { maxLen: 128 }) : '';
+  const sendWelcomeEmail = rawData.sendWelcomeEmail === undefined
+    ? true
+    : requireBoolean(rawData.sendWelcomeEmail, 'sendWelcomeEmail');
 
   // 表示名の正規化: name 優先、なければ lastName + firstName から構築
   const computedDisplayName = (name && name.trim())
     || `${(lastName || '').trim()} ${(firstName || '').trim()}`.trim();
 
-  // バリデーション
-  if (!email || !computedDisplayName || !company || !phoneNumber) {
-    throw new HttpsError('invalid-argument', 'メール、氏名（姓・名）、組織名、電話番号は必須です');
+  if (!computedDisplayName) {
+    throw new HttpsError('invalid-argument', '氏名（姓・名）または name が必要です');
   }
 
-  if (password && password.length < 6) {
-    throw new HttpsError('invalid-argument', 'パスワードは6文字以上で指定してください');
-  }
-
-  if (!['free', 'business', 'standard', 'premium'].includes(plan)) {
-    throw new HttpsError('invalid-argument', 'プランはfreeまたはbusinessを指定してください');
+  if (password && password.length < 8) {
+    throw new HttpsError('invalid-argument', 'パスワードは 8 文字以上で指定してください');
   }
 
   try {

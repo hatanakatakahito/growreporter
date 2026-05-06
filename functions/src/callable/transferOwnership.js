@@ -4,6 +4,7 @@ import { logger } from 'firebase-functions/v2';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { escapeHtml, escapeHtmlAndValidateUrl } from '../utils/htmlEscape.js';
 import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
+import { requireDocId } from '../utils/validators.js';
 
 /**
  * オーナー権限を譲渡
@@ -27,11 +28,8 @@ export const transferOwnershipCallable = async (request) => {
   // Phase 4-A-2: レート制限（重要操作なので 1 日 3 回まで）
   await enforceRateLimit({ uid, ...DEFAULT_RATE_LIMITS.transferOwnership });
 
-  const { newOwnerId } = request.data || {};
-
-  if (!newOwnerId || typeof newOwnerId !== 'string') {
-    throw new HttpsError('invalid-argument', '新しいオーナーのIDが必要です');
-  }
+  // 入力検証 (Phase 4-B-7): newOwnerId は Firebase Auth UID 形式（英数字+ハイフン+アンダースコア）
+  const newOwnerId = requireDocId(request.data?.newOwnerId, 'newOwnerId');
 
   if (newOwnerId === uid) {
     throw new HttpsError('invalid-argument', '自分自身に譲渡することはできません');

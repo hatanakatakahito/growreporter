@@ -1,6 +1,7 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
+import { requireDocId, requireEnum } from '../utils/validators.js';
 
 /**
  * メンバーの権限を変更
@@ -17,15 +18,9 @@ export const updateMemberRoleCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const { memberId, newRole } = request.data || {};
-
-  if (!memberId || !newRole) {
-    throw new HttpsError('invalid-argument', 'メンバーIDと新しい権限が必要です');
-  }
-
-  if (!['editor', 'viewer'].includes(newRole)) {
-    throw new HttpsError('invalid-argument', '無効な権限です');
-  }
+  // 入力検証 (Phase 4-B-7)
+  const memberId = requireDocId(request.data?.memberId, 'memberId');
+  const newRole = requireEnum(request.data?.newRole, 'newRole', ['editor', 'viewer']);
 
   try {
     const db = getFirestore();
