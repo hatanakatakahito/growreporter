@@ -19,12 +19,21 @@ export async function exchangeOAuthCodeCallable(request) {
   const db = getFirestore();
   
   // 入力バリデーション
-  const { code, provider, redirectUri, googleAccount } = request.data || {};
-  
+  // codeVerifier は PKCE 移行期間のため任意（Phase 4-B-1）。
+  //   フロントが新しい場合は送られてくる、古い場合は undefined。
+  const { code, provider, redirectUri, googleAccount, codeVerifier } = request.data || {};
+
   if (!code || !provider || !redirectUri) {
     throw new HttpsError(
       'invalid-argument',
       'code, provider, redirectUri are required'
+    );
+  }
+
+  if (codeVerifier !== undefined && (typeof codeVerifier !== 'string' || codeVerifier.length < 43 || codeVerifier.length > 128)) {
+    throw new HttpsError(
+      'invalid-argument',
+      'codeVerifier must be 43-128 characters (RFC 7636)'
     );
   }
   
@@ -57,10 +66,15 @@ export async function exchangeOAuthCodeCallable(request) {
     );
     
     // 認可コードをトークンに交換
-    logger.info(`[exchangeOAuthCode] Exchanging authorization code...`);
-    
-    const { tokens } = await oauth2Client.getToken(code);
-    
+    // PKCE: codeVerifier がある場合は getToken に渡す。Google 側で事前の
+    // code_challenge と検証され、verifier が一致しない場合エラーになる。
+    logger.info(`[exchangeOAuthCode] Exchanging authorization code...`, { pkce: !!codeVerifier });
+
+    const tokenRequest = codeVerifier
+      ? { code, codeVerifier }
+      : code;
+    const { tokens } = await oauth2Client.getToken(tokenRequest);
+
     logger.info(`[exchangeOAuthCode] Token exchange successful`);
     
     if (!tokens.access_token) {

@@ -242,6 +242,23 @@ export const cleanupCache = onSchedule({
 });
 
 /**
+ * レート制限イベントの古いエントリをクリーンアップ (Phase 4-A-2 補完)
+ * 毎日午前3時30分（JST）に実行。
+ * rate_limits/{uid_action}/events/{eventId} で 24h より古い document を削除し、
+ * Firestore コスト増を抑える。
+ */
+export const cleanupRateLimits = onSchedule({
+  schedule: '30 3 * * *',
+  timeZone: 'Asia/Tokyo',
+  memory: '256MiB',
+  timeoutSeconds: 300,
+  region: 'asia-northeast1',
+}, async () => {
+  const m = await import('./scheduled/cleanupRateLimits.js');
+  return m.cleanupRateLimitsHandler();
+});
+
+/**
  * サイト登録完了時トリガー
  * setupCompleted: false → true の変更を受けて、
  *   - 上位100ページスクレイピングジョブを投入
