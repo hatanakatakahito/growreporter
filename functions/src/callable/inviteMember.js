@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { sendEmailDirect } from '../utils/emailSender.js';
 import { escapeHtml, escapeHtmlAndValidateUrl } from '../utils/htmlEscape.js';
 import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
+import { requireEmail, requireEnum, requireArray, requireDocId } from '../utils/validators.js';
 
 /**
  * メンバーを招待
@@ -25,26 +26,20 @@ export const inviteMemberCallable = async (request) => {
   // セキュリティ (Phase 4-A-2): レート制限。スパム踏み台防止
   await enforceRateLimit({ uid, ...DEFAULT_RATE_LIMITS.inviteMember });
 
-  const {
-    email,
-    role = 'viewer',
-    allowedSiteIds = [],
-  } = request.data || {};
+  const rawData = request.data || {};
 
-  if (!email) {
-    throw new HttpsError('invalid-argument', 'メールアドレスが必要です');
-  }
-
-  if (!['editor', 'viewer'].includes(role)) {
-    throw new HttpsError('invalid-argument', '無効な権限です');
-  }
+  // 入力検証 (Phase 4-B-7): 型・長さ・形式を統一的に検証してから後続処理へ
+  const email = requireEmail(rawData.email, 'email');
+  const role = requireEnum(rawData.role || 'viewer', 'role', ['editor', 'viewer']);
+  const allowedSiteIds = requireArray(rawData.allowedSiteIds || [], 'allowedSiteIds', {
+    maxLen: 100, // 1 アカウントが持ちうるサイト数の現実的上限
+    itemValidator: (id, fld) => requireDocId(id, fld),
+  });
 
   // editor / viewer どちらも招待時に対象サイトを 1 つ以上指定する必要がある
   // （オーナー以外はサイト指定式）
-  if (role === 'editor' || role === 'viewer') {
-    if (!Array.isArray(allowedSiteIds) || allowedSiteIds.length === 0) {
-      throw new HttpsError('invalid-argument', '対象のサイトを 1 つ以上選択してください');
-    }
+  if (allowedSiteIds.length === 0) {
+    throw new HttpsError('invalid-argument', '対象のサイトを 1 つ以上選択してください');
   }
 
   try {
