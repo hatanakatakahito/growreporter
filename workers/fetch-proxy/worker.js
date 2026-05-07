@@ -176,6 +176,75 @@ async function renderWithBrowser(browserBinding, pageUrl, mode, viewport, fullPa
       await page.setUserAgent(USER_AGENT);
     }
 
+    // ========================================================
+    // 第三者 analytics / tag manager / telemetry の遮断
+    // ========================================================
+    // 目的: 壊れた third-party script (TLS 失敗等) や重い tag manager で
+    //       browser instance が刺さるのを防ぐ。
+    //
+    // 直接の契機: 2026-05 grow-group.jp で happi.net (Tealium 系タグ) が
+    //   TLS handshake mid で SEC_E_ILLEGAL_MESSAGE を返すようになり、
+    //   Browser Rendering が hang → "Target closed" 連発する事象が発生。
+    //   第三者ベンダの突発障害でメイン機能を落とさないよう、
+    //   既知の analytics / telemetry ドメインを request interception で遮断する。
+    //
+    // 設計方針:
+    //   - 視覚要素のある第三者 widget (juicer, addtoany 等) は遮断しない
+    //     → モックアップの視覚再現性を維持
+    //   - 視覚寄与のない analytics / telemetry / tag manager のみ遮断
+    //   - hostname suffix match (sub.tealiumiq.com も tealiumiq.com で hit)
+    //   - handler 内例外でリクエストが詰まらないよう try/catch + continue フォールバック
+    // ========================================================
+    const BLOCKED_HOSTS = [
+      'happi.net',                                         // 発端: 2026-05 grow-group.jp TLS 切れ
+      'tealiumiq.com', 'tiqcdn.com',                       // Tealium
+      'google-analytics.com', 'analytics.google.com',      // Google Analytics
+      'doubleclick.net',                                   // DoubleClick
+      'googletagmanager.com',                              // GTM
+      'facebook.net', 'fbcdn.net',                         // FB Pixel
+      'hotjar.com', 'hotjar.io',                           // Hotjar
+      'clarity.ms',                                        // MS Clarity
+      'fullstory.com',                                     // FullStory
+      'mixpanel.com', 'mxpnl.com',                         // Mixpanel
+      'segment.com', 'segment.io',                         // Segment
+      'amplitude.com',                                     // Amplitude
+      'newrelic.com', 'nr-data.net',                       // New Relic
+      'bugsnag.com',                                       // Bugsnag
+      'sentry.io', 'sentry-cdn.com',                       // Sentry
+      'heap.io', 'heapanalytics.com',                      // Heap
+    ];
+    const isBlockedHost = (u) => {
+      try {
+        const host = new URL(u).hostname.toLowerCase();
+        return BLOCKED_HOSTS.some((d) => host === d || host.endsWith('.' + d));
+      } catch {
+        return false;
+      }
+    };
+    let blockedCount = 0;
+    const blockedHostSamples = new Set();
+    try {
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+        try {
+          const u = req.url();
+          if (isBlockedHost(u)) {
+            blockedCount++;
+            try { blockedHostSamples.add(new URL(u).hostname); } catch (_) {}
+            req.abort('blockedbyclient').catch(() => {});
+            return;
+          }
+          req.continue().catch(() => {});
+        } catch (_) {
+          // handler 内例外でリクエストが永久に詰まるのを防ぐ
+          try { req.continue(); } catch (_) {}
+        }
+      });
+    } catch (e) {
+      // setRequestInterception 自体が失敗した場合は遮断なしで続行（既存動作にフォールバック）
+      console.warn(`[renderWithBrowser] setRequestInterception failed, fallthrough: ${e.message}`);
+    }
+
     // navigation: networkidle0 を試みつつ、長時間ロードでも 50s で諦める
     const response = await page.goto(pageUrl, {
       waitUntil: 'networkidle0',
@@ -321,6 +390,13 @@ background-attachment:scroll !important;
     });
 
     const finalUrl = page.url();
+
+    // 第三者リクエスト遮断の効果を可視化（CF Worker tail で確認可能）
+    if (blockedCount > 0) {
+      console.log(
+        `[renderWithBrowser] ${pageUrl}: blocked=${blockedCount} hosts=[${[...blockedHostSamples].join(',')}]`
+      );
+    }
 
     // ========================================================
     // Google Maps iframe (会社概要 / アクセス等) のレンダ補助

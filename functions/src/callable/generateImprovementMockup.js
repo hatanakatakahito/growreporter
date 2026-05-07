@@ -1258,27 +1258,89 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
     // visibility/opacity 強制 (全 hero 系、サイズに影響しない)
     `[class*="main-visual"],[class*="mainvisual"],[class*="key-visual"],[class*="keyvisual"]{` +
     `visibility:visible !important;opacity:1 !important;}`,
-    // height 強制 (親コンテナ = __ なし、または image を含む子要素)
+    // 親コンテナ (BEM modifier `__` を含まない hero ルート要素) に aspect-ratio を強制
     // __inner / __text / __scroll などはキャッチコピー配置のため触らない
-    // 高さは Browser Rendering 撮影 viewport の高さ (900px) と一致させて aspect 不一致を回避
     //
-    // 重要: image 系の selector は [class*="main-visual"][class*="image"] のように
-    //   2 つの attribute selector を組み合わせる必要がある。
-    //   理由: 実サイトのクラス名は `c-main-visual-recruit__image` のように
-    //         間に `-recruit` 等の修飾子が入るため、`[class*="main-visual__image"]` では
-    //         連続文字列としてマッチせず override が無効化される (BEM 命名の罠)。
-    //   両方の部分文字列を含む条件にすれば、間に何が入ってもマッチする。
+    // 経緯:
+    //   - 当初: 高さを 900px (Browser Rendering 撮影 viewport) で固定していたが、
+    //     iframe 表示幅 (modal 内で ~870px 等) が 1400 より狭いケースで
+    //     hero が縦長 (≒1:1) になり、内側 video/image が object-fit:cover で
+    //     縦方向に異常拡大される事象が発生 (2026-05 grow-group.jp で確認)。
+    //   - 修正: aspect-ratio: 14/9 (BR 撮影 viewport 1400:900 と一致) で
+    //     比例スケール化。max-height 900px で従来の上限は維持。
+    //     iframe 幅 870px → hero 559px、iframe 幅 1400px → hero 900px (従来同等)。
+    //
+    // position:relative を強制する理由:
+    //   下の `__video` / `__image` を position:absolute に上書きするため、
+    //   親が position:relative で containing block になる必要がある。
+    //   元サイトが既に relative にしているケースが大半だが、!important で確実化。
     `[class*="main-visual"]:not([class*="__"]),` +
     `[class*="mainvisual"]:not([class*="__"]),` +
     `[class*="key-visual"]:not([class*="__"]),` +
-    `[class*="keyvisual"]:not([class*="__"]),` +
+    `[class*="keyvisual"]:not([class*="__"]){` +
+    `aspect-ratio:14/9 !important;height:auto !important;` +
+    `min-height:0 !important;max-height:900px !important;` +
+    `position:relative !important;}`,
+    // 内側 media コンテナ (`__image` / `__video` / `__bg`) を親の box に scope
+    //
+    // 重要: grow-group.jp の `.c-main-visual__video` は `position:fixed` で組まれており、
+    //   iframe srcDoc では fixed の参照原点が親 (c-main-visual) ではなく iframe viewport になる。
+    //   その結果 `height:100%` が iframe content 全体 (数千 px) を意味してしまい、動画が異常拡大される。
+    //   → position:absolute に強制上書きし、親 (aspect-ratio:14/9 の box) に scope させて
+    //     親の比例縮小に追従させる。
+    //
+    // selector 設計:
+    //   2 属性セレクタ ([class*="main-visual"][class*="video"]) で BEM 修飾子間に -recruit 等の
+    //   挟まり込みがあっても確実にマッチさせる (例: c-main-visual-recruit__video)。
+    //   image / video / bg をカバー (大半の hero 系コンテナ命名を網羅)。
     `[class*="main-visual"][class*="image"],` +
+    `[class*="main-visual"][class*="video"],` +
+    `[class*="main-visual"][class*="bg"],` +
     `[class*="mainvisual"][class*="image"],` +
+    `[class*="mainvisual"][class*="video"],` +
+    `[class*="mainvisual"][class*="bg"],` +
     `[class*="key-visual"][class*="image"],` +
-    `[class*="keyvisual"][class*="image"]{` +
-    `height:900px !important;min-height:0 !important;max-height:900px !important;}`,
+    `[class*="key-visual"][class*="video"],` +
+    `[class*="key-visual"][class*="bg"],` +
+    `[class*="keyvisual"][class*="image"],` +
+    `[class*="keyvisual"][class*="video"],` +
+    `[class*="keyvisual"][class*="bg"]{` +
+    `position:absolute !important;top:0 !important;left:0 !important;` +
+    `width:100% !important;height:100% !important;` +
+    `min-height:0 !important;max-height:900px !important;}`,
     // html/body は 100vh が effective にならないように auto に
+    // 加えて html に overflow:hidden を付け、iframe 内側の scrollbar を抑止する。
+    // 親側で iframe.style.height = min(scrollHeight, body.bottom) で clamp しているため、
+    // 本来の content 外に飛び出る phantom 領域があっても visual には影響しない。
     `html,body{height:auto !important;min-height:0 !important;}`,
+    `html{overflow:hidden !important;}`,
+    // ========================================================
+    // 100vh / 100dvh 暴走対策 (2026-05 grow-group.jp で顕在化)
+    // ========================================================
+    // 元サイトの CSS で aspect ratio reservation 用に
+    // `[__image]:before { padding-top: 100vh }` のようなパターンが使われていると、
+    // iframe srcDoc では Initial Containing Block (ICB) が iframe element の高さ
+    // = ページ全体の content height (4800px 等) になるため、`100vh` が巨大化して
+    // bg-img プレースホルダが画面右側に巨大な縦帯として現れる事象が発生。
+    //
+    // 対策: __image / __figure / __hero / __thumbnail 等の "画像枠" 系
+    // 疑似要素 (:before) が padding-top:100vh を使っているケースを 16:9 アスペクト
+    // (max 900px) で上書きする。
+    //
+    // selector の安全性: `[class*="__"]` で BEM modifier 要素のみに限定。
+    // 元 CSS のアスペクト比指定 (75% / 65% 等) より大きいケースは縮むだけなので破壊的でない。
+    `[class*="__image"]:before,` +
+    `[class*="__figure"]:before,` +
+    `[class*="__hero"]:before,` +
+    `[class*="__thumbnail"]:before,` +
+    `[class*="__visual"]:before{` +
+    `padding-top:min(56.25%,900px) !important;}`,
+    // 同様に container 自体に height:100vh が当たるケースも cap (rare)
+    // c-main-visual 系は既に上で aspect-ratio:14/9 で処理済みなので除外
+    `[class*="__image"]:not([class*="main-visual"]),` +
+    `[class*="__figure"]:not([class*="main-visual"]),` +
+    `[class*="__hero"]:not([class*="main-visual"]){` +
+    `max-height:900px !important;}`,
     // ========================================================
     // ScrollReveal / AOS / GSAP 等のアニメ系を iframe 内で無効化
     // - iframe sandbox=allow-scripts では外部 JS が実行されて sr クラスや data-sr-id が
@@ -1301,7 +1363,7 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
   // （iframe は cross-origin で contentDocument にアクセスできないため postMessage で連携）
   // unhideHidden: [data-changed] 配下で実際に display:none / visibility:hidden の要素のみ強制表示
   // （CSS で blanket display:revert すると flex/grid が壊れるため、JS で個別対応）
-  const helperScript = `(function(){function postSize(){try{parent.postMessage({type:'__mockup_size',height:document.documentElement.scrollHeight,width:document.documentElement.scrollWidth},'*');}catch(_){}}function postChangedPositions(){var els=document.querySelectorAll('[data-changed]');if(els.length===0)return;var positions=[];for(var i=0;i<els.length;i++){var el=els[i];var rect=el.getBoundingClientRect();positions.push({top:rect.top+window.pageYOffset,left:rect.left+window.pageXOffset,height:el.offsetHeight,width:el.offsetWidth,label:el.getAttribute('data-changed')||'',num:el.getAttribute('data-num')||''});}try{parent.postMessage({type:'__mockup_changed_positions',positions:positions},'*');}catch(_){}}function unhideHiddenInChanged(){var changedEls=document.querySelectorAll('[data-changed]');for(var i=0;i<changedEls.length;i++){var ce=changedEls[i];try{var ccs=getComputedStyle(ce);if(ccs.display==='none'){ce.style.setProperty('display','revert','important');}if(ccs.visibility==='hidden'){ce.style.setProperty('visibility','visible','important');}if(parseFloat(ccs.maxHeight)===0){ce.style.setProperty('max-height','none','important');}}catch(_){}/* 祖先 unhide ループは削除（slidebar-menu 等の意図的に display:none の要素まで visible にしてしまう副作用への対処）。AI prompt で「隠れた要素・条件付き表示エリアへのパッチ配置を避ける」と既に指示しているため、祖先 unhide は不要 */var children=ce.querySelectorAll('*');for(var j=0;j<children.length;j++){var child=children[j];try{var cs=getComputedStyle(child);if(cs.display==='none'){child.style.setProperty('display','revert','important');}if(cs.visibility==='hidden'){child.style.setProperty('visibility','visible','important');}if(parseFloat(cs.maxHeight)===0){child.style.setProperty('max-height','none','important');}}catch(_){}}}}function waitImagesThenPositions(){var imgs=Array.prototype.slice.call(document.images);var pending=0;for(var i=0;i<imgs.length;i++){if(!imgs[i].complete)pending++;}var done=false;var finish=function(){if(done)return;done=true;postSize();postChangedPositions();};if(pending===0){finish();return;}imgs.forEach(function(img){if(img.complete)return;var on=function(){if(--pending===0)finish();};img.addEventListener('load',on);img.addEventListener('error',on);});setTimeout(finish,4000);}function setActive(el){var prev=document.querySelector('[data-changed].__mockup-active');if(prev&&prev!==el)prev.classList.remove('__mockup-active');if(el)el.classList.toggle('__mockup-active');}function attachClickHandlers(){var els=document.querySelectorAll('[data-changed]');for(var i=0;i<els.length;i++){var el=els[i];if(el.__mockupClickBound)continue;el.__mockupClickBound=true;el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var t=e.currentTarget;setActive(t);var rect=t.getBoundingClientRect();try{parent.postMessage({type:'__mockup_changed_clicked',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||'',rect:{top:rect.top,left:rect.left,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height},active:t.classList.contains('__mockup-active')},'*');}catch(_){}});el.addEventListener('mouseenter',function(e){var t=e.currentTarget;try{parent.postMessage({type:'__mockup_changed_hovered',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||''},'*');}catch(_){}});}document.addEventListener('click',function(e){if(!e.target.closest('[data-changed]')){setActive(null);try{parent.postMessage({type:'__mockup_changed_deselected'},'*');}catch(_){}}});}function init(){postSize();attachClickHandlers();unhideHiddenInChanged();postChangedPositions();setTimeout(function(){postSize();postChangedPositions();unhideHiddenInChanged();},300);setTimeout(function(){postSize();attachClickHandlers();postChangedPositions();unhideHiddenInChanged();},1200);setTimeout(function(){postChangedPositions();},3000);waitImagesThenPositions();}if(document.readyState==='complete')init();else window.addEventListener('load',init);})();`;
+  const helperScript = `(function(){function postSize(){try{var d=document;var b=d.body;var de=d.documentElement;var sh=de.scrollHeight||0;var bb=b?((b.offsetTop||0)+(b.offsetHeight||0)):0;var h=(sh>0&&bb>0)?Math.min(sh,bb):(sh||bb||0);parent.postMessage({type:'__mockup_size',height:h,width:de.scrollWidth},'*');}catch(_){}}function postChangedPositions(){var els=document.querySelectorAll('[data-changed]');if(els.length===0)return;var positions=[];for(var i=0;i<els.length;i++){var el=els[i];var rect=el.getBoundingClientRect();positions.push({top:rect.top+window.pageYOffset,left:rect.left+window.pageXOffset,height:el.offsetHeight,width:el.offsetWidth,label:el.getAttribute('data-changed')||'',num:el.getAttribute('data-num')||''});}try{parent.postMessage({type:'__mockup_changed_positions',positions:positions},'*');}catch(_){}}function pickDisplay(el){var t=(el.tagName||'').toLowerCase();if(t==='a'||t==='button')return'flex';if(t==='span')return'inline-block';return'block';}function unhideAncestorsForChanged(el){var p=el.parentElement;while(p&&p!==document.body){try{var pcs=getComputedStyle(p);if(pcs.display==='none'){p.style.setProperty('display',pickDisplay(p),'important');}if(pcs.visibility==='hidden'){p.style.setProperty('visibility','visible','important');}}catch(_){}p=p.parentElement;}}function unhideHiddenInChanged(){var changedEls=document.querySelectorAll('[data-changed]');for(var i=0;i<changedEls.length;i++){var ce=changedEls[i];try{var ccs=getComputedStyle(ce);if(ccs.display==='none'){ce.style.setProperty('display',pickDisplay(ce),'important');}if(ccs.visibility==='hidden'){ce.style.setProperty('visibility','visible','important');}if(parseFloat(ccs.maxHeight)===0){ce.style.setProperty('max-height','none','important');}/* 祖先が display:none の場合、データ変更要素自体を visible にしても親が none で消えるため、祖先 (body 直下まで) を最低限 unhide する。修正対象が l-header__button のように「下層ページのみ表示」設計のケースに対応 */unhideAncestorsForChanged(ce);}catch(_){}var children=ce.querySelectorAll('*');for(var j=0;j<children.length;j++){var child=children[j];try{var cs=getComputedStyle(child);if(cs.display==='none'){child.style.setProperty('display',pickDisplay(child),'important');}if(cs.visibility==='hidden'){child.style.setProperty('visibility','visible','important');}if(parseFloat(cs.maxHeight)===0){child.style.setProperty('max-height','none','important');}}catch(_){}}}}function waitImagesThenPositions(){var imgs=Array.prototype.slice.call(document.images);var pending=0;for(var i=0;i<imgs.length;i++){if(!imgs[i].complete)pending++;}var done=false;var finish=function(){if(done)return;done=true;postSize();postChangedPositions();};if(pending===0){finish();return;}imgs.forEach(function(img){if(img.complete)return;var on=function(){if(--pending===0)finish();};img.addEventListener('load',on);img.addEventListener('error',on);});setTimeout(finish,4000);}function setActive(el){var prev=document.querySelector('[data-changed].__mockup-active');if(prev&&prev!==el)prev.classList.remove('__mockup-active');if(el)el.classList.toggle('__mockup-active');}function attachClickHandlers(){var els=document.querySelectorAll('[data-changed]');for(var i=0;i<els.length;i++){var el=els[i];if(el.__mockupClickBound)continue;el.__mockupClickBound=true;el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var t=e.currentTarget;setActive(t);var rect=t.getBoundingClientRect();try{parent.postMessage({type:'__mockup_changed_clicked',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||'',rect:{top:rect.top,left:rect.left,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height},active:t.classList.contains('__mockup-active')},'*');}catch(_){}});el.addEventListener('mouseenter',function(e){var t=e.currentTarget;try{parent.postMessage({type:'__mockup_changed_hovered',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||''},'*');}catch(_){}});}document.addEventListener('click',function(e){if(!e.target.closest('[data-changed]')){setActive(null);try{parent.postMessage({type:'__mockup_changed_deselected'},'*');}catch(_){}}});}function observeBodyResize(){if(typeof ResizeObserver==='undefined')return;try{var ro=new ResizeObserver(function(){postSize();postChangedPositions();});ro.observe(document.body);ro.observe(document.documentElement);}catch(_){}}function init(){postSize();attachClickHandlers();unhideHiddenInChanged();postChangedPositions();observeBodyResize();setTimeout(function(){postSize();postChangedPositions();unhideHiddenInChanged();},300);setTimeout(function(){postSize();attachClickHandlers();postChangedPositions();unhideHiddenInChanged();},1200);setTimeout(function(){postChangedPositions();},3000);waitImagesThenPositions();}if(document.readyState==='complete')init();else window.addEventListener('load',init);})();`;
   if ($('body').length > 0) {
     $('body').append(`<script id="__mockup-helper">${helperScript}</script>`);
   } else {

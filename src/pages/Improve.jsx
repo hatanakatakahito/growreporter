@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useSite } from '../contexts/SiteContext';
 import { useSidebar } from '../contexts/SidebarContext';
@@ -680,12 +680,33 @@ export default function Improve() {
   // iframe (snapshot_patch モックアップ) からの postMessage を受信
   // - __mockup_size: iframe の高さを反映
   // - __mockup_changed_positions: 最初の data-changed 要素まで自動スクロール（初回のみ）
+  //
+  // 高さ計測ロジック (2026-05 grow-group.jp で過大計測 → 下部余白問題への対処):
+  //   helper script から渡される documentElement.scrollHeight は body の外側に
+  //   飛び出す要素 (position:absolute 等) を含めて膨らむケースがある。
+  //   親側で iframe.contentDocument を再読みし、body の実描画下端
+  //   (body.offsetTop + body.offsetHeight) と min を取って真の end 位置を採用する。
+  //   helper を古い (scrollHeight 単独) のまま再生成してないモックアップでも、
+  //   この親側 clamp が効くため余白が出ない。
+  const measureMockupHeight = useCallback(() => {
+    const iframe = document.querySelector('iframe[title="改善モックアップ"]');
+    const doc = iframe?.contentDocument;
+    if (!doc || !doc.body || !doc.documentElement) return null;
+    const sh = doc.documentElement.scrollHeight || 0;
+    const bb = (doc.body.offsetTop || 0) + (doc.body.offsetHeight || 0);
+    if (sh > 0 && bb > 0) return Math.min(sh, bb);
+    return sh || bb || null;
+  }, []);
   useEffect(() => {
     if (!drawerItem) return;
     function handleMessage(e) {
       if (!e.data || typeof e.data !== 'object') return;
       if (e.data.type === '__mockup_size') {
-        if (e.data.height && typeof e.data.height === 'number') {
+        // helper script の height をそのまま使わず、親側で再計測して clamp する
+        const measured = measureMockupHeight();
+        if (measured && measured > 0) {
+          setAfterIframeHeight(measured);
+        } else if (e.data.height && typeof e.data.height === 'number') {
           setAfterIframeHeight(e.data.height);
         }
       } else if (e.data.type === '__mockup_changed_clicked') {
@@ -2301,7 +2322,7 @@ export default function Improve() {
                             <div>
                               <div className="text-xs font-semibold text-primary mb-2">After（改善案適用後）</div>
                               {/* ブラウザフレーム */}
-                              <div className="rounded-xl overflow-hidden border border-primary/30 shadow-lg" style={{ height: afterIframeHeight ? `${afterIframeHeight * compareIframeScale + 44}px` : '2444px' }}>
+                              <div className="rounded-xl overflow-hidden border border-primary/30 shadow-lg" style={{ height: afterIframeHeight ? `${afterIframeHeight * compareIframeScale + 44}px` : `${4800 * compareIframeScale + 44}px` }}>
                                 <div className="flex items-center gap-2 bg-gray-100 dark:bg-dark-3 px-3 py-2 border-b border-gray-200 dark:border-dark-3">
                                   <div className="flex gap-1.5">
                                     <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
@@ -2310,7 +2331,7 @@ export default function Improve() {
                                   </div>
                                   <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl || 'https://example.com'}</div>
                                 </div>
-                                <div ref={compareIframeContainerRef} className="bg-white dark:bg-dark-2 relative pt-3 overflow-hidden" style={{ height: afterIframeHeight ? `${afterIframeHeight * compareIframeScale + 12}px` : '2412px' }}>
+                                <div ref={compareIframeContainerRef} className="bg-white dark:bg-dark-2 relative pt-3 overflow-hidden" style={{ height: afterIframeHeight ? `${afterIframeHeight * compareIframeScale + 12}px` : `${4800 * compareIframeScale + 12}px` }}>
                                   {item.mockupStorageUrl ? (
                                     drawerMockupHtml ? (
                                       <iframe
@@ -2393,7 +2414,7 @@ export default function Improve() {
                               </div>
                               <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl || 'https://example.com'}</div>
                             </div>
-                            <div ref={soloIframeContainerRef} className="bg-white dark:bg-dark-2 pt-3 relative overflow-hidden" style={{ height: afterIframeHeight ? `${afterIframeHeight * soloIframeScale + 12}px` : '4812px' }}>
+                            <div ref={soloIframeContainerRef} className="bg-white dark:bg-dark-2 pt-3 relative overflow-hidden" style={{ height: afterIframeHeight ? `${afterIframeHeight * soloIframeScale + 12}px` : `${4800 * soloIframeScale + 12}px` }}>
                               {item.mockupStorageUrl ? (
                                 drawerMockupHtml ? (
                                   <iframe
@@ -2401,9 +2422,9 @@ export default function Improve() {
                                     srcDoc={drawerMockupHtml}
                                     className="absolute top-3 left-0 border-0"
                                     sandbox="allow-same-origin allow-scripts"
-                                    onLoad={(e) => {
+                                    onLoad={() => {
                                       try {
-                                        const h = e.target.contentDocument?.documentElement?.scrollHeight;
+                                        const h = measureMockupHeight();
                                         if (h) setAfterIframeHeight(h);
                                       } catch (_) {}
                                     }}
@@ -2418,9 +2439,9 @@ export default function Improve() {
                                   srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:0;margin-bottom:6px;width:28px;height:28px;background:#3758F9;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(55,88,249,0.4);border:2px solid white;z-index:10001;pointer-events:auto;cursor:pointer;}[data-changed] [data-changed]{outline-color:rgba(55,88,249,0.55);outline-width:2px;}[data-changed] [data-changed]::before{width:24px;height:24px;font-size:12px;margin-bottom:8px;left:34px;background:#6366f1;}[data-changed] [data-changed] [data-changed]::before{left:64px;background:#818cf8;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
                                   className="absolute top-3 left-0 border-0"
                                   sandbox="allow-same-origin allow-scripts"
-                                  onLoad={(e) => {
+                                  onLoad={() => {
                                     try {
-                                      const h = e.target.contentDocument?.documentElement?.scrollHeight;
+                                      const h = measureMockupHeight();
                                       if (h) setAfterIframeHeight(h);
                                     } catch (_) {}
                                   }}
