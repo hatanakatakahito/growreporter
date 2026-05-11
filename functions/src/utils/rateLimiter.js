@@ -90,14 +90,17 @@ export const DEFAULT_RATE_LIMITS = {
   refreshSiteMetadataAndScreenshots: { action: 'refreshSiteMetadataAndScreenshots', limit: 20, windowSec: 3600 },
   scrapeTop100Pages: { action: 'scrapeTop100Pages', limit: 5, windowSec: 3600 },
 
-  // AI 呼出（API コスト制御）
-  generateAISummary: { action: 'generateAISummary', limit: 30, windowSec: 86400 },
-  generateImprovements: { action: 'generateImprovements', limit: 30, windowSec: 86400 },
-  generateImprovementMockup: { action: 'generateImprovementMockup', limit: 30, windowSec: 86400 },
-  expandManualImprovement: { action: 'expandManualImprovement', limit: 60, windowSec: 86400 },
-  aiChat: { action: 'aiChat', limit: 100, windowSec: 86400 },
-  inferSiteTaxonomy: { action: 'inferSiteTaxonomy', limit: 10, windowSec: 86400 },
-  analyzePageQuality: { action: 'analyzePageQuality', limit: 30, windowSec: 86400 },
+  // AI 呼出（実用上の上限を大幅に拡張、2026-05-08）
+  // 経緯: 旧 30 回/日 はテスト + 多サイト管理 + 複数ユーザー同時利用で頻繁に枯渇していた。
+  // 異常リクエスト防止 (DDoS / 暴走 bot) の保険として極めて高い値だけ残し、正常運用では
+  // 事実上ノーリミットで動作する設定に変更。
+  generateAISummary: { action: 'generateAISummary', limit: 10000, windowSec: 86400 },
+  generateImprovements: { action: 'generateImprovements', limit: 10000, windowSec: 86400 },
+  generateImprovementMockup: { action: 'generateImprovementMockup', limit: 10000, windowSec: 86400 },
+  expandManualImprovement: { action: 'expandManualImprovement', limit: 10000, windowSec: 86400 },
+  aiChat: { action: 'aiChat', limit: 10000, windowSec: 86400 },
+  inferSiteTaxonomy: { action: 'inferSiteTaxonomy', limit: 10000, windowSec: 86400 },
+  analyzePageQuality: { action: 'analyzePageQuality', limit: 10000, windowSec: 86400 },
 
   // 重要操作
   transferOwnership: { action: 'transferOwnership', limit: 3, windowSec: 86400 },

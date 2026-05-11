@@ -150,6 +150,62 @@ export default {
  * @param {boolean} [fullPage=true] - true: ページ全体撮影 (デフォルト互換)、false: viewport のみ撮影 (サムネ用)
  * @returns {Promise<{status: number, html?: string, screenshot?: string, finalUrl?: string, error?: string}>}
  */
+// ========================================================
+// withTimeout: Promise を指定 ms で reject する保護ラッパー (2026-05-11)
+// ========================================================
+// 用途: page.evaluate / page.goto / page.content 等が CF BR の Connection closed 後に
+//   永久ハングする問題を解消。各 await を withTimeout で包んで上限を強制する。
+async function withTimeout(promise, ms, label) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      console.warn(`[TIMEOUT] ${label} exceeded ${ms}ms`);
+      reject(new Error(`${label}-timeout-${ms}ms`));
+    }, ms);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+// ========================================================
+// acquireBrowser: session reuse パターン (2026-05-11)
+// ========================================================
+// CF 公式推奨: puppeteer.sessions() で利用可能な session を探し、
+//   connect() で再利用、無ければ launch() で新規作成 (keep_alive=10分)。
+// 終了時は close ではなく disconnect することで session が pool に保持される。
+// → cold start hang (puppeteer.launch 直後の goto が 50s timeout する問題) を構造的に解消。
+async function acquireBrowser(browserBinding) {
+  try {
+    const sessions = await withTimeout(
+      puppeteer.sessions(browserBinding),
+      5_000,
+      'puppeteer.sessions'
+    );
+    const free = (sessions || []).filter((s) => !s.connectionId).map((s) => s.sessionId);
+    if (free.length > 0) {
+      const sid = free[Math.floor(Math.random() * free.length)];
+      try {
+        const browser = await withTimeout(
+          puppeteer.connect(browserBinding, sid),
+          5_000,
+          'puppeteer.connect'
+        );
+        return { browser, reused: true, sessionId: sid };
+      } catch (e) {
+        console.warn(`[acquireBrowser] connect(${sid}) failed: ${e.message}, falling back to launch`);
+      }
+    }
+  } catch (e) {
+    console.warn(`[acquireBrowser] sessions() failed: ${e.message}, falling back to launch`);
+  }
+  // Fallback: 新規 launch with 10 分 keep_alive
+  const browser = await puppeteer.launch(browserBinding, { keep_alive: 600_000 });
+  return { browser, reused: false, sessionId: null };
+}
+
 async function renderWithBrowser(browserBinding, pageUrl, mode, viewport, fullPage = true) {
   const VIEWPORT_PRESETS = {
     // PC: ノートパソコン標準サイズ (1400×900)
@@ -162,8 +218,28 @@ async function renderWithBrowser(browserBinding, pageUrl, mode, viewport, fullPa
   const vp = VIEWPORT_PRESETS[viewport] || VIEWPORT_PRESETS.pc;
 
   let browser;
+  // 診断ログ用 (2026-05-08 追加): リダイレクト連鎖と response status を全部記録して
+  // 403 / 異常応答時の根本原因調査に使う。レスポンスにそのまま含めて返す。
+  const diagnostics = {
+    requests: [],
+    responses: [],
+    consoleMessages: [],
+  };
+  // 詳細タイミングログ (2026-05-11): どのステップが 90s タイムアウトの主犯か特定するため
+  const tStart = Date.now();
+  let tLast = tStart;
+  const tmark = (phase) => {
+    const now = Date.now();
+    const stepMs = now - tLast;
+    const totalMs = now - tStart;
+    console.log(`[TIMING] phase=${phase} step=${stepMs}ms total=${totalMs}ms url=${pageUrl}`);
+    tLast = now;
+  };
+  let hadError = false;
   try {
-    browser = await puppeteer.launch(browserBinding);
+    const acquired = await acquireBrowser(browserBinding);
+    browser = acquired.browser;
+    tmark(acquired.reused ? `puppeteer.connect(reused,${acquired.sessionId?.slice(0,8)})` : 'puppeteer.launch(new)');
     const page = await browser.newPage();
     await page.setViewport(vp);
     if (vp.isMobile) {
@@ -175,6 +251,56 @@ async function renderWithBrowser(browserBinding, pageUrl, mode, viewport, fullPa
     } else {
       await page.setUserAgent(USER_AGENT);
     }
+
+    // ========================================================
+    // about:blank プリナビゲーション (2026-05-11 追加, Phase 2)
+    // ========================================================
+    // CF BR cold pool で初回 navigation の CDP プロトコル送受信が確立できず
+    // DCL イベントが届かない問題への対処。先に about:blank を開いて
+    // browser ↔ page ↔ CDP の接続経路を強制確立する。失敗しても無視。
+    await withTimeout(
+      page.goto('about:blank', { timeout: 3_000 }).catch(() => {}),
+      4_000,
+      'prewarm-about-blank'
+    );
+    tmark('prewarm-about-blank');
+
+    // 診断: main document の request/response を記録
+    page.on('request', (req) => {
+      try {
+        if (req.resourceType() === 'document' || req.isNavigationRequest?.()) {
+          diagnostics.requests.push({
+            url: req.url(),
+            method: req.method(),
+            headers: req.headers(),
+            redirectChainLength: req.redirectChain?.()?.length || 0,
+          });
+        }
+      } catch (_) {}
+    });
+    page.on('response', (res) => {
+      try {
+        const req = res.request();
+        if (req.resourceType() === 'document' || req.isNavigationRequest?.()) {
+          diagnostics.responses.push({
+            url: res.url(),
+            status: res.status(),
+            statusText: res.statusText?.() || '',
+            headers: res.headers(),
+          });
+        }
+      } catch (_) {}
+    });
+    page.on('console', (msg) => {
+      try {
+        if (diagnostics.consoleMessages.length < 50) {
+          diagnostics.consoleMessages.push({
+            type: msg.type(),
+            text: msg.text().slice(0, 500),
+          });
+        }
+      } catch (_) {}
+    });
 
     // ========================================================
     // 第三者 analytics / tag manager / telemetry の遮断
@@ -212,17 +338,99 @@ async function renderWithBrowser(browserBinding, pageUrl, mode, viewport, fullPa
       'bugsnag.com',                                       // Bugsnag
       'sentry.io', 'sentry-cdn.com',                       // Sentry
       'heap.io', 'heapanalytics.com',                      // Heap
+      'recaptcha.net',                                     // reCAPTCHA alt domain
+    ];
+    // パス前提の遮断: ドメイン全体は遮断したくない (Maps/Fonts は通したい) が
+    // 特定パス配下のみ遮断したい場合に使う。reCAPTCHA は keepalive で
+    // networkidle0 を永久に阻害するため必須。
+    const BLOCKED_URL_PATTERNS = [
+      { hostSuffix: 'google.com', pathPrefix: '/recaptcha/' },     // www.google.com/recaptcha/...
+      { hostSuffix: 'gstatic.com', pathPrefix: '/recaptcha/' },    // www.gstatic.com/recaptcha/...
     ];
     const isBlockedHost = (u) => {
       try {
-        const host = new URL(u).hostname.toLowerCase();
-        return BLOCKED_HOSTS.some((d) => host === d || host.endsWith('.' + d));
+        const parsed = new URL(u);
+        const host = parsed.hostname.toLowerCase();
+        if (BLOCKED_HOSTS.some((d) => host === d || host.endsWith('.' + d))) return true;
+        const path = parsed.pathname;
+        for (const { hostSuffix, pathPrefix } of BLOCKED_URL_PATTERNS) {
+          if ((host === hostSuffix || host.endsWith('.' + hostSuffix)) && path.startsWith(pathPrefix)) {
+            return true;
+          }
+        }
+        return false;
       } catch {
         return false;
       }
     };
     let blockedCount = 0;
     const blockedHostSamples = new Set();
+    // 注: setRequestInterception の有効化は goto 後に行う (2026-05-11, Phase 1)。
+    //   理由: cloudflare/puppeteer#67 で「interception を navigation 前に有効化すると
+    //   DCL イベントが Puppeteer protocol 層に届かず timeout」する既知問題。
+    //   ここでは BLOCKED_HOSTS / isBlockedHost の定義だけ済ませて、実際の
+    //   interception 有効化は goto + initial-wait-2s の後で行う。
+    tmark('setup-diagnostic');
+
+    // navigation: DOMContentLoaded で goto を抜ける。
+    //
+    // 経緯:
+    //   1. 初期は networkidle0 → keepalive (reCAPTCHA等) で永久発火せず timeout
+    //   2. domcontentloaded に変更 → 通常は OK だが CF BR の cold pool では DCL イベントが
+    //      Puppeteer Protocol 層に届かず、50s timeout 張り付き → attempt 1 ほぼ全失敗
+    //   3. (2026-05-11) timeout を 50s → 15s に短縮。DCL を 15s 内に受信できなければ
+    //      諦めて先に進む。post-goto の autoScrollToBottom + waitForNetworkIdle が
+    //      実際の DOM 状態を吸収する。warm pool では 1-5s で DCL が来るため影響なし。
+    //      cold pool では 15s 諦め → autoScroll で実 DOM 取得 → 合計 50-60s で完走可能。
+    const response = await page.goto(pageUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 15_000,
+    }).catch((e) => {
+      return null;
+    });
+    tmark('goto');
+
+    // goto 失敗時の早期 abort (2026-05-11):
+    //   goto が timeout で null 返した場合、ping check で page が生きているか確認。
+    //   応答なし (zombie page) なら即 504 で return → autoScroll 等で 60+秒浪費を排除。
+    //   応答あり (DCL イベントだけ届かなかった) なら通常フロー継続。
+    //
+    //   注: 試行した Phase 3 (3s 待機 + 8s readyState 確認 + body 500B 判定) は
+    //   @cloudflare/puppeteer の CDP 自体が応答しないケース (例: grow-group.jp/)
+    //   で 11s 余分に浪費するだけで救済できなかったため、シンプル版に戻した。
+    //   構造的に救えない URL は captureBrowserRendering.js 側の URL ルーティングで
+    //   L1 をスキップして直接 L2 へ送る方針。
+    if (!response) {
+      try {
+        const alive = await withTimeout(
+          page.evaluate(() => 1),
+          2_000,
+          'page-alive-check'
+        );
+        if (alive !== 1) {
+          hadError = true;
+          return { status: 504, error: 'page-alive-check-failed', diagnostics };
+        }
+        console.log('[renderWithBrowser] goto timeout, but page alive — continuing');
+      } catch (e) {
+        hadError = true;
+        return { status: 504, error: `page-dead-after-goto: ${e.message}`, diagnostics };
+      }
+      tmark('alive-check-ok');
+    }
+
+    // 初期 JS 実行 (React/Vue hydration, framework init 等) を待つ
+    await new Promise((r) => setTimeout(r, 2000));
+    tmark('initial-wait-2s');
+
+    // ========================================================
+    // setRequestInterception を有効化 (2026-05-11, Phase 1: 移動)
+    // ========================================================
+    // navigation 完了後にのみ interception を有効化することで
+    // cloudflare/puppeteer#67 で報告されている「初回 navigation で
+    // DCL イベントが届かない」問題を回避する。
+    // goto 中の reCAPTCHA 等の遮断は失うが、その後の autoScroll や lazy-load
+    // で発生する第三者リクエストは引き続き遮断される。
     try {
       await page.setRequestInterception(true);
       page.on('request', (req) => {
@@ -242,17 +450,9 @@ async function renderWithBrowser(browserBinding, pageUrl, mode, viewport, fullPa
       });
     } catch (e) {
       // setRequestInterception 自体が失敗した場合は遮断なしで続行（既存動作にフォールバック）
-      console.warn(`[renderWithBrowser] setRequestInterception failed, fallthrough: ${e.message}`);
+      console.warn(`[renderWithBrowser] setRequestInterception (post-goto) failed, fallthrough: ${e.message}`);
     }
-
-    // navigation: networkidle0 を試みつつ、長時間ロードでも 50s で諦める
-    const response = await page.goto(pageUrl, {
-      waitUntil: 'networkidle0',
-      timeout: 50_000,
-    }).catch((e) => {
-      // networkidle まで届かなくても DOMContentLoaded で進める
-      return null;
-    });
+    tmark('enable-interception-post-goto');
 
     // ========================================================
     // Lazy-load 強制対策（Browser Rendering でも漏れる lazy-load を確実に発火）
@@ -260,7 +460,7 @@ async function renderWithBrowser(browserBinding, pageUrl, mode, viewport, fullPa
     // - <img loading="lazy"> を eager 化
     // - lazy 系 CSS の opacity 0 / visibility hidden を上書き
     // ========================================================
-    await page.evaluate(() => {
+    await withTimeout(page.evaluate(() => {
       // 1) img loading=lazy を eager に
       document.querySelectorAll('img[loading="lazy"]').forEach((img) => {
         try { img.loading = 'eager'; } catch (_) {}
@@ -315,31 +515,60 @@ background-attachment:scroll !important;
 }`;
         document.head.appendChild(style);
       }
-    });
+    }), 10_000, 'lazy-setup');
+
+    tmark('lazy-setup');
 
     // ========================================================
     // 2-pass autoScroll で lazy-load を確実に発火させる
     // ========================================================
     // 1 回目: ゆっくり最下までスクロール → IntersectionObserver 発火
-    await autoScrollToBottom(page);
+    await withTimeout(autoScrollToBottom(page), 65_000, 'autoScroll-1');
+    tmark('autoScroll-1');
     try {
       await page.waitForNetworkIdle({ idleTime: 1000, timeout: 5000 });
     } catch (_) { /* 5s 経過しても進める */ }
+    tmark('idle-1');
 
-    // 2 回目: 先頭に戻して再度最下まで → 1 回目で起動した lazy-load の fetch 完了 + 取りこぼし回収
-    await page.evaluate(() => window.scrollTo(0, 0));
-    await new Promise((r) => setTimeout(r, 600));
-    await autoScrollToBottom(page);
-    try {
-      await page.waitForNetworkIdle({ idleTime: 500, timeout: 3000 });
-    } catch (_) { /* 進める */ }
+    // ========================================================
+    // 2 回目要否判定 (2026-05-11): pass 1 後に未解決の lazy-load があるかを動的検出
+    // - 解決済 → pass 2 スキップ (フォーム系・短ページで -10〜25s)
+    // - 残存 → pass 2 実行 (長尺記事・lazy-load 多用ページで品質維持)
+    // ========================================================
+    const needsSecondPass = await withTimeout(page.evaluate(() => {
+      const lazyImgs = document.querySelectorAll(
+        'img[data-src]:not([data-src=""]), img[loading="lazy"]:not([src]), img[loading="lazy"][src=""]'
+      ).length;
+      const lazyBgs = document.querySelectorAll(
+        '[data-bg]:not([style*="background-image"]), [data-background-image]:not([style*="background-image"]), [data-background]:not([style*="background-image"])'
+      ).length;
+      const pendingImgs = Array.from(document.images).filter(
+        (i) => !i.complete && i.src && !i.src.startsWith('data:')
+      ).length;
+      return { lazyImgs, lazyBgs, pendingImgs, need: lazyImgs > 0 || lazyBgs > 0 || pendingImgs > 5 };
+    }), 5_000, 'lazy-check');
+    console.log(`[renderWithBrowser] lazy-check: imgs=${needsSecondPass.lazyImgs} bgs=${needsSecondPass.lazyBgs} pending=${needsSecondPass.pendingImgs} need2nd=${needsSecondPass.need}`);
+
+    if (needsSecondPass.need) {
+      // 2 回目: 先頭に戻して再度最下まで → 1 回目で起動した lazy-load の fetch 完了 + 取りこぼし回収
+      await withTimeout(page.evaluate(() => window.scrollTo(0, 0)), 3_000, 'scrollTo-top-a');
+      await new Promise((r) => setTimeout(r, 600));
+      await withTimeout(autoScrollToBottom(page), 65_000, 'autoScroll-2');
+      tmark('autoScroll-2');
+      try {
+        await page.waitForNetworkIdle({ idleTime: 500, timeout: 3000 });
+      } catch (_) { /* 進める */ }
+      tmark('idle-2');
+    } else {
+      tmark('autoScroll-2-skipped');
+    }
 
     // 撮影前に先頭へ戻す（fade-in / parallax の安定化、ただし fullPage screenshot 自体は全域撮るので位置は問題ない）
-    await page.evaluate(() => window.scrollTo(0, 0));
+    await withTimeout(page.evaluate(() => window.scrollTo(0, 0)), 3_000, 'scrollTo-top-b');
     await new Promise((r) => setTimeout(r, 600));
 
     // 画像読込待ち（最大 5s）
-    await page.evaluate(async () => {
+    await withTimeout(page.evaluate(async () => {
       const imgs = Array.from(document.images);
       await Promise.race([
         Promise.all(
@@ -354,7 +583,8 @@ background-attachment:scroll !important;
         ),
         new Promise((r) => setTimeout(r, 5000)),
       ]);
-    });
+    }), 10_000, 'image-wait');
+    tmark('image-wait');
 
     // ========================================================
     // ScrollReveal 等の動的 hidden を解除
@@ -362,7 +592,7 @@ background-attachment:scroll !important;
     // - iframe srcDoc では scroll event が発火しないため visible 切替が走らず真っ白になる
     // - root から sr クラスを除去 + inline style を強制リセット
     // ========================================================
-    await page.evaluate(() => {
+    await withTimeout(page.evaluate(() => {
       // 1) html / body の ScrollReveal 系クラスを除去
       const root = document.documentElement;
       ['sr', 'sr-init'].forEach((cls) => {
@@ -387,7 +617,8 @@ background-attachment:scroll !important;
           s.transform = 'none';
         }
       });
-    });
+    }), 5_000, 'scrollreveal-cleanup');
+    tmark('scrollreveal-cleanup');
 
     const finalUrl = page.url();
 
@@ -405,7 +636,7 @@ background-attachment:scroll !important;
     // - 該当 iframe を scrollIntoView して lazy-load を発火させ、追加で 4s 待機
     // - 該当 iframe が無ければスキップ (待機時間を浪費しない)
     // ========================================================
-    const hasGoogleMaps = await page.evaluate(() => {
+    const hasGoogleMaps = await withTimeout(page.evaluate(() => {
       const iframes = document.querySelectorAll(
         'iframe[src*="google.com/maps"], iframe[src*="maps.google.com"], iframe[src*="google.co.jp/maps"]'
       );
@@ -418,12 +649,13 @@ background-attachment:scroll !important;
         } catch (_) {}
       });
       return true;
-    });
+    }), 3_000, 'google-maps-detect');
     if (hasGoogleMaps) {
       await new Promise((r) => setTimeout(r, 4000));
       // 撮影前にページ先頭に戻す（fullPage 撮影なので位置は無関係だが描画安定のため）
-      await page.evaluate(() => window.scrollTo(0, 0));
+      await withTimeout(page.evaluate(() => window.scrollTo(0, 0)), 3_000, 'scrollTo-top-c');
       await new Promise((r) => setTimeout(r, 300));
+      tmark('google-maps-wait');
     }
 
     // 'screenshot' / 'render+shot' は visual 確定後に screenshot を撮る
@@ -432,13 +664,14 @@ background-attachment:scroll !important;
     let screenshotBase64 = null;
     let screenshotByteLen = 0;
     if (mode === 'screenshot' || mode === 'render+shot') {
-      const buf = await page.screenshot({
+      const buf = await withTimeout(page.screenshot({
         fullPage: fullPage !== false,
         type: 'jpeg',
         quality: 85,
-      });
+      }), 30_000, 'screenshot');
       screenshotBase64 = arrayBufferToBase64(buf);
       screenshotByteLen = buf.length || buf.byteLength || 0;
+      tmark('screenshot');
     }
 
     if (mode === 'screenshot') {
@@ -456,7 +689,7 @@ background-attachment:scroll !important;
     // - iframe srcDoc では document の scroll event がほぼ発生しないため、
     //   ScrollReveal で hidden 状態のまま残った要素は永久に表示されない
     // - <html class="sr"> や 個別要素の inline style で hidden になっているものを強制解除
-    await page.evaluate(() => {
+    await withTimeout(page.evaluate(() => {
       try {
         document.documentElement.classList.remove('sr');
       } catch (_) {}
@@ -476,20 +709,26 @@ background-attachment:scroll !important;
           el.style.removeProperty('transform');
         } catch (_) {}
       });
-    });
+    }), 5_000, 'hidden-cleanup');
 
     // iframe srcDoc 表示用: 外部 CSS をブラウザ内で fetch して <style> にインライン化
     // - iframe では cross-origin / CORS で外部 CSS の読み込みが失敗するケースがある
     // - インライン化することで iframe srcDoc でも実サイトと同等のレンダリングになる
     // - Browser Rendering の puppeteer から直接 fetch するため CORS の制約を受けない
-    await page.evaluate(async () => {
+    await withTimeout(page.evaluate(async () => {
       const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+      // 各 fetch に 5s timeout を被せる + 全体 Promise.all
+      const fetchWithTimeout = (url, ms) => {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), ms);
+        return fetch(url, { credentials: 'omit', signal: ctrl.signal }).finally(() => clearTimeout(tid));
+      };
       await Promise.all(
         links.map(async (link) => {
           try {
             const href = link.href;
             if (!href || href.startsWith('data:') || href.startsWith('blob:')) return;
-            const res = await fetch(href, { credentials: 'omit' });
+            const res = await fetchWithTimeout(href, 5000);
             if (!res.ok) return;
             let css = await res.text();
             // CSS 内の url(...) 相対パスを CSS ファイルの絶対 URL ベースで解決
@@ -510,7 +749,12 @@ background-attachment:scroll !important;
           }
         })
       );
-    });
+    }), 30_000, 'css-inline');
+    tmark('css-inline');
+
+    // (2026-05-11 削除): <video> 要素のスクリーンショット → poster 埋込ロジック
+    // フルスクリーン hero 動画でオーバーレイ文字込みで撮れてしまいレイアウト崩壊。
+    // <video> タグは Cloud Functions 側でも置換せずそのまま残す方針に変更。
 
     // ========================================================
     // 全 <script> タグを削除（iframe srcDoc で JS 実行を完全に無効化）
@@ -522,13 +766,15 @@ background-attachment:scroll !important;
     // - generateImprovementMockup 側で helper script (postMessage 等) を別途注入するため、
     //   フロント側の機能は別途確保される。
     // ========================================================
-    await page.evaluate(() => {
-      document.querySelectorAll('script').forEach((s) => {
-        try { s.remove(); } catch (_) {}
-      });
-    });
+    // HTML 文字列ベースの cleanup (script / on* / video / YouTube / javascript:) は
+    // Cloud Functions 側の applyPostBrCleanup に一元化済 (2026-05-11)。
+    // Worker / Cloud Run は素のレンダリング HTML を返すだけ。L1/L2 で結果統一。
+    // Worker 側では DOM 必須の処理 (lazy-load 展開、CSS インライン化、ScrollReveal 解除等)
+    // のみ実施する。
+    tmark('cleanup-deferred-to-functions');
 
-    const html = await page.content();
+    const html = await withTimeout(page.content(), 10_000, 'page-content');
+    tmark('page-content');
     return {
       status: response?.status() || 200,
       html,
@@ -539,14 +785,28 @@ background-attachment:scroll !important;
       finalUrl,
       viewport,
       byteLen: html.length,
+      diagnostics,
     };
   } catch (err) {
-    return { status: 500, error: `browser-render: ${err.message}` };
+    hadError = true;
+    return { status: 500, error: `browser-render: ${err.message}`, diagnostics };
   } finally {
     if (browser) {
-      try {
-        await browser.close();
-      } catch (_) { /* noop */ }
+      // browser 終了処理 (2026-05-11 改訂):
+      //   正常終了時: browser.disconnect() で session を pool に戻す (warm 再利用可能)
+      //   エラー時: browser.close() で完全終了 (壊れた session を再利用させない)
+      //   どちらも 3 秒で見切って Worker 応答を返す。
+      if (hadError) {
+        await Promise.race([
+          browser.close().catch(() => { /* noop */ }),
+          new Promise((r) => setTimeout(r, 3000)),
+        ]);
+      } else {
+        await Promise.race([
+          browser.disconnect().catch(() => { /* noop */ }),
+          new Promise((r) => setTimeout(r, 3000)),
+        ]);
+      }
     }
   }
 }
@@ -567,14 +827,30 @@ async function autoScrollToBottom(page) {
       const settleAtBottom = 1500;
       let total = 0;
       const max = 60_000;
+      // 早期 exit (2026-05-11): scrollHeight が連続 N step 安定したらページ伸長
+      // 停止と判定して打ち切る。lazy-load が完了して新規コンテンツが追加されなく
+      // なった時点で抜けられる。settle 待機は最大 stable 観測の場合のみ短縮。
+      const STABLE_LIMIT = 5;
+      let prevHeight = 0;
+      let stableCount = 0;
       const timer = setInterval(() => {
         const sh = document.body.scrollHeight;
         window.scrollBy(0, distance);
         total += distance;
-        if (total >= sh + 500 || total >= max) {
+        if (sh === prevHeight) {
+          stableCount++;
+        } else {
+          stableCount = 0;
+          prevHeight = sh;
+        }
+        const reachedBottom = total >= sh + 500;
+        const hitMax = total >= max;
+        const stabilized = stableCount >= STABLE_LIMIT && total > 1000;
+        if (reachedBottom || hitMax || stabilized) {
           clearInterval(timer);
-          // 最下点で stagger animation / 遅延 lazy-load の完了待ち
-          setTimeout(resolve, settleAtBottom);
+          // 自然 bottom 到達時は通常の settle、stabilized 検出時は短縮 settle
+          const settleMs = stabilized && !reachedBottom ? 600 : settleAtBottom;
+          setTimeout(resolve, settleMs);
         }
       }, interval);
     });

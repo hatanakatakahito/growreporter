@@ -711,7 +711,8 @@ export const captureBeforeImplementationSnapshot = lazyCallable(
  * 改善モックアップ生成 Callable Function（Gemini 2.5 Flash）
  * 手動トリガー：改善箇所のみの部分HTML生成
  */
-export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '512MiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY', 'CF_PROXY_SECRET'] });
+// RENDER_SECRET: Cloud Run render-fallback service の認証 (L2 フォールバック用)
+export const generateImprovementMockup = lazyCallable('./callable/generateImprovementMockup.js', 'generateImprovementMockupCallable', { memory: '512MiB', timeoutSeconds: 540, secrets: ['GEMINI_API_KEY', 'CF_PROXY_SECRET', 'RENDER_SECRET'] });
 
 /**
  * 改善モックアップ HTML 配信プロキシ (HTTP, public)

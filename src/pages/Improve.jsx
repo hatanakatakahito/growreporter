@@ -8,6 +8,7 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, X, FileText, Clock, TrendingUp, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, LayoutDashboard, Share2 } from 'lucide-react';
 import DotWaveSpinner from '../components/common/DotWaveSpinner';
 import { setPageTitle } from '../utils/pageTitle';
+import { injectMockupOverlay } from '../utils/mockupOverlay';
 import { db, functions } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { collection, query, where, limit, getDocs, updateDoc, doc, deleteDoc, addDoc, serverTimestamp, getDoc, onSnapshot, deleteField } from 'firebase/firestore';
@@ -223,6 +224,40 @@ export default function Improve() {
   // モックアップ生成失敗のID管理（自動発火ループ防止）
   const [mockupFailedIds, setMockupFailedIds] = useState(new Set());
 
+  // ============================================================
+  // モックアップ生成の並行制限 (semaphore)
+  // ============================================================
+  // 経緯: AI 改善案バッチ生成時 (line 1773) や複数ドロワー連続オープン時に
+  // 4-6 件が同時に generateImprovementMockup を発火していたため、CF Workers
+  // Browser Rendering の concurrent browser pool が競合して全 BR コールが
+  // "Target closed" で連鎖失敗 → Legacy fallback (低品質) で完了する事態が発生。
+  //
+  // 並行 BR を 2 件までに制限することで、各 BR セッションが孤立したリソースで
+  // 動作 → 高品質 snapshot_patch モードで安定成功するようになる。
+  //
+  // 残り (3 件目以降) は queue で待機 → 1 件完了するごとに次が処理される。
+  // 結果: 9 件並行発火 → 順次 2 件ずつ処理 (体感は遅延するが全件 BR 成功)。
+  const MOCKUP_MAX_CONCURRENT = 2;
+  const mockupActiveCountRef = useRef(0);
+  const mockupQueueRef = useRef([]);
+  const acquireMockupSlot = () => new Promise((resolve) => {
+    if (mockupActiveCountRef.current < MOCKUP_MAX_CONCURRENT) {
+      mockupActiveCountRef.current++;
+      resolve();
+    } else {
+      mockupQueueRef.current.push(resolve);
+    }
+  });
+  const releaseMockupSlot = () => {
+    if (mockupQueueRef.current.length > 0) {
+      // 待機中の次の slot 要求を release。active count は変わらない (引き継ぎ)
+      const next = mockupQueueRef.current.shift();
+      next();
+    } else {
+      mockupActiveCountRef.current = Math.max(0, mockupActiveCountRef.current - 1);
+    }
+  };
+
   const queryClient = useQueryClient();
   const siteUrl = (selectedSite?.siteUrl || '').trim().replace(/\/+$/, '');
 
@@ -260,6 +295,7 @@ export default function Improve() {
   // モックアップ生成ハンドラ
   const handleGenerateMockup = async (item) => {
     if (mockupGeneratingIds.has(item.id)) return;
+    // 即座に「生成中」状態にする (queue 待ちもユーザー視点では生成中扱い)
     setMockupGeneratingIds(prev => new Set([...prev, item.id]));
     // 再試行のため、成功/失敗にかかわらず failed 履歴はクリアしておく
     setMockupFailedIds(prev => {
@@ -268,8 +304,14 @@ export default function Improve() {
       next.delete(item.id);
       return next;
     });
+    // 並行制限 slot を取得 (queue 待機の可能性あり)
+    // この時点でキャンセル等の異常系には対応していない (タブ閉じれば諸々消える)
+    await acquireMockupSlot();
     try {
-      const generateMockup = httpsCallable(functions, 'generateImprovementMockup');
+      // timeout 540s: BR 撮影 (20-30s) + Gemini patch 生成 + coverage retry × 3 で
+      // 80-150s かかる。デフォルト 70s だと client が先に deadline-exceeded で死ぬ。
+      // サーバ側 timeoutSeconds: 540 と揃える。
+      const generateMockup = httpsCallable(functions, 'generateImprovementMockup', { timeout: 540000 });
       await generateMockup({ siteId: selectedSiteId, improvementId: item.id });
       // 成功時の toast は出さない（UI上で Before/After が切り替わることで通知）
       queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
@@ -278,6 +320,7 @@ export default function Improve() {
       setMockupFailedIds(prev => new Set([...prev, item.id]));
       toast.error(`モックアップ生成に失敗しました: ${e.message}`);
     } finally {
+      releaseMockupSlot();
       setMockupGeneratingIds(prev => {
         const next = new Set(prev);
         next.delete(item.id);
@@ -1698,7 +1741,7 @@ export default function Improve() {
                                     disabled={mockupGeneratingIds.has(item.id)}
                                   >
                                     {mockupGeneratingIds.has(item.id) ? (
-                                      <><DotWaveSpinner size="xs" />生成中</>
+                                      <>生成中</>
                                     ) : (
                                       <><Sparkles data-slot="icon" className="h-3 w-3" />モック生成</>
                                     )}
@@ -2341,6 +2384,7 @@ export default function Improve() {
                                         sandbox="allow-same-origin allow-scripts"
                                         onLoad={(e) => {
                                           try {
+                                            injectMockupOverlay(e.target);
                                             const h = e.target.contentDocument?.documentElement?.scrollHeight;
                                             if (h) setAfterIframeHeight(h);
                                           } catch (_) {}
@@ -2353,11 +2397,12 @@ export default function Improve() {
                                   ) : (
                                     <iframe
                                       title="改善モックアップ"
-                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:0;margin-bottom:6px;width:28px;height:28px;background:#3758F9;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(55,88,249,0.4);border:2px solid white;z-index:10001;pointer-events:auto;cursor:pointer;}[data-changed] [data-changed]{outline-color:rgba(55,88,249,0.55);outline-width:2px;}[data-changed] [data-changed]::before{width:24px;height:24px;font-size:12px;margin-bottom:8px;left:34px;background:#6366f1;}[data-changed] [data-changed] [data-changed]::before{left:64px;background:#818cf8;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
                                       className="absolute top-3 left-0 border-0"
                                       sandbox="allow-same-origin allow-scripts"
                                       onLoad={(e) => {
                                         try {
+                                          injectMockupOverlay(e.target);
                                           const h = e.target.contentDocument?.documentElement?.scrollHeight;
                                           if (h) setAfterIframeHeight(h);
                                         } catch (_) {}
@@ -2422,8 +2467,9 @@ export default function Improve() {
                                     srcDoc={drawerMockupHtml}
                                     className="absolute top-3 left-0 border-0"
                                     sandbox="allow-same-origin allow-scripts"
-                                    onLoad={() => {
+                                    onLoad={(e) => {
                                       try {
+                                        injectMockupOverlay(e.target);
                                         const h = measureMockupHeight();
                                         if (h) setAfterIframeHeight(h);
                                       } catch (_) {}
@@ -2436,11 +2482,12 @@ export default function Improve() {
                               ) : (
                                 <iframe
                                   title="改善モックアップ"
-                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:0;margin-bottom:6px;width:28px;height:28px;background:#3758F9;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(55,88,249,0.4);border:2px solid white;z-index:10001;pointer-events:auto;cursor:pointer;}[data-changed] [data-changed]{outline-color:rgba(55,88,249,0.55);outline-width:2px;}[data-changed] [data-changed]::before{width:24px;height:24px;font-size:12px;margin-bottom:8px;left:34px;background:#6366f1;}[data-changed] [data-changed] [data-changed]::before{left:64px;background:#818cf8;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
                                   className="absolute top-3 left-0 border-0"
                                   sandbox="allow-same-origin allow-scripts"
-                                  onLoad={() => {
+                                  onLoad={(e) => {
                                     try {
+                                      injectMockupOverlay(e.target);
                                       const h = measureMockupHeight();
                                       if (h) setAfterIframeHeight(h);
                                     } catch (_) {}

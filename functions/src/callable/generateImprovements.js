@@ -299,7 +299,11 @@ export async function generateImprovementsCallable(req) {
 
       for (const suggestion of chunk) {
         let targetPagePath = (suggestion.targetPagePath || suggestion.targetPageUrl || '').trim();
-        if (!targetPagePath) {
+        // 2026-05-08: AI が targetPagePath: '/' (ルート) を返してくるケースがあり、
+        // description には具体パス (「/works/」等) が書かれているのに extraction が
+        // skip されて targetPageUrl が空になる問題があった。'/' も未設定扱いにして
+        // description からの抽出を試みる。
+        if (!targetPagePath || targetPagePath === '/') {
           const extracted = extractPathFromTitleOrDescription(suggestion.title, suggestion.description);
           if (extracted && extracted !== '/') targetPagePath = extracted;
         }

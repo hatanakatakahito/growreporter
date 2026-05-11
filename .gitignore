@@ -51,3 +51,7 @@ firebase-export-metadata.json
 
 # Claude Code 作業ディレクトリ
 .claude/
+
+# Local debug temp files (2026-05-11)
+.tmp-*
+.tmp-verify-shots/

@@ -72,7 +72,13 @@ export async function fetchViaCloudflareProxy({ targetUrl, mode = 'html', timeou
     if (!res.ok) {
       throw new Error(`Cloudflare proxy returned ${res.status}`);
     }
-    const data = await res.json();
+    // res.json() に 5s timeout (2026-05-11): 大容量レスポンス処理中の hang 防止
+    const data = await Promise.race([
+      res.json(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('cloudflareProxy json parse timeout 5s')), 5_000)
+      ),
+    ]);
     if (data.error) {
       throw new Error(`Cloudflare proxy error: ${data.error}`);
     }
