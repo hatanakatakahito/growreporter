@@ -9,6 +9,7 @@ import UpgradeModal from '../common/UpgradeModal';
 import DateRangePicker from './DateRangePicker';
 import MonthPicker from './MonthPicker';
 import { Button } from '../ui/button';
+import SiteSwitcher from '../common/SiteSwitcher';
 
 const ExcelIcon = ({ className, disabled }) => (
   <svg className={className} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -160,21 +161,12 @@ export default function AnalysisHeader({
         <div className="mx-auto max-w-content px-6 py-5 flex items-center">
           <div className="flex items-center justify-between w-full gap-2">
             {/* サイト選択 */}
-            <div data-tour="header-site-select" className="relative flex items-center shrink-0">
-              <Globe className="pointer-events-none absolute left-3 z-10 h-4 w-4 text-gray-400" />
-              <ChevronDown className="pointer-events-none absolute right-3 z-10 h-3.5 w-3.5 text-gray-400" />
-              <select
-                value={selectedSiteId || ''}
-                onChange={(e) => handleSiteChange(e.target.value)}
-                className="h-auto w-auto min-w-[200px] max-w-[400px] cursor-pointer appearance-none [background-image:none] rounded-lg border border-stroke bg-white py-2 pl-9 pr-8 text-xs sm:text-sm font-medium text-dark shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:border-primary focus:outline-none"
-              >
-                <option value="">サイトを選択</option>
-                {sites.map((site) => (
-                  <option key={site.id} value={site.id}>
-                    {site.siteName}
-                  </option>
-                ))}
-              </select>
+            <div data-tour="header-site-select" className="flex shrink-0 items-center">
+              <SiteSwitcher
+                sites={sites}
+                selectedSite={currentSite}
+                onChange={handleSiteChange}
+              />
             </div>
 
             {/* 期間選択とベル通知 */}
