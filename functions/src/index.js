@@ -976,3 +976,18 @@ export const migrateData = lazyCallable('./callable/migrateData.js', 'migrateDat
  */
 export const getAccountMembers = lazyCallable('./callable/getAccountMembers.js', 'getAccountMembersCallable', { memory: '256MiB', timeoutSeconds: 60 });
 
+// ====================================================================
+// クローズミーティング（GrowGroup 社内用）
+//   @grow-group.jp スタッフのみ。記録は履歴型 closeMeetings/{autoId}
+// ====================================================================
+export const listCloseMeetings = lazyCallable('./callable/closeMeetings.js', 'listCloseMeetingsCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const getCloseMeeting = lazyCallable('./callable/closeMeetings.js', 'getCloseMeetingCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const createCloseMeeting = lazyCallable('./callable/closeMeetings.js', 'createCloseMeetingCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const updateCloseMeeting = lazyCallable('./callable/closeMeetings.js', 'updateCloseMeetingCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const deleteCloseMeeting = lazyCallable('./callable/closeMeetings.js', 'deleteCloseMeetingCallable', { memory: '256MiB', timeoutSeconds: 30 });
+export const generateCloseMeetingSummary = lazyCallable('./callable/closeMeetingAI.js', 'generateCloseMeetingSummaryCallable', { memory: '512MiB', timeoutSeconds: 90, secrets: ['GEMINI_API_KEY'] });
+export const finalizeCloseMeetingReport = lazyCallable('./callable/closeMeetingAI.js', 'finalizeCloseMeetingReportCallable', { memory: '512MiB', timeoutSeconds: 30 });
+export const manageCloseMeetingShareLink = lazyCallable('./callable/closeMeetings.js', 'manageCloseMeetingShareLinkCallable', { memory: '256MiB', timeoutSeconds: 30 });
+// 共有リンク用 公開エンドポイント（認証不要）
+export const getSharedCloseMeeting = lazyCallable('./callable/sharedCloseMeeting.js', 'getSharedCloseMeetingCallable', { memory: '256MiB', timeoutSeconds: 30 });
+

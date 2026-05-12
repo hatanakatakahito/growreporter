@@ -73,6 +73,15 @@
             "value": "off"
           }
         ]
+      },
+      {
+        "source": "/share/**",
+        "headers": [
+          {
+            "key": "X-Robots-Tag",
+            "value": "noindex, nofollow"
+          }
+        ]
       }
     ]
   },

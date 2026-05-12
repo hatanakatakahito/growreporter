@@ -53,6 +53,11 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import CommercialTransaction from './pages/CommercialTransaction';
 import ForgotPassword from './pages/ForgotPassword';
 
+// GrowGroup 社内用
+import GrowStaffRoute from './components/GrowStaffRoute';
+import CloseMeeting from './pages/GrowInternal/CloseMeeting';
+import SharedCloseMeeting from './pages/SharedCloseMeeting';
+
 // Admin
 import AdminRoute from './components/Admin/AdminRoute';
 import AdminLayout from './components/Admin/AdminLayout';
@@ -113,6 +118,8 @@ function App() {
             <Route path="/reset-password" element={<ForgotPassword />} />
             {/* 招待承認（認証不要でもアクセス可能） */}
             <Route path="/accept-invitation" element={<AcceptInvitation />} />
+            {/* クローズミーティング 共有リンク（認証不要・読取専用） */}
+            <Route path="/share/close-meeting/:token" element={<SharedCloseMeeting />} />
             <Route 
               path="/register/complete" 
               element={
@@ -200,6 +207,16 @@ function App() {
               
               {/* メンバー管理 */}
               <Route path="/members" element={<Members />} />
+
+              {/* GrowGroup 社内用 */}
+              <Route
+                path="/grow-internal/close-meeting"
+                element={
+                  <GrowStaffRoute>
+                    <CloseMeeting />
+                  </GrowStaffRoute>
+                }
+              />
             </Route>
             
             {/* サイト改善相談サンクスページ（コンバージョン測定用） */}

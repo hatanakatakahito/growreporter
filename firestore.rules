@@ -19,6 +19,14 @@ service cloud.firestore {
              (adminDoc.data.role == 'admin' || adminDoc.data.role == 'editor' || adminDoc.data.role == 'viewer');
     }
 
+    // GrowGroup 社内スタッフかチェック（メールドメインで判定）
+    // 社内専用「クローズミーティング」機能のゲート。バックエンド callable でも
+    // request.auth.token.email を別途検証する（多層防御）
+    function isGrowStaff() {
+      return request.auth != null &&
+             request.auth.token.email.matches('(?i).*@grow-group[.]jp$');
+    }
+
     // 同じアカウントのメンバーかチェック
     function isAccountMember(accountOwnerId) {
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
@@ -256,6 +264,19 @@ service cloud.firestore {
         );
         allow write: if false;
       }
+    }
+
+    // ====================================================================
+    // クローズミーティング記録（GrowGroup 社内用）
+    //   読取: GrowGroup スタッフ（@grow-group.jp）/ 管理者
+    //   書込: Cloud Functions（Admin SDK）経由のみ。CRUD callable が siteName/siteUrl の
+    //         denormalize と canAccessSite の二重チェックを行う
+    //   公開共有ページ（/share/close-meeting/:token）は getSharedCloseMeeting callable
+    //   （Admin SDK）が snapshot のみ返すため、このルールには影響しない
+    // ====================================================================
+    match /closeMeetings/{recordId} {
+      allow read: if isGrowStaff() || isAdminUser();
+      allow write: if false;
     }
 
     // ====================================================================

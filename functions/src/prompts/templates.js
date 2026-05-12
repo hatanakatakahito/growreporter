@@ -2722,3 +2722,95 @@ ${prevYearText ? `\n━━ 前年同月のデータ（比較用） ━━${prevY
 - 回答可能なのはこの system プロンプトに含まれている「${siteName}」のデータに限定。他のサイト・他アカウントのデータを推測・捏造して提供してはいけない
 - ユーザーから未提供のデータを求められた場合は「そのデータは本チャットでは提供されていません」と明示的に答えること`;
 }
+
+/**
+ * クローズミーティング（Webサイトリニューアル公開後の振り返り）用 AI 総括プロンプト
+ * クライアントへの説明資料を想定。出力は JSON: { summary, goodPoints: string[], nextActions: string[] }
+ */
+export function getCloseMeetingPrompt(p) {
+  const {
+    siteName = '未設定',
+    siteUrl = '未設定',
+    siteContext = {},
+    launchDate = '',
+    observationRange = {},
+    comparisonRange = null,
+    comparisonModeLabel = '公開前',
+    kpiLines = [],
+    breakdownBlocks = [],
+    kpiActualsLines = null,
+    consultantNotes = {},
+  } = p || {};
+
+  const industryText = siteContext.industryText || '未設定';
+  const siteRoleText = siteContext.siteRoleText || '未設定';
+  const businessModelText = siteContext.businessModelText || '未設定';
+
+  const kpiBlock = kpiLines.length
+    ? kpiLines
+        .map((l) => `- ${l.label}: 公開後 ${l.afterText}${l.beforeText ? ` / 公開前 ${l.beforeText}` : ''}${l.changeText ? `（${l.changeText}）` : ''}`)
+        .join('\n')
+    : '（データなし）';
+
+  const breakdownBlock = breakdownBlocks.length
+    ? breakdownBlocks.map((b) => `■ ${b.title}\n${(b.lines || []).map((x) => `  ・${x}`).join('\n')}`).join('\n\n')
+    : '（データなし）';
+
+  const kpiActualsBlock =
+    Array.isArray(kpiActualsLines) && kpiActualsLines.length
+      ? `\n【KPI 予実（公開後）】\n${kpiActualsLines.map((l) => `- ${l.label}: 目標 ${l.targetText} / 実績 ${l.actualText} / 達成率 ${l.achievementText}`).join('\n')}\n`
+      : '';
+
+  const notes = [];
+  if (consultantNotes.background) notes.push(`【背景】${consultantNotes.background}`);
+  if (consultantNotes.challenge) notes.push(`【課題】${consultantNotes.challenge}`);
+  if (consultantNotes.purpose) notes.push(`【目的】${consultantNotes.purpose}`);
+  if (consultantNotes.qualitativeGoal) notes.push(`【定性目標】${consultantNotes.qualitativeGoal}`);
+  if (consultantNotes.quantitativeGoal) notes.push(`【定量目標】${consultantNotes.quantitativeGoal}`);
+  if (Array.isArray(consultantNotes.measures) && consultantNotes.measures.length) {
+    notes.push(`【実施施策】\n${consultantNotes.measures.map((m) => `  ・${m}`).join('\n')}`);
+  }
+  // 備考（コンバージョン設定・GA4プロパティ・リニューアル範囲などの補足）。数値の解釈に必ず反映させる。
+  if (consultantNotes.remarks) notes.push(`【備考（数値解釈の前提・補足。必ず考慮すること）】${consultantNotes.remarks}`);
+  const notesBlock = notes.length ? `\n【担当者メモ（リニューアルの背景・狙い・施策・備考）】\n${notes.join('\n')}\n` : '';
+
+  const compText = comparisonRange?.from
+    ? `${comparisonModeLabel}（${comparisonRange.from} 〜 ${comparisonRange.to}）`
+    : `${comparisonModeLabel}（データなし）`;
+
+  return `あなたは Web サイト制作会社の Web アナリストです。クライアントへの「リニューアル公開後 クローズミーティング」で説明するための、公開前後の変化の総括を作成してください。
+
+【このサイト（前提条件・最優先で考慮すること）】
+- サイト名: ${siteName}
+- URL: ${siteUrl}
+- 業種: ${industryText}
+- サイトの役割: ${siteRoleText}
+- ビジネスモデル: ${businessModelText}
+※ 上記の業種・サイトの役割・ビジネスモデルを絶対的な前提として、その文脈に沿って数値を解釈し、提案してください。
+
+【リニューアル情報】
+- リニューアル公開日: ${launchDate}
+- 観測期間（公開後）: ${observationRange.from || '?'} 〜 ${observationRange.to || '?'}
+- 比較対象（公開前）: ${compText}
+${notesBlock}
+【主要指標の変化（公開前 → 公開後）】
+${kpiBlock}
+
+【ブレイクダウンの主な変化】
+${breakdownBlock}
+${kpiActualsBlock}
+【出力フォーマット】
+以下の JSON だけを出力してください（前後に説明文・コードフェンス・余計な文字を一切付けないこと）:
+{
+  "summary": "公開後の変化の総括（250〜450字程度、です・ます調、クライアントに向けた説明文として。冒頭の挨拶・お祝いの言葉は書かず、いきなり数値の総括から始めること）",
+  "goodPoints": ["良くなった点を数値根拠とともに（3〜5項目・各40〜80字程度）"],
+  "nextActions": ["残課題・次に取り組むべき施策（2〜4項目・各40〜80字程度）"]
+}
+
+【守ること】
+- 提供された数値のみを使用し、提供されていない数値は「未計測」と書くこと。数値を捏造しない
+- summary は「この度は…おめでとうございます」等の挨拶・前置き・お礼で始めないこと。1文目から「公開後1ヶ月のデータでは…」のように本題（数値の総括）に入ること
+- 比較対象がリニューアル前（旧サイト）の数値であることを踏まえ、特に1ヶ月程度の短期比較では季節要因の可能性に一言触れること
+- 担当者メモの「狙い・施策」がある場合は、それぞれに対して数値がどう動いたか（達成 / 未達 / 判断保留）に必ず言及すること
+- ページ別ブレイクダウンに「公開前データなし」の行が多い場合は、URL 構造の変更で突合できていない可能性に触れること`;
+}

@@ -482,6 +482,14 @@
         {"fieldPath": "taxonomy.siteRole", "order": "ASCENDING"},
         {"fieldPath": "optedOut", "order": "ASCENDING"}
       ]
+    },
+    {
+      "collectionGroup": "closeMeetings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "siteId", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ]
     }
   ],
   "fieldOverrides": []

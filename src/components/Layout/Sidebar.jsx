@@ -64,10 +64,11 @@ const SIDEBAR_THEMES = {
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, userProfile, logout, isGrowStaff } = useAuth();
   const { isAdmin } = useAdmin();
   const { isSidebarOpen, toggleSidebar, isDarkSidebar, toggleSidebarTheme } = useSidebar();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
+  const [isGrowInternalOpen, setIsGrowInternalOpen] = useState(false);
   const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
   const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
   const [isEngagementOpen, setIsEngagementOpen] = useState(false);
@@ -127,6 +128,11 @@ export default function Sidebar() {
     // アカウント設定
     if (path.startsWith('/account/') || path === '/members') {
       setIsAccountOpen(true);
+    }
+
+    // GrowGroup 社内用
+    if (path.startsWith('/grow-internal/')) {
+      setIsGrowInternalOpen(true);
     }
   }, [location.pathname]);
 
@@ -269,7 +275,6 @@ export default function Sidebar() {
       submenu: [
         { label: 'プロフィール', path: '/account/settings?tab=profile' },
         { label: 'プラン確認', path: '/account/settings?tab=plan' },
-        { label: '登録サイト', path: '/account/settings?tab=sites' },
         { label: 'メール通知', path: '/account/settings?tab=email' },
         { label: 'メンバー管理', path: '/account/settings?tab=members' },
       ],
@@ -549,6 +554,51 @@ export default function Sidebar() {
               </ul>
             )}
           </li>
+
+          {/* GrowGroup 社内用（@grow-group.jp のみ表示・最下部） */}
+          {isGrowStaff && (
+            <li>
+              <button
+                id="nav-grow-internal"
+                onClick={() => (isSidebarOpen ? setIsGrowInternalOpen(!isGrowInternalOpen) : navigate('/grow-internal/close-meeting'))}
+                className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
+                  isSidebarOpen ? 'justify-between' : 'justify-center'
+                } ${location.pathname.startsWith('/grow-internal/') ? t.activeClass : ''}`}
+                title={!isSidebarOpen ? 'GrowGroup社内用' : ''}
+              >
+                <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                  </svg>
+                  {isSidebarOpen && <span>GrowGroup社内用</span>}
+                </div>
+                {isSidebarOpen && (
+                  <svg
+                    className={`h-4 w-4 ${t.chevron} transition-transform ${isGrowInternalOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </button>
+              {isGrowInternalOpen && isSidebarOpen && (
+                <ul className={`ml-2 mt-2 space-y-1 border-l ${t.subBorder} pl-2`}>
+                  <li>
+                    <Link
+                      to="/grow-internal/close-meeting"
+                      className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
+                        isActive('/grow-internal/close-meeting') ? t.subActiveClass : `${t.subText} ${t.subHover}`
+                      }`}
+                    >
+                      クローズミーティング
+                    </Link>
+                  </li>
+                </ul>
+              )}
+            </li>
+          )}
 
         </ul>
       </nav>

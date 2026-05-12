@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
-import { User, CreditCard, Globe, Mail, Users, Check, X } from 'lucide-react';
+import { User, CreditCard, Mail, Users, Check, X } from 'lucide-react';
 import { PLANS, PLAN_TYPES, isUnlimited, getPlanBadgeColor, EXTRA_SITE_UNIT_PRICE } from '../constants/plans';
 import UpgradeModal from '../components/common/UpgradeModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -42,17 +42,17 @@ import TourHelpButton from '../components/Onboarding/TourHelpButton';
 const ALL_TABS = [
   { id: 'profile', label: 'プロフィール', icon: User },
   { id: 'plan', label: 'プラン確認', icon: CreditCard },
-  { id: 'sites', label: '登録サイト', icon: Globe },
   { id: 'email', label: 'メール通知', icon: Mail },
   { id: 'members', label: 'メンバー管理', icon: Users },
 ];
 
-// viewer は plan / members タブを非表示。sites は読取専用で残す
+// viewer は plan / members タブを非表示
 const VIEWER_TABS = ALL_TABS.filter((t) => !['plan', 'members'].includes(t.id));
 
 /**
  * アカウント設定画面（タブ式）
- * URL パラメータ `?tab=profile|plan|sites|email|members` でタブを切替
+ * URL パラメータ `?tab=profile|plan|email|members` でタブを切替
+ * 登録サイトの一覧・管理は /sites/list（サイト管理）に集約
  */
 export default function AccountSettings() {
   useEffect(() => { setPageTitle('アカウント設定'); }, []);
@@ -437,94 +437,6 @@ export default function AccountSettings() {
               })}
             </div>
 
-          </div>
-        )}
-
-        {/* ========== 登録サイト ========== */}
-        {activeTab === 'sites' && (
-          <div className="space-y-6">
-            <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {isViewer ? '閲覧可能なサイト' : '登録しているサイト'}
-                  </h2>
-                  <p className="mt-0.5 text-sm text-gray-600 dark:text-dark-6">
-                    {isViewer ? 'オーナーが割り当てたサイトのみ表示されます' : 'クリックでサイト詳細・設定編集へ'}
-                  </p>
-                </div>
-                {!isViewer && (
-                  <Button variant="primary" href="/sites/new">
-                    サイトを追加
-                  </Button>
-                )}
-              </div>
-              {sites && sites.length > 0 ? (
-                <ul className="space-y-3">
-                  {sites.map((site) => {
-                    if (isViewer) {
-                      // viewer は read-only。サイト詳細ページへのリンクを開かないため div で表示
-                      return (
-                        <li key={site.id}>
-                          <div className="block p-4 rounded-lg border border-gray-200 dark:border-dark-3">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="font-medium text-gray-900 dark:text-white">
-                                  {site.siteName || '名称未設定'}
-                                </p>
-                                <p className="text-sm text-gray-500 dark:text-dark-6 mt-0.5">{site.siteUrl || '-'}</p>
-                              </div>
-                              <span className="text-xs text-gray-400">閲覧のみ</span>
-                            </div>
-                          </div>
-                        </li>
-                      );
-                    }
-                    return (
-                      <li key={site.id}>
-                        <Link
-                          to={`/sites/${site.id}`}
-                          className="block p-4 rounded-lg border border-gray-200 hover:border-primary/40 hover:bg-gray-50/80 transition-colors group dark:border-dark-3 dark:hover:bg-dark-3"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-medium text-gray-900 dark:text-white group-hover:text-primary">
-                                {site.siteName || '名称未設定'}
-                              </p>
-                              <p className="text-sm text-gray-500 dark:text-dark-6 mt-0.5">{site.siteUrl || '-'}</p>
-                            </div>
-                            <span className="text-sm text-primary font-medium">管理へ</span>
-                          </div>
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              ) : (
-                <div className="rounded-lg border border-gray-200 bg-gray-50/50 p-6 text-center dark:border-dark-3 dark:bg-dark-3">
-                  <p className="text-sm text-gray-600 dark:text-dark-6 mb-4">
-                    {isViewer ? '閲覧可能なサイトがありません' : 'サイトがありません'}
-                  </p>
-                  {!isViewer && (
-                    <div className="flex flex-wrap justify-center gap-3">
-                      <Button variant="secondary" href="/sites/list">
-                        サイト一覧
-                      </Button>
-                      <Button variant="primary" href="/sites/new">
-                        サイトを追加
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              )}
-              {!isViewer && (
-                <div className="mt-4 text-right">
-                  <Link to="/sites/list" className="text-xs text-primary hover:underline">
-                    すべてのサイトを管理 →
-                  </Link>
-                </div>
-              )}
-            </div>
           </div>
         )}
 

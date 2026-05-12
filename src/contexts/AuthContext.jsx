@@ -383,10 +383,15 @@ export const AuthProvider = ({ children }) => {
     return fresh;
   };
 
+  // GrowGroup 社内スタッフ判定（メールドメインのみで判定。社内専用メニュー・画面のフロント側ゲート）
+  // 注: バックエンド callable / Firestore ルールでも別途 request.auth.token.email を検証する（多層防御）
+  const isGrowStaff = !!(currentUser?.email && currentUser.email.toLowerCase().endsWith('@grow-group.jp'));
+
   const value = {
     currentUser,
     userProfile,
     loading,
+    isGrowStaff,
     signup,
     login,
     loginWithGoogle,
