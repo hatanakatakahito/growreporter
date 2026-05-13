@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { httpsCallable } from 'firebase/functions';
-import { User, CreditCard, Mail, Users, Check, X } from 'lucide-react';
+import { User, CreditCard, Mail, Users, Check, X, MessageSquare } from 'lucide-react';
 import { PLANS, PLAN_TYPES, isUnlimited, getPlanBadgeColor, EXTRA_SITE_UNIT_PRICE } from '../constants/plans';
 import UpgradeModal from '../components/common/UpgradeModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,12 +38,14 @@ import DotWaveSpinner from '@/components/common/DotWaveSpinner';
 import { useAutoTour } from '../hooks/useAutoTour';
 import { useOnboarding } from '../hooks/useOnboarding';
 import TourHelpButton from '../components/Onboarding/TourHelpButton';
+import FeedbackForm from '../components/Feedback/FeedbackForm';
 
 const ALL_TABS = [
   { id: 'profile', label: 'プロフィール', icon: User },
   { id: 'plan', label: 'プラン確認', icon: CreditCard },
   { id: 'email', label: 'メール通知', icon: Mail },
   { id: 'members', label: 'メンバー管理', icon: Users },
+  { id: 'feedback', label: '意見箱', icon: MessageSquare },
 ];
 
 // viewer は plan / members タブを非表示
@@ -519,6 +521,19 @@ export default function AccountSettings() {
                   メンバー管理を開く
                 </Button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========== 意見箱・お問い合わせ ========== */}
+        {activeTab === 'feedback' && (
+          <div className="space-y-6">
+            <div className="rounded-lg border border-stroke bg-white p-6 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">意見箱・お問い合わせ</h2>
+              <p className="mt-1 mb-5 text-sm text-gray-600 dark:text-dark-6">
+                ご質問・ご要望・不具合報告など、お気軽にお送りください。
+              </p>
+              <FeedbackForm source="account_settings" />
             </div>
           </div>
         )}

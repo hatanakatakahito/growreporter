@@ -182,20 +182,6 @@ export const dashboardSteps = [
     },
   },
   {
-    element: '#nav-account-settings',
-    popover: {
-      title: 'アカウント設定',
-      description: 'プロフィール編集・プラン確認・メール通知設定（週次/月次/アラート）・メンバー管理を行います。',
-    },
-  },
-  {
-    element: '#nav-help',
-    popover: {
-      title: '使い方・意見箱',
-      description: 'クリックするとアコーディオンが開き、「マニュアル」「FAQ」「意見箱」にアクセスできます。操作方法の詳細や困ったときの解決策はマニュアル・FAQをご参照ください。ご意見・ご要望は意見箱からお気軽にお寄せください。',
-    },
-  },
-  {
     element: sel(TOUR_TARGETS.SIDEBAR_THEME_TOGGLE),
     popover: {
       title: 'ダーク / ライトモード',
@@ -206,8 +192,8 @@ export const dashboardSteps = [
   {
     element: sel(TOUR_TARGETS.SIDEBAR_USER_INFO),
     popover: {
-      title: 'ユーザー情報 / アカウント設定',
-      description: 'ここにはお名前と現在のプランが表示されています。クリックするとアカウント設定画面に移動し、プロフィール編集・プラン確認・メール通知設定・メンバー管理などが行えます。',
+      title: 'アカウント・設定メニュー',
+      description: 'お名前と現在のプランが表示されています。クリックするとメニューが開き、「アカウント設定」（プロフィール／プラン確認／メール通知／メンバー管理／意見箱）・「管理者画面」・「ログアウト」にアクセスできます。',
       side: 'top',
     },
   },
@@ -624,7 +610,7 @@ export const accountSettingsSteps = [
     element: sel(TOUR_TARGETS.ACCOUNT_TABS),
     popover: {
       title: 'アカウント設定',
-      description: 'プロフィール・プラン確認・登録サイト・メール通知・メンバー管理の5つのタブで構成されています。',
+      description: 'プロフィール・プラン確認・メール通知・メンバー管理・意見箱の5つのタブで構成されています。ご意見・ご要望・不具合報告は「意見箱」タブからお送りいただけます。',
     },
   },
   {
