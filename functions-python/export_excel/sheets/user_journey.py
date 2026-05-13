@@ -126,9 +126,9 @@ def create_user_journey_sheet(
     # ─── 3. ランディングページ TOP ─────────────────────
     lps = [n for n in nodes if isinstance(n, dict) and n.get("type") == "lp"]
     if lps:
-        row = _section_marker(ws, row, "■ ランディングページ TOP", formats)
+        row = _section_marker(ws, row, "■ 入口ページ TOP", formats)
         ws.set_row(row, 24)
-        ws.merge_range(row, COL_NUM, row, COL_RESULT, "ランディングページ", formats["header"])
+        ws.merge_range(row, COL_NUM, row, COL_RESULT, "入口ページ", formats["header"])
         ws.write(row, COL_SESS, "セッション", formats["header"])
         ws.merge_range(row, COL_RATE, row, COL_CHG, "前期比", formats["header"])
         row += 1

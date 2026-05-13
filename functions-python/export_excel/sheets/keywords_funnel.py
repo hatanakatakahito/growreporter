@@ -36,7 +36,7 @@ def create_keywords_funnel_sheet(
     sheet_subtitle: str | None = None,
 ):
     """流入キーワード ファネル シートを作成（タブ名は「流入キーワード元」= ナビ準拠）。"""
-    ws = workbook.add_worksheet(safe_sheet_name("流入キーワード元"))
+    ws = workbook.add_worksheet(safe_sheet_name("検索キーワード"))
     ws.hide_gridlines(2)
     ws.set_footer(FOOTER_TEXT)
 
@@ -52,7 +52,7 @@ def create_keywords_funnel_sheet(
     ws.set_column(7, 7, 38)  # 主要 KW / 中心 KW part2 / 対象 LP  → merged (6+7)=52 で中心 KW 対応
 
     # タイトル
-    row = write_sheet_title_bar(ws, "流入キーワード元", sheet_subtitle, 8, formats)
+    row = write_sheet_title_bar(ws, "検索キーワード", sheet_subtitle, 8, formats)
 
     funnel = keywords_v2.get("funnel") or {}
     clusters = keywords_v2.get("clusters") or []
@@ -69,7 +69,7 @@ def create_keywords_funnel_sheet(
     ws.merge_range(row, 2, row, 7, kpi_headers[1], formats["header"])
     row += 1
     kpis = [
-        ("流入キーワード数", f"{int(metrics.get('keywordCount') or 0):,} 個"),
+        ("検索キーワード数", f"{int(metrics.get('keywordCount') or 0):,} 個"),
         ("総クリック数", f"{int(metrics.get('totalClicks') or 0):,} 回"),
         ("総表示回数", f"{int(metrics.get('totalImpressions') or 0):,} 回"),
         ("平均 CTR", f"{float(metrics.get('avgCTR') or 0):.2f}%"),

@@ -138,7 +138,7 @@ export default function KeywordsFunnel({ data, siteId, onReclassify, isReclassif
         {/* 左: ファネル本体 */}
         <div className="lg:col-span-7 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
           <div className="mb-4 flex items-center justify-between gap-3 flex-wrap">
-            <h3 className="text-lg font-semibold text-dark dark:text-white">流入キーワード ファネル</h3>
+            <h3 className="text-lg font-semibold text-dark dark:text-white">検索キーワード ファネル</h3>
             <div className="flex items-center gap-2">
               <span className="text-xs text-body-color">バー指標:</span>
               <select

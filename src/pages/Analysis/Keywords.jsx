@@ -28,7 +28,7 @@ import KeywordsTableView from '../../components/Analysis/KeywordsV2/KeywordsTabl
 import KeywordsChartView from '../../components/Analysis/KeywordsV2/KeywordsChartView';
 
 /**
- * 流入キーワード元 V2 — ファネル分類 + 関係図 + チャンス象限 + 改善候補 + CV 貢献 + 表/グラフ
+ * 検索キーワード V2 — ファネル分類 + 関係図 + チャンス象限 + 改善候補 + CV 貢献 + 表/グラフ
  */
 
 const TABS = [
@@ -50,7 +50,7 @@ export default function Keywords() {
   const [isReclassifying, setIsReclassifying] = useState(false);
 
   useEffect(() => {
-    setPageTitle('流入キーワード元');
+    setPageTitle('検索キーワード');
   }, []);
 
   // localStorage で最後に開いていたタブを復元（リプレース時の既存ユーザー配慮）
@@ -111,7 +111,7 @@ export default function Keywords() {
           {/* ページタイトル */}
           <div className="mb-4">
             <div className="flex items-center gap-3 flex-wrap">
-              <h2 className="text-2xl font-bold text-dark dark:text-white">集客 - 流入キーワード元</h2>
+              <h2 className="text-2xl font-bold text-dark dark:text-white">集客 - 検索キーワード</h2>
               <TourHelpButton tourId="analysisKeywords" />
             </div>
             <p className="mt-1 text-sm text-body-color">
@@ -126,7 +126,7 @@ export default function Keywords() {
               </h3>
               <p className="mb-6 text-sm text-body-color">
                 Googleアカウントで認証し、Search Consoleサイトにアクセスします<br />
-                <span className="text-gray-500">※ 流入キーワードデータを表示するには、Search Consoleとの連携が必要です</span>
+                <span className="text-gray-500">※ 検索キーワードデータを表示するには、Search Consoleとの連携が必要です</span>
               </p>
               <Button variant="primary" size="lg" href={`/sites/${selectedSiteId}/edit?step=3`}>
                 Googleアカウントで接続

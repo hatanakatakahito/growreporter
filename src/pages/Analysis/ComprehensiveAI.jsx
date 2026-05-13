@@ -67,8 +67,8 @@ const SECTION_META = {
     title: 'どこから来ているか',
     links: [
       { label: '集客チャネル', path: '/analysis/channels' },
-      { label: 'キーワード', path: '/analysis/keywords' },
-      { label: '被リンク元', path: '/analysis/referrals' },
+      { label: '検索キーワード', path: '/analysis/keywords' },
+      { label: '参照元サイト', path: '/analysis/referrals' },
     ],
   },
   'コンテンツ分析': {
@@ -77,8 +77,8 @@ const SECTION_META = {
     title: 'どのページが見られているか',
     links: [
       { label: 'ページ別', path: '/analysis/pages' },
-      { label: 'ランディング', path: '/analysis/landing-pages' },
-      { label: 'ページフロー', path: '/analysis/page-flow' },
+      { label: '入口ページ', path: '/analysis/landing-pages' },
+      { label: '次に見たページ', path: '/analysis/page-flow' },
     ],
   },
   'コンバージョン分析': {
@@ -87,7 +87,7 @@ const SECTION_META = {
     title: '成果はどれくらいか',
     links: [
       { label: getShortLabel('conversions'), path: '/analysis/conversions' },
-      { label: '逆算フロー', path: '/analysis/reverse-flow' },
+      { label: '成果までの到達ステップ', path: '/analysis/reverse-flow' },
     ],
   },
 };

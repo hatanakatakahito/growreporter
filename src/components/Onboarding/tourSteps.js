@@ -171,7 +171,7 @@ export const dashboardSteps = [
     element: '#nav-analysis',
     popover: {
       title: '分析する',
-      description: 'クリックするとアコーディオンが開き、15種類以上の分析画面にアクセスできます。時系列（月別/日別/曜日/時間帯）、集客（チャネル/キーワード/リファラ）、ページ（ページ別/コンテンツ/LP等）、コンバージョン（一覧/逆算フロー）のカテゴリに分かれています。',
+      description: 'クリックするとアコーディオンが開きます。先頭に「AI総合分析」と「全体サマリー」、その下に目的別の4グループ（ユーザー・日時／集客／ページ／成果）が並び、各画面の役割が一行説明つきで確認できます。',
     },
   },
   {
@@ -341,9 +341,9 @@ export const analysisKeywordsSteps = [
   TOUR_GUIDE_TOGGLE_STEP,
 ];
 
-// ── 被リンク元 ────────────────────────────────
+// ── 参照元サイト ────────────────────────────────
 export const analysisReferralsSteps = makeAnalysisSteps(
-  '被リンク元分析の対象期間を設定します。外部サイトからの参照流入（Referral）を確認できます。',
+  '参照元サイト分析の対象期間を設定します。外部サイトからの参照流入（Referral）を確認できます。',
   'AIが参照元サイトの質と量を分析し、注目すべきリファラや新規流入経路の開拓ヒントを提案します。'
 );
 
@@ -366,15 +366,15 @@ export const analysisPageCategoriesSteps = makeAnalysisSteps(
   'AIがカテゴリ別のパフォーマンスを比較し、注力すべきコンテンツカテゴリを提案します。'
 );
 
-// ── ランディングページ ─────────────────────────────
+// ── 入口ページ ─────────────────────────────
 export const analysisLandingPagesSteps = makeAnalysisSteps(
-  'ランディングページ分析の対象期間を設定します。ユーザーが最初に訪問したページ別にデータを確認できます。',
+  '入口ページ分析の対象期間を設定します。ユーザーが最初に訪問したページ別にデータを確認できます。',
   'AIがLP別の直帰率やCV率を分析し、ファーストビューの改善案やA/Bテスト候補を提案します。'
 );
 
-// ── ページフロー ───────────────────────────────
+// ── 次に見たページ ───────────────────────────────
 export const analysisPageFlowSteps = makeAnalysisSteps(
-  'ページフロー分析の対象期間を設定します。特定ページの直前にユーザーがどのページを見ていたかを分析できます。',
+  '次に見たページ分析の対象期間を設定します。特定ページの直前にユーザーがどのページを見ていたかを分析できます。',
   'AIが遷移パターンを分析し、離脱が多い導線や効果的な回遊経路を提案します。',
   { hasColumnToggle: false, hasFilters: false, hasViewTabs: false }
 );
@@ -386,9 +386,9 @@ export const analysisConversionsSteps = makeAnalysisSteps(
   { hasFilters: false }
 );
 
-// ── 逆算フロー ────────────────────────────────
+// ── 成果までの到達ステップ ────────────────────────────────
 export const analysisReverseFlowSteps = makeAnalysisSteps(
-  '逆算フロー分析の対象期間を設定します。フォームページからのコンバージョンフローを分析できます。',
+  '成果までの到達ステップ分析の対象期間を設定します。フォームページからのコンバージョンフローを分析できます。',
   'AIがファネルの各段階の離脱率を分析し、CV率改善のためのフォーム最適化案を提案します。',
   { hasColumnToggle: false, hasFilters: false, hasViewTabs: false }
 );
@@ -400,9 +400,9 @@ export const analysisExternalLinksSteps = makeAnalysisSteps(
   { hasViewTabs: false }
 );
 
-// ── ファイルダウンロード ────────────────────────────
+// ── 資料ダウンロード ────────────────────────────
 export const analysisFileDownloadsSteps = makeAnalysisSteps(
-  'ファイルダウンロード分析の対象期間を設定します。PDF・Excel等のダウンロード数を確認できます。',
+  '資料ダウンロード分析の対象期間を設定します。PDF・Excel等のダウンロード数を確認できます。',
   'AIがダウンロード傾向を分析し、人気コンテンツの特徴やダウンロード数向上のヒントを提案します。'
 );
 

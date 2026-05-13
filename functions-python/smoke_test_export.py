@@ -228,10 +228,10 @@ def verify_excel(path: Path) -> list[str]:
                 logs.append(f"    R{r} AI コメント (B 列マージ): {v[:80]}...")
                 logs.append(f"    R{r} 行高: {ws.row_dimensions[r].height}")
 
-    # 流入キーワード元シート詳細
-    if "流入キーワード元" in wb.sheetnames:
-        ws = wb["流入キーワード元"]
-        logs.append(f"\n  [流入キーワード元] max_row={ws.max_row}, max_col={ws.max_column}")
+    # 検索キーワードシート詳細
+    if "検索キーワード" in wb.sheetnames:
+        ws = wb["検索キーワード"]
+        logs.append(f"\n  [検索キーワード] max_row={ws.max_row}, max_col={ws.max_column}")
         widths = [ws.column_dimensions[chr(65 + i)].width for i in range(8)]
         logs.append(f"    列幅: {widths}")
         # クラスタ # 列の値 (■ 意味的クラスタ の直後にある #)

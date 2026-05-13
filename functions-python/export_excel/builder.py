@@ -92,12 +92,12 @@ DYNAMIC_SHEETS = [
     ("hourly", "時間帯別", None),
     # ── 集客（流入KWファネルは custom で別ハンドリング） ──
     ("channels", "集客チャネル", "channelName"),
-    ("referrals", "被リンク元", "source"),
+    ("referrals", "参照元サイト", "source"),
     # ── ページ ──
     ("pages", "ページ別", "path"),
     ("pageCategories", "ページ分類別", None),
-    ("landingPages", "ランディングページ", "path"),
-    ("fileDownloads", "ファイルダウンロード", None),
+    ("landingPages", "入口ページ", "path"),
+    ("fileDownloads", "資料ダウンロード", None),
     ("externalLinks", "外部リンククリック", None),
 ]
 
@@ -378,16 +378,16 @@ def _compute_available_sheets(custom: dict, sheets_data: dict) -> list[str]:
         names.append("集客チャネル")
     kw_v2 = custom.get("keywordsFunnel")
     if kw_v2 and (kw_v2.get("funnel") or kw_v2.get("keywords")):
-        names.append("流入キーワード元")
+        names.append("検索キーワード")
     s = sheets_data.get("referrals")
     if s and s.get("rows"):
-        names.append("被リンク元")
+        names.append("参照元サイト")
     # ページ
     for key, label in (
         ("pages", "ページ別"),
         ("pageCategories", "ページ分類別"),
-        ("landingPages", "ランディングページ"),
-        ("fileDownloads", "ファイルダウンロード"),
+        ("landingPages", "入口ページ"),
+        ("fileDownloads", "資料ダウンロード"),
         ("externalLinks", "外部リンククリック"),
     ):
         s = sheets_data.get(key)
@@ -399,7 +399,7 @@ def _compute_available_sheets(custom: dict, sheets_data: dict) -> list[str]:
     if custom.get("conversions"):
         names.append("コンバージョン一覧")
     if custom.get("reverseFlows"):
-        names.append("逆算フロー")
+        names.append("成果までの到達ステップ")
     # その他
     if custom.get("improvements"):
         names.append("改善提案")

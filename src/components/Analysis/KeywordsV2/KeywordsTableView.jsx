@@ -18,7 +18,7 @@ const COLUMNS = [
   { key: 'ctr', label: 'CTR' },
   { key: 'position', label: '順位' },
   { key: 'estimatedCV', label: '推定 CV' },
-  { key: 'topPage', label: 'ランディング' },
+  { key: 'topPage', label: '入口ページ' },
 ];
 
 export default function KeywordsTableView({ data }) {

@@ -1136,7 +1136,7 @@ SECTION_DESCRIPTIONS = {
     "ユーザー分析": "デバイス・年齢・性別・地域別のユーザー属性とアクセス傾向をまとめています。",
     "集客分析": "チャネル・キーワード・参照元から、流入の量と質を多角的に分析します。",
     "コンテンツ分析": "ページ別・分類別・LP・ファイル DL・外部リンクの利用状況を確認できます。",
-    "コンバージョン分析": "コンバージョン推移と、フォーム到達までの逆算フローによるファネル分析を確認できます。",
+    "コンバージョン分析": "コンバージョン推移と、成果までの到達ステップによるファネル分析を確認できます。",
     "改善アクション": "AI が抽出した改善提案を、優先度・カテゴリ・期待効果と合わせて一覧化します。\nモックアップ生成済みの提案は、共有 URL から After 画面をその場で確認できます。",
     "用語解説": "用語・指標の説明と補足情報をまとめています。",
 }
@@ -1996,7 +1996,7 @@ def _create_keywords_funnel_slide(
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     _fill_slide_bg(slide, Color.WHITE)
-    _add_slide_title(slide, ctx, "流入キーワード元")
+    _add_slide_title(slide, ctx, "検索キーワード")
 
     funnel = keywords_v2.get("funnel") or {}
     clusters = keywords_v2.get("clusters") or []
@@ -2076,7 +2076,7 @@ def _create_keywords_funnel_slide(
     _add_slide_footer(slide, ctx)
 
     # AI 分析スライドは _create_ai_slide で統一（user_journey と同じ作法）
-    _create_ai_slide(prs, ctx, "流入キーワード元", ai_data, memos)
+    _create_ai_slide(prs, ctx, "検索キーワード", ai_data, memos)
 
 
 def _create_keywords_slide(
@@ -2092,7 +2092,7 @@ def _create_keywords_slide(
     # ─── スライド1: テーブル（Top20 は長いので AI 分析は別ページへ分離） ───
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     _fill_slide_bg(slide, Color.WHITE)
-    _add_slide_title(slide, ctx, "流入キーワード Top 20")
+    _add_slide_title(slide, ctx, "検索キーワード Top 20")
 
     layout = calc_table_only_layout(has_ai=False)  # テーブル領域をフル活用
 
@@ -2126,7 +2126,7 @@ def _create_keywords_slide(
     if (ai_data and ai_data.get("summary")) or memos:
         slide_ai = prs.slides.add_slide(prs.slide_layouts[6])
         _fill_slide_bg(slide_ai, Color.WHITE)
-        _add_slide_title(slide_ai, ctx, "流入キーワード Top 20（AI分析）")
+        _add_slide_title(slide_ai, ctx, "検索キーワード Top 20（AI分析）")
         ai_y = CONTENT_Y
         ai_h = FOOTER_Y - CONTENT_Y - 0.1
         _add_ai_and_memo_footer(slide_ai, ai_data, memos, ai_y, ai_h)
@@ -2149,7 +2149,7 @@ def _create_referrals_slide(
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     _fill_slide_bg(slide, Color.WHITE)
-    _add_slide_title(slide, ctx, "被リンク元")
+    _add_slide_title(slide, ctx, "参照元サイト")
 
     has_ai = bool(ai_data and ai_data.get("summary"))
     layout = calc_layout(min(len(sorted_rows), 10), has_ai)
@@ -2196,7 +2196,7 @@ def _create_referrals_slide(
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
     )
     _add_slide_footer(slide, ctx)
-    _create_ai_slide(prs, ctx, "被リンク元", ai_data, memos)
+    _create_ai_slide(prs, ctx, "参照元サイト", ai_data, memos)
 
 
 # ─── 12. ページ別 Top 10 ─────────────────────────────────
@@ -2336,7 +2336,7 @@ def _create_landing_pages_slide(
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     _fill_slide_bg(slide, Color.WHITE)
-    _add_slide_title(slide, ctx, "ランディングページ Top 10")
+    _add_slide_title(slide, ctx, "入口ページ Top 10")
 
     has_ai = bool(ai_data and ai_data.get("summary"))
     layout = calc_layout(10, has_ai)
@@ -2376,7 +2376,7 @@ def _create_landing_pages_slide(
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
     )
     _add_slide_footer(slide, ctx)
-    _create_ai_slide(prs, ctx, "ランディングページ Top 10", ai_data, memos)
+    _create_ai_slide(prs, ctx, "入口ページ Top 10", ai_data, memos)
 
 
 # ─── 15. ファイルDL ─────────────────────────────────────
@@ -2395,7 +2395,7 @@ def _create_file_downloads_slide(
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     _fill_slide_bg(slide, Color.WHITE)
-    _add_slide_title(slide, ctx, "ファイルダウンロード")
+    _add_slide_title(slide, ctx, "資料ダウンロード")
 
     has_ai = bool(ai_data and ai_data.get("summary"))
     layout = calc_layout(min(len(top10), 10), has_ai)
@@ -2433,7 +2433,7 @@ def _create_file_downloads_slide(
         x=MARGIN_X, y=layout["table_y"], h=layout["table_h"],
     )
     _add_slide_footer(slide, ctx)
-    _create_ai_slide(prs, ctx, "ファイルダウンロード", ai_data, memos)
+    _create_ai_slide(prs, ctx, "資料ダウンロード", ai_data, memos)
 
 
 # ─── 16. 外部リンク ─────────────────────────────────────
@@ -2581,7 +2581,7 @@ def _create_reverse_flow_slide(
 
     slide = prs.slides.add_slide(prs.slide_layouts[6])
     _fill_slide_bg(slide, Color.WHITE)
-    _add_slide_title(slide, ctx, "逆算フロー")
+    _add_slide_title(slide, ctx, "成果までの到達ステップ")
 
     has_ai = bool(ai_data and ai_data.get("summary"))
     layout = calc_table_only_layout(has_ai)
@@ -2620,7 +2620,7 @@ def _create_reverse_flow_slide(
         x=MARGIN_X, y=layout["table_y"], h=tbl_h,
     )
     _add_slide_footer(slide, ctx)
-    _create_ai_slide(prs, ctx, "逆算フロー", ai_data, memos)
+    _create_ai_slide(prs, ctx, "成果までの到達ステップ", ai_data, memos)
 
 
 # ─── 17.5 ユーザージャーニー ────────────────────────────
@@ -2696,7 +2696,7 @@ _APPENDIX_METRIC_KEYS = [
 ]
 
 _APPENDIX_EXTRA_TERMS = [
-    ("ランディングページ", "ユーザーが最初に閲覧したページ"),
+    ("入口ページ", "ユーザーが最初に閲覧したページ"),
 ]
 
 _APPENDIX_GSC_KEYS = ["clicks", "impressions", "ctr", "position"]

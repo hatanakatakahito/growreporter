@@ -2,12 +2,12 @@ import React from 'react';
 
 /**
  * KPI サマリー 4 枚カード
- * 流入 KW 数 / 総クリック / 推定 CV / 平均順位
+ * 検索キーワード数 / 総クリック / 推定 CV / 平均順位
  */
 export default function KeywordsKpiSummary({ metrics, comparison }) {
   const items = [
     {
-      label: '流入キーワード数',
+      label: '検索キーワード数',
       value: (metrics?.keywordCount || 0).toLocaleString(),
       change: changeRate(metrics?.keywordCount, comparison?.keywordCount),
     },

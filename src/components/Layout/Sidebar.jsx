@@ -67,6 +67,81 @@ const SIDEBAR_THEMES = {
   },
 };
 
+// 「分析する」サブメニュー（目的グループ式）。URL ルートは不変、表示ラベルのみ平易化。
+// ・先頭に AI総合分析（ピン留め）／全体サマリー（直リンク・トグルなし）
+// ・以下4つの「目的グループ」（クリックで開閉。各リーフに小さな説明文）
+const ANALYSIS_SUBMENU = {
+  ai: { label: 'AI総合分析', path: '/analysis/comprehensive', lockedForFree: true },
+  summary: { label: '全体サマリー', desc: '主要指標をまとめて一覧', path: '/analysis/summary' },
+  groups: [
+    {
+      id: 'g-user-time',
+      name: 'ユーザー・日時',
+      sub: '誰がいつ',
+      items: [
+        { label: 'ユーザー属性', desc: 'デバイス・地域・年代など', path: '/analysis/users' },
+        { label: '月別', desc: '月ごとの推移・季節変動', path: '/analysis/month' },
+        { label: '日別', desc: '日ごとの増減', path: '/analysis/day' },
+        { label: '曜日別', desc: '平日と休日の差', path: '/analysis/week' },
+        { label: '時間帯別', desc: '多い時間帯', path: '/analysis/hour' },
+      ],
+    },
+    {
+      id: 'g-acquisition',
+      name: '集客',
+      sub: 'どこから来たか',
+      items: [
+        { label: '集客チャネル', desc: '検索/SNS/広告/直接の内訳', path: '/analysis/channels' },
+        { label: '検索キーワード', desc: 'Google検索で来たクエリ', path: '/analysis/keywords' },
+        { label: '参照元サイト', desc: '他サイトのリンクから来た元', path: '/analysis/referrals' },
+      ],
+    },
+    {
+      id: 'g-page',
+      name: 'ページ',
+      sub: 'どのように見たか',
+      zones: [
+        {
+          name: 'よく使う',
+          items: [
+            { label: 'ページ別', desc: '各ページのPV・滞在・直帰', path: '/analysis/pages' },
+            { label: '入口ページ', desc: '最初に着地したページ', path: '/analysis/landing-pages' },
+            { label: '資料ダウンロード', desc: 'PDF等のDL数', path: '/analysis/file-downloads' },
+            { label: '外部リンククリック', desc: '外部リンクのクリック数', path: '/analysis/external-links' },
+          ],
+        },
+        {
+          name: '詳しく見る',
+          items: [
+            { label: 'コンテンツ分析', desc: '記事の読まれ方（興味度スコア）', path: '/analysis/content' },
+            { label: 'ページ分類別', desc: 'カテゴリ単位の比較', path: '/analysis/page-categories' },
+            { label: '次に見たページ', desc: 'ページ間の動き', path: '/analysis/page-flow' },
+            { label: 'ユーザージャーニー', desc: '成約に至る典型ルート', path: '/analysis/user-journey', adminOnly: true },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'g-conversion',
+      name: '成果',
+      sub: 'コンバージョン',
+      items: [
+        { label: 'コンバージョン一覧', desc: '問い合わせ・購入などの推移', path: '/analysis/conversions' },
+        { label: '成果までの到達ステップ', desc: '入口→フォーム→完了の到達率', path: '/analysis/reverse-flow' },
+      ],
+    },
+  ],
+};
+
+// グループ内の全リーフ（zones があれば flatten）
+const groupLeaves = (g) => (g.zones ? g.zones.flatMap((z) => z.items) : g.items);
+// path → group.id（自動展開・親グループ active 判定用）
+const ANALYSIS_PATH_GROUP = (() => {
+  const m = {};
+  for (const g of ANALYSIS_SUBMENU.groups) for (const it of groupLeaves(g)) m[it.path] = g.id;
+  return m;
+})();
+
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -75,14 +150,20 @@ export default function Sidebar() {
   const { isSidebarOpen, toggleSidebar, isDarkSidebar, toggleSidebarTheme } = useSidebar();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
   const [isGrowInternalOpen, setIsGrowInternalOpen] = useState(false);
-  const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
-  const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
-  const [isEngagementOpen, setIsEngagementOpen] = useState(false);
-  const [isConversionOpen, setIsConversionOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState(() => new Set()); // 分析メニューの目的グループ（開いている group.id の集合）
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const userMenuRef = useRef(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const { isFree, plan, planId } = usePlan();
+
+  const isGroupOpen = (id) => openGroups.has(id);
+  const toggleGroup = (id) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
 
   // ユーザーメニュー（フッター）の外側クリックで閉じる
   useEffect(() => {
@@ -116,29 +197,11 @@ export default function Sidebar() {
   useEffect(() => {
     const path = location.pathname;
 
-    // 分析ページかどうか
-    if (path.startsWith('/analysis/') || path === '/users' || path.startsWith('/acquisition/') || path.startsWith('/engagement/') || path.startsWith('/conversion/')) {
+    // 分析ページなら「分析する」アコーディオンを開く＋現在ページが属する目的グループも開く
+    if (path.startsWith('/analysis')) {
       setIsAnalysisOpen(true);
-    }
-
-    // 時系列サブメニュー
-    if (path.startsWith('/analysis/month') || path.startsWith('/analysis/day') || path.startsWith('/analysis/week') || path.startsWith('/analysis/hour')) {
-      setIsTimeSeriesOpen(true);
-    }
-
-    // 集客サブメニュー
-    if (path.startsWith('/acquisition/')) {
-      setIsAcquisitionOpen(true);
-    }
-
-    // エンゲージメントサブメニュー
-    if (path.startsWith('/engagement/')) {
-      setIsEngagementOpen(true);
-    }
-
-    // コンバージョンサブメニュー
-    if (path.startsWith('/conversion/')) {
-      setIsConversionOpen(true);
+      const gid = ANALYSIS_PATH_GROUP[path];
+      if (gid) setOpenGroups((prev) => (prev.has(gid) ? prev : new Set(prev).add(gid)));
     }
 
     // GrowGroup 社内用
@@ -193,53 +256,7 @@ export default function Sidebar() {
       label: '分析する',
       path: '/analysis',
       hasSubmenu: true,
-      submenu: [
-        { label: '全体サマリー', path: '/analysis/summary' },
-        { label: 'ユーザー属性', path: '/analysis/users' },
-        {
-          label: '時系列',
-          hasSubmenu: true,
-          submenu: [
-            { label: '月別', path: '/analysis/month' },
-            { label: '日別', path: '/analysis/day' },
-            { label: '曜日別', path: '/analysis/week' },
-            { label: '時間帯別', path: '/analysis/hour' },
-          ]
-        },
-        {
-          label: '集客',
-          hasSubmenu: true,
-          submenu: [
-            { label: '集客チャネル', path: '/analysis/channels' },
-            { label: '流入キーワード元', path: '/analysis/keywords' },
-            { label: '被リンク元', path: '/analysis/referrals' },
-          ]
-        },
-        {
-          label: 'ページ',
-          hasSubmenu: true,
-          submenu: [
-            { label: 'ページ別', path: '/analysis/pages' },
-            { label: 'コンテンツ分析', path: '/analysis/content' },
-            { label: 'ページ分類別', path: '/analysis/page-categories' },
-            { label: 'ランディングページ', path: '/analysis/landing-pages' },
-            { label: 'ファイルダウンロード', path: '/analysis/file-downloads' },
-            { label: '外部リンククリック', path: '/analysis/external-links' },
-            { label: 'ページフロー', path: '/analysis/page-flow' },
-          ]
-        },
-        // 管理者プレビュー: ユーザージャーニー（feature flag）
-        { label: 'ユーザージャーニー', path: '/analysis/user-journey', adminOnly: true },
-        {
-          label: 'コンバージョン',
-          hasSubmenu: true,
-          submenu: [
-            { label: 'コンバージョン一覧', path: '/analysis/conversions' },
-            { label: '逆算フロー', path: '/analysis/reverse-flow' },
-          ]
-        },
-        { label: 'AI総合分析', path: '/analysis/comprehensive', lockedForFree: true },
-      ],
+      analysis: ANALYSIS_SUBMENU,
     },
     {
       navId: 'nav-improve',
@@ -314,9 +331,9 @@ export default function Sidebar() {
                     id={item.navId}
                     data-tour={item.tourTarget}
                     onClick={() => isSidebarOpen && setIsAnalysisOpen(!isAnalysisOpen)}
-                    className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
+                    className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium transition ${
                       isSidebarOpen ? 'justify-between' : 'justify-center'
-                    }`}
+                    } ${location.pathname.startsWith('/analysis') ? t.activeClass : `${t.menuText} ${t.menuHover}`}`}
                     title={!isSidebarOpen ? item.label : ''}
                   >
                     <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
@@ -324,95 +341,82 @@ export default function Sidebar() {
                       {isSidebarOpen && <span>{item.label}</span>}
                     </div>
                     {isSidebarOpen && (
-                      <svg
-                        className={`h-4 w-4 ${t.chevron} transition-transform ${isAnalysisOpen ? 'rotate-180' : ''}`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
+                      <svg className={`h-4 w-4 ${t.chevron} transition-transform ${isAnalysisOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     )}
                   </button>
                   {isAnalysisOpen && isSidebarOpen && (
-                    <ul className="ml-3 mt-2 space-y-1 pl-2">
-                      {item.submenu.filter(s => !s.adminOnly || isAdmin).map((subItem, subIndex) => (
-                        <li key={subIndex}>
-                          {subItem.hasSubmenu ? (
-                            /* サブアコーディオン（時系列・集客・ページ・コンバージョン） */
-                            <>
-                              <button
-                                onClick={() => {
-                                  if (subItem.label === '時系列') setIsTimeSeriesOpen(!isTimeSeriesOpen);
-                                  else if (subItem.label === '集客') setIsAcquisitionOpen(!isAcquisitionOpen);
-                                  else if (subItem.label === 'ページ') setIsEngagementOpen(!isEngagementOpen);
-                                  else if (subItem.label === 'コンバージョン') setIsConversionOpen(!isConversionOpen);
-                                }}
-                                className={`flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm ${t.subText} transition ${t.subHover}`}
-                              >
-                                <span>{subItem.label}</span>
-                                <svg
-                                  className={`h-3 w-3 ${t.chevron} transition-transform ${
-                                    (subItem.label === '時系列' && isTimeSeriesOpen) ||
-                                    (subItem.label === '集客' && isAcquisitionOpen) ||
-                                    (subItem.label === 'ページ' && isEngagementOpen) ||
-                                    (subItem.label === 'コンバージョン' && isConversionOpen)
-                                      ? 'rotate-180'
-                                      : ''
-                                  }`}
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </button>
-                              {((subItem.label === '時系列' && isTimeSeriesOpen) ||
-                                (subItem.label === '集客' && isAcquisitionOpen) ||
-                                (subItem.label === 'ページ' && isEngagementOpen) ||
-                                (subItem.label === 'コンバージョン' && isConversionOpen)) && (
-                                <ul className="ml-2 mt-1 space-y-1 pl-2">
-                                  {subItem.submenu.map((leaf, leafIndex) => (
-                                    <li key={leafIndex}>
-                                      <Link
-                                        to={leaf.path}
-                                        className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
-                                          isActive(leaf.path)
-                                            ? t.subActiveClass
-                                            : `${t.subText} ${t.subHover}`
-                                        }`}
-                                      >
-                                        {leaf.label}
-                                      </Link>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </>
-                          ) : subItem.lockedForFree && isFree ? (
-                            <button
-                              onClick={() => setShowUpgradeModal(true)}
-                              className={`flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm transition-all duration-200 ${t.subText} ${t.subHover} opacity-60`}
-                            >
-                              <span>{subItem.label}</span>
-                              <svg className="h-3.5 w-3.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+                    <div className="ml-3 mt-2 space-y-1 pl-2">
+                      {/* AI総合分析（先頭にピン留め） */}
+                      {(() => {
+                        const ai = item.analysis.ai;
+                        const aiGrad = { background: 'linear-gradient(90deg,rgba(55,88,249,0.08),rgba(139,92,246,0.08),rgba(236,72,153,0.08))' };
+                        const aiInner = (
+                          <>
+                            <svg className="h-4 w-4 shrink-0 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.456-2.456L14.25 6l1.035-.259a3.375 3.375 0 002.456-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" /></svg>
+                            <span className={`truncate font-medium ${t.subText}`}>{ai.label}</span>
+                            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-primary via-purple-500 to-pink-500 text-[8px] font-bold leading-none text-white">AI</span>
+                            {isFree && <svg className="ml-auto h-3.5 w-3.5 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>}
+                          </>
+                        );
+                        return isFree ? (
+                          <button type="button" onClick={() => setShowUpgradeModal(true)} style={aiGrad} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition">{aiInner}</button>
+                        ) : (
+                          <Link to={ai.path} style={aiGrad} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition">{aiInner}</Link>
+                        );
+                      })()}
+
+                      {/* 全体サマリー（直リンク・2段組み・トグルなし） */}
+                      <Link to={item.analysis.summary.path} className={`block rounded-lg px-4 py-2 transition ${isActive(item.analysis.summary.path) ? t.subActiveClass : t.subHover}`}>
+                        <span className={`block truncate text-sm ${isActive(item.analysis.summary.path) ? 'font-semibold' : t.subText}`}>{item.analysis.summary.label}</span>
+                        <span className="block truncate text-[11px] leading-tight text-slate-400">{item.analysis.summary.desc}</span>
+                      </Link>
+
+                      {/* 目的グループ（クリックで開閉・各リーフは2段組み） */}
+                      {item.analysis.groups.map((g) => {
+                        const leaves = (g.zones ? g.zones.flatMap((z) => z.items) : g.items).filter((it) => !it.adminOnly || isAdmin);
+                        const groupActive = leaves.some((it) => isActive(it.path));
+                        const open = isGroupOpen(g.id);
+                        const renderLeaf = (it) => (
+                          <Link key={it.path} to={it.path} className={`block rounded-lg px-4 py-1.5 transition ${isActive(it.path) ? t.subActiveClass : t.subHover}`}>
+                            <span className={`block truncate text-sm ${isActive(it.path) ? 'font-semibold' : t.subText}`}>
+                              {it.label}
+                              {it.adminOnly && <span className="ml-1 rounded bg-slate-100 px-1 py-0.5 align-middle text-[9px] font-semibold text-slate-500">管理者</span>}
+                            </span>
+                            <span className="block truncate text-[11px] leading-tight text-slate-400">{it.desc}</span>
+                          </Link>
+                        );
+                        return (
+                          <div key={g.id}>
+                            <button type="button" onClick={() => toggleGroup(g.id)} className={`flex w-full items-center justify-between rounded-lg px-4 py-2 transition ${groupActive ? t.subActiveClass : t.subHover}`}>
+                              <span className="text-left">
+                                <span className={`block truncate text-sm ${groupActive ? 'font-semibold' : t.subText}`}>{g.name}</span>
+                                <span className="block truncate text-[11px] leading-tight text-slate-400">{g.sub}</span>
+                              </span>
+                              <svg className={`h-3 w-3 shrink-0 ${t.chevron} transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                             </button>
-                          ) : (
-                            /* 直リンク */
-                            <Link
-                              to={subItem.path}
-                              className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
-                                isActive(subItem.path)
-                                  ? t.subActiveClass
-                                  : `${t.subText} ${t.subHover}`
-                              }`}
-                            >
-                              {subItem.label}
-                            </Link>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
+                            {open && (
+                              <div className="ml-2 mt-1 space-y-1 pl-2">
+                                {g.zones
+                                  ? g.zones.map((z, zi) => {
+                                      const zItems = z.items.filter((it) => !it.adminOnly || isAdmin);
+                                      if (zItems.length === 0) return null;
+                                      return (
+                                        <React.Fragment key={zi}>
+                                          {zi > 0 && <div className={`mx-3 border-t ${t.subBorder}`} />}
+                                          <div className={`px-4 pb-0.5 pt-1 text-[10px] font-semibold tracking-wide ${t.zoneLabel}`}>{z.name}</div>
+                                          {zItems.map((it) => renderLeaf(it))}
+                                        </React.Fragment>
+                                      );
+                                    })
+                                  : leaves.map((it) => renderLeaf(it))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </>
               ) : item.lockedForFree && isFree ? (

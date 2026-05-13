@@ -21,7 +21,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 
 /**
- * ページフロー画面
+ * 次に見たページ画面
  * 特定ページを閲覧する直前に、ユーザーがサイト内のどのページを見ていたかを分析
  */
 
@@ -46,7 +46,7 @@ export default function PageFlow() {
 
   // ページタイトルを設定
   useEffect(() => {
-    setPageTitle('ページフロー');
+    setPageTitle('次に見たページ');
   }, []);
 
   // URL パラメータからページを復元
@@ -110,7 +110,7 @@ export default function PageFlow() {
     });
   }, [pagePathsData]);
 
-  // ページフローデータ取得
+  // 次に見たページのデータ取得
   const {
     data: transitionData,
     isLoading: transitionLoading,
@@ -180,7 +180,7 @@ export default function PageFlow() {
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h2 className="text-2xl font-bold text-dark dark:text-white">
-                  ページフロー
+                  次に見たページ
                 </h2>
                 <TourHelpButton tourId="analysisPageFlow" />
               </div>
@@ -284,7 +284,7 @@ export default function PageFlow() {
           {!selectedPage && (
             <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
               <div className="border-b border-stroke p-6 dark:border-dark-3">
-                <h3 className="text-lg font-semibold text-dark dark:text-white">ページフローとは？</h3>
+                <h3 className="text-lg font-semibold text-dark dark:text-white">次に見たページとは？</h3>
               </div>
               <div className="p-6">
                 <p className="mb-6 text-sm leading-relaxed text-body-color">
@@ -343,7 +343,7 @@ export default function PageFlow() {
           {selectedPage && (
             <div className="space-y-8">
               {transitionLoading ? (
-                <LoadingSpinner message="ページフローデータを読み込んでいます..." />
+                <LoadingSpinner message="次に見たページのデータを読み込んでいます..." />
               ) : transitionError ? (
                 <ErrorAlert message={transitionErrorMessage?.message || 'データの読み込みに失敗しました。'} />
               ) : transitionData ? (

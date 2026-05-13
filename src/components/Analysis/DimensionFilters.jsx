@@ -14,7 +14,7 @@ const ALL_DIMENSIONS = [
   { key: 'sessionSourceMedium', label: '参照元 / メディア', category: '集客' },
   { key: 'sessionSource', label: '参照元', category: '集客' },
   { key: 'sessionMedium', label: 'メディア', category: '集客' },
-  { key: 'landingPagePlusQueryString', label: 'ランディングページ', category: 'ページ' },
+  { key: 'landingPagePlusQueryString', label: '入口ページ', category: 'ページ' },
   { key: 'pagePath', label: 'ページパス', category: 'ページ' },
   { key: 'deviceCategory', label: 'デバイス', category: 'ユーザー' },
   { key: 'country', label: '国', category: 'ユーザー' },

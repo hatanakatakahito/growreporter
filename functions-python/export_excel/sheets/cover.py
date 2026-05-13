@@ -32,18 +32,18 @@ TOC_SHEETS = [
     ("時間帯別", f"時間帯別の{short_label_of('sessions')}・{short_label_of('conversions')}", "dynamic:hourly"),
     # ── 集客 ──
     ("集客チャネル", f"流入チャネル別 {short_label_of('totalUsers')}・{short_label_of('conversionRate')}", "dynamic:channels"),
-    ("流入キーワード元", f"GSC {short_label_of('clicks')} ファネル（指名/顕在/潜在）+ AI クラスタ", "keywordsFunnel"),
-    ("被リンク元", f"参照元サイト別 {short_label_of('totalUsers')}・{short_label_of('conversions')}", "dynamic:referrals"),
+    ("検索キーワード", f"GSC {short_label_of('clicks')} ファネル（指名/顕在/潜在）+ AI クラスタ", "keywordsFunnel"),
+    ("参照元サイト", f"参照元サイト別 {short_label_of('totalUsers')}・{short_label_of('conversions')}", "dynamic:referrals"),
     # ── ページ ──
     ("ページ別", f"ページ別 {short_label_of('screenPageViews')}・{short_label_of('engagementRate')}・{short_label_of('averageSessionDuration')}", "dynamic:pages"),
     ("ページ分類別", f"ディレクトリ別 {short_label_of('screenPageViews')} 集計", "dynamic:pageCategories"),
-    ("ランディングページ", f"LP 別 {short_label_of('totalUsers')}・{short_label_of('engagementRate')}・{short_label_of('conversions')}", "dynamic:landingPages"),
-    ("ファイルダウンロード", "ファイルダウンロード数", "dynamic:fileDownloads"),
+    ("入口ページ", f"LP 別 {short_label_of('totalUsers')}・{short_label_of('engagementRate')}・{short_label_of('conversions')}", "dynamic:landingPages"),
+    ("資料ダウンロード", "資料ダウンロード数", "dynamic:fileDownloads"),
     ("外部リンククリック", f"外部リンク{short_label_of('clicks')}数", "dynamic:externalLinks"),
     ("ユーザージャーニー", "流入元 → LP → 中間 → CV の 5 層フロー", "userJourney"),
     # ── コンバージョン ──
     ("コンバージョン一覧", f"{short_label_of('conversions')} 種別 × 月別内訳", "conversions"),
-    ("逆算フロー", "フォーム ファネル分析", "reverseFlows"),
+    ("成果までの到達ステップ", "フォーム ファネル分析", "reverseFlows"),
     # ── その他 ──
     ("改善提案", "AI が提案した改善施策一覧", "improvements"),
 ]

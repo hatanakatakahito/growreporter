@@ -37,7 +37,7 @@ import {
 } from 'recharts';
 
 /**
- * 被リンク元分析画面
+ * 参照元サイト分析画面
  * GA4の参照元データ（Referral）を表示
  */
 export default function Referrals() {
@@ -62,7 +62,7 @@ export default function Referrals() {
 
   // ページタイトルを設定
   useEffect(() => {
-    setPageTitle('被リンク元');
+    setPageTitle('参照元サイト');
   }, []);
 
   // 初回のみコンバージョン未設定アラートを表示（サイトデータ読込完了後に判定）
@@ -302,7 +302,7 @@ export default function Referrals() {
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h2 className="text-2xl font-bold text-dark dark:text-white">
-                  集客 - 被リンク元
+                  集客 - 参照元サイト
                 </h2>
                 <TourHelpButton tourId="analysisReferrals" />
               </div>
