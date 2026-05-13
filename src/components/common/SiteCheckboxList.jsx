@@ -3,7 +3,7 @@ import { Globe, CheckCircle, Circle } from 'lucide-react';
 /**
  * サイト選択用の共通チェックボックスリスト
  *
- * 同じ UI が複数モーダル (AssignSitesModal / InviteMemberModal / RoleManagementModal /
+ * 同じ UI が複数モーダル (InviteMemberModal / RoleManagementModal /
  * SiteTransferModal) で使われていたため共通化。
  *
  * @param {Object} props

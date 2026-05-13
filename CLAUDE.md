@@ -106,7 +106,7 @@ export const fetchGA4Data = lazyCallable('./callable/fetchGA4Data.js', 'fetchGA4
 1. Frontend calls Cloud Functions via `httpsCallable` (Firebase SDK, region: `asia-northeast1`)
 2. Functions authenticate via Firebase Auth context, then fetch GA4/GSC APIs using stored OAuth tokens
 3. OAuth refresh tokens are stored encrypted in Firestore `users/{uid}/oauth_tokens`
-4. AI summaries (Claude API primary, Gemini fallback) are cached in Firestore with generation tracking
+4. AI summaries/improvements/chat (Google Gemini — model via `GEMINI_MODEL`, default `gemini-2.5-flash` / `gemini-2.5-flash-lite`) are cached in Firestore with generation tracking
 
 ### Plan System (2-tier、旧 standard/premium は business に正規化)
 Defined in `src/constants/plans.js`, enforced dual-layer: client-side via `usePlan` hook, server-side via `functions/src/utils/planManager.js`:
@@ -124,14 +124,14 @@ Defined in `src/constants/plans.js`, enforced dual-layer: client-side via `usePl
 - `plans/{id}`, `customLimits/{id}` — Plan configuration and overrides
 
 ### Security
-- Firestore security rules in `firestore.rules` (~210 lines) implement RBAC
-- Helper functions: `isAuthenticated()`, `isAdminUser()`, `isAccountMember()`, `isOwnerOrEditor()`, `viewerCanReadSite()`
+- Firestore security rules in `firestore.rules` (~490 lines) implement RBAC
+- Helper functions: `isAdminUser()`, `isEditorOrAdmin()`, `isGrowStaff()`, `isAccountMember()`, `getMemberRole()`, `isOwnerOrEditor()`, `memberCanReadSite()` / `viewerCanReadSite()`, `isSafeSelfUpdate()`, `isSiteOwner()`
 - Member roles: owner, editor, viewer (at account level)
 - **viewer は `users.allowedSiteIds` 配列に含まれるサイトのみ閲覧可**（`firestore.rules` 内 `viewerCanReadSite(siteId)` で強制）。owner/editor は無条件で全サイト読取可
 - viewer の AI 生成・Excel/PPTX エクスポートはオーナーのプラン枠を消費して実行可能
 - viewer の手動編集（改善案/メモ等）は不可（既存 `isOwnerOrEditor` ガードで自動的に拒否）
 - **重要**: `isSafeSelfUpdate` の allowlist に `allowedSiteIds` を追加してはならない。書込は Cloud Function `updateViewerAllowedSites`（Admin SDK）経由のみ。同様に `memberRole` / `accountOwnerId` / `memberships` も allowlist 外で維持
-- viewer の閲覧サイト管理 UI: `Members.jsx` の「サイト割当」ボタン → `AssignSitesModal.jsx`
+- viewer/editor の閲覧サイト管理 UI: `Members.jsx` →「ロール管理」ボタン → `RoleManagementModal.jsx`（`SiteCheckboxList.jsx` でサイト割当）
 - サイト削除時は `onSiteDeleted` トリガーで全 viewer の `allowedSiteIds` から自動除去
 - Admin roles: admin, editor, viewer (at platform level)
 - Two-tier identity: users can be both account owners AND members of other accounts via `memberships` map
@@ -141,7 +141,7 @@ Defined in `src/constants/plans.js`, enforced dual-layer: client-side via `usePl
 - **Language**: All UI text and code comments are in Japanese
 - **ESLint**: Flat config (`eslint.config.js`), unused vars allowed if capitalized or prefixed with `_`
 - **Prettier**: Uses `prettier-plugin-tailwindcss` for class sorting
-- **Charting**: Recharts (primary), ApexCharts, Highcharts all in use
+- **Charting**: Recharts (primary); `d3` / `d3-sankey` for the user-journey Sankey diagram
 - **Notifications**: `react-hot-toast`
 - **Icons**: `@heroicons/react` and `lucide-react`
 - **UI primitives**: `@headlessui/react` for dialogs, menus, transitions
