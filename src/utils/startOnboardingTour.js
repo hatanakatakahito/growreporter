@@ -35,7 +35,6 @@ const STEP_TITLE = {
   analysisUsers: 'ユーザー属性',
   analysisUserJourney: 'ユーザージャーニー',
   analysisSummaryFree: '全体サマリー',
-  analysisExport: 'レポートダウンロード',
   analysisSummary: 'AI分析',
   comprehensiveAI: 'AI総合分析',
   members: 'メンバー招待',

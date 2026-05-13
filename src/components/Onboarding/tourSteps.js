@@ -197,6 +197,14 @@ export const dashboardSteps = [
       side: 'top',
     },
   },
+  // レポートダウンロードの案内（各分析画面に遷移したときに使える機能）
+  {
+    popover: {
+      title: 'レポートダウンロード',
+      description:
+        '各分析画面のヘッダー右上にある<strong>「ダウンロード」ボタン</strong>から、表示中の期間のレポートを <strong>Excel</strong>（数値の二次加工向け）または <strong>PowerPoint</strong>（そのまま報告資料に使えるレイアウト）で出力できます。<br><br>期間は画面上部の「表示期間」で指定したものがそのまま反映されます。',
+    },
+  },
   TOUR_GUIDE_TOGGLE_STEP,
 ];
 
@@ -484,31 +492,7 @@ export const analysisSummaryFreeSteps = [
   TOUR_GUIDE_TOGGLE_STEP,
 ];
 
-// ── レポートダウンロード（チェックリスト専用） ──────────────────
-export const analysisExportSteps = [
-  {
-    element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
-    popover: {
-      title: 'Step 1: 出力する期間を指定',
-      description: 'まず、ダウンロードしたいレポートの対象期間をここで選択します。分析画面で表示中の期間がそのまま反映されます。',
-    },
-  },
-  {
-    element: sel(TOUR_TARGETS.ANALYSIS_EXPORT),
-    popover: {
-      title: 'Step 2: ダウンロードボタンを開く',
-      description: '右上の「ダウンロード」ボタンをクリックすると、Excel / PowerPoint の出力形式を選ぶメニューが開きます。',
-    },
-  },
-  {
-    element: sel(TOUR_TARGETS.ANALYSIS_EXPORT),
-    popover: {
-      title: 'Step 3: Excel / PowerPoint を選択',
-      description: 'Excel は数値データの二次加工に、PowerPoint はそのまま報告資料に使えるレイアウトで出力されます。',
-    },
-  },
-  TOUR_GUIDE_TOGGLE_STEP,
-];
+// （旧 analysisExportSteps はダッシュボードツアー末尾に「レポートダウンロード」案内 Step として統合済み）
 
 // ── AI分析（全体サマリー Business向け） ──────────────────
 export const analysisSummarySteps = [
@@ -799,7 +783,6 @@ export const TOUR_STEPS_BY_ID = {
   analysisUserJourney: analysisUserJourneySteps,
   // 分析（特殊）
   analysisSummaryFree: analysisSummaryFreeSteps,
-  analysisExport: analysisExportSteps,
   analysisSummary: analysisSummarySteps,
   comprehensiveAI: comprehensiveAISteps,
   // その他
@@ -833,7 +816,6 @@ export const TOUR_PLAN_REQUIRED = {
   analysisUsers: 'free',
   analysisUserJourney: 'free',
   analysisSummaryFree: 'free',
-  analysisExport: 'business',
   analysisSummary: 'business',
   comprehensiveAI: 'business',
   members: 'free',
