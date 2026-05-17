@@ -141,7 +141,7 @@ async function runCheckMetricAlerts() {
   );
 
   const membersByOwner = await buildMembersByOwnerForAlerts(db);
-  const appBaseUrl = process.env.APP_BASE_URL || 'https://grow-reporter.web.app';
+  const appBaseUrl = process.env.APP_BASE_URL || 'https://grow-reporter.com';
 
   for (const siteDoc of sitesWithGa4) {
     const siteId = siteDoc.id;

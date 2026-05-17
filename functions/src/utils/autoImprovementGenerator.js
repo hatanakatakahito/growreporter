@@ -186,7 +186,7 @@ function buildAutoImprovementEmailHtml(siteName, count) {
         最新のサイトデータに基づいた提案です。
       </p>
       <p style="margin-top: 24px;">
-        <a href="https://growgroupreporter.web.app/improve"
+        <a href="https://grow-reporter.com/improve"
            style="display: inline-block; background: #3758F9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500;">
           改善提案を確認する
         </a>
