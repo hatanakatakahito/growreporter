@@ -10,6 +10,7 @@ import { SidebarProvider } from './contexts/SidebarContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './components/GrowReporter/Login';
 import Register from './components/GrowReporter/Register';
+import AuthAction from './components/GrowReporter/AuthAction';
 import CompleteProfile from './components/GrowReporter/CompleteProfile';
 import SiteRegistration from './components/GrowReporter/SiteRegistration/index';
 import Complete from './components/GrowReporter/SiteRegistration/Complete';
@@ -36,6 +37,7 @@ import ConversionList from './pages/Analysis/ConversionList';
 import ReverseFlow from './pages/Analysis/ReverseFlow';
 import Month from './pages/Analysis/Month';
 import ComprehensiveAI from './pages/Analysis/ComprehensiveAI';
+import UserJourney from './pages/Analysis/UserJourney';
 import Improve from './pages/Improve';
 import ImproveConsultationThanks from './pages/ImproveConsultationThanks';
 import UpgradeThanks from './pages/UpgradeThanks';
@@ -51,6 +53,11 @@ import PrivacyPolicy from './pages/PrivacyPolicy';
 import CommercialTransaction from './pages/CommercialTransaction';
 import ForgotPassword from './pages/ForgotPassword';
 
+// GrowGroup 社内用
+import GrowStaffRoute from './components/GrowStaffRoute';
+import CloseMeeting from './pages/GrowInternal/CloseMeeting';
+import SharedCloseMeeting from './pages/SharedCloseMeeting';
+
 // Admin
 import AdminRoute from './components/Admin/AdminRoute';
 import AdminLayout from './components/Admin/AdminLayout';
@@ -64,6 +71,10 @@ import AdminSettings from './pages/Admin/Settings/AdminSettings';
 import EmailNotifications from './pages/Admin/Settings/EmailNotifications';
 import PlanList from './pages/Admin/PlanList';
 import InquiryList from './pages/Admin/Inquiries/InquiryList';
+import ImprovementKnowledge from './pages/Admin/ImprovementKnowledge';
+import IndustryBenchmarksDashboard from './pages/Admin/IndustryBenchmarks/Dashboard';
+import IndustryBenchmarksTokens from './pages/Admin/IndustryBenchmarks/Tokens';
+import IndustryBenchmarksOAuthCallback from './pages/Admin/IndustryBenchmarks/OAuthCallback';
 
 
 function App() {
@@ -98,12 +109,17 @@ function App() {
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            {/* Firebase Auth Action ハンドラー（パスワードリセット・メール検証）
+                Firebase Console → Templates で Action URL を https://grow-reporter.com/auth/action に設定 */}
+            <Route path="/auth/action" element={<AuthAction />} />
             <Route path="/terms" element={<TermsOfService />} />
             <Route path="/privacy" element={<PrivacyPolicy />} />
             <Route path="/commercial-transaction" element={<CommercialTransaction />} />
             <Route path="/reset-password" element={<ForgotPassword />} />
             {/* 招待承認（認証不要でもアクセス可能） */}
             <Route path="/accept-invitation" element={<AcceptInvitation />} />
+            {/* クローズミーティング 共有リンク（認証不要・読取専用） */}
+            <Route path="/share/close-meeting/:token" element={<SharedCloseMeeting />} />
             <Route 
               path="/register/complete" 
               element={
@@ -175,6 +191,7 @@ function App() {
               <Route path="/analysis/conversions" element={<ConversionList />} />
               <Route path="/analysis/reverse-flow" element={<ReverseFlow />} />
               <Route path="/analysis/comprehensive" element={<ComprehensiveAI />} />
+              <Route path="/analysis/user-journey" element={<UserJourney />} />
               {/* 改善する */}
               <Route path="/improve" element={<Improve />} />
               
@@ -190,6 +207,16 @@ function App() {
               
               {/* メンバー管理 */}
               <Route path="/members" element={<Members />} />
+
+              {/* GrowGroup 社内用 */}
+              <Route
+                path="/grow-internal/close-meeting"
+                element={
+                  <GrowStaffRoute>
+                    <CloseMeeting />
+                  </GrowStaffRoute>
+                }
+              />
             </Route>
             
             {/* サイト改善相談サンクスページ（コンバージョン測定用） */}
@@ -232,6 +259,10 @@ function App() {
               <Route path="logs" element={<ActivityLogs />} />
               <Route path="settings" element={<AdminSettings />} />
               <Route path="mail" element={<EmailNotifications />} />
+              <Route path="improvement-knowledge" element={<ImprovementKnowledge />} />
+              <Route path="industry-benchmarks" element={<IndustryBenchmarksDashboard />} />
+              <Route path="industry-benchmarks/tokens" element={<IndustryBenchmarksTokens />} />
+              <Route path="industry-benchmarks/oauth-callback" element={<IndustryBenchmarksOAuthCallback />} />
             </Route>
 
                 </Routes>

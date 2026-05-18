@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../config/firebase';
-import { getPlanDisplayName, getPlanInfo, getPlanBadgeColor, isUnlimited } from '../../constants/plans';
+import { getPlanDisplayName, getPlanInfo, getPlanBadgeColor, isUnlimited, EXTRA_SITE_UNIT_PRICE } from '../../constants/plans';
 import { AlertCircle } from 'lucide-react';
 import { Dialog, DialogTitle, DialogDescription, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -9,15 +9,30 @@ import DotWaveSpinner from '../common/DotWaveSpinner';
 
 /**
  * プラン変更モーダル
+ * プラン本体 (free / business) と
+ * サイト追加オプション (extraSitesCount, extraSitesValidUntil) を一括で変更できる
  */
 export default function PlanChangeModal({ user, onClose, onSuccess }) {
   const [selectedPlan, setSelectedPlan] = useState(user?.plan || 'free');
+  const [extraSitesCount, setExtraSitesCount] = useState(Number(user?.extraSitesCount) || 0);
+  const initialValidUntil = (() => {
+    const v = user?.extraSitesValidUntil;
+    if (!v) return '';
+    // ISO 文字列 / Firestore Timestamp / Date のいずれにも対応
+    const d = typeof v.toDate === 'function' ? v.toDate() : new Date(v);
+    return Number.isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
+  })();
+  const [extraSitesValidUntil, setExtraSitesValidUntil] = useState(initialValidUntil);
   const [reason, setReason] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showConfirm, setShowConfirm] = useState(false);
 
   if (!user) return null;
+
+  // free にダウングレード時は extras 自動ゼロ化
+  const isDowngradeToFree = selectedPlan === 'free' && (user.plan || 'free') !== 'free';
+  const effectiveExtraSitesCount = selectedPlan === 'free' ? 0 : extraSitesCount;
 
   // ユーザー名を取得（lastName + firstName 優先、なければdisplayName）
   const getUserName = () => {
@@ -29,11 +44,18 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
 
   const plans = ['free', 'business'];
   const currentPlan = user.plan || 'free';
+  const currentExtraSitesCount = Number(user.extraSitesCount) || 0;
+
+  const isPlanChanged = selectedPlan !== currentPlan;
+  const isExtraChanged =
+    effectiveExtraSitesCount !== currentExtraSitesCount ||
+    extraSitesValidUntil !== initialValidUntil;
+  const isAnyChange = isPlanChanged || isExtraChanged;
 
   // プラン変更を実行
   const handleChangePlan = async () => {
-    if (selectedPlan === currentPlan) {
-      setError('同じプランが選択されています');
+    if (!isAnyChange) {
+      setError('変更内容がありません');
       return;
     }
 
@@ -46,6 +68,8 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
         targetUserId: user.uid,
         newPlan: selectedPlan,
         reason: reason.trim(),
+        extraSitesCount: effectiveExtraSitesCount,
+        extraSitesValidUntil: extraSitesValidUntil || null,
       });
 
       if (result.data.success) {
@@ -194,6 +218,56 @@ export default function PlanChangeModal({ user, onClose, onSuccess }) {
                 );
               })}
             </div>
+          </div>
+
+          {/* サイト追加オプション */}
+          <div className="mb-6 rounded-lg border border-stroke p-4 dark:border-dark-3">
+            <h4 className="mb-3 text-sm font-medium text-dark dark:text-white">
+              サイト追加オプション
+            </h4>
+            <p className="mb-3 text-xs text-body-color dark:text-dark-6">
+              ビジネスプランの基本3サイトに加え、1サイトあたり ¥{EXTRA_SITE_UNIT_PRICE.toLocaleString()}/月（税別）で追加可能。
+              free に戻す場合は自動でゼロ化されます。
+            </p>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-dark dark:text-white">
+                  追加サイト数
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  max={20}
+                  value={extraSitesCount}
+                  onChange={(e) => setExtraSitesCount(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                  disabled={selectedPlan === 'free'}
+                  className="w-full rounded-lg border border-stroke bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50 dark:border-dark-3 dark:bg-dark dark:text-white"
+                />
+                <p className="mt-1 text-xs text-body-color dark:text-dark-6">
+                  現在: {currentExtraSitesCount}サイト
+                </p>
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-dark dark:text-white">
+                  有効期限（メイン契約終了日）
+                </label>
+                <input
+                  type="date"
+                  value={extraSitesValidUntil}
+                  onChange={(e) => setExtraSitesValidUntil(e.target.value)}
+                  disabled={selectedPlan === 'free' || extraSitesCount <= 0}
+                  className="w-full rounded-lg border border-stroke bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50 dark:border-dark-3 dark:bg-dark dark:text-white"
+                />
+                <p className="mt-1 text-xs text-body-color dark:text-dark-6">
+                  空欄の場合は無期限
+                </p>
+              </div>
+            </div>
+            {isDowngradeToFree && currentExtraSitesCount > 0 && (
+              <p className="mt-3 rounded bg-orange-50 p-2 text-xs text-orange-700 dark:bg-orange-900/20 dark:text-orange-300">
+                free に戻すため、追加サイトオプション {currentExtraSitesCount} サイトもクリアされます
+              </p>
+            )}
           </div>
 
           {/* 変更理由 */}

@@ -82,7 +82,17 @@ export const getUserDetailCallable = async (request) => {
       plan: userData.plan || 'free',
       createdAt: userData.createdAt?.toDate?.().toISOString() || null,
       lastLoginAt: userData.lastLoginAt?.toDate?.().toISOString() || null,
-      
+
+      // サイト追加オプション（v5.8.0）
+      extraSitesCount: Number(userData.extraSitesCount) || 0,
+      extraSitesValidUntil: userData.extraSitesValidUntil?.toDate?.().toISOString() || null,
+      extraSitesBoardProjectId: userData.extraSitesBoardProjectId || null,
+      boardProjectId: userData.boardProjectId || null,
+
+      // §16: アカウント情報メール送信履歴
+      credentialsEmailSentAt: userData._credentialsEmailSentAt?.toDate?.().toISOString() || null,
+      credentialsEmailSentBy: userData._credentialsEmailSentBy || null,
+
       // 有効サイトID（ダウングレード時の選択結果）
       activeSiteIds: userData.activeSiteIds || null,
 

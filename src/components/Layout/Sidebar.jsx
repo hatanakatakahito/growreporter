@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
 import { useSidebar } from '../../contexts/SidebarContext';
-import { ChevronLeft, ChevronRight, Sun, Moon, HelpCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
 import { getPlanBadgeColor, getPlanDisplayName } from '../../constants/plans';
 import { usePlan } from '../../hooks/usePlan';
 import UpgradeModal from '../common/UpgradeModal';
@@ -25,8 +25,11 @@ const SIDEBAR_THEMES = {
     subActiveClass: 'sidebar-active-dark text-white',
     subHover: 'hover:bg-white/[0.06]',
     chevron: 'text-slate-400',
+    zoneLabel: 'text-slate-500',
     bottomBorder: 'border-white/[0.06]',
     bottomBg: '',
+    popBg: 'bg-[#252a40]',
+    popBorder: 'border-white/[0.08]',
     userName: 'text-white',
     userEmail: 'text-slate-500',
     userHover: 'hover:bg-white/[0.05]',
@@ -48,8 +51,11 @@ const SIDEBAR_THEMES = {
     subActiveClass: 'sidebar-active-white text-primary',
     subHover: 'hover:bg-[rgba(55,88,249,0.05)]',
     chevron: 'text-slate-400',
+    zoneLabel: 'text-slate-400',
     bottomBorder: 'border-stroke/60',
     bottomBg: 'bg-white',
+    popBg: 'bg-white',
+    popBorder: 'border-stroke/60',
     userName: 'text-slate-800',
     userEmail: 'text-slate-400',
     userHover: 'hover:bg-slate-50',
@@ -61,21 +67,113 @@ const SIDEBAR_THEMES = {
   },
 };
 
+// 「分析する」サブメニュー（目的グループ式）。URL ルートは不変、表示ラベルのみ平易化。
+// ・先頭に AI総合分析（ピン留め）／全体サマリー（直リンク・トグルなし）
+// ・以下4つの「目的グループ」（クリックで開閉。各リーフに小さな説明文）
+const ANALYSIS_SUBMENU = {
+  ai: { label: 'AI総合分析', path: '/analysis/comprehensive', lockedForFree: true },
+  summary: { label: '全体サマリー', desc: '主要指標をまとめて一覧', path: '/analysis/summary' },
+  groups: [
+    {
+      id: 'g-user-time',
+      name: 'ユーザー・日時',
+      sub: '誰がいつ',
+      items: [
+        { label: 'ユーザー属性', desc: 'デバイス・地域・年代など', path: '/analysis/users' },
+        { label: '月別', desc: '月ごとの推移・季節変動', path: '/analysis/month' },
+        { label: '日別', desc: '日ごとの増減', path: '/analysis/day' },
+        { label: '曜日別', desc: '平日と休日の差', path: '/analysis/week' },
+        { label: '時間帯別', desc: '多い時間帯', path: '/analysis/hour' },
+      ],
+    },
+    {
+      id: 'g-acquisition',
+      name: '集客',
+      sub: 'どこから来たか',
+      items: [
+        { label: '集客チャネル', desc: '検索/SNS/広告/直接の内訳', path: '/analysis/channels' },
+        { label: '検索キーワード', desc: 'Google検索で来たクエリ', path: '/analysis/keywords' },
+        { label: '参照元サイト', desc: '他サイトのリンクから来た元', path: '/analysis/referrals' },
+      ],
+    },
+    {
+      id: 'g-page',
+      name: 'ページ',
+      sub: 'どのように見たか',
+      zones: [
+        {
+          name: 'よく使う',
+          items: [
+            { label: 'ページ別', desc: '各ページのPV・滞在・直帰', path: '/analysis/pages' },
+            { label: '入口ページ', desc: '最初に着地したページ', path: '/analysis/landing-pages' },
+            { label: '資料ダウンロード', desc: 'PDF等のDL数', path: '/analysis/file-downloads' },
+            { label: '外部リンククリック', desc: '外部リンクのクリック数', path: '/analysis/external-links' },
+          ],
+        },
+        {
+          name: '詳しく見る',
+          items: [
+            { label: 'コンテンツ分析', desc: '記事の読まれ方（興味度スコア）', path: '/analysis/content' },
+            { label: 'ページ分類別', desc: 'カテゴリ単位の比較', path: '/analysis/page-categories' },
+            { label: '次に見たページ', desc: 'ページ間の動き', path: '/analysis/page-flow' },
+            { label: 'ユーザージャーニー', desc: '成約に至る典型ルート', path: '/analysis/user-journey', adminOnly: true },
+          ],
+        },
+      ],
+    },
+    {
+      id: 'g-conversion',
+      name: '成果',
+      sub: 'コンバージョン',
+      items: [
+        { label: 'コンバージョン一覧', desc: '問い合わせ・購入などの推移', path: '/analysis/conversions' },
+        { label: '成果までの到達ステップ', desc: '入口→フォーム→完了の到達率', path: '/analysis/reverse-flow' },
+      ],
+    },
+  ],
+};
+
+// グループ内の全リーフ（zones があれば flatten）
+const groupLeaves = (g) => (g.zones ? g.zones.flatMap((z) => z.items) : g.items);
+// path → group.id（自動展開・親グループ active 判定用）
+const ANALYSIS_PATH_GROUP = (() => {
+  const m = {};
+  for (const g of ANALYSIS_SUBMENU.groups) for (const it of groupLeaves(g)) m[it.path] = g.id;
+  return m;
+})();
+
 export default function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, userProfile, logout } = useAuth();
+  const { currentUser, userProfile, logout, isGrowStaff } = useAuth();
   const { isAdmin } = useAdmin();
   const { isSidebarOpen, toggleSidebar, isDarkSidebar, toggleSidebarTheme } = useSidebar();
   const [isAnalysisOpen, setIsAnalysisOpen] = useState(false);
-  const [isTimeSeriesOpen, setIsTimeSeriesOpen] = useState(false);
-  const [isAcquisitionOpen, setIsAcquisitionOpen] = useState(false);
-  const [isEngagementOpen, setIsEngagementOpen] = useState(false);
-  const [isConversionOpen, setIsConversionOpen] = useState(false);
-  const [isHelpOpen, setIsHelpOpen] = useState(false);
-  const [isAccountOpen, setIsAccountOpen] = useState(false);
+  const [isGrowInternalOpen, setIsGrowInternalOpen] = useState(false);
+  const [openGroups, setOpenGroups] = useState(() => new Set()); // 分析メニューの目的グループ（開いている group.id の集合）
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const userMenuRef = useRef(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const { isFree } = usePlan();
+  const { isFree, plan, planId } = usePlan();
+
+  const isGroupOpen = (id) => openGroups.has(id);
+  const toggleGroup = (id) =>
+    setOpenGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+
+  // ユーザーメニュー（フッター）の外側クリックで閉じる
+  useEffect(() => {
+    if (!isUserMenuOpen) return;
+    const onDoc = (e) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target)) setIsUserMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [isUserMenuOpen]);
 
   // テーマオブジェクト
   const t = SIDEBAR_THEMES[isDarkSidebar ? 'dark' : 'white'];
@@ -89,42 +187,26 @@ export default function Sidebar() {
 
   const userInitial = getUserName().charAt(0);
 
-  const userPlan = userProfile?.plan || 'free';
+  // viewer/editor の場合は usePlan() がオーナーのプランを返すため、
+  // userProfile.plan ではなく usePlan() の結果を使用する
+  const userPlan = planId || 'free';
   const planBadgeColor = getPlanBadgeColor(userPlan);
-  const planLabel = getPlanDisplayName(userPlan);
+  const planLabel = plan?.displayName || getPlanDisplayName(userPlan);
 
   // 現在のパスに基づいてメニューを開く
   useEffect(() => {
     const path = location.pathname;
 
-    // 分析ページかどうか
-    if (path.startsWith('/analysis/') || path === '/users' || path.startsWith('/acquisition/') || path.startsWith('/engagement/') || path.startsWith('/conversion/')) {
+    // 分析ページなら「分析する」アコーディオンを開く＋現在ページが属する目的グループも開く
+    if (path.startsWith('/analysis')) {
       setIsAnalysisOpen(true);
+      const gid = ANALYSIS_PATH_GROUP[path];
+      if (gid) setOpenGroups((prev) => (prev.has(gid) ? prev : new Set(prev).add(gid)));
     }
 
-    // 時系列サブメニュー
-    if (path.startsWith('/analysis/month') || path.startsWith('/analysis/day') || path.startsWith('/analysis/week') || path.startsWith('/analysis/hour')) {
-      setIsTimeSeriesOpen(true);
-    }
-
-    // 集客サブメニュー
-    if (path.startsWith('/acquisition/')) {
-      setIsAcquisitionOpen(true);
-    }
-
-    // エンゲージメントサブメニュー
-    if (path.startsWith('/engagement/')) {
-      setIsEngagementOpen(true);
-    }
-
-    // コンバージョンサブメニュー
-    if (path.startsWith('/conversion/')) {
-      setIsConversionOpen(true);
-    }
-
-    // アカウント設定
-    if (path.startsWith('/account/') || path === '/members') {
-      setIsAccountOpen(true);
+    // GrowGroup 社内用
+    if (path.startsWith('/grow-internal/')) {
+      setIsGrowInternalOpen(true);
     }
   }, [location.pathname]);
 
@@ -174,51 +256,7 @@ export default function Sidebar() {
       label: '分析する',
       path: '/analysis',
       hasSubmenu: true,
-      submenu: [
-        { label: '全体サマリー', path: '/analysis/summary' },
-        { label: 'ユーザー属性', path: '/analysis/users' },
-        {
-          label: '時系列',
-          hasSubmenu: true,
-          submenu: [
-            { label: '月別', path: '/analysis/month' },
-            { label: '日別', path: '/analysis/day' },
-            { label: '曜日別', path: '/analysis/week' },
-            { label: '時間帯別', path: '/analysis/hour' },
-          ]
-        },
-        {
-          label: '集客',
-          hasSubmenu: true,
-          submenu: [
-            { label: '集客チャネル', path: '/analysis/channels' },
-            { label: '流入キーワード元', path: '/analysis/keywords' },
-            { label: '被リンク元', path: '/analysis/referrals' },
-          ]
-        },
-        {
-          label: 'ページ',
-          hasSubmenu: true,
-          submenu: [
-            { label: 'ページ別', path: '/analysis/pages' },
-            { label: 'コンテンツ分析', path: '/analysis/content' },
-            { label: 'ページ分類別', path: '/analysis/page-categories' },
-            { label: 'ランディングページ', path: '/analysis/landing-pages' },
-            { label: 'ファイルダウンロード', path: '/analysis/file-downloads' },
-            { label: '外部リンククリック', path: '/analysis/external-links' },
-            { label: 'ページフロー', path: '/analysis/page-flow' },
-          ]
-        },
-        {
-          label: 'コンバージョン',
-          hasSubmenu: true,
-          submenu: [
-            { label: 'コンバージョン一覧', path: '/analysis/conversions' },
-            { label: '逆算フロー', path: '/analysis/reverse-flow' },
-          ]
-        },
-        { label: 'AI総合分析', path: '/analysis/comprehensive', lockedForFree: true },
-      ],
+      analysis: ANALYSIS_SUBMENU,
     },
     {
       navId: 'nav-improve',
@@ -242,6 +280,10 @@ export default function Sidebar() {
       path: '/reports',
       lockedForFree: true,
     },
+  ];
+
+  // 「管理」ゾーン（区切り線なし・小見出しだけ）。アカウント設定は左下のユーザーメニューへ移動。
+  const manageItems = [
     {
       navId: 'nav-sites',
       icon: (
@@ -251,24 +293,6 @@ export default function Sidebar() {
       ),
       label: 'サイト管理',
       path: '/sites/list',
-    },
-    {
-      navId: 'nav-account-settings',
-      icon: (
-        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998-3.5A7.5 7.5 0 0 1 19.5 19.5H4.5Z" />
-        </svg>
-      ),
-      label: 'アカウント設定',
-      path: '/account/settings',
-      hasAccountSubmenu: true,
-      submenu: [
-        { label: 'プロフィール', path: '/account/settings?tab=profile' },
-        { label: 'プラン確認', path: '/account/settings?tab=plan' },
-        { label: '登録サイト', path: '/account/settings?tab=sites' },
-        { label: 'メール通知', path: '/account/settings?tab=email' },
-        { label: 'メンバー管理', path: '/account/settings?tab=members' },
-      ],
     },
   ];
 
@@ -307,9 +331,9 @@ export default function Sidebar() {
                     id={item.navId}
                     data-tour={item.tourTarget}
                     onClick={() => isSidebarOpen && setIsAnalysisOpen(!isAnalysisOpen)}
-                    className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
+                    className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium transition ${
                       isSidebarOpen ? 'justify-between' : 'justify-center'
-                    }`}
+                    } ${location.pathname.startsWith('/analysis') ? t.activeClass : `${t.menuText} ${t.menuHover}`}`}
                     title={!isSidebarOpen ? item.label : ''}
                   >
                     <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
@@ -317,140 +341,82 @@ export default function Sidebar() {
                       {isSidebarOpen && <span>{item.label}</span>}
                     </div>
                     {isSidebarOpen && (
-                      <svg
-                        className={`h-4 w-4 ${t.chevron} transition-transform ${isAnalysisOpen ? 'rotate-180' : ''}`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
+                      <svg className={`h-4 w-4 ${t.chevron} transition-transform ${isAnalysisOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                       </svg>
                     )}
                   </button>
                   {isAnalysisOpen && isSidebarOpen && (
-                    <ul className={`ml-2 mt-2 space-y-1 border-l ${t.subBorder} pl-2`}>
-                      {item.submenu.map((subItem, subIndex) => (
-                        <li key={subIndex}>
-                          {subItem.hasSubmenu ? (
-                            /* サブアコーディオン（時系列・集客・ページ・コンバージョン） */
-                            <>
-                              <button
-                                onClick={() => {
-                                  if (subItem.label === '時系列') setIsTimeSeriesOpen(!isTimeSeriesOpen);
-                                  else if (subItem.label === '集客') setIsAcquisitionOpen(!isAcquisitionOpen);
-                                  else if (subItem.label === 'ページ') setIsEngagementOpen(!isEngagementOpen);
-                                  else if (subItem.label === 'コンバージョン') setIsConversionOpen(!isConversionOpen);
-                                }}
-                                className={`flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm ${t.subText} transition ${t.subHover}`}
-                              >
-                                <span>{subItem.label}</span>
-                                <svg
-                                  className={`h-3 w-3 ${t.chevron} transition-transform ${
-                                    (subItem.label === '時系列' && isTimeSeriesOpen) ||
-                                    (subItem.label === '集客' && isAcquisitionOpen) ||
-                                    (subItem.label === 'ページ' && isEngagementOpen) ||
-                                    (subItem.label === 'コンバージョン' && isConversionOpen)
-                                      ? 'rotate-180'
-                                      : ''
-                                  }`}
-                                  fill="none"
-                                  viewBox="0 0 24 24"
-                                  stroke="currentColor"
-                                >
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                </svg>
-                              </button>
-                              {((subItem.label === '時系列' && isTimeSeriesOpen) ||
-                                (subItem.label === '集客' && isAcquisitionOpen) ||
-                                (subItem.label === 'ページ' && isEngagementOpen) ||
-                                (subItem.label === 'コンバージョン' && isConversionOpen)) && (
-                                <ul className="ml-2 mt-1 space-y-1 pl-2">
-                                  {subItem.submenu.map((leaf, leafIndex) => (
-                                    <li key={leafIndex}>
-                                      <Link
-                                        to={leaf.path}
-                                        className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
-                                          isActive(leaf.path)
-                                            ? t.subActiveClass
-                                            : `${t.subText} ${t.subHover}`
-                                        }`}
-                                      >
-                                        {leaf.label}
-                                      </Link>
-                                    </li>
-                                  ))}
-                                </ul>
-                              )}
-                            </>
-                          ) : subItem.lockedForFree && isFree ? (
-                            <button
-                              onClick={() => setShowUpgradeModal(true)}
-                              className={`flex w-full items-center justify-between rounded-lg px-4 py-2 text-sm transition-all duration-200 ${t.subText} ${t.subHover} opacity-60`}
-                            >
-                              <span>{subItem.label}</span>
-                              <svg className="h-3.5 w-3.5 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
-                            </button>
-                          ) : (
-                            /* 直リンク */
-                            <Link
-                              to={subItem.path}
-                              className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
-                                isActive(subItem.path)
-                                  ? t.subActiveClass
-                                  : `${t.subText} ${t.subHover}`
-                              }`}
-                            >
-                              {subItem.label}
-                            </Link>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </>
-              ) : item.hasAccountSubmenu ? (
-                <>
-                  <button
-                    id={item.navId}
-                    onClick={() => isSidebarOpen && setIsAccountOpen(!isAccountOpen)}
-                    className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
-                      isSidebarOpen ? 'justify-between' : 'justify-center'
-                    } ${location.pathname.startsWith('/account/') ? t.activeClass : ''}`}
-                    title={!isSidebarOpen ? item.label : ''}
-                  >
-                    <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
-                      {item.icon}
-                      {isSidebarOpen && <span>{item.label}</span>}
-                    </div>
-                    {isSidebarOpen && (
-                      <svg
-                        className={`h-4 w-4 ${t.chevron} transition-transform ${isAccountOpen ? 'rotate-180' : ''}`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                      </svg>
-                    )}
-                  </button>
-                  {isAccountOpen && isSidebarOpen && (
-                    <ul className={`ml-4 mt-1 space-y-1 border-l ${t.subBorder} pl-3`}>
-                      {item.submenu.map((sub, si) => (
-                        <li key={si}>
-                          <Link
-                            to={sub.path}
-                            className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
-                              location.pathname + location.search === sub.path ||
-                              (sub.path.includes('?tab=') && location.pathname === '/account/settings' && location.search === '?' + sub.path.split('?')[1])
-                                ? t.subActiveClass
-                                : `${t.subText} ${t.subHover}`
-                            }`}
-                          >
-                            {sub.label}
+                    <div className="ml-3 mt-2 space-y-1 pl-2">
+                      {/* AI総合分析（先頭にピン留め） */}
+                      {(() => {
+                        const ai = item.analysis.ai;
+                        const aiGrad = { background: 'linear-gradient(90deg,rgba(55,88,249,0.08),rgba(139,92,246,0.08),rgba(236,72,153,0.08))' };
+                        const aiInner = (
+                          <>
+                            <svg className="h-4 w-4 shrink-0 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8"><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.456-2.456L14.25 6l1.035-.259a3.375 3.375 0 002.456-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" /></svg>
+                            <span className={`truncate font-medium ${t.subText}`}>{ai.label}</span>
+                            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-primary via-purple-500 to-pink-500 text-[8px] font-bold leading-none text-white">AI</span>
+                            {isFree && <svg className="ml-auto h-3.5 w-3.5 shrink-0 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>}
+                          </>
+                        );
+                        return isFree ? (
+                          <button type="button" onClick={() => setShowUpgradeModal(true)} style={aiGrad} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition">{aiInner}</button>
+                        ) : (
+                          <Link to={ai.path} style={aiGrad} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm transition">{aiInner}</Link>
+                        );
+                      })()}
+
+                      {/* 全体サマリー（直リンク・2段組み・トグルなし） */}
+                      <Link to={item.analysis.summary.path} className={`block rounded-lg px-4 py-2 transition ${isActive(item.analysis.summary.path) ? t.subActiveClass : t.subHover}`}>
+                        <span className={`block truncate text-sm ${isActive(item.analysis.summary.path) ? 'font-semibold' : t.subText}`}>{item.analysis.summary.label}</span>
+                        <span className="block truncate text-[11px] leading-tight text-slate-400">{item.analysis.summary.desc}</span>
+                      </Link>
+
+                      {/* 目的グループ（クリックで開閉・各リーフは2段組み） */}
+                      {item.analysis.groups.map((g) => {
+                        const leaves = (g.zones ? g.zones.flatMap((z) => z.items) : g.items).filter((it) => !it.adminOnly || isAdmin);
+                        const groupActive = leaves.some((it) => isActive(it.path));
+                        const open = isGroupOpen(g.id);
+                        const renderLeaf = (it) => (
+                          <Link key={it.path} to={it.path} className={`block rounded-lg px-4 py-1.5 transition ${isActive(it.path) ? t.subActiveClass : t.subHover}`}>
+                            <span className={`block truncate text-sm ${isActive(it.path) ? 'font-semibold' : t.subText}`}>
+                              {it.label}
+                              {it.adminOnly && <span className="ml-1 rounded bg-slate-100 px-1 py-0.5 align-middle text-[9px] font-semibold text-slate-500">管理者</span>}
+                            </span>
+                            <span className="block truncate text-[11px] leading-tight text-slate-400">{it.desc}</span>
                           </Link>
-                        </li>
-                      ))}
-                    </ul>
+                        );
+                        return (
+                          <div key={g.id}>
+                            <button type="button" onClick={() => toggleGroup(g.id)} className={`flex w-full items-center justify-between rounded-lg px-4 py-2 transition ${groupActive ? t.subActiveClass : t.subHover}`}>
+                              <span className="text-left">
+                                <span className={`block truncate text-sm ${groupActive ? 'font-semibold' : t.subText}`}>{g.name}</span>
+                                <span className="block truncate text-[11px] leading-tight text-slate-400">{g.sub}</span>
+                              </span>
+                              <svg className={`h-3 w-3 shrink-0 ${t.chevron} transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                            </button>
+                            {open && (
+                              <div className="ml-2 mt-1 space-y-1 pl-2">
+                                {g.zones
+                                  ? g.zones.map((z, zi) => {
+                                      const zItems = z.items.filter((it) => !it.adminOnly || isAdmin);
+                                      if (zItems.length === 0) return null;
+                                      return (
+                                        <React.Fragment key={zi}>
+                                          {zi > 0 && <div className={`mx-3 border-t ${t.subBorder}`} />}
+                                          <div className={`px-4 pb-0.5 pt-1 text-[10px] font-semibold tracking-wide ${t.zoneLabel}`}>{z.name}</div>
+                                          {zItems.map((it) => renderLeaf(it))}
+                                        </React.Fragment>
+                                      );
+                                    })
+                                  : leaves.map((it) => renderLeaf(it))}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
                   )}
                 </>
               ) : item.lockedForFree && isFree ? (
@@ -486,65 +452,76 @@ export default function Sidebar() {
             </li>
           ))}
 
-          {/* 使い方・意見箱（展開式） */}
-          <li>
-            <button
-              id="nav-help"
-              onClick={() => isSidebarOpen && setIsHelpOpen(!isHelpOpen)}
-              className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
-                isSidebarOpen ? 'justify-between' : 'justify-center'
-              }`}
-              title={!isSidebarOpen ? '使い方・意見箱' : ''}
-            >
-              <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
-                <HelpCircle className="h-5 w-5" strokeWidth={1.5} />
-                {isSidebarOpen && <span>使い方・意見箱</span>}
-              </div>
+
+          {/* 管理ゾーン（区切り線なし・小見出しだけ） */}
+          {isSidebarOpen && (
+            <li className={`px-4 pt-3 pb-1 text-[11px] font-semibold tracking-wide ${t.zoneLabel}`}>管理</li>
+          )}
+          {manageItems.map((item, mIdx) => (
+            <li key={`m-${mIdx}`}>
+              <Link
+                id={item.navId}
+                to={item.path}
+                className={`flex items-center rounded-lg px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                  isSidebarOpen ? 'gap-3' : 'justify-center'
+                } ${isActive(item.path) ? t.activeClass : `${t.menuText} ${t.menuHover}`}`}
+                title={!isSidebarOpen ? item.label : ''}
+              >
+                {item.icon}
+                {isSidebarOpen && <span>{item.label}</span>}
+              </Link>
+            </li>
+          ))}
+
+          {/* 社内ゾーン（@grow-group.jp のみ表示・最下部） */}
+          {isGrowStaff && (
+            <>
               {isSidebarOpen && (
-                <svg
-                  className={`h-4 w-4 ${t.chevron} transition-transform ${isHelpOpen ? 'rotate-180' : ''}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
+                <li className={`px-4 pt-3 pb-1 text-[11px] font-semibold tracking-wide ${t.zoneLabel}`}>社内</li>
               )}
-            </button>
-            {isHelpOpen && isSidebarOpen && (
-              <ul className={`ml-2 mt-2 space-y-1 border-l ${t.subBorder} pl-2`}>
-                <li>
-                  <a
-                    href="https://www.notion.so/growgroup/343eef14914a8194bdb2c536a6b68a84?source=copy_link"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-sm ${t.subText} transition ${t.subHover}`}
-                  >
-                    <span>マニュアル</span>
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://www.notion.so/growgroup/FAQ-343eef14914a8179a60ef6a938e61319"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-sm ${t.subText} transition ${t.subHover}`}
-                  >
-                    <span>FAQ</span>
-                  </a>
-                </li>
-                <li>
-                  <button
-                    type="button"
-                    onClick={() => window.dispatchEvent(new CustomEvent('feedback:open'))}
-                    className={`flex w-full items-center gap-2 rounded-lg px-4 py-2 text-left text-sm ${t.subText} transition ${t.subHover}`}
-                  >
-                    <span>意見箱</span>
-                  </button>
-                </li>
-              </ul>
-            )}
-          </li>
+              <li>
+                <button
+                  id="nav-grow-internal"
+                  onClick={() => (isSidebarOpen ? setIsGrowInternalOpen(!isGrowInternalOpen) : navigate('/grow-internal/close-meeting'))}
+                  className={`flex w-full items-center rounded-lg px-4 py-3 text-sm font-medium ${t.menuText} transition ${t.menuHover} ${
+                    isSidebarOpen ? 'justify-between' : 'justify-center'
+                  } ${location.pathname.startsWith('/grow-internal/') ? t.activeClass : ''}`}
+                  title={!isSidebarOpen ? 'GrowGroup社内用' : ''}
+                >
+                  <div className={`flex items-center ${isSidebarOpen ? 'gap-3' : ''}`}>
+                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 21h16.5M4.5 3h15M5.25 3v18m13.5-18v18M9 6.75h1.5m-1.5 3h1.5m-1.5 3h1.5m3-6H15m-1.5 3H15m-1.5 3H15M9 21v-3.375c0-.621.504-1.125 1.125-1.125h3.75c.621 0 1.125.504 1.125 1.125V21" />
+                    </svg>
+                    {isSidebarOpen && <span>GrowGroup社内用</span>}
+                  </div>
+                  {isSidebarOpen && (
+                    <svg
+                      className={`h-4 w-4 ${t.chevron} transition-transform ${isGrowInternalOpen ? 'rotate-180' : ''}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  )}
+                </button>
+                {isGrowInternalOpen && isSidebarOpen && (
+                  <ul className="ml-3 mt-2 space-y-1 pl-2">
+                    <li>
+                      <Link
+                        to="/grow-internal/close-meeting"
+                        className={`block rounded-lg px-4 py-2 text-sm transition-all duration-200 ${
+                          isActive('/grow-internal/close-meeting') ? t.subActiveClass : `${t.subText} ${t.subHover}`
+                        }`}
+                      >
+                        クローズミーティング
+                      </Link>
+                    </li>
+                  </ul>
+                )}
+              </li>
+            </>
+          )}
 
         </ul>
       </nav>
@@ -553,7 +530,7 @@ export default function Sidebar() {
       <div className={`absolute bottom-0 left-0 right-0 ${t.bottomBg}`}>
         <div className={isSidebarOpen ? 'p-4' : 'p-2'}>
           {/* ダーク/ライトモード切替 */}
-          <div data-tour="sidebar-theme-toggle" className={`mb-3 flex justify-center pb-3 border-b ${t.bottomBorder}`}>
+          <div data-tour="sidebar-theme-toggle" className="mb-3 flex justify-center">
             <button
               onClick={toggleSidebarTheme}
               className="group relative flex h-7 w-14 items-center rounded-full transition-colors duration-300"
@@ -575,14 +552,47 @@ export default function Sidebar() {
             </button>
           </div>
 
-          {/* ユーザー情報（クリックでアカウント設定へ） */}
-          <button
-            data-tour="sidebar-user-info"
-            onClick={() => navigate('/account/settings')}
-            className={`w-full rounded-lg transition ${t.userHover}`}
-          >
-            {isSidebarOpen ? (
-              <div className="flex items-center gap-3 p-2">
+          {isSidebarOpen ? (
+            /* 展開時: ユーザー欄クリックで「アカウント設定 / 管理者画面 / ログアウト」のメニュー */
+            <div className="relative" ref={userMenuRef}>
+              {isUserMenuOpen && (
+                <div className={`absolute bottom-full left-0 right-0 z-50 mb-2 rounded-lg border ${t.popBorder} ${t.popBg} p-1 shadow-lg`}>
+                  <button
+                    onClick={() => { setIsUserMenuOpen(false); navigate('/account/settings'); }}
+                    className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition ${t.menuText} ${t.menuHover}`}
+                  >
+                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998-3.5A7.5 7.5 0 0 1 19.5 19.5H4.5Z" />
+                    </svg>
+                    アカウント設定
+                  </button>
+                  {isAdmin && (
+                    <button
+                      onClick={() => { setIsUserMenuOpen(false); navigate('/admin/dashboard'); }}
+                      className={`flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition ${t.menuText} ${t.menuHover}`}
+                    >
+                      <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                      </svg>
+                      管理者画面
+                    </button>
+                  )}
+                  <button
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm text-red-500 transition hover:bg-red-500/10"
+                  >
+                    <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                    ログアウト
+                  </button>
+                </div>
+              )}
+              <button
+                data-tour="sidebar-user-info"
+                onClick={() => setIsUserMenuOpen((o) => !o)}
+                className={`flex w-full items-center gap-3 rounded-lg p-2 transition ${t.userHover}`}
+              >
                 <Avatar
                   src={currentUser?.photoURL || null}
                   initials={!currentUser?.photoURL ? userInitial : undefined}
@@ -590,54 +600,56 @@ export default function Sidebar() {
                   className="size-10 bg-primary text-white"
                 />
                 <div className="flex-1 min-w-0 text-left">
-                  <p className={`truncate text-sm font-medium ${t.userName}`}>
-                    {getUserName()}
-                  </p>
-                  <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${planBadgeColor}`}>
-                    {planLabel}
-                  </span>
+                  <p className={`truncate text-sm font-medium ${t.userName}`}>{getUserName()}</p>
+                  <span className={`mt-1 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${planBadgeColor}`}>{planLabel}</span>
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-1 p-1">
-                <Avatar
-                  src={currentUser?.photoURL || null}
-                  initials={!currentUser?.photoURL ? userInitial : undefined}
-                  alt={getUserName()}
-                  className="size-8 bg-primary text-white"
-                />
-                <span className={`inline-block rounded-full px-2 py-0.5 text-[8px] font-semibold ${planBadgeColor}`}>
-                  {planLabel}
-                </span>
-              </div>
-            )}
-          </button>
-
-          {/* ログアウト & 管理者画面 */}
-          <div className={`mt-2 flex ${isSidebarOpen ? 'gap-2' : 'flex-col gap-1.5'}`}>
-            <button
-              onClick={handleLogout}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-md border px-2 py-1.5 text-xs font-medium transition ${t.logoutBtn}`}
-              title="ログアウト"
-            >
-              <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-              </svg>
-              {isSidebarOpen && 'ログアウト'}
-            </button>
-            {isAdmin && (
-              <button
-                onClick={() => navigate('/admin/dashboard')}
-                className={`flex flex-1 items-center justify-center gap-1.5 rounded-md ${t.adminBtn} transition px-2 py-1.5 text-xs font-medium`}
-                title="管理者画面"
-              >
-                <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                <svg className={`h-4 w-4 shrink-0 ${t.chevron} transition-transform ${isUserMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                 </svg>
-                {isSidebarOpen && '管理者画面'}
               </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            /* 折りたたみ時: アバター→アカウント設定 ＋ ログアウト/管理者画面アイコン */
+            <>
+              <button
+                onClick={() => navigate('/account/settings')}
+                className={`w-full rounded-lg transition ${t.userHover}`}
+                title="アカウント設定"
+              >
+                <div className="flex flex-col items-center gap-1 p-1">
+                  <Avatar
+                    src={currentUser?.photoURL || null}
+                    initials={!currentUser?.photoURL ? userInitial : undefined}
+                    alt={getUserName()}
+                    className="size-8 bg-primary text-white"
+                  />
+                  <span className={`inline-block rounded-full px-2 py-0.5 text-[8px] font-semibold ${planBadgeColor}`}>{planLabel}</span>
+                </div>
+              </button>
+              <div className="mt-2 flex flex-col gap-1.5">
+                <button
+                  onClick={handleLogout}
+                  className={`flex items-center justify-center rounded-md border px-2 py-1.5 text-xs font-medium transition ${t.logoutBtn}`}
+                  title="ログアウト"
+                >
+                  <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                  </svg>
+                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => navigate('/admin/dashboard')}
+                    className={`flex items-center justify-center rounded-md ${t.adminBtn} transition px-2 py-1.5 text-xs font-medium`}
+                    title="管理者画面"
+                  >
+                    <svg className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                    </svg>
+                  </button>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </aside>

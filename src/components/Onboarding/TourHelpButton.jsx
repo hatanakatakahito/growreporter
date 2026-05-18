@@ -28,11 +28,11 @@ export default function TourHelpButton({ tourId, className = '' }) {
 
   return (
     <Button
-      variant="primary"
+      variant="primary-outline"
       size="sm"
       pill
       onClick={handleClick}
-      className={`hidden md:inline-flex shrink-0 whitespace-nowrap ${className}`}
+      className={`hidden md:inline-flex shrink-0 whitespace-nowrap !py-1 ${className}`}
       title="このページの使い方を見る"
     >
       <BookOpen className="h-3.5 w-3.5" data-slot="icon" />

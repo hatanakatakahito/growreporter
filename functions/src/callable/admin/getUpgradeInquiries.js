@@ -109,6 +109,35 @@ export const getUpgradeInquiriesCallable = async (request) => {
       getRenewalAlert(i.status, i.contractEndDate)
     ).length;
 
+    // ステータス別件数
+    const statusCounts = {
+      new: 0,
+      estimate_created: 0,
+      contract_sent: 0,
+      active: 0,
+      cancelled: 0,
+      inquiry_cancelled: 0,
+    };
+    for (const i of allInquiries) {
+      if (Object.prototype.hasOwnProperty.call(statusCounts, i.status)) {
+        statusCounts[i.status]++;
+      }
+    }
+
+    // 直近 30 日 board 取込件数
+    const thirtyDaysAgoMs = Date.now() - 30 * 24 * 60 * 60 * 1000;
+    const recentImportCount = allInquiries.filter(i => {
+      if (i.source !== 'board_import') return false;
+      const createdAt = i.createdAt?.toDate ? i.createdAt.toDate() : (i.createdAt ? new Date(i.createdAt) : null);
+      if (!createdAt || Number.isNaN(createdAt.getTime())) return false;
+      return createdAt.getTime() >= thirtyDaysAgoMs;
+    }).length;
+
+    // uid 未紐付け件数 (board_import で uid 空)
+    const unlinkedCount = allInquiries.filter(i =>
+      i.source === 'board_import' && (!i.uid || i.uid === '')
+    ).length;
+
     // ページネーション
     const totalCount = inquiries.length;
     const totalPages = Math.ceil(totalCount / limit);
@@ -130,6 +159,9 @@ export const getUpgradeInquiriesCallable = async (request) => {
         stats: {
           needsAction,
           renewalSoon,
+          statusCounts,
+          recentImportCount,
+          unlinkedCount,
         },
       },
     };

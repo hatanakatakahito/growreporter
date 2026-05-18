@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1440">
+<meta name="robots" content="noindex,nofollow">
+<title>評価する — グローレポータ（スクショ撮影用モックアップ）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: '#3758F9',
+          secondary: '#13C296',
+          dark: '#1B2336',
+          'body-color': '#637381',
+          stroke: '#E5E7EB',
+        },
+        maxWidth: { content: '1280px' }
+      }
+    }
+  }
+</script>
+<style>
+  body { font-family: 'Inter', 'Noto Sans JP', sans-serif; -webkit-font-smoothing: antialiased; }
+  .glass-header { backdrop-filter: saturate(180%) blur(8px); background-color: rgba(255,255,255,0.85); }
+  /* 実機のサイドバーアクティブ（白テーマ） */
+  .sidebar-active-white {
+    background: rgba(55, 88, 249, 0.08);
+    box-shadow: inset 3px 0 0 #3758F9;
+  }
+  .scrollbar-hide::-webkit-scrollbar { display: none; }
+  .scrollbar-hide { scrollbar-width: none; }
+</style>
+</head>
+<body class="bg-gray-50 text-dark">
+
+<!--
+  本ファイルは LP / 営業資料用のスクリーンショット撮影モックアップです。
+  src/pages/Reports.jsx + src/components/Layout/Sidebar.jsx + src/components/Analysis/AnalysisHeader.jsx
+  を実機のクラス・アイコン・色・配置に忠実に再現しています。
+  推奨ビューポート: 1440px 以上。フルページスクショで public/lp/assets/images/about03.png に保存してください。
+-->
+
+<div class="flex min-h-screen">
+
+  <!-- ============ Sidebar (実機: src/components/Layout/Sidebar.jsx 白テーマ・w-64) ============ -->
+  <aside class="fixed left-0 top-0 z-40 h-screen w-64 border-r border-stroke/60 bg-white">
+
+    <!-- ロゴ (h-20) -->
+    <div class="flex h-20 items-center justify-center px-6">
+      <a href="#" class="flex items-center gap-2">
+        <img src="../assets/images/logo.svg" alt="GROW REPORTER" class="h-10 w-auto" />
+      </a>
+    </div>
+
+    <!-- ナビゲーション -->
+    <nav class="overflow-y-auto py-4 px-4 scrollbar-hide" style="height: calc(100vh - 16rem);">
+      <ul class="space-y-2">
+
+        <!-- ダッシュボード -->
+        <li>
+          <a href="#" class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[rgba(55,88,249,0.05)]">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span>ダッシュボード</span>
+          </a>
+        </li>
+
+        <!-- AIチャット -->
+        <li>
+          <a href="#" class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[rgba(55,88,249,0.05)]">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+            <span>AIチャット</span>
+          </a>
+        </li>
+
+        <!-- 分析する (折りたたみ) -->
+        <li>
+          <button class="flex w-full items-center justify-between rounded-lg px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[rgba(55,88,249,0.05)]">
+            <div class="flex items-center gap-3">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span>分析する</span>
+            </div>
+            <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </li>
+
+        <!-- 改善する -->
+        <li>
+          <a href="#" class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[rgba(55,88,249,0.05)]">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <span>改善する</span>
+          </a>
+        </li>
+
+        <!-- 評価する ← active -->
+        <li>
+          <a href="#" class="sidebar-active-white flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-semibold text-primary">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+            </svg>
+            <span>評価する</span>
+          </a>
+        </li>
+
+        <!-- サイト管理 -->
+        <li>
+          <a href="#" class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[rgba(55,88,249,0.05)]">
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M9 17.25v1.007a3 3 0 0 1-.879 2.122L7.5 21h9l-.621-.621A3 3 0 0 1 15 18.257V17.25m6-12V15a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 15V5.25m18 0A2.25 2.25 0 0 0 18.75 3H5.25A2.25 2.25 0 0 0 3 5.25m18 0V12a2.25 2.25 0 0 1-2.25 2.25H5.25A2.25 2.25 0 0 1 3 12V5.25" />
+            </svg>
+            <span>サイト管理</span>
+          </a>
+        </li>
+
+        <!-- アカウント設定 (折りたたみ) -->
+        <li>
+          <button class="flex w-full items-center justify-between rounded-lg px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[rgba(55,88,249,0.05)]">
+            <div class="flex items-center gap-3">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998-3.5A7.5 7.5 0 0 1 19.5 19.5H4.5Z" />
+              </svg>
+              <span>アカウント設定</span>
+            </div>
+            <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </li>
+
+        <!-- 使い方・意見箱 (折りたたみ) -->
+        <li>
+          <button class="flex w-full items-center justify-between rounded-lg px-4 py-3 text-sm font-medium text-slate-700 transition hover:bg-[rgba(55,88,249,0.05)]">
+            <div class="flex items-center gap-3">
+              <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <circle cx="12" cy="12" r="10" stroke-linecap="round" stroke-linejoin="round" />
+                <path stroke-linecap="round" stroke-linejoin="round" d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <line x1="12" y1="17" x2="12.01" y2="17" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              <span>使い方・意見箱</span>
+            </div>
+            <svg class="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- 下部: ユーザー情報 -->
+    <div class="absolute bottom-0 left-0 right-0 bg-white">
+      <div class="p-4">
+        <!-- テーマ切替 -->
+        <div class="mb-3 flex justify-center pb-3 border-b border-stroke/60">
+          <button class="relative flex h-7 w-14 items-center rounded-full" style="background-color: rgba(0,0,0,0.08);">
+            <span class="absolute left-[4px] flex h-5 w-5 items-center justify-center rounded-full bg-white shadow-sm">
+              <svg class="h-3 w-3 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            </span>
+          </button>
+        </div>
+        <!-- ユーザー情報 -->
+        <button class="w-full rounded-lg transition hover:bg-slate-50">
+          <div class="flex items-center gap-3 p-2">
+            <span class="size-10 inline-flex items-center justify-center rounded-full bg-primary text-white text-sm font-semibold">畑</span>
+            <div class="flex-1 min-w-0 text-left">
+              <p class="truncate text-sm font-medium text-slate-800">畑中 孝仁</p>
+              <span class="mt-1 inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold bg-gradient-to-r from-rose-500 to-pink-600 text-white">ビジネスプラン</span>
+            </div>
+          </div>
+        </button>
+        <!-- ログアウト -->
+        <div class="mt-2 flex gap-2">
+          <button class="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-stroke/60 bg-white px-2 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50">
+            <svg class="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            ログアウト
+          </button>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- サイドバー開閉ボタン (実機: 左256pxの境界中央に円形) -->
+  <button class="fixed top-1/2 left-64 z-40 flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-stroke bg-gray-100 shadow-md hover:bg-gray-200">
+    <svg class="h-4 w-4 text-body-color" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+  </button>
+
+  <!-- ============ Main (Sidebar の右、ml-64) ============ -->
+  <div class="ml-64 flex flex-1 flex-col">
+
+    <!-- AnalysisHeader (実機: src/components/Analysis/AnalysisHeader.jsx) -->
+    <!-- showSiteInfo=false / showDateRange=false / showExport=false -->
+    <div class="bg-white border-b border-gray-200 glass-header sticky top-0 z-30">
+      <div class="mx-auto max-w-content px-6 py-5 flex items-center">
+        <div class="flex items-center justify-between w-full gap-2">
+          <!-- サイト選択ドロップダウン -->
+          <div class="relative flex items-center shrink-0">
+            <svg class="pointer-events-none absolute left-3 z-10 h-4 w-4 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+            <svg class="pointer-events-none absolute right-3 z-10 h-3.5 w-3.5 text-gray-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+            <div class="h-auto min-w-[200px] max-w-[400px] rounded-lg border border-stroke bg-white py-2 pl-9 pr-8 text-sm font-medium text-dark shadow-sm">サンプル株式会社のWebサイト</div>
+          </div>
+          <!-- 通知ベルのみ (showExport=false なので Download なし) -->
+          <div class="flex items-center gap-3">
+            <button class="relative flex h-10 w-10 items-center justify-center rounded-lg text-gray-500 hover:bg-gray-100">
+              <svg class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+              <span class="absolute -right-0.5 -top-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">2</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- メインコンテンツ (Reports.jsx の中身) -->
+    <main class="flex-1 overflow-y-auto bg-gray-50">
+      <div class="mx-auto max-w-content px-6 py-10">
+
+        <!-- ページヘッダー -->
+        <div class="mb-6">
+          <div class="mb-1 flex items-center gap-3">
+            <h2 class="text-2xl font-bold text-dark">評価する</h2>
+            <button class="inline-flex items-center justify-center h-6 w-6 rounded-full border border-stroke text-body-color hover:bg-gray-50" title="ツアーを見る">
+              <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </button>
+          </div>
+          <p class="text-sm text-body-color">サンプル株式会社のWebサイト の改善効果を自動計測し、成果を確認・評価</p>
+        </div>
+
+        <!-- サマリーカード4枚 -->
+        <div class="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="rounded-xl border border-stroke bg-white p-5">
+            <div class="mb-2 text-xs font-medium text-body-color">完了タスク</div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-2xl font-bold text-dark">8</span>
+              <span class="text-xs text-body-color">件</span>
+            </div>
+          </div>
+          <div class="rounded-xl border border-stroke bg-white p-5">
+            <div class="mb-2 text-xs font-medium text-body-color">計測完了</div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-2xl font-bold text-dark">6</span>
+              <span class="text-xs text-body-color">/ 8件</span>
+            </div>
+          </div>
+          <div class="rounded-xl border border-stroke bg-white p-5">
+            <div class="mb-2 text-xs font-medium text-body-color">平均スコア</div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-2xl font-bold text-dark">+24.5</span>
+            </div>
+          </div>
+          <div class="rounded-xl border border-stroke bg-white p-5">
+            <div class="mb-2 text-xs font-medium text-body-color">期待超え</div>
+            <div class="flex items-baseline gap-1">
+              <span class="text-2xl font-bold text-dark">3</span>
+              <span class="text-xs text-body-color">件</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- フィルターバー -->
+        <div class="mb-4 flex items-center gap-2 flex-wrap">
+          <svg class="h-4 w-4 text-body-color" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          <button class="rounded-full bg-primary px-3 py-1 text-xs font-medium text-white">すべて <span class="ml-0.5 opacity-70">8</span></button>
+          <button class="rounded-full bg-white px-3 py-1 text-xs font-medium text-body-color hover:bg-gray-100">計測完了 <span class="ml-0.5 opacity-70">6</span></button>
+          <button class="rounded-full bg-white px-3 py-1 text-xs font-medium text-body-color hover:bg-gray-100">計測待ち <span class="ml-0.5 opacity-70">1</span></button>
+          <button class="rounded-full bg-white px-3 py-1 text-xs font-medium text-body-color hover:bg-gray-100">計測中 <span class="ml-0.5 opacity-70">1</span></button>
+        </div>
+
+        <!-- カード一覧 -->
+        <div class="space-y-4">
+
+          <!-- カード1: 展開状態 -->
+          <div class="rounded-xl border border-stroke bg-white overflow-hidden">
+            <div class="flex items-center gap-4 px-5 py-4 cursor-pointer bg-primary/5">
+              <div class="text-2xl font-bold text-dark w-14 shrink-0 text-right">+28</div>
+              <div class="h-8 w-px bg-stroke"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="text-sm font-medium text-dark truncate">トップページのファーストビューにメインCTAを追加</span>
+                  <span class="shrink-0 rounded px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800">集客</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-sm text-body-color">
+                  <span>2026/04/12完了</span>
+                  <span>| 達成度: 期待以上</span>
+                  <button class="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs hover:opacity-80">
+                    <span class="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-green-700">
+                      <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                      検証済
+                    </span>
+                  </button>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <button class="inline-flex items-center gap-1 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  評価を見る
+                </button>
+                <button class="inline-flex items-center gap-1 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-body-color hover:bg-gray-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  再取得
+                </button>
+                <button class="inline-flex items-center gap-1 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-body-color hover:bg-gray-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  追加計測
+                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <button class="inline-flex items-center gap-1 rounded-md border border-transparent px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  削除
+                </button>
+              </div>
+              <svg class="h-4 w-4 text-body-color shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+            </div>
+
+            <!-- 展開コンテンツ: 3カラム (実機 FullCard 完全準拠) -->
+            <div class="border-t border-stroke grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x divide-gray-100">
+              <!-- 左: 改善内容 / 期待効果 -->
+              <div class="p-5 space-y-3">
+                <div>
+                  <div class="mb-1.5 text-sm font-semibold text-dark">改善内容</div>
+                  <p class="text-sm text-dark leading-relaxed">ファーストビューにメインCTAボタンを追加し、ヘッダー直下に「課題提起→ソリューション提示」のキャッチコピーを配置。スクロール前にコンバージョン導線が見える状態に変更。</p>
+                </div>
+                <div>
+                  <div class="mb-1.5 text-sm font-semibold text-dark">期待効果</div>
+                  <p class="text-sm text-dark">ファーストビュー CV 率の向上、サイト全体の CV 数 +20%</p>
+                </div>
+              </div>
+
+              <!-- 中: AI評価 (Sparkles アイコン + summary + analysis ボックス + 次のアクション) -->
+              <div class="p-5 space-y-3">
+                <div class="flex items-center gap-1.5 mb-2">
+                  <svg class="h-4 w-4 text-primary" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.5L19.5 10l-5.5 1.9L12 17l-1.9-5.5L4.5 10l5.5-1.9L12 3z"/><path d="M19 14l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z"/><path d="M5 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1 1-2z"/></svg>
+                  <span class="text-sm font-semibold text-dark">AI評価</span>
+                </div>
+                <p class="text-sm leading-relaxed text-dark">ファーストビュー CTA の改善が直接 CV に寄与し、全体のセッションも増加。期待効果を上回る成果が出ています。</p>
+                <div class="rounded-lg bg-gray-50 p-3">
+                  <div class="whitespace-pre-line text-sm leading-relaxed text-body-color">期待効果に対して CV 率が +32%、CV 数も +28% と大幅な改善が見られました。同時にエンゲージメント率も +12% 改善しており、CTA 配置がユーザーの意思決定を促進したと推察されます。</div>
+                </div>
+                <div>
+                  <div class="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-dark">
+                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14"/></svg>
+                    次のアクション
+                  </div>
+                  <ul class="space-y-1">
+                    <li class="flex items-start gap-2 text-sm text-body-color"><span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-body-color opacity-40"></span>同パターンを他カテゴリページにも展開する</li>
+                    <li class="flex items-start gap-2 text-sm text-body-color"><span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-body-color opacity-40"></span>CTA ボタンのコピー文言で A/B テストを実施し、さらなる改善余地を探る</li>
+                    <li class="flex items-start gap-2 text-sm text-body-color"><span class="mt-2 h-1 w-1 shrink-0 rounded-full bg-body-color opacity-40"></span>ファーストビュー画像の差し替え検証</li>
+                  </ul>
+                </div>
+              </div>
+
+              <!-- 右: 主要指標の変化 -->
+              <div class="p-5">
+                <div class="mb-2 text-sm font-semibold text-dark">主要指標の変化</div>
+                <div class="divide-y divide-gray-100 -mx-1">
+                  <div class="flex items-center justify-between px-1 py-2.5">
+                    <span class="text-sm font-medium text-dark">セッション</span>
+                    <div class="flex items-center gap-2 text-sm">
+                      <span class="text-dark">12,450</span>
+                      <span class="text-body-color">→</span>
+                      <span class="font-bold text-dark">16,820</span>
+                      <span class="inline-flex items-center gap-0.5 rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                        <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                        +35.1%
+                      </span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between px-1 py-2.5">
+                    <span class="text-sm font-medium text-dark">総ユーザー</span>
+                    <div class="flex items-center gap-2 text-sm">
+                      <span class="text-dark">8,920</span>
+                      <span class="text-body-color">→</span>
+                      <span class="font-bold text-dark">11,640</span>
+                      <span class="inline-flex items-center gap-0.5 rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                        <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                        +30.5%
+                      </span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between px-1 py-2.5">
+                    <span class="text-sm font-medium text-dark">新規ユーザー</span>
+                    <div class="flex items-center gap-2 text-sm">
+                      <span class="text-dark">6,340</span>
+                      <span class="text-body-color">→</span>
+                      <span class="font-bold text-dark">8,510</span>
+                      <span class="inline-flex items-center gap-0.5 rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                        <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                        +34.2%
+                      </span>
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-between px-1 py-2.5">
+                    <span class="text-sm font-medium text-dark">エンゲージメント率</span>
+                    <div class="flex items-center gap-2 text-sm">
+                      <span class="text-dark">52.3%</span>
+                      <span class="text-body-color">→</span>
+                      <span class="font-bold text-dark">58.6%</span>
+                      <span class="inline-flex items-center gap-0.5 rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700">
+                        <svg class="h-2.5 w-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+                        +12.0%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div class="mt-2 text-xs text-body-color">改善前 期間: 3/15 〜 3/28 | 改善後 期間: 4/13 〜 4/26</div>
+              </div>
+            </div>
+
+            <!-- 次ステップ提案 -->
+            <div class="border-t border-stroke px-5 py-3 flex items-center gap-3">
+              <svg class="h-4 w-4 text-primary shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.5L19.5 10l-5.5 1.9L12 17l-1.9-5.5L4.5 10l5.5-1.9L12 3z"/></svg>
+              <span class="text-sm text-body-color">この結果をもとに次の改善提案を生成できます</span>
+              <button class="ml-auto inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white" style="background:linear-gradient(135deg,#3b82f6 0%,#8b5cf6 50%,#ec4899 100%);">
+                <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 5.5L19.5 10l-5.5 1.9L12 17l-1.9-5.5L4.5 10l5.5-1.9L12 3z"/></svg>
+                次ステップ提案を生成
+              </button>
+            </div>
+          </div>
+
+          <!-- カード2: 折りたたみ -->
+          <div class="rounded-xl border border-stroke bg-white overflow-hidden">
+            <div class="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50">
+              <div class="text-2xl font-bold text-dark w-14 shrink-0 text-right">+15</div>
+              <div class="h-8 w-px bg-stroke"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="text-sm font-medium text-dark truncate">ブログ記事に目次と関連記事を実装</span>
+                  <span class="shrink-0 rounded px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800">コンテンツ</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-sm text-body-color">
+                  <span>2026/04/05完了</span>
+                  <span>| 達成度: 達成</span>
+                  <span class="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700">
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    検証済
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <button class="inline-flex items-center gap-1 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  評価を見る
+                </button>
+                <button class="inline-flex items-center gap-1 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-body-color hover:bg-gray-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  再取得
+                </button>
+                <button class="inline-flex items-center gap-1 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-body-color hover:bg-gray-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  追加計測
+                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <button class="inline-flex items-center gap-1 rounded-md border border-transparent px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  削除
+                </button>
+              </div>
+              <svg class="h-4 w-4 text-body-color shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+          <!-- カード3: 折りたたみ・大幅改善 -->
+          <div class="rounded-xl border border-stroke bg-white overflow-hidden">
+            <div class="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50">
+              <div class="text-2xl font-bold text-dark w-14 shrink-0 text-right">+42</div>
+              <div class="h-8 w-px bg-stroke"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="text-sm font-medium text-dark truncate">問い合わせフォームのステップ化と入力支援</span>
+                  <span class="shrink-0 rounded px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800">機能</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-sm text-body-color">
+                  <span>2026/03/28完了</span>
+                  <span>| 達成度: 期待以上</span>
+                  <span class="inline-flex items-center gap-1 rounded bg-green-100 px-1.5 py-0.5 text-xs text-green-700">
+                    <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    検証済
+                  </span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <button class="inline-flex items-center gap-1 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  評価を見る
+                </button>
+                <button class="inline-flex items-center gap-1 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-body-color hover:bg-gray-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                  再取得
+                </button>
+                <button class="inline-flex items-center gap-1 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-body-color hover:bg-gray-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  追加計測
+                  <svg class="h-3 w-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+                <button class="inline-flex items-center gap-1 rounded-md border border-transparent px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  削除
+                </button>
+              </div>
+              <svg class="h-4 w-4 text-body-color shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+          <!-- カード4: 計測待ち -->
+          <div class="rounded-xl border border-stroke bg-white overflow-hidden">
+            <div class="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-gray-50">
+              <div class="text-2xl font-bold text-dark w-14 shrink-0 text-right">—</div>
+              <div class="h-8 w-px bg-stroke"></div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="text-sm font-medium text-dark truncate">製品ページのデザインリニューアル</span>
+                  <span class="shrink-0 rounded px-2 py-0.5 text-xs font-medium bg-pink-100 text-pink-800">デザイン</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 text-sm text-body-color">
+                  <span>2026/04/30完了</span>
+                  <span>| 計測待ち</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-2 shrink-0">
+                <button class="inline-flex items-center gap-1 rounded-md border border-stroke px-3 py-1.5 text-xs font-medium text-dark hover:bg-gray-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  評価する
+                </button>
+                <button class="inline-flex items-center gap-1 rounded-md border border-transparent px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50">
+                  <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                  削除
+                </button>
+              </div>
+              <svg class="h-4 w-4 text-body-color shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+</body>
+</html>

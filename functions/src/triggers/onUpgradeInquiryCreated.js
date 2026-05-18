@@ -1,7 +1,11 @@
 import { logger } from 'firebase-functions/v2';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { sendUpgradeInquiryEmail, sendBoardErrorNotificationEmail } from '../utils/emailSender.js';
-import { createBoardEstimateFromInquiry, updateBoardEstimateFromInquiry } from '../utils/boardEstimateCreator.js';
+import {
+  createBoardEstimateFromInquiry,
+  updateBoardEstimateFromInquiry,
+  addExtraSiteToExistingProject,
+} from '../utils/boardEstimateCreator.js';
 
 const db = getFirestore();
 
@@ -25,6 +29,10 @@ export async function onUpgradeInquiryCreatedHandler(event) {
     zipCode, prefecture, city, building,
     paymentTiming, startDatePref, startDate, startMonth,
     uid,
+    inquiryType,
+    extraSitesCount,
+    extraSitesMonths,
+    baseProjectId,
   } = data;
 
   // ── 1. 管理者メール送信 ──
@@ -52,7 +60,9 @@ export async function onUpgradeInquiryCreatedHandler(event) {
     logger.error('アップグレードお問い合わせメール送信エラー', { error: error.message, inquiryId });
   }
 
-  // ── 2. 重複チェック: 同一uidの未対応問い合わせがあれば古い方を統合済みにする ──
+  // ── 2. 重複チェック: 同一 uid + 同一 inquiryType の未対応問い合わせがあれば古い方を統合 ──
+  // new_business と addon_only は別フローなので merged 対象外
+  const currentType = inquiryType || 'new_business';
   if (uid) {
     const existingQuery = await db.collection('upgradeInquiries')
       .where('uid', '==', uid)
@@ -61,21 +71,35 @@ export async function onUpgradeInquiryCreatedHandler(event) {
 
     for (const doc of existingQuery.docs) {
       if (doc.id !== inquiryId) {
+        const docType = doc.data()?.inquiryType || 'new_business';
+        if (docType !== currentType) continue; // 異種は merged 対象外
         await doc.ref.update({
           status: 'merged',
           mergedInto: inquiryId,
           statusUpdatedAt: FieldValue.serverTimestamp(),
         });
-        logger.info('既存問い合わせを統合済みに変更', { existingId: doc.id, newId: inquiryId });
+        logger.info('既存問い合わせを統合済みに変更', { existingId: doc.id, newId: inquiryId, inquiryType: currentType });
       }
     }
   }
 
-  // ── 3. board API で見積書を毎回新規作成 ──
+  // ── 3. board API で見積書を作成または既存案件に明細追加 ──
   try {
-    await createBoardEstimateFromInquiry(inquiryId, data);
+    if (currentType === 'addon_only') {
+      // 既存 Business ユーザーの追加申込: baseProjectId の見積書に明細を append
+      if (!baseProjectId) {
+        throw new Error('addon_only 申込には baseProjectId が必須です');
+      }
+      if (!(Number(extraSitesCount) > 0)) {
+        throw new Error('addon_only 申込には 1 件以上の extraSitesCount が必要です');
+      }
+      await addExtraSiteToExistingProject(inquiryId, data);
+    } else {
+      // new_business: 新規案件 + 見積書を作成
+      await createBoardEstimateFromInquiry(inquiryId, data);
+    }
   } catch (error) {
-    logger.error('board見積作成エラー', { error: error.message, inquiryId });
+    logger.error('board見積作成エラー', { error: error.message, inquiryId, inquiryType: currentType });
     // エラーをドキュメントに記録
     await db.collection('upgradeInquiries').doc(inquiryId).update({
       boardError: error.message,

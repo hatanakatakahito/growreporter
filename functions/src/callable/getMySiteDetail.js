@@ -88,6 +88,9 @@ export const getMySiteDetailCallable = async (request) => {
       hasGA4: !!siteData.ga4PropertyId,
       hasGSC: !!siteData.gscSiteUrl,
       ga4MeasurementId: siteData.ga4MeasurementId || '',
+      // OAuth トークン参照先 (admin 代行運用判定用)
+      ga4TokenOwner: siteData.ga4TokenOwner || null,
+      gscTokenOwner: siteData.gscTokenOwner || null,
     };
 
     return {

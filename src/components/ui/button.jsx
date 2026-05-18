@@ -56,6 +56,11 @@ const variantClasses = {
     'hover:bg-red-50',
     'dark:bg-dark-2 dark:border-red-900/40 dark:hover:bg-red-900/20',
   ],
+  'primary-outline': [
+    'bg-white text-primary border border-primary/40',
+    'hover:bg-primary/5 hover:border-primary',
+    'dark:bg-dark-2 dark:border-primary/50 dark:hover:bg-primary/10',
+  ],
   ai: [
     'bg-gradient-ai text-white',
     'hover:bg-gradient-ai-hover',

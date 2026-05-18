@@ -1,5 +1,5 @@
 /**
- * GrowReporter 営業資料生成スクリプト
+ * グローレポータ 営業資料生成スクリプト
  * c-slide_営業資料テンプレートをベースに、テキスト差し替え＋画像埋め込み
  */
 import JSZip from "jszip";
@@ -8,7 +8,7 @@ import path from "path";
 import imageSize from "image-size";
 
 const TEMPLATE = "public/lp/pptx/c-slide_営業資料テンプレート.pptx";
-const OUTPUT   = "public/lp/GrowReporter_営業資料.pptx";
+const OUTPUT   = "public/lp/グローレポータ_営業資料.pptx";
 const IMG_DIR  = "public/lp/assets/images";
 
 // ── EMU helpers ──
@@ -172,7 +172,7 @@ async function main() {
   {
     let xml = await zip.files["ppt/slides/slide1.xml"].async("string");
     xml = replaceShapeText(xml, "テキスト ボックス 1",
-      '「GrowReporter」サービスご紹介');
+      '「グローレポータ」サービスご紹介');
     xml = replaceShapeText(xml, "テキスト ボックス 4",
       "Grow Group株式会社");
     zip.file("ppt/slides/slide1.xml", xml);
@@ -204,7 +204,7 @@ async function main() {
   // ══ Slide 3: サービス概要（3つの価値）══
   {
     let xml = await zip.files["ppt/slides/slide3.xml"].async("string");
-    xml = replaceShapeText(xml, "タイトル 1", "GrowReporter とは");
+    xml = replaceShapeText(xml, "タイトル 1", "グローレポータ とは");
     xml = replaceShapeText(xml, "コンテンツ プレースホルダー 2",
       "GA4 / Search Console × AI で、分析・改善・評価を一気通貫。専門知識がなくても、データに基づいた意思決定ができる環境をつくります。");
     xml = replaceShapeText(xml, "角丸四角形 6",
@@ -241,7 +241,7 @@ async function main() {
   // ══ Slide 5: サービス紹介（3つの柱）══
   {
     let xml = await zip.files["ppt/slides/slide5.xml"].async("string");
-    xml = replaceShapeText(xml, "タイトル 1", "GrowReporter の 3 つの価値");
+    xml = replaceShapeText(xml, "タイトル 1", "グローレポータ の 3 つの価値");
     xml = replaceShapeText(xml, "コンテンツ プレースホルダー 2",
       "分析・改善・評価のサイクルをひとつのツールで完結。サイト運用を「続けられるもの」に変えます。");
     // 3 columns - headers
@@ -270,7 +270,7 @@ async function main() {
     {
       slide: 7,
       title: '特長 ② ｜「次に何をすべきか」まで提案',
-      subtitle: "一般的なツールはデータを見せるだけ。GrowReporterはAIが考察・改善提案・モックアップ画像まで一気通貫で生成。「数字は見た、で、どうすればいい？」に答えます。",
+      subtitle: "一般的なツールはデータを見せるだけ。グローレポータはAIが考察・改善提案・モックアップ画像まで一気通貫で生成。「数字は見た、で、どうすればいい？」に答えます。",
       detail: "",
       img: `${IMG_DIR}/about02.png`,
     },
@@ -305,10 +305,10 @@ async function main() {
     xml = replaceShapeText(xml, "コンテンツ プレースホルダー 54",
       "GA4やLooker Studioでは実現できない、AIによる分析・改善・評価の一気通貫を実現します。");
     // 3 product columns
-    xml = replaceShapeText(xml, "角丸四角形 8", "GrowReporter");
+    xml = replaceShapeText(xml, "角丸四角形 8", "グローレポータ");
     xml = replaceShapeText(xml, "角丸四角形 6", "GA4");
     xml = replaceShapeText(xml, "角丸四角形 7", "Looker Studio");
-    // GrowReporter axes (left column)
+    // グローレポータ axes (left column)
     xml = replaceShapeText(xml, "角丸四角形 11", "◎ AI分析");
     xml = replaceShapeText(xml, "角丸四角形 15", "◎ 改善提案");
     xml = replaceShapeText(xml, "角丸四角形 13", "◎ 効果測定");
@@ -341,7 +341,7 @@ async function main() {
     let xml = await zip.files["ppt/slides/slide10.xml"].async("string");
     xml = replaceShapeText(xml, "タイトル 1", "導入効果");
     xml = replaceShapeText(xml, "コンテンツ プレースホルダー 2",
-      "GrowReporter の導入により、レポート作成工数と分析コストを大幅に削減。改善サイクルを加速します。");
+      "グローレポータ の導入により、レポート作成工数と分析コストを大幅に削減。改善サイクルを加速します。");
     // Left metric
     xml = replaceShapeText(xml, "角丸四角形 13", "レポート作成時間の削減");
     xml = replaceShapeText(xml, "角丸四角形 20", "半日");
@@ -444,7 +444,7 @@ async function main() {
     let xml = await zip.files["ppt/slides/slide14.xml"].async("string");
     xml = replaceShapeText(xml, "タイトル 1", "コスト比較");
     // Left column
-    xml = replaceShapeText(xml, "角丸四角形 2", "GrowReporter ビジネスプラン");
+    xml = replaceShapeText(xml, "角丸四角形 2", "グローレポータ ビジネスプラン");
     xml = replaceShapeText(xml, "角丸四角形 8", "月額 ¥49,800（税別）");
     xml = replaceShapeText(xml, "角丸四角形 9", "AI分析サマリー 無制限");
     xml = replaceShapeText(xml, "角丸四角形 11", "AI改善提案・AIチャット 無制限");
@@ -458,7 +458,7 @@ async function main() {
     xml = replaceShapeText(xml, "角丸四角形 28", "施策の実行支援なし");
     xml = replaceShapeText(xml, "角丸四角形 29", "担当者の属人性");
     xml = replaceShapeText(xml, "角丸四角形 31",
-      "GrowReporterなら、コンサルの半額以下で好きなときにAI分析+改善提案+モックアップまで");
+      "グローレポータなら、コンサルの半額以下で好きなときにAI分析+改善提案+モックアップまで");
     zip.file("ppt/slides/slide14.xml", xml);
   }
 
@@ -479,14 +479,14 @@ async function main() {
   {
     let xml = await zip.files["ppt/slides/slide16.xml"].async("string");
     xml = replaceShapeText(xml, "タイトル 1", "会社概要");
-    xml = replaceShapeText(xml, "角丸四角形 5", "GrowReporter");
+    xml = replaceShapeText(xml, "角丸四角形 5", "グローレポータ");
     // Table
     xml = replaceTableCells(xml, [
       { row: 0, col: 0, text: "会社名" },     { row: 0, col: 1, text: "Grow Group株式会社" },
       { row: 1, col: 0, text: "所在地" },     { row: 1, col: 1, text: "東京都新宿区西新宿3-3-13 西新宿水間ビル2F" },
       { row: 2, col: 0, text: "代表" },       { row: 2, col: 1, text: "代表取締役　畑中 貴仁" },
       { row: 3, col: 0, text: "資本金" },     { row: 3, col: 1, text: "500万円" },
-      { row: 4, col: 0, text: "事業内容" },   { row: 4, col: 1, text: "Webサイト制作・Webマーケティング支援 / アクセス解析AIツール「GrowReporter」開発・運営" },
+      { row: 4, col: 0, text: "事業内容" },   { row: 4, col: 1, text: "Webサイト制作・Webマーケティング支援 / アクセス解析AIツール「グローレポータ」開発・運営" },
       { row: 5, col: 0, text: "URL" },        { row: 5, col: 1, text: "https://and-suspended.com/" },
     ]);
     zip.file("ppt/slides/slide16.xml", xml);

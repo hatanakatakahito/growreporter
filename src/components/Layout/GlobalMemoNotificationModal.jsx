@@ -122,7 +122,7 @@ export default function GlobalMemoNotificationModal({
       </div>
 
       {/* タブ */}
-      <div className="-mx-(--gutter) mt-4 flex border-b border-stroke dark:border-dark-3">
+      <div className="-mx-(--gutter) mt-2 flex border-b border-stroke dark:border-dark-3">
         <button
           onClick={() => setActiveTab('all')}
           className={`flex-1 px-4 py-2.5 text-xs font-medium transition ${

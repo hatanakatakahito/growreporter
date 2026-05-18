@@ -1,6 +1,7 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
+import { requireDocId, requireEnum } from '../utils/validators.js';
 
 /**
  * メンバーの権限を変更
@@ -17,15 +18,9 @@ export const updateMemberRoleCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const { memberId, newRole } = request.data || {};
-
-  if (!memberId || !newRole) {
-    throw new HttpsError('invalid-argument', 'メンバーIDと新しい権限が必要です');
-  }
-
-  if (!['editor', 'viewer'].includes(newRole)) {
-    throw new HttpsError('invalid-argument', '無効な権限です');
-  }
+  // 入力検証 (Phase 4-B-7)
+  const memberId = requireDocId(request.data?.memberId, 'memberId');
+  const newRole = requireEnum(request.data?.newRole, 'newRole', ['editor', 'viewer']);
 
   try {
     const db = getFirestore();
@@ -57,13 +52,24 @@ export const updateMemberRoleCallable = async (request) => {
     }
     
     // 3. ユーザーの memberRole を更新（users のみ。accountMembers は参照しない）
-    await db.collection('users').doc(memberId).update({
+    //    新仕様: editor / viewer ともに allowedSiteIds でサイト指定式
+    //    - editor ↔ viewer の切替: allowedSiteIds は維持（同じサイトを引き継ぐ）
+    //    - 必要に応じてオーナーが「サイト割当」UI で個別調整する
+    const updateData = {
       memberRole: newRole,
       updatedAt: FieldValue.serverTimestamp()
-    });
-    
-    logger.info('Member role updated', { memberId, newRole });
-    
+    };
+
+    // memberships マップ内のロールも整合させる
+    if (memberData.memberships && memberData.memberships[accountOwnerId]) {
+      updateData[`memberships.${accountOwnerId}.role`] = newRole;
+    }
+
+    const previousRole = memberData.memberRole;
+    await db.collection('users').doc(memberId).update(updateData);
+
+    logger.info('Member role updated', { memberId, previousRole, newRole });
+
     return { success: true, message: '権限を更新しました' };
   } catch (error) {
     logger.error('Error updating member role:', error);

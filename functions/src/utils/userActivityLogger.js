@@ -67,4 +67,9 @@ export const ACTIVITY_ACTIONS = {
   ADMIN_SITE_CREATED: 'admin_site_created',
   ADMIN_SITE_DELETED: 'admin_site_deleted',
   ADMIN_TAXONOMY_UPDATED: 'admin_taxonomy_updated',
+  ADMIN_SITE_OWNERSHIP_TRANSFERRED: 'admin_site_ownership_transferred',
+  ADMIN_SITE_OWNERSHIP_REVERSED: 'admin_site_ownership_reversed',
+
+  // 顧客操作 (サイト所有権移管関連)
+  SITE_TOKEN_OWNERSHIP_CLAIMED: 'site_token_ownership_claimed',
 };

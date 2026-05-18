@@ -2,6 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { google } from 'googleapis';
+import { safeErrorPayload, redactSensitive } from '../utils/safeLogger.js';
 
 /**
  * OAuth 2.0 認可コードをアクセストークンとリフレッシュトークンに交換
@@ -18,12 +19,21 @@ export async function exchangeOAuthCodeCallable(request) {
   const db = getFirestore();
   
   // 入力バリデーション
-  const { code, provider, redirectUri, googleAccount } = request.data || {};
-  
+  // codeVerifier は PKCE 移行期間のため任意（Phase 4-B-1）。
+  //   フロントが新しい場合は送られてくる、古い場合は undefined。
+  const { code, provider, redirectUri, googleAccount, codeVerifier } = request.data || {};
+
   if (!code || !provider || !redirectUri) {
     throw new HttpsError(
       'invalid-argument',
       'code, provider, redirectUri are required'
+    );
+  }
+
+  if (codeVerifier !== undefined && (typeof codeVerifier !== 'string' || codeVerifier.length < 43 || codeVerifier.length > 128)) {
+    throw new HttpsError(
+      'invalid-argument',
+      'codeVerifier must be 43-128 characters (RFC 7636)'
     );
   }
   
@@ -56,10 +66,15 @@ export async function exchangeOAuthCodeCallable(request) {
     );
     
     // 認可コードをトークンに交換
-    logger.info(`[exchangeOAuthCode] Exchanging authorization code...`);
-    
-    const { tokens } = await oauth2Client.getToken(code);
-    
+    // PKCE: codeVerifier がある場合は getToken に渡す。Google 側で事前の
+    // code_challenge と検証され、verifier が一致しない場合エラーになる。
+    logger.info(`[exchangeOAuthCode] Exchanging authorization code...`, { pkce: !!codeVerifier });
+
+    const tokenRequest = codeVerifier
+      ? { code, codeVerifier }
+      : code;
+    const { tokens } = await oauth2Client.getToken(tokenRequest);
+
     logger.info(`[exchangeOAuthCode] Token exchange successful`);
     
     if (!tokens.access_token) {
@@ -124,20 +139,23 @@ export async function exchangeOAuthCodeCallable(request) {
     };
     
   } catch (error) {
-    logger.error('[exchangeOAuthCode] Error:', error);
-    
-    // エラーログをFirestoreに保存
+    // セキュリティ (Phase 4-A-6): error / stack には認可コードや refresh_token 断片が
+    //   含まれる可能性があるため、Cloud Logging / Firestore 保存前に必ず redact する。
+    const safe = safeErrorPayload(error);
+    logger.error('[exchangeOAuthCode] Error:', safe.message);
+
+    // エラーログをFirestoreに保存（redact 済の値で）
     try {
       await db.collection('error_logs').add({
         type: 'oauth_exchange_error',
         provider,
         userId,
-        error: error.message,
-        stack: error.stack,
+        error: safe.message,
+        stack: safe.stack,
         timestamp: FieldValue.serverTimestamp(),
       });
     } catch (logError) {
-      logger.error('[exchangeOAuthCode] Error logging failed:', logError);
+      logger.error('[exchangeOAuthCode] Error logging failed:', redactSensitive(logError?.message));
     }
     
     // HttpsErrorの場合はそのまま投げる

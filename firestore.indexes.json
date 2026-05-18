@@ -409,6 +409,87 @@
         {"fieldPath": "tagCategory", "order": "ASCENDING"},
         {"fieldPath": "createdAt", "order": "DESCENDING"}
       ]
+    },
+    {
+      "collectionGroup": "improvementKnowledge",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "businessModel", "order": "ASCENDING"},
+        {"fieldPath": "industryMajor", "order": "ASCENDING"},
+        {"fieldPath": "siteRole", "order": "ASCENDING"},
+        {"fieldPath": "metrics.achievementLevel", "order": "ASCENDING"},
+        {"fieldPath": "metrics.overallScore", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "improvementKnowledge",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "businessModel", "order": "ASCENDING"},
+        {"fieldPath": "industryMajor", "order": "ASCENDING"},
+        {"fieldPath": "metrics.achievementLevel", "order": "ASCENDING"},
+        {"fieldPath": "metrics.overallScore", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "improvementKnowledge",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "businessModel", "order": "ASCENDING"},
+        {"fieldPath": "metrics.achievementLevel", "order": "ASCENDING"},
+        {"fieldPath": "metrics.overallScore", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "improvementKnowledge",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "metrics.achievementLevel", "order": "ASCENDING"},
+        {"fieldPath": "metrics.overallScore", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "industryBenchmarks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "industryMajor", "order": "ASCENDING"},
+        {"fieldPath": "siteRole", "order": "ASCENDING"},
+        {"fieldPath": "period", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "industryBenchmarks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "period", "order": "DESCENDING"},
+        {"fieldPath": "N", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "benchmarkSourceSites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "optedOut", "order": "ASCENDING"},
+        {"fieldPath": "excludedFromBenchmark", "order": "ASCENDING"},
+        {"fieldPath": "lastSeenAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "benchmarkSourceSites",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "taxonomy.industryMajor", "order": "ASCENDING"},
+        {"fieldPath": "taxonomy.siteRole", "order": "ASCENDING"},
+        {"fieldPath": "optedOut", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "closeMeetings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "siteId", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ]
     }
   ],
   "fieldOverrides": []

@@ -1,3 +1,13 @@
 name = "growreporter-fetch-proxy"
 main = "worker.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-09-23"
+account_id = "a1e0053647b6229da81401754483fdcd"
+
+# nodejs_compat: @cloudflare/puppeteer が node:buffer 等を import するため必須
+compatibility_flags = ["nodejs_compat"]
+
+# Browser Rendering binding (mode: 'render' / 'screenshot' で使用)
+# - Workers Free でも使用可（1日10分・同時3ブラウザの上限あり）
+# - 本番ロールアウトで上限到達したら Workers Paid に切替
+[browser]
+binding = "BROWSER"

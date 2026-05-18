@@ -171,7 +171,7 @@ export const dashboardSteps = [
     element: '#nav-analysis',
     popover: {
       title: '分析する',
-      description: 'クリックするとアコーディオンが開き、15種類以上の分析画面にアクセスできます。時系列（月別/日別/曜日/時間帯）、集客（チャネル/キーワード/リファラ）、ページ（ページ別/コンテンツ/LP等）、コンバージョン（一覧/逆算フロー）のカテゴリに分かれています。',
+      description: 'クリックするとアコーディオンが開きます。先頭に「AI総合分析」と「全体サマリー」、その下に目的別の4グループ（ユーザー・日時／集客／ページ／成果）が並び、各画面の役割が一行説明つきで確認できます。',
     },
   },
   {
@@ -179,20 +179,6 @@ export const dashboardSteps = [
     popover: {
       title: 'サイト管理',
       description: '登録サイトの一覧と設定を管理します。GA4/Search Console の連携設定、コンバージョンイベントの登録、月次目標の設定はここから行います。',
-    },
-  },
-  {
-    element: '#nav-account-settings',
-    popover: {
-      title: 'アカウント設定',
-      description: 'プロフィール編集・プラン確認・メール通知設定（週次/月次/アラート）・メンバー管理を行います。',
-    },
-  },
-  {
-    element: '#nav-help',
-    popover: {
-      title: '使い方・意見箱',
-      description: 'クリックするとアコーディオンが開き、「マニュアル」「FAQ」「意見箱」にアクセスできます。操作方法の詳細や困ったときの解決策はマニュアル・FAQをご参照ください。ご意見・ご要望は意見箱からお気軽にお寄せください。',
     },
   },
   {
@@ -206,9 +192,17 @@ export const dashboardSteps = [
   {
     element: sel(TOUR_TARGETS.SIDEBAR_USER_INFO),
     popover: {
-      title: 'ユーザー情報 / アカウント設定',
-      description: 'ここにはお名前と現在のプランが表示されています。クリックするとアカウント設定画面に移動し、プロフィール編集・プラン確認・メール通知設定・メンバー管理などが行えます。',
+      title: 'アカウント・設定メニュー',
+      description: 'お名前と現在のプランが表示されています。クリックするとメニューが開き、「アカウント設定」（プロフィール／プラン確認／メール通知／メンバー管理／意見箱）・「管理者画面」・「ログアウト」にアクセスできます。',
       side: 'top',
+    },
+  },
+  // レポートダウンロードの案内（各分析画面に遷移したときに使える機能）
+  {
+    popover: {
+      title: 'レポートダウンロード',
+      description:
+        '各分析画面のヘッダー右上にある<strong>「ダウンロード」ボタン</strong>から、表示中の期間のレポートを <strong>Excel</strong>（数値の二次加工向け）または <strong>PowerPoint</strong>（そのまま報告資料に使えるレイアウト）で出力できます。<br><br>期間は画面上部の「表示期間」で指定したものがそのまま反映されます。',
     },
   },
   TOUR_GUIDE_TOGGLE_STEP,
@@ -298,16 +292,66 @@ export const analysisChannelsSteps = makeAnalysisSteps(
   'AIがチャネル別の強弱を分析し、伸びしろのあるチャネルや注力すべき経路を具体的に提案します。'
 );
 
-// ── 流入キーワード ──────────────────────────────
-export const analysisKeywordsSteps = makeAnalysisSteps(
-  'Search Console のキーワードデータの対象期間を設定します。検索クエリごとのクリック数・表示回数・掲載順位・CTRを確認できます。',
-  'AIがキーワードの順位変動やCTR改善余地を分析し、SEO施策の優先順位を提案します。',
-  { hasFilters: false }
-);
+// ── 流入キーワード（V2: ファネル + 関係図 + チャンス象限 + 改善候補 + CV 貢献 + 表/グラフ） ──
+export const analysisKeywordsSteps = [
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
+    popover: {
+      title: '期間設定',
+      description: 'Search Console のキーワードデータの対象期間を設定します。比較期間と組み合わせて推移も確認できます。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_VIEW_TABS),
+    popover: {
+      title: '新しいタブ構成',
+      description:
+        '初期表示は「ファネル」（AI が KW を 5 層に自動分類）。関係図・チャンス象限・改善候補・CV 貢献など、目的別のビューに切り替えられます。表形式・グラフ形式は従来どおり末尾のタブに残しています。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_COLUMN_TOGGLE),
+    popover: {
+      title: '表示項目の切替',
+      description:
+        '表形式タブで列の表示・並び替えができます。設定はブラウザに保存され次回も復元されます。',
+    },
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_EXPORT),
+    popover: {
+      title: 'Excel / PowerPoint でダウンロード',
+      description:
+        'ファネル分類とトップ KW を Excel / PowerPoint で出力できます。クライアントへの提案資料がワンクリックで作れます。',
+    },
+    businessOnly: true,
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_AI_TAB),
+    popover: {
+      title: 'AI 分析タブ',
+      description:
+        'AI がファネルの構成比・機会損失・主要ジャーニーパスを分析し、SEO 施策の優先順位を提案します。',
+      side: 'bottom',
+      align: 'start',
+    },
+    businessOnly: true,
+  },
+  {
+    element: sel(TOUR_TARGETS.ANALYSIS_NOTE),
+    popover: {
+      title: 'メモ機能',
+      description: 'キーワード分析の気付きをメモとして残せます。チームメンバーとも共有可能です。',
+      side: 'top',
+      align: 'start',
+    },
+  },
+  TOUR_GUIDE_TOGGLE_STEP,
+];
 
-// ── 被リンク元 ────────────────────────────────
+// ── 参照元サイト ────────────────────────────────
 export const analysisReferralsSteps = makeAnalysisSteps(
-  '被リンク元分析の対象期間を設定します。外部サイトからの参照流入（Referral）を確認できます。',
+  '参照元サイト分析の対象期間を設定します。外部サイトからの参照流入（Referral）を確認できます。',
   'AIが参照元サイトの質と量を分析し、注目すべきリファラや新規流入経路の開拓ヒントを提案します。'
 );
 
@@ -330,15 +374,15 @@ export const analysisPageCategoriesSteps = makeAnalysisSteps(
   'AIがカテゴリ別のパフォーマンスを比較し、注力すべきコンテンツカテゴリを提案します。'
 );
 
-// ── ランディングページ ─────────────────────────────
+// ── 入口ページ ─────────────────────────────
 export const analysisLandingPagesSteps = makeAnalysisSteps(
-  'ランディングページ分析の対象期間を設定します。ユーザーが最初に訪問したページ別にデータを確認できます。',
+  '入口ページ分析の対象期間を設定します。ユーザーが最初に訪問したページ別にデータを確認できます。',
   'AIがLP別の直帰率やCV率を分析し、ファーストビューの改善案やA/Bテスト候補を提案します。'
 );
 
-// ── ページフロー ───────────────────────────────
+// ── 次に見たページ ───────────────────────────────
 export const analysisPageFlowSteps = makeAnalysisSteps(
-  'ページフロー分析の対象期間を設定します。特定ページの直前にユーザーがどのページを見ていたかを分析できます。',
+  '次に見たページ分析の対象期間を設定します。特定ページの直前にユーザーがどのページを見ていたかを分析できます。',
   'AIが遷移パターンを分析し、離脱が多い導線や効果的な回遊経路を提案します。',
   { hasColumnToggle: false, hasFilters: false, hasViewTabs: false }
 );
@@ -350,9 +394,9 @@ export const analysisConversionsSteps = makeAnalysisSteps(
   { hasFilters: false }
 );
 
-// ── 逆算フロー ────────────────────────────────
+// ── 成果までの到達ステップ ────────────────────────────────
 export const analysisReverseFlowSteps = makeAnalysisSteps(
-  '逆算フロー分析の対象期間を設定します。フォームページからのコンバージョンフローを分析できます。',
+  '成果までの到達ステップ分析の対象期間を設定します。フォームページからのコンバージョンフローを分析できます。',
   'AIがファネルの各段階の離脱率を分析し、CV率改善のためのフォーム最適化案を提案します。',
   { hasColumnToggle: false, hasFilters: false, hasViewTabs: false }
 );
@@ -364,9 +408,9 @@ export const analysisExternalLinksSteps = makeAnalysisSteps(
   { hasViewTabs: false }
 );
 
-// ── ファイルダウンロード ────────────────────────────
+// ── 資料ダウンロード ────────────────────────────
 export const analysisFileDownloadsSteps = makeAnalysisSteps(
-  'ファイルダウンロード分析の対象期間を設定します。PDF・Excel等のダウンロード数を確認できます。',
+  '資料ダウンロード分析の対象期間を設定します。PDF・Excel等のダウンロード数を確認できます。',
   'AIがダウンロード傾向を分析し、人気コンテンツの特徴やダウンロード数向上のヒントを提案します。'
 );
 
@@ -375,6 +419,13 @@ export const analysisUsersSteps = makeAnalysisSteps(
   'ユーザー属性分析の対象期間を設定します。性別・年齢・デバイス・地域などのデモグラフィックデータを確認できます。',
   'AIがユーザー属性の構成比を分析し、ターゲット層へのリーチ状況や改善余地を提案します。',
   { hasColumnToggle: false, hasFilters: false, hasViewTabs: false }
+);
+
+// ── ユーザージャーニー ───────────────────────────
+export const analysisUserJourneySteps = makeAnalysisSteps(
+  'ユーザージャーニー分析の対象期間を設定します。流入から成果までの 5 層フロー（流入元 → KW/参照元 → LP → 中間 → 結果）を期間ごとに俯瞰できます。',
+  'AIが主要ジャーニーパターンと改善余地の大きいパターンを自動で解説します。流入が多くても CV 率が低いパスを優先的に特定します。',
+  { hasColumnToggle: true, hasFilters: false, hasViewTabs: false }
 );
 
 // ── 全体サマリー（無料プラン向け） ──────────────────────
@@ -441,31 +492,7 @@ export const analysisSummaryFreeSteps = [
   TOUR_GUIDE_TOGGLE_STEP,
 ];
 
-// ── レポートダウンロード（チェックリスト専用） ──────────────────
-export const analysisExportSteps = [
-  {
-    element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
-    popover: {
-      title: 'Step 1: 出力する期間を指定',
-      description: 'まず、ダウンロードしたいレポートの対象期間をここで選択します。分析画面で表示中の期間がそのまま反映されます。',
-    },
-  },
-  {
-    element: sel(TOUR_TARGETS.ANALYSIS_EXPORT),
-    popover: {
-      title: 'Step 2: ダウンロードボタンを開く',
-      description: '右上の「ダウンロード」ボタンをクリックすると、Excel / PowerPoint の出力形式を選ぶメニューが開きます。',
-    },
-  },
-  {
-    element: sel(TOUR_TARGETS.ANALYSIS_EXPORT),
-    popover: {
-      title: 'Step 3: Excel / PowerPoint を選択',
-      description: 'Excel は数値データの二次加工に、PowerPoint はそのまま報告資料に使えるレイアウトで出力されます。',
-    },
-  },
-  TOUR_GUIDE_TOGGLE_STEP,
-];
+// （旧 analysisExportSteps はダッシュボードツアー末尾に「レポートダウンロード」案内 Step として統合済み）
 
 // ── AI分析（全体サマリー Business向け） ──────────────────
 export const analysisSummarySteps = [
@@ -567,7 +594,7 @@ export const accountSettingsSteps = [
     element: sel(TOUR_TARGETS.ACCOUNT_TABS),
     popover: {
       title: 'アカウント設定',
-      description: 'プロフィール・プラン確認・登録サイト・メール通知・メンバー管理の5つのタブで構成されています。',
+      description: 'プロフィール・プラン確認・メール通知・メンバー管理・意見箱の5つのタブで構成されています。ご意見・ご要望・不具合報告は「意見箱」タブからお送りいただけます。',
     },
   },
   {
@@ -753,9 +780,9 @@ export const TOUR_STEPS_BY_ID = {
   analysisExternalLinks: analysisExternalLinksSteps,
   analysisFileDownloads: analysisFileDownloadsSteps,
   analysisUsers: analysisUsersSteps,
+  analysisUserJourney: analysisUserJourneySteps,
   // 分析（特殊）
   analysisSummaryFree: analysisSummaryFreeSteps,
-  analysisExport: analysisExportSteps,
   analysisSummary: analysisSummarySteps,
   comprehensiveAI: comprehensiveAISteps,
   // その他
@@ -787,8 +814,8 @@ export const TOUR_PLAN_REQUIRED = {
   analysisExternalLinks: 'free',
   analysisFileDownloads: 'free',
   analysisUsers: 'free',
+  analysisUserJourney: 'free',
   analysisSummaryFree: 'free',
-  analysisExport: 'business',
   analysisSummary: 'business',
   comprehensiveAI: 'business',
   members: 'free',

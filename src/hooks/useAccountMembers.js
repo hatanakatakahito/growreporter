@@ -33,18 +33,20 @@ export function useAccountMembers() {
       const result = await getAccountMembersFunc();
       
       if (result.data.success) {
-        // Timestamp を Date に変換
+        // Timestamp を Date に変換。allowedSiteIds は Cloud Function 側で配列が入るためそのまま透過
         const membersData = result.data.members.map(member => ({
           ...member,
-          joinedAt: member.joinedAt ? new Date(member.joinedAt._seconds * 1000) : null
+          joinedAt: member.joinedAt ? new Date(member.joinedAt._seconds * 1000) : null,
+          allowedSiteIds: Array.isArray(member.allowedSiteIds) ? member.allowedSiteIds : null,
         }));
-        
+
         const invitationsData = result.data.invitations.map(invitation => ({
           ...invitation,
           createdAt: invitation.createdAt ? new Date(invitation.createdAt._seconds * 1000) : null,
-          expiresAt: invitation.expiresAt ? new Date(invitation.expiresAt._seconds * 1000) : null
+          expiresAt: invitation.expiresAt ? new Date(invitation.expiresAt._seconds * 1000) : null,
+          allowedSiteIds: Array.isArray(invitation.allowedSiteIds) ? invitation.allowedSiteIds : null,
         }));
-        
+
         setMembers(membersData);
         setInvitations(invitationsData);
       } else {

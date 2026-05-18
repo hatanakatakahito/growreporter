@@ -9,8 +9,13 @@ import ErrorAlert from '../../../components/common/ErrorAlert';
 import PlanChangeModal from '../../../components/Admin/PlanChangeModal';
 import CustomLimitsModal from '../../../components/Admin/CustomLimitsModal';
 import AdminCreateSiteModal from '../../../components/Admin/AdminCreateSiteModal';
+import SiteTransferModal from '../../../components/Admin/SiteTransferModal';
+import SiteReverseTransferModal from '../../../components/Admin/SiteReverseTransferModal';
+import { useAuth } from '../../../contexts/AuthContext';
 import {
   ArrowLeft,
+  ArrowRight,
+  Forward,
   User,
   Mail,
   Calendar,
@@ -25,8 +30,10 @@ import {
   CheckCircle,
   XCircle,
   Save,
-  Plus
+  Plus,
+  Send
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import { doc, getDoc, updateDoc, deleteField, onSnapshot } from 'firebase/firestore';
 import { db } from '../../../config/firebase';
 import { httpsCallable } from 'firebase/functions';
@@ -44,6 +51,9 @@ export default function UserDetail() {
   const [showPlanModal, setShowPlanModal] = useState(false);
   const [showCustomLimitsModal, setShowCustomLimitsModal] = useState(false);
   const [showCreateSiteModal, setShowCreateSiteModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [reverseTargetSites, setReverseTargetSites] = useState(null); // null = closed
+  const { currentUser } = useAuth();
   const [customLimits, setCustomLimitsData] = useState(null);
   const [successMessage, setSuccessMessage] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
@@ -51,6 +61,7 @@ export default function UserDetail() {
   const [editActiveSiteIds, setEditActiveSiteIds] = useState([]);
   const [isSavingActiveSites, setIsSavingActiveSites] = useState(false);
   const [liveActiveSiteIds, setLiveActiveSiteIds] = useState(null);
+  const [isSendingCredentials, setIsSendingCredentials] = useState(false);
 
   useEffect(() => {
     setPageTitle('ユーザー詳細');
@@ -111,6 +122,35 @@ export default function UserDetail() {
       await loadCustomLimits();
     } catch (err) {
       console.error('個別制限の削除エラー:', err);
+    }
+  };
+
+  // §16: アカウント情報メール送信
+  const handleSendCredentials = async () => {
+    if (!userDetail?.email) {
+      toast.error('対象ユーザーのメールアドレスが登録されていません');
+      return;
+    }
+    if (!confirm(`${userDetail.email} にアカウント情報メールを送信します。\nパスワードリセットリンクを含むメールが届きます。\n\nよろしいですか？`)) {
+      return;
+    }
+    setIsSendingCredentials(true);
+    try {
+      const fn = httpsCallable(functions, 'sendAccountCredentialsEmail');
+      const result = await fn({ targetUserId: uid });
+      if (result.data?.success) {
+        toast.success(`${result.data.sentTo} にアカウント情報メールを送信しました`);
+        setSuccessMessage(`アカウント情報メールを送信しました（${result.data.sentTo}）`);
+        setTimeout(() => setSuccessMessage(''), 6000);
+        refetch();
+      } else {
+        toast.error('メール送信に失敗しました');
+      }
+    } catch (err) {
+      console.error('[UserDetail] sendAccountCredentialsEmail error:', err);
+      toast.error(err?.message || 'メール送信に失敗しました');
+    } finally {
+      setIsSendingCredentials(false);
     }
   };
 
@@ -234,9 +274,10 @@ export default function UserDetail() {
             </p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="primary"
+            className="min-w-[180px]"
             onClick={() => setShowPlanModal(true)}
             disabled={isDeleting}
           >
@@ -245,6 +286,7 @@ export default function UserDetail() {
           </Button>
           <Button
             variant="danger-outline"
+            className="min-w-[180px]"
             onClick={handleDeleteUser}
             disabled={isDeleting}
           >
@@ -324,14 +366,45 @@ export default function UserDetail() {
           </div>
 
           <div className="space-y-4">
-            <div>
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="text-body-color dark:text-dark-6">サイト登録数</span>
-                <span className="font-semibold text-dark dark:text-white">
-                  {userDetail.usage.sites}
-                </span>
-              </div>
-            </div>
+            {(() => {
+              const planConfig = PLANS[userDetail.plan] || PLANS.free;
+              const baseMaxSites = planConfig.features.maxSites;
+              const extraSitesCount = Number(userDetail.extraSitesCount) || 0;
+              const validUntil = userDetail.extraSitesValidUntil
+                ? new Date(userDetail.extraSitesValidUntil)
+                : null;
+              const isExpired = validUntil && validUntil < new Date();
+              const effectiveExtra = isExpired ? 0 : extraSitesCount;
+              const effectiveMaxSites = baseMaxSites + effectiveExtra;
+
+              return (
+                <div>
+                  <div className="mb-1 flex items-center justify-between text-sm">
+                    <span className="text-body-color dark:text-dark-6">
+                      サイト登録数 / 上限
+                    </span>
+                    <span className="font-semibold text-dark dark:text-white">
+                      {userDetail.usage.sites} / {effectiveMaxSites}
+                      {effectiveExtra > 0 && (
+                        <span className="ml-1 text-xs font-normal text-body-color">
+                          （基本{baseMaxSites} + 追加{effectiveExtra}）
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  {extraSitesCount > 0 && (
+                    <p className="mt-1 text-xs text-body-color dark:text-dark-6">
+                      追加サイトオプション: {extraSitesCount}サイト
+                      {validUntil && (
+                        <span className={isExpired ? ' text-red-500' : ''}>
+                          {' '}（{isExpired ? '期限切れ: ' : '有効期限: '}{validUntil.toLocaleDateString('ja-JP')}）
+                        </span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {(() => {
               const planConfig = PLANS[userDetail.plan] || PLANS.free;
@@ -428,7 +501,7 @@ export default function UserDetail() {
           <h3 className="text-lg font-semibold text-dark dark:text-white">登録サイト一覧</h3>
           <div className="flex gap-2">
             {/* サイト登録ボタン */}
-            <Button variant="primary" onClick={() => setShowCreateSiteModal(true)}>
+            <Button variant="primary" className="min-w-[180px]" onClick={() => setShowCreateSiteModal(true)}>
               <Plus data-slot="icon" />
               サイト登録
             </Button>
@@ -463,12 +536,21 @@ export default function UserDetail() {
         </div>
 
         {/* 編集モード時の説明 */}
-        {editingActiveSites && (
-          <div className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
-            有効にするサイトを選択してください。プラン上限（{PLANS[userDetail.plan]?.features?.maxSites || 1}サイト）を超えるサイトがある場合、選択されたサイトのみがユーザーに表示されます。
-            チェックを全て外すとフィルタが解除されます。
-          </div>
-        )}
+        {editingActiveSites && (() => {
+          const baseMax = PLANS[userDetail.plan]?.features?.maxSites || 1;
+          const extra = Number(userDetail.extraSitesCount) || 0;
+          const validUntil = userDetail.extraSitesValidUntil
+            ? new Date(userDetail.extraSitesValidUntil)
+            : null;
+          const isExpired = validUntil && validUntil < new Date();
+          const effective = baseMax + (isExpired ? 0 : extra);
+          return (
+            <div className="mb-4 rounded-lg bg-blue-50 p-3 text-sm text-blue-600 dark:bg-blue-900/20 dark:text-blue-400">
+              有効にするサイトを選択してください。サイト登録上限（{effective}サイト{extra > 0 && !isExpired ? `: 基本${baseMax} + 追加${extra}` : ''}）を超えるサイトがある場合、選択されたサイトのみがユーザーに表示されます。
+              チェックを全て外すとフィルタが解除されます。
+            </div>
+          );
+        })()}
 
         {/* 現在のactiveSiteIds表示（編集モード外） */}
         {!editingActiveSites && liveActiveSiteIds && liveActiveSiteIds.length > 0 && (
@@ -548,6 +630,107 @@ export default function UserDetail() {
         )}
       </div>
 
+      {/* サイト引き渡し / 取り戻し (自分自身のページでは表示しない) */}
+      {currentUser?.uid !== userDetail?.uid && (
+      <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-dark dark:text-white">サイト引き渡し</h3>
+            <p className="mt-0.5 text-xs text-body-color dark:text-dark-6">
+              当社代行作成サイトをこのユーザーに引き渡します。OAuth トークンは当社が引き続き保持します。
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            className="min-w-[180px]"
+            onClick={() => setShowTransferModal(true)}
+            disabled={!userDetail?.uid || userDetail?.memberRole === 'editor' || userDetail?.memberRole === 'viewer'}
+            title={userDetail?.memberRole === 'editor' || userDetail?.memberRole === 'viewer' ? '移管先は owner ロールのみです' : ''}
+          >
+            <Forward data-slot="icon" />
+            サイトを引き渡す
+          </Button>
+        </div>
+
+        {/* 取り戻し: 移管されたサイトを admin に戻す */}
+        {(() => {
+          const transferredSites = (userDetail?.sites || []).filter(s => s._transferredFromUid === currentUser?.uid);
+          if (transferredSites.length === 0) return null;
+          return (
+            <div className="rounded-lg bg-amber-50 p-4 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/50">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <p className="text-sm font-medium text-amber-900 dark:text-amber-200">
+                    あなたが過去に引き渡したサイト: {transferredSites.length} 件
+                  </p>
+                  <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                    誤操作のリカバリーや顧客退会対応に使用してください
+                  </p>
+                </div>
+                <Button
+                  variant="danger-outline"
+                  size="sm"
+                  onClick={() => setReverseTargetSites(transferredSites)}
+                >
+                  <ArrowLeft data-slot="icon" />
+                  サイトを取り戻す
+                </Button>
+              </div>
+            </div>
+          );
+        })()}
+      </div>
+      )}
+
+      {/* §16: アカウント情報メール（登録サイト一覧と同じセクション形式） */}
+      <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+        <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-dark dark:text-white">アカウント情報メール</h3>
+            <p className="mt-0.5 text-xs text-body-color dark:text-dark-6">
+              顧客にログイン情報（パスワードリセットリンク）をメールで通知します
+            </p>
+          </div>
+          <Button
+            variant="primary"
+            className="min-w-[180px]"
+            onClick={handleSendCredentials}
+            disabled={isDeleting || isSendingCredentials || !userDetail?.email}
+            title="パスワードリセットリンクを含むアカウント情報メールを顧客に送信します"
+          >
+            <Send data-slot="icon" />
+            {isSendingCredentials ? '送信中...' : 'メールで送信'}
+          </Button>
+        </div>
+        <div className="rounded-lg bg-gray-50 p-4 dark:bg-dark-3">
+          <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-2">
+            <div>
+              <p className="mb-1 text-xs text-body-color dark:text-dark-6">送信先メールアドレス</p>
+              <p className="font-medium text-dark dark:text-white">
+                {userDetail?.email || <span className="text-body-color">未登録</span>}
+              </p>
+            </div>
+            <div>
+              <p className="mb-1 text-xs text-body-color dark:text-dark-6">最終送信日時</p>
+              <p className="font-medium text-dark dark:text-white">
+                {userDetail?.credentialsEmailSentAt ? (
+                  new Date(userDetail.credentialsEmailSentAt).toLocaleString('ja-JP', {
+                    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+                  })
+                ) : (
+                  <span className="text-body-color">未送信</span>
+                )}
+              </p>
+            </div>
+          </div>
+          {userDetail?.credentialsEmailSentAt && (
+            <p className="mt-3 text-xs text-body-color dark:text-dark-6">
+              ※ 何度でも再送信できます。リンクの有効期限は 72 時間です。
+            </p>
+          )}
+        </div>
+      </div>
+
       {/* 個別制限 */}
       <div className="mb-6 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
         <div className="mb-4 flex items-center justify-between">
@@ -558,7 +741,7 @@ export default function UserDetail() {
                 削除
               </Button>
             )}
-            <Button variant="primary" onClick={() => setShowCustomLimitsModal(true)}>
+            <Button variant="primary" className="min-w-[180px]" onClick={() => setShowCustomLimitsModal(true)}>
               <Edit2 data-slot="icon" />
               {customLimits ? '編集' : '設定'}
             </Button>
@@ -723,6 +906,37 @@ export default function UserDetail() {
             setSuccessMessage(message);
             setTimeout(() => setSuccessMessage(''), 5000);
             refetch();
+          }}
+        />
+      )}
+
+      {/* サイト引き渡しモーダル */}
+      {showTransferModal && currentUser && userDetail && (
+        <SiteTransferModal
+          isOpen={showTransferModal}
+          onClose={() => setShowTransferModal(false)}
+          initialNewOwnerUid={userDetail.uid}
+          initialNewOwnerData={userDetail}
+          adminUid={currentUser.uid}
+          onTransferred={() => {
+            refetch();
+            setSuccessMessage('サイトを引き渡しました');
+            setTimeout(() => setSuccessMessage(''), 5000);
+          }}
+        />
+      )}
+
+      {/* サイト取り戻しモーダル */}
+      {reverseTargetSites && (
+        <SiteReverseTransferModal
+          isOpen={!!reverseTargetSites}
+          onClose={() => setReverseTargetSites(null)}
+          targetSites={reverseTargetSites}
+          currentOwner={userDetail}
+          onReversed={() => {
+            refetch();
+            setSuccessMessage('サイトを取り戻しました');
+            setTimeout(() => setSuccessMessage(''), 5000);
           }}
         />
       )}

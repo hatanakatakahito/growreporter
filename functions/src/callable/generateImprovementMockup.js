@@ -18,6 +18,18 @@ import { getFirestore } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import * as cheerio from 'cheerio';
 import { captureFullSnapshot, readSnapshotHtml } from '../utils/captureFullSnapshot.js';
+import { captureBrowserRendering, readBrowserRenderedHtml } from '../utils/captureBrowserRendering.js';
+import { captureBrowserScreenshot } from '../utils/captureBrowserScreenshot.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
+import { requireDocId } from '../utils/validators.js';
+
+/**
+ * Cloudflare Browser Rendering 経路を使うか判定。
+ * 環境変数 USE_BROWSER_RENDERING=true で有効化（未設定なら旧 PSI/CF Worker snapshot 経路）。
+ */
+function isBrowserRenderingEnabled() {
+  return process.env.USE_BROWSER_RENDERING === 'true';
+}
 
 const GEMINI_API_BASE = 'https://generativelanguage.googleapis.com/v1beta/models';
 const GEMINI_MODEL = 'gemini-2.5-flash';
@@ -34,11 +46,12 @@ export async function generateImprovementMockupCallable(req) {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const { siteId, improvementId } = req.data;
+  // Phase 4-A-2: レート制限（AI + 外部 fetch 課金枯渇防止）
+  await enforceRateLimit({ uid: req.auth.uid, ...DEFAULT_RATE_LIMITS.generateImprovementMockup });
 
-  if (!siteId || !improvementId) {
-    throw new HttpsError('invalid-argument', 'siteId と improvementId が必要です');
-  }
+  // 入力検証 (Phase 4-B-7)
+  const siteId = requireDocId(req.data?.siteId, 'siteId');
+  const improvementId = requireDocId(req.data?.improvementId, 'improvementId');
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
@@ -59,6 +72,30 @@ export async function generateImprovementMockupCallable(req) {
 
     const improvement = impDoc.data();
 
+    // ── targetPageUrl 正規化 ──
+    // AI が改善案生成時に「複数ページ対象」を 1 文字列にカンマ連結することがある
+    //   例: "https://grow-group.jp/archives/2502/, /archives/7361/, /archives/2191/"
+    //   例: "https://grow-group.jp/company/, /company/profile/, /company/staff/"
+    //   例: "https://grow-group.jp/archives/2502/等"
+    // captureBrowserRendering は単一 URL しか扱えないため、
+    // 最初の有効な URL を抽出して使用する。残りは無視（モックアップは "代表 1 ページ" を表示）。
+    if (improvement.targetPageUrl && typeof improvement.targetPageUrl === 'string') {
+      const original = improvement.targetPageUrl;
+      // 最初の http(s):// から始まる絶対 URL を採取 (区切り文字: 空白, カンマ, 全角カンマ, セミコロン)
+      const firstUrlMatch = original.match(/https?:\/\/[^\s,、，;；]+/);
+      if (firstUrlMatch) {
+        let cleaned = firstUrlMatch[0]
+          // 末尾の日本語接続辞「等」「など」「他」「と」を剥がす
+          .replace(/(?:等|など|他|と)$/u, '')
+          // 末尾の句読点・括弧類を剥がす
+          .replace(/[、,，;；。.)）」』】>＞]+$/u, '');
+        if (cleaned !== original) {
+          console.log(`[generateImprovementMockup] targetPageUrl 正規化: "${original}" → "${cleaned}"`);
+          improvement.targetPageUrl = cleaned;
+        }
+      }
+    }
+
     // ── Step 0: 非ビジュアル改善はモックアップ生成をスキップ ──
     const NON_VISUAL_KEYWORDS = [
       '読込速度', '読み込み速度', '表示速度', 'ページ速度', 'パフォーマンス',
@@ -71,8 +108,22 @@ export async function generateImprovementMockupCallable(req) {
       'リダイレクト', '301', '302', '404',
       'アクセシビリティ', 'WCAG',
     ];
-    const titleAndDesc = `${improvement.title || ''} ${improvement.description || ''}`;
-    const isNonVisual = NON_VISUAL_KEYWORDS.some(kw => titleAndDesc.toLowerCase().includes(kw.toLowerCase()));
+    // 判定対象テキストから URL を除去（URL 内の "https"/"404" 等が誤マッチするため）
+    const titleAndDescRaw = `${improvement.title || ''} ${improvement.description || ''}`;
+    const titleAndDesc = titleAndDescRaw.replace(/https?:\/\/[^\s）)」』】＞>"']+/gi, '');
+    // ASCII の短縮キーワードは単語境界マッチ（"INP" が "input" にマッチする等の誤判定回避）
+    // 日本語キーワードは includes でそのまま判定
+    const titleAndDescLower = titleAndDesc.toLowerCase();
+    const isNonVisual = NON_VISUAL_KEYWORDS.some(kw => {
+      const lower = kw.toLowerCase();
+      // 半角英数字・記号のみで構成されるキーワードは単語境界で判定
+      if (/^[\x20-\x7E]+$/.test(kw)) {
+        const escaped = lower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const re = new RegExp(`(?:^|[^a-z0-9])${escaped}(?![a-z0-9])`, 'i');
+        return re.test(titleAndDescLower);
+      }
+      return titleAndDescLower.includes(lower);
+    });
     if (isNonVisual) {
       console.log(`[generateImprovementMockup] Skipped (non-visual): ${improvementId} — "${improvement.title}"`);
       await db.doc(`sites/${siteId}/improvements/${improvementId}`).update({
@@ -179,66 +230,57 @@ export async function generateImprovementMockupCallable(req) {
       }
     }
 
-    // 1d. 既存スクショが無ければ PSI API でオンデマンド撮影（PC + Mobile）
+    // 1d. 既存スクショが無ければオンデマンド撮影
+    //     CF Worker Browser Rendering で PC のみ撮影 (PSI 経路は廃止)
+    //     Workers Free は 20s 1 ブラウザ制限があるため PC + Mobile 並列は避ける
     //     撮影結果は pageScreenshots に保存し、次回以降の再利用を可能にする
     if (!beforeScreenshotBase64 && improvement.targetPageUrl) {
       try {
-        console.log(`[generateImprovementMockup] On-demand PSI capture: ${improvement.targetPageUrl}`);
-        const { captureSingleScreenshot } = await import('../utils/captureSingleScreenshot.js');
+        console.log(`[generateImprovementMockup] On-demand Browser Rendering capture: ${improvement.targetPageUrl}`);
         const { FieldValue } = await import('firebase-admin/firestore');
 
-        // サイト所有者 uid を Storage パス用に取得
         const siteDoc = await db.collection('sites').doc(siteId).get();
-        const siteOwnerId = siteDoc.data()?.userId || userId;
+        const siteOwnerId = siteDoc.data()?.userId;
         const pagePath = (() => {
           try { return new URL(improvement.targetPageUrl).pathname; } catch { return '/'; }
         })();
 
-        // PC + Mobile を並列取得
-        const [pcResult, mobileResult] = await Promise.all([
-          captureSingleScreenshot({
+        if (siteOwnerId) {
+          const pcResult = await captureBrowserScreenshot({
             url: improvement.targetPageUrl,
             deviceType: 'pc',
             userId: siteOwnerId,
             options: { storagePathPrefix: 'page-screenshots', siteId, pagePath },
-          }),
-          captureSingleScreenshot({
-            url: improvement.targetPageUrl,
-            deviceType: 'mobile',
-            userId: siteOwnerId,
-            options: { storagePathPrefix: 'page-screenshots', siteId, pagePath },
-          }),
-        ]);
-
-        if (pcResult?.imageUrl || mobileResult?.imageUrl) {
-          // pageScreenshots に保存（PC を screenshotUrl に、Mobile を screenshotUrlMobile に）
-          await db.collection('sites').doc(siteId).collection('pageScreenshots').add({
-            url: improvement.targetPageUrl,
-            pagePath,
-            screenshotUrl: pcResult?.imageUrl || null,
-            screenshotUrlMobile: mobileResult?.imageUrl || null,
-            imageSize: pcResult?.imageSize || 0,
-            mobileImageSize: mobileResult?.imageSize || 0,
-            screenshotType: pcResult?.screenshotType || mobileResult?.screenshotType || null,
-            source: 'on-demand-psi',
-            capturedAt: FieldValue.serverTimestamp(),
           });
-          // _meta 更新（Improve.jsx の realtime listener を発火させる）
-          await db.collection('sites').doc(siteId).collection('pageScreenshots').doc('_meta').set({
-            lastCapturedAt: FieldValue.serverTimestamp(),
-          }, { merge: true });
 
-          // Gemini 入力用に PC 版を base64 化（モックアップ生成は従来通り PC ベース）
-          const primaryUrl = pcResult?.imageUrl || mobileResult?.imageUrl;
-          const res = await fetch(primaryUrl);
-          if (res.ok) {
-            const buffer = await res.arrayBuffer();
-            beforeScreenshotBase64 = `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`;
-            screenshotSource = 'on-demand-psi';
+          if (pcResult?.imageUrl) {
+            await db.collection('sites').doc(siteId).collection('pageScreenshots').add({
+              url: improvement.targetPageUrl,
+              pagePath,
+              screenshotUrl: pcResult.imageUrl,
+              screenshotUrlMobile: null,
+              imageSize: pcResult?.imageSize || 0,
+              mobileImageSize: 0,
+              screenshotType: pcResult?.screenshotType || null,
+              source: 'on-demand-browser-rendering',
+              capturedAt: FieldValue.serverTimestamp(),
+            });
+            // _meta 更新（Improve.jsx の realtime listener を発火させる）
+            await db.collection('sites').doc(siteId).collection('pageScreenshots').doc('_meta').set({
+              lastCapturedAt: FieldValue.serverTimestamp(),
+            }, { merge: true });
+
+            // Gemini 入力用に PC 版を base64 化（モックアップ生成は従来通り PC ベース）
+            const res = await fetch(pcResult.imageUrl);
+            if (res.ok) {
+              const buffer = await res.arrayBuffer();
+              beforeScreenshotBase64 = `data:image/jpeg;base64,${Buffer.from(buffer).toString('base64')}`;
+              screenshotSource = 'on-demand-browser-rendering';
+            }
           }
         }
       } catch (e) {
-        console.warn(`[generateImprovementMockup] On-demand PSI capture failed: ${e.message}`);
+        console.warn(`[generateImprovementMockup] On-demand capture failed: ${e.message}`);
       }
     }
 
@@ -606,17 +648,41 @@ function extractHtmlCss(rawText) {
 
 /**
  * Snapshot ベースで完全再現モックアップを生成する。失敗時は null を返す。
+ *
+ * USE_BROWSER_RENDERING=true なら Cloudflare Browser Rendering 経路（JS 実行後の DOM）を使用。
+ * 未設定なら従来の CF Worker snapshot 経路（素 HTML + CSS インライン化 + enhance 補正）。
  */
 async function trySnapshotBasedMockup({ siteId, improvementId, improvement, apiKey, db }) {
-  // 1) スナップショット取得（24h キャッシュ）
-  const snap = await captureFullSnapshot({ siteId, pageUrl: improvement.targetPageUrl });
-  if (!snap) {
-    console.log(`[snapshot_patch] snapshot capture failed for ${improvement.targetPageUrl}`);
-    return null;
+  // 1) ベース HTML を取得（24h キャッシュ）
+  let snapshotHtml = null;
+  let sourcePath = null;
+  let sourceMode = 'snapshot';
+
+  if (isBrowserRenderingEnabled()) {
+    sourceMode = 'browser-rendering';
+    const rendering = await captureBrowserRendering({
+      siteId,
+      pageUrl: improvement.targetPageUrl,
+      viewport: 'pc',
+    });
+    if (!rendering) {
+      console.log(`[snapshot_patch] browser-rendering capture failed for ${improvement.targetPageUrl}`);
+      return null;
+    }
+    snapshotHtml = await readBrowserRenderedHtml(rendering.storagePath);
+    sourcePath = rendering.storagePath;
+  } else {
+    const snap = await captureFullSnapshot({ siteId, pageUrl: improvement.targetPageUrl });
+    if (!snap) {
+      console.log(`[snapshot_patch] snapshot capture failed for ${improvement.targetPageUrl}`);
+      return null;
+    }
+    snapshotHtml = await readSnapshotHtml(snap.storagePath);
+    sourcePath = snap.storagePath;
   }
-  const snapshotHtml = await readSnapshotHtml(snap.storagePath);
+
   if (!snapshotHtml) {
-    console.log(`[snapshot_patch] snapshot HTML read failed: ${snap.storagePath}`);
+    console.log(`[snapshot_patch] HTML read failed (${sourceMode}): ${sourcePath}`);
     return null;
   }
 
@@ -659,7 +725,8 @@ async function trySnapshotBasedMockup({ siteId, improvementId, improvement, apiK
   await db.doc(`sites/${siteId}/improvements/${improvementId}`).update({
     mockupStorageUrl,
     mockupStoragePath: mockupPath,
-    mockupSourceSnapshotPath: snap.storagePath,
+    mockupSourceSnapshotPath: sourcePath,
+    mockupSourceMode: sourceMode,
     mockupPatchChanges: patch.changes,
     mockupPatchSummary: patch.summary || '',
     mockupMode: 'snapshot_patch',
@@ -823,22 +890,71 @@ export async function requestPatchFromGemini({ apiKey, improvement, structuralHt
     if (!parsed) return lastParsed; // null or previous best
     lastParsed = parsed;
 
-    // カバレッジチェック: 全項目が change_label でカバーされているか
+    // 1) セレクタ一意マッチ検証: AI の target_selector が構造 HTML 内で「正確に 1 件」マッチするかを cheerio で検証
+    //    - 0 件: AI のハルシネーション (例: 実在しない `.l-recruit-form__resume` 等の BEM 命名)
+    //    - 2 件以上: generic 過ぎる selector で意図しない要素にもバッジ・DOM 変更が出る不具合
+    //    両方を失敗扱いにして Gemini に再生成させる
+    let failedSelectors = [];
+    try {
+      const $struct = cheerio.load(structuralHtml, { decodeEntities: false });
+      for (const change of parsed.changes || []) {
+        const sel = change?.target_selector;
+        if (!sel || typeof sel !== 'string') continue;
+        try {
+          const matchCount = $struct(sel).length;
+          if (matchCount !== 1) {
+            failedSelectors.push({
+              selector: sel,
+              label: change.change_label || '(no label)',
+              matchCount,
+            });
+          }
+        } catch (e) {
+          failedSelectors.push({ selector: sel, label: change.change_label || '(no label)', matchCount: -1, error: e.message });
+        }
+      }
+    } catch (e) {
+      console.warn(`[requestPatchFromGemini] selector validation failed: ${e.message}`);
+    }
+
+    // 2) カバレッジチェック: 全項目が change_label でカバーされているか
     const missing = patchesCoverageGap(parsed.changes, expectedNums);
-    if (missing.length === 0) {
+
+    // 両方クリアなら完了
+    if (failedSelectors.length === 0 && missing.length === 0) {
       if (cvAttempt > 0) {
-        console.log(`[requestPatchFromGemini] coverage achieved after ${cvAttempt} retry(ies)`);
+        console.log(`[requestPatchFromGemini] all checks passed after ${cvAttempt} retry(ies)`);
       }
       return parsed;
     }
     if (cvAttempt >= MAX_COVERAGE_RETRIES) {
-      console.warn(`[requestPatchFromGemini] coverage incomplete after ${cvAttempt} retry(ies): missing ${missing.join(',')}`);
+      if (failedSelectors.length > 0) console.warn(`[requestPatchFromGemini] selector uniqueness incomplete: ${failedSelectors.length} failed (${failedSelectors.map(f => `${f.selector}=${f.matchCount}件`).join(', ')})`);
+      if (missing.length > 0) console.warn(`[requestPatchFromGemini] coverage incomplete: missing ${missing.join(',')}`);
       return parsed;
     }
+
     // 次の試行用のフィードバック付加
-    const missingCircled = missing.map(n => Object.keys(CIRCLED_PATCH_MAP).find(k => CIRCLED_PATCH_MAP[k] === n)).join('、');
-    feedbackSuffix = `\n\n## ★再試行★\n前回の応答では ${missingCircled} の項目のパッチが生成されていませんでした。今回は必ず ${missingCircled} を含む **すべての番号項目** に対応するパッチを別々に生成してください。各項目の change_label は必ず対応する丸数字で始めてください。`;
-    console.warn(`[requestPatchFromGemini] coverage missing ${missing.join(',')}, retrying (${cvAttempt + 1}/${MAX_COVERAGE_RETRIES})`);
+    let parts = [];
+    if (failedSelectors.length > 0) {
+      parts.push(
+        `### ★selector 一意マッチ違反★\n以下の target_selector は **正確に 1 件マッチ** する必要があるが違反しています。Rule 16 を必ず守って再生成してください:\n` +
+        failedSelectors.map(f => {
+          if (f.error) return `- "${f.selector}" (label: ${f.label}) — エラー: ${f.error}`;
+          if (f.matchCount === 0) return `- "${f.selector}" (label: ${f.label}) → **0 件** (構造 HTML に存在しない、BEM 創作命名の可能性。実在クラスを grep して確認)`;
+          return `- "${f.selector}" (label: ${f.label}) → **${f.matchCount} 件マッチ** (generic 過ぎる。バッジが意図しない場所に並ぶ。親階層 / nth-of-type / 属性で 1 件に絞り込み必須)`;
+        }).join('\n') +
+        `\n\n★絶対ルール★\n- target_selector は **\`$(sel).length === 1\` になる specific セレクタ限定**\n- 0 件 → 実在クラス・ID・タグに置き換える（BEM 創作禁止）\n- 2 件以上 → **\`#id\` \`[data-*]\` \`[aria-*]\` を最優先**。次点で **親階層 + クラス**（例: \`.l-fv .btn\`）、最終手段で **:first-of-type / :nth-of-type(N)**\n- 「全要素に同じ変更」は親 1 件を replace で実現するか、代表 1 要素のみ修正すること（複数バッジ並びは禁止）`
+      );
+      console.warn(`[requestPatchFromGemini] ${failedSelectors.length} selector uniqueness violations (${failedSelectors.map(f => `${f.matchCount}件`).join(',')}), retrying (${cvAttempt + 1}/${MAX_COVERAGE_RETRIES})`);
+    }
+    if (missing.length > 0) {
+      const missingCircled = missing.map(n => Object.keys(CIRCLED_PATCH_MAP).find(k => CIRCLED_PATCH_MAP[k] === n)).join('、');
+      parts.push(
+        `### ★番号項目カバレッジ不足★\n前回の応答では ${missingCircled} の項目のパッチが生成されていませんでした。今回は必ず ${missingCircled} を含む **すべての番号項目** に対応するパッチを別々に生成してください。各項目の change_label は必ず対応する丸数字で始めてください。`
+      );
+      console.warn(`[requestPatchFromGemini] coverage missing ${missing.join(',')}, retrying (${cvAttempt + 1}/${MAX_COVERAGE_RETRIES})`);
+    }
+    feedbackSuffix = `\n\n## ★再試行フィードバック★\n${parts.join('\n\n')}`;
   }
   return lastParsed;
 }
@@ -849,7 +965,7 @@ function buildPatchPrompt(improvement, structuralHtml) {
   const circledRegex = /[①②③④⑤⑥⑦⑧⑨⑩]/g;
   const foundCircled = Array.from(new Set((description || '').match(circledRegex) || []));
   const mandatoryItemsSection = foundCircled.length >= 2
-    ? `\n## ★最重要★ 必須カバー項目\n改善案の「説明」には ${foundCircled.join('、')} の番号付き項目が含まれています。\n**${foundCircled.join('、')} すべてについて、それぞれ最低 1 つの patch を必ず生成してください**。\n「検討します」「〜の方が効果的」といった柔らかい表現の項目も、具体的な DOM 変更として実装化すること（視覚的でない項目は目次ジャンプ・バッジ・注意書き等に翻訳）。\n**項目数 ≤ パッチ数** を厳守。項目をまとめたり、他項目のパッチに含めたりしてはいけない。\n`
+    ? `\n## ★最重要★ 必須カバー項目\n改善案の「説明」には ${foundCircled.join('、')} の番号付き項目が含まれています。\n**${foundCircled.join('、')} すべてについて、それぞれ厳密に 1 つの patch を生成してください**（1 項目 = 1 patch = 1 要素を厳守）。\n「検討します」「〜の方が効果的」といった柔らかい表現の項目も、具体的な DOM 変更として実装化すること（視覚的でない項目は目次ジャンプ・バッジ・注意書き等に翻訳）。\n**項目数 = パッチ数** を厳守。項目をまとめたり、他項目のパッチに含めたり、1 項目を複数 patch に分割したりしてはいけない。\n`
     : '';
   return `以下の改善案を、対象ページのDOMに対して適用するための最小限のパッチをJSONで返してください。
 ${mandatoryItemsSection}
@@ -890,7 +1006,7 @@ ${structuralHtml}
 5. new_html 内で style="..." や <style> タグを使って追加スタイルを付けてよい
 5-1. **プレースホルダ禁止**: \`{{変数名}}\` \`\${変数}\` \`[TODO]\` のようなテンプレート記法は一切使わない。すべて具体的なサンプル値で埋める。例: × \`{{customer_name}}\` → ○ 「株式会社ABC様」／× \`{{case_detail_url}}\` → ○ \`/case/detail-001/\`（実在しなくても相対パス例で可）。会社名・数値・URL は現実的なダミーを入れて完成形で見せる
 6. 変更箇所は AI 側で data-changed 属性を付けなくてよい（サーバ側で自動付与する）
-7. changes は 1〜5 件程度。**同じ概念変更が複数要素に及ぶ場合は、複数要素にマッチするセレクタで 1 パッチにまとめる**（例: .faq-answer を個別に 3 パッチに分けず、.faq-answer 全体を 1 パッチで replace）。**改善案に①②③の番号付き項目がある場合は、項目数に応じてパッチを配分し、全項目を必ずカバーすること**（5 パッチ上限の中で項目数を優先し、1 項目 1 パッチを基本にする）。**視覚化しにくい項目（アンカーリンク・ID 設定・SEO 最適化など）も、ユーザーに見える形に翻訳してパッチ化する**（例: アンカーリンク → FAQ 冒頭に目次ジャンプリンクを追加、ID 設定 → 「このページのトップへ」ボタンを追加）
+7. changes は 1〜5 件程度。**1 項目 = 厳密に 1 patch = 厳密に 1 要素** を必ず守る。同じ概念変更が複数要素に及ぶ場合でも、**代表となる 1 要素**を選んで 1 patch にすること（× .faq-answer を 1 パッチで全件まとめて replace、○ .faq-list 親要素 1 件を replace で全体を書き直す or 代表 .faq-answer:first-of-type 1 件のみ修正）。**改善案に①②③の番号付き項目がある場合は、項目数 = パッチ数 を厳守し、全項目を必ずカバーすること**（5 パッチ上限の中で項目数を優先）。**視覚化しにくい項目（アンカーリンク・ID 設定・SEO 最適化など）も、ユーザーに見える形に翻訳してパッチ化する**（例: アンカーリンク → FAQ 冒頭に目次ジャンプリンクを追加、ID 設定 → 「このページのトップへ」ボタンを追加）
 8. **change_label は省略せず端的な完全文**（「…」「など」は禁止）。目安 12-25 字で、内容が明確に伝わる日本語で書く（例: 「メインCTA文言と装飾を変更」「部署名を任意項目に変更」）。**改善案の説明に①②③の番号付き項目がある場合は、項目番号（丸数字）を先頭に付け、続くタイトルをそのまま change_label に使う（例: 説明の「①「特徴」セクションのタイトルを「導入事例」に変更」→ change_label = 「①「特徴」セクションのタイトルを「導入事例」に変更」）**
 9. **description_excerpt は上記「説明」テキスト内の実在する文字列**を必ず使う（クリック時の文字列マッチに使うため）。複数の changes が同じ文に対応する場合は同じ excerpt を返してよい
 10. **隠れた要素・条件付き表示エリアへのパッチ配置を避ける**: モックアップは静的に表示するため、以下のような「ユーザー操作で初めて表示される領域」をパッチ対象にしない。代わりに **常時表示されている領域** に挿入すること:
@@ -907,7 +1023,52 @@ ${structuralHtml}
     - ヘッダー・ナビなど**横幅が詰まっている flex/grid コンテナ**には新規要素を追加しない（オーバーフローで既存メニューを押し出すため）
     - 新規追加する要素は親コンテナの幅に収まること（幅固定や min-width を無理に指定しない）
     - style 属性 / style タグを書く場合は \`max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere;\` を含め、親のフローに従うこと
-    - 要素の追加はページ本文の**縦フロー方向**（セクション間、フォーム下、コンテンツ末尾など空間がある場所）に限定する`;
+    - 要素の追加はページ本文の**縦フロー方向**（セクション間、フォーム下、コンテンツ末尾など空間がある場所）に限定する
+    - **\`overflow: hidden\` + 固定 height (px / vw / vh / rem) の親要素の中に新規要素を追加しない** — そのまま追加すると見えなくなる（カード型コンポーネント \`.c-card\` \`.card\` \`.tile\` \`.box\` \`[class*="card"]\` \`[class*="block"]\` 等は典型例）。代わりに **そのカードの直下（カード外）** に新規セクションを作って挿入する
+12. **絵文字禁止 / アイコンは inline SVG**: 装飾アイコンを使う場合、**絵文字（📈 ✨ 🎯 💼 ⭐ 等）は使用禁止**。チープでビジネスサイトに合わない。代わりに **inline SVG** を直接 HTML に書く。例:
+    - ○ \`<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/></svg>\` (グラフアイコン)
+    - ○ \`<svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>\`
+    - × \`📈\` \`✨\` \`🎯\` 等の絵文字
+    - SVG が思いつかない場合は、CSS の border / background-color で図形を作る（円・四角・三角）か、シンプルな数字（①②③）で代替
+    - Heroicons / Lucide / Feather 等のオープンソース SVG パスを inline で使うのが理想
+13. **文字色は親の背景に合わせる**: \`color: #fff\` / \`color: white\` を盲目的に使うと、親が白背景・透明背景の場合に文字が消える。
+    - 親要素の class やインライン style に \`is-color-white\` \`bg-dark\` \`is-dark\` \`overlay\` 等が含まれる、または親が画像背景上で white text を使っているのが明らかな場合のみ \`color: #fff\` を使う
+    - そうでない場合は \`color: #333\` \`color: inherit\` \`color: currentColor\` のように親に従う
+    - 視認性が不安な場合は \`text-shadow: 0 1px 2px rgba(0,0,0,0.5)\` のような contrast 補強を加える
+14. **繰り返し要素には個別の内容を提案**: AI が「サービス一覧」「カード型実績」「FAQ 一覧」など複数の sibling 要素 (\`<a class="c-card__block">\` × 4 個 等) に対して同一テキストを繰り返し挿入するのは禁止。
+    - 同じ内容を 4 個に同じテキストで挿入 → 全カードに同じ説明文 → ユーザビリティ低下
+    - 各要素について **個別の文脈に合った内容** を生成すること（例: \`Webサイト制作\` カードには制作向け説明、\`Web支援\` カードには支援向け説明）
+    - 個別化が困難な場合は、**親コンテナ自体に 1 つの説明** を追加する形にする（カード単位ではなくセクション単位）
+15. **空要素・無意味要素禁止**: \`new_html\` の中身が**実質的に空**の patch は禁止。
+    - × \`<span><br></span>\` （改行のみ、視覚的に空）
+    - × \`<div></div>\` （完全に空）
+    - × \`<p>&nbsp;</p>\` （nbsp のみ）
+    - × \`<span> </span>\` （空白のみ）
+    - **必ず意味のあるテキスト・画像・SVG・input 等のコンテンツを含むこと**
+    - text content が 1 文字以上 OR \`<img>/<svg>/<iframe>/<video>/<input>/<button>\` 等の意味のある media/control 要素を含むこと
+    - 視覚的に何も追加しない patch を出すぐらいなら、その項目は **patch を出さない**（changes 配列に含めない）方がよい
+16. **target_selector は構造 HTML 内で「正確に 1 件」マッチすること（厳守）**:
+    - cheerio で \`$(target_selector).length === 1\` になるよう必ず specific に書く
+    - **0 件マッチ** → セレクタが存在しない（パッチ適用不能、自動リトライ対象）
+    - **2 件以上マッチ** → 意図しない場所も変更されバッジが誤った位置に出る（**最近の不具合の主因**）。これも自動リトライ対象
+    - **selector 選びの優先順位**:
+      1. ID (\`#hero\` \`#contact-form\` 等) — 通常 1 件
+      2. data-* 属性 (\`[data-section="fv"]\` \`[data-id="..."]\`)
+      3. aria-* 属性 (\`[aria-label="..."]\`)
+      4. 親階層 + クラス組合せ (\`.l-fv .c-btn\` \`header .gnav\`)
+      5. nth-of-type / first-of-type で絞り込み (\`.card:first-of-type\` \`.section:nth-of-type(2)\`)
+    - **避けるべき selector**:
+      - × \`.btn\` （多くのページで複数マッチ）
+      - × \`h2\` （複数の section に存在）
+      - × \`.c-section__title\` （汎用 BEM クラスは複数存在しがち）
+    - **書き方の実例**:
+      - × \`h1\` (0 件 → 追加したい場合は親要素を replace か prepend)
+      - × \`.section__title\` (5 件マッチ) → ○ \`.l-fv .section__title\` (1 件)
+      - × \`.btn-cta\` (3 件マッチ) → ○ \`.l-fv .btn-cta\` (1 件) または \`.btn-cta:first-of-type\` (1 件)
+    - **「全要素に同じ変更を当てたい」場合の取り扱い**:
+      - 親コンテナ 1 つ (\`.faq-list\` 等) を 1 パッチで replace して中身を書き直す
+      - もしくは、代表 1 要素 (\`.faq-item:first-of-type\` 等) のみ修正してモックとして表現する
+      - **複数要素にバッジを並べる方式は禁止**（バッジは 1 項目につき 1 か所に固定）`;
 }
 
 function parsePatchJson(rawText) {
@@ -932,6 +1093,35 @@ function parsePatchJson(rawText) {
 }
 
 /**
+ * AI が返した new_html が「実質的に空」かを判定する。
+ * - <br> / <wbr> / &nbsp; / 空白 のみ → 空とみなす
+ * - <img> / <svg> / <iframe> / <video> / <audio> / <input> / <button> 等の media/control 要素を
+ *   含む場合は空でないと判定 (visual content がある)
+ *
+ * 用途: AI が `<span><br></span>` のような無意味要素で改善 patch を埋めてくる事象への対策。
+ * このような patch は HTML 上は存在するが visual には何も追加されず、badge も出せない (rect 0)。
+ *
+ * @param {string} html
+ * @returns {boolean} 意味があれば true、空であれば false
+ */
+function isPatchContentMeaningful(html) {
+  if (!html || typeof html !== 'string') return false;
+  // media / interactive 要素があれば即 OK
+  if (/<(?:img|svg|iframe|video|audio|input|button|select|textarea|canvas|picture|source|track|map|object|embed|portal)\b/i.test(html)) {
+    return true;
+  }
+  // タグ・空白系エンティティ・スペースを全部剥いだ後、1 文字以上残るか
+  const text = html
+    .replace(/<br\s*\/?>/gi, '')
+    .replace(/<wbr\s*\/?>/gi, '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&(?:nbsp|zwj|zwnj|ensp|emsp|thinsp|hairsp|#x?[0-9a-f]+);/gi, '')
+    .replace(/\s+/g, '')
+    .trim();
+  return text.length > 0;
+}
+
+/**
  * snapshot HTML に差分パッチを適用する
  * 戻り値: { html, appliedCount } or null
  */
@@ -944,9 +1134,11 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
     return null;
   }
 
-  // 番号割当: 同じ change_label には同じ番号を割り当てる
-  // - change_label 先頭に丸数字 (①②③...) がある場合は提案項目番号を優先採用
-  //   → 提案の「② メインCTA変更」と モックアップバッジ「②」が 1:1 で一致
+  // 番号割当: 提案項目（左パネル ①②③）と mockup バッジを 1:1 対応させる
+  // - change_label 先頭の丸数字 (①②③...) があれば提案項目番号として採用
+  //   → 複数パッチが同じ提案項目に属する場合は同じ番号を共有 (例: ① h2 タグ →
+  //     会社概要・名古屋・東京の 3 箇所すべてバッジ ①)
+  // - フロント側は num で dedupe して左パネルと同じ件数のチップを表示
   // - 丸数字がない場合は出現順の fallback カウンタで採番
   const CIRCLED_NUM_MAP = { '①':1,'②':2,'③':3,'④':4,'⑤':5,'⑥':6,'⑦':7,'⑧':8,'⑨':9,'⑩':10 };
   const labelToNum = new Map();
@@ -980,6 +1172,22 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
     }
     if ($target.length === 0) {
       console.warn(`[applyPatchesToSnapshot] セレクタ不一致: ${target_selector}`);
+      continue;
+    }
+    // 複数マッチ時のセーフティネット: Rule 16 (target_selector は 1 件マッチ必須) を
+    // 検証で取りこぼした場合の保険として、ここで先頭 1 件のみに変更を当てる。
+    // これにより「全カードに同じバッジ ②②②②」のような誤適用を最終ラインで防ぐ。
+    if ($target.length > 1) {
+      console.warn(`[applyPatchesToSnapshot] セレクタが ${$target.length} 件マッチ、先頭のみに適用: ${target_selector}`);
+      $target = $target.first();
+    }
+
+    // new_html が必要な action で、内容が実質的に空 (<br> のみ等) なら patch を skip。
+    // AI が無意味な空要素で改善を埋めてくる事象 (rect 0 で badge 出ない) への対策。
+    const needsHtml = action === 'replace' || action === 'append' || action === 'prepend'
+      || action === 'insert_after' || action === 'insert_before';
+    if (needsHtml && !isPatchContentMeaningful(new_html)) {
+      console.warn(`[applyPatchesToSnapshot] 空 new_html により skip: action=${action}, label=${label}, html_preview=${(new_html || '').substring(0, 100)}`);
       continue;
     }
 
@@ -1076,53 +1284,178 @@ export function applyPatchesToSnapshot(snapshotHtml, changes) {
   // 入れ子 data-changed の重複排除は行わない（両方を表示するが、CSS で内側は薄く表示）
   // → 必要ならここで $('[data-changed] [data-changed]') を処理
 
-  // data-changed 用 CSS を head に注入（インラインラベル方式）
-  // - アウトライン + 番号バッジ + 横に並ぶラベルピル（常時表示）
-  // - ラベルは要素の「外側の上」に配置 → コンテンツを覆わない
-  // - クリック: 親フレームの左パネル description を黄色ハイライト
-  // - body 全体 pointer-events: none、[data-changed] のみ受ける（リンク誤クリック防止）
-  // - 子要素も pointer-events: none
-  const outlineCss = [
-    // body 全体は不可、変更要素だけ受ける
-    `body{pointer-events:none !important;}`,
-    // 変更箇所のアウトライン（クリック可）
-    // overflow:visible を強制 → ::before バッジが bottom:100% で外側に出ても親の overflow:hidden で消えないように
-    `[data-changed]{outline:3px solid #3758F9 !important;outline-offset:3px !important;border-radius:6px !important;position:relative !important;overflow:visible !important;z-index:1 !important;pointer-events:auto !important;cursor:pointer !important;transition:outline-width 0.15s, box-shadow 0.15s !important;}`,
-    `[data-changed]:hover{outline-width:4px !important;}`,
-    `[data-changed].__mockup-active{outline-width:5px !important;box-shadow:0 0 0 8px rgba(55,88,249,0.15) !important;}`,
-    // 番号バッジ（常時表示）
-    // pointer-events: auto 明示 → バッジ上のホバー/クリックが親 data-changed のイベントとして発火
-    `[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:0;margin-bottom:6px;width:28px;height:28px;background:#3758F9;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(55,88,249,0.4);border:2px solid white;z-index:10001;pointer-events:auto;cursor:pointer;transition:transform 0.15s;}`,
-    `[data-changed]:hover::before{transform:scale(1.1);}`,
-    `[data-changed].__mockup-active::before{transform:scale(1.2);background:#1e3a8a;}`,
-    // ラベルピルは廃止（チップバーとホバー時の左パネルハイライトで十分、重なり問題も回避）
-    // 入れ子 data-changed: 内側のバッジは外側の右横に並列配置（重ならない）
-    `[data-changed] [data-changed]{outline-color:rgba(55,88,249,0.55) !important;outline-width:2px !important;}`,
-    `[data-changed] [data-changed]::before{width:24px;height:24px;font-size:12px;margin-bottom:8px;left:34px;background:#6366f1;}`,
-    // 3 段ネスト対応
-    `[data-changed] [data-changed] [data-changed]::before{left:64px;background:#818cf8;}`,
-    // data-num が無い旧データは番号バッジを非表示
-    `[data-changed]:not([data-num])::before{content:none !important;}`,
-    // 変更要素の配下: クリック無効化（誤クリック防止）+ レイアウトは触らない
-    // ただしネストした data-changed はクリック可能にする（:not([data-changed])）
-    `[data-changed] *:not([data-changed]):not(script):not(style):not(meta):not(link):not(noscript):not(template){pointer-events:none !important;}`,
-  ].join('');
-  if ($('head').length > 0) {
-    $('head').append(`<style id="__mockup-outline">${outlineCss}</style>`);
-  } else {
-    $.root().prepend(`<style id="__mockup-outline">${outlineCss}</style>`);
+  // ========================================================
+  // フッター余白の根本対処: <footer> 以降の兄弟要素を物理削除
+  // ========================================================
+  // 多くのコーポレートサイトは body 末尾に以下を持つ:
+  //   - back-to-top FAB / page-top ボタン (`<a class="back-to-top">` 等)
+  //   - tracking pixel iframe / ポップアップ用空 div / モーダルコンテナ
+  //   - 100vh の min-height を持つ装飾要素
+  // これらを CSS で隠しても div 自体の height は残るため、iframe srcDoc で
+  // 巨大な空白として描画される。HTML から物理的に削除すれば確実に余白が消える。
+  //
+  // 戦略:
+  //   1. <footer> 要素を見つける (body 直下で最後の <footer>、または class に footer を含む要素)
+  //   2. その要素より後ろにある全兄弟要素を削除
+  //   3. 念のため class/id に back-to-top / pagetop / totop を含む要素も全削除
+  try {
+    // 1) body 直下の <footer> またはそれ相当を検出
+    const $footers = $('body > footer, body > [class*="footer"]:not([class*="footer-"]), body > [id*="footer"]:not([id*="footer-"])');
+    if ($footers.length > 0) {
+      // 最後の footer を採用 (複数ある場合)
+      const $lastFooter = $footers.last();
+      // その後ろの兄弟をすべて削除
+      $lastFooter.nextAll().remove();
+    }
+    // 2) どこにあろうと back-to-top 系・pagetop 系・totop 系は削除
+    //    (page-top__inner 等のサブ要素を誤爆しないため :not で完全一致系を弾く)
+    $(
+      '[class*="back-to-top"],[id*="back-to-top"],' +
+      '[class*="pagetop"],[id*="pagetop"],' +
+      '[class*="totop"],[id*="totop"]'
+    ).remove();
+  } catch (err) {
+    console.warn(`[applyPatchesToSnapshot] footer 末尾要素削除に失敗: ${err.message}`);
   }
 
-  // 親フレームに iframe 高さと変更箇所位置を通知 + バッジクリックを通知するヘルパー script を注入
-  // （iframe は cross-origin で contentDocument にアクセスできないため postMessage で連携）
-  // unhideHidden: [data-changed] 配下で実際に display:none / visibility:hidden の要素のみ強制表示
-  // （CSS で blanket display:revert すると flex/grid が壊れるため、JS で個別対応）
-  const helperScript = `(function(){function postSize(){try{parent.postMessage({type:'__mockup_size',height:document.documentElement.scrollHeight,width:document.documentElement.scrollWidth},'*');}catch(_){}}function postChangedPositions(){var els=document.querySelectorAll('[data-changed]');if(els.length===0)return;var positions=[];for(var i=0;i<els.length;i++){var el=els[i];var rect=el.getBoundingClientRect();positions.push({top:rect.top+window.pageYOffset,left:rect.left+window.pageXOffset,height:el.offsetHeight,width:el.offsetWidth,label:el.getAttribute('data-changed')||'',num:el.getAttribute('data-num')||''});}try{parent.postMessage({type:'__mockup_changed_positions',positions:positions},'*');}catch(_){}}function unhideHiddenInChanged(){var changedEls=document.querySelectorAll('[data-changed]');for(var i=0;i<changedEls.length;i++){var ce=changedEls[i];try{var ccs=getComputedStyle(ce);if(ccs.display==='none'){ce.style.setProperty('display','revert','important');}if(ccs.visibility==='hidden'){ce.style.setProperty('visibility','visible','important');}if(parseFloat(ccs.maxHeight)===0){ce.style.setProperty('max-height','none','important');}}catch(_){}var anc=ce.parentElement;while(anc&&anc!==document.body&&anc!==document.documentElement){try{var as=getComputedStyle(anc);if(as.display==='none'){anc.style.setProperty('display','revert','important');}if(as.visibility==='hidden'){anc.style.setProperty('visibility','visible','important');}if(parseFloat(as.maxHeight)===0){anc.style.setProperty('max-height','none','important');}if(parseFloat(as.height)===0&&as.overflow==='hidden'){anc.style.setProperty('height','auto','important');}}catch(_){}anc=anc.parentElement;}var children=ce.querySelectorAll('*');for(var j=0;j<children.length;j++){var child=children[j];try{var cs=getComputedStyle(child);if(cs.display==='none'){child.style.setProperty('display','revert','important');}if(cs.visibility==='hidden'){child.style.setProperty('visibility','visible','important');}if(parseFloat(cs.maxHeight)===0){child.style.setProperty('max-height','none','important');}}catch(_){}}}}function waitImagesThenPositions(){var imgs=Array.prototype.slice.call(document.images);var pending=0;for(var i=0;i<imgs.length;i++){if(!imgs[i].complete)pending++;}var done=false;var finish=function(){if(done)return;done=true;postSize();postChangedPositions();};if(pending===0){finish();return;}imgs.forEach(function(img){if(img.complete)return;var on=function(){if(--pending===0)finish();};img.addEventListener('load',on);img.addEventListener('error',on);});setTimeout(finish,4000);}function setActive(el){var prev=document.querySelector('[data-changed].__mockup-active');if(prev&&prev!==el)prev.classList.remove('__mockup-active');if(el)el.classList.toggle('__mockup-active');}function attachClickHandlers(){var els=document.querySelectorAll('[data-changed]');for(var i=0;i<els.length;i++){var el=els[i];if(el.__mockupClickBound)continue;el.__mockupClickBound=true;el.addEventListener('click',function(e){e.preventDefault();e.stopPropagation();var t=e.currentTarget;setActive(t);var rect=t.getBoundingClientRect();try{parent.postMessage({type:'__mockup_changed_clicked',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||'',rect:{top:rect.top,left:rect.left,right:rect.right,bottom:rect.bottom,width:rect.width,height:rect.height},active:t.classList.contains('__mockup-active')},'*');}catch(_){}});el.addEventListener('mouseenter',function(e){var t=e.currentTarget;try{parent.postMessage({type:'__mockup_changed_hovered',num:t.getAttribute('data-num')||'',label:t.getAttribute('data-changed')||''},'*');}catch(_){}});}document.addEventListener('click',function(e){if(!e.target.closest('[data-changed]')){setActive(null);try{parent.postMessage({type:'__mockup_changed_deselected'},'*');}catch(_){}}});}function init(){postSize();attachClickHandlers();unhideHiddenInChanged();postChangedPositions();setTimeout(function(){postSize();postChangedPositions();unhideHiddenInChanged();},300);setTimeout(function(){postSize();attachClickHandlers();postChangedPositions();unhideHiddenInChanged();},1200);setTimeout(function(){postChangedPositions();},3000);waitImagesThenPositions();}if(document.readyState==='complete')init();else window.addEventListener('load',init);})();`;
-  if ($('body').length > 0) {
-    $('body').append(`<script id="__mockup-helper">${helperScript}</script>`);
+  // data-changed 用 CSS を head に注入（overlay-layer 方式 / 2026-05-08 更新）
+  // - 元 DOM (data-changed が付いた要素) には CSS を当てない (DOM 不可侵)
+  // - body 直下の <div id="__mockup-overlay-layer"> に rect 実測した overlay を絶対配置
+  // - 同 data-num のグループでは最初の 1 個だけ badge を出す (重複バッジ排除)
+  // - tiny / large / fixed-ancestor は overlay class で振り分け、要素自身には触れない
+  // - 旧設計 (::after inset 10px / ::before 内側 14px / body pointer-events:none / pickDisplay
+  //   による display 強制 / 祖先 unhide) はすべて削除。layout 破壊のリスクをゼロにした。
+  // 注: overlay marker UI (overlay-layer / overlay / badge の CSS と helper script) は
+  //     クライアント側 (src/utils/mockupOverlay.js / Improve.jsx) に移動。
+  //     サーバ側に残るのは hero 補正など「render 品質」関連の CSS のみ。
+  //     責務分離により、UI iteration が HTML 再生成不要で可能に。
+  const outlineCss = [
+    // ========================================================
+    // iframe 表示用 hero 補正
+    // 1) visibility:visible 強制 (全 hero 系)
+    //    - 実サイトの CSS で hero に `visibility:hidden` が当てられているケース対策
+    //    - 例: `.c-main-visual-recruit { visibility: hidden }` を JS で visible 切替
+    //    - iframe srcDoc では外部 JS の CORS 制約等で切替が走らず hidden のまま残る
+    //    - サイズには影響しないので全要素対象 (__inner / __text なども含む)
+    // 2) hero 高さ固定 (親コンテナと __image のみに限定)
+    //    - 100vh hero が iframe 内で巨大化する問題への対処
+    //    - Browser Rendering 撮影時 viewport (900px) と同値に固定
+    //    - selector を __ (BEM modifier) なしの親 + __image のみに絞る
+    //      理由: __inner / __text は position:absolute + top:50% でキャッチコピーを配置
+    //            しているため、height 強制すると配置が崩れる
+    //
+    // selector の方針:
+    //   固有性の高い複合語 (main-visual / key-visual / mainvisual / keyvisual) のみ対象
+    //   略語マッチ (hero, kv-, -kv, mv-, -mv) は誤爆リスクが高いため使わない
+    // ========================================================
+    // visibility/opacity 強制 (全 hero 系、サイズに影響しない)
+    `[class*="main-visual"],[class*="mainvisual"],[class*="key-visual"],[class*="keyvisual"]{` +
+    `visibility:visible !important;opacity:1 !important;}`,
+    // 親コンテナ (BEM modifier `__` を含まない hero ルート要素) に aspect-ratio を強制
+    // __inner / __text / __scroll などはキャッチコピー配置のため触らない
+    //
+    // 経緯:
+    //   - 当初: 高さを 900px (Browser Rendering 撮影 viewport) で固定していたが、
+    //     iframe 表示幅 (modal 内で ~870px 等) が 1400 より狭いケースで
+    //     hero が縦長 (≒1:1) になり、内側 video/image が object-fit:cover で
+    //     縦方向に異常拡大される事象が発生 (2026-05 grow-group.jp で確認)。
+    //   - 修正: aspect-ratio: 14/9 (BR 撮影 viewport 1400:900 と一致) で
+    //     比例スケール化。max-height 900px で従来の上限は維持。
+    //     iframe 幅 870px → hero 559px、iframe 幅 1400px → hero 900px (従来同等)。
+    //
+    // position:relative を強制する理由:
+    //   下の `__video` / `__image` を position:absolute に上書きするため、
+    //   親が position:relative で containing block になる必要がある。
+    //   元サイトが既に relative にしているケースが大半だが、!important で確実化。
+    `[class*="main-visual"]:not([class*="__"]),` +
+    `[class*="mainvisual"]:not([class*="__"]),` +
+    `[class*="key-visual"]:not([class*="__"]),` +
+    `[class*="keyvisual"]:not([class*="__"]){` +
+    `aspect-ratio:14/9 !important;height:auto !important;` +
+    `min-height:0 !important;max-height:900px !important;` +
+    `position:relative !important;}`,
+    // 内側 media コンテナ (`__image` / `__video` / `__bg`) を親の box に scope
+    //
+    // 重要: grow-group.jp の `.c-main-visual__video` は `position:fixed` で組まれており、
+    //   iframe srcDoc では fixed の参照原点が親 (c-main-visual) ではなく iframe viewport になる。
+    //   その結果 `height:100%` が iframe content 全体 (数千 px) を意味してしまい、動画が異常拡大される。
+    //   → position:absolute に強制上書きし、親 (aspect-ratio:14/9 の box) に scope させて
+    //     親の比例縮小に追従させる。
+    //
+    // selector 設計:
+    //   2 属性セレクタ ([class*="main-visual"][class*="video"]) で BEM 修飾子間に -recruit 等の
+    //   挟まり込みがあっても確実にマッチさせる (例: c-main-visual-recruit__video)。
+    //   image / video / bg をカバー (大半の hero 系コンテナ命名を網羅)。
+    `[class*="main-visual"][class*="image"],` +
+    `[class*="main-visual"][class*="video"],` +
+    `[class*="main-visual"][class*="bg"],` +
+    `[class*="mainvisual"][class*="image"],` +
+    `[class*="mainvisual"][class*="video"],` +
+    `[class*="mainvisual"][class*="bg"],` +
+    `[class*="key-visual"][class*="image"],` +
+    `[class*="key-visual"][class*="video"],` +
+    `[class*="key-visual"][class*="bg"],` +
+    `[class*="keyvisual"][class*="image"],` +
+    `[class*="keyvisual"][class*="video"],` +
+    `[class*="keyvisual"][class*="bg"]{` +
+    `position:absolute !important;top:0 !important;left:0 !important;` +
+    `width:100% !important;height:100% !important;` +
+    `min-height:0 !important;max-height:900px !important;}`,
+    // html/body は 100vh が effective にならないように auto に
+    // 加えて html に overflow:hidden を付け、iframe 内側の scrollbar を抑止する。
+    // 親側で iframe.style.height = min(scrollHeight, body.bottom) で clamp しているため、
+    // 本来の content 外に飛び出る phantom 領域があっても visual には影響しない。
+    `html,body{height:auto !important;min-height:0 !important;}`,
+    `html{overflow:hidden !important;}`,
+    // ========================================================
+    // 100vh / 100dvh 暴走対策 (2026-05 grow-group.jp で顕在化)
+    // ========================================================
+    // 元サイトの CSS で aspect ratio reservation 用に
+    // `[__image]:before { padding-top: 100vh }` のようなパターンが使われていると、
+    // iframe srcDoc では Initial Containing Block (ICB) が iframe element の高さ
+    // = ページ全体の content height (4800px 等) になるため、`100vh` が巨大化して
+    // bg-img プレースホルダが画面右側に巨大な縦帯として現れる事象が発生。
+    //
+    // 対策: __image / __figure / __hero / __thumbnail 等の "画像枠" 系
+    // 疑似要素 (:before) が padding-top:100vh を使っているケースを 16:9 アスペクト
+    // (max 900px) で上書きする。
+    //
+    // selector の安全性: `[class*="__"]` で BEM modifier 要素のみに限定。
+    // 元 CSS のアスペクト比指定 (75% / 65% 等) より大きいケースは縮むだけなので破壊的でない。
+    `[class*="__image"]:before,` +
+    `[class*="__figure"]:before,` +
+    `[class*="__hero"]:before,` +
+    `[class*="__thumbnail"]:before,` +
+    `[class*="__visual"]:before{` +
+    `padding-top:min(56.25%,900px) !important;}`,
+    // 同様に container 自体に height:100vh が当たるケースも cap (rare)
+    // c-main-visual 系は既に上で aspect-ratio:14/9 で処理済みなので除外
+    `[class*="__image"]:not([class*="main-visual"]),` +
+    `[class*="__figure"]:not([class*="main-visual"]),` +
+    `[class*="__hero"]:not([class*="main-visual"]){` +
+    `max-height:900px !important;}`,
+    // ========================================================
+    // ScrollReveal / AOS / GSAP 等のアニメ系を iframe 内で無効化
+    // - iframe sandbox=allow-scripts では外部 JS が実行されて sr クラスや data-sr-id が
+    //   再追加され、worker.js での解除が無効化される
+    // - CSS で要素自体を強制可視化 (アニメは見せないが、表示確実性を優先)
+    // ========================================================
+    `[data-sr-id],[data-sr],[data-aos],[data-aos-delay],` +
+    `html.sr [data-sr-id],html.sr-init [data-sr-id],` +
+    `.sr [data-sr-id],.sr-init [data-sr-id]{` +
+    `visibility:visible !important;opacity:1 !important;` +
+    `transform:none !important;}`,
+  ].join('');
+  if ($('head').length > 0) {
+    $('head').append(`<style id="__mockup-hero-corrections">${outlineCss}</style>`);
   } else {
-    $.root().append(`<script id="__mockup-helper">${helperScript}</script>`);
+    $.root().prepend(`<style id="__mockup-hero-corrections">${outlineCss}</style>`);
   }
+
+  // marker UI (overlay layer + badge) はクライアント側 (src/utils/mockupOverlay.js) で
+  // iframe load 時に注入する。サーバ側は HTML を「クリーンな改善後 DOM (+ data-changed 属性)」
+  // 状態で出力するだけ。責務分離 (Stage 1: AI patches / Stage 3: marker UI) により、
+  // marker UI を変更しても HTML 再生成が不要になった。
 
   return { html: $.html(), appliedCount };
 }

@@ -5,7 +5,7 @@ import { usePlan } from '../hooks/usePlan';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../config/firebase';
 import InviteMemberModal from '../components/Members/InviteMemberModal';
-import TransferOwnershipModal from '../components/Members/TransferOwnershipModal';
+import RoleManagementModal from '../components/Members/RoleManagementModal';
 import { Link } from 'react-router-dom';
 import { setPageTitle } from '../utils/pageTitle';
 import { Button } from '@/components/ui/button';
@@ -31,7 +31,7 @@ export default function Members() {
   useEffect(() => { setPageTitle('メンバー管理'); }, []);
 
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showRoleModal, setShowRoleModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -89,12 +89,12 @@ export default function Members() {
    */
   const handleRemoveMember = async (memberId, memberName) => {
     if (!confirm(`${memberName} さんをメンバーから削除しますか？`)) return;
-    
+
     setIsProcessing(true);
     try {
       const removeMember = httpsCallable(functions, 'removeMember');
       const result = await removeMember({ userId: memberId });
-      
+
       if (result.data.success) {
         alert('メンバーを削除しました');
         refetch?.();
@@ -107,13 +107,12 @@ export default function Members() {
     }
   };
 
-
   /**
-   * オーナー譲渡モーダルを開く
+   * 権限管理モーダルを開く（権限変更・サイト割当・オーナー譲渡を統合）
    */
-  const handleOpenTransferModal = (member) => {
+  const handleOpenRoleModal = (member) => {
     setSelectedMember(member);
-    setShowTransferModal(true);
+    setShowRoleModal(true);
   };
 
   /**
@@ -187,8 +186,8 @@ export default function Members() {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-3xl font-bold text-gray-900">メンバー管理</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold text-gray-900">メンバー管理</h1>
               <TourHelpButton tourId="members" />
             </div>
             <p className="mt-2 text-sm text-gray-600">
@@ -283,6 +282,11 @@ export default function Members() {
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getRoleBadgeColor(item.role)}`}>
                     {getRoleDisplayName(item.role)}
                   </span>
+                  {(item.role === 'viewer' || item.role === 'editor') && Array.isArray(item.allowedSiteIds) && (
+                    <span className="ml-2 text-xs text-gray-500">
+                      {item.allowedSiteIds.length} サイト割当
+                    </span>
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadgeColor(item)}`}>
@@ -316,17 +320,20 @@ export default function Members() {
                         </>
                       )}
                       
-                      {/* オーナー譲渡ボタン */}
+                      {/* 権限変更ボタン (owner 以外のメンバー) — 権限変更・サイト割当・オーナー譲渡を統合 */}
                       {item.type === 'member' && item.role !== 'owner' && (
-                        <button
-                          onClick={() => handleOpenTransferModal(item)}
-                          disabled={isProcessing}
-                          className="text-green-600 hover:text-green-900 disabled:text-gray-400"
-                        >
-                          オーナー譲渡
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleOpenRoleModal(item)}
+                            disabled={isProcessing}
+                            className="text-primary hover:opacity-80 disabled:text-gray-400"
+                          >
+                            権限を変更
+                          </button>
+                          <span className="text-gray-300">|</span>
+                        </>
                       )}
-                      
+
                       {/* 削除ボタン */}
                       {item.type === 'member' && item.role !== 'owner' && (
                         <button
@@ -388,12 +395,14 @@ export default function Members() {
         />
       )}
 
-      {showTransferModal && selectedMember && (
-        <TransferOwnershipModal
+      {showRoleModal && selectedMember && (
+        <RoleManagementModal
           member={selectedMember}
           onClose={() => {
-            setShowTransferModal(false);
+            setShowRoleModal(false);
             setSelectedMember(null);
+          }}
+          onSuccess={() => {
             refetch?.();
           }}
         />

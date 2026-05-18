@@ -8,6 +8,24 @@ import { format, sub, differenceInCalendarDays } from 'date-fns';
 
 const SiteContext = createContext();
 
+/**
+ * userProfile からメンバー（editor/viewer）判定とフィルタ用のメタデータを取り出す
+ * - isMember: owner 以外（editor/viewer）の場合 true → allowedSiteIds でサイト絞り込み
+ * - isViewer: 閲覧者（read-only）。編集者と区別する場合に使う
+ * - allowedSiteIds: 閲覧許可サイト ID 配列（owner の場合は null）
+ *
+ * 仕様: オーナー以外は対象サイトを選択式で割り当てられる。
+ *   - editor: allowedSiteIds 内のサイトを閲覧・編集可能
+ *   - viewer: allowedSiteIds 内のサイトを閲覧のみ可能
+ */
+function deriveMemberFilter(userProfile) {
+  if (!userProfile) return { isMember: false, isViewer: false, allowedSiteIds: null };
+  const role = userProfile.memberRole || 'owner';
+  if (role === 'owner') return { isMember: false, isViewer: false, allowedSiteIds: null };
+  const allowed = Array.isArray(userProfile.allowedSiteIds) ? userProfile.allowedSiteIds : [];
+  return { isMember: true, isViewer: role === 'viewer', allowedSiteIds: allowed };
+}
+
 // デフォルトの日付範囲（前月の1日～末日）
 const getDefaultDateRange = () => {
   const today = new Date();
@@ -25,10 +43,15 @@ const getDefaultDateRange = () => {
 };
 
 export function SiteProvider({ children }) {
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
   const location = useLocation();
-  const { plan: currentPlan, isLoading: isPlanLoading } = usePlan();
-  const maxSites = currentPlan?.features?.maxSites || 1;
+  const { plan: currentPlan, isLoading: isPlanLoading, effectiveMaxSites, extraSitesCount, extraSitesValidUntil } = usePlan();
+  const { isMember, isViewer, allowedSiteIds: memberAllowedSiteIds } = useMemo(
+    () => deriveMemberFilter(userProfile),
+    [userProfile]
+  );
+  // 有効サイト登録数 = プラン基準 + 追加オプション（期限内のみ）
+  const maxSites = effectiveMaxSites || currentPlan?.features?.maxSites || 1;
   const [rawSites, setRawSites] = useState([]);
   const [selectedSiteId, setSelectedSiteId] = useState(null);
   const [selectedSiteLive, setSelectedSiteLive] = useState(null);
@@ -202,19 +225,36 @@ export function SiteProvider({ children }) {
 
         console.log('[SiteContext] 使用するアカウントオーナーID:', accountOwnerId);
 
-        // accountOwnerIdが一致するサイトを全て取得
-        const q = query(
-          collection(db, 'sites'),
-          where('userId', '==', accountOwnerId)
-        );
-
-        const querySnapshot = await getDocs(q);
-        console.log('[SiteContext] 取得したサイト数:', querySnapshot.size);
-
-        const sitesData = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        // メンバー (editor/viewer) の場合、Firestore Rules の query レベル拒否を避けるため
+        // allowedSiteIds に含まれる siteId を個別 getDoc で取得する。
+        // (where('userId', '==', accountOwnerId) は割当外サイトが含まれると
+        //  rules で全件 PERMISSION_DENIED になるため使えない)
+        const memberRole = userData?.memberRole || 'owner';
+        const isMemberRole = memberRole === 'editor' || memberRole === 'viewer';
+        let sitesData = [];
+        if (isMemberRole) {
+          const allowedSiteIds = Array.isArray(userData?.allowedSiteIds) ? userData.allowedSiteIds : [];
+          if (allowedSiteIds.length === 0) {
+            console.log(`[SiteContext] ${memberRole} に割当サイトなし`);
+          } else {
+            const docs = await Promise.all(
+              allowedSiteIds.map((sid) => getDoc(doc(db, 'sites', sid)))
+            );
+            sitesData = docs
+              .filter((d) => d.exists())
+              .map((d) => ({ id: d.id, ...d.data() }));
+            console.log(`[SiteContext] ${memberRole} 取得サイト数:`, sitesData.length);
+          }
+        } else {
+          // owner: 従来通り accountOwnerId で query
+          const q = query(
+            collection(db, 'sites'),
+            where('userId', '==', accountOwnerId)
+          );
+          const querySnapshot = await getDocs(q);
+          console.log('[SiteContext] owner 取得サイト数:', querySnapshot.size);
+          sitesData = querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+        }
 
         // クライアント側でソート
         sitesData.sort((a, b) => {
@@ -323,21 +363,43 @@ export function SiteProvider({ children }) {
     return null;
   }, [comparisonMode, dateRange, customComparisonRange]);
 
-  // プラン制限に基づくサイトフィルタリング
+  // SiteSelectionModal はサイト追加オプション解約 / プラン解約により
+  // サイト数が effectiveMaxSites を超えた場合に復活させる。
+  //   - メンバー（editor/viewer）はオーナー側で管理されるため対象外
+  //   - 管理者閲覧中は対象外
+  //   - 既に activeSiteIds で適正範囲に絞り込まれていれば不要
   const needsSiteSelection = useMemo(() => {
-    if (isLoading || isPlanLoading) return false;
-    if (isAdminViewing || adminRole) return false;
-    if (rawSites.length <= maxSites) return false;
-    // activeSiteIdsが保存されていて有効なら選択不要
-    if (activeSiteIds && activeSiteIds.length > 0) {
-      const validIds = activeSiteIds.filter(id => rawSites.some(s => s.id === id));
-      if (validIds.length > 0 && validIds.length <= maxSites) return false;
-    }
+    if (isMember || isAdminViewing || adminRole) return false;
+    if (isPlanLoading || isLoading) return false;
+    const completed = rawSites.filter((s) => s.setupCompleted === true);
+    if (completed.length <= maxSites) return false;
+    if (activeSiteIds && activeSiteIds.length > 0 && activeSiteIds.length <= maxSites) return false;
     return true;
-  }, [rawSites, maxSites, activeSiteIds, isLoading, isPlanLoading, isAdminViewing, adminRole, currentPlan]);
+  }, [rawSites, maxSites, activeSiteIds, isMember, isAdminViewing, adminRole, isPlanLoading, isLoading]);
+
+  // メンバー（editor/viewer）の場合、まず allowedSiteIds で rawSites を絞り込む
+  // （オーナー以外は割当外サイトを一切見られない）
+  const memberFilteredRawSites = useMemo(() => {
+    if (!isMember) return rawSites;
+    const allowed = memberAllowedSiteIds || [];
+    return rawSites.filter((s) => allowed.includes(s.id));
+  }, [rawSites, isMember, memberAllowedSiteIds]);
+
+  // メンバーに割当サイトが 1 つもない（招待後オーナーが割当未設定）
+  const memberHasNoAllowedSites = useMemo(() => {
+    if (!isMember) return false;
+    if (isAdminViewing || adminRole) return false;
+    return (memberAllowedSiteIds?.length ?? 0) === 0;
+  }, [isMember, memberAllowedSiteIds, isAdminViewing, adminRole]);
+
+  // 後方互換用エイリアス（既存コード参照のため）
+  const viewerHasNoAllowedSites = isViewer ? memberHasNoAllowedSites : false;
 
   // フィルタ済みサイト一覧（プラン制限適用後）
+  // - メンバーはオーナー側のプラン上限管理対象外。allowedSiteIds 内のサイトをそのまま表示
+  // - オーナーは従来通り、活性サイト（activeSiteIds）でプラン上限以内に絞り込む
   const sites = useMemo(() => {
+    if (isMember) return memberFilteredRawSites;
     if (isPlanLoading) return rawSites;
     if (isAdminViewing || adminRole) return rawSites;
     if (rawSites.length <= maxSites) return rawSites;
@@ -346,7 +408,7 @@ export function SiteProvider({ children }) {
       if (filtered.length > 0 && filtered.length <= maxSites) return filtered;
     }
     return rawSites;
-  }, [rawSites, maxSites, activeSiteIds, isAdminViewing, adminRole, isPlanLoading]);
+  }, [rawSites, memberFilteredRawSites, isMember, maxSites, activeSiteIds, isAdminViewing, adminRole, isPlanLoading]);
 
   // サイト選択確定（ダウングレード時のサイト選択モーダル用）
   const confirmSiteSelection = useCallback(async (selectedIds) => {
@@ -433,7 +495,7 @@ export function SiteProvider({ children }) {
 
   const value = {
     sites,
-    allSites: rawSites, // フィルタ前の全サイト（サイト選択モーダル用）
+    allSites: rawSites, // フィルタ前の全サイト（オーナーのサイト選択モーダル用）
     selectedSite,
     selectedSiteId,
     selectSite,
@@ -446,11 +508,18 @@ export function SiteProvider({ children }) {
     needsSiteSelection,
     confirmSiteSelection,
     maxSites,
+    extraSitesCount,
+    extraSitesValidUntil,
     comparisonMode,
     setComparisonMode,
     comparisonDateRange,
     customComparisonRange,
     setCustomComparisonRange,
+    // メンバー関連
+    isMember,
+    isViewer,
+    memberHasNoAllowedSites,
+    viewerHasNoAllowedSites, // 後方互換
   };
 
   return <SiteContext.Provider value={value}>{children}</SiteContext.Provider>;

@@ -22,7 +22,7 @@ import TourHelpButton from '../../components/Onboarding/TourHelpButton';
 import { Button } from '../../components/ui/button';
 
 /**
- * 逆算フロー画面
+ * 成果までの到達ステップ画面
  * フォームページからのコンバージョンフローを分析
  */
 
@@ -73,7 +73,7 @@ export default function ReverseFlow() {
 
   // ページタイトルを設定
   useEffect(() => {
-    setPageTitle('逆算フロー');
+    setPageTitle('成果までの到達ステップ');
   }, []);
 
   // 初回のみコンバージョン未設定アラートを表示（サイトデータ読込完了後に判定）
@@ -483,13 +483,13 @@ export default function ReverseFlow() {
         {/* コンテンツ */}
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg font-bold text-dark dark:text-white">
-                逆算フロー
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-2xl font-bold text-dark dark:text-white">
+                成果までの到達ステップ
               </h2>
               <TourHelpButton tourId="analysisReverseFlow" />
             </div>
-            <p className="mt-0.5 text-sm text-body-color">
+            <p className="mt-1 text-sm text-body-color">
               フォームページからのコンバージョンフローを分析
             </p>
           </div>
@@ -498,7 +498,7 @@ export default function ReverseFlow() {
           {(!conversionEvents || conversionEvents.length === 0) && (
             <div className="rounded-lg border border-stroke bg-white dark:border-dark-3 dark:bg-dark-2">
               <div className="border-b border-stroke p-6 dark:border-dark-3">
-                <h3 className="text-lg font-semibold text-dark dark:text-white">逆算フローとは？</h3>
+                <h3 className="text-lg font-semibold text-dark dark:text-white">成果までの到達ステップとは？</h3>
               </div>
               <div className="p-6">
                 <p className="mb-6 text-sm leading-relaxed text-body-color">

@@ -2,10 +2,20 @@
  * Cloudflare Worker: HTMLフェッチプロキシ / 完全スナップショット生成
  *
  * モード:
- *   mode: 'html'     — 対象URLのHTMLをそのまま返す（既存動作、デフォルト）
- *   mode: 'snapshot' — 外部CSSをインライン化し、画像/フォントURLを絶対化した
- *                      自己完結HTMLを返す（改善モックアップの完全再現用）
+ *   mode: 'html'        — 対象URLのHTMLをそのまま返す（既存動作、デフォルト）
+ *   mode: 'snapshot'    — 外部CSSをインライン化し、画像/フォントURLを絶対化した
+ *                          自己完結HTMLを返す（改善モックアップの完全再現用）
+ *   mode: 'render'      — Browser Rendering で JS 実行後の DOM (HTML) を返す
+ *                          lazy-load 全発火、networkidle 待機まで実施
+ *   mode: 'screenshot'  — Browser Rendering でフルページ JPEG を base64 で返す
+ *   mode: 'render+shot' — 1 アクセスで HTML と JPEG を同時に返す（改善ロジック統一化用）
+ *                          visual 確定後に screenshot を撮り、その後で iframe srcDoc 用の
+ *                          HTML 処理 (CSS インライン化 + script 削除) を続行
+ *
+ * Browser Rendering モード ('render' | 'screenshot' | 'render+shot') は env.BROWSER バインディングを使用。
+ * Workers Free では 1日10分・同時3ブラウザまで。本番ロールアウト時に Workers Paid 検討。
  */
+import puppeteer from '@cloudflare/puppeteer';
 
 const USER_AGENT =
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36';
@@ -90,7 +100,7 @@ export default {
 
     try {
       const body = await request.json();
-      const { url, mode = 'html' } = body;
+      const { url, mode = 'html', viewport = 'pc', fullPage = true } = body;
 
       // SSRF 検証: プロトコル / プライベート IP / メタデータ
       const v = isAllowedTargetUrl(url);
@@ -102,6 +112,13 @@ export default {
         return corsJson(await buildSnapshot(url), 200, origin, corsAllowed);
       }
 
+      if (mode === 'render' || mode === 'screenshot' || mode === 'render+shot') {
+        if (!env.BROWSER) {
+          return corsJson({ error: 'Browser Rendering binding (BROWSER) not configured' }, 500, origin, corsAllowed);
+        }
+        return corsJson(await renderWithBrowser(env.BROWSER, url, mode, viewport, fullPage), 200, origin, corsAllowed);
+      }
+
       // デフォルト: HTMLそのまま返却（既存動作）
       const response = await fetch(url, { headers: COMMON_FETCH_HEADERS, redirect: 'follow' });
       const html = await response.text();
@@ -111,6 +128,747 @@ export default {
     }
   },
 };
+
+// ========== Browser Rendering モード ==========
+
+/**
+ * Browser Rendering でページを開き、JS 実行後の HTML またはスクショを返す。
+ *
+ * 共通処理:
+ *   1. viewport 設定（pc=1920x1080, mobile=412x915）
+ *   2. networkidle0 で goto（最大 50s）
+ *   3. lazy-load 全発火のため最下までスクロール → 戻す
+ *   4. 画像読込待ち（最大 2s）
+ *
+ * @param {Fetcher} browserBinding env.BROWSER
+ * @param {string} pageUrl 撮影対象 URL（SSRF 検証済）
+ * @param {'render'|'screenshot'|'render+shot'} mode
+ *   - 'render': HTML のみ返却
+ *   - 'screenshot': screenshot のみ返却（HTML 処理スキップ）
+ *   - 'render+shot': screenshot を撮ってから HTML 処理を続行し、両方返却
+ * @param {'pc'|'mobile'} viewport
+ * @param {boolean} [fullPage=true] - true: ページ全体撮影 (デフォルト互換)、false: viewport のみ撮影 (サムネ用)
+ * @returns {Promise<{status: number, html?: string, screenshot?: string, finalUrl?: string, error?: string}>}
+ */
+// ========================================================
+// withTimeout: Promise を指定 ms で reject する保護ラッパー (2026-05-11)
+// ========================================================
+// 用途: page.evaluate / page.goto / page.content 等が CF BR の Connection closed 後に
+//   永久ハングする問題を解消。各 await を withTimeout で包んで上限を強制する。
+async function withTimeout(promise, ms, label) {
+  let timeoutId;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      console.warn(`[TIMEOUT] ${label} exceeded ${ms}ms`);
+      reject(new Error(`${label}-timeout-${ms}ms`));
+    }, ms);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
+
+// ========================================================
+// acquireBrowser: session reuse パターン (2026-05-11)
+// ========================================================
+// CF 公式推奨: puppeteer.sessions() で利用可能な session を探し、
+//   connect() で再利用、無ければ launch() で新規作成 (keep_alive=10分)。
+// 終了時は close ではなく disconnect することで session が pool に保持される。
+// → cold start hang (puppeteer.launch 直後の goto が 50s timeout する問題) を構造的に解消。
+async function acquireBrowser(browserBinding) {
+  try {
+    const sessions = await withTimeout(
+      puppeteer.sessions(browserBinding),
+      5_000,
+      'puppeteer.sessions'
+    );
+    const free = (sessions || []).filter((s) => !s.connectionId).map((s) => s.sessionId);
+    if (free.length > 0) {
+      const sid = free[Math.floor(Math.random() * free.length)];
+      try {
+        const browser = await withTimeout(
+          puppeteer.connect(browserBinding, sid),
+          5_000,
+          'puppeteer.connect'
+        );
+        return { browser, reused: true, sessionId: sid };
+      } catch (e) {
+        console.warn(`[acquireBrowser] connect(${sid}) failed: ${e.message}, falling back to launch`);
+      }
+    }
+  } catch (e) {
+    console.warn(`[acquireBrowser] sessions() failed: ${e.message}, falling back to launch`);
+  }
+  // Fallback: 新規 launch with 10 分 keep_alive
+  const browser = await puppeteer.launch(browserBinding, { keep_alive: 600_000 });
+  return { browser, reused: false, sessionId: null };
+}
+
+async function renderWithBrowser(browserBinding, pageUrl, mode, viewport, fullPage = true) {
+  const VIEWPORT_PRESETS = {
+    // PC: ノートパソコン標準サイズ (1400×900)
+    // - フル HD (1920) より狭めに取ることで iframe srcDoc 表示時の文字サイズが読みやすくなる
+    // - 1400 はノート PC の中位サイズ (1366〜1440 帯) の代表値
+    // - hero CSS の height (generateImprovementMockup.js 内 900px) と一致させて aspect 不一致を回避
+    pc: { width: 1400, height: 900, deviceScaleFactor: 1, isMobile: false },
+    mobile: { width: 412, height: 915, deviceScaleFactor: 2, isMobile: true },
+  };
+  const vp = VIEWPORT_PRESETS[viewport] || VIEWPORT_PRESETS.pc;
+
+  let browser;
+  // 診断ログ用 (2026-05-08 追加): リダイレクト連鎖と response status を全部記録して
+  // 403 / 異常応答時の根本原因調査に使う。レスポンスにそのまま含めて返す。
+  const diagnostics = {
+    requests: [],
+    responses: [],
+    consoleMessages: [],
+  };
+  // 詳細タイミングログ (2026-05-11): どのステップが 90s タイムアウトの主犯か特定するため
+  const tStart = Date.now();
+  let tLast = tStart;
+  const tmark = (phase) => {
+    const now = Date.now();
+    const stepMs = now - tLast;
+    const totalMs = now - tStart;
+    console.log(`[TIMING] phase=${phase} step=${stepMs}ms total=${totalMs}ms url=${pageUrl}`);
+    tLast = now;
+  };
+  let hadError = false;
+  try {
+    const acquired = await acquireBrowser(browserBinding);
+    browser = acquired.browser;
+    tmark(acquired.reused ? `puppeteer.connect(reused,${acquired.sessionId?.slice(0,8)})` : 'puppeteer.launch(new)');
+    const page = await browser.newPage();
+    await page.setViewport(vp);
+    if (vp.isMobile) {
+      // mobile UA を明示的に設定（一部サイトは UA で出し分け）
+      await page.setUserAgent(
+        'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 ' +
+        '(KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1'
+      );
+    } else {
+      await page.setUserAgent(USER_AGENT);
+    }
+
+    // ========================================================
+    // about:blank プリナビゲーション (2026-05-11 追加, Phase 2)
+    // ========================================================
+    // CF BR cold pool で初回 navigation の CDP プロトコル送受信が確立できず
+    // DCL イベントが届かない問題への対処。先に about:blank を開いて
+    // browser ↔ page ↔ CDP の接続経路を強制確立する。失敗しても無視。
+    await withTimeout(
+      page.goto('about:blank', { timeout: 3_000 }).catch(() => {}),
+      4_000,
+      'prewarm-about-blank'
+    );
+    tmark('prewarm-about-blank');
+
+    // 診断: main document の request/response を記録
+    page.on('request', (req) => {
+      try {
+        if (req.resourceType() === 'document' || req.isNavigationRequest?.()) {
+          diagnostics.requests.push({
+            url: req.url(),
+            method: req.method(),
+            headers: req.headers(),
+            redirectChainLength: req.redirectChain?.()?.length || 0,
+          });
+        }
+      } catch (_) {}
+    });
+    page.on('response', (res) => {
+      try {
+        const req = res.request();
+        if (req.resourceType() === 'document' || req.isNavigationRequest?.()) {
+          diagnostics.responses.push({
+            url: res.url(),
+            status: res.status(),
+            statusText: res.statusText?.() || '',
+            headers: res.headers(),
+          });
+        }
+      } catch (_) {}
+    });
+    page.on('console', (msg) => {
+      try {
+        if (diagnostics.consoleMessages.length < 50) {
+          diagnostics.consoleMessages.push({
+            type: msg.type(),
+            text: msg.text().slice(0, 500),
+          });
+        }
+      } catch (_) {}
+    });
+
+    // ========================================================
+    // 第三者 analytics / tag manager / telemetry の遮断
+    // ========================================================
+    // 目的: 壊れた third-party script (TLS 失敗等) や重い tag manager で
+    //       browser instance が刺さるのを防ぐ。
+    //
+    // 直接の契機: 2026-05 grow-group.jp で happi.net (Tealium 系タグ) が
+    //   TLS handshake mid で SEC_E_ILLEGAL_MESSAGE を返すようになり、
+    //   Browser Rendering が hang → "Target closed" 連発する事象が発生。
+    //   第三者ベンダの突発障害でメイン機能を落とさないよう、
+    //   既知の analytics / telemetry ドメインを request interception で遮断する。
+    //
+    // 設計方針:
+    //   - 視覚要素のある第三者 widget (juicer, addtoany 等) は遮断しない
+    //     → モックアップの視覚再現性を維持
+    //   - 視覚寄与のない analytics / telemetry / tag manager のみ遮断
+    //   - hostname suffix match (sub.tealiumiq.com も tealiumiq.com で hit)
+    //   - handler 内例外でリクエストが詰まらないよう try/catch + continue フォールバック
+    // ========================================================
+    const BLOCKED_HOSTS = [
+      'happi.net',                                         // 発端: 2026-05 grow-group.jp TLS 切れ
+      'tealiumiq.com', 'tiqcdn.com',                       // Tealium
+      'google-analytics.com', 'analytics.google.com',      // Google Analytics
+      'doubleclick.net',                                   // DoubleClick
+      'googletagmanager.com',                              // GTM
+      'facebook.net', 'fbcdn.net',                         // FB Pixel
+      'hotjar.com', 'hotjar.io',                           // Hotjar
+      'clarity.ms',                                        // MS Clarity
+      'fullstory.com',                                     // FullStory
+      'mixpanel.com', 'mxpnl.com',                         // Mixpanel
+      'segment.com', 'segment.io',                         // Segment
+      'amplitude.com',                                     // Amplitude
+      'newrelic.com', 'nr-data.net',                       // New Relic
+      'bugsnag.com',                                       // Bugsnag
+      'sentry.io', 'sentry-cdn.com',                       // Sentry
+      'heap.io', 'heapanalytics.com',                      // Heap
+      'recaptcha.net',                                     // reCAPTCHA alt domain
+    ];
+    // パス前提の遮断: ドメイン全体は遮断したくない (Maps/Fonts は通したい) が
+    // 特定パス配下のみ遮断したい場合に使う。reCAPTCHA は keepalive で
+    // networkidle0 を永久に阻害するため必須。
+    const BLOCKED_URL_PATTERNS = [
+      { hostSuffix: 'google.com', pathPrefix: '/recaptcha/' },     // www.google.com/recaptcha/...
+      { hostSuffix: 'gstatic.com', pathPrefix: '/recaptcha/' },    // www.gstatic.com/recaptcha/...
+    ];
+    const isBlockedHost = (u) => {
+      try {
+        const parsed = new URL(u);
+        const host = parsed.hostname.toLowerCase();
+        if (BLOCKED_HOSTS.some((d) => host === d || host.endsWith('.' + d))) return true;
+        const path = parsed.pathname;
+        for (const { hostSuffix, pathPrefix } of BLOCKED_URL_PATTERNS) {
+          if ((host === hostSuffix || host.endsWith('.' + hostSuffix)) && path.startsWith(pathPrefix)) {
+            return true;
+          }
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    };
+    let blockedCount = 0;
+    const blockedHostSamples = new Set();
+    // 注: setRequestInterception の有効化は goto 後に行う (2026-05-11, Phase 1)。
+    //   理由: cloudflare/puppeteer#67 で「interception を navigation 前に有効化すると
+    //   DCL イベントが Puppeteer protocol 層に届かず timeout」する既知問題。
+    //   ここでは BLOCKED_HOSTS / isBlockedHost の定義だけ済ませて、実際の
+    //   interception 有効化は goto + initial-wait-2s の後で行う。
+    tmark('setup-diagnostic');
+
+    // navigation: DOMContentLoaded で goto を抜ける。
+    //
+    // 経緯:
+    //   1. 初期は networkidle0 → keepalive (reCAPTCHA等) で永久発火せず timeout
+    //   2. domcontentloaded に変更 → 通常は OK だが CF BR の cold pool では DCL イベントが
+    //      Puppeteer Protocol 層に届かず、50s timeout 張り付き → attempt 1 ほぼ全失敗
+    //   3. (2026-05-11) timeout を 50s → 15s に短縮。DCL を 15s 内に受信できなければ
+    //      諦めて先に進む。post-goto の autoScrollToBottom + waitForNetworkIdle が
+    //      実際の DOM 状態を吸収する。warm pool では 1-5s で DCL が来るため影響なし。
+    //      cold pool では 15s 諦め → autoScroll で実 DOM 取得 → 合計 50-60s で完走可能。
+    const response = await page.goto(pageUrl, {
+      waitUntil: 'domcontentloaded',
+      timeout: 15_000,
+    }).catch((e) => {
+      return null;
+    });
+    tmark('goto');
+
+    // goto 失敗時の早期 abort (2026-05-11):
+    //   goto が timeout で null 返した場合、ping check で page が生きているか確認。
+    //   応答なし (zombie page) なら即 504 で return → autoScroll 等で 60+秒浪費を排除。
+    //   応答あり (DCL イベントだけ届かなかった) なら通常フロー継続。
+    //
+    //   注: 試行した Phase 3 (3s 待機 + 8s readyState 確認 + body 500B 判定) は
+    //   @cloudflare/puppeteer の CDP 自体が応答しないケース (例: grow-group.jp/)
+    //   で 11s 余分に浪費するだけで救済できなかったため、シンプル版に戻した。
+    //   構造的に救えない URL は captureBrowserRendering.js 側の URL ルーティングで
+    //   L1 をスキップして直接 L2 へ送る方針。
+    if (!response) {
+      try {
+        const alive = await withTimeout(
+          page.evaluate(() => 1),
+          2_000,
+          'page-alive-check'
+        );
+        if (alive !== 1) {
+          hadError = true;
+          return { status: 504, error: 'page-alive-check-failed', diagnostics };
+        }
+        console.log('[renderWithBrowser] goto timeout, but page alive — continuing');
+      } catch (e) {
+        hadError = true;
+        return { status: 504, error: `page-dead-after-goto: ${e.message}`, diagnostics };
+      }
+      tmark('alive-check-ok');
+    }
+
+    // 初期 JS 実行 (React/Vue hydration, framework init 等) を待つ
+    await new Promise((r) => setTimeout(r, 2000));
+    tmark('initial-wait-2s');
+
+    // ========================================================
+    // setRequestInterception を有効化 (2026-05-11, Phase 1: 移動)
+    // ========================================================
+    // navigation 完了後にのみ interception を有効化することで
+    // cloudflare/puppeteer#67 で報告されている「初回 navigation で
+    // DCL イベントが届かない」問題を回避する。
+    // goto 中の reCAPTCHA 等の遮断は失うが、その後の autoScroll や lazy-load
+    // で発生する第三者リクエストは引き続き遮断される。
+    try {
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+        try {
+          const u = req.url();
+          if (isBlockedHost(u)) {
+            blockedCount++;
+            try { blockedHostSamples.add(new URL(u).hostname); } catch (_) {}
+            req.abort('blockedbyclient').catch(() => {});
+            return;
+          }
+          req.continue().catch(() => {});
+        } catch (_) {
+          // handler 内例外でリクエストが永久に詰まるのを防ぐ
+          try { req.continue(); } catch (_) {}
+        }
+      });
+    } catch (e) {
+      // setRequestInterception 自体が失敗した場合は遮断なしで続行（既存動作にフォールバック）
+      console.warn(`[renderWithBrowser] setRequestInterception (post-goto) failed, fallthrough: ${e.message}`);
+    }
+    tmark('enable-interception-post-goto');
+
+    // ========================================================
+    // Lazy-load 強制対策（Browser Rendering でも漏れる lazy-load を確実に発火）
+    // - background-image を JS で動的に付与する実装（フッターヒーロー等）に対応
+    // - <img loading="lazy"> を eager 化
+    // - lazy 系 CSS の opacity 0 / visibility hidden を上書き
+    // ========================================================
+    await withTimeout(page.evaluate(() => {
+      // 1) img loading=lazy を eager に
+      document.querySelectorAll('img[loading="lazy"]').forEach((img) => {
+        try { img.loading = 'eager'; } catch (_) {}
+      });
+
+      // 2) data-bg / data-background-image 等を style="background-image:url(...)" に展開
+      const bgAttrs = ['data-bg', 'data-background-image', 'data-background', 'data-bg-image'];
+      const sel = bgAttrs.map((a) => `[${a}]`).join(',');
+      document.querySelectorAll(sel).forEach((el) => {
+        for (const attr of bgAttrs) {
+          const v = el.getAttribute(attr);
+          if (!v) continue;
+          const cur = el.getAttribute('style') || '';
+          if (/background-image/i.test(cur)) break; // 既に背景画像あり
+          const urlExpr = /^url\(/i.test(v) ? v : `url('${v}')`;
+          const sep = cur && !cur.trim().endsWith(';') ? ';' : '';
+          el.setAttribute('style', `${cur}${sep}background-image:${urlExpr};background-size:cover;background-position:center;`);
+          break;
+        }
+      });
+
+      // 3) data-src / data-srcset を src / srcset に展開（src が空 or プレースホルダなら）
+      document.querySelectorAll('img[data-src]').forEach((img) => {
+        const ds = img.getAttribute('data-src');
+        const cur = img.getAttribute('src') || '';
+        if (ds && (!cur || /data:image\/svg/.test(cur))) {
+          try { img.src = ds; } catch (_) {}
+        }
+      });
+      document.querySelectorAll('img[data-srcset], source[data-srcset]').forEach((el) => {
+        const ds = el.getAttribute('data-srcset');
+        const cur = el.getAttribute('srcset') || '';
+        if (ds && !cur) {
+          try { el.srcset = ds; } catch (_) {}
+        }
+      });
+
+      // 4) 強制可視化 CSS 注入 + background-attachment:fixed → scroll 強制
+      //    Puppeteer の fullPage screenshot は background-attachment:fixed と相性が悪く、
+      //    各 viewport ずつ撮影 + 結合する仕組みのため、fixed 背景が描画されない / 位置がずれる
+      //    既知の問題。すべての要素で scroll に強制する。
+      if (!document.getElementById('__force-visible')) {
+        const style = document.createElement('style');
+        style.id = '__force-visible';
+        style.textContent = `
+[data-src],[data-srcset],[data-lazy-src],[data-original],
+.lazy,.lazyloading,.lazyload,.lazyloaded{
+opacity:1 !important;visibility:visible !important;
+}
+*,*::before,*::after{
+background-attachment:scroll !important;
+}`;
+        document.head.appendChild(style);
+      }
+    }), 10_000, 'lazy-setup');
+
+    tmark('lazy-setup');
+
+    // ========================================================
+    // 2-pass autoScroll で lazy-load を確実に発火させる
+    // ========================================================
+    // 1 回目: ゆっくり最下までスクロール → IntersectionObserver 発火
+    await withTimeout(autoScrollToBottom(page), 65_000, 'autoScroll-1');
+    tmark('autoScroll-1');
+    try {
+      await page.waitForNetworkIdle({ idleTime: 1000, timeout: 5000 });
+    } catch (_) { /* 5s 経過しても進める */ }
+    tmark('idle-1');
+
+    // ========================================================
+    // 2 回目要否判定 (2026-05-11): pass 1 後に未解決の lazy-load があるかを動的検出
+    // - 解決済 → pass 2 スキップ (フォーム系・短ページで -10〜25s)
+    // - 残存 → pass 2 実行 (長尺記事・lazy-load 多用ページで品質維持)
+    // ========================================================
+    const needsSecondPass = await withTimeout(page.evaluate(() => {
+      const lazyImgs = document.querySelectorAll(
+        'img[data-src]:not([data-src=""]), img[loading="lazy"]:not([src]), img[loading="lazy"][src=""]'
+      ).length;
+      const lazyBgs = document.querySelectorAll(
+        '[data-bg]:not([style*="background-image"]), [data-background-image]:not([style*="background-image"]), [data-background]:not([style*="background-image"])'
+      ).length;
+      const pendingImgs = Array.from(document.images).filter(
+        (i) => !i.complete && i.src && !i.src.startsWith('data:')
+      ).length;
+      return { lazyImgs, lazyBgs, pendingImgs, need: lazyImgs > 0 || lazyBgs > 0 || pendingImgs > 5 };
+    }), 5_000, 'lazy-check');
+    console.log(`[renderWithBrowser] lazy-check: imgs=${needsSecondPass.lazyImgs} bgs=${needsSecondPass.lazyBgs} pending=${needsSecondPass.pendingImgs} need2nd=${needsSecondPass.need}`);
+
+    if (needsSecondPass.need) {
+      // 2 回目: 先頭に戻して再度最下まで → 1 回目で起動した lazy-load の fetch 完了 + 取りこぼし回収
+      await withTimeout(page.evaluate(() => window.scrollTo(0, 0)), 3_000, 'scrollTo-top-a');
+      await new Promise((r) => setTimeout(r, 600));
+      await withTimeout(autoScrollToBottom(page), 65_000, 'autoScroll-2');
+      tmark('autoScroll-2');
+      try {
+        await page.waitForNetworkIdle({ idleTime: 500, timeout: 3000 });
+      } catch (_) { /* 進める */ }
+      tmark('idle-2');
+    } else {
+      tmark('autoScroll-2-skipped');
+    }
+
+    // 撮影前に先頭へ戻す（fade-in / parallax の安定化、ただし fullPage screenshot 自体は全域撮るので位置は問題ない）
+    await withTimeout(page.evaluate(() => window.scrollTo(0, 0)), 3_000, 'scrollTo-top-b');
+    await new Promise((r) => setTimeout(r, 600));
+
+    // 画像読込待ち（最大 5s）
+    await withTimeout(page.evaluate(async () => {
+      const imgs = Array.from(document.images);
+      await Promise.race([
+        Promise.all(
+          imgs.map((img) =>
+            img.complete
+              ? Promise.resolve()
+              : new Promise((r) => {
+                  img.addEventListener('load', r, { once: true });
+                  img.addEventListener('error', r, { once: true });
+                })
+          )
+        ),
+        new Promise((r) => setTimeout(r, 5000)),
+      ]);
+    }), 10_000, 'image-wait');
+    tmark('image-wait');
+
+    // ========================================================
+    // ScrollReveal 等の動的 hidden を解除
+    // - <html class="sr"> + 配下の要素に inline style="visibility:hidden;opacity:0;transform:translateY(...)" が付与される
+    // - iframe srcDoc では scroll event が発火しないため visible 切替が走らず真っ白になる
+    // - root から sr クラスを除去 + inline style を強制リセット
+    // ========================================================
+    await withTimeout(page.evaluate(() => {
+      // 1) html / body の ScrollReveal 系クラスを除去
+      const root = document.documentElement;
+      ['sr', 'sr-init'].forEach((cls) => {
+        if (root.classList.contains(cls)) root.classList.remove(cls);
+      });
+      const body = document.body;
+      if (body) {
+        ['sr', 'sr-init'].forEach((cls) => {
+          if (body.classList.contains(cls)) body.classList.remove(cls);
+        });
+      }
+
+      // 2) inline style の visibility:hidden / opacity:0 / transform を解除
+      //    要素自身に inline で隠される ScrollReveal / GSAP / AOS 系を一括解除
+      document.querySelectorAll('[style]').forEach((el) => {
+        const s = el.style;
+        if (s.visibility === 'hidden') s.visibility = 'visible';
+        if (s.opacity && parseFloat(s.opacity) < 0.1) s.opacity = '1';
+        // transform: translate(...) や scale(0) などの「初期非表示状態」をリセット
+        // ※ rotate(45deg) などの装飾用 transform は残したいが、ここでは一律 none で割り切る
+        if (s.transform && /translate|scale\s*\(\s*0/i.test(s.transform)) {
+          s.transform = 'none';
+        }
+      });
+    }), 5_000, 'scrollreveal-cleanup');
+    tmark('scrollreveal-cleanup');
+
+    const finalUrl = page.url();
+
+    // 第三者リクエスト遮断の効果を可視化（CF Worker tail で確認可能）
+    if (blockedCount > 0) {
+      console.log(
+        `[renderWithBrowser] ${pageUrl}: blocked=${blockedCount} hosts=[${[...blockedHostSamples].join(',')}]`
+      );
+    }
+
+    // ========================================================
+    // Google Maps iframe (会社概要 / アクセス等) のレンダ補助
+    // - <iframe src="https://www.google.com/maps/embed?..."> は networkidle 後も
+    //   タイルを追加 fetch するため、スクショ時に空白で残るケースが多い
+    // - 該当 iframe を scrollIntoView して lazy-load を発火させ、追加で 4s 待機
+    // - 該当 iframe が無ければスキップ (待機時間を浪費しない)
+    // ========================================================
+    const hasGoogleMaps = await withTimeout(page.evaluate(() => {
+      const iframes = document.querySelectorAll(
+        'iframe[src*="google.com/maps"], iframe[src*="maps.google.com"], iframe[src*="google.co.jp/maps"]'
+      );
+      if (iframes.length === 0) return false;
+      iframes.forEach((iframe) => {
+        try {
+          // loading="lazy" を eager に切替（既に eager ならノーオペ）
+          if (iframe.loading === 'lazy') iframe.loading = 'eager';
+          iframe.scrollIntoView({ block: 'center' });
+        } catch (_) {}
+      });
+      return true;
+    }), 3_000, 'google-maps-detect');
+    if (hasGoogleMaps) {
+      await new Promise((r) => setTimeout(r, 4000));
+      // 撮影前にページ先頭に戻す（fullPage 撮影なので位置は無関係だが描画安定のため）
+      await withTimeout(page.evaluate(() => window.scrollTo(0, 0)), 3_000, 'scrollTo-top-c');
+      await new Promise((r) => setTimeout(r, 300));
+      tmark('google-maps-wait');
+    }
+
+    // 'screenshot' / 'render+shot' は visual 確定後に screenshot を撮る
+    // (CSS インライン化や script 削除前の DOM 状態でピクセル化することで、
+    //  実サイトの見た目と完全一致させる)
+    let screenshotBase64 = null;
+    let screenshotByteLen = 0;
+    if (mode === 'screenshot' || mode === 'render+shot') {
+      const buf = await withTimeout(page.screenshot({
+        fullPage: fullPage !== false,
+        type: 'jpeg',
+        quality: 85,
+      }), 30_000, 'screenshot');
+      screenshotBase64 = arrayBufferToBase64(buf);
+      screenshotByteLen = buf.length || buf.byteLength || 0;
+      tmark('screenshot');
+    }
+
+    if (mode === 'screenshot') {
+      return {
+        status: 200,
+        screenshot: screenshotBase64,
+        finalUrl,
+        viewport,
+        byteLen: screenshotByteLen,
+      };
+    }
+
+    // mode === 'render' or 'render+shot' — HTML 処理を続行
+    // ScrollReveal などのスクロール検知ライブラリが残した visibility:hidden / opacity:0 を解除
+    // - iframe srcDoc では document の scroll event がほぼ発生しないため、
+    //   ScrollReveal で hidden 状態のまま残った要素は永久に表示されない
+    // - <html class="sr"> や 個別要素の inline style で hidden になっているものを強制解除
+    await withTimeout(page.evaluate(() => {
+      try {
+        document.documentElement.classList.remove('sr');
+      } catch (_) {}
+      const hiddenSel = '[style*="visibility: hidden"],[style*="visibility:hidden"],[style*="opacity: 0"],[style*="opacity:0"]';
+      document.querySelectorAll(hiddenSel).forEach((el) => {
+        try {
+          el.style.removeProperty('visibility');
+          el.style.removeProperty('opacity');
+          el.style.removeProperty('transform');
+        } catch (_) {}
+      });
+      // ScrollReveal 系が data 属性で管理している場合の保険
+      document.querySelectorAll('[data-sr-id],[data-sr]').forEach((el) => {
+        try {
+          el.style.removeProperty('visibility');
+          el.style.removeProperty('opacity');
+          el.style.removeProperty('transform');
+        } catch (_) {}
+      });
+    }), 5_000, 'hidden-cleanup');
+
+    // iframe srcDoc 表示用: 外部 CSS をブラウザ内で fetch して <style> にインライン化
+    // - iframe では cross-origin / CORS で外部 CSS の読み込みが失敗するケースがある
+    // - インライン化することで iframe srcDoc でも実サイトと同等のレンダリングになる
+    // - Browser Rendering の puppeteer から直接 fetch するため CORS の制約を受けない
+    await withTimeout(page.evaluate(async () => {
+      const links = Array.from(document.querySelectorAll('link[rel="stylesheet"]'));
+      // 各 fetch に 5s timeout を被せる + 全体 Promise.all
+      const fetchWithTimeout = (url, ms) => {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), ms);
+        return fetch(url, { credentials: 'omit', signal: ctrl.signal }).finally(() => clearTimeout(tid));
+      };
+      await Promise.all(
+        links.map(async (link) => {
+          try {
+            const href = link.href;
+            if (!href || href.startsWith('data:') || href.startsWith('blob:')) return;
+            const res = await fetchWithTimeout(href, 5000);
+            if (!res.ok) return;
+            let css = await res.text();
+            // CSS 内の url(...) 相対パスを CSS ファイルの絶対 URL ベースで解決
+            css = css.replace(/url\(\s*(['"]?)([^'")\s]+)\1\s*\)/g, (m, q, u) => {
+              if (/^(data:|https?:\/\/|\/\/|#|mailto:|tel:)/i.test(u)) return m;
+              try {
+                return `url(${q}${new URL(u, href).toString()}${q})`;
+              } catch {
+                return m;
+              }
+            });
+            const style = document.createElement('style');
+            style.setAttribute('data-inlined-from', href);
+            style.textContent = css;
+            link.replaceWith(style);
+          } catch (_) {
+            // fetch 失敗時はそのまま残す（ブラウザのフォールバックに任せる）
+          }
+        })
+      );
+    }), 30_000, 'css-inline');
+    tmark('css-inline');
+
+    // (2026-05-11 削除): <video> 要素のスクリーンショット → poster 埋込ロジック
+    // フルスクリーン hero 動画でオーバーレイ文字込みで撮れてしまいレイアウト崩壊。
+    // <video> タグは Cloud Functions 側でも置換せずそのまま残す方針に変更。
+
+    // ========================================================
+    // 全 <script> タグを削除（iframe srcDoc で JS 実行を完全に無効化）
+    // - iframe sandbox=allow-scripts では外部 ScrollReveal / GSAP / AOS などの JS が再実行される
+    // - これらが要素に inline style="visibility:hidden" を再追加 → CSS の !important でも負ける
+    // - JS 自体を削除すれば再実行されない → worker 側で解除した状態が iframe でも維持される
+    // - Browser Rendering 内では既に JS 実行済 (autoScroll 等で lazy-load 解決済) なので、
+    //   DOM 状態は維持される。iframe 表示 (= static screenshot 用途) では JS 不要。
+    // - generateImprovementMockup 側で helper script (postMessage 等) を別途注入するため、
+    //   フロント側の機能は別途確保される。
+    // ========================================================
+    // HTML 文字列ベースの cleanup (script / on* / video / YouTube / javascript:) は
+    // Cloud Functions 側の applyPostBrCleanup に一元化済 (2026-05-11)。
+    // Worker / Cloud Run は素のレンダリング HTML を返すだけ。L1/L2 で結果統一。
+    // Worker 側では DOM 必須の処理 (lazy-load 展開、CSS インライン化、ScrollReveal 解除等)
+    // のみ実施する。
+    tmark('cleanup-deferred-to-functions');
+
+    const html = await withTimeout(page.content(), 10_000, 'page-content');
+    tmark('page-content');
+    return {
+      status: response?.status() || 200,
+      html,
+      ...(mode === 'render+shot' && {
+        screenshot: screenshotBase64,
+        screenshotByteLen,
+      }),
+      finalUrl,
+      viewport,
+      byteLen: html.length,
+      diagnostics,
+    };
+  } catch (err) {
+    hadError = true;
+    return { status: 500, error: `browser-render: ${err.message}`, diagnostics };
+  } finally {
+    if (browser) {
+      // browser 終了処理 (2026-05-11 改訂):
+      //   正常終了時: browser.disconnect() で session を pool に戻す (warm 再利用可能)
+      //   エラー時: browser.close() で完全終了 (壊れた session を再利用させない)
+      //   どちらも 3 秒で見切って Worker 応答を返す。
+      if (hadError) {
+        await Promise.race([
+          browser.close().catch(() => { /* noop */ }),
+          new Promise((r) => setTimeout(r, 3000)),
+        ]);
+      } else {
+        await Promise.race([
+          browser.disconnect().catch(() => { /* noop */ }),
+          new Promise((r) => setTimeout(r, 3000)),
+        ]);
+      }
+    }
+  }
+}
+
+/**
+ * IntersectionObserver / lazyload 系を発火させるため、ページ全体をスクロールして最下まで降りる。
+ *
+ * チューニング:
+ *   - distance 600 / interval 250ms: 各位置で IntersectionObserver の発火を待つ（早すぎるスクロールで欠落するセクションがあった）
+ *   - 最下点到達後 1.5s 停留: stagger animation や遅延 fetch される画像の完了を待つ
+ *   - 上限 60s: 異常な長尺ページでの暴走防止
+ */
+async function autoScrollToBottom(page) {
+  await page.evaluate(async () => {
+    await new Promise((resolve) => {
+      const distance = 600;
+      const interval = 250;
+      const settleAtBottom = 1500;
+      let total = 0;
+      const max = 60_000;
+      // 早期 exit (2026-05-11): scrollHeight が連続 N step 安定したらページ伸長
+      // 停止と判定して打ち切る。lazy-load が完了して新規コンテンツが追加されなく
+      // なった時点で抜けられる。settle 待機は最大 stable 観測の場合のみ短縮。
+      const STABLE_LIMIT = 5;
+      let prevHeight = 0;
+      let stableCount = 0;
+      const timer = setInterval(() => {
+        const sh = document.body.scrollHeight;
+        window.scrollBy(0, distance);
+        total += distance;
+        if (sh === prevHeight) {
+          stableCount++;
+        } else {
+          stableCount = 0;
+          prevHeight = sh;
+        }
+        const reachedBottom = total >= sh + 500;
+        const hitMax = total >= max;
+        const stabilized = stableCount >= STABLE_LIMIT && total > 1000;
+        if (reachedBottom || hitMax || stabilized) {
+          clearInterval(timer);
+          // 自然 bottom 到達時は通常の settle、stabilized 検出時は短縮 settle
+          const settleMs = stabilized && !reachedBottom ? 600 : settleAtBottom;
+          setTimeout(resolve, settleMs);
+        }
+      }, interval);
+    });
+  });
+}
+
+/**
+ * Uint8Array / ArrayBuffer を base64 文字列に変換
+ */
+function arrayBufferToBase64(buf) {
+  const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
 
 // ========== スナップショット生成 ==========
 

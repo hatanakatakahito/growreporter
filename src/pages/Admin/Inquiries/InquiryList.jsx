@@ -1,56 +1,22 @@
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAdminInquiries } from '../../../hooks/useAdminInquiries';
 import InquiryDetailModal from '../../../components/Admin/InquiryDetailModal';
+import BoardImportModal from '../../../components/Admin/BoardImportModal';
+import InquirySummaryPanel from '../../../components/Admin/InquirySummaryPanel';
 import LoadingSpinner from '../../../components/common/LoadingSpinner';
 import ErrorAlert from '../../../components/common/ErrorAlert';
-import { Search, ChevronLeft, ChevronRight, AlertTriangle, Clock, Download, Trash2, ExternalLink, RefreshCw } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, AlertTriangle, Clock, Download, Trash2, ExternalLink, RefreshCw, Plus, LayoutDashboard, List } from 'lucide-react';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../../../config/firebase';
 import toast from 'react-hot-toast';
 import { Button } from '../../../components/ui/button';
-
-const STATUS_OPTIONS = [
-  { value: 'all', label: 'すべて' },
-  { value: 'new', label: '新規' },
-  { value: 'estimate_created', label: '見積作成済み' },
-  { value: 'contract_sent', label: '契約書送付済み' },
-  { value: 'active', label: '契約中' },
-  { value: 'completed', label: '完了' },
-  { value: 'cancelled', label: '解約' },
-  { value: 'inquiry_cancelled', label: '申込キャンセル' },
-];
-
-const STATUS_BADGE = {
-  new: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300',
-  estimate_created: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300',
-  contract_sent: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300',
-  active: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
-  completed: 'bg-gray-100 text-gray-600 dark:bg-dark-3 dark:text-dark-6',
-  cancelled: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300',
-  inquiry_cancelled: 'bg-gray-100 text-gray-500 dark:bg-dark-3 dark:text-dark-6',
-};
-
-const STATUS_LABEL = {
-  new: '新規',
-  estimate_created: '見積作成済み',
-  contract_sent: '契約書送付済み',
-  active: '契約中',
-  completed: '完了',
-  cancelled: '解約',
-  inquiry_cancelled: '申込キャンセル',
-};
-
-const PAYMENT_LABEL = {
-  bulk: '一括請求',
-  recurring: '定期請求',
-};
-
-function formatDate(isoString) {
-  if (!isoString) return '-';
-  try {
-    return new Date(isoString).toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  } catch { return '-'; }
-}
+import {
+  STATUS_OPTIONS,
+  STATUS_LABEL,
+  PAYMENT_LABEL,
+  formatDate,
+} from './inquiryConstants';
 
 export default function InquiryList() {
   const { inquiries, pagination, stats, loading, error, refetch, setParams, currentParams } = useAdminInquiries();
@@ -61,6 +27,82 @@ export default function InquiryList() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [updatingStatusId, setUpdatingStatusId] = useState(null);
   const [syncingId, setSyncingId] = useState(null);
+  const [showBoardImportModal, setShowBoardImportModal] = useState(false);
+
+  // タブ (URL パラメータと連動)
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialTab = searchParams.get('tab') === 'summary' ? 'summary' : 'list';
+  const [activeTab, setActiveTab] = useState(initialTab);
+  // タブ変更時に URL パラメータを反映 (履歴を汚さないため replace)
+  useEffect(() => {
+    const current = searchParams.get('tab');
+    if (activeTab === 'summary' && current !== 'summary') {
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', 'summary');
+      setSearchParams(next, { replace: true });
+    } else if (activeTab === 'list' && current === 'summary') {
+      const next = new URLSearchParams(searchParams);
+      next.delete('tab');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  const handleJumpToList = (statusFilter) => {
+    setActiveTab('list');
+    setParams({ statusFilter, page: 1 });
+  };
+
+  const handleJumpToUnlinked = () => {
+    setActiveTab('list');
+    setParams({ statusFilter: 'all', page: 1 });
+    toast('未紐付けは「未紐付け」バッジで識別できます');
+  };
+
+  // boardProjectId → {start, end} の lookup を作成
+  // addon_only など契約期間を持たない inquiry が、同じ案件の他 inquiry から
+  // 契約期間を引き継いで表示できるようにするための fallback
+  const contractDatesByProject = useMemo(() => {
+    const map = new Map();
+    for (const i of inquiries || []) {
+      const pid = i.boardProjectId;
+      if (!pid) continue;
+      if (!i.contractStartDate && !i.contractEndDate) continue;
+      const existing = map.get(pid);
+      // 既に登録済みなら、より新しい (statusUpdatedAt) を優先
+      if (existing) {
+        const existingTime = existing._sortKey || 0;
+        const currentTime = new Date(i.statusUpdatedAt || i.createdAt || 0).getTime();
+        if (currentTime <= existingTime) continue;
+      }
+      map.set(pid, {
+        contractStartDate: i.contractStartDate || null,
+        contractEndDate: i.contractEndDate || null,
+        _sortKey: new Date(i.statusUpdatedAt || i.createdAt || 0).getTime(),
+      });
+    }
+    return map;
+  }, [inquiries]);
+
+  // inquiry の表示用契約期間を取得（自身に無ければ boardProjectId 経由でフォールバック）
+  const getDisplayContractDates = (inquiry) => {
+    if (inquiry.contractStartDate || inquiry.contractEndDate) {
+      return {
+        contractStartDate: inquiry.contractStartDate || null,
+        contractEndDate: inquiry.contractEndDate || null,
+      };
+    }
+    if (inquiry.boardProjectId) {
+      const fallback = contractDatesByProject.get(inquiry.boardProjectId);
+      if (fallback) {
+        return {
+          contractStartDate: fallback.contractStartDate,
+          contractEndDate: fallback.contractEndDate,
+        };
+      }
+    }
+    return { contractStartDate: null, contractEndDate: null };
+  };
 
   const handleSearch = () => {
     setParams({ searchQuery: searchInput, page: 1 });
@@ -195,6 +237,48 @@ export default function InquiryList() {
         <p className="mt-1 text-sm text-body-color dark:text-dark-6">プランアップグレードの問い合わせ一覧</p>
       </div>
 
+      {/* タブ切替 (サマリー / 一覧) */}
+      <div className="mb-4 inline-flex rounded-lg border border-stroke bg-white p-1 shadow-sm dark:border-dark-3 dark:bg-dark-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab('summary')}
+          className={`inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition ${
+            activeTab === 'summary'
+              ? 'bg-primary text-white shadow'
+              : 'text-body-color hover:text-dark dark:text-dark-6 dark:hover:text-white'
+          }`}
+        >
+          <LayoutDashboard className="h-4 w-4" />
+          サマリー
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('list')}
+          className={`inline-flex items-center gap-2 rounded-md px-4 py-1.5 text-sm font-medium transition ${
+            activeTab === 'list'
+              ? 'bg-primary text-white shadow'
+              : 'text-body-color hover:text-dark dark:text-dark-6 dark:hover:text-white'
+          }`}
+        >
+          <List className="h-4 w-4" />
+          一覧
+        </button>
+      </div>
+
+      {/* サマリータブ */}
+      {activeTab === 'summary' && (
+        <InquirySummaryPanel
+          inquiries={inquiries}
+          stats={stats}
+          onJumpToList={handleJumpToList}
+          onJumpToUnlinked={handleJumpToUnlinked}
+          onOpenDetail={handleOpenDetail}
+        />
+      )}
+
+      {/* 一覧タブ (既存 UI) */}
+      {activeTab === 'list' && (
+      <>
       {/* サマリーバッジ */}
       {(stats.needsAction > 0 || stats.renewalSoon > 0) && (
         <div className="mb-4 flex gap-3">
@@ -252,6 +336,7 @@ export default function InquiryList() {
             {selectedIds.size > 0 && (
               <Button
                 variant="danger-outline"
+                className="min-w-[180px]"
                 onClick={handleDeleteSelected}
                 disabled={isDeleting}
               >
@@ -259,9 +344,20 @@ export default function InquiryList() {
                 {isDeleting ? '削除中...' : `${selectedIds.size}件を削除`}
               </Button>
             )}
+            {/* §15: board 取り込みボタン */}
+            <Button
+              variant="primary"
+              className="min-w-[180px]"
+              onClick={() => setShowBoardImportModal(true)}
+              title="board で先行作成された見積を grow-reporter に取り込みます"
+            >
+              <Plus data-slot="icon" />
+              board から取り込み
+            </Button>
             {/* CSVエクスポート */}
             <Button
               variant="secondary"
+              className="min-w-[180px]"
               onClick={handleExportCSV}
               disabled={!inquiries || inquiries.length === 0}
             >
@@ -325,7 +421,38 @@ export default function InquiryList() {
                     {formatDate(inquiry.createdAt)}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="text-sm font-medium text-dark dark:text-white">{inquiry.companyName || '-'}</div>
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-sm font-medium text-dark dark:text-white">{inquiry.companyName || '-'}</span>
+                      {(() => {
+                        const type = inquiry.inquiryType || 'new_business';
+                        if (type === 'addon_only') {
+                          return (
+                            <span className="inline-flex items-center rounded bg-purple-100 px-1.5 py-0.5 text-[10px] font-semibold text-purple-700 dark:bg-purple-900/30 dark:text-purple-300" title="サイト追加オプション">
+                              + 追加サイト{(Number(inquiry.extraSitesCount) || 0) > 0 ? ` ×${inquiry.extraSitesCount}` : ''}
+                            </span>
+                          );
+                        }
+                        // new_business: 追加サイト数があれば併記
+                        const extras = Number(inquiry.extraSitesCount) || 0;
+                        return (
+                          <span className="inline-flex items-center rounded bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-300" title="新規ビジネスプラン申込">
+                            メイン契約{extras > 0 ? ` + 追加×${extras}` : ''}
+                          </span>
+                        );
+                      })()}
+                      {/* §15: board 取り込みバッジ */}
+                      {inquiry.source === 'board_import' && (
+                        <span className="inline-flex items-center rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" title="board から取り込まれた inquiry">
+                          board 取り込み
+                        </span>
+                      )}
+                      {/* §15: ユーザー未紐付け警告 */}
+                      {!inquiry.uid && (
+                        <span className="inline-flex items-center rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-semibold text-orange-700 dark:bg-orange-900/30 dark:text-orange-300" title="grow-reporter ユーザーが紐付けされていません">
+                          未紐付け
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3">
                     <div className="text-sm text-dark dark:text-white">{`${inquiry.lastName || ''} ${inquiry.firstName || ''}`.trim() || '-'}</div>
@@ -335,12 +462,20 @@ export default function InquiryList() {
                     {PAYMENT_LABEL[inquiry.paymentTiming] || '-'}
                   </td>
                   <td className="px-4 py-3 text-center text-xs text-body-color dark:text-dark-6">
-                    {inquiry.contractStartDate && inquiry.contractEndDate ? (
-                      <div>
-                        <div>{inquiry.contractStartDate}</div>
-                        <div>〜 {inquiry.contractEndDate}</div>
-                      </div>
-                    ) : '-'}
+                    {(() => {
+                      // addon_only など、自身に契約期間が無い場合は同じ boardProjectId の
+                      // メイン契約 inquiry から fallback で表示
+                      const { contractStartDate, contractEndDate } = getDisplayContractDates(inquiry);
+                      if (contractStartDate && contractEndDate) {
+                        return (
+                          <div>
+                            <div>{contractStartDate}</div>
+                            <div>〜 {contractEndDate}</div>
+                          </div>
+                        );
+                      }
+                      return '-';
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
                     <select
@@ -430,16 +565,35 @@ export default function InquiryList() {
           </div>
         </div>
       )}
+      </>
+      )}
+
+      {/* §15: board 取り込みモーダル */}
+      <BoardImportModal
+        isOpen={showBoardImportModal}
+        onClose={() => setShowBoardImportModal(false)}
+        onImported={() => {
+          setShowBoardImportModal(false);
+          refetch();
+        }}
+      />
 
       {/* 詳細モーダル */}
-      {showDetailModal && selectedInquiry && (
-        <InquiryDetailModal
-          isOpen={showDetailModal}
-          onClose={() => { setShowDetailModal(false); setSelectedInquiry(null); }}
-          inquiry={selectedInquiry}
-          onStatusUpdated={refetch}
-        />
-      )}
+      {showDetailModal && selectedInquiry && (() => {
+        // addon_only 等で契約期間が直接無くても、同じ boardProjectId の他 inquiry から
+        // fallback で取得して詳細モーダルに渡す
+        const fallback = getDisplayContractDates(selectedInquiry);
+        return (
+          <InquiryDetailModal
+            isOpen={showDetailModal}
+            onClose={() => { setShowDetailModal(false); setSelectedInquiry(null); }}
+            inquiry={selectedInquiry}
+            fallbackContractStartDate={fallback.contractStartDate}
+            fallbackContractEndDate={fallback.contractEndDate}
+            onStatusUpdated={refetch}
+          />
+        );
+      })()}
     </div>
   );
 }

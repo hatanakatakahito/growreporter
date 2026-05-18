@@ -1,12 +1,19 @@
 /**
  * GROW REPORTER プラン定義
  * v5.7.0: Free / Business の2プラン体系
+ * v5.8.0: ビジネスプラン サイト追加オプション（1サイト/月 15,000円税別）
  */
+import { normalizeForCompare } from '../utils/normalizeForCompare';
 
 export const PLAN_TYPES = {
   FREE: 'free',
   BUSINESS: 'business',
 };
+
+/**
+ * ビジネスプラン サイト追加オプションの単価（税別、1サイトあたり/月）
+ */
+export const EXTRA_SITE_UNIT_PRICE = 15000;
 
 export const PLANS = {
   [PLAN_TYPES.FREE]: {
@@ -54,11 +61,13 @@ export const PLANS = {
 };
 
 /**
- * 後方互換: 旧プランID（standard/premium）をbusinessに正規化
+ * 後方互換: 旧プランID（standard/premium/paid）をbusinessに正規化
+ * 大文字小文字・スペース有無を同一視（'Business' / ' BUSINESS ' / 'business' すべて同一）
  */
 export const normalizePlanId = (planId) => {
-  const id = (planId || 'free').toLowerCase();
-  if (id === 'standard' || id === 'premium') return 'business';
+  const id = normalizeForCompare(planId || 'free');
+  if (!id) return 'free';
+  if (id === 'standard' || id === 'premium' || id === 'paid') return 'business';
   if (id === 'business') return 'business';
   return 'free';
 };
@@ -148,6 +157,7 @@ export const PAGE_TYPES = {
   PAGE_FLOW: 'pageFlow',
   CONVERSIONS: 'conversions',
   REVERSE_FLOW: 'reverseFlow',
+  USER_JOURNEY: 'userJourney',
   MONTHLY: 'analysis/month',
   COMPREHENSIVE_ANALYSIS: 'comprehensive_analysis',
 };

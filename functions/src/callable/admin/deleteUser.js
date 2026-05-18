@@ -69,8 +69,49 @@ export const deleteUserCallable = async (request) => {
     const sitesSnapshot = await db.collection('sites')
       .where('userId', '==', targetUserId)
       .get();
-    
-    const siteIds = sitesSnapshot.docs.map(doc => doc.id);
+
+    // 1pre. _transferredFromUid (admin から移管されたサイト) は元 admin に自動逆移管 + 削除対象から除外
+    // 顧客が退会してもサイト自体は admin 側に残し続け、当社で代行運用継続を可能にする。
+    const reverseToAdminIds = [];
+    const sitesToDelete = [];
+    for (const siteDoc of sitesSnapshot.docs) {
+      const data = siteDoc.data();
+      const fromUid = data._transferredFromUid;
+      if (fromUid) {
+        // 元 admin が adminUsers にまだ存在しているか確認 (退職等で削除済なら fallback で削除)
+        const adminCheck = await db.collection('adminUsers').doc(fromUid).get();
+        if (adminCheck.exists) {
+          reverseToAdminIds.push({ siteId: siteDoc.id, adminUid: fromUid });
+          continue;
+        }
+      }
+      sitesToDelete.push(siteDoc);
+    }
+
+    if (reverseToAdminIds.length > 0) {
+      const CHUNK = 450;
+      for (let i = 0; i < reverseToAdminIds.length; i += CHUNK) {
+        const batch = db.batch();
+        reverseToAdminIds.slice(i, i + CHUNK).forEach(({ siteId, adminUid }) => {
+          batch.update(db.collection('sites').doc(siteId), {
+            userId: adminUid,
+            _transferredAt: FieldValue.delete(),
+            _transferredFromUid: FieldValue.delete(),
+            _transferredByAdminUid: FieldValue.delete(),
+            _reversedAt: FieldValue.serverTimestamp(),
+            _reversedReason: 'user_deleted',
+            updatedAt: FieldValue.serverTimestamp(),
+          });
+        });
+        await batch.commit();
+      }
+      logger.info('退会時の自動逆移管完了', {
+        reversedCount: reverseToAdminIds.length,
+        targetUserId,
+      });
+    }
+
+    const siteIds = sitesToDelete.map(doc => doc.id);
 
     // 1a. 各サイトに紐づくスクレイピング関連データを削除（再登録時のクリーンな状態のため）
     let scrapingDataDeleted = 0;
@@ -137,10 +178,10 @@ export const deleteUserCallable = async (request) => {
       logger.info('メモ・AIキャッシュ削除完了', { notes: notesDeleted, aiCache: aiCacheDeleted });
     }
 
-    // 1b. サイトドキュメントを削除
-    const deleteSitesPromises = sitesSnapshot.docs.map(doc => doc.ref.delete());
+    // 1b. サイトドキュメントを削除 (逆移管対象は除外済み)
+    const deleteSitesPromises = sitesToDelete.map(doc => doc.ref.delete());
     await Promise.all(deleteSitesPromises);
-    logger.info('サイト削除完了', { count: sitesSnapshot.size });
+    logger.info('サイト削除完了', { count: sitesToDelete.length, reversedToAdmin: reverseToAdminIds.length });
 
     // 2. （他サイトに紐づくページメモは collection group で削除しないためスキップ済み）
 
@@ -199,18 +240,20 @@ export const deleteUserCallable = async (request) => {
       });
     }
 
-    logger.info('ユーザー削除完了', { 
+    logger.info('ユーザー削除完了', {
       executorId: uid,
       targetUserId,
-      sitesDeleted: sitesSnapshot.size,
+      sitesDeleted: sitesToDelete.length,
+      sitesReversedToAdmin: reverseToAdminIds.length,
       notesDeleted,
     });
 
     return {
       success: true,
-      message: `${targetName}さんを削除しました`,
+      message: `${targetName}さんを削除しました${reverseToAdminIds.length > 0 ? `（${reverseToAdminIds.length}件のサイトは管理者に戻されました）` : ''}`,
       deletedData: {
-        sites: sitesSnapshot.size,
+        sites: sitesToDelete.length,
+        sitesReversedToAdmin: reverseToAdminIds.length,
         notes: notesDeleted,
         tokens: tokensSnapshot.size,
         aiCache: aiCacheDeleted,

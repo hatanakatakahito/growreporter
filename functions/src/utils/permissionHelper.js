@@ -35,18 +35,30 @@ export async function canAccessSite(userId, siteId) {
     
     const userData = userDoc.data();
     const memberships = userData.memberships || {};
-    
+
     // 4. サイトオーナーのアカウントのメンバーかチェック
-    if (memberships[siteOwnerId]) {
-      return true;
+    //    新仕様: editor / viewer どちらも allowedSiteIds に siteId が含まれている場合のみ許可
+    //    （オーナー以外は対象サイト指定式）
+    if (memberships[siteOwnerId] || userData.accountOwnerId === siteOwnerId) {
+      const memberRole = userData.memberRole
+        || (memberships[siteOwnerId] && memberships[siteOwnerId].role)
+        || 'editor';
+      // owner は無制限
+      if (memberRole === 'owner') return true;
+      // editor / viewer は allowedSiteIds でフィルタ
+      if (memberRole === 'editor' || memberRole === 'viewer') {
+        const allowedSiteIds = userData.allowedSiteIds || [];
+        return allowedSiteIds.includes(siteId);
+      }
+      return false;
     }
-    
+
     // 5. 管理者権限をチェック
     const adminDoc = await db.collection('adminUsers').doc(userId).get();
     if (adminDoc.exists && ['admin', 'editor', 'viewer'].includes(adminDoc.data().role)) {
       return true;
     }
-    
+
     return false;
   } catch (error) {
     console.error('Error checking site access permission:', error);
@@ -89,21 +101,32 @@ export async function canEditSite(userId, siteId) {
     
     const userData = userDoc.data();
     const memberships = userData.memberships || {};
-    
-    // 4. サイトオーナーのアカウントのメンバーで、かつ編集者以上の権限があるかチェック
-    if (memberships[siteOwnerId]) {
-      const memberRole = memberships[siteOwnerId].role;
-      if (memberRole === 'owner' || memberRole === 'editor') {
-        return true;
+
+    // 4. サイトオーナーのアカウントの編集権限チェック
+    //    新仕様: editor は allowedSiteIds 内のサイトのみ編集可能
+    //    （viewer は編集不可）
+    if (memberships[siteOwnerId] || userData.accountOwnerId === siteOwnerId) {
+      // memberRole は users.memberRole を優先、なければ memberships のロールを参照
+      const memberRole = userData.memberRole
+        || (memberships[siteOwnerId] && memberships[siteOwnerId].role)
+        || 'editor';
+      // owner は無制限編集
+      if (memberRole === 'owner') return true;
+      // editor は allowedSiteIds 内のみ編集可
+      if (memberRole === 'editor') {
+        const allowedSiteIds = userData.allowedSiteIds || [];
+        return allowedSiteIds.includes(siteId);
       }
+      // viewer は編集不可
+      return false;
     }
-    
+
     // 5. 管理者権限をチェック（admin/editorのみ）
     const adminDoc = await db.collection('adminUsers').doc(userId).get();
     if (adminDoc.exists && ['admin', 'editor'].includes(adminDoc.data().role)) {
       return true;
     }
-    
+
     return false;
   } catch (error) {
     console.error('Error checking site edit permission:', error);

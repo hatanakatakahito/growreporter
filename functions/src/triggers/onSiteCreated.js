@@ -60,35 +60,23 @@ export async function onSiteCreatedTrigger(event) {
     }
 
     // スクリーンショット即時取得（ダッシュボード表示を早めるため）
+    // CF Worker Browser Rendering 経由 viewport モードで PC + Mobile を 1 アクセスで同時取得
     if (siteData.siteUrl) {
       try {
-        const { captureScreenshotCallable } = await import('../callable/captureScreenshot.js');
-        const ownerUid = siteData.userId || null;
-        const ssUpdate = {};
-
-        try {
-          const pcResult = await captureScreenshotCallable({
-            data: { siteUrl: siteData.siteUrl, deviceType: 'pc' },
-            auth: ownerUid ? { uid: ownerUid } : undefined,
+        const { refreshSiteThumbnails } = await import('../utils/refreshSiteThumbnails.js');
+        const result = await refreshSiteThumbnails({
+          siteId,
+          siteUrl: siteData.siteUrl,
+          forceRefresh: false, // 24h cache を活用 (新規登録なので通常 cache hit しないが安全側)
+        });
+        if (result?.error) {
+          logger.warn('[onSiteCreated] スクショ取得エラー', { siteId, error: result.error, message: result.message });
+        } else if (result?.pcScreenshotUrl || result?.mobileScreenshotUrl) {
+          logger.info('[onSiteCreated] スクショ保存完了', {
+            siteId,
+            pc: !!result.pcScreenshotUrl,
+            mobile: !!result.mobileScreenshotUrl,
           });
-          if (pcResult?.imageUrl) ssUpdate.pcScreenshotUrl = pcResult.imageUrl;
-        } catch (e) {
-          logger.warn('[onSiteCreated] PCスクショ取得エラー', { siteId, error: e.message });
-        }
-
-        try {
-          const mobileResult = await captureScreenshotCallable({
-            data: { siteUrl: siteData.siteUrl, deviceType: 'mobile' },
-            auth: ownerUid ? { uid: ownerUid } : undefined,
-          });
-          if (mobileResult?.imageUrl) ssUpdate.mobileScreenshotUrl = mobileResult.imageUrl;
-        } catch (e) {
-          logger.warn('[onSiteCreated] モバイルスクショ取得エラー', { siteId, error: e.message });
-        }
-
-        if (Object.keys(ssUpdate).length > 0) {
-          await db.collection('sites').doc(siteId).update(ssUpdate);
-          logger.info('[onSiteCreated] スクショ保存完了', { siteId, fields: Object.keys(ssUpdate) });
         }
       } catch (importError) {
         logger.warn('[onSiteCreated] スクショモジュール読み込みエラー', { siteId, error: importError.message });

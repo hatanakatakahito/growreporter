@@ -35,7 +35,7 @@ import {
 } from 'recharts';
 
 /**
- * ランディングページ分析画面
+ * 入口ページ分析画面
  * ユーザーが最初に訪問したページを表示
  */
 export default function LandingPages() {
@@ -50,7 +50,7 @@ export default function LandingPages() {
 
   // ページタイトルを設定
   useEffect(() => {
-    setPageTitle('ランディングページ');
+    setPageTitle('入口ページ');
   }, []);
 
   // 初回のみコンバージョン未設定アラートを表示（サイトデータ読込完了後に判定）
@@ -241,14 +241,14 @@ export default function LandingPages() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-bold text-dark dark:text-white">
-                  エンゲージメント - ランディングページ
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-2xl font-bold text-dark dark:text-white">
+                  エンゲージメント - 入口ページ
                 </h2>
                 <TourHelpButton tourId="analysisLandingPages" />
               </div>
-              <p className="mt-0.5 text-sm text-body-color">
-                ユーザーが最初に訪問したページ（ランディングページ）を確認できます
+              <p className="mt-1 text-sm text-body-color">
+                ユーザーが最初に訪問したページ（入口ページ）を確認できます
               </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2 pt-0.5" data-tour="analysis-dimension-filters">
@@ -300,7 +300,7 @@ export default function LandingPages() {
 
               {/* タブコンテンツ */}
               {activeTab === 'chart' ? (
-                <ChartContainer title="ランディングページ別セッション数（上位10件）" height={400}>
+                <ChartContainer title="入口ページ別セッション数（上位10件）" height={400}>
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData}>
                       <CartesianGrid strokeDasharray="3 3" />
@@ -336,7 +336,7 @@ export default function LandingPages() {
                   columns={[
                     {
                       key: 'path',
-                      label: 'ランディングページ',
+                      label: '入口ページ',
                       sortable: true,
                       required: true,
                       render: (value) => {

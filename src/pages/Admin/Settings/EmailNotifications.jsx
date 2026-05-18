@@ -426,7 +426,7 @@ export default function EmailNotifications() {
 
       {/* 保存ボタン */}
       <div className="flex items-center gap-4">
-        <Button variant="primary" size="lg" onClick={handleSave} disabled={saving}>
+        <Button variant="primary" size="lg" className="min-w-[180px]" onClick={handleSave} disabled={saving}>
           <Save data-slot="icon" />
           {saving ? '保存中...' : '設定を保存'}
         </Button>
@@ -540,6 +540,7 @@ export default function EmailNotifications() {
           <div className="flex flex-wrap items-center gap-3">
             <Button
               variant="primary"
+              className="min-w-[180px]"
               onClick={() => handleTestSend('weekly')}
               disabled={!selectedUserId || !selectedSiteId || sendingType !== null}
             >
@@ -549,6 +550,7 @@ export default function EmailNotifications() {
 
             <Button
               variant="primary"
+              className="min-w-[180px]"
               onClick={() => handleTestSend('monthly')}
               disabled={!selectedUserId || !selectedSiteId || sendingType !== null}
             >
@@ -558,6 +560,7 @@ export default function EmailNotifications() {
 
             <Button
               variant="primary"
+              className="min-w-[180px]"
               onClick={() => handleTestSend('alert')}
               disabled={!selectedUserId || !selectedSiteId || sendingType !== null}
             >

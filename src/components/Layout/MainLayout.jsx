@@ -6,13 +6,15 @@ import { useSidebar } from '../../contexts/SidebarContext';
 import { useSite } from '../../contexts/SiteContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { usePlan } from '../../hooks/usePlan';
+import { useAdmin } from '../../hooks/useAdmin';
 import { useGlobalMemoNotifications } from '../../hooks/useGlobalMemoNotifications';
 import { useGlobalAlertNotifications } from '../../hooks/useGlobalAlertNotifications';
 import GlobalNotificationModal from './GlobalMemoNotificationModal';
 import DateRangePicker from '../Analysis/DateRangePicker';
-import SiteSelectionModal from '../common/SiteSelectionModal';
 import UpgradeModal from '../common/UpgradeModal';
 import FeedbackModal from '../Feedback/FeedbackModal';
+import ViewerEmptyPlaceholder from '../common/ViewerEmptyPlaceholder';
+import SiteSelectionModal from '../common/SiteSelectionModal';
 import logoImg from '../../assets/img/logo.svg';
 
 /**
@@ -100,6 +102,7 @@ function MobileDrawer({ isOpen, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const { isFree } = usePlan();
+  const { isAdmin } = useAdmin();
   const [showUpgrade, setShowUpgrade] = useState(false);
 
   const isActive = (path) => location.pathname === path || location.pathname.startsWith(path + '/');
@@ -118,26 +121,30 @@ function MobileDrawer({ isOpen, onClose }) {
     { label: 'ダッシュボード', path: '/dashboard', icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> },
     { label: 'AIチャット', path: '/ai-chat', locked: true, icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg> },
     { divider: true, label: '分析する', icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg> },
+    { label: 'AI総合分析', path: '/analysis/comprehensive', indent: true, locked: true },
     { label: '全体サマリー', path: '/analysis/summary', indent: true },
-    { label: 'ユーザー属性', path: '/analysis/users', indent: true },
-    { groupLabel: '時系列' },
+    { groupLabel: 'ユーザー・日時（誰がいつ）' },
+    { label: 'ユーザー属性', path: '/analysis/users', indent: 2 },
     { label: '月別', path: '/analysis/month', indent: 2 },
     { label: '日別', path: '/analysis/day', indent: 2 },
     { label: '曜日別', path: '/analysis/week', indent: 2 },
     { label: '時間帯別', path: '/analysis/hour', indent: 2 },
-    { groupLabel: '集客' },
+    { groupLabel: '集客（どこから来たか）' },
     { label: '集客チャネル', path: '/analysis/channels', indent: 2 },
-    { label: '流入キーワード', path: '/analysis/keywords', indent: 2 },
-    { label: '被リンク元', path: '/analysis/referrals', indent: 2 },
-    { groupLabel: 'ページ' },
+    { label: '検索キーワード', path: '/analysis/keywords', indent: 2 },
+    { label: '参照元サイト', path: '/analysis/referrals', indent: 2 },
+    { groupLabel: 'ページ（どのように見たか）' },
     { label: 'ページ別', path: '/analysis/pages', indent: 2 },
+    { label: '入口ページ', path: '/analysis/landing-pages', indent: 2 },
+    { label: '資料ダウンロード', path: '/analysis/file-downloads', indent: 2 },
+    { label: '外部リンククリック', path: '/analysis/external-links', indent: 2 },
     { label: 'コンテンツ分析', path: '/analysis/content', indent: 2 },
     { label: 'ページ分類別', path: '/analysis/page-categories', indent: 2 },
-    { label: 'ランディングページ', path: '/analysis/landing-pages', indent: 2 },
-    { groupLabel: 'コンバージョン' },
+    { label: '次に見たページ', path: '/analysis/page-flow', indent: 2 },
+    ...(isAdmin ? [{ label: 'ユーザージャーニー', path: '/analysis/user-journey', indent: 2 }] : []),
+    { groupLabel: '成果（コンバージョン）' },
     { label: 'コンバージョン一覧', path: '/analysis/conversions', indent: 2 },
-    { label: '逆算フロー', path: '/analysis/reverse-flow', indent: 2 },
-    { label: 'AI総合分析', path: '/analysis/comprehensive', indent: true, locked: true },
+    { label: '成果までの到達ステップ', path: '/analysis/reverse-flow', indent: 2 },
     { divider: true },
     { label: '改善する', path: '/improve', locked: true, icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg> },
     { label: '評価する', path: '/reports', locked: true, icon: <svg className={iconClass} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" /></svg> },
@@ -234,7 +241,7 @@ function MobileDrawer({ isOpen, onClose }) {
  */
 export default function MainLayout() {
   const { isSidebarOpen } = useSidebar();
-  const { sites, isLoading, needsSiteSelection } = useSite();
+  const { sites, isLoading, isMember, memberHasNoAllowedSites } = useSite();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -247,7 +254,18 @@ export default function MainLayout() {
     return () => window.removeEventListener('feedback:open', handler);
   }, []);
 
-  if (!isLoading && sites.length === 0) {
+  // メンバー（editor/viewer）で割当サイトが無い場合、専用プレースホルダーを表示
+  // ただしアカウント設定画面（プロフィール・通知）は引き続きアクセス可能にする
+  if (!isLoading && memberHasNoAllowedSites) {
+    const isAccountSettings = location.pathname.startsWith('/account/settings')
+      || location.pathname.startsWith('/account/profile');
+    if (!isAccountSettings) {
+      return <ViewerEmptyPlaceholder />;
+    }
+  }
+
+  // メンバーはサイト追加 UI に遷移させない（オーナーが割当待ち = プレースホルダー表示）
+  if (!isLoading && sites.length === 0 && !isMember) {
     return <Navigate to="/sites/new" replace />;
   }
 
@@ -284,14 +302,16 @@ export default function MainLayout() {
       />
 
 
-      {/* サイト選択モーダル */}
-      <SiteSelectionModal />
-
       {/* 意見箱モーダル */}
       <FeedbackModal
         isOpen={isFeedbackOpen}
         onClose={() => setIsFeedbackOpen(false)}
       />
+
+      {/* サイト選択モーダル
+          プラン解約 / 追加サイトオプション解約 / 期限切れで
+          登録サイト数が effectiveMaxSites を超えた場合に表示される */}
+      <SiteSelectionModal />
     </div>
   );
 }

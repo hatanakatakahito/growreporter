@@ -75,6 +75,13 @@ export const getAdminSitesCallable = async (request) => {
         hasGA4: !!data.ga4PropertyId,
         hasGSC: !!data.gscSiteUrl,
         isOrphan: false,
+        // 移管トラッキング (admin → 顧客への引き渡し履歴)
+        _transferredAt: data._transferredAt?.toDate?.().toISOString() || null,
+        _transferredFromUid: data._transferredFromUid || null,
+        _transferredByAdminUid: data._transferredByAdminUid || null,
+        // OAuth トークン参照先 (admin 代行運用判定用)
+        ga4TokenOwner: data.ga4TokenOwner || null,
+        gscTokenOwner: data.gscTokenOwner || null,
       });
     });
 

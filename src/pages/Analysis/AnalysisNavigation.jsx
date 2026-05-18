@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
+import { useAdmin } from '../../hooks/useAdmin';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import { setPageTitle } from '../../utils/pageTitle';
 import {
@@ -19,6 +20,7 @@ import {
   FolderTree,
   Target,
   GitMerge,
+  Network,
   Sparkles,
 } from 'lucide-react';
 
@@ -28,6 +30,7 @@ import {
  */
 export default function AnalysisNavigation() {
   const { dateRange, updateDateRange } = useSite();
+  const { isAdmin } = useAdmin();
 
   // ページタイトルを設定
   useEffect(() => {
@@ -97,13 +100,13 @@ export default function AnalysisNavigation() {
             },
             {
               icon: <Search className="h-6 w-6" />,
-              title: '流入キーワード元',
+              title: '検索キーワード',
               description: '検索キーワードのパフォーマンスから、SEO改善のヒントを得ます。',
               path: '/analysis/keywords',
             },
             {
               icon: <ExternalLinkIcon className="h-6 w-6" />,
-              title: '被リンク元',
+              title: '参照元サイト',
               description: '参照元サイトからのトラフィックを分析し、効果的な連携先を特定します。',
               path: '/analysis/referrals',
             },
@@ -126,13 +129,13 @@ export default function AnalysisNavigation() {
             },
             {
               icon: <LayoutGrid className="h-6 w-6" />,
-              title: 'ランディングページ',
+              title: '入口ページ',
               description: '最初に訪問されるページの効果を測定し、導線を最適化します。',
               path: '/analysis/landing-pages',
             },
             {
               icon: <FileText className="h-6 w-6" />,
-              title: 'ファイルダウンロード',
+              title: '資料ダウンロード',
               description: 'ダウンロードされた資料やファイルの人気度を確認します。',
               path: '/analysis/file-downloads',
             },
@@ -144,6 +147,18 @@ export default function AnalysisNavigation() {
             },
           ],
         },
+        // ユーザージャーニー（管理者プレビュー）
+        ...(isAdmin ? [{
+          title: 'ジャーニー分析',
+          items: [
+            {
+              icon: <Network className="h-6 w-6" />,
+              title: 'ユーザージャーニー',
+              description: '流入元から最終結果までの 5 層フローをサンキー図で可視化し、主要パターンを AI が要約します。',
+              path: '/analysis/user-journey',
+            },
+          ],
+        }] : []),
         {
           title: 'コンバージョン分析',
           items: [
@@ -155,7 +170,7 @@ export default function AnalysisNavigation() {
             },
             {
               icon: <GitMerge className="h-6 w-6" />,
-              title: '逆算フロー',
+              title: '成果までの到達ステップ',
               description: 'コンバージョンまでのステップを逆算し、離脱ポイントを特定します。',
               path: '/analysis/reverse-flow',
             },

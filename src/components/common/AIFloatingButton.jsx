@@ -1,7 +1,6 @@
 import { Sparkles } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { usePlan } from '../../hooks/usePlan';
-import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * AI分析フローティングボタン
@@ -12,14 +11,14 @@ import { useAuth } from '../../contexts/AuthContext';
  * 共通 Button comp ではなく直接 button を使用。色は variant="ai" と同じ
  * `bg-gradient-ai` トークンに統一。
  *
+ * 仕様: viewer も AI 生成は許可されているため、ロール非表示ガードは行わない
+ * （オーナーのプラン枠を消費する）。
+ *
  * @param {function} onScrollToAI - AI分析タブへスクロールする関数
  */
 export default function AIFloatingButton({ onScrollToAI }) {
   const [shouldAnimate, setShouldAnimate] = useState(false);
   const { plan } = usePlan();
-  const { userProfile } = useAuth();
-
-  const memberRole = userProfile?.memberRole || 'owner';
 
   // 5秒ごとにアニメーションを実行
   useEffect(() => {
@@ -31,8 +30,8 @@ export default function AIFloatingButton({ onScrollToAI }) {
     return () => clearInterval(interval);
   }, []);
 
-  // 閲覧者またはplanロード中は表示しない（全Hooksの後に配置）
-  if (memberRole === 'viewer' || !plan) {
+  // planロード中は表示しない（全Hooksの後に配置）
+  if (!plan) {
     return null;
   }
 

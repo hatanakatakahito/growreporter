@@ -1,0 +1,827 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useSite } from '../../contexts/SiteContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAdmin } from '../../hooks/useAdmin';
+import { useUserJourney } from '../../hooks/useUserJourney';
+import { useTableColumns } from '../../hooks/useTableColumns';
+import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
+import LoadingSpinner from '../../components/common/LoadingSpinner';
+import ErrorAlert from '../../components/common/ErrorAlert';
+import ColumnToggle from '../../components/common/ColumnToggle';
+import PageNoteSection from '../../components/Analysis/PageNoteSection';
+import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
+import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
+import PlanLimitModal from '../../components/common/PlanLimitModal';
+import AIFloatingButton from '../../components/common/AIFloatingButton';
+import JourneySankey from '../../components/Analysis/UserJourney/JourneySankey';
+import TourHelpButton from '../../components/Onboarding/TourHelpButton';
+import { Button } from '../../components/ui/button';
+import { setPageTitle } from '../../utils/pageTitle';
+import { PAGE_TYPES } from '../../constants/plans';
+import { Search, FileText, X, ArrowRight, Filter } from 'lucide-react';
+
+/**
+ * ユーザージャーニー分析画面
+ *
+ * 5層フロー: 流入元 → KW/参照元 → LP → 中間 → 結果
+ * 構成:
+ *   ① ジャーニー俯瞰マップ (サンキー) + ノード詳細パネル
+ *   ② 主要ジャーニー TOP 3 (ストーリーカード)
+ *   ③ 詳細パステーブル
+ *   ④ メモ & AI 詳細分析タブ
+ */
+export default function UserJourney() {
+  const { selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
+  const { currentUser } = useAuth();
+  const { isAdmin, loading: adminLoading } = useAdmin();
+  const navigate = useNavigate();
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange;
+
+  const [selectedNodeId, setSelectedNodeId] = useState('lp-seo-tips');
+  const [storyCardSort, setStoryCardSort] = useState('sessions');
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+
+  useEffect(() => {
+    setPageTitle('ユーザージャーニー');
+  }, []);
+
+  // admin チェック完了後、非 admin なら dashboard へリダイレクト
+  useEffect(() => {
+    if (!adminLoading && !isAdmin) {
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isAdmin, adminLoading, navigate]);
+
+  const { data, isLoading, isError, error } = useUserJourney(
+    selectedSiteId,
+    dateRange.from,
+    dateRange.to,
+    isComparing ? comparisonDateRange : null
+  );
+
+  const selectedNode = useMemo(() => {
+    if (!data?.nodes) return null;
+    return data.nodes.find((n) => n.id === selectedNodeId) || null;
+  }, [data, selectedNodeId]);
+
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const el = document.getElementById('ai-analysis-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
+
+  // admin チェック中はローディング、非 admin は何も描画しない（リダイレクト発火中）
+  if (adminLoading) {
+    return (
+      <div className="flex h-full items-center justify-center bg-gray-50">
+        <LoadingSpinner message="権限を確認中..." />
+      </div>
+    );
+  }
+  if (!isAdmin) return null;
+
+  return (
+    <div className="flex flex-col h-full">
+      <AnalysisHeader
+        dateRange={dateRange}
+        setDateRange={updateDateRange}
+        showDateRange={true}
+        showSiteInfo={false}
+      />
+
+      <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
+        <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
+
+          {/* ページタイトル */}
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-2xl font-bold text-dark dark:text-white">分析する - ユーザージャーニー</h2>
+                <TourHelpButton tourId="analysisUserJourney" />
+              </div>
+              <p className="mt-1 text-sm text-body-color">流入から成果までの流れを俯瞰とストーリーの両面で把握できます</p>
+            </div>
+            <div className="flex flex-shrink-0 items-center gap-2 pt-0.5" data-tour="analysis-dimension-filters">
+              <JourneySelect ariaLabel="入口の粒度">
+                <option>入口の粒度: チャネル</option>
+                <option>入口の粒度: GSC キーワード</option>
+                <option>入口の粒度: 参照元ドメイン</option>
+              </JourneySelect>
+              <JourneySelect ariaLabel="表示">
+                <option>表示: 上位ノードのみ</option>
+                <option>表示: 全ノード</option>
+              </JourneySelect>
+              <Button variant="secondary" size="md">
+                <Filter className="h-4 w-4" data-slot="icon" />
+                <span>絞り込み</span>
+              </Button>
+            </div>
+          </div>
+
+          {isLoading ? (
+            <LoadingSpinner message="ジャーニーデータを読み込んでいます..." />
+          ) : isError ? (
+            <ErrorAlert message={error?.message || 'データの読み込みに失敗しました。'} />
+          ) : !data ? (
+            <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
+              <p className="text-body-color">表示するデータがありません。</p>
+            </div>
+          ) : (
+            <>
+              {/* ① 全体マップ + ノード詳細（横並び） */}
+              <div className="flex gap-6 mb-6">
+                {/* サンキー（左、フレックス） */}
+                <div className="flex-1 min-w-0 rounded-lg border border-stroke bg-white p-6 dark:border-dark-3 dark:bg-dark-2">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-dark dark:text-white">ジャーニー俯瞰マップ</h3>
+                    <div className="flex gap-3 text-[11px] text-body-color">
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-primary"></span>流入</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: '#A78BFA' }}></span>LP</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-secondary"></span>中間</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-500"></span>CV</span>
+                      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-gray-400"></span>離脱</span>
+                    </div>
+                  </div>
+                  <JourneySankey
+                    data={data}
+                    selectedNodeId={selectedNodeId}
+                    onNodeClick={(n) => setSelectedNodeId(n.id)}
+                    height={480}
+                  />
+                  <p className="mt-3 text-xs text-center text-body-color">
+                    ノードをクリックすると右パネルに詳細を表示
+                  </p>
+                </div>
+
+                {/* ノード詳細パネル（右、コンパクト） */}
+                <NodeDetailPanel node={selectedNode} onClear={() => setSelectedNodeId(null)} />
+              </div>
+
+              {/* ② 主要ジャーニー TOP 3 */}
+              <StoryTop3
+                stories={data.storyTop3}
+                sortBy={storyCardSort}
+                onSortChange={setStoryCardSort}
+              />
+
+              {/* ③ 詳細パステーブル */}
+              <DetailPathTable paths={data.detailPaths} />
+            </>
+          )}
+
+          {/* ④ メモ & AI タブ */}
+          {selectedSiteId && currentUser && (
+            <div className="mt-6">
+              <TabbedNoteAndAI
+                pageType="analysis/user-journey"
+                noteContent={
+                  <PageNoteSection
+                    userId={currentUser.uid}
+                    siteId={selectedSiteId}
+                    pageType="analysis/user-journey"
+                    dateRange={dateRange}
+                  />
+                }
+                aiContent={
+                  !isLoading && data ? (
+                    <AIAnalysisSection
+                      pageType={PAGE_TYPES.USER_JOURNEY}
+                      rawData={data}
+                      period={{
+                        startDate: dateRange?.from,
+                        endDate: dateRange?.to,
+                      }}
+                      onLimitExceeded={() => setIsLimitModalOpen(true)}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">データを読み込み中...</div>
+                  )
+                }
+              />
+            </div>
+          )}
+        </div>
+
+        {/* AI フローティングボタン */}
+        {selectedSiteId && data && (
+          <AIFloatingButton
+            pageType={PAGE_TYPES.USER_JOURNEY}
+            onScrollToAI={scrollToAIAnalysis}
+          />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+// ===== サブコンポーネント =====
+
+/**
+ * 分析画面共通スタイルのセレクトボックス（他画面と同じ角丸・枠線・カスタム矢印）
+ */
+function JourneySelect({ value, onChange, ariaLabel, children }) {
+  return (
+    <div className="relative">
+      <select
+        value={value}
+        onChange={onChange}
+        aria-label={ariaLabel}
+        className="appearance-none [background-image:none] rounded-md border border-stroke bg-transparent py-2 px-4 pr-10 text-sm text-dark outline-none transition-all duration-200 focus:border-primary-mid focus:ring-2 focus:ring-primary-mid/20 dark:border-dark-3 dark:bg-dark-2 dark:text-white"
+      >
+        {children}
+      </select>
+      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M5 7.5L10 12.5L15 7.5" stroke="#9CA3AF" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </span>
+    </div>
+  );
+}
+
+function NodeDetailPanel({ node, onClear }) {
+  if (!node) {
+    return (
+      <div className="w-[380px] shrink-0 rounded-lg border border-stroke bg-white p-6 self-start dark:border-dark-3 dark:bg-dark-2">
+        <div className="text-xs text-body-color text-center py-8">
+          サンキー図のノードをクリックすると詳細が表示されます
+        </div>
+      </div>
+    );
+  }
+
+  const detail = node.detail || {};
+
+  return (
+    <div className="w-[380px] shrink-0 rounded-lg border border-stroke bg-white p-6 self-start dark:border-dark-3 dark:bg-dark-2">
+      {/* ヘッダー */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="min-w-0">
+          <span className="text-[11px] uppercase tracking-wide text-body-color font-medium">選択中のノード</span>
+          <h3 className="text-lg font-semibold text-primary mt-0.5 truncate" title={node.name}>{node.name}</h3>
+          <div className="flex items-center gap-1.5 text-xs text-body-color mt-1">
+            <FileText className="h-3.5 w-3.5" />
+            <span>{getNodeTypeLabel(node.type)}</span>
+          </div>
+        </div>
+        <button
+          onClick={onClear}
+          className="text-[11px] text-primary hover:underline shrink-0 inline-flex items-center gap-1"
+        >
+          <X className="h-3 w-3" />
+          クリア
+        </button>
+      </div>
+
+      {/* 共通メトリクス 2x2 */}
+      <div className="grid grid-cols-2 gap-2 mb-4 pb-4 border-b border-stroke dark:border-dark-3">
+        <MetricCard label="セッション/件数" value={node.value?.toLocaleString() || '-'} change={node.change} />
+        <MetricCard label="シェア" value={node.share != null ? `${(node.share * 100).toFixed(1)}%` : '-'} />
+        {node.type === 'lp' && detail.cvRate != null && (
+          <MetricCard label="CV 率" value={`${(detail.cvRate * 100).toFixed(2)}%`} highlight={detail.cvRate >= 0.05} />
+        )}
+        {node.type === 'lp' && detail.bounceRate != null && (
+          <MetricCard label="直帰率（参考）" value={`${(detail.bounceRate * 100).toFixed(1)}%`} />
+        )}
+        {node.type !== 'lp' && (
+          <>
+            <MetricCard label="タイプ" value={getNodeTypeLabel(node.type)} />
+            {node.type === 'cv' && detail.cvRate != null && (
+              <MetricCard label="CV 率" value={`${(detail.cvRate * 100).toFixed(2)}%`} highlight />
+            )}
+          </>
+        )}
+      </div>
+
+      {/* 詳細セクション（ノードタイプ別） */}
+      {node.type === 'lp' && (
+        <LPDetail detail={detail} />
+      )}
+      {node.type === 'source' && (
+        <SourceDetail detail={detail} />
+      )}
+      {node.type === 'middle' && (
+        <MiddleDetail detail={detail} />
+      )}
+      {node.type === 'cv' && (
+        <CvDetail detail={detail} />
+      )}
+      {node.type === 'exit' && (
+        <div className="text-xs text-body-color">
+          サイトを離脱したセッションの集計です
+        </div>
+      )}
+      {node.type === 'keyword' && (
+        <div className="text-xs text-body-color">
+          流入キーワード/参照元単位のノードです。GSC キーワード詳細はこのノードを通過した LP を選択して確認できます
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MetricCard({ label, value, change, highlight }) {
+  return (
+    <div className={`rounded-md p-2.5 ${highlight ? 'border-2 border-emerald-300 bg-emerald-50/30' : 'border border-stroke'}`}>
+      <div className="text-[10px] text-body-color">{label}</div>
+      <div className={`mt-0.5 text-base font-semibold ${highlight ? 'text-emerald-600' : 'text-dark'}`}>{value}</div>
+      {change != null && change !== 0 && (
+        <div className={`text-[10px] font-medium ${change > 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+          {change > 0 ? '▲' : '▼'} {Math.abs(Math.round(change * 100))}%
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DetailListSection({ title, icon, items, emptyMessage = 'データなし', renderItem }) {
+  if (!items || items.length === 0) {
+    return (
+      <div className="mb-4">
+        <div className="text-[11px] font-semibold text-body-color uppercase mb-2 inline-flex items-center gap-1.5">
+          {icon}
+          {title}
+        </div>
+        <div className="text-xs text-body-color">{emptyMessage}</div>
+      </div>
+    );
+  }
+  return (
+    <div className="mb-4">
+      <div className="text-[11px] font-semibold text-body-color uppercase mb-2 inline-flex items-center gap-1.5">
+        {icon}
+        {title}
+      </div>
+      <div className="space-y-1.5">
+        {items.map((item, i) => renderItem(item, i))}
+      </div>
+    </div>
+  );
+}
+
+function LPDetail({ detail }) {
+  return (
+    <>
+      <DetailListSection
+        title="流入元 TOP 5"
+        items={detail.inboundSources}
+        renderItem={(s, i) => (
+          <div key={i} className="flex items-center gap-2 text-sm">
+            <span className="flex-1 truncate text-dark">{s.name}</span>
+            <span className="font-mono text-primary text-xs">{s.value.toLocaleString()}</span>
+            <span className="text-[10px] text-body-color w-10 text-right">{(s.share * 100).toFixed(0)}%</span>
+          </div>
+        )}
+      />
+      {detail.gscKeywords && detail.gscKeywords.length > 0 && (
+        <DetailListSection
+          title="流入キーワード TOP 5 (GSC)"
+          icon={<Search className="h-3 w-3" />}
+          items={detail.gscKeywords}
+          renderItem={(k, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm">
+              <span className="flex-1 truncate text-dark" title={k.query}>{k.query}</span>
+              <span className="font-mono text-primary text-xs">{k.clicks?.toLocaleString() || 0}</span>
+              <span className="text-[10px] text-body-color w-12 text-right">{k.position?.toFixed(1) || '-'}位</span>
+            </div>
+          )}
+        />
+      )}
+      <DetailListSection
+        title="次に訪れたページ TOP 5"
+        items={detail.nextPages}
+        emptyMessage="次ページデータなし"
+        renderItem={(p, i) => (
+          <div key={i} className="flex items-center gap-2 text-sm">
+            <span className={`flex-1 truncate ${p.isBounce ? 'text-body-color' : 'text-dark'}`} title={p.name}>
+              {p.name}
+            </span>
+            <span className={`font-mono text-xs ${p.isBounce ? 'text-body-color' : 'text-primary'}`}>{p.value.toLocaleString()}</span>
+            <span className="text-[10px] text-body-color w-10 text-right">{(p.share * 100).toFixed(0)}%</span>
+          </div>
+        )}
+      />
+      {detail.cvBreakdown && detail.cvBreakdown.length > 0 && (
+        <DetailListSection
+          title="CV 内訳"
+          items={detail.cvBreakdown}
+          renderItem={(c, i) => (
+            <div key={i} className="flex items-center gap-2 text-sm">
+              <span className="flex-1 truncate text-dark">{c.displayName}</span>
+              <span className="font-mono text-emerald-600 text-xs font-semibold">{c.count.toLocaleString()}</span>
+            </div>
+          )}
+        />
+      )}
+    </>
+  );
+}
+
+function SourceDetail({ detail }) {
+  return (
+    <DetailListSection
+      title="主要 LP TOP 5"
+      items={detail.topLPs}
+      emptyMessage="LP データなし"
+      renderItem={(lp, i) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <span className="flex-1 truncate text-dark" title={lp.name}>{lp.name}</span>
+          <span className="font-mono text-primary text-xs">{lp.value.toLocaleString()}</span>
+          <span className="text-[10px] text-body-color w-10 text-right">{(lp.share * 100).toFixed(0)}%</span>
+        </div>
+      )}
+    />
+  );
+}
+
+function MiddleDetail({ detail }) {
+  return (
+    <DetailListSection
+      title="この中間ページに流入した LP TOP 5"
+      items={detail.inboundLPs}
+      emptyMessage="流入元 LP データなし"
+      renderItem={(lp, i) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <span className="flex-1 truncate text-dark" title={lp.name}>{lp.name}</span>
+          <span className="font-mono text-primary text-xs">{lp.value.toLocaleString()}</span>
+        </div>
+      )}
+    />
+  );
+}
+
+function CvDetail({ detail }) {
+  return (
+    <DetailListSection
+      title="この CV に至った LP TOP 5"
+      items={detail.inboundLPs}
+      emptyMessage="LP データなし"
+      renderItem={(lp, i) => (
+        <div key={i} className="flex items-center gap-2 text-sm">
+          <span className="flex-1 truncate text-dark" title={lp.name}>{lp.name}</span>
+          <span className="font-mono text-emerald-600 text-xs font-semibold">{lp.value.toLocaleString()}</span>
+        </div>
+      )}
+    />
+  );
+}
+
+function getNodeTypeLabel(type) {
+  const labels = {
+    source: '流入元',
+    keyword: 'キーワード/参照元',
+    lp: 'ランディングページ',
+    middle: '中間ページ',
+    cv: 'コンバージョン',
+    exit: '離脱',
+  };
+  return labels[type] || type;
+}
+
+function StoryTop3({ stories, sortBy, onSortChange }) {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // sortBy に応じて並び替え。rank ラベルは元のランク（選定時の順位）を保持
+  const sortedStories = useMemo(() => {
+    if (!stories?.length) return [];
+    const arr = [...stories];
+    if (sortBy === 'cvRate') {
+      arr.sort((a, b) => (b.cvRate ?? 0) - (a.cvRate ?? 0));
+    } else if (sortBy === 'improvement') {
+      // 改善余地 = セッション × max(0, 5 - CV率) … トラフィック多×CV率低 を上位へ
+      const score = (s) => (s.sessions ?? 0) * Math.max(0, 5 - (s.cvRate ?? 0));
+      arr.sort((a, b) => score(b) - score(a));
+    } else {
+      arr.sort((a, b) => (b.sessions ?? 0) - (a.sessions ?? 0));
+    }
+    return arr;
+  }, [stories, sortBy]);
+
+  const topStories = sortedStories.slice(0, 3);
+  const hasMore = sortedStories.length > 3;
+
+  if (!stories?.length) return null;
+
+  return (
+    <div className="mb-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-dark dark:text-white">主要ジャーニー TOP 3</h3>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-body-color">並び順:</span>
+          <JourneySelect
+            value={sortBy}
+            onChange={(e) => onSortChange(e.target.value)}
+            ariaLabel="並び順"
+          >
+            <option value="sessions">セッション数順</option>
+            <option value="cvRate">CV 率順</option>
+            <option value="improvement">改善余地順</option>
+          </JourneySelect>
+          {hasMore && (
+            <Button variant="secondary" size="md" onClick={() => setIsModalOpen(true)}>
+              すべて表示 ({sortedStories.length}件)
+            </Button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-6">
+        {topStories.map((s) => (
+          <StoryCard key={s.id} story={s} />
+        ))}
+      </div>
+
+      {isModalOpen && (
+        <StoryAllModal
+          stories={sortedStories}
+          onClose={() => setIsModalOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function StoryAllModal({ stories, onClose }) {
+  // ESC キーで閉じる
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKey);
+    // モーダル表示中は背景スクロールを止める
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="relative w-full max-w-6xl max-h-[90vh] overflow-y-auto rounded-lg bg-white shadow-2xl dark:bg-dark-2"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-stroke bg-white px-6 py-4 dark:border-dark-3 dark:bg-dark-2">
+          <h3 className="text-lg font-semibold text-dark dark:text-white">
+            主要ジャーニー全{stories.length}件
+          </h3>
+          <button
+            onClick={onClose}
+            className="rounded-md p-1.5 text-body-color hover:bg-gray-100 hover:text-dark transition-colors dark:hover:bg-dark-3 dark:hover:text-white"
+            type="button"
+            aria-label="閉じる"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {stories.map((s) => (
+              <StoryCard key={s.id} story={s} />
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StoryCard({ story }) {
+  const isWarning = story.type === 'warning';
+  const cardBorder = isWarning ? 'border-2 border-rose-200' : 'border border-stroke';
+  const headerBg = isWarning
+    ? 'bg-gradient-to-br from-rose-50/60 to-white border-rose-200'
+    : story.type === 'success'
+    ? 'bg-gradient-to-br from-emerald-50/60 to-white'
+    : 'bg-gradient-to-br from-blue-50/60 to-white';
+  const rankBg = isWarning ? 'bg-rose-500' : story.rank === 1 ? 'bg-emerald-500' : story.rank === 2 ? 'bg-rose-500' : 'bg-blue-500';
+  const cvRateColor = isWarning ? 'text-rose-700' : 'text-emerald-700';
+  const sourceChipBg = story.sourceType === 'organic'
+    ? 'bg-blue-50 text-primary'
+    : story.sourceType === 'paid'
+    ? 'bg-purple-50 text-purple-700'
+    : story.sourceType === 'sns'
+    ? 'bg-amber-50 text-amber-700'
+    : 'bg-gray-50 text-body-color';
+  const sourceChipLabel = story.sourceType === 'organic'
+    ? 'GSC:'
+    : story.sourceType === 'paid'
+    ? '広告KW:'
+    : story.sourceType === 'sns'
+    ? '参照元:'
+    : 'KW:';
+
+  return (
+    <article className={`rounded-lg ${cardBorder} bg-white overflow-hidden hover:shadow-md transition-all`}>
+      <div className={`border-b px-5 py-4 ${headerBg}`}>
+        <div className="flex items-center gap-2 mb-2">
+          <span className={`flex h-7 w-7 items-center justify-center rounded-full ${rankBg} text-white font-bold text-sm`}>
+            {story.rank}
+          </span>
+          <span className={`text-xs font-semibold rounded px-2 py-0.5 ${isWarning ? 'text-rose-700 bg-rose-100' : story.rank === 1 ? 'text-emerald-700 bg-emerald-100' : 'text-blue-700 bg-blue-100'}`}>
+            {story.sharePct}%
+          </span>
+          <span className={`ml-auto text-xs font-semibold ${cvRateColor}`}>
+            CV {story.cvRate}%
+          </span>
+        </div>
+        <h4 className="text-base font-semibold text-dark">{story.title}</h4>
+      </div>
+      <div className="p-5 space-y-3">
+        {/* キーワードチップ */}
+        <div className="flex flex-wrap items-center gap-1">
+          <span className="text-[10px] text-body-color font-medium mr-0.5">{sourceChipLabel}</span>
+          {story.keywords?.slice(0, 3).map((kw, i) => (
+            <span key={i} className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${sourceChipBg}`}>
+              {kw}
+            </span>
+          ))}
+          {story.additionalKwCount > 0 && (
+            <span className="rounded-full bg-gray-50 text-body-color text-[11px] px-2 py-0.5">+{story.additionalKwCount}</span>
+          )}
+        </div>
+        <p className="text-sm text-body-color leading-relaxed">{story.narrative}</p>
+
+        <div className="rounded-md bg-purple-50/60 border border-purple-100 p-3 text-sm">
+          <span className="font-semibold text-purple-700">AI:</span>
+          <span className="text-dark"> {story.aiComment}</span>
+        </div>
+
+        <Link
+          to={story.improvePath}
+          className={`w-full inline-flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium ${
+            isWarning
+              ? 'bg-gradient-business text-white hover:opacity-90'
+              : 'border border-stroke text-dark hover:border-primary hover:text-primary'
+          }`}
+          style={isWarning ? { background: 'linear-gradient(135deg, #f87171 0%, #ec4899 100%)' } : undefined}
+        >
+          改善する画面で深掘り
+          <ArrowRight className="h-3 w-3" />
+        </Link>
+      </div>
+    </article>
+  );
+}
+
+const PATH_COLUMNS = [
+  {
+    key: 'rank',
+    label: '#',
+    align: 'left',
+    required: true,
+    renderCell: (p) => <span className="font-mono text-body-color">{p.rank}</span>,
+  },
+  {
+    key: 'source',
+    label: '流入元',
+    align: 'left',
+    renderCell: (p) => <SourceBadge label={p.source} color={p.sourceColor} />,
+  },
+  {
+    key: 'lp',
+    label: 'ランディング',
+    align: 'left',
+    renderCell: (p) => <span className="font-mono text-dark">{p.lp}</span>,
+  },
+  {
+    key: 'middle',
+    label: '中間',
+    align: 'left',
+    renderCell: (p) => <span className="font-mono text-dark">{p.middle || '—'}</span>,
+  },
+  {
+    key: 'result',
+    label: '結果',
+    align: 'left',
+    renderCell: (p) =>
+      p.result === '離脱' ? (
+        <span className="text-body-color">{p.result}</span>
+      ) : (
+        <span className="text-emerald-700 font-medium">{p.result}</span>
+      ),
+  },
+  {
+    key: 'sessions',
+    label: 'セッション',
+    align: 'right',
+    renderCell: (p) => <span className="font-mono text-dark">{p.sessions.toLocaleString()}</span>,
+  },
+  {
+    key: 'cvRate',
+    label: 'CV 率',
+    align: 'right',
+    renderCell: (p) => (
+      <span className={`font-semibold ${p.cvRate >= 5 ? 'text-emerald-600' : 'text-rose-600'}`}>
+        {p.cvRate}%
+      </span>
+    ),
+  },
+  {
+    key: 'change',
+    label: '前期比',
+    align: 'right',
+    renderCell: (p) => (
+      <span
+        className={`text-xs ${
+          p.change > 0 ? 'text-emerald-600' : p.change < 0 ? 'text-rose-600' : 'text-body-color'
+        }`}
+      >
+        {p.change > 0 ? '+' : ''}
+        {Math.round(p.change * 100)}%
+      </span>
+    ),
+  },
+];
+
+function DetailPathTable({ paths }) {
+  const { visibleColumns, orderedVisibleColumns, columnOrder, toggleColumn, moveColumn, resetToDefault } =
+    useTableColumns('analysis:user-journey:detail-paths', PATH_COLUMNS);
+
+  const renderColumns = useMemo(
+    () => orderedVisibleColumns.map((key) => PATH_COLUMNS.find((c) => c.key === key)).filter(Boolean),
+    [orderedVisibleColumns]
+  );
+
+  if (!paths?.length) return null;
+
+  return (
+    <div id="detail-path-table" className="rounded-lg border border-stroke bg-white p-6 scroll-mt-4 dark:border-dark-3 dark:bg-dark-2">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-dark dark:text-white">詳細パスデータ</h3>
+        <div data-tour="analysis-column-toggle">
+          <ColumnToggle
+            columns={PATH_COLUMNS}
+            visibleColumns={visibleColumns}
+            columnOrder={columnOrder}
+            onToggleColumn={toggleColumn}
+            onMoveColumn={moveColumn}
+            onResetColumns={resetToDefault}
+          />
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-stroke dark:border-dark-3">
+              {renderColumns.map((col) => (
+                <th
+                  key={col.key}
+                  className={`whitespace-nowrap px-4 py-3 text-sm font-semibold text-dark dark:text-white ${
+                    col.align === 'right' ? 'text-right' : 'text-left'
+                  }`}
+                >
+                  {col.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-stroke dark:divide-dark-3">
+            {paths.map((p) => (
+              <tr key={p.rank} className="hover:bg-blue-50/30 transition-colors dark:hover:bg-dark-3/30">
+                {renderColumns.map((col) => (
+                  <td
+                    key={col.key}
+                    className={`whitespace-nowrap px-4 py-3 text-sm ${col.align === 'right' ? 'text-right' : 'text-left'}`}
+                  >
+                    {col.renderCell(p)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function SourceBadge({ label, color }) {
+  const colorMap = {
+    primary: 'bg-blue-50 text-primary',
+    purple: 'bg-purple-50 text-purple-700',
+    amber: 'bg-amber-50 text-amber-700',
+    emerald: 'bg-emerald-50 text-emerald-700',
+  };
+  return (
+    <span className={`rounded px-2 py-0.5 text-xs font-medium ${colorMap[color] || 'bg-gray-50 text-body-color'}`}>
+      {label}
+    </span>
+  );
+}

@@ -22,22 +22,29 @@ from ..styles import (
 # (sheet_name, description, condition_key)
 #   condition_key: allData.customSheets で該当データがあれば表示
 TOC_SHEETS = [
+    # ── 分析する ──
     ("全体サマリー", f"主要指標・目標達成率・{short_label_of('conversions')}内訳", "summary"),
-    ("月別", f"月別 {short_label_of('sessions')}・{short_label_of('engagementRate')}・{short_label_of('conversions')}推移", "dynamic:monthly"),
     ("ユーザー属性", "デバイス・年齢・性別・地域", "users"),
+    # ── 時系列 ──
+    ("月別", f"月別 {short_label_of('sessions')}・{short_label_of('engagementRate')}・{short_label_of('conversions')}推移", "dynamic:monthly"),
     ("日別", f"日別 {short_label_of('sessions')}・{short_label_of('conversions')}推移", "dynamic:daily"),
     ("曜日別", f"曜日別の{short_label_of('conversions')}発生パターン", "dynamic:weekly"),
     ("時間帯別", f"時間帯別の{short_label_of('sessions')}・{short_label_of('conversions')}", "dynamic:hourly"),
+    # ── 集客 ──
     ("集客チャネル", f"流入チャネル別 {short_label_of('totalUsers')}・{short_label_of('conversionRate')}", "dynamic:channels"),
-    ("流入キーワード", f"GSC キーワード別 {short_label_of('clicks')}・{short_label_of('position')}", "dynamic:keywords"),
-    ("被リンク元", f"参照元サイト別 {short_label_of('totalUsers')}・{short_label_of('conversions')}", "dynamic:referrals"),
+    ("検索キーワード", f"GSC {short_label_of('clicks')} ファネル（指名/顕在/潜在）+ AI クラスタ", "keywordsFunnel"),
+    ("参照元サイト", f"参照元サイト別 {short_label_of('totalUsers')}・{short_label_of('conversions')}", "dynamic:referrals"),
+    # ── ページ ──
     ("ページ別", f"ページ別 {short_label_of('screenPageViews')}・{short_label_of('engagementRate')}・{short_label_of('averageSessionDuration')}", "dynamic:pages"),
     ("ページ分類別", f"ディレクトリ別 {short_label_of('screenPageViews')} 集計", "dynamic:pageCategories"),
-    ("ランディングページ", f"LP 別 {short_label_of('totalUsers')}・{short_label_of('engagementRate')}・{short_label_of('conversions')}", "dynamic:landingPages"),
-    ("ファイルDL", "ファイルダウンロード数", "dynamic:fileDownloads"),
-    ("外部リンク", f"外部リンク{short_label_of('clicks')}数", "dynamic:externalLinks"),
+    ("入口ページ", f"LP 別 {short_label_of('totalUsers')}・{short_label_of('engagementRate')}・{short_label_of('conversions')}", "dynamic:landingPages"),
+    ("資料ダウンロード", "資料ダウンロード数", "dynamic:fileDownloads"),
+    ("外部リンククリック", f"外部リンク{short_label_of('clicks')}数", "dynamic:externalLinks"),
+    ("ユーザージャーニー", "流入元 → LP → 中間 → CV の 5 層フロー", "userJourney"),
+    # ── コンバージョン ──
     ("コンバージョン一覧", f"{short_label_of('conversions')} 種別 × 月別内訳", "conversions"),
-    ("逆算フロー", "フォーム ファネル分析", "reverseFlows"),
+    ("成果までの到達ステップ", "フォーム ファネル分析", "reverseFlows"),
+    # ── その他 ──
     ("改善提案", "AI が提案した改善施策一覧", "improvements"),
 ]
 

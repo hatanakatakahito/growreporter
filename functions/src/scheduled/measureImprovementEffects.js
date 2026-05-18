@@ -770,11 +770,11 @@ async function sendMeasurementNotifications(db, siteId, completedItems) {
     </tr></thead>
     <tbody>${itemRows}</tbody>
   </table>
-  <p style="font-size:13px;">詳細は<a href="https://growgroupreporter.web.app/reports" style="color:#3758F9;">評価する画面</a>でご確認ください。</p>
+  <p style="font-size:13px;">詳細は<a href="https://grow-reporter.com/reports" style="color:#3758F9;">評価する画面</a>でご確認ください。</p>
   <hr style="border:none;border-top:1px solid #eee;margin:20px 0;">
   <p style="font-size:11px;color:#999;">このメールはグローレポータ（grow-reporter.com）から自動送信されています。</p>
 </div>`;
-  const text = `【グローレポータ】改善効果の計測が完了しました\n\n${siteName} の改善タスク ${completedItems.length}件 の効果計測が完了しました。\n\n${completedItems.map(i => `・${i.title}: スコア${i.overallScore != null ? i.overallScore.toFixed(1) : '—'}`).join('\n')}\n\n詳細: https://growgroupreporter.web.app/reports`;
+  const text = `【グローレポータ】改善効果の計測が完了しました\n\n${siteName} の改善タスク ${completedItems.length}件 の効果計測が完了しました。\n\n${completedItems.map(i => `・${i.title}: スコア${i.overallScore != null ? i.overallScore.toFixed(1) : '—'}`).join('\n')}\n\n詳細: https://grow-reporter.com/reports`;
 
   try {
     await sendEmailDirect({ to: email, subject, html, text });

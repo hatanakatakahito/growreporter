@@ -1,13 +1,14 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useSite } from '../contexts/SiteContext';
 import { useSidebar } from '../contexts/SidebarContext';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import AnalysisHeader from '../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../components/common/LoadingSpinner';
-import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, X, FileText, Clock, TrendingUp, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, LayoutDashboard } from 'lucide-react';
+import { Sparkles, Trash2, Download, Mail, ChevronUp, ChevronDown, ExternalLink, Edit, X, FileText, Clock, TrendingUp, ChevronLeft, ChevronRight, AlertCircle, RefreshCw, LayoutDashboard, Share2 } from 'lucide-react';
 import DotWaveSpinner from '../components/common/DotWaveSpinner';
 import { setPageTitle } from '../utils/pageTitle';
+import { injectMockupOverlay } from '../utils/mockupOverlay';
 import { db, functions } from '../config/firebase';
 import { httpsCallable } from 'firebase/functions';
 import { collection, query, where, limit, getDocs, updateDoc, doc, deleteDoc, addDoc, serverTimestamp, getDoc, onSnapshot, deleteField } from 'firebase/firestore';
@@ -210,10 +211,52 @@ export default function Improve() {
   const [drawerItem, setDrawerItem] = useState(null);
   const [drawerTab, setDrawerTab] = useState('compare');
   const [afterIframeHeight, setAfterIframeHeight] = useState(null);
+  // After モックアップ iframe (1400px viewport, 親要素にフィットする scale 動的計算)
+  // - iframe DOM width = 1400px (Browser Rendering 撮影時 viewport と一致、ノートPC標準)
+  // - scale = 親要素幅 / 1400 で動的計算 → 表示エリアにぴったり収まる
+  // - 1920 ベースより約 1.37 倍の文字サイズで読みやすい
+  const [compareIframeScale, setCompareIframeScale] = useState(0.5);
+  const [soloIframeScale, setSoloIframeScale] = useState(0.7);
+  const compareIframeContainerRef = useRef(null);
+  const soloIframeContainerRef = useRef(null);
   // モックアップ生成中のID管理
   const [mockupGeneratingIds, setMockupGeneratingIds] = useState(new Set());
   // モックアップ生成失敗のID管理（自動発火ループ防止）
   const [mockupFailedIds, setMockupFailedIds] = useState(new Set());
+
+  // ============================================================
+  // モックアップ生成の並行制限 (semaphore)
+  // ============================================================
+  // 経緯: AI 改善案バッチ生成時 (line 1773) や複数ドロワー連続オープン時に
+  // 4-6 件が同時に generateImprovementMockup を発火していたため、CF Workers
+  // Browser Rendering の concurrent browser pool が競合して全 BR コールが
+  // "Target closed" で連鎖失敗 → Legacy fallback (低品質) で完了する事態が発生。
+  //
+  // 並行 BR を 2 件までに制限することで、各 BR セッションが孤立したリソースで
+  // 動作 → 高品質 snapshot_patch モードで安定成功するようになる。
+  //
+  // 残り (3 件目以降) は queue で待機 → 1 件完了するごとに次が処理される。
+  // 結果: 9 件並行発火 → 順次 2 件ずつ処理 (体感は遅延するが全件 BR 成功)。
+  const MOCKUP_MAX_CONCURRENT = 2;
+  const mockupActiveCountRef = useRef(0);
+  const mockupQueueRef = useRef([]);
+  const acquireMockupSlot = () => new Promise((resolve) => {
+    if (mockupActiveCountRef.current < MOCKUP_MAX_CONCURRENT) {
+      mockupActiveCountRef.current++;
+      resolve();
+    } else {
+      mockupQueueRef.current.push(resolve);
+    }
+  });
+  const releaseMockupSlot = () => {
+    if (mockupQueueRef.current.length > 0) {
+      // 待機中の次の slot 要求を release。active count は変わらない (引き継ぎ)
+      const next = mockupQueueRef.current.shift();
+      next();
+    } else {
+      mockupActiveCountRef.current = Math.max(0, mockupActiveCountRef.current - 1);
+    }
+  };
 
   const queryClient = useQueryClient();
   const siteUrl = (selectedSite?.siteUrl || '').trim().replace(/\/+$/, '');
@@ -221,9 +264,38 @@ export default function Improve() {
   // モックアップが生成済か判定（新フロー: mockupStorageUrl、旧フロー: mockupHtml のどちらかがあれば済）
   const hasMockup = (item) => !!(item && (item.mockupStorageUrl || item.mockupHtml));
 
+  // 新フロー(snapshot_patch)のモックアップ HTML を fetch して srcDoc として iframe に渡す。
+  //   理由: src=Storage URL だと cross-origin で iframe.contentDocument にアクセスできず、
+  //         scrollHeight 即時取得が出来ないため初期高さが小さいまま固定されることがある。
+  //         srcDoc であれば同一オリジン扱いとなり onLoad 内で scrollHeight が直接読める。
+  const { data: drawerMockupHtml } = useQuery({
+    queryKey: [
+      'drawer-mockup-html',
+      drawerItem?.id,
+      drawerItem?.mockupGeneratedAt?.seconds || drawerItem?.mockupGeneratedAt?._seconds,
+    ],
+    queryFn: async () => {
+      if (!drawerItem?.mockupStorageUrl) return null;
+      try {
+        // Storage は cache-control: max-age=60 のため、再生成直後でも古い HTML が
+        // 返ることがある。生成時刻でキャッシュバスト + no-store で取得する。
+        const ts = drawerItem?.mockupGeneratedAt?.seconds || drawerItem?.mockupGeneratedAt?._seconds || Date.now();
+        const url = `${drawerItem.mockupStorageUrl}?v=${ts}`;
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) return null;
+        return await res.text();
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!drawerItem?.mockupStorageUrl,
+    staleTime: Infinity,
+  });
+
   // モックアップ生成ハンドラ
   const handleGenerateMockup = async (item) => {
     if (mockupGeneratingIds.has(item.id)) return;
+    // 即座に「生成中」状態にする (queue 待ちもユーザー視点では生成中扱い)
     setMockupGeneratingIds(prev => new Set([...prev, item.id]));
     // 再試行のため、成功/失敗にかかわらず failed 履歴はクリアしておく
     setMockupFailedIds(prev => {
@@ -232,8 +304,14 @@ export default function Improve() {
       next.delete(item.id);
       return next;
     });
+    // 並行制限 slot を取得 (queue 待機の可能性あり)
+    // この時点でキャンセル等の異常系には対応していない (タブ閉じれば諸々消える)
+    await acquireMockupSlot();
     try {
-      const generateMockup = httpsCallable(functions, 'generateImprovementMockup');
+      // timeout 540s: BR 撮影 (20-30s) + Gemini patch 生成 + coverage retry × 3 で
+      // 80-150s かかる。デフォルト 70s だと client が先に deadline-exceeded で死ぬ。
+      // サーバ側 timeoutSeconds: 540 と揃える。
+      const generateMockup = httpsCallable(functions, 'generateImprovementMockup', { timeout: 540000 });
       await generateMockup({ siteId: selectedSiteId, improvementId: item.id });
       // 成功時の toast は出さない（UI上で Before/After が切り替わることで通知）
       queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
@@ -242,6 +320,7 @@ export default function Improve() {
       setMockupFailedIds(prev => new Set([...prev, item.id]));
       toast.error(`モックアップ生成に失敗しました: ${e.message}`);
     } finally {
+      releaseMockupSlot();
       setMockupGeneratingIds(prev => {
         const next = new Set(prev);
         next.delete(item.id);
@@ -379,11 +458,17 @@ export default function Improve() {
         } catch { return url; }
       };
       // pageScreenshots コレクションから取得
+      // 改善ロジック統一化プラン (Phase 3-d):
+      //   新ドキュメントは deviceType='pc'|'mobile' で 1 URL あたり 2 つ存在する。
+      //   drawer の Before 表示は PC レイアウトを採用。
+      //   旧ドキュメント (deviceType フィールドなし) は 'pc' とみなす。
       const ssSnap = await getDocs(collection(db, 'sites', selectedSiteId, 'pageScreenshots'));
       ssSnap.forEach(d => {
-        if (d.id !== '_meta' && d.data().url && d.data().screenshotUrl) {
-          map[normalizeUrl(d.data().url)] = d.data().screenshotUrl;
-        }
+        if (d.id === '_meta') return;
+        const data = d.data();
+        if (!data.url || !data.screenshotUrl) return;
+        if (data.deviceType === 'mobile') return; // PC のみ採用
+        map[normalizeUrl(data.url)] = data.screenshotUrl;
       });
       // pageScrapingData からもスクショURLを取得（フォールバック）
       const scrapingSnap = await getDocs(collection(db, 'sites', selectedSiteId, 'pageScrapingData'));
@@ -598,7 +683,11 @@ export default function Improve() {
   // iframe 内のある位置まで外側コンテナをスクロール（chip クリック / 自動スクロール共通）
   function scrollContainerToPosition(pos) {
     if (!pos) return;
-    const scale = drawerTab === 'compare' ? 0.5 : 1;
+    // iframe は CSS transform: scale(...) で縮小表示されているため、
+    // postMessage で受け取る pos.top (iframe 内座標) は表示上の高さに換算する必要がある。
+    // 実表示 scale は ResizeObserver で算出した soloIframeScale / compareIframeScale を使う
+    // (旧コードは固定値 1 / 0.5 を使っていたためスクロール位置が大きくズレていた)
+    const scale = drawerTab === 'compare' ? compareIframeScale : soloIframeScale;
     const container = mockupScrollRef.current;
     if (!container) return;
     const iframe = container.querySelector('iframe[title="改善モックアップ"]');
@@ -610,15 +699,57 @@ export default function Improve() {
     container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
   }
 
+  // After iframe の親要素サイズを監視 → scale 動的計算
+  // scale = 親幅 / 1400 で iframe content を表示エリアにぴったり収める (Browser Rendering viewport と一致)
+  useEffect(() => {
+    if (!drawerItem) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = entry.contentRect.width;
+        if (w <= 0) continue;
+        const scale = Math.min(w / 1400, 1);
+        if (entry.target === compareIframeContainerRef.current) {
+          setCompareIframeScale(scale);
+        } else if (entry.target === soloIframeContainerRef.current) {
+          setSoloIframeScale(scale);
+        }
+      }
+    });
+    if (compareIframeContainerRef.current) observer.observe(compareIframeContainerRef.current);
+    if (soloIframeContainerRef.current) observer.observe(soloIframeContainerRef.current);
+    return () => observer.disconnect();
+  }, [drawerItem, drawerTab]);
+
   // iframe (snapshot_patch モックアップ) からの postMessage を受信
   // - __mockup_size: iframe の高さを反映
   // - __mockup_changed_positions: 最初の data-changed 要素まで自動スクロール（初回のみ）
+  //
+  // 高さ計測ロジック (2026-05 grow-group.jp で過大計測 → 下部余白問題への対処):
+  //   helper script から渡される documentElement.scrollHeight は body の外側に
+  //   飛び出す要素 (position:absolute 等) を含めて膨らむケースがある。
+  //   親側で iframe.contentDocument を再読みし、body の実描画下端
+  //   (body.offsetTop + body.offsetHeight) と min を取って真の end 位置を採用する。
+  //   helper を古い (scrollHeight 単独) のまま再生成してないモックアップでも、
+  //   この親側 clamp が効くため余白が出ない。
+  const measureMockupHeight = useCallback(() => {
+    const iframe = document.querySelector('iframe[title="改善モックアップ"]');
+    const doc = iframe?.contentDocument;
+    if (!doc || !doc.body || !doc.documentElement) return null;
+    const sh = doc.documentElement.scrollHeight || 0;
+    const bb = (doc.body.offsetTop || 0) + (doc.body.offsetHeight || 0);
+    if (sh > 0 && bb > 0) return Math.min(sh, bb);
+    return sh || bb || null;
+  }, []);
   useEffect(() => {
     if (!drawerItem) return;
     function handleMessage(e) {
       if (!e.data || typeof e.data !== 'object') return;
       if (e.data.type === '__mockup_size') {
-        if (e.data.height && typeof e.data.height === 'number') {
+        // helper script の height をそのまま使わず、親側で再計測して clamp する
+        const measured = measureMockupHeight();
+        if (measured && measured > 0) {
+          setAfterIframeHeight(measured);
+        } else if (e.data.height && typeof e.data.height === 'number') {
           setAfterIframeHeight(e.data.height);
         }
       } else if (e.data.type === '__mockup_changed_clicked') {
@@ -922,7 +1053,15 @@ export default function Improve() {
 
   const sortedImprovements = useMemo(() => {
     const list = [...filteredImprovements];
-    if (!sortKey) return list;
+    // デフォルト（sortKey 未指定時）は createdAt 降順（新しい順）
+    if (!sortKey) {
+      list.sort((a, b) => {
+        const ta = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const tb = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return tb - ta;
+      });
+      return list;
+    }
     list.sort((a, b) => {
       let va, vb;
       if (sortKey === 'category') {
@@ -1055,20 +1194,21 @@ export default function Improve() {
           showSiteInfo={false}
           showExport={false}
           improveActions={
-            !isViewer && (
-              <>
-                {/* ツアー時: 空状態のヒーローCTAがある時は data-tour をそちらに譲る（querySelectorが先頭を拾う対策） */}
-                <Button
-                  variant="ai"
-                  data-tour={sortedImprovements.length === 0 ? undefined : 'improve-ai-generate'}
-                  onClick={() => {
-                    if (!selectedSiteId) return;
-                    setIsFocusModalOpen(true);
-                  }}
-                >
-                  <Sparkles data-slot="icon" className="h-4 w-4" />
-                  AI改善案生成
-                </Button>
+            <>
+              {/* AI改善案生成: viewer も実行可能（オーナーのプラン枠を消費） */}
+              <Button
+                variant="ai"
+                data-tour={sortedImprovements.length === 0 ? undefined : 'improve-ai-generate'}
+                onClick={() => {
+                  if (!selectedSiteId) return;
+                  setIsFocusModalOpen(true);
+                }}
+              >
+                <Sparkles data-slot="icon" className="h-4 w-4" />
+                AI改善案生成
+              </Button>
+              {/* 手動追加は viewer 不可 */}
+              {!isViewer && (
                 <Button
                   variant="primary"
                   data-tour={sortedImprovements.length === 0 ? undefined : 'improve-manual-add'}
@@ -1079,8 +1219,8 @@ export default function Improve() {
                 >
                   手動で追加
                 </Button>
-              </>
-            )
+              )}
+            </>
           }
           customDownload={
             improvements.length > 0 ? (() => {
@@ -1142,7 +1282,7 @@ export default function Improve() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <div className="mb-1 flex items-center gap-2 flex-wrap">
+              <div className="mb-1 flex items-center gap-3 flex-wrap">
                 <h2 className="text-2xl font-bold text-dark dark:text-white">
                   改善する
                 </h2>
@@ -1323,9 +1463,18 @@ export default function Improve() {
                   async (status, count, error) => {
                     setGenerationStatus(status);
                     if (status === 'success') {
+                      // refetch を await で完了させてから state を変更することで、
+                      // 「モーダル閉じた瞬間に空状態がチラ見えする」リグレッションを防ぐ
+                      try {
+                        await queryClient.refetchQueries({
+                          queryKey: ['improvements', selectedSiteId],
+                          type: 'active',
+                        });
+                      } catch (refetchErr) {
+                        console.warn('[generateImprovements] refetch failed:', refetchErr?.message);
+                      }
                       setIsGenerationModalOpen(false);
                       toast.success(`${count}件の改善案を追加しました`);
-                      queryClient.invalidateQueries({ queryKey: ['improvements', selectedSiteId] });
                     } else if (status === 'error') {
                       setIsGenerationModalOpen(false);
                       if (error && error.includes('上限に達しました')) {
@@ -1486,34 +1635,32 @@ export default function Improve() {
                               )}
                             </div>
 
-                            {!isViewer && (
-                              <>
-                                {/* CTAボタン */}
-                                <Button
-                                  variant="ai"
-                                  size="lg"
-                                  data-tour="improve-empty-hero-cta"
-                                  onClick={() => {
-                                    if (!selectedSiteId) return;
-                                    setIsFocusModalOpen(true);
-                                  }}
-                                >
-                                  <Sparkles data-slot="icon" className="h-5 w-5" />
-                                  AI改善案を生成する
-                                </Button>
+                            {/* AI 生成 CTA: viewer も実行可 */}
+                            <Button
+                              variant="ai"
+                              size="lg"
+                              data-tour="improve-empty-hero-cta"
+                              onClick={() => {
+                                if (!selectedSiteId) return;
+                                setIsFocusModalOpen(true);
+                              }}
+                            >
+                              <Sparkles data-slot="icon" className="h-5 w-5" />
+                              AI改善案を生成する
+                            </Button>
 
-                                {/* サブリンク */}
-                                <button
-                                  data-tour="improve-empty-manual-link"
-                                  onClick={() => {
-                                    setEditingItem(null);
-                                    setIsDialogOpen(true);
-                                  }}
-                                  className="text-xs text-body-color underline"
-                                >
-                                  または手動で改善案を追加する
-                                </button>
-                              </>
+                            {/* 手動追加サブリンク: viewer 不可 */}
+                            {!isViewer && (
+                              <button
+                                data-tour="improve-empty-manual-link"
+                                onClick={() => {
+                                  setEditingItem(null);
+                                  setIsDialogOpen(true);
+                                }}
+                                className="text-xs text-body-color underline"
+                              >
+                                または手動で改善案を追加する
+                              </button>
                             )}
                           </div>
                         </td></tr>
@@ -1594,7 +1741,7 @@ export default function Improve() {
                                     disabled={mockupGeneratingIds.has(item.id)}
                                   >
                                     {mockupGeneratingIds.has(item.id) ? (
-                                      <><DotWaveSpinner size="xs" />生成中</>
+                                      <>生成中</>
                                     ) : (
                                       <><Sparkles data-slot="icon" className="h-3 w-3" />モック生成</>
                                     )}
@@ -1651,7 +1798,24 @@ export default function Improve() {
         }}
         onDeleted={() => setDrawerItem(null)}
         siteId={selectedSiteId}
+        siteUrl={siteUrl}
         editingItem={editingItem}
+        onCreated={(improvement) => {
+          // 保存後に Before スクショと After モックアップを並列で起動
+          // （連投の流れを止めないためバックグラウンド実行）
+          const url = (improvement?.targetPageUrl || '').trim();
+          if (url && improvement?.targetType !== 'new_page') {
+            // Before スクショ（PSI 経由、約 10〜30 秒）
+            triggerBeforeCapture(url);
+          }
+          if (url || improvement?.targetType === 'new_page') {
+            // After モックアップ（CF Worker + Gemini、約 10〜20 秒）
+            handleGenerateMockup(improvement).catch(() => {/* エラーは toast で表示済み */});
+          }
+        }}
+        onRequestConsultation={() => {
+          setIsConsultationModalOpen(true);
+        }}
       />
 
       <CompletionDialog
@@ -1834,6 +1998,37 @@ export default function Improve() {
                         編集
                       </Button>
                     )}
+                    {/* 共有: After モックアップの公開 URL を grow-reporter.com ベースで提供 */}
+                    {/* Firebase Hosting rewrite (firebase.json: /page-mockups/** → serveMockup) で */}
+                    {/* Storage の生 URL を隠して自社ドメインで配信 */}
+                    {/* 外部共有目的なので localhost / staging でも常に本番ドメインを使う */}
+                    {item.mockupStorageUrl && (
+                      <Button
+                        variant="secondary"
+                        size="sm"
+                        onClick={async () => {
+                          // mockupStorageUrl から siteId / improvementId を抽出して自社ドメイン URL を組み立てる
+                          // 形式: .../page-mockups/{siteId}/{improvementId}.html
+                          const m = (item.mockupStorageUrl || '').match(/\/page-mockups\/([^/]+)\/([^/]+)\.html/);
+                          if (!m) {
+                            toast.error('モックアップ URL の解析に失敗しました');
+                            return;
+                          }
+                          // exportImprovementsToExcel.js の MOCKUP_SHARE_BASE_URL と同期
+                          const shareUrl = `https://grow-reporter.com/page-mockups/${m[1]}/${m[2]}.html`;
+                          try {
+                            await navigator.clipboard.writeText(shareUrl);
+                            toast.success('After モックアップの共有 URL をコピーしました');
+                          } catch (err) {
+                            toast.error('クリップボードへのコピーに失敗しました');
+                          }
+                        }}
+                        title="After モックアップの共有 URL をコピー"
+                      >
+                        <Share2 className="w-4 h-4" />
+                        <span className="ml-1">共有</span>
+                      </Button>
+                    )}
                     {/* 前後ナビゲーション */}
                     <div className="flex items-center gap-0.5 ml-1">
                       <button
@@ -2005,28 +2200,39 @@ export default function Improve() {
                     <>
                       {/* タブ + タイトル + 変更 chip（統合ヘッダ、sticky） */}
                       {(() => {
-                        // chips: 同一 change_label は同一番号 → dedupe
-                        // label 先頭に丸数字があれば提案項目番号を優先採用 (backend labelToNum と整合)
-                        const labelToNum = new Map();
-                        const chips = [];
+                        // chips: 提案項目（左パネル ①②③）と 1:1 対応させるため num で dedupe
+                        // - change_label 先頭の丸数字を提案項目番号として採用 (backend と同じロジック)
+                        // - 同じ num に複数パッチがあっても 1 件のチップにまとめる
+                        // - チップテキストは提案項目タイトル (parseProposals の title) を優先使用
+                        //   → 左パネル提案見出し と チップ文字列 が一致して三位一体になる
+                        const proposalsFromDesc = parseDescriptionSections(item.description || '').proposals || [];
+                        const proposalTitleByNum = new Map(proposalsFromDesc.map(p => [p.num, p.title]));
+                        const numToChip = new Map();
                         let fallbackCounter = 0;
                         for (const c of (Array.isArray(item.mockupPatchChanges) ? item.mockupPatchChanges : [])) {
                           const label = (c?.change_label || '変更').trim();
-                          if (labelToNum.has(label)) continue;
                           const firstChar = label.charAt(0);
                           const circled = CIRCLED_NUM_MAP[firstChar];
                           let num;
                           if (circled) {
                             num = circled;
                           } else {
-                            fallbackCounter++;
-                            num = fallbackCounter;
+                            // 丸数字なし: 同 label には同 num、新 label には fallback 採番
+                            const existing = [...numToChip.values()].find(ch => ch.label === label);
+                            if (existing) {
+                              num = existing.num;
+                            } else {
+                              fallbackCounter++;
+                              num = fallbackCounter;
+                            }
                           }
-                          labelToNum.set(label, num);
-                          chips.push({ num, label });
+                          if (numToChip.has(num)) continue; // 同 num は 1 件のみ
+                          // 表示ラベルは提案項目タイトル優先 (なければ change_label を流用)
+                          const displayText = proposalTitleByNum.get(num) || label;
+                          // originalLabel は handleChipClick で description_excerpt を引くために保持
+                          numToChip.set(num, { num, label: displayText, originalLabel: label });
                         }
-                        // num 昇順でソート（提案 ①②③ の順に表示）
-                        chips.sort((a, b) => a.num - b.num);
+                        const chips = [...numToChip.values()].sort((a, b) => a.num - b.num);
                         const showChips = chips.length > 0 && drawerTab !== 'before';
                         // 表示対象: 3 件以上かつ折り畳み中は先頭 2 件のみ、それ以外は全件
                         const COLLAPSE_THRESHOLD = 3;
@@ -2037,7 +2243,8 @@ export default function Improve() {
                           const pos = mockupPositions.find(p => String(p.num) === String(chip.num));
                           if (pos) scrollContainerToPosition(pos);
                           setHighlightedProposalNum(chip.num);
-                          const change = item.mockupPatchChanges.find(c => (c?.change_label || '') === chip.label);
+                          // originalLabel は dedupe 前の元 change_label。description_excerpt を引くため
+                          const change = item.mockupPatchChanges.find(c => (c?.change_label || '') === chip.originalLabel);
                           if (change?.description_excerpt) setHighlightedExcerpt(change.description_excerpt);
                         };
                         return (
@@ -2158,7 +2365,7 @@ export default function Improve() {
                             <div>
                               <div className="text-xs font-semibold text-primary mb-2">After（改善案適用後）</div>
                               {/* ブラウザフレーム */}
-                              <div className="rounded-xl overflow-hidden border border-primary/30 shadow-lg" style={{ height: afterIframeHeight ? `${afterIframeHeight * 0.5 + 44}px` : '844px' }}>
+                              <div className="rounded-xl overflow-hidden border border-primary/30 shadow-lg" style={{ height: afterIframeHeight ? `${afterIframeHeight * compareIframeScale + 44}px` : `${4800 * compareIframeScale + 44}px` }}>
                                 <div className="flex items-center gap-2 bg-gray-100 dark:bg-dark-3 px-3 py-2 border-b border-gray-200 dark:border-dark-3">
                                   <div className="flex gap-1.5">
                                     <span className="w-2.5 h-2.5 rounded-full bg-red-400"></span>
@@ -2167,34 +2374,40 @@ export default function Improve() {
                                   </div>
                                   <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl || 'https://example.com'}</div>
                                 </div>
-                                <div className="bg-white dark:bg-dark-2 relative pt-3" style={{ height: afterIframeHeight ? `${afterIframeHeight * 0.5 + 12}px` : '812px' }}>
+                                <div ref={compareIframeContainerRef} className="bg-white dark:bg-dark-2 relative pt-3 overflow-hidden" style={{ height: afterIframeHeight ? `${afterIframeHeight * compareIframeScale + 12}px` : `${4800 * compareIframeScale + 12}px` }}>
                                   {item.mockupStorageUrl ? (
-                                    <iframe
-                                      title="改善モックアップ"
-                                      src={item.mockupStorageUrl + (item.mockupGeneratedAt?.seconds ? `?v=${item.mockupGeneratedAt.seconds}` : '')}
-                                      className="absolute top-3 left-0 border-0"
-                                      sandbox="allow-same-origin allow-scripts"
-                                      onLoad={(e) => {
-                                        try {
-                                          const h = e.target.contentDocument?.documentElement?.scrollHeight;
-                                          if (h) setAfterIframeHeight(h);
-                                        } catch (_) {}
-                                      }}
-                                      style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px', width: '200%', transform: 'scale(0.5)', transformOrigin: 'top left' }}
-                                    />
+                                    drawerMockupHtml ? (
+                                      <iframe
+                                        title="改善モックアップ"
+                                        srcDoc={drawerMockupHtml}
+                                        className="absolute top-3 left-0 border-0"
+                                        sandbox="allow-same-origin allow-scripts"
+                                        onLoad={(e) => {
+                                          try {
+                                            injectMockupOverlay(e.target);
+                                            const h = e.target.contentDocument?.documentElement?.scrollHeight;
+                                            if (h) setAfterIframeHeight(h);
+                                          } catch (_) {}
+                                        }}
+                                        style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '4800px', width: '1400px', transform: `scale(${compareIframeScale})`, transformOrigin: 'top left' }}
+                                      />
+                                    ) : (
+                                      <div className="absolute inset-0 flex items-center justify-center text-xs text-body-color"><DotWaveSpinner /></div>
+                                    )
                                   ) : (
                                     <iframe
                                       title="改善モックアップ"
-                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:0;margin-bottom:6px;width:28px;height:28px;background:#3758F9;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(55,88,249,0.4);border:2px solid white;z-index:10001;pointer-events:auto;cursor:pointer;}[data-changed] [data-changed]{outline-color:rgba(55,88,249,0.55);outline-width:2px;}[data-changed] [data-changed]::before{width:24px;height:24px;font-size:12px;margin-bottom:8px;left:34px;background:#6366f1;}[data-changed] [data-changed] [data-changed]::before{left:64px;background:#818cf8;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                      srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
                                       className="absolute top-3 left-0 border-0"
                                       sandbox="allow-same-origin allow-scripts"
                                       onLoad={(e) => {
                                         try {
+                                          injectMockupOverlay(e.target);
                                           const h = e.target.contentDocument?.documentElement?.scrollHeight;
                                           if (h) setAfterIframeHeight(h);
                                         } catch (_) {}
                                       }}
-                                      style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px', width: '200%', transform: 'scale(0.5)', transformOrigin: 'top left' }}
+                                      style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px', width: '1400px', transform: `scale(${compareIframeScale})`, transformOrigin: 'top left' }}
                                     />
                                   )}
                                 </div>
@@ -2246,34 +2459,40 @@ export default function Improve() {
                               </div>
                               <div className="flex-1 mx-2 rounded bg-white dark:bg-dark-2 px-3 py-0.5 text-[10px] text-gray-400 truncate">{item.targetPageUrl || 'https://example.com'}</div>
                             </div>
-                            <div className="bg-white dark:bg-dark-2 pt-3">
+                            <div ref={soloIframeContainerRef} className="bg-white dark:bg-dark-2 pt-3 relative overflow-hidden" style={{ height: afterIframeHeight ? `${afterIframeHeight * soloIframeScale + 12}px` : `${4800 * soloIframeScale + 12}px` }}>
                               {item.mockupStorageUrl ? (
-                                <iframe
-                                  title="改善モックアップ"
-                                  src={item.mockupStorageUrl + (item.mockupGeneratedAt?.seconds ? `?v=${item.mockupGeneratedAt.seconds}` : '')}
-                                  className="w-full border-0"
-                                  sandbox="allow-same-origin allow-scripts"
-                                  onLoad={(e) => {
-                                    try {
-                                      const h = e.target.contentDocument?.documentElement?.scrollHeight;
-                                      if (h) setAfterIframeHeight(h);
-                                    } catch (_) {}
-                                  }}
-                                  style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px' }}
-                                />
+                                drawerMockupHtml ? (
+                                  <iframe
+                                    title="改善モックアップ"
+                                    srcDoc={drawerMockupHtml}
+                                    className="absolute top-3 left-0 border-0"
+                                    sandbox="allow-same-origin allow-scripts"
+                                    onLoad={(e) => {
+                                      try {
+                                        injectMockupOverlay(e.target);
+                                        const h = measureMockupHeight();
+                                        if (h) setAfterIframeHeight(h);
+                                      } catch (_) {}
+                                    }}
+                                    style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '4800px', width: '1400px', transform: `scale(${soloIframeScale})`, transformOrigin: 'top left' }}
+                                  />
+                                ) : (
+                                  <div className="absolute inset-0 flex items-center justify-center text-xs text-body-color"><DotWaveSpinner /></div>
+                                )
                               ) : (
                                 <iframe
                                   title="改善モックアップ"
-                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}[data-changed]{outline:3px solid #3758F9;outline-offset:3px;border-radius:6px;position:relative;z-index:1;}[data-changed][data-num]::before{content:attr(data-num);position:absolute;bottom:100%;left:0;margin-bottom:6px;width:28px;height:28px;background:#3758F9;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;box-shadow:0 2px 6px rgba(55,88,249,0.4);border:2px solid white;z-index:10001;pointer-events:auto;cursor:pointer;}[data-changed] [data-changed]{outline-color:rgba(55,88,249,0.55);outline-width:2px;}[data-changed] [data-changed]::before{width:24px;height:24px;font-size:12px;margin-bottom:8px;left:34px;background:#6366f1;}[data-changed] [data-changed] [data-changed]::before{left:64px;background:#818cf8;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
-                                  className="w-full border-0"
+                                  srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;}${item.mockupCss || ''}</style></head><body>${item.mockupHtml}</body></html>`}
+                                  className="absolute top-3 left-0 border-0"
                                   sandbox="allow-same-origin allow-scripts"
                                   onLoad={(e) => {
                                     try {
-                                      const h = e.target.contentDocument?.documentElement?.scrollHeight;
+                                      injectMockupOverlay(e.target);
+                                      const h = measureMockupHeight();
                                       if (h) setAfterIframeHeight(h);
                                     } catch (_) {}
                                   }}
-                                  style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px' }}
+                                  style={{ height: afterIframeHeight ? `${afterIframeHeight}px` : '2000px', width: '1400px', transform: `scale(${soloIframeScale})`, transformOrigin: 'top left' }}
                                 />
                               )}
                             </div>
