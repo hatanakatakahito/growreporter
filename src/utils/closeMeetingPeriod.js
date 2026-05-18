@@ -9,6 +9,7 @@
  */
 import {
   addMonths,
+  subMonths,
   subYears,
   subDays,
   format,
@@ -16,6 +17,7 @@ import {
   differenceInCalendarDays,
   startOfWeek,
   startOfMonth,
+  endOfMonth,
   isAfter,
   isValid,
 } from 'date-fns';
@@ -59,6 +61,28 @@ export function getDefaultObservationRange(launchDate) {
   }
   if (isAfter(launch, end)) end = launch;
   return { from: fmt(launch), to: fmt(end), partial, remainingDays };
+}
+
+/**
+ * アフターMTG の既定観測期間: MTG 実施日の前月（月初〜月末）
+ * 例: meetingDate = 2026-08-15 → 2026-07-01 〜 2026-07-31
+ * 未来終端の短縮処理は normalizeObservationRange と同じ
+ */
+export function getDefaultAfterObservationRange(meetingDate) {
+  const m = safeParse(meetingDate) || new Date();
+  const prevMonth = subMonths(m, 1);
+  const from = startOfMonth(prevMonth);
+  let to = endOfMonth(prevMonth);
+  const today = new Date();
+  let partial = false;
+  let remainingDays = 0;
+  if (isAfter(to, today)) {
+    remainingDays = differenceInCalendarDays(to, today);
+    to = today;
+    partial = true;
+  }
+  if (isAfter(from, to)) to = from;
+  return { from: fmt(from), to: fmt(to), partial, remainingDays };
 }
 
 /**

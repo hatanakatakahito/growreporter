@@ -15,6 +15,7 @@ import {
 import { useCloseMeetingData } from '../../hooks/useCloseMeetingData';
 import {
   normalizeObservationRange,
+  getDefaultAfterObservationRange,
   getComparisonRange,
   getTimelineRange,
   pickGranularity,
@@ -61,7 +62,8 @@ export default function CloseMeeting() {
 
   const [searchParams, setSearchParams] = useSearchParams();
   const recordId = searchParams.get('recordId');
-  const [modalOpen, setModalOpen] = useState(false);
+  // 'close' = 新規リニューアル作成 / 'after' = 既存リニューアルへアフター追加
+  const [modalState, setModalState] = useState({ open: false, mode: 'close', parentRecord: null });
   const [obsRange, setObsRange] = useState(null);
   const [comparison, setComparison] = useState(DEFAULT_COMPARISON);
   // 「1件なら自動でその記録へ」は初回のみ。一覧へ戻るボタンと衝突しないようガード
@@ -89,10 +91,17 @@ export default function CloseMeeting() {
     : null;
 
   // 観測期間・比較設定をローカル state に保持（記録から初期化）
+  // アフターMTG で observationRange 未保存の場合は MTG 実施日の前月を初期値とする
   useEffect(() => {
     fellBackRef.current = false;
     if (record) {
-      setObsRange(normalizeObservationRange(record.observationRange, record.launchDate));
+      if (record.observationRange?.from && record.observationRange?.to) {
+        setObsRange(normalizeObservationRange(record.observationRange, record.launchDate));
+      } else if (record.meetingType === 'after' && record.meetingDate) {
+        setObsRange(getDefaultAfterObservationRange(record.meetingDate));
+      } else {
+        setObsRange(normalizeObservationRange(record.observationRange, record.launchDate));
+      }
       setComparison(record.comparison?.mode ? record.comparison : DEFAULT_COMPARISON);
     } else {
       setObsRange(null);
@@ -101,13 +110,16 @@ export default function CloseMeeting() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordKey]);
 
-  // 記録が 1 件だけのとき、recordId 未指定なら自動でその記録へ（初回のみ。
-  // 以降は「一覧へ戻る」が機能するよう自動遷移しない）
+  // 記録が 1 件だけ（クローズMTG のみ、アフターMTG なし）のとき、recordId 未指定なら自動でその記録へ。
+  // 複数MTG ある場合は一覧で選ばせる（「一覧へ戻る」も機能するよう自動遷移は初回のみ）
   useEffect(() => {
-    if (!recordId && !autoRedirectedRef.current && Array.isArray(listQuery.data) && listQuery.data.length === 1) {
-      autoRedirectedRef.current = true;
-      setSearchParams({ recordId: listQuery.data[0].id }, { replace: true });
-    }
+    if (recordId || autoRedirectedRef.current) return;
+    const list = listQuery.data;
+    if (!Array.isArray(list) || list.length !== 1) return;
+    const only = list[0];
+    if ((only.meetingType || 'close') !== 'close') return;
+    autoRedirectedRef.current = true;
+    setSearchParams({ recordId: only.id }, { replace: true });
   }, [recordId, listQuery.data, setSearchParams]);
 
   // 表示中の記録が現在の選択サイトと異なる（サイト切替後など）→ 一覧へ戻す
@@ -149,19 +161,26 @@ export default function CloseMeeting() {
   const goToRecord = (id) => setSearchParams({ recordId: id });
   const goToList = () => setSearchParams({});
 
-  const handleCreate = (launchDate) => {
-    if (!siteId) return;
-    createMut.mutate(
-      { siteId, launchDate },
-      {
-        onSuccess: (rec) => {
-          setModalOpen(false);
-          if (rec?.id) setSearchParams({ recordId: rec.id });
-          toast.success('リニューアル記録を作成しました');
-        },
-        onError: (e) => toast.error(e?.message || '作成に失敗しました'),
-      }
-    );
+  const closeModal = () => setModalState({ open: false, mode: 'close', parentRecord: null });
+  const openNewRenewalModal = () => setModalState({ open: true, mode: 'close', parentRecord: null });
+  const openAddAfterModal = (parent) => {
+    if (!parent?.id) return;
+    setModalState({ open: true, mode: 'after', parentRecord: parent });
+  };
+
+  const handleCreate = (payload) => {
+    // payload は { launchDate } もしくは { parentRecordId, meetingDate, observationRange }
+    const isAfter = !!payload?.parentRecordId;
+    if (!isAfter && !siteId) return;
+    const args = isAfter ? payload : { siteId, ...payload };
+    createMut.mutate(args, {
+      onSuccess: (rec) => {
+        closeModal();
+        if (rec?.id) setSearchParams({ recordId: rec.id });
+        toast.success(isAfter ? 'アフターMTG を追加しました' : 'リニューアル記録を作成しました');
+      },
+      onError: (e) => toast.error(e?.message || '作成に失敗しました'),
+    });
   };
 
   const handleDelete = (id) => {
@@ -270,7 +289,17 @@ export default function CloseMeeting() {
           record={record}
           records={listQuery.data || []}
           onSelectRecord={goToRecord}
-          onNewRecord={() => setModalOpen(true)}
+          onNewRecord={openNewRenewalModal}
+          onAddAfter={() => {
+            // アフター追加時の親 = 自身がクローズなら自身、アフターなら parentRecordId or 同 launchDate のクローズMTG
+            const parent =
+              (record.meetingType || 'close') === 'close'
+                ? record
+                : (listQuery.data || []).find(
+                    (r) => r.launchDate === record.launchDate && (r.meetingType || 'close') === 'close'
+                  ) || record;
+            openAddAfterModal(parent);
+          }}
           onUpdateRecord={handleUpdateRecord}
           observationRange={observationRange}
           onObservationChange={handleObservationChange}
@@ -291,8 +320,10 @@ export default function CloseMeeting() {
           />
         </div>
         <NewCloseMeetingModal
-          open={modalOpen}
-          onClose={() => setModalOpen(false)}
+          open={modalState.open}
+          mode={modalState.mode}
+          parentRecord={modalState.parentRecord}
+          onClose={closeModal}
           onCreate={handleCreate}
           creating={createMut.isPending}
           siteName={selectedSite?.siteName}
@@ -311,14 +342,17 @@ export default function CloseMeeting() {
         <CloseMeetingRecordList
           records={listQuery.data || []}
           onOpen={goToRecord}
-          onNew={() => setModalOpen(true)}
+          onNew={openNewRenewalModal}
+          onAddAfter={openAddAfterModal}
           onDelete={handleDelete}
           deleting={deleteMut.isPending}
         />
       )}
       <NewCloseMeetingModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
+        open={modalState.open}
+        mode={modalState.mode}
+        parentRecord={modalState.parentRecord}
+        onClose={closeModal}
         onCreate={handleCreate}
         creating={createMut.isPending}
         siteName={selectedSite?.siteName}

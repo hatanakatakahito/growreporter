@@ -37,12 +37,16 @@ export function useCloseMeeting(recordId) {
   });
 }
 
-/** 新規作成（公開日のみ入力） */
+/**
+ * 新規作成
+ *  - 新規リニューアル（クローズMTG） : { siteId, launchDate }
+ *  - アフターMTG（同 launchDate の追加）: { parentRecordId, meetingDate, observationRange? }
+ */
 export function useCreateCloseMeeting() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ siteId, launchDate }) => {
-      const data = await call('createCloseMeeting', { siteId, launchDate });
+    mutationFn: async (payload) => {
+      const data = await call('createCloseMeeting', payload);
       return data?.record;
     },
     onSuccess: (record) => {

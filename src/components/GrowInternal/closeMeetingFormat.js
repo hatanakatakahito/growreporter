@@ -9,6 +9,20 @@ export function recordDisplayLabel(rec) {
   return rec.launchDate || 'リニューアル記録';
 }
 
+/**
+ * MTG セッションの短ラベル（クローズMTG / アフターMTG #N）
+ * - meetingType === 'after' → 「アフターMTG #N」（N = meetingSeq）
+ * - それ以外（既存ドキュメント含む） → 「クローズMTG」
+ */
+export function meetingSessionLabel(rec) {
+  if (!rec) return '';
+  if (rec.meetingType === 'after') {
+    const seq = Number.isFinite(rec.meetingSeq) && rec.meetingSeq > 1 ? rec.meetingSeq : 2;
+    return `アフターMTG #${seq}`;
+  }
+  return 'クローズMTG';
+}
+
 /** YYYY-MM-DD を「YYYY/M/D」に */
 export function fmtDate(s) {
   if (!s) return '—';
