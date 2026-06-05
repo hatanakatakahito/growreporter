@@ -141,7 +141,7 @@ function MobileDrawer({ isOpen, onClose }) {
     { label: 'コンテンツ分析', path: '/analysis/content', indent: 2 },
     { label: 'ページ分類別', path: '/analysis/page-categories', indent: 2 },
     { label: '次に見たページ', path: '/analysis/page-flow', indent: 2 },
-    ...(isAdmin ? [{ label: 'ユーザージャーニー', path: '/analysis/user-journey', indent: 2 }] : []),
+    ...(!isFree || isAdmin ? [{ label: 'ユーザージャーニー', path: '/analysis/user-journey', indent: 2 }] : []),
     { groupLabel: '成果（コンバージョン）' },
     { label: 'コンバージョン一覧', path: '/analysis/conversions', indent: 2 },
     { label: '成果までの到達ステップ', path: '/analysis/reverse-flow', indent: 2 },

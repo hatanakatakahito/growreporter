@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAdmin } from '../../hooks/useAdmin';
+import { usePlan } from '../../hooks/usePlan';
 import { useUserJourney } from '../../hooks/useUserJourney';
 import { useTableColumns } from '../../hooks/useTableColumns';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
@@ -35,7 +36,10 @@ export default function UserJourney() {
   const { selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
   const { isAdmin, loading: adminLoading } = useAdmin();
+  const { isFree, isLoading: planLoading } = usePlan();
   const navigate = useNavigate();
+  // Businessプラン限定で公開。管理者は無料プランでもプレビュー可
+  const canAccess = !isFree || isAdmin;
   const isComparing = comparisonMode !== 'none' && !!comparisonDateRange;
 
   const [selectedNodeId, setSelectedNodeId] = useState('lp-seo-tips');
@@ -46,12 +50,12 @@ export default function UserJourney() {
     setPageTitle('ユーザージャーニー');
   }, []);
 
-  // admin チェック完了後、非 admin なら dashboard へリダイレクト
+  // 権限チェック完了後、アクセス不可（無料プランかつ非 admin）なら dashboard へリダイレクト
   useEffect(() => {
-    if (!adminLoading && !isAdmin) {
+    if (!adminLoading && !planLoading && !canAccess) {
       navigate('/dashboard', { replace: true });
     }
-  }, [isAdmin, adminLoading, navigate]);
+  }, [canAccess, adminLoading, planLoading, navigate]);
 
   const { data, isLoading, isError, error } = useUserJourney(
     selectedSiteId,
@@ -73,15 +77,15 @@ export default function UserJourney() {
     }, 100);
   };
 
-  // admin チェック中はローディング、非 admin は何も描画しない（リダイレクト発火中）
-  if (adminLoading) {
+  // 権限チェック中はローディング、アクセス不可は何も描画しない（リダイレクト発火中）
+  if (adminLoading || planLoading) {
     return (
       <div className="flex h-full items-center justify-center bg-gray-50">
         <LoadingSpinner message="権限を確認中..." />
       </div>
     );
   }
-  if (!isAdmin) return null;
+  if (!canAccess) return null;
 
   return (
     <div className="flex flex-col h-full">

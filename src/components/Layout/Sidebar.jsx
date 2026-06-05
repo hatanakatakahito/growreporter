@@ -116,7 +116,7 @@ const ANALYSIS_SUBMENU = {
             { label: 'コンテンツ分析', desc: '記事の読まれ方（興味度スコア）', path: '/analysis/content' },
             { label: 'ページ分類別', desc: 'カテゴリ単位の比較', path: '/analysis/page-categories' },
             { label: '次に見たページ', desc: 'ページ間の動き', path: '/analysis/page-flow' },
-            { label: 'ユーザージャーニー', desc: '成約に至る典型ルート', path: '/analysis/user-journey', adminOnly: true },
+            { label: 'ユーザージャーニー', desc: '成約に至る典型ルート', path: '/analysis/user-journey', businessOnly: true },
           ],
         },
       ],
@@ -375,14 +375,14 @@ export default function Sidebar() {
 
                       {/* 目的グループ（クリックで開閉・各リーフは2段組み） */}
                       {item.analysis.groups.map((g) => {
-                        const leaves = (g.zones ? g.zones.flatMap((z) => z.items) : g.items).filter((it) => !it.adminOnly || isAdmin);
+                        const leaves = (g.zones ? g.zones.flatMap((z) => z.items) : g.items).filter((it) => !it.businessOnly || !isFree || isAdmin);
                         const groupActive = leaves.some((it) => isActive(it.path));
                         const open = isGroupOpen(g.id);
                         const renderLeaf = (it) => (
                           <Link key={it.path} to={it.path} className={`block rounded-lg px-4 py-1.5 transition ${isActive(it.path) ? t.subActiveClass : t.subHover}`}>
                             <span className={`block truncate text-sm ${isActive(it.path) ? 'font-semibold' : t.subText}`}>
                               {it.label}
-                              {it.adminOnly && <span className="ml-1 rounded bg-slate-100 px-1 py-0.5 align-middle text-[9px] font-semibold text-slate-500">管理者</span>}
+                              {it.businessOnly && isFree && isAdmin && <span className="ml-1 rounded bg-slate-100 px-1 py-0.5 align-middle text-[9px] font-semibold text-slate-500">管理者プレビュー</span>}
                             </span>
                             <span className="block truncate text-[11px] leading-tight text-slate-400">{it.desc}</span>
                           </Link>
@@ -400,7 +400,7 @@ export default function Sidebar() {
                               <div className="ml-2 mt-1 space-y-1 pl-2">
                                 {g.zones
                                   ? g.zones.map((z, zi) => {
-                                      const zItems = z.items.filter((it) => !it.adminOnly || isAdmin);
+                                      const zItems = z.items.filter((it) => !it.businessOnly || !isFree || isAdmin);
                                       if (zItems.length === 0) return null;
                                       return (
                                         <React.Fragment key={zi}>

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSite } from '../../contexts/SiteContext';
 import { useAdmin } from '../../hooks/useAdmin';
+import { usePlan } from '../../hooks/usePlan';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import { setPageTitle } from '../../utils/pageTitle';
 import {
@@ -31,6 +32,7 @@ import {
 export default function AnalysisNavigation() {
   const { dateRange, updateDateRange } = useSite();
   const { isAdmin } = useAdmin();
+  const { isFree } = usePlan();
 
   // ページタイトルを設定
   useEffect(() => {
@@ -147,8 +149,8 @@ export default function AnalysisNavigation() {
             },
           ],
         },
-        // ユーザージャーニー（管理者プレビュー）
-        ...(isAdmin ? [{
+        // ユーザージャーニー（Businessプラン限定。管理者は無料でもプレビュー可）
+        ...(!isFree || isAdmin ? [{
           title: 'ジャーニー分析',
           items: [
             {
