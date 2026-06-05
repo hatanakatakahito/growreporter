@@ -241,7 +241,7 @@ function MobileDrawer({ isOpen, onClose }) {
  */
 export default function MainLayout() {
   const { isSidebarOpen } = useSidebar();
-  const { sites, isLoading, isMember, memberHasNoAllowedSites } = useSite();
+  const { sites, isLoading, isMember, memberHasNoAllowedSites, adminRole, isAdminViewing } = useSite();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const location = useLocation();
 
@@ -265,7 +265,10 @@ export default function MainLayout() {
   }
 
   // メンバーはサイト追加 UI に遷移させない（オーナーが割当待ち = プレースホルダー表示）
-  if (!isLoading && sites.length === 0 && !isMember) {
+  // 管理者 / 管理者ビュー中は新規登録に飛ばさない。
+  //   管理者は ?siteId= で他人(引継ぎ済含む)サイトを閲覧でき、その初期化中は
+  //   rawSites が一瞬空になる窓があるため、ここで /sites/new へ誤リダイレクトしない。
+  if (!isLoading && sites.length === 0 && !isMember && !adminRole && !isAdminViewing) {
     return <Navigate to="/sites/new" replace />;
   }
 
