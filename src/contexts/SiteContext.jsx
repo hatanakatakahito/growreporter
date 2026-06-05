@@ -129,63 +129,86 @@ export function SiteProvider({ children }) {
     return () => unsubscribe();
   }, [currentUser]);
 
-  // URLパラメータから siteId を読み取り、特定のサイトを取得（管理者用）
+  // URLパラメータ(?siteId=) または sessionStorage から閲覧対象サイトを解決（管理者の他人サイト閲覧用）
+  // 管理者が他人サイトを開いた後、サイドバーから ?siteId= の無い分析ページへ遷移しても
+  // 管理者ビューを維持するため、対象 siteId を sessionStorage('adminViewingSiteId') に保持し、
+  // 遷移/リロードをまたいで復元する。
   useEffect(() => {
     const checkUrlParams = async () => {
       if (!currentUser) return;
 
       const params = new URLSearchParams(location.search);
-      const urlSiteId = params.get('siteId');
+      let targetSiteId = params.get('siteId');
 
-      if (!urlSiteId) return;
+      // ?siteId= が無い場合でも、管理者ビュー中(sessionStorage)なら対象サイトを復元する。
+      // 既に確立済み(isAdminViewing=true)なら再取得不要なので何もしない。
+      if (!targetSiteId) {
+        const stored = sessionStorage.getItem('adminViewingSiteId');
+        if (stored && !isAdminViewing) {
+          targetSiteId = stored;
+        } else {
+          return;
+        }
+      }
 
-      console.log('[SiteContext] URLパラメータから siteId を検出:', urlSiteId);
+      console.log('[SiteContext] 閲覧対象 siteId を解決:', targetSiteId);
       setIsLoading(true);
-      
+
       try {
         // まず管理者権限をチェック
         const adminDoc = await getDoc(doc(db, 'adminUsers', currentUser.uid));
         const hasAdminRole = adminDoc.exists() && ['admin', 'editor', 'viewer'].includes(adminDoc.data()?.role);
-        
+
         // サイト情報を取得
-        const siteDoc = await getDoc(doc(db, 'sites', urlSiteId));
+        const siteDoc = await getDoc(doc(db, 'sites', targetSiteId));
         if (!siteDoc.exists()) {
-          console.error('[SiteContext] 指定されたサイトが見つかりません:', urlSiteId);
+          console.error('[SiteContext] 指定されたサイトが見つかりません:', targetSiteId);
+          sessionStorage.removeItem('adminViewingSiteId');
           setIsLoading(false);
           return;
         }
 
         const siteData = { id: siteDoc.id, ...siteDoc.data() };
-        
+
         // 自分のサイトでない場合は管理者権限が必要
         if (siteData.userId !== currentUser.uid) {
           if (!hasAdminRole) {
             console.error('[SiteContext] 管理者権限がないため、他ユーザーのサイトにアクセスできません');
+            sessionStorage.removeItem('adminViewingSiteId');
             setIsLoading(false);
             return;
           }
           console.log('[SiteContext] 管理者として他ユーザーのサイトを閲覧');
+          sessionStorage.setItem('adminViewingSiteId', targetSiteId); // 遷移をまたいで保持
           setIsAdminViewing(true);
           setRawSites([siteData]); // 一時的にこのサイトのみを表示
-          setSelectedSiteId(urlSiteId);
+          setSelectedSiteId(targetSiteId);
         } else {
-          // 自分のサイトの場合 - 即座に表示できるようrawSitesにもセット
+          // 自分のサイトの場合 - 管理者ビューを解除し、即座に表示できるようrawSitesにもセット
           // （Effect 2でフルのサイト一覧に置き換わる）
           console.log('[SiteContext] 自分のサイトを表示');
+          sessionStorage.removeItem('adminViewingSiteId');
           setIsAdminViewing(false);
-          setSelectedSiteId(urlSiteId);
-          localStorage.setItem('lastSelectedSiteId', urlSiteId);
+          setSelectedSiteId(targetSiteId);
+          localStorage.setItem('lastSelectedSiteId', targetSiteId);
           setRawSites(prev => prev.length === 0 ? [siteData] : prev);
         }
       } catch (error) {
-        console.error('[SiteContext] URLパラメータからのサイト取得エラー:', error);
+        console.error('[SiteContext] サイト取得エラー:', error);
       } finally {
         setIsLoading(false);
       }
     };
 
     checkUrlParams();
-  }, [location.search, currentUser]);
+  }, [location.search, currentUser, isAdminViewing]);
+
+  // 管理画面(/admin)に入ったら管理者ビューを解除（顧客サイトの閲覧状態を持ち越さない）
+  useEffect(() => {
+    if (location.pathname.startsWith('/admin')) {
+      sessionStorage.removeItem('adminViewingSiteId');
+    }
+  }, [location.pathname]);
 
   // ユーザーのサイト一覧を取得（アカウント全体のサイトを取得）
   useEffect(() => {
@@ -201,6 +224,11 @@ export function SiteProvider({ children }) {
       const urlSiteId = params.get('siteId');
 
       setIsLoading(true);
+      // 管理者ビュー（他人サイトを ?siteId= で閲覧）のスキップ時は、
+      // isLoading の確定を checkUrlParams(Effect-A) に委ねる。
+      // Effect-A は rawSites=[対象サイト] をセットした後に isLoading=false にするため、
+      // 「isLoading=false かつ rawSites=[]」の空窓（=/sites/new 誤リダイレクトの原因）を消せる。
+      let deferLoadingToUrlEffect = false;
       try {
         console.log('[SiteContext] ユーザーID:', currentUser.uid);
 
@@ -263,10 +291,15 @@ export function SiteProvider({ children }) {
           return bTime - aTime;
         });
 
-        // URLパラメータのサイトが自分のサイト一覧に含まれない場合は
-        // 管理者として他ユーザーのサイトを閲覧中のため、上書きしない
-        if (urlSiteId && !sitesData.some(site => site.id === urlSiteId)) {
-          console.log('[SiteContext] 管理者閲覧中のため、サイト一覧の上書きをスキップ');
+        // 管理者ビュー中（sessionStorage に対象 siteId 保持中）、または ?siteId= 指定の
+        // 他人サイト閲覧中は、自分のサイト一覧で rawSites を上書きしない。
+        // これにより、?siteId= の無い分析ページへ遷移しても管理者ビューが維持される。
+        const adminViewingSiteId = sessionStorage.getItem('adminViewingSiteId');
+        if (adminViewingSiteId || (urlSiteId && !sitesData.some(site => site.id === urlSiteId))) {
+          console.log('[SiteContext] 管理者ビュー中のため、サイト一覧の上書きをスキップ');
+          // 初回エントリ(?siteId= 指定)時のみ isLoading を Effect-A に委ねる。
+          // 内部遷移(?siteId= 無し)では Effect-A が早期 return しうるため、ここで false にする。
+          deferLoadingToUrlEffect = !!urlSiteId;
           return;
         }
 
@@ -290,7 +323,8 @@ export function SiteProvider({ children }) {
       } catch (error) {
         console.error('[SiteContext] Error fetching sites:', error);
       } finally {
-        setIsLoading(false);
+        // 管理者ビューのスキップ時は Effect-A に委ねるため、ここでは false にしない
+        if (!deferLoadingToUrlEffect) setIsLoading(false);
       }
     };
 

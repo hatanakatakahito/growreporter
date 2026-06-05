@@ -268,7 +268,15 @@ export default function MainLayout() {
   // 管理者 / 管理者ビュー中は新規登録に飛ばさない。
   //   管理者は ?siteId= で他人(引継ぎ済含む)サイトを閲覧でき、その初期化中は
   //   rawSites が一瞬空になる窓があるため、ここで /sites/new へ誤リダイレクトしない。
-  if (!isLoading && sites.length === 0 && !isMember && !adminRole && !isAdminViewing) {
+  // さらに ?siteId= が URL にある場合は「特定サイトを明示的に開いている」状態なので、
+  //   タイミングに依存せず（新タブのコールドスタートで adminRole 未読込でも）絶対に
+  //   /sites/new へ飛ばさない（最も確実な防御）。
+  // 管理者ビュー中(sessionStorage)は、?siteId= の無い分析ページのリロード時も飛ばさない。
+  const hasSiteIdParam = new URLSearchParams(location.search).has('siteId');
+  const isAdminViewingSession = typeof window !== 'undefined'
+    && !!window.sessionStorage.getItem('adminViewingSiteId');
+  if (!isLoading && sites.length === 0 && !isMember && !adminRole && !isAdminViewing
+      && !hasSiteIdParam && !isAdminViewingSession) {
     return <Navigate to="/sites/new" replace />;
   }
 
