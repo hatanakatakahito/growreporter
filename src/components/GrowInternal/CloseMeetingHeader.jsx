@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { addMonths, subDays, parseISO } from 'date-fns';
+import { addMonths, subDays, subMonths, parseISO, startOfMonth, endOfMonth } from 'date-fns';
 import { Pencil, Check, X as XIcon, ChevronDown, Info, Plus } from 'lucide-react';
 import DateRangePicker from '../Analysis/DateRangePicker';
 import { comparisonModeLabel } from '../../utils/closeMeetingPeriod';
@@ -82,8 +82,18 @@ export default function CloseMeetingHeader({
     });
   }, [records]);
 
-  const observationPresets = isDateStr(launch)
-    ? [
+  // 観測期間プリセット: アフターMTG は MTG 実施日基準（前月/当月）、クローズMTG は公開日基準（公開後1/3ヶ月）
+  const observationPresets = (() => {
+    if (isAfterMeeting && isDateStr(record?.meetingDate)) {
+      const m = parseISO(record.meetingDate);
+      const prev = subMonths(m, 1);
+      return [
+        { label: '前月', getRange: () => ({ from: startOfMonth(prev), to: endOfMonth(prev) }) },
+        { label: '当月', getRange: () => ({ from: startOfMonth(m), to: endOfMonth(m) }) },
+      ];
+    }
+    if (!isAfterMeeting && isDateStr(launch)) {
+      return [
         {
           label: '公開後1ヶ月',
           getRange: () => {
@@ -98,8 +108,10 @@ export default function CloseMeetingHeader({
             return { from: l, to: subDays(addMonths(l, 3), 1) };
           },
         },
-      ]
-    : undefined;
+      ];
+    }
+    return undefined;
+  })();
 
   const startEditLaunch = () => {
     setLaunchDraft(launch);
@@ -254,8 +266,8 @@ export default function CloseMeetingHeader({
           )}
         </Field>
 
-        {/* 観測期間（公開後） */}
-        <Field label="観測期間（公開後）">
+        {/* 観測期間 */}
+        <Field label={isAfterMeeting ? '観測期間' : '観測期間（公開後）'}>
           <DateRangePicker
             dateRange={observationRange}
             onDateRangeChange={onObservationChange}
@@ -269,11 +281,11 @@ export default function CloseMeetingHeader({
           )}
         </Field>
 
-        {/* 比較期間（旧サイト） */}
-        <Field label="比較期間（旧サイト）">
+        {/* 比較期間 */}
+        <Field label={isAfterMeeting ? '比較期間' : '比較期間（旧サイト）'}>
           <div className="relative">
             <button type="button" onClick={() => setCompMenuOpen((v) => !v)} className={DROPDOWN_BTN_CLS}>
-              <span className="font-medium">{comparisonModeLabel(compMode)}</span>
+              <span className="font-medium">{comparisonModeLabel(compMode, record?.meetingType)}</span>
               <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />
             </button>
             {compMenuOpen && (
@@ -287,7 +299,7 @@ export default function CloseMeetingHeader({
                       m === compMode ? 'font-medium text-primary' : 'text-slate-700'
                     }`}
                   >
-                    {comparisonModeLabel(m)}
+                    {comparisonModeLabel(m, record?.meetingType)}
                   </button>
                 ))}
               </div>
@@ -315,7 +327,15 @@ export default function CloseMeetingHeader({
       {comparisonRange?.from && comparisonRange?.to && (
         <p className="mt-4 flex items-center gap-1.5 text-xs text-slate-400">
           <Info className="h-3.5 w-3.5 shrink-0" />
-          レポート内の「公開前」は {comparisonModeLabel(compMode)}（{fmtDate(comparisonRange.from)} 〜 {fmtDate(comparisonRange.to)}）＝ リニューアル前の数値です。
+          {isAfterMeeting ? (
+            <>
+              レポート内の比較対象は {comparisonModeLabel(compMode, record?.meetingType)}（{fmtDate(comparisonRange.from)} 〜 {fmtDate(comparisonRange.to)}）の数値です。
+            </>
+          ) : (
+            <>
+              レポート内の「公開前」は {comparisonModeLabel(compMode)}（{fmtDate(comparisonRange.from)} 〜 {fmtDate(comparisonRange.to)}）＝ リニューアル前の数値です。
+            </>
+          )}
         </p>
       )}
     </div>

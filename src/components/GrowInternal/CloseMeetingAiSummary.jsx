@@ -4,7 +4,7 @@ import { Sparkles, Save, Pencil, X as XIcon, Check } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useGenerateCloseMeetingSummary, useFinalizeCloseMeeting } from '../../hooks/useCloseMeetings';
 import { comparisonModeLabel } from '../../utils/closeMeetingPeriod';
-import { KPI_GROUPS, formatMetricValue } from './closeMeetingFormat';
+import { KPI_GROUPS, formatMetricValue, periodLabels } from './closeMeetingFormat';
 import { formatChangePercent } from '../../utils/comparisonHelpers';
 import CloseMeetingAiSummaryBody from './CloseMeetingAiSummaryBody';
 
@@ -29,12 +29,13 @@ function fmtBreakdownRow(r, keyField, metricKey, fmt, withChange) {
   return `${name}: ${v}${c}`;
 }
 
-function buildBreakdownBlocks(breakdowns, hasComparison) {
+function buildBreakdownBlocks(breakdowns, hasComparison, labels) {
+  const L = labels || { before: '公開前', after: '公開後' };
   const blocks = [];
   const channels = breakdowns?.channels;
   if (channels?.rows?.length) {
     const sorted = [...channels.rows].sort((a, b) => (Number(b.sessions) || 0) - (Number(a.sessions) || 0)).slice(0, 8);
-    blocks.push({ title: 'チャネル別（公開後セッション・上位）', lines: sorted.map((r) => fmtBreakdownRow(r, channels.keyField, 'sessions', 'number', hasComparison)) });
+    blocks.push({ title: `チャネル別（${L.after}セッション・上位）`, lines: sorted.map((r) => fmtBreakdownRow(r, channels.keyField, 'sessions', 'number', hasComparison)) });
   }
   const devices = breakdowns?.devices;
   if (devices?.rows?.length) {
@@ -49,10 +50,10 @@ function buildBreakdownBlocks(breakdowns, hasComparison) {
       if (gained.length) blocks.push({ title: 'ページ別: PV が伸びたページ（上位）', lines: gained.map((r) => fmtBreakdownRow(r, pages.keyField, 'screenPageViews', 'number', true)) });
       if (lost.length) blocks.push({ title: 'ページ別: PV が落ちたページ（上位）', lines: lost.map((r) => fmtBreakdownRow(r, pages.keyField, 'screenPageViews', 'number', true)) });
       const noPrev = pages.rows.length - withPrev.length;
-      if (noPrev > 0) blocks.push({ title: 'ページ別: 補足', lines: [`公開前データと突合できなかったページ: ${noPrev} 件（URL 構造の変更等の可能性）`] });
+      if (noPrev > 0) blocks.push({ title: 'ページ別: 補足', lines: [`${L.before}データと突合できなかったページ: ${noPrev} 件（URL 構造の変更等の可能性）`] });
     } else {
       const top = [...pages.rows].sort((a, b) => (Number(b.screenPageViews) || 0) - (Number(a.screenPageViews) || 0)).slice(0, 8);
-      blocks.push({ title: 'ページ別（公開後 PV・上位）', lines: top.map((r) => fmtBreakdownRow(r, pages.keyField, 'screenPageViews', 'number', false)) });
+      blocks.push({ title: `ページ別（${L.after} PV・上位）`, lines: top.map((r) => fmtBreakdownRow(r, pages.keyField, 'screenPageViews', 'number', false)) });
     }
   }
   return blocks;
@@ -77,6 +78,8 @@ export default function CloseMeetingAiSummary({ record, data, observationRange, 
   // localSummary が立っている＝AI 生成 or 手動編集の作業中（確定保存で null に戻す）
   const isUnsaved = !!localSummary;
   const recordId = record?.id;
+  const isAfter = record?.meetingType === 'after';
+  const L = periodLabels(record?.meetingType);
 
   const startEdit = () => {
     if (!displayed) return;
@@ -104,11 +107,14 @@ export default function CloseMeetingAiSummary({ record, data, observationRange, 
   const handleGenerate = () => {
     if (!recordId) return;
     const payload = {
+      meetingType: record?.meetingType || 'close',
+      meetingSeq: record?.meetingSeq || null,
+      meetingDate: record?.meetingDate || null,
       observationRange: { from: observationRange?.from, to: observationRange?.to },
       comparisonRange: comparisonRange?.from ? { from: comparisonRange.from, to: comparisonRange.to } : null,
-      comparisonModeLabel: comparisonModeLabel(comparisonRange?.mode),
+      comparisonModeLabel: comparisonModeLabel(comparisonRange?.mode, record?.meetingType),
       kpiLines: buildKpiLines(data?.kpi),
-      breakdownBlocks: buildBreakdownBlocks(data?.breakdowns, !!data?.kpi?.hasComparison),
+      breakdownBlocks: buildBreakdownBlocks(data?.breakdowns, !!data?.kpi?.hasComparison, L),
       kpiActualsLines: null,
     };
     genMut.mutate(
@@ -137,6 +143,12 @@ export default function CloseMeetingAiSummary({ record, data, observationRange, 
     if (!ok) return;
     const pages = data?.breakdowns?.pages;
     const snapshot = {
+      meeting: {
+        type: record?.meetingType || 'close',
+        seq: record?.meetingSeq || 1,
+        date: record?.meetingDate || null,
+        label: record?.label || '',
+      },
       period: {
         observation: observationRange ? { from: observationRange.from, to: observationRange.to } : null,
         comparison: comparisonRange?.from ? { from: comparisonRange.from, to: comparisonRange.to } : null,
@@ -172,7 +184,7 @@ export default function CloseMeetingAiSummary({ record, data, observationRange, 
           <svg className="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
             <path d="M12 2a7 7 0 00-4 12.7V17a2 2 0 002 2h4a2 2 0 002-2v-2.3A7 7 0 0012 2zM9 22h6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          AI 総括（公開後）
+          AI 総括
           {displayed && (
             isUnsaved ? (
               <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-600">未保存</span>
@@ -220,7 +232,7 @@ export default function CloseMeetingAiSummary({ record, data, observationRange, 
       <div className="p-5">
         {!displayed ? (
           <div className="rounded-md border border-dashed border-stroke p-8 text-center text-sm text-body-color">
-            「AI 総括を生成」を押すと、担当者メモと公開前後の数値をもとに、クライアント説明用の総括（総括 / 良くなった点 / 残課題・次アクション）を生成します。
+            「AI 総括を生成」を押すと、担当者メモと{isAfter ? '当期間・比較期間' : '公開前後'}の数値をもとに、クライアント説明用の総括（総括 / 良くなった点 / 残課題・次アクション）を生成します。
           </div>
         ) : editing ? (
           <div className="space-y-5">
@@ -234,7 +246,7 @@ export default function CloseMeetingAiSummary({ record, data, observationRange, 
                 onChange={(e) => setDraft((d) => ({ ...d, summary: e.target.value }))}
                 rows={6}
                 className="w-full rounded-md border border-stroke px-3 py-2 text-sm leading-7 text-slate-800 placeholder:text-slate-300 focus:border-primary focus:outline-none"
-                placeholder="公開前後の変化の総括"
+                placeholder={isAfter ? '当期間の変化の総括' : '公開前後の変化の総括'}
               />
             </div>
             <div>

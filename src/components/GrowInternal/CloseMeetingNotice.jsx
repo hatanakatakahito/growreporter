@@ -9,10 +9,12 @@ import { fmtDate } from './closeMeetingFormat';
  * - 公開前データ無し / 比較対象＝旧サイト（公開前同期間・カスタム）→ アンバーのバナー
  * 「公開前」= 比較期間 の説明はサブツールバー（CloseMeetingHeader）側に集約済み。
  */
-export default function CloseMeetingNotice({ comparisonMode, observationPartial = false, remainingDays = 0, hasComparison = true, comparisonRange }) {
+export default function CloseMeetingNotice({ meetingType = 'close', comparisonMode, observationPartial = false, remainingDays = 0, hasComparison = true, comparisonRange }) {
+  const isAfter = meetingType === 'after';
   const rangeText =
     comparisonRange?.from && comparisonRange?.to ? `（${fmtDate(comparisonRange.from)} 〜 ${fmtDate(comparisonRange.to)}）` : '';
-  const showOldSiteWarning = hasComparison && (comparisonMode === 'prevPeriod' || comparisonMode === 'custom');
+  // 旧サイト突合の注意はクローズMTG（公開前＝旧サイト）のときのみ。アフターMTG は対象外。
+  const showOldSiteWarning = !isAfter && hasComparison && (comparisonMode === 'prevPeriod' || comparisonMode === 'custom');
 
   if (!observationPartial && hasComparison && !showOldSiteWarning) return null;
 
@@ -28,7 +30,9 @@ export default function CloseMeetingNotice({ comparisonMode, observationPartial 
       {!hasComparison ? (
         <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3.5 py-2.5 text-[13px] text-amber-700">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          公開前の計測データがありません（GA4 プロパティがリニューアル時に新規作成された等）。公開後の実数のみ表示しています。
+          {isAfter
+            ? '比較対象期間の計測データがありません。当期間の実数のみ表示しています。'
+            : '公開前の計測データがありません（GA4 プロパティがリニューアル時に新規作成された等）。公開後の実数のみ表示しています。'}
         </div>
       ) : showOldSiteWarning ? (
         <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3.5 py-2.5 text-[13px] text-amber-700">

@@ -29,6 +29,10 @@ import CopyMinutesButton from '../../components/GrowInternal/CopyMinutesButton';
 
 const PAGE_TITLE = 'クローズミーティング';
 const DEFAULT_COMPARISON = { mode: 'yoy' };
+// アフターMTG（2回目以降の振り返り）は「前期間（前月比）」を既定比較とする
+const DEFAULT_AFTER_COMPARISON = { mode: 'prevPeriod' };
+const defaultComparisonFor = (rec) =>
+  rec?.meetingType === 'after' ? DEFAULT_AFTER_COMPARISON : DEFAULT_COMPARISON;
 
 function EmptyBox({ children }) {
   return (
@@ -102,7 +106,7 @@ export default function CloseMeeting() {
       } else {
         setObsRange(normalizeObservationRange(record.observationRange, record.launchDate));
       }
-      setComparison(record.comparison?.mode ? record.comparison : DEFAULT_COMPARISON);
+      setComparison(record.comparison?.mode ? record.comparison : defaultComparisonFor(record));
     } else {
       setObsRange(null);
       setComparison(DEFAULT_COMPARISON);
@@ -110,16 +114,19 @@ export default function CloseMeeting() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordKey]);
 
-  // 記録が 1 件だけ（クローズMTG のみ、アフターMTG なし）のとき、recordId 未指定なら自動でその記録へ。
+  // サイト切替時は自動遷移ガードをリセット（各サイトで「1件なら自動でその記録へ」を1回ずつ効かせる）
+  useEffect(() => {
+    autoRedirectedRef.current = false;
+  }, [siteId]);
+
+  // 記録が 1 件だけのとき、recordId 未指定なら自動でその記録へ（クローズ/単独アフターどちらも対象）。
   // 複数MTG ある場合は一覧で選ばせる（「一覧へ戻る」も機能するよう自動遷移は初回のみ）
   useEffect(() => {
     if (recordId || autoRedirectedRef.current) return;
     const list = listQuery.data;
     if (!Array.isArray(list) || list.length !== 1) return;
-    const only = list[0];
-    if ((only.meetingType || 'close') !== 'close') return;
     autoRedirectedRef.current = true;
-    setSearchParams({ recordId: only.id }, { replace: true });
+    setSearchParams({ recordId: list[0].id }, { replace: true });
   }, [recordId, listQuery.data, setSearchParams]);
 
   // 表示中の記録が現在の選択サイトと異なる（サイト切替後など）→ 一覧へ戻す
@@ -135,8 +142,8 @@ export default function CloseMeeting() {
     [observationRange, comparison]
   );
   const timelineRange = useMemo(
-    () => (record?.launchDate && observationRange ? getTimelineRange(record.launchDate, observationRange) : null),
-    [record?.launchDate, observationRange]
+    () => (observationRange ? getTimelineRange(record?.launchDate, observationRange, record?.meetingType) : null),
+    [record?.launchDate, record?.meetingType, observationRange]
   );
   const granularity = useMemo(() => (observationRange ? pickGranularity(observationRange) : 'day'), [observationRange]);
 
@@ -149,9 +156,16 @@ export default function CloseMeeting() {
     hasGSCConnection,
   });
 
-  // 前年同期にデータが無ければ「公開前同期間」へ自動フォールバック（記録ごとに1回）
+  // 前年同期にデータが無ければ「公開前同期間」へ自動フォールバック（クローズMTG のみ・記録ごとに1回）
+  // アフターMTG は既定が prevPeriod のためフォールバック不要
   useEffect(() => {
-    if (!fellBackRef.current && record && comparison.mode === 'yoy' && reportData.comparisonLikelyEmpty) {
+    if (
+      !fellBackRef.current &&
+      record &&
+      record.meetingType !== 'after' &&
+      comparison.mode === 'yoy' &&
+      reportData.comparisonLikelyEmpty
+    ) {
       fellBackRef.current = true;
       setComparison({ mode: 'prevPeriod' });
     }
@@ -163,21 +177,29 @@ export default function CloseMeeting() {
 
   const closeModal = () => setModalState({ open: false, mode: 'close', parentRecord: null });
   const openNewRenewalModal = () => setModalState({ open: true, mode: 'close', parentRecord: null });
+  const openStandaloneAfterModal = () => setModalState({ open: true, mode: 'after-standalone', parentRecord: null });
   const openAddAfterModal = (parent) => {
     if (!parent?.id) return;
     setModalState({ open: true, mode: 'after', parentRecord: parent });
   };
 
   const handleCreate = (payload) => {
-    // payload は { launchDate } もしくは { parentRecordId, meetingDate, observationRange }
-    const isAfter = !!payload?.parentRecordId;
-    if (!isAfter && !siteId) return;
-    const args = isAfter ? payload : { siteId, ...payload };
+    // payload のパターン:
+    //   クローズMTG          : { launchDate }
+    //   アフターMTG（既存系列）: { parentRecordId, meetingDate, observationRange }
+    //   アフターMTG（単独起点）: { meetingType:'after', launchDate, meetingDate, observationRange }
+    const isChildAfter = !!payload?.parentRecordId;
+    const isStandaloneAfter = !isChildAfter && payload?.meetingType === 'after';
+    // 単独アフター・クローズはどちらも siteId が必要（子アフターは親から解決）
+    if (!isChildAfter && !siteId) return;
+    const args = isChildAfter ? payload : { siteId, ...payload };
     createMut.mutate(args, {
       onSuccess: (rec) => {
         closeModal();
         if (rec?.id) setSearchParams({ recordId: rec.id });
-        toast.success(isAfter ? 'アフターMTG を追加しました' : 'リニューアル記録を作成しました');
+        toast.success(
+          isChildAfter || isStandaloneAfter ? 'アフターMTG を追加しました' : 'リニューアル記録を作成しました'
+        );
       },
       onError: (e) => toast.error(e?.message || '作成に失敗しました'),
     });
@@ -343,6 +365,7 @@ export default function CloseMeeting() {
           records={listQuery.data || []}
           onOpen={goToRecord}
           onNew={openNewRenewalModal}
+          onStartAfter={openStandaloneAfterModal}
           onAddAfter={openAddAfterModal}
           onDelete={handleDelete}
           deleting={deleteMut.isPending}

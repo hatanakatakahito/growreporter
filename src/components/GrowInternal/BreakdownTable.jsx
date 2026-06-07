@@ -11,7 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import CopyButton from './CopyButton';
-import { formatMetricValue } from './closeMeetingFormat';
+import { formatMetricValue, periodLabels } from './closeMeetingFormat';
 import { formatChangePercent } from '../../utils/comparisonHelpers';
 
 /**
@@ -120,8 +120,8 @@ function ViewToggle({ mode, onChange }) {
 const BEFORE_COLOR = '#cbd5e1'; // slate-300
 const AFTER_COLOR = '#3758F9'; // primary
 
-/** グラフモード本体（横棒・公開前 vs 公開後 のグループ棒） */
-function BreakdownChart({ rows, keyField, metricCol, hasComparison, topN, chartRef }) {
+/** グラフモード本体（横棒・前後比較のグループ棒） */
+function BreakdownChart({ rows, keyField, metricCol, hasComparison, topN, chartRef, labels }) {
   const metricKey = metricCol?.key;
   const data = useMemo(() => {
     const arr = [...rows].sort((a, b) => (Number(b[metricKey]) || 0) - (Number(a[metricKey]) || 0));
@@ -172,9 +172,9 @@ function BreakdownChart({ rows, keyField, metricCol, hasComparison, topN, chartR
             />
             {hasComparison && <Legend verticalAlign="top" height={30} iconType="circle" iconSize={11} wrapperStyle={{ fontSize: 13, paddingBottom: 4 }} />}
             {hasComparison && (
-              <Bar dataKey="before" name="公開前" fill={BEFORE_COLOR} radius={[0, 3, 3, 0]} isAnimationActive={false} />
+              <Bar dataKey="before" name={labels.before} fill={BEFORE_COLOR} radius={[0, 3, 3, 0]} isAnimationActive={false} />
             )}
-            <Bar dataKey="after" name="公開後" fill={AFTER_COLOR} radius={[0, 3, 3, 0]} isAnimationActive={false} />
+            <Bar dataKey="after" name={labels.after} fill={AFTER_COLOR} radius={[0, 3, 3, 0]} isAnimationActive={false} />
           </BarChart>
         </ResponsiveContainer>
       </div>
@@ -198,9 +198,11 @@ export default function BreakdownTable({
   hasComparison = false,
   topN = null,
   hideCopy = false,
+  meetingType = 'close',
 }) {
   const tableRef = useRef(null);
   const chartRef = useRef(null);
+  const L = periodLabels(meetingType);
 
   const allKeys = useMemo(() => columns.map((c) => c.key), [columns]);
   const defaultKeys = useMemo(() => {
@@ -301,7 +303,7 @@ export default function BreakdownTable({
               })}
             </div>
           )}
-          <BreakdownChart rows={rows} keyField={breakdown.keyField} metricCol={chartCol} hasComparison={hasComparison} topN={topN} chartRef={chartRef} />
+          <BreakdownChart rows={rows} keyField={breakdown.keyField} metricCol={chartCol} hasComparison={hasComparison} topN={topN} chartRef={chartRef} labels={L} />
           {capped && (
             <div className="border-t border-stroke px-5 py-2.5 text-[11px] text-slate-400">
               上位 {topN} 件をグラフ化しています（全 {sorted.length} 件中・{chartCol?.label} の多い順）。
@@ -321,7 +323,7 @@ export default function BreakdownTable({
                         <th className="whitespace-nowrap px-4 py-2.5 text-right leading-tight">
                           {c.label}
                           <br />
-                          公開前
+                          {L.before}
                         </th>
                       )}
                       <th
@@ -331,7 +333,7 @@ export default function BreakdownTable({
                       >
                         {c.label}
                         <br />
-                        公開後{sortKey === c.key ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
+                        {L.after}{sortKey === c.key ? (sortDir === 'desc' ? ' ↓' : ' ↑') : ''}
                       </th>
                     </React.Fragment>
                   ))}

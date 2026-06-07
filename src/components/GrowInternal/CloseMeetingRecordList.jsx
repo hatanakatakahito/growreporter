@@ -9,7 +9,7 @@ import { recordDisplayLabel, meetingSessionLabel, fmtDate } from './closeMeeting
  *  - 各グループ末尾に「+ アフターMTG を追加」ボタン（親 = type==='close' の record に対して）
  *  - クローズMTG にアフターが紐付いていれば、クローズMTG 自体は削除不可（サーバ側でブロック）
  */
-export default function CloseMeetingRecordList({ records = [], onOpen, onNew, onAddAfter, onDelete, deleting = false }) {
+export default function CloseMeetingRecordList({ records = [], onOpen, onNew, onStartAfter, onAddAfter, onDelete, deleting = false }) {
   const [menuFor, setMenuFor] = useState(null);
 
   // launchDate でグループ化し、各グループ内は seq 昇順（クローズMTG → アフターMTG #2 → #3 ...）
@@ -43,19 +43,41 @@ export default function CloseMeetingRecordList({ records = [], onOpen, onNew, on
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-slate-800">リニューアル記録</h2>
-        <Button variant="primary" onClick={onNew}>
-          <Plus className="h-4 w-4" />
-          新規リニューアル記録を作成
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onStartAfter && (
+            <Button variant="secondary" onClick={onStartAfter}>
+              <Plus className="h-4 w-4" />
+              アフターMTG から開始
+            </Button>
+          )}
+          <Button variant="primary" onClick={onNew}>
+            <Plus className="h-4 w-4" />
+            新規リニューアル記録を作成
+          </Button>
+        </div>
       </div>
 
       {groups.length === 0 ? (
         <div className="rounded-lg border border-stroke bg-white p-12 text-center">
-          <p className="text-body-color">
-            まだリニューアル記録がありません。「新規リニューアル記録を作成」から公開日を登録してください。
+          <p className="text-body-color">まだリニューアル記録がありません。</p>
+          <p className="mt-1 text-sm text-slate-500">
+            リニューアル公開前後の振り返りなら「新規リニューアル記録を作成」、
+            すでにクロージングMTG を終えた案件は「アフターMTG から開始」を選んでください。
           </p>
+          <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+            <Button variant="primary" onClick={onNew}>
+              <Plus className="h-4 w-4" />
+              新規リニューアル記録を作成
+            </Button>
+            {onStartAfter && (
+              <Button variant="secondary" onClick={onStartAfter}>
+                <Plus className="h-4 w-4" />
+                アフターMTG から開始
+              </Button>
+            )}
+          </div>
         </div>
       ) : (
         <ul className="space-y-4">

@@ -2,7 +2,7 @@ import React, { useRef, useState } from 'react';
 import { LayoutGrid, Table as TableIcon, BarChart3 } from 'lucide-react';
 import ComparisonBadge from '../Analysis/ComparisonBadge';
 import CopyButton from './CopyButton';
-import { KPI_GROUPS, formatMetricValue } from './closeMeetingFormat';
+import { KPI_GROUPS, formatMetricValue, periodLabels } from './closeMeetingFormat';
 import { formatChangePercent } from '../../utils/comparisonHelpers';
 
 /** 増減%の文字色（invert: 下がると良い指標は反転） */
@@ -21,7 +21,7 @@ function changeClass(value, invert) {
  * - 任意で AI 総括の要旨をカード冒頭に表示（aiExcerpt）
  * - 「コピー」（Notion 等へ貼り付け用 <table>）
  */
-export default function KpiSummaryCards({ kpi, hideCopy = false, aiExcerpt = null }) {
+export default function KpiSummaryCards({ kpi, meetingType = 'close', hideCopy = false, aiExcerpt = null }) {
   const tableRef = useRef(null);
   const [view, setView] = useState('card'); // 'card' | 'table'
   const after = kpi?.after;
@@ -30,13 +30,14 @@ export default function KpiSummaryCards({ kpi, hideCopy = false, aiExcerpt = nul
   const hasComparison = !!kpi?.hasComparison;
   const tableVisible = view === 'table';
   const cellPad = tableVisible ? 'px-3 py-2' : '';
+  const L = periodLabels(meetingType);
 
   return (
     <section className="overflow-hidden rounded-xl border border-stroke bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stroke px-5 py-3.5">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-slate-800">
           <BarChart3 className="h-4 w-4 text-slate-400" />
-          サマリー指標（公開前 → 公開後）
+          サマリー指標（{L.before} → {L.after}）
         </h2>
         <div className="flex items-center gap-2">
           <div className="inline-flex rounded-md border border-stroke p-0.5 text-xs">
@@ -102,7 +103,7 @@ export default function KpiSummaryCards({ kpi, hideCopy = false, aiExcerpt = nul
                             )}
                           </>
                         ) : (
-                          <span className="text-[11px] text-slate-300">公開前データなし</span>
+                          <span className="text-[11px] text-slate-300">{L.noCompare}</span>
                         )}
                       </div>
                     </div>
@@ -113,7 +114,7 @@ export default function KpiSummaryCards({ kpi, hideCopy = false, aiExcerpt = nul
             {/* コピー用テーブル（視覚的に非表示） */}
             <table ref={tableRef} className="sr-only">
               <thead>
-                <tr><th>指標</th><th>公開前</th><th>公開後</th><th>増減率</th></tr>
+                <tr><th>指標</th><th>{L.before}</th><th>{L.after}</th><th>増減率</th></tr>
               </thead>
               <tbody>
                 {KPI_GROUPS.flatMap((g) => g.metrics).map((m) => (
@@ -133,8 +134,8 @@ export default function KpiSummaryCards({ kpi, hideCopy = false, aiExcerpt = nul
               <thead className="bg-slate-50 text-left text-[11px] font-semibold text-slate-400">
                 <tr>
                   <th className="px-3 py-2">指標</th>
-                  <th className="px-3 py-2 text-right">公開前</th>
-                  <th className="px-3 py-2 text-right">公開後</th>
+                  <th className="px-3 py-2 text-right">{L.before}</th>
+                  <th className="px-3 py-2 text-right">{L.after}</th>
                   <th className="px-3 py-2 text-right">増減率</th>
                 </tr>
               </thead>

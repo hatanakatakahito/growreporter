@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { Target } from 'lucide-react';
 import CopyButton from './CopyButton';
-import { fmtNumber, fmtPercent } from './closeMeetingFormat';
+import { fmtNumber, fmtPercent, periodLabels } from './closeMeetingFormat';
 
 /** kpiSettings.kpiList の metric → 観測期間 KPI のフィールド */
 const METRIC_FIELD_MAP = {
@@ -24,8 +24,9 @@ function fmtVal(value, isRate) {
 }
 
 /** KPI予実テーブル（白カード）。サイトに kpiSettings.kpiList があるときのみ表示 */
-export default function KpiTargetTable({ kpiList, actuals, observationDays, hideCopy = false }) {
+export default function KpiTargetTable({ kpiList, actuals, observationDays, hideCopy = false, meetingType = 'close' }) {
   const tableRef = useRef(null);
+  const L = periodLabels(meetingType);
   if (!Array.isArray(kpiList) || kpiList.length === 0 || !actuals) return null;
 
   const rows = kpiList.map((kpi) => {
@@ -47,7 +48,7 @@ export default function KpiTargetTable({ kpiList, actuals, observationDays, hide
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stroke px-5 py-3.5">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-slate-800">
           <Target className="h-4 w-4 text-slate-400" />
-          KPI 予実（公開後）
+          KPI 予実（{L.after}）
         </h2>
         {!hideCopy && <CopyButton variant="html-table" getTarget={() => tableRef.current} label="コピー" />}
       </div>

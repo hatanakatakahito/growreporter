@@ -22,18 +22,23 @@ const TIMELINE_METRICS = [
   { key: 'engagementRate', label: 'エンゲージ率', color: '#10b981', type: 'percent' },
 ];
 
+// 公開日に対応するバケットのラベルを返す。公開日が時系列レンジ外なら null（縦線を出さない）。
 function findLaunchBucketLabel(timeseries, launchDate) {
   if (!timeseries?.length || !launchDate) return null;
+  const first = timeseries[0]?.bucket;
+  const last = timeseries[timeseries.length - 1]?.bucket;
+  if (!first || !last || launchDate < first || launchDate > last) return null;
   const found = timeseries.find((r) => r.bucket >= launchDate);
-  return (found || timeseries[timeseries.length - 1])?.label || null;
+  return found?.label || null;
 }
 
 /**
- * 公開前後の推移グラフ（公開日に縦線、粒度は呼び出し側で決定済み）
- * - 指標トグル選択式（既定: セッション）
- * - 「コピー」= グラフを PNG 画像としてクリップボードへ
+ * 推移グラフ（粒度は呼び出し側で決定済み）
+ * - クローズMTG: 公開前後の推移（公開日に縦線）
+ * - アフターMTG: 指標の推移（観測期間とその直前期間。公開日がレンジ内なら縦線）
+ * - 指標トグル選択式（既定: セッション）／「コピー」= グラフを PNG 画像としてクリップボードへ
  */
-export default function TimelineChart({ timeseries = [], launchDate, granularity = 'day', hideCopy = false }) {
+export default function TimelineChart({ timeseries = [], launchDate, meetingType = 'close', granularity = 'day', hideCopy = false }) {
   const chartRef = useRef(null);
   const [active, setActive] = useState(['sessions']);
 
@@ -41,6 +46,7 @@ export default function TimelineChart({ timeseries = [], launchDate, granularity
   const activeMetrics = TIMELINE_METRICS.filter((m) => active.includes(m.key));
   const hasPercent = activeMetrics.some((m) => m.type === 'percent');
   const granLabel = granularity === 'day' ? '日次' : granularity === 'week' ? '週次' : '月次';
+  const chartTitle = meetingType === 'after' ? '指標の推移' : '公開前後の推移';
 
   const toggle = (key) => {
     setActive((prev) => {
@@ -57,7 +63,7 @@ export default function TimelineChart({ timeseries = [], launchDate, granularity
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stroke px-5 py-3.5">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-slate-800">
           <TrendingUp className="h-4 w-4 text-slate-400" />
-          公開前後の推移（{granLabel}）
+          {chartTitle}（{granLabel}）
         </h2>
         {!hideCopy && <CopyButton variant="chart-image" getTarget={() => chartRef.current} filename="close-meeting-timeline.png" label="コピー" />}
       </div>

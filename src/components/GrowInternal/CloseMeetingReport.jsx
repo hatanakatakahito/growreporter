@@ -8,7 +8,7 @@ import TimelineChart from './TimelineChart';
 import BreakdownTable from './BreakdownTable';
 import KpiTargetTable from './KpiTargetTable';
 import CloseMeetingAiSummary from './CloseMeetingAiSummary';
-import { BREAKDOWN_COLUMNS } from './closeMeetingFormat';
+import { BREAKDOWN_COLUMNS, periodLabels } from './closeMeetingFormat';
 
 // セクション見出しのアイコン（線アイコン）
 const IconChannel = (
@@ -69,10 +69,13 @@ export default function CloseMeetingReport({
   const hasComparison = !!kpi?.hasComparison;
   const kpiList = selectedSite?.kpiSettings?.kpiList;
   const obsDays = observationDays(observationRange);
+  const meetingType = record?.meetingType || 'close';
+  const L = periodLabels(meetingType);
 
   return (
     <div className="space-y-5">
       <CloseMeetingNotice
+        meetingType={meetingType}
         comparisonMode={comparisonRange?.mode}
         observationPartial={observationRange?.partial}
         remainingDays={observationRange?.remainingDays}
@@ -93,27 +96,27 @@ export default function CloseMeetingReport({
       {isLoadingKpi ? (
         <div className="rounded-xl border border-stroke bg-white shadow-sm"><LoadingSpinner message="サマリー指標を集計中…" /></div>
       ) : (
-        <KpiSummaryCards kpi={kpi} aiExcerpt={aiExcerptOf(record)} />
+        <KpiSummaryCards kpi={kpi} meetingType={meetingType} aiExcerpt={aiExcerptOf(record)} />
       )}
 
       {isLoadingTimeline ? (
         <div className="rounded-xl border border-stroke bg-white shadow-sm"><LoadingSpinner message="時系列データを集計中…" /></div>
       ) : (
-        <TimelineChart timeseries={timeseries} launchDate={launchDate} granularity={granularity} />
+        <TimelineChart timeseries={timeseries} launchDate={launchDate} meetingType={meetingType} granularity={granularity} />
       )}
 
       {isLoadingBreakdowns ? (
         <div className="rounded-xl border border-stroke bg-white shadow-sm"><LoadingSpinner message="ブレイクダウンを集計中…" /></div>
       ) : (
         <>
-          <BreakdownTable title="チャネル別（公開前 → 公開後）" icon={IconChannel} breakdown={breakdowns?.channels} columns={BREAKDOWN_COLUMNS.channels} defaultColumns={['sessions']} hasComparison={hasComparison} />
-          <BreakdownTable title="ページ別（公開前 → 公開後・上位20）" icon={IconPage} breakdown={breakdowns?.pages} columns={BREAKDOWN_COLUMNS.pages} defaultColumns={['screenPageViews']} hasComparison={hasComparison} topN={20} />
-          <BreakdownTable title="デバイス別（公開前 → 公開後）" icon={IconDevice} breakdown={breakdowns?.devices} columns={BREAKDOWN_COLUMNS.devices} defaultColumns={['sessions']} hasComparison={hasComparison} />
+          <BreakdownTable title={`チャネル別（${L.before} → ${L.after}）`} meetingType={meetingType} icon={IconChannel} breakdown={breakdowns?.channels} columns={BREAKDOWN_COLUMNS.channels} defaultColumns={['sessions']} hasComparison={hasComparison} />
+          <BreakdownTable title={`ページ別（${L.before} → ${L.after}・上位20）`} meetingType={meetingType} icon={IconPage} breakdown={breakdowns?.pages} columns={BREAKDOWN_COLUMNS.pages} defaultColumns={['screenPageViews']} hasComparison={hasComparison} topN={20} />
+          <BreakdownTable title={`デバイス別（${L.before} → ${L.after}）`} meetingType={meetingType} icon={IconDevice} breakdown={breakdowns?.devices} columns={BREAKDOWN_COLUMNS.devices} defaultColumns={['sessions']} hasComparison={hasComparison} />
         </>
       )}
 
       {!isLoadingKpi && kpi?.after && Array.isArray(kpiList) && kpiList.length > 0 && (
-        <KpiTargetTable kpiList={kpiList} actuals={kpi.after} observationDays={obsDays} />
+        <KpiTargetTable kpiList={kpiList} actuals={kpi.after} observationDays={obsDays} meetingType={meetingType} />
       )}
 
       {record && (

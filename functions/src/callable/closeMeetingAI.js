@@ -85,6 +85,10 @@ export const generateCloseMeetingSummaryCallable = async (request) => {
       siteUrl: record.siteUrl || (siteDoc.exists ? siteDoc.data().siteUrl : '') || '未設定',
       siteContext,
       launchDate: record.launchDate || '',
+      // MTG 種別（クローズ/アフター）をプロンプトに反映。payload 優先、無ければ記録の値。
+      meetingType: ['close', 'after'].includes(payload.meetingType) ? payload.meetingType : record.meetingType || 'close',
+      meetingSeq: Number(payload.meetingSeq) || Number(record.meetingSeq) || 1,
+      meetingDate: payload.meetingDate || record.meetingDate || null,
       observationRange: payload.observationRange || {},
       comparisonRange: payload.comparisonRange || null,
       comparisonModeLabel: payload.comparisonModeLabel || '公開前',

@@ -7,7 +7,7 @@
  */
 import { comparisonModeLabel } from './closeMeetingPeriod';
 import { formatChangePercent } from './comparisonHelpers';
-import { fmtDate, KPI_GROUPS, BREAKDOWN_COLUMNS, formatMetricValue } from '../components/GrowInternal/closeMeetingFormat';
+import { fmtDate, KPI_GROUPS, BREAKDOWN_COLUMNS, formatMetricValue, meetingSessionLabel, periodLabels } from '../components/GrowInternal/closeMeetingFormat';
 
 const esc = (s) =>
   String(s ?? '')
@@ -111,10 +111,14 @@ function htmlToPlainText(html) {
  * @returns {{ html: string, text: string }}
  */
 export function buildCloseMeetingMinutes({ siteName, siteUrl, record, kpi, breakdowns, observationRange, comparisonRange, hasComparison }) {
-  const title = `${siteName || 'サイト'} リニューアル公開後 クローズミーティング`;
+  const isAfter = record?.meetingType === 'after';
+  const L = periodLabels(record?.meetingType);
+  const title = isAfter
+    ? `${siteName || 'サイト'} ${meetingSessionLabel(record)}（リニューアル振り返り）`
+    : `${siteName || 'サイト'} リニューアル公開後 クローズミーティング`;
   const obsText = observationRange?.from ? `${fmtDate(observationRange.from)} 〜 ${fmtDate(observationRange.to)}` : '—';
   const compText = comparisonRange?.from
-    ? `${comparisonModeLabel(comparisonRange.mode)}（${fmtDate(comparisonRange.from)} 〜 ${fmtDate(comparisonRange.to)}）`
+    ? `${comparisonModeLabel(comparisonRange.mode, record?.meetingType)}（${fmtDate(comparisonRange.from)} 〜 ${fmtDate(comparisonRange.to)}）`
     : '—';
   const notes = record?.consultantNotes || {};
   const ai = record?.aiSummary || null;
@@ -126,9 +130,11 @@ export function buildCloseMeetingMinutes({ siteName, siteUrl, record, kpi, break
     rawList(
       [
         ['記録名', record?.label],
+        ['MTG 種別', meetingSessionLabel(record)],
+        ['MTG 実施日', isAfter && record?.meetingDate ? fmtDate(record.meetingDate) : ''],
         ['リニューアル公開日', record?.launchDate ? fmtDate(record.launchDate) : ''],
-        ['観測期間（公開後）', obsText],
-        ['比較期間（旧サイト）', compText],
+        [isAfter ? '観測期間' : '観測期間（公開後）', obsText],
+        [isAfter ? '比較期間' : '比較期間（旧サイト）', compText],
         ['サイトURL', siteUrl],
       ]
         .filter(([, v]) => v != null && String(v).trim() !== '')
@@ -152,21 +158,21 @@ export function buildCloseMeetingMinutes({ siteName, siteUrl, record, kpi, break
   }
 
   // サマリー指標（表）
-  if (kpi?.after) parts.push('<h2>サマリー指標（公開前 → 公開後）</h2>', kpiTable(kpi));
+  if (kpi?.after) parts.push(`<h2>サマリー指標（${L.before} → ${L.after}）</h2>`, kpiTable(kpi));
 
   // ブレイクダウン（表・アプリ画面の各表の初期表示指標に合わせる：チャネル/デバイス＝セッション、ページ＝PV）
   parts.push(
-    '<h2>チャネル別（公開前 → 公開後）</h2>',
+    `<h2>チャネル別（${L.before} → ${L.after}）</h2>`,
     breakdownTable(breakdowns?.channels, BREAKDOWN_COLUMNS.channels, 'sessions', hasComparison, null),
-    '<h2>ページ別（公開前 → 公開後・上位20）</h2>',
+    `<h2>ページ別（${L.before} → ${L.after}・上位20）</h2>`,
     breakdownTable(breakdowns?.pages, BREAKDOWN_COLUMNS.pages, 'screenPageViews', hasComparison, 20),
-    '<h2>デバイス別（公開前 → 公開後）</h2>',
+    `<h2>デバイス別（${L.before} → ${L.after}）</h2>`,
     breakdownTable(breakdowns?.devices, BREAKDOWN_COLUMNS.devices, 'sessions', hasComparison, null),
   );
 
   // AI 総括（見出し＋段落＋箇条書き）
   if (ai && (ai.summary || (ai.goodPoints || []).length || (ai.nextActions || []).length)) {
-    parts.push('<h2>公開後の総括</h2>');
+    parts.push(`<h2>${isAfter ? '総括' : '公開後の総括'}</h2>`);
     if (ai.summary) parts.push('<h3>総括</h3>', `<p>${escInline(ai.summary)}</p>`);
     if ((ai.goodPoints || []).length) parts.push('<h3>良くなった点</h3>', listHtml(ai.goodPoints));
     if ((ai.nextActions || []).length) parts.push('<h3>残課題・次に取り組むこと</h3>', listHtml(ai.nextActions));

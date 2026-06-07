@@ -7,7 +7,7 @@ import KpiSummaryCards from '../components/GrowInternal/KpiSummaryCards';
 import TimelineChart from '../components/GrowInternal/TimelineChart';
 import BreakdownTable from '../components/GrowInternal/BreakdownTable';
 import CloseMeetingAiSummaryBody from '../components/GrowInternal/CloseMeetingAiSummaryBody';
-import { BREAKDOWN_COLUMNS, fmtDate } from '../components/GrowInternal/closeMeetingFormat';
+import { BREAKDOWN_COLUMNS, fmtDate, periodLabels } from '../components/GrowInternal/closeMeetingFormat';
 
 /** 「YYYY年M月D日 H時MM分」（秒は出さない） */
 function fmtJpDateTime(value) {
@@ -61,11 +61,11 @@ function NotesDisplay({ notes }) {
   );
 }
 
-function AiSummaryDisplay({ aiSummary }) {
+function AiSummaryDisplay({ aiSummary, title = '公開後の総括' }) {
   if (!aiSummary || (!aiSummary.summary && !(aiSummary.goodPoints || []).length && !(aiSummary.nextActions || []).length)) return null;
   return (
     <section className="space-y-3">
-      <h2 className="text-base font-semibold text-slate-800">公開後の総括</h2>
+      <h2 className="text-base font-semibold text-slate-800">{title}</h2>
       <div className="rounded-lg border border-stroke bg-white p-5">
         <CloseMeetingAiSummaryBody summary={aiSummary} />
       </div>
@@ -81,10 +81,17 @@ export default function SharedCloseMeeting() {
   const { token } = useParams();
   const { data, isLoading, isError, error } = useSharedCloseMeeting(token);
 
+  const meetingMeta = data?.snapshot?.meeting || null;
+  const isAfter = (meetingMeta?.type || 'close') === 'after';
+  const meetingSeq = Number(meetingMeta?.seq) > 0 ? Number(meetingMeta.seq) : 1;
+  const meetingType = isAfter ? 'after' : 'close';
+  const L = periodLabels(meetingType);
+  const reportLabel = isAfter ? `アフターMTG #${meetingSeq} レポート` : 'リニューアル公開後レポート';
+
   // タイトル + noindex メタ（クライアント側。検索除外はホスティングの X-Robots-Tag でも担保）
   useEffect(() => {
     const prevTitle = document.title;
-    if (data?.siteName) document.title = `${data.siteName} リニューアル公開後レポート`;
+    if (data?.siteName) document.title = `${data.siteName} ${reportLabel}`;
     const meta = document.createElement('meta');
     meta.name = 'robots';
     meta.content = 'noindex, nofollow';
@@ -93,7 +100,7 @@ export default function SharedCloseMeeting() {
       document.title = prevTitle;
       if (meta.parentNode) meta.parentNode.removeChild(meta);
     };
-  }, [data?.siteName]);
+  }, [data?.siteName, reportLabel]);
 
   const snapshot = data?.snapshot || null;
   const period = snapshot?.period || {};
@@ -119,9 +126,11 @@ export default function SharedCloseMeeting() {
           <div className="space-y-10">
             {/* 最小限ヘッダー */}
             <div className="border-b border-stroke pb-4">
-              <h1 className="text-xl font-bold text-slate-800">{data.siteName || 'サイト'} リニューアル公開後レポート</h1>
+              <h1 className="text-xl font-bold text-slate-800">{data.siteName || 'サイト'} {reportLabel}</h1>
               <p className="mt-1 text-sm text-slate-500">
-                {data.label ? `${data.label} / ` : ''}リニューアル公開日: {fmtDate(data.launchDate)}
+                {data.label ? `${data.label} / ` : ''}
+                {isAfter && meetingMeta?.date ? `MTG 実施日: ${fmtDate(meetingMeta.date)} / ` : ''}
+                リニューアル公開日: {fmtDate(data.launchDate)}
                 {period?.observation?.from ? ` / 観測期間: ${fmtDate(period.observation.from)} 〜 ${fmtDate(period.observation.to)}` : ''}
               </p>
               {data.siteUrl && (
@@ -133,23 +142,23 @@ export default function SharedCloseMeeting() {
 
             <NotesDisplay notes={data.consultantNotes} />
 
-            {snapshot.kpi && <KpiSummaryCards kpi={snapshot.kpi} hideCopy />}
+            {snapshot.kpi && <KpiSummaryCards kpi={snapshot.kpi} meetingType={meetingType} hideCopy />}
 
             {Array.isArray(snapshot.timeseries) && snapshot.timeseries.length > 0 && (
-              <TimelineChart timeseries={snapshot.timeseries} launchDate={data.launchDate} granularity={period?.granularity || 'day'} hideCopy />
+              <TimelineChart timeseries={snapshot.timeseries} launchDate={data.launchDate} meetingType={meetingType} granularity={period?.granularity || 'day'} hideCopy />
             )}
 
             {breakdowns.channels?.rows?.length > 0 && (
-              <BreakdownTable title="チャネル別（公開前 → 公開後）" breakdown={breakdowns.channels} columns={BREAKDOWN_COLUMNS.channels} defaultColumns={['sessions']} hasComparison={hasComparison} hideCopy />
+              <BreakdownTable title={`チャネル別（${L.before} → ${L.after}）`} meetingType={meetingType} breakdown={breakdowns.channels} columns={BREAKDOWN_COLUMNS.channels} defaultColumns={['sessions']} hasComparison={hasComparison} hideCopy />
             )}
             {breakdowns.pages?.rows?.length > 0 && (
-              <BreakdownTable title="ページ別（公開前 → 公開後）" breakdown={breakdowns.pages} columns={BREAKDOWN_COLUMNS.pages} defaultColumns={['screenPageViews']} hasComparison={hasComparison} topN={20} hideCopy />
+              <BreakdownTable title={`ページ別（${L.before} → ${L.after}）`} meetingType={meetingType} breakdown={breakdowns.pages} columns={BREAKDOWN_COLUMNS.pages} defaultColumns={['screenPageViews']} hasComparison={hasComparison} topN={20} hideCopy />
             )}
             {breakdowns.devices?.rows?.length > 0 && (
-              <BreakdownTable title="デバイス別（公開前 → 公開後）" breakdown={breakdowns.devices} columns={BREAKDOWN_COLUMNS.devices} defaultColumns={['sessions']} hasComparison={hasComparison} hideCopy />
+              <BreakdownTable title={`デバイス別（${L.before} → ${L.after}）`} meetingType={meetingType} breakdown={breakdowns.devices} columns={BREAKDOWN_COLUMNS.devices} defaultColumns={['sessions']} hasComparison={hasComparison} hideCopy />
             )}
 
-            <AiSummaryDisplay aiSummary={data.aiSummary} />
+            <AiSummaryDisplay aiSummary={data.aiSummary} title={isAfter ? '総括' : '公開後の総括'} />
 
             <div className="border-t border-stroke pt-4 text-xs text-slate-400">
               本レポートは限定公開リンクです。

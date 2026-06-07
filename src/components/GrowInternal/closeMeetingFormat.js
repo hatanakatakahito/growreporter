@@ -11,16 +11,28 @@ export function recordDisplayLabel(rec) {
 
 /**
  * MTG セッションの短ラベル（クローズMTG / アフターMTG #N）
- * - meetingType === 'after' → 「アフターMTG #N」（N = meetingSeq）
+ * - meetingType === 'after' → 「アフターMTG #N」（N = meetingSeq＝系列内の通し番号）
+ *   クローズMTG がある系列では #2,#3...、アフターから開始した系列では #1,#2...
  * - それ以外（既存ドキュメント含む） → 「クローズMTG」
  */
 export function meetingSessionLabel(rec) {
   if (!rec) return '';
   if (rec.meetingType === 'after') {
-    const seq = Number.isFinite(rec.meetingSeq) && rec.meetingSeq > 1 ? rec.meetingSeq : 2;
+    const seq = Number.isFinite(rec.meetingSeq) && rec.meetingSeq > 0 ? rec.meetingSeq : 1;
     return `アフターMTG #${seq}`;
   }
   return 'クローズMTG';
+}
+
+/**
+ * 種別に応じた比較の前後ラベル
+ * - クローズMTG: 公開前 / 公開後（リニューアル前後）
+ * - アフターMTG: 前期間 / 当期間（公開基準を引きずらない）
+ */
+export function periodLabels(meetingType) {
+  return meetingType === 'after'
+    ? { before: '前期間', after: '当期間', noCompare: '前期間データなし' }
+    : { before: '公開前', after: '公開後', noCompare: '公開前データなし' };
 }
 
 /** YYYY-MM-DD を「YYYY/M/D」に */

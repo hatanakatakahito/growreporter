@@ -135,8 +135,23 @@ export function getComparisonRange(observationRange, comparison) {
   return { from: fmt(subYears(obsFrom, 1)), to: fmt(subYears(obsTo, 1)), mode };
 }
 
-/** 比較モードの日本語ラベル（KPIカードのサブラベル等） */
-export function comparisonModeLabel(mode) {
+/**
+ * 比較モードの日本語ラベル（KPIカードのサブラベル等）
+ * - meetingType='after' では「旧サイト/公開前」前提を排除し、前期間ベースの表現にする
+ */
+export function comparisonModeLabel(mode, meetingType = 'close') {
+  if (meetingType === 'after') {
+    switch (mode) {
+      case 'yoy':
+        return '前年同期';
+      case 'prevPeriod':
+        return '前期間';
+      case 'custom':
+        return '比較期間（カスタム）';
+      default:
+        return '前期間';
+    }
+  }
   switch (mode) {
     case 'yoy':
       return '前年同期';
@@ -149,13 +164,21 @@ export function comparisonModeLabel(mode) {
   }
 }
 
-/** 時系列グラフの実線レンジ: [公開日 - 観測長, 観測終了] */
-export function getTimelineRange(launchDate, observationRange) {
-  const launch = safeParse(launchDate);
+/**
+ * 時系列グラフの実線レンジ
+ * - クローズMTG: [公開日 - 観測長, 観測終了]（公開前後を1本で表示）
+ * - アフターMTG: [観測開始 -(観測長+1日), 観測終了]（観測期間とその直前の同長期間。公開日基準を引きずらない）
+ */
+export function getTimelineRange(launchDate, observationRange, meetingType = 'close') {
   const obsFrom = safeParse(observationRange.from);
   const obsTo = safeParse(observationRange.to);
-  if (!launch || !obsFrom || !obsTo) return { from: null, to: null };
+  if (!obsFrom || !obsTo) return { from: null, to: null };
   const obsDays = Math.max(0, differenceInCalendarDays(obsTo, obsFrom));
+  if (meetingType === 'after') {
+    return { from: fmt(subDays(obsFrom, obsDays + 1)), to: fmt(obsTo) };
+  }
+  const launch = safeParse(launchDate);
+  if (!launch) return { from: null, to: null };
   return { from: fmt(subDays(launch, obsDays)), to: fmt(obsTo) };
 }
 

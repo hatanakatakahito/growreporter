@@ -2724,8 +2724,10 @@ ${prevYearText ? `\n━━ 前年同月のデータ（比較用） ━━${prevY
 }
 
 /**
- * クローズミーティング（Webサイトリニューアル公開後の振り返り）用 AI 総括プロンプト
+ * クローズミーティング / アフターMTG（Webサイトリニューアル振り返り）用 AI 総括プロンプト
  * クライアントへの説明資料を想定。出力は JSON: { summary, goodPoints: string[], nextActions: string[] }
+ *  - meetingType='close': リニューアル公開前後（旧サイト比較）の総括
+ *  - meetingType='after': 公開後の継続観測（前期間/前年同期比較）の振り返り。「公開前/旧サイト」前提を出さない
  */
 export function getCloseMeetingPrompt(p) {
   const {
@@ -2733,6 +2735,9 @@ export function getCloseMeetingPrompt(p) {
     siteUrl = '未設定',
     siteContext = {},
     launchDate = '',
+    meetingType = 'close',
+    meetingSeq = 1,
+    meetingDate = null,
     observationRange = {},
     comparisonRange = null,
     comparisonModeLabel = '公開前',
@@ -2742,13 +2747,16 @@ export function getCloseMeetingPrompt(p) {
     consultantNotes = {},
   } = p || {};
 
+  const isAfter = meetingType === 'after';
+  const L = isAfter ? { before: '比較期間', after: '当期間' } : { before: '公開前', after: '公開後' };
+
   const industryText = siteContext.industryText || '未設定';
   const siteRoleText = siteContext.siteRoleText || '未設定';
   const businessModelText = siteContext.businessModelText || '未設定';
 
   const kpiBlock = kpiLines.length
     ? kpiLines
-        .map((l) => `- ${l.label}: 公開後 ${l.afterText}${l.beforeText ? ` / 公開前 ${l.beforeText}` : ''}${l.changeText ? `（${l.changeText}）` : ''}`)
+        .map((l) => `- ${l.label}: ${L.after} ${l.afterText}${l.beforeText ? ` / ${L.before} ${l.beforeText}` : ''}${l.changeText ? `（${l.changeText}）` : ''}`)
         .join('\n')
     : '（データなし）';
 
@@ -2758,7 +2766,7 @@ export function getCloseMeetingPrompt(p) {
 
   const kpiActualsBlock =
     Array.isArray(kpiActualsLines) && kpiActualsLines.length
-      ? `\n【KPI 予実（公開後）】\n${kpiActualsLines.map((l) => `- ${l.label}: 目標 ${l.targetText} / 実績 ${l.actualText} / 達成率 ${l.achievementText}`).join('\n')}\n`
+      ? `\n【KPI 予実（${L.after}）】\n${kpiActualsLines.map((l) => `- ${l.label}: 目標 ${l.targetText} / 実績 ${l.actualText} / 達成率 ${l.achievementText}`).join('\n')}\n`
       : '';
 
   const notes = [];
@@ -2777,6 +2785,44 @@ export function getCloseMeetingPrompt(p) {
   const compText = comparisonRange?.from
     ? `${comparisonModeLabel}（${comparisonRange.from} 〜 ${comparisonRange.to}）`
     : `${comparisonModeLabel}（データなし）`;
+
+  if (isAfter) {
+    return `あなたは Web サイト制作会社の Web アナリストです。クライアントへの「アフターMTG（リニューアル公開後の継続観測・第${meetingSeq}回の振り返り）」で説明するための、当期間の総括を作成してください。
+
+【このサイト（前提条件・最優先で考慮すること）】
+- サイト名: ${siteName}
+- URL: ${siteUrl}
+- 業種: ${industryText}
+- サイトの役割: ${siteRoleText}
+- ビジネスモデル: ${businessModelText}
+※ 上記の業種・サイトの役割・ビジネスモデルを絶対的な前提として、その文脈に沿って数値を解釈し、提案してください。
+
+【MTG 情報】
+- リニューアル公開日（参考）: ${launchDate}
+- MTG 実施日: ${meetingDate || '未設定'}
+- 観測期間（当期間）: ${observationRange.from || '?'} 〜 ${observationRange.to || '?'}
+- 比較対象: ${compText}
+${notesBlock}
+【主要指標の変化（${L.before} → ${L.after}）】
+${kpiBlock}
+
+【ブレイクダウンの主な変化】
+${breakdownBlock}
+${kpiActualsBlock}
+【出力フォーマット】
+以下の JSON だけを出力してください（前後に説明文・コードフェンス・余計な文字を一切付けないこと）:
+{
+  "summary": "当期間の変化の総括（250〜450字程度、です・ます調、クライアントに向けた説明文として。冒頭の挨拶は書かず、いきなり数値の総括から始めること）",
+  "goodPoints": ["良くなった点を数値根拠とともに（3〜5項目・各40〜80字程度）"],
+  "nextActions": ["残課題・次に取り組むべき施策（2〜4項目・各40〜80字程度）"]
+}
+
+【守ること】
+- 提供された数値のみを使用し、提供されていない数値は「未計測」と書くこと。数値を捏造しない
+- これはリニューアル直後ではなく、公開からしばらく経過した「継続観測の振り返り」です。「公開前」「旧サイト」という表現は使わず、比較対象は「${comparisonModeLabel}」として扱うこと
+- summary は挨拶・前置きで始めず、1文目から本題（数値の総括）に入ること。中長期のトレンド（前回からの変化・季節要因の可能性）に触れること
+- 担当者メモの「狙い・施策」がある場合は、それぞれに対して数値がどう動いたか（達成 / 未達 / 判断保留）に必ず言及すること`;
+  }
 
   return `あなたは Web サイト制作会社の Web アナリストです。クライアントへの「リニューアル公開後 クローズミーティング」で説明するための、公開前後の変化の総括を作成してください。
 

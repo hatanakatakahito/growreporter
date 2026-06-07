@@ -83,6 +83,82 @@ async function loadRecordWithAccess(uid, recordId) {
   return { ref, doc, data };
 }
 
+/**
+ * 同 (siteId, launchDate) 系列に アフターMTG を1件追加する。
+ * seq 採番（兄弟の最大 meetingSeq + 1）を runTransaction で原子化し、同時作成時の seq 重複を防ぐ。
+ *  - parentRecordId 明示指定があればそれを親に。
+ *  - resolveParentFromSeries=true（単独起点アフター）の場合、既存系列があれば
+ *    クローズMTG（無ければ系列ルートのアフター）を親に解決し、担当者メモも継承して「一本化」する。
+ *    既存系列が無ければ parentRecordId=null（＝この記録が系列ルート）になる。
+ */
+async function createAfterInSeries(db, opts) {
+  const {
+    siteId,
+    siteName = '',
+    siteUrl = '',
+    launchDate,
+    meetingDate,
+    observationRange = null,
+    consultantNotes = {},
+    parentRecordId = null,
+    resolveParentFromSeries = false,
+    uid,
+    email,
+  } = opts;
+  const col = db.collection('closeMeetings');
+  const newId = await db.runTransaction(async (tx) => {
+    // 同系列（siteId + launchDate）の兄弟をトランザクション内で読み取り → seq を原子採番
+    const snap = await tx.get(col.where('siteId', '==', siteId).where('launchDate', '==', launchDate));
+    const maxSeq = snap.docs.reduce((m, d) => {
+      const s = Number(d.data().meetingSeq);
+      return Number.isFinite(s) && s > m ? s : m;
+    }, 0);
+    const nextSeq = (maxSeq || snap.size) + 1;
+
+    let resolvedParentId = parentRecordId || null;
+    let notes = consultantNotes || {};
+    if (resolveParentFromSeries && snap.size > 0) {
+      // 既存系列に合流: クローズMTG > 系列ルートのアフター > 先頭 の順で親を解決
+      const closeDoc = snap.docs.find((d) => (d.data().meetingType || 'close') === 'close');
+      const rootAfter = snap.docs.find((d) => d.data().meetingType === 'after' && !d.data().parentRecordId);
+      const base = closeDoc || rootAfter || snap.docs[0];
+      if (!resolvedParentId && base) resolvedParentId = base.id;
+      // 担当者メモが空で渡された場合のみ系列の基準記録から継承
+      if (base && (!consultantNotes || Object.keys(consultantNotes).length === 0)) {
+        notes = base.data().consultantNotes || {};
+      }
+    }
+
+    const ref = col.doc();
+    const now = FieldValue.serverTimestamp();
+    tx.set(ref, {
+      siteId,
+      siteName,
+      siteUrl,
+      launchDate,
+      label: '',
+      meetingDate,
+      status: 'draft',
+      comparison: { mode: 'prevPeriod' }, // アフターMTG の既定は前期間比較
+      observationRange: observationRange || null,
+      consultantNotes: notes,
+      aiSummary: null,
+      snapshot: null,
+      share: null,
+      meetingType: 'after',
+      meetingSeq: nextSeq,
+      parentRecordId: resolvedParentId,
+      createdBy: uid,
+      createdByEmail: email,
+      createdAt: now,
+      updatedAt: now,
+    });
+    return ref.id;
+  });
+  const doc = await col.doc(newId).get();
+  return serializeRecord(doc);
+}
+
 // ── 一覧取得（サイトのリニューアル記録、新しい順） ──
 export const listCloseMeetingsCallable = async (request) => {
   const { uid } = requireGrowStaff(request);
@@ -132,9 +208,14 @@ export const getCloseMeetingCallable = async (request) => {
 //   2) アフターMTG（同 launchDate の追加） : { parentRecordId, meetingDate, observationRange? }
 export const createCloseMeetingCallable = async (request) => {
   const { uid, email } = requireGrowStaff(request);
-  const { siteId, launchDate, parentRecordId, meetingDate, observationRange } = request.data || {};
+  const { siteId, launchDate, parentRecordId, meetingDate, observationRange, meetingType } = request.data || {};
+  const db = getFirestore();
+  const obs =
+    observationRange && isValidDateStr(observationRange.from) && isValidDateStr(observationRange.to)
+      ? { from: observationRange.from, to: observationRange.to }
+      : null;
 
-  // ── アフターMTG 作成 ──
+  // ── アフターMTG: 既存記録（クローズ/アフターどちらでも可）を起点に同系列へ追加 ──
   if (parentRecordId) {
     if (typeof parentRecordId !== 'string') {
       throw new HttpsError('invalid-argument', 'parentRecordId が不正です');
@@ -144,55 +225,80 @@ export const createCloseMeetingCallable = async (request) => {
     }
     try {
       const { data: parentData } = await loadRecordWithAccess(uid, parentRecordId);
+      // 系列ルートの親を解決（親がアフターなら、その親 or 親自身がルート）
       const parentType = MEETING_TYPES.includes(parentData.meetingType) ? parentData.meetingType : 'close';
-      if (parentType !== 'close') {
-        throw new HttpsError('failed-precondition', 'アフターMTG はクローズMTG を親に指定してください');
-      }
-      const db = getFirestore();
-      // 同 launchDate の最大 seq + 1 を採番
-      const siblings = await db
-        .collection('closeMeetings')
-        .where('siteId', '==', parentData.siteId)
-        .where('launchDate', '==', parentData.launchDate)
-        .get();
-      const maxSeq = siblings.docs.reduce((m, d) => {
-        const s = Number(d.data().meetingSeq);
-        return Number.isFinite(s) && s > m ? s : m;
-      }, 0);
-      const nextSeq = (maxSeq || siblings.size) + 1;
-      const obs =
-        observationRange && isValidDateStr(observationRange.from) && isValidDateStr(observationRange.to)
-          ? { from: observationRange.from, to: observationRange.to }
-          : null;
-      const now = FieldValue.serverTimestamp();
-      const ref = await db.collection('closeMeetings').add({
+      const rootParentId = parentType === 'close' ? parentRecordId : parentData.parentRecordId || parentRecordId;
+      const record = await createAfterInSeries(db, {
         siteId: parentData.siteId,
         siteName: parentData.siteName || '',
         siteUrl: parentData.siteUrl || '',
         launchDate: parentData.launchDate,
-        label: '',
         meetingDate,
-        status: 'draft',
-        comparison: { mode: 'yoy' },
         observationRange: obs,
         // 担当者メモは作成時にコピー（以降は独立編集）
         consultantNotes: parentData.consultantNotes || {},
-        aiSummary: null,
-        snapshot: null,
-        share: null,
-        meetingType: 'after',
-        meetingSeq: nextSeq,
-        parentRecordId,
-        createdBy: uid,
-        createdByEmail: email,
-        createdAt: now,
-        updatedAt: now,
+        parentRecordId: rootParentId,
+        uid,
+        email,
       });
-      const doc = await ref.get();
-      logger.info('[closeMeetings] created (after)', { recordId: ref.id, parentRecordId, seq: nextSeq, createdBy: uid });
-      return { record: serializeRecord(doc) };
+      logger.info('[closeMeetings] created (after from record)', {
+        recordId: record.id,
+        parentRecordId: rootParentId,
+        seq: record.meetingSeq,
+        createdBy: uid,
+      });
+      return { record };
     } catch (error) {
       logger.error('[closeMeetings] create after error:', error);
+      if (error instanceof HttpsError) throw error;
+      throw new HttpsError('internal', error?.message || '作成に失敗しました');
+    }
+  }
+
+  // ── アフターMTG: 単独起点（クローズMTG なしでアフターから開始） ──
+  //    同 (siteId, launchDate) に既存系列があれば、その系列へ合流（一本化）する
+  if (meetingType === 'after') {
+    if (!siteId || typeof siteId !== 'string') {
+      throw new HttpsError('invalid-argument', 'siteId が必要です');
+    }
+    if (!isValidDateStr(launchDate)) {
+      throw new HttpsError('invalid-argument', 'launchDate（YYYY-MM-DD）が必要です');
+    }
+    if (!isValidDateStr(meetingDate)) {
+      throw new HttpsError('invalid-argument', 'meetingDate（YYYY-MM-DD）が必要です');
+    }
+    const hasAccess = await canAccessSite(uid, siteId);
+    if (!hasAccess) {
+      throw new HttpsError('permission-denied', 'このサイトへのアクセス権がありません');
+    }
+    try {
+      const siteDoc = await db.collection('sites').doc(siteId).get();
+      if (!siteDoc.exists) {
+        throw new HttpsError('not-found', 'サイトが見つかりません');
+      }
+      const siteData = siteDoc.data();
+      const record = await createAfterInSeries(db, {
+        siteId,
+        siteName: siteData.siteName || '',
+        siteUrl: siteData.siteUrl || '',
+        launchDate,
+        meetingDate,
+        observationRange: obs,
+        consultantNotes: {},
+        resolveParentFromSeries: true,
+        uid,
+        email,
+      });
+      logger.info('[closeMeetings] created (after standalone)', {
+        recordId: record.id,
+        siteId,
+        launchDate,
+        seq: record.meetingSeq,
+        createdBy: uid,
+      });
+      return { record };
+    } catch (error) {
+      logger.error('[closeMeetings] create standalone after error:', error);
       if (error instanceof HttpsError) throw error;
       throw new HttpsError('internal', error?.message || '作成に失敗しました');
     }
@@ -210,7 +316,6 @@ export const createCloseMeetingCallable = async (request) => {
     throw new HttpsError('permission-denied', 'このサイトへのアクセス権がありません');
   }
   try {
-    const db = getFirestore();
     const siteDoc = await db.collection('sites').doc(siteId).get();
     if (!siteDoc.exists) {
       throw new HttpsError('not-found', 'サイトが見つかりません');
@@ -285,10 +390,13 @@ export const updateCloseMeetingCallable = async (request) => {
         throw new HttpsError('invalid-argument', 'launchDate（YYYY-MM-DD）が不正です');
       }
       const meetingType = MEETING_TYPES.includes(data.meetingType) ? data.meetingType : 'close';
-      if (meetingType !== 'close') {
+      // 公開日を編集できるのは系列の起点（クローズMTG または parentRecordId を持たない最初のアフターMTG）のみ。
+      // 系列内の子アフターMTG は起点から同期されるため個別編集を禁止。
+      const isSeriesRoot = meetingType === 'close' || !data.parentRecordId;
+      if (!isSeriesRoot) {
         throw new HttpsError(
           'failed-precondition',
-          'アフターMTG では公開日を編集できません。クローズMTG から編集してください'
+          'このアフターMTG では公開日を編集できません。系列の起点（クローズMTG または最初のアフターMTG）から編集してください'
         );
       }
       update.launchDate = patch.launchDate;
@@ -390,22 +498,19 @@ export const deleteCloseMeetingCallable = async (request) => {
     if (data.status === 'finalized') {
       throw new HttpsError('failed-precondition', '確定済みの記録は削除できません');
     }
-    // クローズMTG にアフターMTG がぶら下がっていれば誤削除を防ぐためブロック
-    const meetingType = MEETING_TYPES.includes(data.meetingType) ? data.meetingType : 'close';
-    if (meetingType === 'close') {
-      const db = getFirestore();
-      const childrenSnap = await db
-        .collection('closeMeetings')
-        .where('siteId', '==', data.siteId)
-        .where('parentRecordId', '==', recordId)
-        .limit(1)
-        .get();
-      if (!childrenSnap.empty) {
-        throw new HttpsError(
-          'failed-precondition',
-          'このリニューアルにはアフターMTG が紐付いています。先にアフターMTG を削除してください'
-        );
-      }
+    // この記録を親とするアフターMTG が紐付いていれば誤削除を防ぐためブロック（クローズ/アフター系列ルート共通）
+    const db = getFirestore();
+    const childrenSnap = await db
+      .collection('closeMeetings')
+      .where('siteId', '==', data.siteId)
+      .where('parentRecordId', '==', recordId)
+      .limit(1)
+      .get();
+    if (!childrenSnap.empty) {
+      throw new HttpsError(
+        'failed-precondition',
+        'この記録にはアフターMTG が紐付いています。先にアフターMTG を削除してください'
+      );
     }
     await ref.delete();
     logger.info('[closeMeetings] deleted', { recordId, siteId: data.siteId, by: uid });
