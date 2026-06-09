@@ -329,7 +329,7 @@ export default function CloseMeeting() {
         {pathScope && (
           <div className="mb-4 flex items-start gap-1.5 rounded-md bg-blue-50 px-3.5 py-2.5 text-[13px] text-blue-700">
             <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" strokeWidth="1.7" /><path d="M12 8h.01M11 12h1v4h1" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
-            このレポートは登録URLのパス（<span className="font-semibold">{pathScope}</span> 配下）に限定して集計しています。GA4/GSC はサイト全体ですが、本画面のみページパスで絞り込んでいます（セッション/ユーザー/CV は当該パスを含むセッションの近似値）。
+このレポートは <span className="font-semibold">{pathScope}</span> 配下に限定して集計しています（セッション/CV は近似値）。
           </div>
         )}
         <CloseMeetingHeader
