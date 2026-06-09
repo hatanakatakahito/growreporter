@@ -737,6 +737,21 @@ export const serveMockup = onRequest(
 export const submitUpgradeInquiry = lazyCallable('./callable/submitUpgradeInquiry.js', 'submitUpgradeInquiryCallable', { memory: '256MiB', timeoutSeconds: 30 });
 
 /**
+ * LP お問い合わせフォーム送信 (HTTP, public)
+ * Firebase Hosting の rewrite (firebase.json: /api/contact → submitContactInquiry) で
+ * 静的 LP (grow-reporter.com/lp/) から fetch POST される。宛先: info@grow-reporter.com
+ *
+ * invoker: 'public' は Hosting からの呼び出しを 403 にしないために必須。
+ */
+export const submitContactInquiry = onRequest(
+  { region: 'asia-northeast1', memory: '256MiB', timeoutSeconds: 30, cors: false, invoker: 'public', secrets: ['SES_SMTP_USER', 'SES_SMTP_PASSWORD'] },
+  async (req, res) => {
+    const m = await import('./callable/submitContactInquiry.js');
+    return m.submitContactInquiryRequest(req, res);
+  }
+);
+
+/**
  * 管理者用：全サイト一括AI分析生成
  * GA4データ取得 → Gemini AI → キャッシュ保存
  */

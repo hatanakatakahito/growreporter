@@ -24,6 +24,15 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <style>
+      [x-cloak] { display: none !important; }
+      #contact-submit:disabled { opacity: 0.55; cursor: not-allowed; }
+      /* ナビ項目が増えたため、デスクトップ表示の文字サイズと項目間隔を少し詰める */
+      @media (min-width: 1024px) {
+        #navbarCollapse > ul > li > a { font-size: 14px; margin-left: 1.75rem; white-space: nowrap; }
+        /* メニューを CTA（ログイン/無料で登録）側に右詰めする */
+        #navbarRight { justify-content: flex-end !important; gap: 1.5rem; }
+        #navbarCollapse { width: auto !important; }
+      }
       html { scroll-behavior: smooth; }
       body { font-family: 'Inter', 'Noto Sans JP', sans-serif; }
       @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
@@ -94,7 +103,7 @@
               />
             </a>
           </div>
-          <div class="flex w-full items-center justify-between">
+          <div id="navbarRight" class="flex w-full items-center justify-between">
             <div>
               <button
                 @click="navbarOpen = !navbarOpen"
@@ -176,6 +185,15 @@
                       FAQ
                     </a>
                   </li>
+                  <li>
+                    <a
+                      href="#contact"
+                      :class="scrolledFromTop ? 'text-dark hover:text-primary' : 'text-white hover:text-white/80'"
+                      class="flex py-2 text-base font-medium lg:ml-12 lg:inline-flex"
+                    >
+                      お問い合わせ
+                    </a>
+                  </li>
                 </ul>
               </nav>
             </div>
@@ -183,14 +201,15 @@
               <a
                 href="https://grow-reporter.com/login"
                 :class="scrolledFromTop ? 'text-dark hover:text-primary' : 'text-white hover:text-white/80'"
-                class="px-7 py-3 text-base font-medium"
+                :style="scrolledFromTop ? 'background:#EEF1FF;' : 'background:rgba(255,255,255,0.12);'"
+                class="mr-3 rounded-lg px-7 py-3 text-sm font-medium"
               >
                 ログイン
               </a>
               <a
                 href="https://grow-reporter.com/register"
                 :class="scrolledFromTop ? 'bg-primary hover:bg-primary/90 text-white' : 'bg-white hover:bg-white/90 text-primary'"
-                class="rounded-lg px-7 py-3 text-base font-medium"
+                class="rounded-lg px-7 py-3 text-sm font-medium"
               >
                 無料で登録
               </a>
@@ -2135,6 +2154,152 @@
     -->
     <!-- ====== Brands Section 2 End -->
 
+    <!-- ====== Contact Section Start -->
+    <section
+      id="contact"
+      class="bg-tg-bg relative z-20 overflow-hidden pt-20 pb-12 lg:pt-[120px] lg:pb-[90px]"
+    >
+      <div class="container mx-auto">
+        <div class="-mx-4 flex flex-wrap">
+          <div class="w-full px-4">
+            <div class="mx-auto mb-[60px] text-center lg:mb-16" style="max-width:600px;">
+              <span class="text-primary mb-2 block text-lg font-semibold">
+                お問い合わせ
+              </span>
+              <h2
+                class="text-dark mb-4 text-3xl leading-[1.4] font-bold sm:text-[40px]/[56px]"
+              >
+                お気軽にご相談ください
+              </h2>
+              <p class="text-dark-3 text-base">
+                サービスのご質問・お見積り・導入のご相談など、下記フォームよりお問い合わせください。<br class="hidden sm:block" />通常2〜3営業日以内にご返信いたします。
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mx-auto px-4" style="max-width:720px;">
+          <div
+            x-data="{
+              form: { company: '', department: '', name: '', email: '', message: '', agree: false, website: '' },
+              state: 'idle',
+              errorMsg: '',
+              async submit() {
+                if (this.state === 'sending') return;
+                this.state = 'sending';
+                this.errorMsg = '';
+                try {
+                  const res = await fetch('/api/contact', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(this.form)
+                  });
+                  let data = {};
+                  try { data = await res.json(); } catch (e) {}
+                  if (res.ok && data.success) {
+                    this.state = 'success';
+                  } else {
+                    this.state = 'error';
+                    this.errorMsg = (data && data.error) || '送信に失敗しました。時間をおいて再度お試しください。';
+                  }
+                } catch (e) {
+                  this.state = 'error';
+                  this.errorMsg = '通信エラーが発生しました。時間をおいて再度お試しください。';
+                }
+              }
+            }"
+            style="background:#fff; border-radius:12px; padding:40px 32px; box-shadow:0px 20px 95px 0px rgba(201,203,204,0.30);"
+          >
+            <!-- 送信完了メッセージ -->
+            <div x-show="state === 'success'" x-cloak style="text-align:center; padding:32px 8px;">
+              <div style="width:64px; height:64px; margin:0 auto 20px; border-radius:9999px; background:rgba(55,88,249,0.1); display:flex; align-items:center; justify-content:center;">
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#3758F9" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+              </div>
+              <h3 style="font-size:22px; font-weight:700; color:#1f2937; margin-bottom:8px;">お問い合わせを受け付けました</h3>
+              <p style="font-size:15px; color:#4b5563; line-height:1.7;">ご入力いただいた内容を確認のうえ、担当者よりご返信いたします。<br>ありがとうございました。</p>
+            </div>
+
+            <!-- 入力フォーム -->
+            <form x-show="state !== 'success'" @submit.prevent="submit" novalidate>
+              <!-- ハニーポット（bot 対策・人間には非表示） -->
+              <div style="position:absolute; left:-9999px; top:-9999px;" aria-hidden="true">
+                <label>Webサイト<input type="text" x-model="form.website" tabindex="-1" autocomplete="off" /></label>
+              </div>
+
+              <!-- 1段目: 会社名・組織名（必須） / 部署名 -->
+              <div style="display:flex; flex-wrap:wrap; gap:20px;">
+                <div style="flex:1 1 220px;">
+                  <label for="contact-company" style="display:block; font-size:15px; font-weight:600; color:#1f2937; margin-bottom:8px;">会社名・組織名 <span style="color:#db2777;">*</span></label>
+                  <input id="contact-company" type="text" x-model="form.company" required maxlength="200" placeholder="GrowGroup株式会社"
+                    style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:12px 16px; font-size:15px; color:#1f2937; outline:none;"
+                    onfocus="this.style.borderColor='#3758F9'; this.style.boxShadow='0 0 0 3px rgba(55,88,249,0.15)';"
+                    onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none';" />
+                </div>
+                <div style="flex:1 1 220px;">
+                  <label for="contact-department" style="display:block; font-size:15px; font-weight:600; color:#1f2937; margin-bottom:8px;">部署名</label>
+                  <input id="contact-department" type="text" x-model="form.department" maxlength="100" placeholder="マーケティング部"
+                    style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:12px 16px; font-size:15px; color:#1f2937; outline:none;"
+                    onfocus="this.style.borderColor='#3758F9'; this.style.boxShadow='0 0 0 3px rgba(55,88,249,0.15)';"
+                    onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none';" />
+                </div>
+              </div>
+
+              <!-- 2段目: お名前（必須） / メールアドレス（必須） -->
+              <div style="margin-top:20px; display:flex; flex-wrap:wrap; gap:20px;">
+                <div style="flex:1 1 220px;">
+                  <label for="contact-name" style="display:block; font-size:15px; font-weight:600; color:#1f2937; margin-bottom:8px;">お名前 <span style="color:#db2777;">*</span></label>
+                  <input id="contact-name" type="text" x-model="form.name" required maxlength="100" placeholder="山田 太郎"
+                    style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:12px 16px; font-size:15px; color:#1f2937; outline:none;"
+                    onfocus="this.style.borderColor='#3758F9'; this.style.boxShadow='0 0 0 3px rgba(55,88,249,0.15)';"
+                    onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none';" />
+                </div>
+                <div style="flex:1 1 220px;">
+                  <label for="contact-email" style="display:block; font-size:15px; font-weight:600; color:#1f2937; margin-bottom:8px;">メールアドレス <span style="color:#db2777;">*</span></label>
+                  <input id="contact-email" type="email" x-model="form.email" required maxlength="254" placeholder="example@company.co.jp"
+                    style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:12px 16px; font-size:15px; color:#1f2937; outline:none;"
+                    onfocus="this.style.borderColor='#3758F9'; this.style.boxShadow='0 0 0 3px rgba(55,88,249,0.15)';"
+                    onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none';" />
+                </div>
+              </div>
+
+              <!-- 3段目: お問い合わせ内容（必須） -->
+              <div style="margin-top:20px;">
+                <label for="contact-message" style="display:block; font-size:15px; font-weight:600; color:#1f2937; margin-bottom:8px;">お問い合わせ内容 <span style="color:#db2777;">*</span></label>
+                <textarea id="contact-message" x-model="form.message" required maxlength="5000" rows="5" placeholder="ご質問・ご相談内容をご記入ください。"
+                  style="width:100%; border:1px solid #d1d5db; border-radius:8px; padding:12px 16px; font-size:15px; color:#1f2937; outline:none; resize:vertical; line-height:1.6;"
+                  onfocus="this.style.borderColor='#3758F9'; this.style.boxShadow='0 0 0 3px rgba(55,88,249,0.15)';"
+                  onblur="this.style.borderColor='#d1d5db'; this.style.boxShadow='none';"></textarea>
+              </div>
+
+              <!-- エラーメッセージ -->
+              <p x-show="state === 'error'" x-cloak x-text="errorMsg"
+                style="margin-top:16px; color:#b91c1c; font-size:14px; background:#fef2f2; border:1px solid #fecaca; border-radius:8px; padding:10px 14px;"></p>
+
+              <!-- プライバシーポリシー同意（中央寄せ・必須） -->
+              <div style="margin-top:24px; display:flex; justify-content:center;">
+                <label style="display:flex; align-items:center; gap:8px; font-size:14px; color:#374151; line-height:1.6; cursor:pointer;">
+                  <input type="checkbox" x-model="form.agree" required
+                    style="width:18px; height:18px; flex-shrink:0; accent-color:#3758F9; cursor:pointer;" />
+                  <span><a href="https://grow-reporter.com/privacy" target="_blank" rel="noopener" style="color:#3758F9; text-decoration:underline;">プライバシーポリシー</a>に基づく表記に同意します</span>
+                </label>
+              </div>
+
+              <div style="margin-top:24px; text-align:center;">
+                <button id="contact-submit" type="submit" :disabled="state === 'sending' || !form.agree"
+                  style="min-width:220px; background:#3758F9; color:#fff; border:none; border-radius:8px; padding:16px 40px; font-size:16px; font-weight:500; cursor:pointer; transition:opacity 0.2s, background 0.2s;"
+                  onmouseover="if(!this.disabled){this.style.background='#2f4ad9';}"
+                  onmouseout="this.style.background='#3758F9';">
+                  <span x-show="state !== 'sending'">送信する</span>
+                  <span x-show="state === 'sending'" x-cloak>送信中…</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+    <!-- ====== Contact Section End -->
+
     <!-- ====== Footer Section Start -->
     <footer
       class="relative z-10 overflow-hidden bg-[#090E34] pt-20 lg:pt-[120px]"
@@ -2223,6 +2388,14 @@
                     FAQ
                   </a>
                 </li>
+                <li>
+                  <a
+                    href="#contact"
+                    class="text-gray-7 inline-block text-base leading-loose underline-offset-2 hover:text-white hover:underline"
+                  >
+                    お問い合わせ
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
@@ -2237,7 +2410,7 @@
               <a href="https://grow-reporter.com/privacy" target="_blank" rel="noopener noreferrer" class="text-gray-7 text-xs hover:text-white underline-offset-2 hover:underline">プライバシーポリシー</a>
               <a href="https://grow-reporter.com/commercial-transaction" target="_blank" rel="noopener noreferrer" class="text-gray-7 text-xs hover:text-white underline-offset-2 hover:underline">特定商取引法に基づく表記</a>
             </div>
-            <p class="text-gray-7 text-base">&copy; 2026 グローレポータ Produced by <a href="https://grow-group.jp" target="_blank" rel="noopener noreferrer" class="hover:text-white underline-offset-2 hover:underline">GrowGroup Co.,Ltd.</a></p>
+            <p class="text-gray-7 text-xs">&copy; 2026 グローレポータ Produced by <a href="https://grow-group.jp" target="_blank" rel="noopener noreferrer" class="hover:text-white underline-offset-2 hover:underline">GrowGroup Co.,Ltd.</a></p>
           </div>
         </div>
       </div>

@@ -19,6 +19,13 @@
         }
       },
       {
+        "source": "/api/contact",
+        "function": {
+          "functionId": "submitContactInquiry",
+          "region": "asia-northeast1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }
