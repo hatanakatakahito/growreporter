@@ -91,20 +91,27 @@ function toKpi(metrics) {
   };
 }
 
-/** GA4 dimensioned query（rows を返す）。range が無ければ無効 */
-function useGa4DimensionRows(siteId, range, dimensions, metrics) {
+/** GA4 dimensioned query（rows を返す）。range が無ければ無効。dimensionFilter で特定パス配下に限定可 */
+function useGa4DimensionRows(siteId, range, dimensions, metrics, dimensionFilter = null) {
   const from = range?.from || null;
   const to = range?.to || null;
+  const filterKey = dimensionFilter ? JSON.stringify(dimensionFilter) : '';
   return useQuery({
-    queryKey: ['cm-ga4-dim', siteId, from, to, dimensions.join(','), metrics.join(',')],
+    queryKey: ['cm-ga4-dim', siteId, from, to, dimensions.join(','), metrics.join(','), filterKey],
     queryFn: async () => {
       const fn = httpsCallable(functions, 'fetchGA4Data');
-      const result = await fn({ siteId, startDate: from, endDate: to, metrics, dimensions });
+      const result = await fn({ siteId, startDate: from, endDate: to, metrics, dimensions, dimensionFilter });
       return result.data?.rows || [];
     },
     enabled: !!siteId && !!from && !!to,
     staleTime: 5 * 60 * 1000,
   });
+}
+
+/** パス前方一致の GA4 pagePath フィルタを生成（pathPrefix 未指定なら null＝全体） */
+function buildPagePathFilter(pathPrefix) {
+  if (!pathPrefix) return null;
+  return { filter: { fieldName: 'pagePath', stringFilter: { matchType: 'BEGINS_WITH', value: pathPrefix } } };
 }
 
 export function useCloseMeetingData({
@@ -114,6 +121,7 @@ export function useCloseMeetingData({
   timelineRange,
   granularity = 'day',
   hasGSCConnection = true,
+  pathPrefix = null,
 }) {
   const obsFrom = observationRange?.from || null;
   const obsTo = observationRange?.to || null;
@@ -122,16 +130,20 @@ export function useCloseMeetingData({
   const tlFrom = timelineRange?.from || null;
   const tlTo = timelineRange?.to || null;
 
+  // 特定パス配下に限定するフィルタ（pathPrefix 未指定なら null＝サイト全体）
+  const ga4PathFilter = buildPagePathFilter(pathPrefix);
+  const tlFilterKey = ga4PathFilter ? JSON.stringify(ga4PathFilter) : '';
+
   // 公開後（観測期間）/ 比較期間（旧サイト側）のサマリー指標
-  const afterMetrics = useSiteMetrics(siteId, obsFrom, obsTo, hasGSCConnection);
-  const compMetrics = useSiteMetrics(siteId, compFrom, compTo, hasGSCConnection);
+  const afterMetrics = useSiteMetrics(siteId, obsFrom, obsTo, hasGSCConnection, ga4PathFilter, pathPrefix);
+  const compMetrics = useSiteMetrics(siteId, compFrom, compTo, hasGSCConnection, ga4PathFilter, pathPrefix);
 
   // 時系列（日次）— 公開前後を1本のグラフにするためのレンジで取得
   const timelineQuery = useQuery({
-    queryKey: ['cm-timeline', siteId, tlFrom, tlTo],
+    queryKey: ['cm-timeline', siteId, tlFrom, tlTo, tlFilterKey],
     queryFn: async () => {
       const fn = httpsCallable(functions, 'fetchGA4DailyConversionData');
-      const result = await fn({ siteId, startDate: tlFrom, endDate: tlTo });
+      const result = await fn({ siteId, startDate: tlFrom, endDate: tlTo, dimensionFilter: ga4PathFilter });
       return result.data;
     },
     enabled: !!siteId && !!tlFrom && !!tlTo,
@@ -139,12 +151,12 @@ export function useCloseMeetingData({
   });
 
   // ブレイクダウン（チャネル / ページ / デバイス × 観測期間 / 比較期間）
-  const channelsAfterQ = useGa4DimensionRows(siteId, observationRange, BREAKDOWN_DEFS.channels.dimensions, BREAKDOWN_DEFS.channels.metrics);
-  const channelsCompQ = useGa4DimensionRows(siteId, comparisonRange, BREAKDOWN_DEFS.channels.dimensions, BREAKDOWN_DEFS.channels.metrics);
-  const pagesAfterQ = useGa4DimensionRows(siteId, observationRange, BREAKDOWN_DEFS.pages.dimensions, BREAKDOWN_DEFS.pages.metrics);
-  const pagesCompQ = useGa4DimensionRows(siteId, comparisonRange, BREAKDOWN_DEFS.pages.dimensions, BREAKDOWN_DEFS.pages.metrics);
-  const devicesAfterQ = useGa4DimensionRows(siteId, observationRange, BREAKDOWN_DEFS.devices.dimensions, BREAKDOWN_DEFS.devices.metrics);
-  const devicesCompQ = useGa4DimensionRows(siteId, comparisonRange, BREAKDOWN_DEFS.devices.dimensions, BREAKDOWN_DEFS.devices.metrics);
+  const channelsAfterQ = useGa4DimensionRows(siteId, observationRange, BREAKDOWN_DEFS.channels.dimensions, BREAKDOWN_DEFS.channels.metrics, ga4PathFilter);
+  const channelsCompQ = useGa4DimensionRows(siteId, comparisonRange, BREAKDOWN_DEFS.channels.dimensions, BREAKDOWN_DEFS.channels.metrics, ga4PathFilter);
+  const pagesAfterQ = useGa4DimensionRows(siteId, observationRange, BREAKDOWN_DEFS.pages.dimensions, BREAKDOWN_DEFS.pages.metrics, ga4PathFilter);
+  const pagesCompQ = useGa4DimensionRows(siteId, comparisonRange, BREAKDOWN_DEFS.pages.dimensions, BREAKDOWN_DEFS.pages.metrics, ga4PathFilter);
+  const devicesAfterQ = useGa4DimensionRows(siteId, observationRange, BREAKDOWN_DEFS.devices.dimensions, BREAKDOWN_DEFS.devices.metrics, ga4PathFilter);
+  const devicesCompQ = useGa4DimensionRows(siteId, comparisonRange, BREAKDOWN_DEFS.devices.dimensions, BREAKDOWN_DEFS.devices.metrics, ga4PathFilter);
 
   const after = toKpi(afterMetrics);
   const comparison = toKpi(compMetrics);

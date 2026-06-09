@@ -11,15 +11,15 @@ import { functions } from '../config/firebase';
  * @param {object} options - TanStack Query のオプション
  * @returns {object} - Query結果
  */
-export function useGSCData(siteId, startDate, endDate, hasGSCConnection = true, options = {}) {
+export function useGSCData(siteId, startDate, endDate, hasGSCConnection = true, pathFilter = null, options = {}) {
   return useQuery({
-    queryKey: ['gsc-data', siteId, startDate, endDate],
+    queryKey: ['gsc-data', siteId, startDate, endDate, pathFilter],
     queryFn: async () => {
-      console.log(`[useGSCData] Fetching data: siteId=${siteId}, period=${startDate} to ${endDate}`);
-      
+      console.log(`[useGSCData] Fetching data: siteId=${siteId}, period=${startDate} to ${endDate}${pathFilter ? `, pathFilter=${pathFilter}` : ''}`);
+
       const fetchGSC = httpsCallable(functions, 'fetchGSCData');
-      const result = await fetchGSC({ siteId, startDate, endDate });
-      
+      const result = await fetchGSC({ siteId, startDate, endDate, pathFilter });
+
       console.log('[useGSCData] Data fetched successfully');
       return result.data;
     },

@@ -29,6 +29,22 @@ import CopyMinutesButton from '../../components/GrowInternal/CopyMinutesButton';
 
 const PAGE_TITLE = 'クローズミーティング';
 const DEFAULT_COMPARISON = { mode: 'yoy' };
+
+/**
+ * 登録サイトURLのパス配下に集計を限定するためのパス前方一致を導出。
+ * 例: https://example.com/recruit/ → '/recruit/'。ルート（/）や URL 不正なら null（＝サイト全体）。
+ * 採用サイト等、GA4/GSC がドメイン全体だが特定ディレクトリのみ見たいケース向け。
+ */
+function derivePathScope(siteUrl) {
+  if (!siteUrl || typeof siteUrl !== 'string') return null;
+  try {
+    const p = new URL(siteUrl).pathname || '/';
+    if (p === '/' || p === '') return null;
+    return p.endsWith('/') ? p : `${p}/`;
+  } catch {
+    return null;
+  }
+}
 // アフターMTG（2回目以降の振り返り）は「前期間（前月比）」を既定比較とする
 const DEFAULT_AFTER_COMPARISON = { mode: 'prevPeriod' };
 const defaultComparisonFor = (rec) =>
@@ -63,6 +79,8 @@ export default function CloseMeeting() {
   const { selectedSite } = useSite();
   const siteId = selectedSite?.id || null;
   const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
+  // 登録URLにパスがあれば、その配下のみに集計を限定（例: 採用サイト /recruit/）
+  const pathScope = derivePathScope(selectedSite?.siteUrl);
 
   const [searchParams, setSearchParams] = useSearchParams();
   const recordId = searchParams.get('recordId');
@@ -154,6 +172,7 @@ export default function CloseMeeting() {
     timelineRange: timelineRange || {},
     granularity,
     hasGSCConnection,
+    pathPrefix: pathScope,
   });
 
   // 前年同期にデータが無ければ「公開前同期間」へ自動フォールバック（クローズMTG のみ・記録ごとに1回）
@@ -307,6 +326,12 @@ export default function CloseMeeting() {
             <ShareLinkButton record={record} />
           </div>
         </div>
+        {pathScope && (
+          <div className="mb-4 flex items-start gap-1.5 rounded-md bg-blue-50 px-3.5 py-2.5 text-[13px] text-blue-700">
+            <svg className="mt-0.5 h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" strokeWidth="1.7" /><path d="M12 8h.01M11 12h1v4h1" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            このレポートは登録URLのパス（<span className="font-semibold">{pathScope}</span> 配下）に限定して集計しています。GA4/GSC はサイト全体ですが、本画面のみページパスで絞り込んでいます（セッション/ユーザー/CV は当該パスを含むセッションの近似値）。
+          </div>
+        )}
         <CloseMeetingHeader
           record={record}
           records={listQuery.data || []}
