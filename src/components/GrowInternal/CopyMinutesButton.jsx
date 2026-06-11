@@ -50,7 +50,7 @@ export default function CopyMinutesButton({ siteName, siteUrl, record, data, obs
       title={!ready ? 'データ集計後にコピーできます' : '画面の内容を Notion 等へ貼り付けられる形式でコピー'}
     >
       <ClipboardList className="h-4 w-4" />
-      {busy ? 'コピー中…' : '議事録へコピー'}
+      {busy ? 'コピー中…' : '議事録'}
     </Button>
   );
 }

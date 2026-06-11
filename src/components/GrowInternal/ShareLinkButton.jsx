@@ -97,7 +97,7 @@ export default function ShareLinkButton({ record }) {
         title={!isFinalized ? '「確定保存」すると共有できます' : ''}
       >
         <Share2 className="h-4 w-4" />
-        {mut.isPending ? '処理中…' : active ? '共有リンクをコピー' : '共有リンクを発行'}
+        {mut.isPending ? '処理中…' : active ? '共有リンク' : '共有リンクを発行'}
       </Button>
       {active && (
         <>
