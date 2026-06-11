@@ -11,6 +11,7 @@ import {
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 import CopyButton from './CopyButton';
+import CollapseToggle from './CollapseToggle';
 import { fmtNumber, fmtPercent } from './closeMeetingFormat';
 
 const TIMELINE_METRICS = [
@@ -38,9 +39,10 @@ function findLaunchBucketLabel(timeseries, launchDate) {
  * - アフターMTG: 指標の推移（観測期間とその直前期間。公開日がレンジ内なら縦線）
  * - 指標トグル選択式（既定: セッション）／「コピー」= グラフを PNG 画像としてクリップボードへ
  */
-export default function TimelineChart({ timeseries = [], launchDate, meetingType = 'close', granularity = 'day', hideCopy = false }) {
+export default function TimelineChart({ timeseries = [], launchDate, meetingType = 'close', granularity = 'day', hideCopy = false, footer = null, collapsible = false }) {
   const chartRef = useRef(null);
   const [active, setActive] = useState(['sessions']);
+  const [collapsed, setCollapsed] = useState(false);
 
   const launchLabel = useMemo(() => findLaunchBucketLabel(timeseries, launchDate), [timeseries, launchDate]);
   const activeMetrics = TIMELINE_METRICS.filter((m) => active.includes(m.key));
@@ -62,13 +64,14 @@ export default function TimelineChart({ timeseries = [], launchDate, meetingType
     <section className="overflow-hidden rounded-xl border border-stroke bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stroke px-5 py-3.5">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-slate-800">
+          {collapsible && <CollapseToggle collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />}
           <TrendingUp className="h-4 w-4 text-slate-400" />
           {chartTitle}（{granLabel}）
         </h2>
-        {!hideCopy && <CopyButton variant="chart-image" getTarget={() => chartRef.current} filename="close-meeting-timeline.png" label="コピー" />}
+        {!hideCopy && !collapsed && <CopyButton variant="chart-image" getTarget={() => chartRef.current} filename="close-meeting-timeline.png" label="コピー" />}
       </div>
 
-      <div className="p-5">
+      <div className={`p-5 ${collapsed ? 'hidden' : ''}`}>
         <div className="mb-3 flex flex-wrap gap-1.5">
           {TIMELINE_METRICS.map((m) => {
             const on = active.includes(m.key);
@@ -118,6 +121,7 @@ export default function TimelineChart({ timeseries = [], launchDate, meetingType
           </div>
         )}
       </div>
+      {footer && !collapsed && <div className="border-t border-stroke p-5 pt-4">{footer}</div>}
     </section>
   );
 }

@@ -98,6 +98,28 @@ export function useGenerateCloseMeetingSummary() {
   });
 }
 
+/**
+ * 各セクションの AI 考察（生成 or 手動編集の保存）。
+ *  - mode='generate': payload.dataLines をもとに Gemini で生成し記録に即時保存
+ *  - mode='save':     text を記録に保存（手動編集）
+ * 成功時は record キャッシュの sectionInsights を直接更新（リフェッチ待ちのちらつき回避）
+ */
+export function useCloseMeetingSectionInsight() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ recordId, sectionKey, mode, payload, text }) => {
+      const data = await call('closeMeetingSectionInsight', { recordId, sectionKey, mode, payload, text });
+      return data?.insight || null;
+    },
+    onSuccess: (insight, vars) => {
+      if (!insight) return;
+      qc.setQueryData(['close-meeting', vars.recordId], (prev) =>
+        prev ? { ...prev, sectionInsights: { ...(prev.sectionInsights || {}), [vars.sectionKey]: insight } } : prev
+      );
+    },
+  });
+}
+
 /** 確定保存（snapshot ＋ aiSummary を記録に焼き込み、status:'finalized'） */
 export function useFinalizeCloseMeeting() {
   const qc = useQueryClient();

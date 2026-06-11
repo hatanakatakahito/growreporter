@@ -2,7 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { canAccessSite } from '../utils/permissionHelper.js';
-import { getCloseMeetingPrompt } from '../prompts/templates.js';
+import { getCloseMeetingPrompt, getCloseMeetingSectionInsightPrompt } from '../prompts/templates.js';
 import {
   BUSINESS_MODEL_LABELS,
   SITE_ROLE_LABELS,
@@ -149,6 +149,92 @@ export const generateCloseMeetingSummaryCallable = async (request) => {
     logger.error('[generateCloseMeetingSummary] error:', error);
     if (error instanceof HttpsError) throw error;
     throw new HttpsError('internal', error?.message || 'AI 生成に失敗しました');
+  }
+};
+
+// ── 各セクションの AI 考察（生成して記録に即時保存 / 手動編集の保存） ──
+// 対応セクション（record.sectionInsights のキー）
+const SECTION_KEYS = ['summary', 'timeline', 'channels', 'keywords', 'pages', 'devices', 'kpiTarget'];
+const SECTION_LABELS = {
+  summary: 'サマリー指標',
+  timeline: '指標の推移',
+  channels: 'チャネル別',
+  keywords: 'キーワード流入',
+  pages: 'ページ別',
+  devices: 'デバイス別',
+  kpiTarget: 'KPI 予実',
+};
+
+export const closeMeetingSectionInsightCallable = async (request) => {
+  const { uid } = requireGrowStaff(request);
+  const { recordId, sectionKey, mode = 'generate', payload, text } = request.data || {};
+  if (!SECTION_KEYS.includes(sectionKey)) {
+    throw new HttpsError('invalid-argument', 'sectionKey が不正です');
+  }
+
+  const { db, ref, data: record } = await loadRecordWithAccess(uid, recordId);
+
+  // 手動編集の保存（生成なし）
+  if (mode === 'save') {
+    const saved = { text: clip(text, 1000), generatedAt: new Date().toISOString(), edited: true };
+    await ref.update({ [`sectionInsights.${sectionKey}`]: saved, updatedAt: FieldValue.serverTimestamp() });
+    return { insight: saved };
+  }
+
+  // 生成（Gemini）→ 保存
+  const geminiApiKey = process.env.GEMINI_API_KEY;
+  if (!geminiApiKey) {
+    throw new HttpsError('failed-precondition', 'AI 機能が構成されていません（GEMINI_API_KEY 未設定）');
+  }
+  try {
+    const siteDoc = await db.collection('sites').doc(record.siteId).get();
+    const siteContext = buildSiteContext(siteDoc.exists ? siteDoc.data() : null);
+
+    const prompt = getCloseMeetingSectionInsightPrompt({
+      siteName: record.siteName || (siteDoc.exists ? siteDoc.data().siteName : '') || '未設定',
+      siteUrl: record.siteUrl || (siteDoc.exists ? siteDoc.data().siteUrl : '') || '未設定',
+      siteContext,
+      meetingType: ['close', 'after'].includes(record.meetingType) ? record.meetingType : 'close',
+      sectionLabel: SECTION_LABELS[sectionKey] || 'このセクション',
+      dataLines: Array.isArray(payload?.dataLines) ? payload.dataLines.filter((x) => typeof x === 'string').slice(0, 40) : [],
+      comparisonModeLabel: clip(payload?.comparisonModeLabel, 40) || '公開前',
+      hasComparison: payload?.hasComparison !== false,
+      // 備考（数値解釈の前提）はサーバ側の記録を信頼
+      consultantRemarks: clip(record.consultantNotes?.remarks, 2000),
+    });
+
+    const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+    logger.info('[closeMeetingSectionInsight] calling Gemini', { recordId, sectionKey, model: geminiModel });
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiApiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.6, maxOutputTokens: 512 },
+        }),
+      }
+    );
+    if (!response.ok) {
+      const errText = await response.text();
+      logger.error('[closeMeetingSectionInsight] Gemini error', { status: response.status, errText: errText.slice(0, 500) });
+      throw new HttpsError('internal', `AI 生成に失敗しました (Gemini ${response.status})`);
+    }
+    const json = await response.json();
+    const rawText = (json.candidates?.[0]?.content?.parts?.[0]?.text || '').trim();
+    if (!rawText) {
+      throw new HttpsError('internal', 'AI から有効な応答が得られませんでした');
+    }
+    const saved = { text: clip(rawText, 1000), generatedAt: new Date().toISOString(), edited: false };
+    await ref.update({ [`sectionInsights.${sectionKey}`]: saved, updatedAt: FieldValue.serverTimestamp() });
+    logger.info('[closeMeetingSectionInsight] success', { recordId, sectionKey });
+    return { insight: saved };
+  } catch (error) {
+    logger.error('[closeMeetingSectionInsight] error:', error);
+    if (error instanceof HttpsError) throw error;
+    throw new HttpsError('internal', error?.message || 'AI 考察の生成に失敗しました');
   }
 };
 

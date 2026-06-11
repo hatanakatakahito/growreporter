@@ -4,6 +4,7 @@ import ComparisonBadge from '../Analysis/ComparisonBadge';
 import CopyButton from './CopyButton';
 import { KPI_GROUPS, formatMetricValue, periodLabels } from './closeMeetingFormat';
 import { formatChangePercent } from '../../utils/comparisonHelpers';
+import CollapseToggle from './CollapseToggle';
 
 /** 増減%の文字色（invert: 下がると良い指標は反転） */
 function changeClass(value, invert) {
@@ -21,9 +22,10 @@ function changeClass(value, invert) {
  * - 任意で AI 総括の要旨をカード冒頭に表示（aiExcerpt）
  * - 「コピー」（Notion 等へ貼り付け用 <table>）
  */
-export default function KpiSummaryCards({ kpi, meetingType = 'close', hideCopy = false, aiExcerpt = null }) {
+export default function KpiSummaryCards({ kpi, meetingType = 'close', hideCopy = false, aiExcerpt = null, footer = null, collapsible = false }) {
   const tableRef = useRef(null);
   const [view, setView] = useState('card'); // 'card' | 'table'
+  const [collapsed, setCollapsed] = useState(false);
   const after = kpi?.after;
   const comparison = kpi?.comparison;
   const changes = kpi?.changes || {};
@@ -36,10 +38,11 @@ export default function KpiSummaryCards({ kpi, meetingType = 'close', hideCopy =
     <section className="overflow-hidden rounded-xl border border-stroke bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stroke px-5 py-3.5">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-slate-800">
+          {collapsible && <CollapseToggle collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />}
           <BarChart3 className="h-4 w-4 text-slate-400" />
           サマリー指標（{L.before} → {L.after}）
         </h2>
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${collapsed ? 'hidden' : ''}`}>
           <div className="inline-flex rounded-md border border-stroke p-0.5 text-xs">
             <button
               type="button"
@@ -64,22 +67,7 @@ export default function KpiSummaryCards({ kpi, meetingType = 'close', hideCopy =
         </div>
       </div>
 
-      <div className="p-5">
-        {aiExcerpt && (
-          <div className="mb-5 rounded-md bg-slate-50 p-4">
-            <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-              <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path d="M12 2a7 7 0 00-4 12.7V17a2 2 0 002 2h4a2 2 0 002-2v-2.3A7 7 0 0012 2zM9 22h6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-              AI 総括の要旨
-            </div>
-            <p className="text-sm leading-relaxed text-slate-700">
-              {aiExcerpt}{' '}
-              <a href="#cm-ai-summary" className="font-medium text-primary hover:underline">全文を見る ↓</a>
-            </p>
-          </div>
-        )}
-
+      <div className={`p-5 ${collapsed ? 'hidden' : ''}`}>
         {!after ? (
           <div className="rounded-md border border-stroke p-12 text-center">
             <p className="text-body-color">表示するデータがありません。</p>
@@ -161,7 +149,23 @@ export default function KpiSummaryCards({ kpi, meetingType = 'close', hideCopy =
             </table>
           </div>
         )}
+
+        {aiExcerpt && (
+          <div className="mt-5 rounded-md bg-slate-50 p-4">
+            <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+              <svg className="h-3.5 w-3.5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path d="M12 2a7 7 0 00-4 12.7V17a2 2 0 002 2h4a2 2 0 002-2v-2.3A7 7 0 0012 2zM9 22h6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              AI 総括の要旨
+            </div>
+            <p className="text-sm leading-relaxed text-slate-700">
+              {aiExcerpt}{' '}
+              <a href="#cm-ai-summary" className="font-medium text-primary hover:underline">全文を見る ↓</a>
+            </p>
+          </div>
+        )}
       </div>
+      {footer && !collapsed && <div className="border-t border-stroke p-5 pt-4">{footer}</div>}
     </section>
   );
 }

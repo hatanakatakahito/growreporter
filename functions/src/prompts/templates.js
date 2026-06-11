@@ -2860,3 +2860,58 @@ ${kpiActualsBlock}
 - 担当者メモの「狙い・施策」がある場合は、それぞれに対して数値がどう動いたか（達成 / 未達 / 判断保留）に必ず言及すること
 - ページ別ブレイクダウンに「公開前データなし」の行が多い場合は、URL 構造の変更で突合できていない可能性に触れること`;
 }
+
+/**
+ * クローズミーティング: 各セクション（サマリー指標 / 推移 / チャネル別 / キーワード流入 / ページ別 / デバイス別 / KPI予実）
+ * ごとの「身近め」な短い AI 考察プロンプト。出力はプレーンテキスト（2〜3文）。
+ * クライアントに口頭で添えるような、堅すぎない一言コメントを想定。
+ */
+export function getCloseMeetingSectionInsightPrompt(p) {
+  const {
+    siteName = '未設定',
+    siteUrl = '未設定',
+    siteContext = {},
+    meetingType = 'close',
+    sectionLabel = 'このセクション',
+    dataLines = [],
+    comparisonModeLabel = '公開前',
+    hasComparison = true,
+    consultantRemarks = '',
+  } = p || {};
+
+  const isAfter = meetingType === 'after';
+  const L = isAfter ? { before: '比較期間', after: '当期間' } : { before: '公開前', after: '公開後' };
+  const industryText = siteContext.industryText || '未設定';
+  const siteRoleText = siteContext.siteRoleText || '未設定';
+  const businessModelText = siteContext.businessModelText || '未設定';
+
+  const dataBlock = dataLines.length ? dataLines.map((l) => `- ${l}`).join('\n') : '（データなし）';
+  const compLine = hasComparison
+    ? `- 比較対象: ${comparisonModeLabel}（${L.before} → ${L.after} の変化を見ています）`
+    : `- 比較対象: なし（${L.after}の値のみ）`;
+  const remarksBlock = consultantRemarks
+    ? `\n【数値解釈の前提（必ず考慮）】\n${consultantRemarks}\n`
+    : '';
+
+  return `あなたは Web サイト制作会社の Web アナリストです。クライアントとの振り返りミーティングで、レポートの「${sectionLabel}」セクションに口頭で添える、短い一言コメント（考察）を書いてください。
+
+【このサイト（前提条件）】
+- サイト名: ${siteName}
+- URL: ${siteUrl}
+- 業種: ${industryText} / サイトの役割: ${siteRoleText} / ビジネスモデル: ${businessModelText}
+※ この文脈を前提に数値を解釈してください。
+
+【MTG 種別】${isAfter ? `アフターMTG（公開後の継続観測の振り返り）` : `クローズMTG（リニューアル公開前後の比較）`}
+${compLine}
+${remarksBlock}
+【${sectionLabel} のデータ】
+${dataBlock}
+
+【書き方（厳守）】
+- 出力はプレーンテキストのみ。見出し・箇条書き・記号・JSON・コードフェンスは一切使わない
+- 2〜3文・全体で 80〜160 字程度。です・ます調だが、堅すぎない「身近め」のやわらかい語り口
+- このセクションのデータから読み取れる要点を1つ〜2つに絞って、結論ファーストで端的に
+- 提供された数値のみを使用し、無い数値は触れない（捏造しない）
+- 「総括しますと」「以上のことから」等の前置きや、挨拶・お祝いは書かない。いきなり要点から始める
+- 過度な断定や誇張は避け、必要なら「〜の可能性があります」程度にとどめる`;
+}

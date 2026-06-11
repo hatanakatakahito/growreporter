@@ -20,15 +20,19 @@ const KPI_NUMERIC_FIELDS = [
   'sessions',
   'users',
   'newUsers',
+  'pageViews',
+  'avgPageViews',
   'engagementRate',
   'conversions',
   'conversionRate',
-  'pageViews',
   'impressions',
   'clicks',
   'ctr',
   'position',
 ];
+
+// キーワード流入（GSC query）の比較対象フィールド
+const KEYWORD_VALUE_FIELDS = ['clicks', 'impressions', 'ctr', 'position'];
 
 // ブレイクダウン各表で取得する GA4 指標（dimensioned runReport で確実に使える標準指標のみ）。
 // CV（conversions）は GA4 Data API では dimension 付きで直接取れない（eventCount + eventName フィルタが必要）ため、
@@ -76,6 +80,7 @@ function toKpi(metrics) {
   if (!m) return null;
   const sessions = Number(m.sessions) || 0;
   const conversions = Number(m.conversions) || 0;
+  const pageViews = Number(m.pageViews) || 0;
   return {
     sessions,
     users: Number(m.totalUsers) || 0,
@@ -83,11 +88,16 @@ function toKpi(metrics) {
     engagementRate: Number(m.engagementRate) || 0,
     conversions,
     conversionRate: sessions > 0 ? conversions / sessions : 0,
-    pageViews: Number(m.pageViews) || 0,
+    pageViews,
+    // 平均PV（1セッションあたりPV）。サマリーカードの「平均PV」と同義
+    avgPageViews: sessions > 0 ? pageViews / sessions : 0,
     impressions: Number(m.impressions) || 0,
     clicks: Number(m.clicks) || 0,
     ctr: Number(m.ctr) || 0,
     position: Number(m.position) || 0,
+    // CV イベント別内訳（eventName -> count）。KPI予実のCVイベント目標の実績照合に使う。
+    // useSiteMetrics 経由で取得（パス限定フィルタも適用済み）
+    conversionEvents: metrics?.data?.conversions || {},
   };
 }
 
@@ -190,15 +200,40 @@ export function useCloseMeetingData({
     };
   };
 
+  // キーワード流入（GSC query）— afterMetrics / compMetrics が取得済みの topQueries を再利用（パス限定フィルタ適用済み）。
+  // topQueries は最大25,000件になり得るため、after 側はクリック上位50件にキャップしてからマージ（表示は上位20件）。
+  const afterQueries = (afterMetrics.gsc?.topQueries || [])
+    .slice()
+    .sort((a, b) => (Number(b.clicks) || 0) - (Number(a.clicks) || 0))
+    .slice(0, 50);
+  const keywords = {
+    keyField: 'query',
+    keyLabel: 'キーワード',
+    valueFields: KEYWORD_VALUE_FIELDS,
+    defaultSortKey: 'clicks',
+    rows: mergeComparisonRows(
+      afterQueries,
+      hasComparison ? (compMetrics.gsc?.topQueries || []) : [],
+      'query',
+      KEYWORD_VALUE_FIELDS
+    ),
+  };
+
   const breakdowns = {
     channels: buildBreakdown(BREAKDOWN_DEFS.channels, channelsAfterQ.data, channelsCompQ.data),
     pages: buildBreakdown(BREAKDOWN_DEFS.pages, pagesAfterQ.data, pagesCompQ.data),
     devices: buildBreakdown(BREAKDOWN_DEFS.devices, devicesAfterQ.data, devicesCompQ.data),
+    keywords,
   };
 
   const isLoadingBreakdowns =
     channelsAfterQ.isLoading || pagesAfterQ.isLoading || devicesAfterQ.isLoading ||
     (hasComparison && (channelsCompQ.isLoading || pagesCompQ.isLoading || devicesCompQ.isLoading));
+
+  // キーワード流入は GSC のロードに依存（GA4 ブレイクダウンとは独立）
+  const isLoadingKeywords =
+    !!hasGSCConnection &&
+    (afterMetrics.isGSCLoading || (hasComparison && compMetrics.isGSCLoading));
 
   return {
     kpi: { after, comparison: hasComparison ? comparison : null, changes, hasComparison },
@@ -209,6 +244,9 @@ export function useCloseMeetingData({
     isLoadingKpi: afterMetrics.isGA4Loading || (!!compFrom && compMetrics.isGA4Loading),
     isLoadingTimeline: timelineQuery.isLoading,
     isLoadingBreakdowns,
+    isLoadingKeywords,
+    // GSC 連携の有無（キーワード流入セクションの表示判定に使う）
+    hasGSC: !!hasGSCConnection,
     isErrorKpi: afterMetrics.isGA4Error,
     isErrorTimeline: timelineQuery.isError,
     errorKpi: afterMetrics.ga4Error || compMetrics.ga4Error,

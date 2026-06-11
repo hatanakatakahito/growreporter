@@ -164,6 +164,8 @@ export default function CloseMeetingAiSummary({ record, data, observationRange, 
         pages: pages ? { ...pages, rows: (pages.rows || []).slice(0, 50) } : null,
       },
       notesSnapshot: record?.consultantNotes || {},
+      // 各セクションの AI 考察（確定時点のものを焼き込み。共有レポートでも表示）
+      sectionInsights: record?.sectionInsights || {},
     };
     finalizeMut.mutate(
       { recordId, snapshot, aiSummary: displayed },

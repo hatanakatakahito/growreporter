@@ -11,6 +11,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import CopyButton from './CopyButton';
+import CollapseToggle from './CollapseToggle';
 import { formatMetricValue, periodLabels } from './closeMeetingFormat';
 import { formatChangePercent } from '../../utils/comparisonHelpers';
 
@@ -199,9 +200,12 @@ export default function BreakdownTable({
   topN = null,
   hideCopy = false,
   meetingType = 'close',
+  footer = null,
+  collapsible = false,
 }) {
   const tableRef = useRef(null);
   const chartRef = useRef(null);
+  const [collapsed, setCollapsed] = useState(false);
   const L = periodLabels(meetingType);
 
   const allKeys = useMemo(() => columns.map((c) => c.key), [columns]);
@@ -264,10 +268,11 @@ export default function BreakdownTable({
     <section className="overflow-hidden rounded-xl border border-stroke bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-stroke px-5 py-3.5">
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-slate-800">
+          {collapsible && <CollapseToggle collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />}
           {icon}
           {title}
         </h2>
-        <div className="flex items-center gap-2">
+        <div className={`flex items-center gap-2 ${collapsed ? 'hidden' : ''}`}>
           {rows.length > 0 && <ViewToggle mode={viewMode} onChange={setViewMode} />}
           {!isChart && columns.length > 1 && <ColumnPicker columns={columns} visibleKeys={visibleKeys} onToggle={toggleColumn} />}
           {!hideCopy && rows.length > 0 && (
@@ -280,6 +285,8 @@ export default function BreakdownTable({
         </div>
       </div>
 
+      {!collapsed && (
+        <>
       {rows.length === 0 ? (
         <div className="p-8 text-center text-sm text-body-color">表示するデータがありません。</div>
       ) : isChart ? (
@@ -364,6 +371,9 @@ export default function BreakdownTable({
               上位 {topN} 件を表示しています（全 {sorted.length} 件中）。
             </div>
           )}
+        </>
+      )}
+      {footer && <div className="border-t border-stroke p-4">{footer}</div>}
         </>
       )}
     </section>

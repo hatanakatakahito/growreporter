@@ -21,7 +21,8 @@ const hasAnyContent = (notes) => FIELDS.some((k) => !!(notes?.[k] && String(note
  * 項目: 背景 / 課題 / 目的 / 定性目標 / 定量目標 / 備考
  */
 export default function ConsultantNotesForm({ notes, onSave, saving = false }) {
-  const [open, setOpen] = useState(() => hasAnyContent(notes));
+  // 既定では閉じた状態（入力有無に関わらず）。ユーザーが必要なときに展開する。
+  const [open, setOpen] = useState(false);
   const [background, setBackground] = useState('');
   const [challenge, setChallenge] = useState('');
   const [purpose, setPurpose] = useState('');

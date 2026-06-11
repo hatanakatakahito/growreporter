@@ -60,6 +60,12 @@ export function fmtPosition(v) {
   return Number(v).toFixed(1);
 }
 
+/** 小数（平均PV など。既定 2桁） */
+export function fmtDecimal(v, digits = 2) {
+  if (v == null || Number.isNaN(Number(v))) return '—';
+  return Number(v).toFixed(digits);
+}
+
 /** 平均エンゲージ時間（秒）→ m分s秒 */
 export function fmtDuration(sec) {
   if (sec == null || Number.isNaN(Number(sec))) return '—';
@@ -83,6 +89,8 @@ export const KPI_GROUPS = [
       { key: 'sessions', label: 'セッション', format: 'number', spark: 'sessions' },
       { key: 'users', label: 'ユーザー', format: 'number', spark: 'users' },
       { key: 'newUsers', label: '新規ユーザー', format: 'number', spark: 'newUsers' },
+      { key: 'pageViews', label: 'PV数', format: 'number', spark: 'pageViews' },
+      { key: 'avgPageViews', label: '平均PV', format: 'decimal', spark: null },
       { key: 'engagementRate', label: 'エンゲージ率', format: 'percent', spark: 'engagementRate' },
       { key: 'conversions', label: 'CV数', format: 'number', spark: 'conversions' },
       { key: 'conversionRate', label: 'CV率', format: 'percent', spark: 'conversionRate' },
@@ -105,6 +113,8 @@ export function formatMetricValue(value, fmt) {
       return fmtPercent(value);
     case 'position':
       return fmtPosition(value);
+    case 'decimal':
+      return fmtDecimal(value);
     case 'duration':
       return fmtDuration(value);
     case 'number':
@@ -134,3 +144,14 @@ export const BREAKDOWN_COLUMNS = {
   pages: BREAKDOWN_METRIC_COLUMNS,
   devices: BREAKDOWN_METRIC_COLUMNS,
 };
+
+/**
+ * キーワード流入（Search Console query）テーブルの指標列。
+ * GSC は clicks / impressions / ctr / position の4指標。position は小さいほど良い（invert）。
+ */
+export const KEYWORD_COLUMNS = [
+  { key: 'clicks', label: 'クリック', format: 'number' },
+  { key: 'impressions', label: '表示回数', format: 'number' },
+  { key: 'ctr', label: 'CTR', format: 'percent' },
+  { key: 'position', label: '平均掲載順位', format: 'position', invert: true },
+];

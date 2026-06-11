@@ -1002,6 +1002,7 @@ export const updateCloseMeeting = lazyCallable('./callable/closeMeetings.js', 'u
 export const deleteCloseMeeting = lazyCallable('./callable/closeMeetings.js', 'deleteCloseMeetingCallable', { memory: '256MiB', timeoutSeconds: 30 });
 export const generateCloseMeetingSummary = lazyCallable('./callable/closeMeetingAI.js', 'generateCloseMeetingSummaryCallable', { memory: '512MiB', timeoutSeconds: 90, secrets: ['GEMINI_API_KEY'] });
 export const finalizeCloseMeetingReport = lazyCallable('./callable/closeMeetingAI.js', 'finalizeCloseMeetingReportCallable', { memory: '512MiB', timeoutSeconds: 30 });
+export const closeMeetingSectionInsight = lazyCallable('./callable/closeMeetingAI.js', 'closeMeetingSectionInsightCallable', { memory: '512MiB', timeoutSeconds: 60, secrets: ['GEMINI_API_KEY'] });
 export const manageCloseMeetingShareLink = lazyCallable('./callable/closeMeetings.js', 'manageCloseMeetingShareLinkCallable', { memory: '256MiB', timeoutSeconds: 30 });
 // 共有リンク用 公開エンドポイント（認証不要）
 export const getSharedCloseMeeting = lazyCallable('./callable/sharedCloseMeeting.js', 'getSharedCloseMeetingCallable', { memory: '256MiB', timeoutSeconds: 30 });
