@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
-import { Sparkles, Pencil, X as XIcon, Check } from 'lucide-react';
+import { Sparkles, Pencil, X as XIcon, Check, EyeOff, Eye } from 'lucide-react';
 import { Button } from '../ui/button';
 import { useCloseMeetingSectionInsight } from '../../hooks/useCloseMeetings';
 
@@ -30,20 +30,31 @@ export default function SectionInsight({
   const mut = useCloseMeetingSectionInsight();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [hidden, setHidden] = useState(false);
 
   const text = insight?.text || '';
   const busy = mut.isPending;
 
-  // 読み取り専用（共有ページ）: テキストが無ければ何も出さない
+  // 読み取り専用（共有ページ）: テキストが無ければ何も出さない。非表示トグルつき。
   if (readOnly) {
     if (!text) return null;
     return (
       <div className="rounded-md bg-slate-50 p-4">
-        <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-          <Sparkles className="h-3.5 w-3.5 text-slate-400" />
-          AI 考察
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
+            <Sparkles className="h-3.5 w-3.5 text-slate-400" />
+            AI 考察
+          </div>
+          <button
+            type="button"
+            onClick={() => setHidden((h) => !h)}
+            className="flex items-center gap-1 rounded px-1.5 py-0.5 text-[11px] text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+          >
+            {hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+            {hidden ? '表示' : '非表示'}
+          </button>
         </div>
-        <p className="whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{text}</p>
+        {!hidden && <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed text-slate-700">{text}</p>}
       </div>
     );
   }
@@ -94,7 +105,7 @@ export default function SectionInsight({
           )}
         </div>
         <div className="flex items-center gap-1.5">
-          {editing ? (
+          {!hidden && (editing ? (
             <>
               <Button variant="ghost" size="sm" onClick={() => setEditing(false)} disabled={busy}>
                 <XIcon className="h-3.5 w-3.5" />
@@ -118,11 +129,22 @@ export default function SectionInsight({
                 </Button>
               )}
             </>
+          ))}
+          {!editing && (
+            <button
+              type="button"
+              onClick={() => setHidden((h) => !h)}
+              className="flex items-center gap-1 rounded px-1.5 py-1 text-[11px] text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              title={hidden ? '考察を表示' : '考察を非表示'}
+            >
+              {hidden ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              {hidden ? '表示' : '非表示'}
+            </button>
           )}
         </div>
       </div>
 
-      {editing ? (
+      {hidden ? null : editing ? (
         <textarea
           value={draft}
           onChange={(e) => setDraft(e.target.value)}

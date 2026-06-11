@@ -24,7 +24,7 @@ function changeClass(value, invert) {
  */
 export default function KpiSummaryCards({ kpi, meetingType = 'close', hideCopy = false, aiExcerpt = null, footer = null, collapsible = false }) {
   const tableRef = useRef(null);
-  const [view, setView] = useState('card'); // 'card' | 'table'
+  const [view, setView] = useState('table'); // 'card' | 'table'（既定: 表組）
   const [collapsed, setCollapsed] = useState(false);
   const after = kpi?.after;
   const comparison = kpi?.comparison;
