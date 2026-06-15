@@ -5,12 +5,11 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
+import { assertAdmin } from '../../utils/benchmarkOAuthHelpers.js';
 
 export async function clearAllAICacheCallable(request) {
-  // 管理者権限チェック
-  if (!request.auth) {
-    throw new HttpsError('unauthenticated', '認証が必要です');
-  }
+  // 管理者権限チェック（admin / editor のみ。未認証もここで弾く）
+  await assertAdmin(request.auth?.uid);
 
   const db = getFirestore();
   

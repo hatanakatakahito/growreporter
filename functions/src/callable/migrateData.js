@@ -1,4 +1,5 @@
 import { HttpsError } from 'firebase-functions/v2/https';
+import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { migrateAccountMembersToUsers } from '../migrations/migrateAccountMembersToUsers.js';
 import { backfillUsersAccountFields } from '../scripts/backfillUsersAccountFields.js';
@@ -23,11 +24,11 @@ export const migrateDataCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  // 管理者チェック（必要に応じて実装）
-  // const isAdmin = await checkIfAdmin(uid);
-  // if (!isAdmin) {
-  //   throw new HttpsError('permission-denied', '管理者のみ実行できます');
-  // }
+  // 管理者チェック（破壊的な DB マイグレーションのため admin ロール限定）
+  const adminDoc = await getFirestore().collection('adminUsers').doc(uid).get();
+  if (!adminDoc.exists || adminDoc.data()?.role !== 'admin') {
+    throw new HttpsError('permission-denied', '管理者（admin）のみ実行できます');
+  }
 
   const { migrationType } = request.data || {};
 

@@ -38,10 +38,10 @@ export async function regenerateAllSiteScreenshotsCallable(req) {
 
   const db = getFirestore();
 
-  // 管理者チェック
+  // 管理者チェック（破壊的・高コストな運用ツールのため admin ロール限定）
   const adminDoc = await db.collection('adminUsers').doc(req.auth.uid).get();
-  if (!adminDoc.exists) {
-    throw new HttpsError('permission-denied', '管理者権限が必要です');
+  if (!adminDoc.exists || adminDoc.data()?.role !== 'admin') {
+    throw new HttpsError('permission-denied', 'この操作は管理者（admin）のみ実行可能です');
   }
 
   const {

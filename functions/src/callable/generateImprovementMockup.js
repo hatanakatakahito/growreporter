@@ -22,6 +22,7 @@ import { captureBrowserRendering, readBrowserRenderedHtml } from '../utils/captu
 import { captureBrowserScreenshot } from '../utils/captureBrowserScreenshot.js';
 import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 import { requireDocId } from '../utils/validators.js';
+import { canAccessSite } from '../utils/permissionHelper.js';
 
 /**
  * Cloudflare Browser Rendering 経路を使うか判定。
@@ -52,6 +53,14 @@ export async function generateImprovementMockupCallable(req) {
   // 入力検証 (Phase 4-B-7)
   const siteId = requireDocId(req.data?.siteId, 'siteId');
   const improvementId = requireDocId(req.data?.improvementId, 'improvementId');
+
+  // サイトへのアクセス権限チェック。モックアップ生成は AI 生成機能であり、
+  // ドロワーを開くと viewer にも自動発火するため、編集権限ではなく
+  // 閲覧権限（canAccessSite: owner 全サイト、editor/viewer は allowedSiteIds のみ）で許可する。
+  const hasAccess = await canAccessSite(req.auth.uid, siteId);
+  if (!hasAccess) {
+    throw new HttpsError('permission-denied', 'このサイトにアクセスする権限がありません');
+  }
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
