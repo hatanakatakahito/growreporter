@@ -16,7 +16,7 @@
     "batch:rescrape-all:dry": "node --loader ./loader.mjs src/scripts/triggerAllSitesRescrape.js --dry-run"
   },
   "engines": {
-    "node": "20"
+    "node": "22"
   },
   "dependencies": {
     "@sparticuz/chromium": "^123.0.1",
