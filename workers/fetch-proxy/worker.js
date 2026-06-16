@@ -127,7 +127,60 @@ export default {
       return corsJson({ error: err.message }, 500, origin, corsAllowed);
     }
   },
+
+  // ========================================================
+  // Cron Trigger: Browser Rendering プールのウォーム維持 (Phase A, 2026-06-16)
+  // ========================================================
+  // wrangler.toml の [triggers] crons で指定した時刻 (JST 営業時間帯) に発火し、
+  // warmBrowserPool() で最低 1 つの warm session を pool に維持する。
+  // これにより単発撮影 (サイト登録等) でのコールドプール page-dead-after-goto を構造的に防ぐ。
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(warmBrowserPool(env));
+  },
 };
+
+// ========================================================
+// warmBrowserPool: Cron から定期実行されるウォーム維持ヒートビート
+// ========================================================
+// - 空き session があれば connect → version() → disconnect で keep_alive タイマーをリフレッシュ
+// - 無ければ 1 つ launch し about:blank で CDP 経路を確立してから disconnect
+// 終了時は必ず disconnect (close すると warm session が消えるため使わない)。
+async function warmBrowserPool(env) {
+  if (!env.BROWSER) {
+    console.warn('[warmBrowserPool] BROWSER binding 未設定、スキップ');
+    return;
+  }
+  let browser = null;
+  try {
+    const sessions = await withTimeout(puppeteer.sessions(env.BROWSER), 5_000, 'warm-sessions').catch(() => []);
+    const free = (sessions || []).filter((s) => !s.connectionId).map((s) => s.sessionId);
+
+    if (free.length > 0) {
+      // 既存 warm session に connect → CDP 往復 (version) で keep_alive タイマーをリフレッシュ
+      const sid = free[0];
+      browser = await withTimeout(puppeteer.connect(env.BROWSER, sid), 5_000, 'warm-connect');
+      await withTimeout(browser.version(), 3_000, 'warm-version').catch(() => {});
+      console.log(`[warmBrowserPool] refreshed session ${sid.slice(0, 8)} (free=${free.length}, total=${sessions.length})`);
+    } else {
+      // warm session が無い → 1 つ launch して about:blank で温める (keep_alive 10 分)
+      browser = await puppeteer.launch(env.BROWSER, { keep_alive: 600_000 });
+      const page = await browser.newPage();
+      await page.goto('about:blank', { timeout: 5_000 }).catch(() => {});
+      await page.evaluate(() => 1).catch(() => {});
+      await page.close().catch(() => {});
+      console.log(`[warmBrowserPool] launched + warmed new session (total was ${sessions.length})`);
+    }
+  } catch (e) {
+    console.warn(`[warmBrowserPool] failed: ${e.message}`);
+  } finally {
+    if (browser) {
+      await Promise.race([
+        browser.disconnect().catch(() => {}),
+        new Promise((r) => setTimeout(r, 3000)),
+      ]);
+    }
+  }
+}
 
 // ========== Browser Rendering モード ==========
 

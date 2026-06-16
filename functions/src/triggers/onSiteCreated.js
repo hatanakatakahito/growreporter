@@ -86,7 +86,9 @@ export async function onSiteCreatedTrigger(event) {
     // サイト登録完了メール送信
     try {
       const userDoc = await db.collection('users').doc(siteData.userId).get();
-      if (userDoc.exists()) {
+      // Admin SDK の DocumentSnapshot.exists は「プロパティ」。exists() と呼ぶと
+      // "userDoc.exists is not a function" で毎回メール送信が失敗していた。
+      if (userDoc.exists) {
         const userData = userDoc.data();
         const userEmail = userData.email;
         const userName = userData.lastName && userData.firstName

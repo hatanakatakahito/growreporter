@@ -70,7 +70,10 @@ export async function captureBrowserScreenshot({ url, deviceType, userId, option
   // - Workers Free の「20 秒に 1 ブラウザ」制限への対処
   // - 1 回リトライしても失敗したら null 返却 → 呼出側 (captureAndStoreBeforeScreenshot) で PSI フォールバック
   const RATE_LIMIT_WAIT_MS = 25_000;
-  const MAX_ATTEMPTS = 2;
+  // コールドプール由来の一過性失敗 (page-dead-after-goto 等) のリトライ前待機 (短め)
+  const TRANSIENT_WAIT_MS = 8_000;
+  // 2 → 3: コールドプール初回 goto ハングを救済する
+  const MAX_ATTEMPTS = 3;
   let data;
   let lastError = null;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
@@ -87,12 +90,14 @@ export async function captureBrowserScreenshot({ url, deviceType, userId, option
       lastError = err;
       const msg = err?.message || '';
       const isRateLimit = /429|Rate limit/i.test(msg);
-      if (isRateLimit && attempt < MAX_ATTEMPTS) {
-        logger.warn(`[captureBrowserScreenshot] Rate limit (429)、${RATE_LIMIT_WAIT_MS / 1000}s 待機後にリトライ: ${url}`);
-        await new Promise((r) => setTimeout(r, RATE_LIMIT_WAIT_MS));
+      // 429 もコールドプール由来の一過性失敗も、最終 attempt まではリトライする
+      if (attempt < MAX_ATTEMPTS) {
+        const waitMs = isRateLimit ? RATE_LIMIT_WAIT_MS : TRANSIENT_WAIT_MS;
+        logger.warn(`[captureBrowserScreenshot] 呼出失敗 (attempt ${attempt}/${MAX_ATTEMPTS})、${waitMs / 1000}s 待機後にリトライ: ${url} - ${msg}`);
+        await new Promise((r) => setTimeout(r, waitMs));
         continue;
       }
-      logger.warn(`[captureBrowserScreenshot] CF Worker 呼出失敗 (attempt ${attempt}/${MAX_ATTEMPTS}): ${url} - ${msg}`);
+      logger.warn(`[captureBrowserScreenshot] CF Worker 呼出失敗 (final attempt ${attempt}/${MAX_ATTEMPTS}): ${url} - ${msg}`);
       return null;
     }
   }

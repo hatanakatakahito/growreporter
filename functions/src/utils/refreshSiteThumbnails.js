@@ -40,16 +40,26 @@ export async function refreshSiteThumbnails({ siteId, siteUrl, forceRefresh = fa
     forceRefresh,
   });
 
-  if (captured.error) {
-    logger.warn(
-      `[refreshSiteThumbnails] capture failed (${captured.error}): ${siteUrl} - ${captured.message || ''}`
-    );
-    return { error: captured.error, message: captured.message };
-  }
-
+  // 成功した viewport だけでも保存する (部分成功を捨てない)。
+  // captured.error が立っていても pc / mobile のどちらかが撮れていれば updates に積む。
   const updates = {};
   if (captured.pc?.screenshotUrl) updates.pcScreenshotUrl = captured.pc.screenshotUrl;
   if (captured.mobile?.screenshotUrl) updates.mobileScreenshotUrl = captured.mobile.screenshotUrl;
+
+  // 何も撮れなかった場合のみ失敗として返す (既存サムネは上書きしない)。
+  if (Object.keys(updates).length === 0) {
+    logger.warn(
+      `[refreshSiteThumbnails] capture failed (${captured.error || 'no_screenshot'}): ${siteUrl} - ${captured.message || ''}`
+    );
+    return { error: captured.error || 'no_screenshot', message: captured.message };
+  }
+
+  // 片側だけ成功 (部分成功) の場合は警告を残しつつ、成功分を保存して続行する。
+  if (captured.error) {
+    logger.warn(
+      `[refreshSiteThumbnails] partial capture (${captured.error}): ${siteUrl} - saving [${Object.keys(updates).join(', ')}]`
+    );
+  }
 
   if (persist && Object.keys(updates).length > 0) {
     try {

@@ -33,7 +33,13 @@ const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24h
 //   rs-v3: Worker に Google Maps iframe scrollIntoView + 4s 待機を追加 (空白マップ問題対策)
 export const RENDER_SHOT_VERSION = 'rs-v3';
 const RATE_LIMIT_WAIT_MS = 25_000;
-const MAX_ATTEMPTS = 2;
+// コールドプール由来の一過性失敗 (page-dead-after-goto / Target closed / timeout 等) の
+// リトライ前待機。CF BR の warm session が立ち上がる猶予を与える目的で短めに設定。
+const TRANSIENT_WAIT_MS = 8_000;
+// 2 → 3 に増やしてコールドプール初回 goto ハングを救済する。
+// サイト登録のような単発撮影では warm session が無く、1 回目はほぼ必ず page-dead で死ぬため、
+// リトライで「直前 attempt が温めた / 別 session を掴む」ことを狙う。
+const MAX_ATTEMPTS = 3;
 
 function buildHash(viewport, pageUrl, fullPage = true) {
   // fullPage:true は既存ハッシュ算出と完全互換 (改善 Before / preheat / mockup の cache 維持)
@@ -145,14 +151,19 @@ async function captureSingleViewport({ siteId, pageUrl, viewport, forceRefresh, 
       lastError = err;
       const msg = err?.message || '';
       const isRateLimit = /429|Rate limit/i.test(msg);
-      if (isRateLimit && attempt < MAX_ATTEMPTS) {
+      // 429 (rate limit) も page-dead-after-goto / Target closed / timeout 等の
+      // コールドプール由来の一過性失敗も、最終 attempt まではリトライする。
+      // (旧実装は 429 のみリトライ → コールドハングが BR_FAILED 即死していたのが
+      //  サイト登録時スクショ「ほぼ100%失敗」の主因だった)
+      if (attempt < MAX_ATTEMPTS) {
+        const waitMs = isRateLimit ? RATE_LIMIT_WAIT_MS : TRANSIENT_WAIT_MS;
         logger.warn(
-          `[captureRenderAndScreenshot] rate limit (429), waiting ${RATE_LIMIT_WAIT_MS / 1000}s: ${pageUrl}`
+          `[captureRenderAndScreenshot] worker call failed (attempt ${attempt}/${MAX_ATTEMPTS}), retrying after ${waitMs / 1000}s: ${pageUrl} - ${msg}`
         );
-        await new Promise((r) => setTimeout(r, RATE_LIMIT_WAIT_MS));
+        await new Promise((r) => setTimeout(r, waitMs));
         continue;
       }
-      logger.warn(`[captureRenderAndScreenshot] worker error (attempt ${attempt}): ${pageUrl} - ${msg}`);
+      logger.warn(`[captureRenderAndScreenshot] worker error (final attempt ${attempt}/${MAX_ATTEMPTS}): ${pageUrl} - ${msg}`);
       const errorCode = isRateLimit
         ? 'BR_RATE_LIMITED'
         : err?.name === 'AbortError'
@@ -306,9 +317,15 @@ export async function captureRenderAndScreenshot(siteId, pageUrl, options = {}) 
     if (r.error) {
       result.error = r.error;
       result.message = r.message;
-      // 1 viewport が失敗したら以降をスキップ (rate limit が原因の可能性大)
-      logger.warn(`[captureRenderAndScreenshot] ${vp} failed (${r.error}), skipping remaining viewports: ${pageUrl}`);
-      break;
+      // BR_RATE_LIMITED は残り viewport もほぼ確実に失敗する (枠枯渇) ので中断して無駄打ちを避ける。
+      // それ以外 (コールドプール由来 BR_FAILED 等) は残り viewport を試す。
+      // → 片方 (例: pc) だけでも撮れれば保存できるようにし、部分成功を捨てない。
+      if (r.error === 'BR_RATE_LIMITED') {
+        logger.warn(`[captureRenderAndScreenshot] ${vp} rate-limited, skipping remaining viewports: ${pageUrl}`);
+        break;
+      }
+      logger.warn(`[captureRenderAndScreenshot] ${vp} failed (${r.error}), continuing to remaining viewports: ${pageUrl}`);
+      continue;
     }
     result[vp] = {
       htmlUrl: r.htmlUrl,
