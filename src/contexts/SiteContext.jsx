@@ -257,10 +257,31 @@ export function SiteProvider({ children }) {
         // allowedSiteIds に含まれる siteId を個別 getDoc で取得する。
         // (where('userId', '==', accountOwnerId) は割当外サイトが含まれると
         //  rules で全件 PERMISSION_DENIED になるため使えない)
+        // ============================================================
+        // 「自分が所有するサイト」∪「共有されているサイト」の和集合を取得
+        // ============================================================
+        // 二層アイデンティティ対応: ユーザーは自分のアカウントの owner であると同時に
+        // 他アカウントの member (editor/viewer) にもなれる。招待受諾で memberRole が
+        // editor 等に上書きされても「自分が登録したサイト」は必ず表示する。
+        // (旧実装は memberRole が member だと allowedSiteIds の共有サイトしか出さず、
+        //  自分の所有サイトが個人画面から消える不具合があった)
         const memberRole = userData?.memberRole || 'owner';
         const isMemberRole = memberRole === 'editor' || memberRole === 'viewer';
-        let sitesData = [];
+        const sitesMap = new Map(); // id で重複排除
+
+        // 1) 自分が直接所有するサイト (userId == 自分の uid) — 常に取得
+        try {
+          const ownSnap = await getDocs(
+            query(collection(db, 'sites'), where('userId', '==', currentUser.uid))
+          );
+          ownSnap.docs.forEach((d) => sitesMap.set(d.id, { id: d.id, ...d.data() }));
+          console.log('[SiteContext] 自分の所有サイト数:', ownSnap.size);
+        } catch (e) {
+          console.warn('[SiteContext] 自分の所有サイト取得エラー:', e?.message);
+        }
+
         if (isMemberRole) {
+          // 2a) メンバー: allowedSiteIds の共有サイトを getDoc で取得して合流
           const allowedSiteIds = Array.isArray(userData?.allowedSiteIds) ? userData.allowedSiteIds : [];
           if (allowedSiteIds.length === 0) {
             console.log(`[SiteContext] ${memberRole} に割当サイトなし`);
@@ -268,21 +289,21 @@ export function SiteProvider({ children }) {
             const docs = await Promise.all(
               allowedSiteIds.map((sid) => getDoc(doc(db, 'sites', sid)))
             );
-            sitesData = docs
-              .filter((d) => d.exists())
-              .map((d) => ({ id: d.id, ...d.data() }));
-            console.log(`[SiteContext] ${memberRole} 取得サイト数:`, sitesData.length);
+            docs.filter((d) => d.exists()).forEach((d) => sitesMap.set(d.id, { id: d.id, ...d.data() }));
+            console.log(`[SiteContext] ${memberRole} 共有サイト数:`, docs.filter((d) => d.exists()).length);
           }
-        } else {
-          // owner: 従来通り accountOwnerId で query
-          const q = query(
-            collection(db, 'sites'),
-            where('userId', '==', accountOwnerId)
+        } else if (accountOwnerId && accountOwnerId !== currentUser.uid) {
+          // 2b) owner だが accountOwnerId が自分以外 (アカウント移管/共有アカウント代表) の場合のみ
+          //     追加クエリで合流。accountOwnerId == 自分の uid のときは 1) と重複するのでスキップ。
+          const querySnapshot = await getDocs(
+            query(collection(db, 'sites'), where('userId', '==', accountOwnerId))
           );
-          const querySnapshot = await getDocs(q);
-          console.log('[SiteContext] owner 取得サイト数:', querySnapshot.size);
-          sitesData = querySnapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+          querySnapshot.docs.forEach((d) => sitesMap.set(d.id, { id: d.id, ...d.data() }));
+          console.log('[SiteContext] アカウント代表サイト数:', querySnapshot.size);
         }
+
+        let sitesData = Array.from(sitesMap.values());
+        console.log('[SiteContext] 合計サイト数 (和集合):', sitesData.length);
 
         // クライアント側でソート
         sitesData.sort((a, b) => {
