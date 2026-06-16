@@ -36,23 +36,30 @@ service cloud.firestore {
                accountOwnerId in userDoc.data.memberships));
     }
 
-    // メンバーの権限を取得
-    function getMemberRole() {
+    // メンバーの権限を取得（アカウント別ロール）
+    // 指定アカウント(accountOwnerId)における自分のロールを memberships から解決する。
+    // memberships に該当アカウントが無い場合のみ、後方互換でトップレベル memberRole を参照。
+    // → 「自分のアカウントでは owner、招待先アカウントでは editor」を正しく評価し、
+    //   グローバル memberRole による他アカウントへの権限昇格を防ぐ（二層アイデンティティ対応）。
+    function getMemberRole(accountOwnerId) {
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-             'memberRole' in userDoc.data ? userDoc.data.memberRole : 'owner';
+      return !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ? 'owner'
+        : ((userDoc.data.keys().hasAny(['memberships']) && accountOwnerId in userDoc.data.memberships)
+            ? userDoc.data.memberships[accountOwnerId].role
+            : ('memberRole' in userDoc.data ? userDoc.data.memberRole : 'owner'));
     }
 
-    // オーナーまたは編集者かチェック
+    // オーナーまたは編集者かチェック（指定アカウントにおけるロールで判定）
     function isOwnerOrEditor(accountOwnerId) {
-      return isAccountMember(accountOwnerId) && getMemberRole() in ['owner', 'editor'];
+      return isAccountMember(accountOwnerId) && getMemberRole(accountOwnerId) in ['owner', 'editor'];
     }
 
     // メンバー（editor/viewer）がこのサイトにアクセスできるか
-    // owner は無制限。editor/viewer は users.allowedSiteIds に siteId が含まれている場合のみ可
+    // owner は無制限。editor/viewer は users.allowedSiteIds に siteId が含まれている場合のみ可。
+    // ロールは「サイト所有者のアカウントにおける自分のロール」で判定（アカウント別）。
     function memberCanReadSite(siteId) {
       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid));
-      return getMemberRole() == 'owner' ||
+      return getMemberRole(get(/databases/$(database)/documents/sites/$(siteId)).data.userId) == 'owner' ||
              ('allowedSiteIds' in userDoc.data && siteId in userDoc.data.allowedSiteIds);
     }
 
@@ -397,9 +404,10 @@ service cloud.firestore {
       );
 
       // 作成: オーナーのみ。他人を招待するときに自分が accountOwnerId を持つ必要あり
+      // （自分のアカウントにおけるロールで判定。アカウント別 getMemberRole）
       allow create: if request.auth != null &&
         request.resource.data.accountOwnerId == request.auth.uid &&
-        getMemberRole() == 'owner';
+        getMemberRole(request.resource.data.accountOwnerId) == 'owner';
 
       // 更新:
       //   - 招待された email 所有者: status / acceptedAt のみ書換可（他フィールドは不変）

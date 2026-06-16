@@ -40,8 +40,12 @@ export async function canAccessSite(userId, siteId) {
     //    新仕様: editor / viewer どちらも allowedSiteIds に siteId が含まれている場合のみ許可
     //    （オーナー以外は対象サイト指定式）
     if (memberships[siteOwnerId] || userData.accountOwnerId === siteOwnerId) {
-      const memberRole = userData.memberRole
-        || (memberships[siteOwnerId] && memberships[siteOwnerId].role)
+      // アカウント別ロールを優先（memberships[siteOwnerId].role）。
+      // グローバル memberRole は後方互換のフォールバックのみ。
+      // → 自分のアカウントで owner のユーザーが、招待先アカウントのサイトに対して
+      //   owner 権限に昇格してしまう問題を防ぐ（二層アイデンティティ対応）。
+      const memberRole = (memberships[siteOwnerId] && memberships[siteOwnerId].role)
+        || userData.memberRole
         || 'editor';
       // owner は無制限
       if (memberRole === 'owner') return true;
@@ -107,8 +111,12 @@ export async function canEditSite(userId, siteId) {
     //    （viewer は編集不可）
     if (memberships[siteOwnerId] || userData.accountOwnerId === siteOwnerId) {
       // memberRole は users.memberRole を優先、なければ memberships のロールを参照
-      const memberRole = userData.memberRole
-        || (memberships[siteOwnerId] && memberships[siteOwnerId].role)
+      // アカウント別ロールを優先（memberships[siteOwnerId].role）。
+      // グローバル memberRole は後方互換のフォールバックのみ。
+      // → 自分のアカウントで owner のユーザーが、招待先アカウントのサイトに対して
+      //   owner 権限に昇格してしまう問題を防ぐ（二層アイデンティティ対応）。
+      const memberRole = (memberships[siteOwnerId] && memberships[siteOwnerId].role)
+        || userData.memberRole
         || 'editor';
       // owner は無制限編集
       if (memberRole === 'owner') return true;

@@ -82,7 +82,8 @@ export const acceptInvitationCallable = async (request) => {
       return { success: true, message: '既にメンバーです' };
     }
 
-    // 5. users ドキュメントに membership とトップレベル項目を追加（accountOwnerId / joinedAt / invitedBy / invitedByName）
+    // 5. users ドキュメントに membership を追加。
+    //    membership(memberships マップ)は常に真実の源として記録する。
     memberships[invitation.accountOwnerId] = {
       role: invitation.role,
       joinedAt: FieldValue.serverTimestamp(),
@@ -90,17 +91,37 @@ export const acceptInvitationCallable = async (request) => {
       invitedByName: invitation.invitedByName || ''
     };
 
-    const joinedAt = FieldValue.serverTimestamp();
+    // 二層アイデンティティ対応:
+    //   自分のアカウントを持つ business/paid ユーザー(自己所有者)は、招待を受けても
+    //   トップレベル accountOwnerId / memberRole を上書きしない(自分のアカウント識別を保持)。
+    //   → これをしないと、自己所有者が招待を受けた瞬間に自分の所有サイト/プランが
+    //     招待先アカウントに乗っ取られる(蒲さん事象, 2026-06-16)。
+    //   純粋メンバー(自分の所有アカウントを持たない無料ユーザー等)は従来通りトップレベルを
+    //   招待先で上書きし、オーナーのプラン枠共有などの既存挙動を維持する。
+    //   ※ ロール解決はルール/permissionHelper で memberships[ownerId].role を優先するため、
+    //     自己所有者の memberRole=owner が他アカウントへの権限昇格になることはない。
+    const normalizedPlan = String(userData.plan || 'free').toLowerCase().trim();
+    const isSelfOwner = ['business', 'standard', 'premium', 'paid'].includes(normalizedPlan);
+
     const updateData = {
-      accountOwnerId: invitation.accountOwnerId,
-      memberRole: invitation.role,
-      joinedAt,
-      invitedBy: invitation.invitedBy ?? null,
-      invitedByName: invitation.invitedByName || null,
       memberships,
       updatedAt: FieldValue.serverTimestamp()
     };
-    // editor / viewer どちらも allowedSiteIds でサイト指定式（オーナーは除外）
+    if (!isSelfOwner) {
+      // 純粋メンバー: トップレベルを招待先アカウントで上書き(従来挙動)
+      updateData.accountOwnerId = invitation.accountOwnerId;
+      updateData.memberRole = invitation.role;
+      updateData.joinedAt = FieldValue.serverTimestamp();
+      updateData.invitedBy = invitation.invitedBy ?? null;
+      updateData.invitedByName = invitation.invitedByName || null;
+    } else {
+      logger.info('[acceptInvitation] 自己所有者のためトップレベル accountOwnerId/memberRole を保持', {
+        uid, plan: normalizedPlan, invitedToAccount: invitation.accountOwnerId, role: invitation.role
+      });
+    }
+    // editor / viewer どちらも allowedSiteIds でサイト指定式(オーナーは除外)。
+    // 自己所有者も共有サイトへのアクセスに allowedSiteIds が必要なため設定する
+    // (自分の所有サイトは sites.userId クエリで取得するので衝突しない)。
     if (invitation.role === 'editor' || invitation.role === 'viewer') {
       updateData.allowedSiteIds = Array.isArray(invitation.allowedSiteIds) ? invitation.allowedSiteIds : [];
     } else {
