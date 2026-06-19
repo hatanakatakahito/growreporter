@@ -123,7 +123,7 @@ export const dashboardSteps = [
     element: sel(TOUR_TARGETS.METRIC_TAB_SUMMARY),
     popover: {
       title: '主要サマリータブ',
-      description: 'セッション数・ユーザー数・1セッションあたりPV・直帰率・平均セッション時間・コンバージョン数など、サイトの主要指標をカード形式で一覧表示します。各カードには前月比・前年同月比が自動計算されます。',
+      description: 'セッション数・ユーザー数・1セッションあたりPV・直帰率・平均セッション時間・コンバージョン数など、サイトの主要指標をカード形式で一覧表示します。各カードには前期間比・前年同月比が自動計算されます。',
     },
   },
   {
@@ -434,14 +434,14 @@ export const analysisSummaryFreeSteps = [
     element: sel(TOUR_TARGETS.ANALYSIS_PERIOD),
     popover: {
       title: '期間設定',
-      description: '全体サマリーの対象期間を設定します。選択した期間の主要指標を前月比・前年比と一緒に一画面で確認できます。',
+      description: '全体サマリーの対象期間を設定します。選択した期間の主要指標を前期間比・前年比と一緒に一画面で確認できます。',
     },
   },
   {
     element: sel(TOUR_TARGETS.METRIC_TAB_SUMMARY),
     popover: {
       title: '主要サマリータブ',
-      description: 'セッション数・ユーザー数・1セッションあたりPV・直帰率・平均セッション時間・コンバージョン数など、サイトの主要指標をカード形式で一覧表示します。各カードには前月比・前年同月比が自動計算されます。',
+      description: 'セッション数・ユーザー数・1セッションあたりPV・直帰率・平均セッション時間・コンバージョン数など、サイトの主要指標をカード形式で一覧表示します。各カードには前期間比・前年同月比が自動計算されます。',
     },
   },
   {
