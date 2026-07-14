@@ -40,7 +40,7 @@ export default function KpiSummaryCards({ kpi, meetingType = 'close', hideCopy =
         <h2 className="flex items-center gap-2 text-[15px] font-semibold text-slate-800">
           {collapsible && <CollapseToggle collapsed={collapsed} onToggle={() => setCollapsed((c) => !c)} />}
           <BarChart3 className="h-4 w-4 text-slate-400" />
-          サマリー指標（{L.before} → {L.after}）
+          サマリー指標
         </h2>
         <div className={`flex items-center gap-2 ${collapsed ? 'hidden' : ''}`}>
           <div className="inline-flex rounded-md border border-stroke p-0.5 text-xs">

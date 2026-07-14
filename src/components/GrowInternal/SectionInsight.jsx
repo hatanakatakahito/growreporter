@@ -30,7 +30,9 @@ export default function SectionInsight({
   const mut = useCloseMeetingSectionInsight();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
-  const [hidden, setHidden] = useState(false);
+  // 内部レポートでは各セクションの AI 考察を既定で非表示（「表示」で開く）。
+  // 共有ページ（readOnly）は生成済みの考察を既定で表示する。
+  const [hidden, setHidden] = useState(!readOnly);
 
   const text = insight?.text || '';
   const busy = mut.isPending;

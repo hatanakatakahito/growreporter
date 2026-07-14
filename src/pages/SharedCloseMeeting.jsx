@@ -8,7 +8,7 @@ import TimelineChart from '../components/GrowInternal/TimelineChart';
 import BreakdownTable from '../components/GrowInternal/BreakdownTable';
 import SectionInsight from '../components/GrowInternal/SectionInsight';
 import CloseMeetingAiSummaryBody from '../components/GrowInternal/CloseMeetingAiSummaryBody';
-import { BREAKDOWN_COLUMNS, fmtDate, periodLabels } from '../components/GrowInternal/closeMeetingFormat';
+import { BREAKDOWN_COLUMNS, CV_ITEM_COLUMNS, fmtDate } from '../components/GrowInternal/closeMeetingFormat';
 
 /** 「YYYY年M月D日 H時MM分」（秒は出さない） */
 function fmtJpDateTime(value) {
@@ -86,7 +86,6 @@ export default function SharedCloseMeeting() {
   const isAfter = (meetingMeta?.type || 'close') === 'after';
   const meetingSeq = Number(meetingMeta?.seq) > 0 ? Number(meetingMeta.seq) : 1;
   const meetingType = isAfter ? 'after' : 'close';
-  const L = periodLabels(meetingType);
   const reportLabel = isAfter ? `アフターMTG #${meetingSeq} レポート` : 'リニューアル公開後レポート';
 
   // タイトル + noindex メタ（クライアント側。検索除外はホスティングの X-Robots-Tag でも担保）
@@ -152,13 +151,16 @@ export default function SharedCloseMeeting() {
             )}
 
             {breakdowns.channels?.rows?.length > 0 && (
-              <BreakdownTable title={`チャネル別（${L.before} → ${L.after}）`} meetingType={meetingType} breakdown={breakdowns.channels} columns={BREAKDOWN_COLUMNS.channels} defaultColumns={['sessions']} hasComparison={hasComparison} hideCopy footer={roInsight('channels')} />
+              <BreakdownTable title="チャネル別" meetingType={meetingType} breakdown={breakdowns.channels} columns={BREAKDOWN_COLUMNS.channels} defaultColumns={['sessions']} hasComparison={hasComparison} hideCopy footer={roInsight('channels')} />
             )}
             {breakdowns.pages?.rows?.length > 0 && (
-              <BreakdownTable title={`ページ別（${L.before} → ${L.after}）`} meetingType={meetingType} breakdown={breakdowns.pages} columns={BREAKDOWN_COLUMNS.pages} defaultColumns={['screenPageViews']} hasComparison={hasComparison} topN={20} hideCopy footer={roInsight('pages')} />
+              <BreakdownTable title="ページ別（上位20）" meetingType={meetingType} breakdown={breakdowns.pages} columns={BREAKDOWN_COLUMNS.pages} defaultColumns={['screenPageViews']} hasComparison={hasComparison} topN={20} hideCopy footer={roInsight('pages')} />
             )}
             {breakdowns.devices?.rows?.length > 0 && (
-              <BreakdownTable title={`デバイス別（${L.before} → ${L.after}）`} meetingType={meetingType} breakdown={breakdowns.devices} columns={BREAKDOWN_COLUMNS.devices} defaultColumns={['sessions']} hasComparison={hasComparison} hideCopy footer={roInsight('devices')} />
+              <BreakdownTable title="デバイス別" meetingType={meetingType} breakdown={breakdowns.devices} columns={BREAKDOWN_COLUMNS.devices} defaultColumns={['sessions']} hasComparison={hasComparison} hideCopy footer={roInsight('devices')} />
+            )}
+            {breakdowns.conversionItems?.rows?.length > 0 && (
+              <BreakdownTable title="コンバージョン項目別" meetingType={meetingType} breakdown={breakdowns.conversionItems} columns={CV_ITEM_COLUMNS} defaultColumns={['conversions']} hasComparison={hasComparison} defaultView="table" hideCopy footer={roInsight('conversionItems')} />
             )}
 
             <AiSummaryDisplay aiSummary={data.aiSummary} title={isAfter ? '総括' : '公開後の総括'} />

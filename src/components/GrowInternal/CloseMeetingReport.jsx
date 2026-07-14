@@ -6,19 +6,18 @@ import ConsultantNotesForm from './ConsultantNotesForm';
 import KpiSummaryCards from './KpiSummaryCards';
 import TimelineChart from './TimelineChart';
 import BreakdownTable from './BreakdownTable';
-import KpiTargetTable from './KpiTargetTable';
 import CloseMeetingAiSummary from './CloseMeetingAiSummary';
 import SectionInsight from './SectionInsight';
-import { BREAKDOWN_COLUMNS, KEYWORD_COLUMNS, periodLabels } from './closeMeetingFormat';
+import { BREAKDOWN_COLUMNS, CV_ITEM_COLUMNS, KEYWORD_COLUMNS } from './closeMeetingFormat';
 import { comparisonModeLabel } from '../../utils/closeMeetingPeriod';
 import {
   summaryLines,
   timelineLines,
   channelsLines,
   devicesLines,
+  conversionItemsLines,
   pagesLines,
   keywordsLines,
-  kpiTargetLines,
 } from '../../utils/closeMeetingInsightLines';
 
 // セクション見出しのアイコン（線アイコン）
@@ -34,12 +33,9 @@ const IconDevice = (
 const IconKeyword = (
   <svg className="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="7" strokeWidth="1.7" /><path d="M21 21l-4.3-4.3" strokeWidth="1.7" strokeLinecap="round" /></svg>
 );
-
-function observationDays(range) {
-  if (!range?.from || !range?.to) return null;
-  const d = Math.round((new Date(range.to) - new Date(range.from)) / 86400000) + 1;
-  return Number.isFinite(d) && d > 0 ? d : null;
-}
+const IconConversion = (
+  <svg className="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="9" strokeWidth="1.7" /><circle cx="12" cy="12" r="4.5" strokeWidth="1.7" /><circle cx="12" cy="12" r="0.5" strokeWidth="1.7" /></svg>
+);
 
 function aiExcerptOf(record) {
   const s = record?.aiSummary?.summary;
@@ -51,12 +47,11 @@ function aiExcerptOf(record) {
 /**
  * クローズMTGレポート本体（C案レイアウト：1スクロール・各セクションを白カード化）
  *  注意バナー → 担当者メモ → サマリー指標（先頭にAI要旨）→ 公開前後の推移
- *  → チャネル別 → ページ別 → デバイス別 → KPI予実 → AI総括（公開後・全文）
+ *  → チャネル別 → ページ別 → デバイス別 → コンバージョン項目別 → AI総括（公開後・全文）
  */
 export default function CloseMeetingReport({
   data,
   record,
-  selectedSite,
   onSaveNotes,
   launchDate,
   observationRange,
@@ -83,10 +78,7 @@ export default function CloseMeetingReport({
   }
 
   const hasComparison = !!kpi?.hasComparison;
-  const kpiList = selectedSite?.kpiSettings?.kpiList;
-  const obsDays = observationDays(observationRange);
   const meetingType = record?.meetingType || 'close';
-  const L = periodLabels(meetingType);
 
   // 各セクション AI 考察の共通プロパティ
   const recordId = record?.id;
@@ -154,26 +146,23 @@ export default function CloseMeetingReport({
         <div className="rounded-xl border border-stroke bg-white shadow-sm"><LoadingSpinner message="ブレイクダウンを集計中…" /></div>
       ) : (
         <>
-          <BreakdownTable title={`チャネル別（${L.before} → ${L.after}）`} meetingType={meetingType} icon={IconChannel} breakdown={breakdowns?.channels} columns={BREAKDOWN_COLUMNS.channels} defaultColumns={['sessions']} hasComparison={hasComparison} collapsible
+          <BreakdownTable title="チャネル別" meetingType={meetingType} icon={IconChannel} breakdown={breakdowns?.channels} columns={BREAKDOWN_COLUMNS.channels} defaultColumns={['sessions']} hasComparison={hasComparison} collapsible
             footer={renderInsight('channels', channelsLines(breakdowns?.channels, hasComparison), !breakdowns?.channels?.rows?.length)} />
           {hasGSC && !gscError && (
             isLoadingKeywords ? (
               <div className="rounded-xl border border-stroke bg-white shadow-sm"><LoadingSpinner message="キーワード流入を集計中…" /></div>
             ) : (
-              <BreakdownTable title={`キーワード流入（${L.before} → ${L.after}・上位20）`} meetingType={meetingType} icon={IconKeyword} breakdown={breakdowns?.keywords} columns={KEYWORD_COLUMNS} defaultColumns={['clicks']} hasComparison={hasComparison} topN={20} collapsible
+              <BreakdownTable title="キーワード流入（上位20）" meetingType={meetingType} icon={IconKeyword} breakdown={breakdowns?.keywords} columns={KEYWORD_COLUMNS} defaultColumns={['clicks']} hasComparison={hasComparison} topN={20} collapsible
                 footer={renderInsight('keywords', keywordsLines(breakdowns?.keywords, hasComparison), !breakdowns?.keywords?.rows?.length)} />
             )
           )}
-          <BreakdownTable title={`ページ別（${L.before} → ${L.after}・上位20）`} meetingType={meetingType} icon={IconPage} breakdown={breakdowns?.pages} columns={BREAKDOWN_COLUMNS.pages} defaultColumns={['screenPageViews']} hasComparison={hasComparison} topN={20} collapsible
+          <BreakdownTable title="ページ別（上位20）" meetingType={meetingType} icon={IconPage} breakdown={breakdowns?.pages} columns={BREAKDOWN_COLUMNS.pages} defaultColumns={['screenPageViews']} hasComparison={hasComparison} topN={20} collapsible
             footer={renderInsight('pages', pagesLines(breakdowns?.pages, hasComparison), !breakdowns?.pages?.rows?.length)} />
-          <BreakdownTable title={`デバイス別（${L.before} → ${L.after}）`} meetingType={meetingType} icon={IconDevice} breakdown={breakdowns?.devices} columns={BREAKDOWN_COLUMNS.devices} defaultColumns={['sessions']} hasComparison={hasComparison} collapsible
+          <BreakdownTable title="デバイス別" meetingType={meetingType} icon={IconDevice} breakdown={breakdowns?.devices} columns={BREAKDOWN_COLUMNS.devices} defaultColumns={['sessions']} hasComparison={hasComparison} collapsible
             footer={renderInsight('devices', devicesLines(breakdowns?.devices, hasComparison), !breakdowns?.devices?.rows?.length)} />
+          <BreakdownTable title="コンバージョン項目別" meetingType={meetingType} icon={IconConversion} breakdown={breakdowns?.conversionItems} columns={CV_ITEM_COLUMNS} defaultColumns={['conversions']} hasComparison={hasComparison} collapsible defaultView="table"
+            footer={renderInsight('conversionItems', conversionItemsLines(breakdowns?.conversionItems, hasComparison), !breakdowns?.conversionItems?.rows?.length)} />
         </>
-      )}
-
-      {!isLoadingKpi && kpi?.after && Array.isArray(kpiList) && kpiList.length > 0 && (
-        <KpiTargetTable kpiList={kpiList} actuals={kpi.after} observationDays={obsDays} meetingType={meetingType} collapsible
-          footer={renderInsight('kpiTarget', kpiTargetLines(kpiList, kpi.after, obsDays))} />
       )}
 
       {record && (

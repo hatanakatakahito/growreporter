@@ -26,6 +26,7 @@ import CloseMeetingHeader from '../../components/GrowInternal/CloseMeetingHeader
 import CloseMeetingReport from '../../components/GrowInternal/CloseMeetingReport';
 import ShareLinkButton from '../../components/GrowInternal/ShareLinkButton';
 import CopyMinutesButton from '../../components/GrowInternal/CopyMinutesButton';
+import SaveReportButton from '../../components/GrowInternal/SaveReportButton';
 
 const PAGE_TITLE = 'クローズミーティング';
 const DEFAULT_COMPARISON = { mode: 'yoy' };
@@ -173,6 +174,7 @@ export default function CloseMeeting() {
     granularity,
     hasGSCConnection,
     pathPrefix: pathScope,
+    conversionEventDefs: selectedSite?.conversionEvents || [],
   });
 
   // 前年同期にデータが無ければ「公開前同期間」へ自動フォールバック（クローズMTG のみ・記録ごとに1回）
@@ -315,6 +317,13 @@ export default function CloseMeeting() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <h1 className="text-xl font-bold text-slate-800">{PAGE_TITLE}</h1>
           <div className="flex flex-wrap items-center gap-2">
+            <SaveReportButton
+              record={record}
+              data={reportData}
+              observationRange={observationRange}
+              comparisonRange={comparisonRange}
+              granularity={granularity}
+            />
             <CopyMinutesButton
               siteName={selectedSite?.siteName}
               siteUrl={selectedSite?.siteUrl}

@@ -154,7 +154,7 @@ export const generateCloseMeetingSummaryCallable = async (request) => {
 
 // ── 各セクションの AI 考察（生成して記録に即時保存 / 手動編集の保存） ──
 // 対応セクション（record.sectionInsights のキー）
-const SECTION_KEYS = ['summary', 'timeline', 'channels', 'keywords', 'pages', 'devices', 'kpiTarget'];
+const SECTION_KEYS = ['summary', 'timeline', 'channels', 'keywords', 'pages', 'devices', 'conversionItems', 'kpiTarget'];
 const SECTION_LABELS = {
   summary: 'サマリー指標',
   timeline: '指標の推移',
@@ -162,6 +162,7 @@ const SECTION_LABELS = {
   keywords: 'キーワード流入',
   pages: 'ページ別',
   devices: 'デバイス別',
+  conversionItems: 'コンバージョン項目別',
   kpiTarget: 'KPI 予実',
 };
 

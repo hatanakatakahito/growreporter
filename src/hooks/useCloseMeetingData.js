@@ -118,6 +118,29 @@ function useGa4DimensionRows(siteId, range, dimensions, metrics, dimensionFilter
   });
 }
 
+// deviceCategory（GA4 の生値）→ 日本語表示。未知の値はそのまま表示する。
+const DEVICE_CATEGORY_LABELS = {
+  desktop: 'デスクトップ',
+  mobile: 'モバイル',
+  tablet: 'タブレット',
+  'smart tv': 'スマートTV',
+  smarttv: 'スマートTV',
+  wearable: 'ウェアラブル',
+  console: 'ゲーム機',
+};
+
+/**
+ * deviceCategory を日本語化（マージ前に適用。after/comp 両方を同じ表記に統一するので
+ * keyField でのマージは引き続き一致する）。
+ */
+function localizeDeviceRows(rows) {
+  return (rows || []).map((r) => {
+    const raw = r.deviceCategory;
+    const key = typeof raw === 'string' ? raw.toLowerCase() : raw;
+    return { ...r, deviceCategory: DEVICE_CATEGORY_LABELS[key] || raw };
+  });
+}
+
 /** パス前方一致の GA4 pagePath フィルタを生成（pathPrefix 未指定なら null＝全体） */
 function buildPagePathFilter(pathPrefix) {
   if (!pathPrefix) return null;
@@ -132,6 +155,7 @@ export function useCloseMeetingData({
   granularity = 'day',
   hasGSCConnection = true,
   pathPrefix = null,
+  conversionEventDefs = [],
 }) {
   const obsFrom = observationRange?.from || null;
   const obsTo = observationRange?.to || null;
@@ -219,10 +243,42 @@ export function useCloseMeetingData({
     ),
   };
 
+  // コンバージョン項目別（サイト設定の各CVイベントの件数を前後比較）。
+  // CV件数は KPI（useSiteMetrics 経由）で取得済みの conversionEvents マップ（eventName→件数・パス限定済み）を再利用。
+  // CV率＝そのイベント件数 / 総セッション。追加の GA4 コールは不要。
+  const CV_ITEM_VALUE_FIELDS = ['conversions', 'conversionRate'];
+  const buildConversionItemRow = (def, evMap, sessions) => {
+    const cv = Number(evMap?.[def.eventName]) || 0;
+    return {
+      label: def.displayName || def.eventName,
+      eventName: def.eventName,
+      conversions: cv,
+      conversionRate: sessions > 0 ? cv / sessions : 0,
+    };
+  };
+  const cvDefs = Array.isArray(conversionEventDefs) ? conversionEventDefs.filter((d) => d?.eventName) : [];
+  const afterEvMap = after?.conversionEvents || {};
+  const compEvMap = comparison?.conversionEvents || {};
+  const afterSessions = Number(after?.sessions) || 0;
+  const compSessions = Number(comparison?.sessions) || 0;
+  const conversionItems = {
+    keyField: 'label',
+    keyLabel: 'コンバージョン項目',
+    valueFields: CV_ITEM_VALUE_FIELDS,
+    defaultSortKey: 'conversions',
+    rows: mergeComparisonRows(
+      cvDefs.map((d) => buildConversionItemRow(d, afterEvMap, afterSessions)),
+      hasComparison ? cvDefs.map((d) => buildConversionItemRow(d, compEvMap, compSessions)) : [],
+      'label',
+      CV_ITEM_VALUE_FIELDS
+    ),
+  };
+
   const breakdowns = {
     channels: buildBreakdown(BREAKDOWN_DEFS.channels, channelsAfterQ.data, channelsCompQ.data),
     pages: buildBreakdown(BREAKDOWN_DEFS.pages, pagesAfterQ.data, pagesCompQ.data),
-    devices: buildBreakdown(BREAKDOWN_DEFS.devices, devicesAfterQ.data, devicesCompQ.data),
+    devices: buildBreakdown(BREAKDOWN_DEFS.devices, localizeDeviceRows(devicesAfterQ.data), localizeDeviceRows(devicesCompQ.data)),
+    conversionItems,
     keywords,
   };
 

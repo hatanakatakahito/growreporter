@@ -115,11 +115,13 @@ function prevPeriodRange(obsFrom, obsTo) {
 /**
  * 比較期間（旧サイト側）を算出
  * @param {{from:string,to:string}} observationRange
- * @param {{mode:'yoy'|'prevPeriod'|'custom', range?:{from,to}}} comparison
+ * @param {{mode:'yoy'|'prevPeriod'|'custom'|'none', range?:{from,to}}} comparison
  * @returns {{from:string,to:string,mode:string}}
  */
 export function getComparisonRange(observationRange, comparison) {
   const mode = comparison?.mode || 'yoy';
+  // 比較なし: 比較期間を持たない（観測期間のみ集計）
+  if (mode === 'none') return { from: null, to: null, mode };
   const obsFrom = safeParse(observationRange.from);
   const obsTo = safeParse(observationRange.to);
   if (!obsFrom || !obsTo) return { from: null, to: null, mode };
@@ -140,6 +142,7 @@ export function getComparisonRange(observationRange, comparison) {
  * - meetingType='after' では「旧サイト/公開前」前提を排除し、前期間ベースの表現にする
  */
 export function comparisonModeLabel(mode, meetingType = 'close') {
+  if (mode === 'none') return '比較なし';
   if (meetingType === 'after') {
     switch (mode) {
       case 'yoy':

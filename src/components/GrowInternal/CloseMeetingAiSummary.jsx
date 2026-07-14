@@ -6,6 +6,7 @@ import { useGenerateCloseMeetingSummary, useFinalizeCloseMeeting } from '../../h
 import { comparisonModeLabel } from '../../utils/closeMeetingPeriod';
 import { KPI_GROUPS, formatMetricValue, periodLabels } from './closeMeetingFormat';
 import { formatChangePercent } from '../../utils/comparisonHelpers';
+import { buildCloseMeetingSnapshot } from '../../utils/closeMeetingSnapshot';
 import CloseMeetingAiSummaryBody from './CloseMeetingAiSummaryBody';
 
 function buildKpiLines(kpi) {
@@ -40,6 +41,11 @@ function buildBreakdownBlocks(breakdowns, hasComparison, labels) {
   const devices = breakdowns?.devices;
   if (devices?.rows?.length) {
     blocks.push({ title: 'デバイス別', lines: devices.rows.map((r) => fmtBreakdownRow(r, devices.keyField, 'sessions', 'number', hasComparison)) });
+  }
+  const cvItems = breakdowns?.conversionItems;
+  if (cvItems?.rows?.length) {
+    const sorted = [...cvItems.rows].sort((a, b) => (Number(b.conversions) || 0) - (Number(a.conversions) || 0));
+    blocks.push({ title: 'コンバージョン項目別', lines: sorted.map((r) => fmtBreakdownRow(r, cvItems.keyField, 'conversions', 'number', hasComparison)) });
   }
   const pages = breakdowns?.pages;
   if (pages?.rows?.length) {
@@ -141,32 +147,7 @@ export default function CloseMeetingAiSummary({ record, data, observationRange, 
         : '現在の数値・グラフ・AI 総括を「確定」として保存します。よろしいですか？'
     );
     if (!ok) return;
-    const pages = data?.breakdowns?.pages;
-    const snapshot = {
-      meeting: {
-        type: record?.meetingType || 'close',
-        seq: record?.meetingSeq || 1,
-        date: record?.meetingDate || null,
-        label: record?.label || '',
-      },
-      period: {
-        observation: observationRange ? { from: observationRange.from, to: observationRange.to } : null,
-        comparison: comparisonRange?.from ? { from: comparisonRange.from, to: comparisonRange.to } : null,
-        comparisonMode: comparisonRange?.mode || null,
-        granularity: granularity || null,
-        isPartial: !!observationRange?.partial,
-      },
-      kpi: data?.kpi || null,
-      timeseries: data?.timeseries || [],
-      breakdowns: {
-        channels: data?.breakdowns?.channels || null,
-        devices: data?.breakdowns?.devices || null,
-        pages: pages ? { ...pages, rows: (pages.rows || []).slice(0, 50) } : null,
-      },
-      notesSnapshot: record?.consultantNotes || {},
-      // 各セクションの AI 考察（確定時点のものを焼き込み。共有レポートでも表示）
-      sectionInsights: record?.sectionInsights || {},
-    };
+    const snapshot = buildCloseMeetingSnapshot({ record, data, observationRange, comparisonRange, granularity });
     finalizeMut.mutate(
       { recordId, snapshot, aiSummary: displayed },
       {

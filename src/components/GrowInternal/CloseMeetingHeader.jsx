@@ -18,7 +18,7 @@ const isDateStr = (s) => DATE_RE.test(s || '') && !Number.isNaN(Date.parse(s));
 const CONTROL_H = 'h-9';
 const LAUNCH_INPUT_CLS = `${CONTROL_H} rounded-md border border-stroke px-2 text-sm text-slate-800 focus:border-primary focus:outline-none`;
 const DROPDOWN_BTN_CLS = `inline-flex ${CONTROL_H} items-center gap-2 rounded-md border border-stroke bg-white px-3 text-sm text-slate-700 transition hover:bg-gray-50`;
-const COMPARISON_MODES = ['yoy', 'prevPeriod', 'custom'];
+const COMPARISON_MODES = ['yoy', 'prevPeriod', 'custom', 'none'];
 
 function Field({ label, children }) {
   return (
@@ -314,6 +314,8 @@ export default function CloseMeetingHeader({
               triggerClassName={DROPDOWN_BTN_CLS}
               showChevron
             />
+          ) : compMode === 'none' ? (
+            <span className="text-xs text-slate-400">観測期間（公開後）のみ集計します</span>
           ) : (
             comparisonRange?.from && (
               <span className="text-xs text-slate-400">

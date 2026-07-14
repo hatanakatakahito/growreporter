@@ -67,6 +67,18 @@ export function channelsLines(bd, hasComparison) {
 export function devicesLines(bd, hasComparison) {
   return breakdownLines(bd, 'sessions', 'number', hasComparison);
 }
+/** コンバージョン項目別 — CV数の多い順。CV率も併記する */
+export function conversionItemsLines(bd, hasComparison) {
+  if (!bd?.rows?.length) return [];
+  const sorted = [...bd.rows].sort((a, b) => (Number(b.conversions) || 0) - (Number(a.conversions) || 0));
+  return sorted.map((r) => {
+    const name = r[bd.keyField] || '(なし)';
+    const cv = formatMetricValue(r.conversions, 'number');
+    const ch = hasComparison && r.conversions_change != null ? `（${formatChangePercent(r.conversions_change)}）` : '';
+    const rate = formatMetricValue(r.conversionRate, 'percent');
+    return `${name}: CV ${cv}${ch} / CV率 ${rate}`;
+  });
+}
 export function pagesLines(bd, hasComparison) {
   return breakdownLines(bd, 'screenPageViews', 'number', hasComparison, 10);
 }

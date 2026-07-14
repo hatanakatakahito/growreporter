@@ -146,6 +146,16 @@ export const BREAKDOWN_COLUMNS = {
 };
 
 /**
+ * 「コンバージョン項目別」テーブルの指標列。
+ * conversions（CV数）＝そのコンバージョンイベントの件数、conversionRate（CV率）＝CV数 / 総セッション。
+ * サイト設定の各コンバージョンイベント（displayName）を行に、CV数・CV率を前後比較で並べる。
+ */
+export const CV_ITEM_COLUMNS = [
+  { key: 'conversions', label: 'CV数', format: 'number' },
+  { key: 'conversionRate', label: 'CV率', format: 'percent' },
+];
+
+/**
  * キーワード流入（Search Console query）テーブルの指標列。
  * GSC は clicks / impressions / ctr / position の4指標。position は小さいほど良い（invert）。
  */

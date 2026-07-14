@@ -130,15 +130,26 @@ function BreakdownChart({ rows, keyField, metricCol, hasComparison, topN, chartR
     return capped.map((r) => {
       const prev = r[`${metricKey}_prev`];
       return {
-        name: truncate(r[keyField] || '(なし)', 26),
+        name: truncate(r[keyField] || '(なし)', 22),
         after: Number(r[metricKey]) || 0,
         before: hasComparison && prev != null ? Number(prev) : null,
       };
     });
   }, [rows, keyField, metricKey, hasComparison, topN]);
 
-  const maxNameLen = data.reduce((m, d) => Math.max(m, d.name.length), 0);
-  const yAxisWidth = Math.min(240, Math.max(108, Math.round(maxNameLen * 7.6)));
+  // Y軸ラベル幅を全角/半角を区別して推定（fontSize 13: 全角≒13px / 半角≒7.2px）。
+  // 半角基準だと日本語ラベルの推定幅が不足し、左端の文字が切れるため。
+  // 全角判定: CJK記号・かな・漢字・全角英数記号（半角カナ ｡-ﾟ は除外）
+  const CJK_WIDE = /[\u3000-\u30ff\u3400-\u9fff\uf900-\ufaff\uff00-\uffef]/;
+  const estLabelPx = (s) => {
+    let w = 0;
+    for (const ch of String(s)) {
+      w += CJK_WIDE.test(ch) ? 13 : 7.2;
+    }
+    return w;
+  };
+  const maxLabelPx = data.reduce((m, d) => Math.max(m, estLabelPx(d.name)), 0);
+  const yAxisWidth = Math.min(288, Math.max(108, Math.round(maxLabelPx) + 16));
   const height = Math.max(260, data.length * 48 + (hasComparison ? 44 : 16) + 16);
 
   const fmtTick = (v) => {
@@ -202,6 +213,7 @@ export default function BreakdownTable({
   meetingType = 'close',
   footer = null,
   collapsible = false,
+  defaultView = 'chart',
 }) {
   const tableRef = useRef(null);
   const chartRef = useRef(null);
@@ -214,7 +226,7 @@ export default function BreakdownTable({
     return d.length ? d : allKeys.slice(0, 1);
   }, [defaultColumns, allKeys]);
 
-  const [viewMode, setViewMode] = useState('chart');
+  const [viewMode, setViewMode] = useState(defaultView);
   const [visibleKeys, setVisibleKeys] = useState(defaultKeys);
   const visibleColumns = useMemo(() => columns.filter((c) => visibleKeys.includes(c.key)), [columns, visibleKeys]);
 

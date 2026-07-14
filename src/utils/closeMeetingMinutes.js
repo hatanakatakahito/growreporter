@@ -7,7 +7,7 @@
  */
 import { comparisonModeLabel } from './closeMeetingPeriod';
 import { formatChangePercent } from './comparisonHelpers';
-import { fmtDate, KPI_GROUPS, BREAKDOWN_COLUMNS, formatMetricValue, meetingSessionLabel, periodLabels } from '../components/GrowInternal/closeMeetingFormat';
+import { fmtDate, KPI_GROUPS, BREAKDOWN_COLUMNS, CV_ITEM_COLUMNS, formatMetricValue, meetingSessionLabel, periodLabels } from '../components/GrowInternal/closeMeetingFormat';
 
 const esc = (s) =>
   String(s ?? '')
@@ -91,6 +91,39 @@ function breakdownTable(breakdown, columns, metricKey, hasComparison, topN) {
   return `${TABLE_OPEN}<thead>${head}</thead><tbody>${body}</tbody></table>`;
 }
 
+/**
+ * コンバージョン項目別テーブル：1 表に CV数 と CV率 を並べる（各指標を 公開前/公開後/増減 で）。
+ * 通常のブレイクダウン（breakdownTable）が1指標のみなのに対し、CV は数と率の両方を見せたいので専用。
+ */
+function conversionItemsTable(breakdown, hasComparison) {
+  if (!breakdown?.rows?.length) return '<p>データなし</p>';
+  const cols = CV_ITEM_COLUMNS;
+  const rows = [...breakdown.rows].sort((a, b) => (Number(b.conversions) || 0) - (Number(a.conversions) || 0));
+  const head = hasComparison
+    ? `<tr><th>${esc(breakdown.keyLabel)}</th>${cols
+        .map((c) => `<th>${esc(c.label)}（公開前）</th><th>${esc(c.label)}（公開後）</th><th>増減</th>`)
+        .join('')}</tr>`
+    : `<tr><th>${esc(breakdown.keyLabel)}</th>${cols.map((c) => `<th>${esc(c.label)}（公開後）</th>`).join('')}</tr>`;
+  const body = rows
+    .map((r) => {
+      const name = esc(String(r[breakdown.keyField] || '(なし)').replace(/\s+/g, ' ').trim());
+      const cells = cols
+        .map((c) => {
+          const a = formatMetricValue(r[c.key], c.format);
+          if (!hasComparison) return `<td>${esc(a)}</td>`;
+          const prev = r[`${c.key}_prev`];
+          const b = prev == null ? '—' : formatMetricValue(prev, c.format);
+          const ch = r[`${c.key}_change`];
+          const cc = ch == null ? '—' : formatChangePercent(ch);
+          return `<td>${esc(b)}</td><td>${esc(a)}</td><td>${esc(cc)}</td>`;
+        })
+        .join('');
+      return `<tr><td>${name}</td>${cells}</tr>`;
+    })
+    .join('');
+  return `${TABLE_OPEN}<thead>${head}</thead><tbody>${body}</tbody></table>`;
+}
+
 function htmlToPlainText(html) {
   return html
     .replace(/<\/(h1|h2|h3|p|tr|li)>/gi, '\n')
@@ -168,6 +201,8 @@ export function buildCloseMeetingMinutes({ siteName, siteUrl, record, kpi, break
     breakdownTable(breakdowns?.pages, BREAKDOWN_COLUMNS.pages, 'screenPageViews', hasComparison, 20),
     `<h2>デバイス別（${L.before} → ${L.after}）</h2>`,
     breakdownTable(breakdowns?.devices, BREAKDOWN_COLUMNS.devices, 'sessions', hasComparison, null),
+    `<h2>コンバージョン項目別（${L.before} → ${L.after}）</h2>`,
+    conversionItemsTable(breakdowns?.conversionItems, hasComparison),
   );
 
   // AI 総括（見出し＋段落＋箇条書き）

@@ -11,12 +11,16 @@ import { fmtDate } from './closeMeetingFormat';
  */
 export default function CloseMeetingNotice({ meetingType = 'close', comparisonMode, observationPartial = false, remainingDays = 0, hasComparison = true, comparisonRange }) {
   const isAfter = meetingType === 'after';
+  // 「比較なし」はユーザーが意図的に比較を外した状態。データ欠損の警告は出さない。
+  const isNoComparison = comparisonMode === 'none';
   const rangeText =
     comparisonRange?.from && comparisonRange?.to ? `（${fmtDate(comparisonRange.from)} 〜 ${fmtDate(comparisonRange.to)}）` : '';
   // 旧サイト突合の注意はクローズMTG（公開前＝旧サイト）のときのみ。アフターMTG は対象外。
   const showOldSiteWarning = !isAfter && hasComparison && (comparisonMode === 'prevPeriod' || comparisonMode === 'custom');
+  // 欠損警告を出すのは「比較なし」を選んでいない かつ 比較データが無い場合のみ。
+  const showMissingWarning = !hasComparison && !isNoComparison;
 
-  if (!observationPartial && hasComparison && !showOldSiteWarning) return null;
+  if (!observationPartial && !showMissingWarning && !showOldSiteWarning) return null;
 
   return (
     <div className="space-y-2">
@@ -27,7 +31,7 @@ export default function CloseMeetingNotice({ meetingType = 'close', comparisonMo
         </div>
       )}
 
-      {!hasComparison ? (
+      {showMissingWarning ? (
         <div className="flex items-start gap-2 rounded-md bg-amber-50 px-3.5 py-2.5 text-[13px] text-amber-700">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
           {isAfter
