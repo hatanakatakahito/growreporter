@@ -32,7 +32,6 @@ export function getDefaultOnboarding() {
       analysisFileDownloads: false,
       analysisUsers: false,
       analysisSummaryFree: false,
-      analysisExport: false,
       analysisSummary: false,
       comprehensiveAI: false,
       aiChat: false,

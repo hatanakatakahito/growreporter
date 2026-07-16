@@ -75,12 +75,29 @@ export async function sendWeeklyReportsHandler(event) {
       if (!userEmail || !wantWeekly) continue;
 
       // ユーザーのサイト一覧を取得
-      const sitesSnapshot = await db
-        .collection('sites')
-        .where('userId', '==', userId)
-        .get();
+      // - viewer: allowedSiteIds に含まれるサイトのみ
+      // - その他: 自分が userId のサイト（既存挙動）
+      const memberRole = userData.memberRole || 'owner';
+      let siteDocs = [];
+      if (memberRole === 'viewer') {
+        const allowedSiteIds = Array.isArray(userData.allowedSiteIds) ? userData.allowedSiteIds : [];
+        if (allowedSiteIds.length === 0) continue;
+        const fetched = await Promise.all(
+          allowedSiteIds.map((id) => db.collection('sites').doc(id).get())
+        );
+        siteDocs = fetched.filter((d) => d.exists);
+      } else {
+        const sitesSnapshot = await db
+          .collection('sites')
+          .where('userId', '==', userId)
+          .get();
+        if (sitesSnapshot.empty) continue;
+        siteDocs = sitesSnapshot.docs;
+      }
 
-      if (sitesSnapshot.empty) continue;
+      if (siteDocs.length === 0) continue;
+      // 既存ループ用の互換変数
+      const sitesSnapshot = { docs: siteDocs, empty: siteDocs.length === 0 };
 
       for (const siteDoc of sitesSnapshot.docs) {
         const siteId = siteDoc.id;

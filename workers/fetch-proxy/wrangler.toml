@@ -1,3 +1,30 @@
 name = "growreporter-fetch-proxy"
 main = "worker.js"
-compatibility_date = "2024-01-01"
+compatibility_date = "2024-09-23"
+account_id = "a1e0053647b6229da81401754483fdcd"
+
+# nodejs_compat: @cloudflare/puppeteer が node:buffer 等を import するため必須
+compatibility_flags = ["nodejs_compat"]
+
+# Browser Rendering binding (mode: 'render' / 'screenshot' で使用)
+# - Workers Paid 込み枠: 10 browser-hours/日・同時 10 ブラウザ（超過分のみ $0.09/browser-hour）
+[browser]
+binding = "BROWSER"
+
+# ========================================================
+# Cron Trigger: Browser Rendering プールのウォーム維持ハートビート (warmBrowserPool)
+# ========================================================
+# 目的: サイト登録など「単発」撮影で warm session が無く、最初の page.goto が CDP を
+#   確立できず page-dead-after-goto で即死する「コールドプール」問題を構造的に防ぐ。
+#   5 分おきに最低 1 セッションを温存し、実撮影が常に warm session を掴めるようにする。
+#
+# スケジュール: "*/5 23,0-10 * * *" (UTC) = JST 8:00〜19:59 の間 5 分おき。
+#   サイト登録が実際に発生する営業時間帯のみウォーム維持し、ブラウザ稼働時間を節約する。
+#   営業時間外のコールドは captureRenderAndScreenshot の BR_FAILED リトライ (MAX_ATTEMPTS=3) が backstop。
+#
+# コスト: ウォーム維持中のブラウザは稼働時間が browser-hour として課金対象。
+#   約 12 browser-hours/日 ≒ 込み枠 10h/日 を 2h 程度超える可能性あり (超過分 $0.09/browser-hour)。
+#   - 枠内に厳密に収めたい場合: "*/5 0-9 * * *" (JST 9:00〜18:59、10h)
+#   - 24/7 で完全にコールド根絶したい場合: "*/5 * * * *" (約 24 browser-hours/日)
+[triggers]
+crons = ["*/5 23,0-10 * * *"]

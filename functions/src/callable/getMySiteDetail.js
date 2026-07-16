@@ -1,6 +1,7 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
+import { canAccessSite } from '../utils/permissionHelper.js';
 
 /**
  * ユーザー用サイト詳細取得（オーナーまたは同一アカウントのメンバーのみ）
@@ -32,20 +33,12 @@ export const getMySiteDetailCallable = async (request) => {
     }
 
     const siteData = siteDoc.data() || {};
-    const siteOwnerId = siteData.userId || '';
 
-    // アクセス許可: 自分がオーナー または 同一アカウントのメンバー
-    if (siteOwnerId === uid) {
-      // オーナー
-    } else {
-      const userDoc = await db.collection('users').doc(uid).get();
-      if (!userDoc.exists) {
-        throw new HttpsError('permission-denied', 'このサイトにアクセスする権限がありません');
-      }
-      const memberships = userDoc.data()?.memberships || {};
-      if (!memberships[siteOwnerId]) {
-        throw new HttpsError('permission-denied', 'このサイトにアクセスする権限がありません');
-      }
+    // アクセス許可: owner は全サイト、editor/viewer は allowedSiteIds のサイトのみ
+    // （memberships の存在だけでなく allowedSiteIds を強制するため canAccessSite を使う）
+    const hasAccess = await canAccessSite(uid, siteId);
+    if (!hasAccess) {
+      throw new HttpsError('permission-denied', 'このサイトにアクセスする権限がありません');
     }
 
     const now = new Date();
@@ -88,6 +81,9 @@ export const getMySiteDetailCallable = async (request) => {
       hasGA4: !!siteData.ga4PropertyId,
       hasGSC: !!siteData.gscSiteUrl,
       ga4MeasurementId: siteData.ga4MeasurementId || '',
+      // OAuth トークン参照先 (admin 代行運用判定用)
+      ga4TokenOwner: siteData.ga4TokenOwner || null,
+      gscTokenOwner: siteData.gscTokenOwner || null,
     };
 
     return {

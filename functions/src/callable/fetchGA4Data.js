@@ -163,28 +163,46 @@ export async function fetchGA4DataCallable(request) {
     // 基本指標の取得（既存のロジック）
     console.log(`[fetchGA4Data] Fetching basic metrics from GA4 API...`);
     
+    // 基本メトリクス用リクエスト（dimensionFilter があれば適用＝特定パス配下に限定する用途など）
+    const baseMetricsRequestBody = {
+      dateRanges: [{ startDate, endDate }],
+      metrics: [
+        { name: 'sessions' },
+        { name: 'totalUsers' },
+        { name: 'newUsers' },
+        { name: 'screenPageViews' },
+        { name: 'engagementRate' },
+      ],
+    };
+    if (dimensionFilter) {
+      baseMetricsRequestBody.dimensionFilter = dimensionFilter;
+    }
+
     // 🚀 パフォーマンス最適化: 基本メトリクスとコンバージョンを並列取得
     const promises = [
       // 基本メトリクスの取得
       analyticsData.properties.runReport({
         auth: oauth2Client,
         property: `properties/${siteData.ga4PropertyId}`,
-        requestBody: {
-          dateRanges: [{ startDate, endDate }],
-          metrics: [
-            { name: 'sessions' },
-            { name: 'totalUsers' },
-            { name: 'newUsers' },
-            { name: 'screenPageViews' },
-            { name: 'engagementRate' },
-          ],
-        },
+        requestBody: baseMetricsRequestBody,
       }),
     ];
-    
+
     // コンバージョンイベントがある場合は並列取得
     if (siteData.conversionEvents && siteData.conversionEvents.length > 0) {
       console.log(`[fetchGA4Data] Fetching conversion events (${siteData.conversionEvents.length} events) in parallel...`);
+      const cvEventFilter = {
+        filter: {
+          fieldName: 'eventName',
+          inListFilter: {
+            values: siteData.conversionEvents.map(e => e.eventName),
+          },
+        },
+      };
+      // パスフィルタ（dimensionFilter）があればイベント名フィルタと AND 結合
+      const cvDimensionFilter = dimensionFilter
+        ? { andGroup: { expressions: [dimensionFilter, cvEventFilter] } }
+        : cvEventFilter;
       promises.push(
         analyticsData.properties.runReport({
           auth: oauth2Client,
@@ -193,14 +211,7 @@ export async function fetchGA4DataCallable(request) {
             dateRanges: [{ startDate, endDate }],
             dimensions: [{ name: 'eventName' }],
             metrics: [{ name: 'eventCount' }],
-            dimensionFilter: {
-              filter: {
-                fieldName: 'eventName',
-                inListFilter: {
-                  values: siteData.conversionEvents.map(e => e.eventName),
-                },
-              },
-            },
+            dimensionFilter: cvDimensionFilter,
           },
         })
       );

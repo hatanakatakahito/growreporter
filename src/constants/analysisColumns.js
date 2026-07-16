@@ -130,7 +130,7 @@ export const ANALYSIS_COLUMNS = {
     metricCol('conversionRate', 'percent', { defaultVisible: false }),
   ],
   'analysis-landing-pages': [
-    { key: 'path', label: 'ランディングページ', required: true },
+    { key: 'path', label: '入口ページ', required: true },
     metricCol('sessions', 'number'),
     metricCol('users', 'number', { defaultVisible: false }),
     metricCol('newUsers', 'number', { defaultVisible: false }),

@@ -6,7 +6,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { google } from 'googleapis';
 import { getAndRefreshToken } from '../utils/tokenManager.js';
-import { canAccessSite } from '../utils/permissionHelper.js';
+import { canEditSite } from '../utils/permissionHelper.js';
 import {
   calculateBeforePeriod,
   calculateNextMeasurementDate,
@@ -50,7 +50,9 @@ export async function fetchBeforeMetricsCallable(request) {
     if (!siteDoc.exists) throw new HttpsError('not-found', 'サイトが見つかりません');
 
     const siteData = siteDoc.data();
-    const hasAccess = await canAccessSite(userId, siteId);
+    // Before 指標取得は改善タスクの完了/進行フロー（手動編集系）からのみ呼ばれるため
+    // viewer を弾く canEditSite を使う（owner/editor の allowedSiteIds のみ許可）
+    const hasAccess = await canEditSite(userId, siteId);
     if (!hasAccess) throw new HttpsError('permission-denied', 'このサイトにアクセスする権限がありません');
 
     // GA4設定チェック

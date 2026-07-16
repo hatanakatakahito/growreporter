@@ -52,26 +52,14 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
         console.log('[ConversionSettings] GA4イベント取得開始');
         
         try {
-          // 前月 1 日〜前月末日（当月は含めない）のイベントデータを取得し、
-          // ユニークなイベント名を抽出する
-          const today = new Date();
-          const startOfPrevMonth = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-          const endOfPrevMonth = new Date(today.getFullYear(), today.getMonth(), 0); // 当月 0 日 = 前月末日
-          const formatYMD = (d) => {
-            const y = d.getFullYear();
-            const m = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            return `${y}-${m}-${day}`;
-          };
-          const startDateStr = formatYMD(startOfPrevMonth);
-          const endDateStr = formatYMD(endOfPrevMonth);
-          const prevMonthLabel = `${startOfPrevMonth.getFullYear()}-${String(startOfPrevMonth.getMonth() + 1).padStart(2, '0')}`;
-
+          // 直近1年間（365日前〜昨日）のイベントデータを取得し、
+          // ユニークなイベント名を抽出する。GA4 の相対日付を使うことで
+          // 発火数の少ないイベントも取りこぼさず、タイムゾーンずれも防ぐ
           const requestBody = {
             dateRanges: [
               {
-                startDate: startDateStr,
-                endDate: endDateStr,
+                startDate: '365daysAgo',
+                endDate: 'yesterday',
               }
             ],
             dimensions: [
@@ -141,7 +129,7 @@ export default function Step4ConversionSettings({ siteData, setSiteData }) {
               eventName: eventName,
               displayName: displayName,
               category: category,
-              description: `前月 (${prevMonthLabel}): ${eventCount.toLocaleString()}回`,
+              description: `直近1年: ${eventCount.toLocaleString()}回`,
             };
           });
 

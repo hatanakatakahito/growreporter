@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { PLANS, PLAN_TYPES, getPlanBadgeColor, isUnlimited, canRegenerate } from '../../constants/plans';
+import { PLANS, PLAN_TYPES, getPlanBadgeColor, isUnlimited, canRegenerate, EXTRA_SITE_UNIT_PRICE } from '../../constants/plans';
 import { setPageTitle } from '../../utils/pageTitle';
 
 /**
@@ -17,7 +17,17 @@ export default function PlanList() {
   const fmt = (v) => (isUnlimited(v) ? '無制限' : v);
 
   const rows = [
-    { label: '登録サイト数', render: (f) => isUnlimited(f.maxSites) ? '無制限' : f.maxSites },
+    {
+      label: '登録サイト数',
+      render: (f, plan) => {
+        const base = isUnlimited(f.maxSites) ? '無制限' : `${f.maxSites}サイト`;
+        // Business のみ追加オプション併記
+        if (plan?.id === PLAN_TYPES.BUSINESS) {
+          return `${base}（追加 +¥${EXTRA_SITE_UNIT_PRICE.toLocaleString()}/サイト/月）`;
+        }
+        return base;
+      },
+    },
     { label: 'メンバー数', render: (f) => isUnlimited(f.maxMembers) ? '無制限' : f.maxMembers },
     {
       label: 'AI分析サマリー',
@@ -122,6 +132,9 @@ export default function PlanList() {
 
       <p className="mt-4 text-xs text-body-color dark:text-dark-6">
         ※ プラン制限値はソースコード（src/constants/plans.js）で管理されています。変更する場合はコードを直接編集してください。
+      </p>
+      <p className="mt-1 text-xs text-body-color dark:text-dark-6">
+        ※ サイト追加オプションは Business のみ。1 サイトあたり ¥{EXTRA_SITE_UNIT_PRICE.toLocaleString()}/月（税別）。多数サイトの場合は個別商談。
       </p>
     </div>
   );

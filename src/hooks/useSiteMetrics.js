@@ -7,9 +7,11 @@ import { useGSCData } from './useGSCData';
  * @param {string} startDate - 開始日 (YYYY-MM-DD)
  * @param {string} endDate - 終了日 (YYYY-MM-DD)
  * @param {boolean} hasGSCConnection - GSC連携の有無
+ * @param {object} ga4DimensionFilter - GA4 ディメンションフィルタ（例: 特定パス配下に限定。未指定で全体）
+ * @param {string} gscPathFilter - GSC ページ絞り込み（パス前方一致。未指定で全体）
  * @returns {object} - GA4とGSCのデータ、ローディング状態、エラー状態
  */
-export function useSiteMetrics(siteId, startDate, endDate, hasGSCConnection = true) {
+export function useSiteMetrics(siteId, startDate, endDate, hasGSCConnection = true, ga4DimensionFilter = null, gscPathFilter = null) {
   // ダッシュボード用の基本メトリクスを取得
   // Note: conversionsは別途fetchGA4Dataで取得されるため、ここでは指定不要
   const ga4Query = useGA4Data(
@@ -17,9 +19,10 @@ export function useSiteMetrics(siteId, startDate, endDate, hasGSCConnection = tr
     startDate,
     endDate,
     ['sessions', 'totalUsers', 'newUsers', 'screenPageViews', 'engagementRate'],
-    []
+    [],
+    ga4DimensionFilter
   );
-  const gscQuery = useGSCData(siteId, startDate, endDate, hasGSCConnection);
+  const gscQuery = useGSCData(siteId, startDate, endDate, hasGSCConnection, gscPathFilter);
 
   // データを統合
   const data = ga4Query.data || gscQuery.data ? {

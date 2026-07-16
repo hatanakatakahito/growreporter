@@ -2,6 +2,7 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { sendEmailDirect } from '../utils/emailSender.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * 招待を再送信
@@ -16,6 +17,9 @@ export const resendInvitationCallable = async (request) => {
   if (!uid) {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
+
+  // Phase 4-A-2: レート制限（招待メール再送スパム防止）
+  await enforceRateLimit({ uid, ...DEFAULT_RATE_LIMITS.resendInvitation });
 
   const { invitationId } = request.data || {};
 

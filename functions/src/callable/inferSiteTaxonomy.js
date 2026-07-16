@@ -48,7 +48,8 @@ export const inferSiteTaxonomyCallable = async (request) => {
     if (siteId) {
       const { html: existingHtml, metadata: existingMeta } = await fetchExistingSiteData(
         db,
-        siteId
+        siteId,
+        uid
       );
       if (existingHtml) html = existingHtml;
       if (existingMeta) metadata = existingMeta;
@@ -136,19 +137,35 @@ async function enforceRateLimit(db, uid) {
 /**
  * Firestore から既存サイトのメタデータとスクレイピング済み HTML を取得
  */
-async function fetchExistingSiteData(db, siteId) {
+async function fetchExistingSiteData(db, siteId, uid) {
   const result = { html: '', metadata: {} };
   try {
     const siteDoc = await db.collection('sites').doc(siteId).get();
-    if (siteDoc.exists) {
-      const data = siteDoc.data() || {};
-      result.metadata = {
-        title: data.metaTitle || '',
-        description: data.metaDescription || '',
-        ogTitle: data.ogTitle || '',
-        ogDescription: data.ogDescription || '',
-      };
+    if (!siteDoc.exists) return result;
+    const data = siteDoc.data() || {};
+
+    // 越境読取防止: 既存サイトのメタ/スクレイピング済みデータの再利用は
+    // 「自分が所有するサイト」または「プラットフォーム管理者(admin/editor)」のみ許可する。
+    // それ以外は再利用せず、呼び出し元が渡した siteUrl から取得しなおす（フォールバック）。
+    let authorized = data.userId === uid;
+    if (!authorized) {
+      const adminDoc = await db.collection('adminUsers').doc(uid).get();
+      authorized = adminDoc.exists && ['admin', 'editor'].includes(adminDoc.data()?.role);
     }
+    if (!authorized) {
+      logger.warn('[inferSiteTaxonomy] 既存データ再利用の権限なし。URL取得にフォールバック', {
+        siteId,
+        uid,
+      });
+      return result;
+    }
+
+    result.metadata = {
+      title: data.metaTitle || '',
+      description: data.metaDescription || '',
+      ogTitle: data.ogTitle || '',
+      ogDescription: data.ogDescription || '',
+    };
     // pageScrapingData の先頭ドキュメント（トップページなど）から HTML 断片を取得
     const scrapingSnap = await db
       .collection('sites')

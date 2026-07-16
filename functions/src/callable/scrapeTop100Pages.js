@@ -5,6 +5,7 @@ import { google } from 'googleapis';
 import { getAndRefreshToken } from '../utils/tokenManager.js';
 import { launchBrowser, scrapeAllPages, normalizeUrl, checkRobotsTxt } from '../utils/unifiedPageScraper.js';
 import { canEditSite } from '../utils/permissionHelper.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * サイトIDに対してスクレイピングを実行するコア処理
@@ -213,6 +214,9 @@ export async function scrapeTop100PagesHandler(request) {
     }
 
     const userId = request.auth.uid;
+
+    // Phase 4-A-2: レート制限（100 ページ走査の重処理 + 課金枯渇防止）
+    await enforceRateLimit({ uid: userId, ...DEFAULT_RATE_LIMITS.scrapeTop100Pages });
 
     // 入力バリデーション
     if (!siteId) {

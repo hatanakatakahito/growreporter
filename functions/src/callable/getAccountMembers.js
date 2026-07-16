@@ -44,15 +44,18 @@ export const getAccountMembersCallable = async (request) => {
     
     let membersData = usersSnapshot.docs.map((doc) => {
       const data = doc.data();
+      const role = data.memberRole || 'viewer';
       return {
         id: doc.id,
         userId: doc.id,
         email: data.email,
         displayName: data.name || (data.lastName && data.firstName ? `${data.lastName} ${data.firstName}` : '') || data.displayName || `${data.lastName || ''} ${data.firstName || ''}`.trim(),
-        role: data.memberRole || 'viewer',
+        role,
         joinedAt: data.joinedAt ?? null,
         invitedBy: data.invitedBy ?? null,
         invitedByName: data.invitedByName ?? null,
+        // editor/viewer どちらも allowedSiteIds を返す（owner は不要）
+        allowedSiteIds: (role === 'editor' || role === 'viewer') ? (Array.isArray(data.allowedSiteIds) ? data.allowedSiteIds : []) : null,
         type: 'member',
       };
     });
@@ -120,6 +123,8 @@ export const getAccountMembersCallable = async (request) => {
         invitedByName: data.invitedByName,
         createdAt: data.createdAt,
         expiresAt: data.expiresAt,
+        // editor/viewer 招待は allowedSiteIds を返す
+        allowedSiteIds: (data.role === 'editor' || data.role === 'viewer') ? (Array.isArray(data.allowedSiteIds) ? data.allowedSiteIds : []) : null,
         type: 'invitation',
         isExpired,
       };

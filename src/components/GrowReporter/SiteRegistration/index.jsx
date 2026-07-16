@@ -146,7 +146,13 @@ export default function SiteRegistration({ mode = 'new' }) {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   const { siteId: siteIdFromParams } = useParams();
-  const { currentUser } = useAuth();
+  const { currentUser, userProfile } = useAuth();
+  // 既存 Business オーナーがサイト上限超過した場合は addon モードで開き
+  // 住所等の入力を不要にする。Free / メンバーは従来どおり compare モード
+  const isBusinessOwner =
+    (userProfile?.plan === 'business' || userProfile?.plan === 'standard' || userProfile?.plan === 'premium') &&
+    (userProfile?.memberRole === 'owner' || !userProfile?.memberRole);
+  const upgradeMode = isBusinessOwner ? 'addon' : 'compare';
   const { maxSites, allSites, isLoading: isSiteLoading } = useSite();
   const { isAdmin, loading: isAdminLoading } = useAdmin();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
@@ -788,9 +794,12 @@ export default function SiteRegistration({ mode = 'new' }) {
         );
       })()}
 
-      {/* プランアップグレードモーダル */}
+      {/* プランアップグレードモーダル
+          既存 Business オーナーは addon（サイト追加オプション）モードで開く
+          Free / メンバーは compare（Free → Business 比較）モードで開く */}
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
+        mode={upgradeMode}
         onClose={() => {
           setIsUpgradeModalOpen(false);
           if (isAdmin) return;

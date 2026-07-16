@@ -3,6 +3,8 @@ import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { logger } from 'firebase-functions/v2';
 import { sendEmailDirect } from '../utils/emailSender.js';
+import { escapeHtml, escapeHtmlAndValidateUrl } from '../utils/htmlEscape.js';
+import { requireString } from '../utils/validators.js';
 
 /**
  * 招待を承認
@@ -18,11 +20,9 @@ export const acceptInvitationCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const { token } = request.data || {};
-
-  if (!token) {
-    throw new HttpsError('invalid-argument', 'トークンが必要です');
-  }
+  // 入力検証 (Phase 4-B-7): token は UUID v4 想定、最大 256 文字に制限
+  // （Firestore に格納されるサイズ + 改行/制御文字注入を遮断）
+  const token = requireString(request.data?.token, 'token', { maxLen: 256 });
 
   try {
     const db = getFirestore();
@@ -41,11 +41,31 @@ export const acceptInvitationCallable = async (request) => {
     
     const invitationDoc = invitationsSnapshot.docs[0];
     const invitation = invitationDoc.data();
-    
+
     // 2. 有効期限チェック
     if (invitation.expiresAt.toDate() < new Date()) {
       await invitationDoc.ref.update({ status: 'expired' });
       throw new HttpsError('deadline-exceeded', '招待の有効期限が切れています');
+    }
+
+    // 2.5 セキュリティ (Phase 2-5): 招待受領者のメールアドレスが招待先と一致するか検証
+    //     別アカウントで承認することを防ぐ。メールが転送・漏洩した場合の対策。
+    //     ※ 厳格な email_verified 必須化は Phase 4-A-9 で別途追加予定。
+    //       現時点では Google/Microsoft SSO は自動 verified、email/password 経路は
+    //       未認証でもメール照合のみで受領可とする（既存ユーザーへの影響を最小化）。
+    const callerEmail = (request.auth.token.email || '').toLowerCase();
+    const invitedEmail = (invitation.email || '').toLowerCase();
+    if (!callerEmail || callerEmail !== invitedEmail) {
+      logger.warn('[acceptInvitation] メールアドレス不一致で拒否', {
+        invitationId: invitationDoc.id,
+        callerUid: uid,
+        callerEmail,
+        invitedEmail,
+      });
+      throw new HttpsError(
+        'permission-denied',
+        `この招待は ${invitation.email} 宛てに送信されました。同じメールアドレスでログインしてから承認してください。`
+      );
     }
 
     // 3. ユーザー情報を取得
@@ -62,24 +82,52 @@ export const acceptInvitationCallable = async (request) => {
       return { success: true, message: '既にメンバーです' };
     }
 
-    // 5. users ドキュメントに membership とトップレベル項目を追加（accountOwnerId / joinedAt / invitedBy / invitedByName）
+    // 5. users ドキュメントに membership を追加。
+    //    membership(memberships マップ)は常に真実の源として記録する。
     memberships[invitation.accountOwnerId] = {
       role: invitation.role,
       joinedAt: FieldValue.serverTimestamp(),
       invitedBy: invitation.invitedBy,
       invitedByName: invitation.invitedByName || ''
     };
-    
-    const joinedAt = FieldValue.serverTimestamp();
-    await db.collection('users').doc(uid).update({
-      accountOwnerId: invitation.accountOwnerId,
-      memberRole: invitation.role,
-      joinedAt,
-      invitedBy: invitation.invitedBy ?? null,
-      invitedByName: invitation.invitedByName || null,
+
+    // 二層アイデンティティ対応:
+    //   自分のアカウントを持つ business/paid ユーザー(自己所有者)は、招待を受けても
+    //   トップレベル accountOwnerId / memberRole を上書きしない(自分のアカウント識別を保持)。
+    //   → これをしないと、自己所有者が招待を受けた瞬間に自分の所有サイト/プランが
+    //     招待先アカウントに乗っ取られる(蒲さん事象, 2026-06-16)。
+    //   純粋メンバー(自分の所有アカウントを持たない無料ユーザー等)は従来通りトップレベルを
+    //   招待先で上書きし、オーナーのプラン枠共有などの既存挙動を維持する。
+    //   ※ ロール解決はルール/permissionHelper で memberships[ownerId].role を優先するため、
+    //     自己所有者の memberRole=owner が他アカウントへの権限昇格になることはない。
+    const normalizedPlan = String(userData.plan || 'free').toLowerCase().trim();
+    const isSelfOwner = ['business', 'standard', 'premium', 'paid'].includes(normalizedPlan);
+
+    const updateData = {
       memberships,
       updatedAt: FieldValue.serverTimestamp()
-    });
+    };
+    if (!isSelfOwner) {
+      // 純粋メンバー: トップレベルを招待先アカウントで上書き(従来挙動)
+      updateData.accountOwnerId = invitation.accountOwnerId;
+      updateData.memberRole = invitation.role;
+      updateData.joinedAt = FieldValue.serverTimestamp();
+      updateData.invitedBy = invitation.invitedBy ?? null;
+      updateData.invitedByName = invitation.invitedByName || null;
+    } else {
+      logger.info('[acceptInvitation] 自己所有者のためトップレベル accountOwnerId/memberRole を保持', {
+        uid, plan: normalizedPlan, invitedToAccount: invitation.accountOwnerId, role: invitation.role
+      });
+    }
+    // editor / viewer どちらも allowedSiteIds でサイト指定式(オーナーは除外)。
+    // 自己所有者も共有サイトへのアクセスに allowedSiteIds が必要なため設定する
+    // (自分の所有サイトは sites.userId クエリで取得するので衝突しない)。
+    if (invitation.role === 'editor' || invitation.role === 'viewer') {
+      updateData.allowedSiteIds = Array.isArray(invitation.allowedSiteIds) ? invitation.allowedSiteIds : [];
+    } else {
+      updateData.allowedSiteIds = FieldValue.delete();
+    }
+    await db.collection('users').doc(uid).update(updateData);
     
     // 6. 招待ステータスを更新
     await invitationDoc.ref.update({
@@ -134,7 +182,15 @@ export const acceptInvitationCallable = async (request) => {
  */
 function generateMemberAddedEmailHtml(data) {
   const { ownerName, memberName, memberEmail, role, companyName } = data;
-  
+
+  // XSS 対策: HTML 文脈に展開する変数は escape 必須
+  const ownerNameH = escapeHtml(ownerName);
+  const memberNameH = escapeHtml(memberName);
+  const memberEmailH = escapeHtml(memberEmail);
+  const roleH = escapeHtml(role);
+  const companyNameH = escapeHtml(companyName);
+  const memberUrlH = escapeHtmlAndValidateUrl((process.env.APP_URL || 'https://grow-reporter.com') + '/members');
+
   return `
 <!DOCTYPE html>
 <html lang="ja">
@@ -158,33 +214,33 @@ function generateMemberAddedEmailHtml(data) {
           <tr>
             <td style="padding: 40px 30px;">
               <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
-                ${ownerName} 様
+                ${ownerNameH} 様
               </h2>
-              
+
               <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-                <strong>${companyName}</strong> に新しいメンバーが参加しました。
+                <strong>${companyNameH}</strong> に新しいメンバーが参加しました。
               </p>
-              
+
               <div style="background-color: #f0fdf4; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0;">
                 <p style="margin: 0 0 8px 0; color: #374151; font-size: 14px;">
-                  <strong>メンバー名:</strong> ${memberName}
+                  <strong>メンバー名:</strong> ${memberNameH}
                 </p>
                 <p style="margin: 0 0 8px 0; color: #374151; font-size: 14px;">
-                  <strong>メールアドレス:</strong> ${memberEmail}
+                  <strong>メールアドレス:</strong> ${memberEmailH}
                 </p>
                 <p style="margin: 0; color: #374151; font-size: 14px;">
-                  <strong>権限:</strong> ${role}
+                  <strong>権限:</strong> ${roleH}
                 </p>
               </div>
-              
+
               <p style="margin: 20px 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
                 メンバー管理画面から、権限の変更や削除が可能です。
               </p>
-              
+
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${process.env.APP_URL || 'https://grow-reporter.com'}/members" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                    <a href="${memberUrlH}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
                       メンバー管理を開く
                     </a>
                   </td>

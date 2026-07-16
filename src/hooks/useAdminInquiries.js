@@ -8,7 +8,7 @@ import { functions } from '../config/firebase';
 export function useAdminInquiries(initialParams = {}) {
   const [inquiries, setInquiries] = useState([]);
   const [pagination, setPagination] = useState(null);
-  const [stats, setStats] = useState({ needsAction: 0, renewalSoon: 0 });
+  const [stats, setStats] = useState({ needsAction: 0, renewalSoon: 0, statusCounts: {}, recentImportCount: 0, unlinkedCount: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [params, setParams] = useState({
@@ -30,7 +30,7 @@ export function useAdminInquiries(initialParams = {}) {
       if (result.data.success) {
         setInquiries(result.data.data.inquiries);
         setPagination(result.data.data.pagination);
-        setStats(result.data.data.stats || { needsAction: 0, renewalSoon: 0 });
+        setStats(result.data.data.stats || { needsAction: 0, renewalSoon: 0, statusCounts: {}, recentImportCount: 0, unlinkedCount: 0 });
       } else {
         throw new Error('問い合わせ一覧の取得に失敗しました');
       }

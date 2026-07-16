@@ -1,5 +1,7 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { sendUpgradeInquiryEmail } from '../utils/emailSender.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
+import { requireEnum, optionalString, optionalMessage, optionalCompanyName, optionalDisplayName, MAX_EMAIL_LEN } from '../utils/validators.js';
 
 /**
  * プランアップグレードお問い合わせ送信
@@ -17,25 +19,25 @@ export const submitUpgradeInquiryCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ログインが必要です');
   }
 
-  const {
-    selectedPlan = '',
-    companyName = '',
-    userName = '',
-    email = '',
-    message = '',
-  } = request.data || {};
+  // Phase 4-A-2: レート制限（プラン問合せスパム防止）
+  await enforceRateLimit({ uid: request.auth.uid, ...DEFAULT_RATE_LIMITS.submitUpgradeInquiry });
+
+  const rawData = request.data || {};
+
+  // 入力検証 (Phase 4-B-7): プラン値・名前・メッセージの形式と長さを強制
+  const selectedPlan = requireEnum(rawData.selectedPlan, 'selectedPlan', ['business', 'standard', 'premium']);
+  const companyName = optionalCompanyName(rawData.companyName, 'companyName');
+  const userName = optionalDisplayName(rawData.userName, 'userName');
+  const email = optionalString(rawData.email, 'email', { maxLen: MAX_EMAIL_LEN });
+  const message = optionalMessage(rawData.message, 'message');
   const authEmail = request.auth.token.email || '';
 
-  if (!selectedPlan || !['business', 'standard', 'premium'].includes(selectedPlan)) {
-    throw new HttpsError('invalid-argument', '希望プランを選択してください');
-  }
-
   const result = await sendUpgradeInquiryEmail({
-    selectedPlan: String(selectedPlan).trim(),
-    companyName: String(companyName).trim(),
-    userName: String(userName).trim(),
-    userEmail: String(email).trim() || authEmail,
-    message: String(message).trim(),
+    selectedPlan: selectedPlan.trim(),
+    companyName: companyName.trim(),
+    userName: userName.trim(),
+    userEmail: email.trim() || authEmail,
+    message: message.trim(),
   });
 
   if (!result.success) {

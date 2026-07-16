@@ -166,7 +166,7 @@ async function sendAutoImprovementNotification(db, siteId, siteData, ownerId, co
         const { sendEmailDirect } = await import('./emailSender.js');
         await sendEmailDirect({
           to: email,
-          subject: `【GrowReporter】${siteName}のAI改善提案が更新されました`,
+          subject: `【グローレポータ】${siteName}のAI改善提案が更新されました`,
           html: buildAutoImprovementEmailHtml(siteName, count),
         });
         logger.info('[AutoImprovement] メール通知送信完了', { siteId, email });
@@ -186,13 +186,13 @@ function buildAutoImprovementEmailHtml(siteName, count) {
         最新のサイトデータに基づいた提案です。
       </p>
       <p style="margin-top: 24px;">
-        <a href="https://growgroupreporter.web.app/improve"
+        <a href="https://grow-reporter.com/improve"
            style="display: inline-block; background: #3758F9; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-size: 14px; font-weight: 500;">
           改善提案を確認する
         </a>
       </p>
       <p style="color: #6b7280; font-size: 12px; margin-top: 32px;">
-        この通知はGrowReporterの自動改善提案機能によるものです。<br>
+        この通知はグローレポータの自動改善提案機能によるものです。<br>
         通知設定はアカウント設定から変更できます。
       </p>
     </div>

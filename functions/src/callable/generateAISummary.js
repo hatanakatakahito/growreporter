@@ -5,6 +5,8 @@ import { checkCanGenerate, incrementGenerationCount } from '../utils/planManager
 import { getCachedAnalysis, saveCachedAnalysis } from '../utils/aiCacheManager.js';
 import { getPromptTemplate } from '../prompts/templates.js';
 import { buildScrapingContextText } from '../prompts/scrapingContextBuilder.js';
+import { wrapAsUserData } from '../utils/promptSanitizer.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 import { IMPROVEMENT_FOCUS_LABELS } from '../constants/siteOptions.js';
 import {
   BUSINESS_MODEL_LABELS,
@@ -12,16 +14,109 @@ import {
   INDUSTRY_MAJOR_LABELS,
   formatIndustry,
 } from '../constants/siteOptionsV2.js';
-import { canAccessSite, canEditSite } from '../utils/permissionHelper.js';
+import { canAccessSite } from '../utils/permissionHelper.js';
 
-const MAX_SCREENSHOTS_FOR_GEMINI = 10;
+// 改善ロジック統一化プラン (Phase 3-c + Files API 対応):
+//   pageScreenshots は URL × deviceType (pc|mobile) で 2 ドキュメントずつ保存される。
+//   AI 改善案生成では上位 PV ページの PC + Mobile 両方を Gemini multimodal に渡す。
+//   - MAX_PAGES_FOR_GEMINI: 何ページ分を渡すか (PC + Mobile 両方含めて 1 ページとカウント)
+//   - 1 ページあたり最大 2 画像 (PC + Mobile)、合計最大 20 画像
+//
+//   fullPage screenshot は 1280×6000+ ピクセルになり、inline_data 経由では Gemini Lite の
+//   画像寸法限界 (3072×3072) を超えて 400 "Unable to process input image" になる。
+//   そこで Gemini Files API 経由で先にアップロードし、file_data で参照する形に変更。
+//   Files API は最大 2GB/file まで対応し、48h 自動削除。
+const MAX_PAGES_FOR_GEMINI = 10;
+const SCREENSHOTS_QUERY_LIMIT = 50; // 上位 10 ページ × 2 viewport + 旧ドキュメント分のバッファ
+const GEMINI_FILES_UPLOAD_BASE = 'https://generativelanguage.googleapis.com/upload/v1beta/files';
 
 /**
- * 事前保存済みのページスクリーンショットをFirestoreから取得しbase64に変換
- * @param {string} siteId
- * @returns {Promise<Array<{url: string, base64: string, mimeType: string}>>}
+ * Gemini Files API に画像をアップロードして fileUri を取得する。
+ *
+ * resumable upload プロトコルを使用 (2 段階):
+ *   1) start request: メタデータと content-length を送り、upload URL を取得
+ *   2) upload+finalize: 取得した URL に bytes を POST
+ *
+ * Files API は最大 2GB/file、自動的に 48h 後削除される。fullPage screenshot のように
+ * inline_data の寸法制限 (3072×3072) を超える画像でも Gemini に渡せる。
+ *
+ * @param {ArrayBuffer | Buffer} buffer
+ * @param {string} mimeType
+ * @param {string} apiKey - GEMINI_API_KEY
+ * @param {string} [displayName]
+ * @returns {Promise<string|null>} fileUri (例: 'https://generativelanguage.googleapis.com/v1beta/files/abc-xyz')
  */
-async function fetchStoredScreenshots(siteId) {
+async function uploadToGeminiFiles(buffer, mimeType, apiKey, displayName = `screenshot-${Date.now()}.jpg`) {
+  try {
+    const bytes = buffer instanceof ArrayBuffer ? Buffer.from(buffer) : buffer;
+    const contentLength = bytes.byteLength;
+
+    // Step 1: start resumable upload
+    const startResp = await fetch(`${GEMINI_FILES_UPLOAD_BASE}?key=${apiKey}`, {
+      method: 'POST',
+      headers: {
+        'X-Goog-Upload-Protocol': 'resumable',
+        'X-Goog-Upload-Command': 'start',
+        'X-Goog-Upload-Header-Content-Length': String(contentLength),
+        'X-Goog-Upload-Header-Content-Type': mimeType,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ file: { displayName } }),
+    });
+    if (!startResp.ok) {
+      const errText = await startResp.text().catch(() => '');
+      logger.warn(`[uploadToGeminiFiles] start failed: ${startResp.status} ${errText.substring(0, 200)}`);
+      return null;
+    }
+    const uploadUrl = startResp.headers.get('X-Goog-Upload-URL') || startResp.headers.get('x-goog-upload-url');
+    if (!uploadUrl) {
+      logger.warn(`[uploadToGeminiFiles] missing X-Goog-Upload-URL header`);
+      return null;
+    }
+
+    // Step 2: upload + finalize
+    const uploadResp = await fetch(uploadUrl, {
+      method: 'POST',
+      headers: {
+        'X-Goog-Upload-Command': 'upload, finalize',
+        'X-Goog-Upload-Offset': '0',
+        'Content-Type': mimeType,
+      },
+      body: bytes,
+    });
+    if (!uploadResp.ok) {
+      const errText = await uploadResp.text().catch(() => '');
+      logger.warn(`[uploadToGeminiFiles] upload failed: ${uploadResp.status} ${errText.substring(0, 200)}`);
+      return null;
+    }
+    const data = await uploadResp.json();
+    const fileUri = data?.file?.uri;
+    if (!fileUri) {
+      logger.warn(`[uploadToGeminiFiles] missing file.uri in response: ${JSON.stringify(data).substring(0, 200)}`);
+      return null;
+    }
+    return fileUri;
+  } catch (e) {
+    logger.warn(`[uploadToGeminiFiles] exception: ${e.message}`);
+    return null;
+  }
+}
+
+/**
+ * 事前保存済みのページスクリーンショットを Firestore から取得し、Gemini Files API に
+ * アップロードして fileUri を返す。
+ *
+ * 上位 PV ページ (capturedAt desc) を URL 単位でグループ化し、各ページの PC と Mobile を
+ * 両方返す (どちらか欠けていればその viewport のみ)。
+ *
+ * Gemini multimodal の inline_data は 3072×3072 までだが、Files API 経由なら寸法制限なし。
+ * fullPage screenshot (1280×6000+) もそのまま AI に渡せるので、提案品質を最大化できる。
+ *
+ * @param {string} siteId
+ * @param {string} apiKey - GEMINI_API_KEY (Files API アップロード用)
+ * @returns {Promise<Array<{url: string, deviceType: 'pc'|'mobile', fileUri: string, mimeType: string}>>}
+ */
+async function fetchStoredScreenshots(siteId, apiKey) {
   const db = getFirestore();
   const results = [];
   const startTime = Date.now();
@@ -31,7 +126,7 @@ async function fetchStoredScreenshots(siteId) {
       .collection('sites').doc(siteId)
       .collection('pageScreenshots')
       .orderBy('capturedAt', 'desc')
-      .limit(MAX_SCREENSHOTS_FOR_GEMINI + 1) // +1 for _meta doc
+      .limit(SCREENSHOTS_QUERY_LIMIT)
       .get();
 
     if (snap.empty) {
@@ -39,36 +134,72 @@ async function fetchStoredScreenshots(siteId) {
       return results;
     }
 
-    // Storage URLから画像をfetchしてbase64に変換
-    const fetchPromises = [];
-    snap.forEach(doc => {
-      if (doc.id === '_meta') return;
+    // URL ごとに最新の PC と Mobile を集める (capturedAt desc 順なので最初に見つかったものが最新)
+    // 旧ドキュメント (deviceType フィールドなし) は 'pc' とみなす
+    const grouped = new Map(); // url -> { pc: screenshotUrl|null, mobile: screenshotUrl|null }
+    for (const doc of snap.docs) {
+      if (doc.id === '_meta') continue;
       const data = doc.data();
-      if (!data.screenshotUrl) return;
-      fetchPromises.push(
-        fetch(data.screenshotUrl)
-          .then(async res => {
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            const buffer = await res.arrayBuffer();
-            return {
-              url: data.url || data.pagePath || '',
-              base64: Buffer.from(buffer).toString('base64'),
-              mimeType: 'image/jpeg',
-            };
-          })
-          .catch(e => {
-            logger.warn(`[fetchStoredScreenshots] Fetch失敗: ${data.screenshotUrl} - ${e.message}`);
-            return null;
-          })
-      );
-    });
+      const url = data.url || data.pagePath || '';
+      if (!url || !data.screenshotUrl) continue;
+      const dt = data.deviceType === 'mobile' ? 'mobile' : 'pc';
 
-    const fetched = await Promise.all(fetchPromises);
+      if (!grouped.has(url)) {
+        // 新規 URL: 上位 N ページに到達済なら追加しない (既存 URL の埋め合わせは続ける)
+        if (grouped.size >= MAX_PAGES_FOR_GEMINI) continue;
+        grouped.set(url, { pc: null, mobile: null });
+      }
+      const entry = grouped.get(url);
+      if (!entry[dt]) {
+        entry[dt] = data.screenshotUrl;
+      }
+    }
+
+    // 各ページの PC + Mobile を並列 fetch + Files API upload
+    const fetchTasks = [];
+    for (const [url, entry] of grouped.entries()) {
+      for (const dt of ['pc', 'mobile']) {
+        const ssUrl = entry[dt];
+        if (!ssUrl) continue;
+        fetchTasks.push(
+          (async () => {
+            try {
+              const res = await fetch(ssUrl);
+              if (!res.ok) {
+                logger.warn(`[fetchStoredScreenshots] Storage fetch失敗 (${dt}): ${ssUrl} - HTTP ${res.status}`);
+                return null;
+              }
+              const buffer = await res.arrayBuffer();
+              const safeName = url.replace(/[^a-zA-Z0-9]+/g, '_').substring(0, 80);
+              const fileUri = await uploadToGeminiFiles(
+                buffer,
+                'image/jpeg',
+                apiKey,
+                `${safeName}_${dt}.jpg`
+              );
+              if (!fileUri) return null;
+              return {
+                url,
+                deviceType: dt,
+                fileUri,
+                mimeType: 'image/jpeg',
+              };
+            } catch (e) {
+              logger.warn(`[fetchStoredScreenshots] 例外 (${dt}): ${ssUrl} - ${e.message}`);
+              return null;
+            }
+          })()
+        );
+      }
+    }
+    const fetched = await Promise.all(fetchTasks);
     for (const item of fetched) {
       if (item) results.push(item);
     }
 
-    logger.info(`[fetchStoredScreenshots] ${results.length}枚取得 (${Date.now() - startTime}ms)`);
+    logger.info(
+      `[fetchStoredScreenshots] ${grouped.size} pages, ${results.length}/${fetched.length} images uploaded (${Date.now() - startTime}ms)`
+    );
   } catch (e) {
     logger.warn(`[fetchStoredScreenshots] エラー: ${e.message}`);
   }
@@ -116,6 +247,9 @@ export async function generateAISummaryCallable(request) {
 
   const userId = request.auth.uid;
 
+  // Phase 4-A-2: レート制限（Gemini API 課金枯渇防止）
+  await enforceRateLimit({ uid: userId, ...DEFAULT_RATE_LIMITS.generateAISummary });
+
   console.log('[generateAISummary] Start:', { userId, siteId, pageType, startDate, endDate, forceRegenerate });
 
   try {
@@ -127,12 +261,12 @@ export async function generateAISummaryCallable(request) {
 
     const siteData = siteDoc.data();
     
-    // AI生成は編集権限が必要（閲覧者は不可）
-    const canEdit = await canEditSite(userId, siteId);
-    if (!canEdit) {
+    // viewer も AI 分析生成は許可（オーナーのプラン枠を消費）
+    const hasAccess = await canAccessSite(userId, siteId);
+    if (!hasAccess) {
       throw new HttpsError(
         'permission-denied',
-        'AI分析を生成する権限がありません（編集者以上の権限が必要です）'
+        'AI分析を生成する権限がありません'
       );
     }
 
@@ -329,9 +463,12 @@ export async function generateAISummaryCallable(request) {
         sitePurposeText: siteRoleText,
       };
       options.improvementFocus = IMPROVEMENT_FOCUS_LABELS[improvementFocusValue] || IMPROVEMENT_FOCUS_LABELS.balance;
-      options.userNote = userNote || '';
+      // セキュリティ (Phase 3-3): プロンプトインジェクション対策。
+      //   userNote はユーザー自由記述で、`<system>` 等の制御マーカーや
+      //   「以前の指示を無視せよ」型の命令文を含む可能性がある。
+      //   <USER_NOTE> ... </USER_NOTE> でラップし sanitize した上で template に渡す。
+      options.userNote = wrapAsUserData(userNote || '', { label: 'USER_NOTE', maxChars: 2000 });
       options.existingImprovements = existingImprovements || [];
-      options.diagnosisData = metrics.diagnosisData || null;
       // コンバージョン設定と目標設定を追加
       options.conversionGoals = siteData.conversionGoals || [];
       options.kpiSettings = siteData.kpiSettings || [];
@@ -339,13 +476,14 @@ export async function generateAISummaryCallable(request) {
     const prompt = await generatePrompt(db, pageType, startDate, endDate, metrics, options);
     console.log('[generateAISummary] 生成されたプロンプト (先頭500文字):', prompt.substring(0, 500));
 
-    // 7.5. 改善案生成の場合、事前保存済みスクリーンショットをFirestoreから取得
+    // 7.5. 改善案生成の場合、事前保存済みスクリーンショットを Firestore から取得 +
+    //      Gemini Files API にアップロード (fullPage 寸法でも inline_data 限界を超えない)
     let pageScreenshots = [];
     if (pageType === 'comprehensive_improvement') {
       try {
         logger.info(`[generateAISummary] 事前保存スクリーンショット取得開始: siteId=${siteId}`);
-        pageScreenshots = await fetchStoredScreenshots(siteId);
-        logger.info(`[generateAISummary] スクリーンショット取得完了: ${pageScreenshots.length}枚`);
+        pageScreenshots = await fetchStoredScreenshots(siteId, geminiApiKey);
+        logger.info(`[generateAISummary] スクリーンショット取得完了: ${pageScreenshots.length}枚 (Files API 経由)`);
       } catch (e) {
         logger.warn(`[generateAISummary] スクリーンショット取得失敗（テキストのみで続行）: ${e.message}`);
       }
@@ -356,23 +494,27 @@ export async function generateAISummaryCallable(request) {
     const geminiModel = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
     console.log('[generateAISummary] Using model:', geminiModel);
 
-    // マルチモーダルパーツ構築（改善案生成時はスクリーンショット付き）
+    // マルチモーダルパーツ構築（改善案生成時は PC + Mobile スクリーンショット付き）
+    // Files API 経由でアップロード済の fileUri を file_data で参照する
+    // (inline_data の 3072×3072 寸法制限を回避し、fullPage 画像をそのまま AI に渡す)
     const parts = [];
     if (pageScreenshots.length > 0) {
       // スクリーンショットを先に配置（Geminiは画像→テキストの順が推奨）
+      // PC と Mobile が混在するので、各画像に deviceType ラベルを付与
       for (const ss of pageScreenshots) {
+        const dtLabel = ss.deviceType === 'mobile' ? 'Mobile' : 'PC';
         parts.push({
-          inline_data: {
+          file_data: {
             mime_type: ss.mimeType,
-            data: ss.base64,
+            file_uri: ss.fileUri,
           },
         });
         parts.push({
-          text: `↑ 上記は ${ss.url} の現在のスクリーンショットです。`,
+          text: `↑ ${ss.url} の現在のスクリーンショット (${dtLabel} レイアウト、fullPage)`,
         });
       }
       parts.push({
-        text: `\n上記のスクリーンショットはサイトの主要ページの現在の見た目です。これらの実際のデザイン・レイアウト・色使い・コンテンツ配置を踏まえて、以下のデータ分析に基づく改善案を生成してください。スクリーンショットで確認できる実際の状態と矛盾する提案は避けてください。\n\n${prompt}`,
+        text: `\n上記のスクリーンショットはサイト主要ページの現在の見た目です (PC / Mobile 両方、ページ全体スクロール込み)。これらの実際のデザイン・レイアウト・色使い・CTA 配置・モバイル表示の崩れなどを踏まえて、以下のデータ分析に基づく改善案を生成してください。スクリーンショットで確認できる実際の状態と矛盾する提案は避けてください。\n\n${prompt}`,
       });
     } else {
       parts.push({
@@ -1362,6 +1504,41 @@ function formatRawDataToMetrics(rawData, pageType) {
         monthlyData: monthly,
       };
 
+    case 'userJourney':
+    case 'analysis/user-journey': {
+      // ユーザージャーニー分析：fetchGA4UserJourneyData の結果
+      const jNodes = rawData.nodes || [];
+      const jLinks = rawData.links || [];
+      const sourceBreakdown = jNodes
+        .filter((n) => n.type === 'source')
+        .map((n) => ({ name: n.name, value: n.value, share: n.share, sourceType: n.id?.replace('src-', '') }))
+        .sort((a, b) => b.value - a.value);
+      const topLPs = jNodes
+        .filter((n) => n.type === 'lp')
+        .map((n) => ({ name: n.name, value: n.value }))
+        .sort((a, b) => b.value - a.value);
+      const cvBreakdown = jNodes
+        .filter((n) => n.type === 'cv')
+        .map((n) => ({ name: n.name, value: n.value, share: n.share }))
+        .sort((a, b) => b.value - a.value);
+      const totalCv = cvBreakdown.reduce((s, c) => s + c.value, 0);
+      const exitNode = jNodes.find((n) => n.type === 'exit');
+      const totalExit = exitNode?.value || 0;
+
+      return {
+        totalSessions: rawData.totalSessions || 0,
+        totalCv,
+        totalExit,
+        sourceBreakdown,
+        topLPs,
+        cvBreakdown,
+        detailPaths: rawData.detailPaths || [],
+        gscEnabled: rawData.gscEnabled !== false,
+        nodeCount: jNodes.length,
+        linkCount: jLinks.length,
+      };
+    }
+
     case 'pageFlow':
     case 'page_flow':
       // ページフロー分析：fetchGA4PageTransition の結果
@@ -1415,7 +1592,30 @@ function formatRawDataToMetrics(rawData, pageType) {
       };
 
     case 'keywords':
-      // 流入キーワード分析：fetchGSCData の結果
+      // V2 形式（fetchGSCKeywordsV2Data の結果）— funnel / clusters を含む
+      if (rawData.funnel && Array.isArray(rawData.keywords)) {
+        const kwTopText = rawData.keywords
+          .slice(0, 10)
+          .map((k) =>
+            `${k.query}: ${k.clicks}クリック, ${k.impressions}表示, CTR ${(k.ctr * 100).toFixed(2)}%, 平均順位 ${k.position.toFixed(1)}`
+          )
+          .join('\n');
+        return {
+          totalClicks: rawData.metrics?.totalClicks || 0,
+          totalImpressions: rawData.metrics?.totalImpressions || 0,
+          avgCTR: (rawData.metrics?.avgCTR || 0) / 100, // V2 は % 値で返るため 0-1 系に戻す
+          avgPosition: rawData.metrics?.avgPosition || 0,
+          keywordCount: rawData.metrics?.keywordCount || rawData.keywords.length,
+          estimatedCV: rawData.metrics?.estimatedCV || 0,
+          funnel: rawData.funnel,
+          clusters: rawData.clusters || [],
+          topKeywordsText: kwTopText,
+          keywordsData: rawData.keywords,
+          hasGSCConnection: true,
+        };
+      }
+
+      // 旧形式（fetchGSCData の結果）— 後方互換維持
       const topQueries = rawData.topQueries || [];
       const totalClicks = rawData.metrics?.clicks || 0;
       const totalImpressions = rawData.metrics?.impressions || 0;
@@ -1739,9 +1939,8 @@ function formatRawDataToMetrics(rawData, pageType) {
         reverseFlow: rawData.reverseFlow || [],
         // AI総合分析
         aiComprehensiveAnalysis: rawData.aiComprehensiveAnalysis || null,
-        // スクレイピング・診断・構造
+        // スクレイピング・構造
         scrapingData: rawData.scrapingData || { pages: [], meta: null, totalPages: 0 },
-        diagnosisData: rawData.diagnosisData || null,
         improvementKnowledge: rawData.improvementKnowledge || [],
       };
 

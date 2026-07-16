@@ -19,7 +19,7 @@ const calculateChangePercent = (current, previous) => {
   return ((current - previous) / previous) * 100;
 };
 
-// メトリックカード（前月・前年同月比較付き）
+// メトリックカード（前期間・前年同月比較付き）
 const MetricCard = ({ title, currentValue, previousValue, yearAgoValue, format: formatType = 'number', tooltip }) => {
   const formatValue = (value) => {
     if (value === null || value === undefined) return '-';
@@ -44,7 +44,7 @@ const MetricCard = ({ title, currentValue, previousValue, yearAgoValue, format: 
       </div>
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm">
-          <span className="text-body-color">前月</span>
+          <span className="text-body-color">前期間</span>
           <div className="flex items-center gap-2">
             <span className="text-dark dark:text-white">{formatValue(previousValue)}</span>
             {prevChange !== null && (
@@ -289,7 +289,7 @@ export default function MetricTabSection({
                         </div>
                         <div className="space-y-1">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-body-color">前月</span>
+                            <span className="text-body-color">前期間</span>
                             <span className={`font-medium ${
                               monthChange > 0 ? 'text-green-600 dark:text-green-400'
                                 : monthChange < 0 ? 'text-red-600 dark:text-red-400'

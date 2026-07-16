@@ -75,6 +75,15 @@ export class BoardApiClient {
   }
 
   /**
+   * 顧客を ID で取得
+   * @param {number} clientId
+   * @returns {Object} 顧客の詳細（name, name_disp, address, tel, email, etc.）
+   */
+  async getClient(clientId) {
+    return this.request('GET', `/clients/${clientId}?response_group=large`);
+  }
+
+  /**
    * 顧客を新規登録
    * @returns {{ id: number }} 作成された顧客
    */

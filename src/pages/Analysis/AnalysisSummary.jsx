@@ -227,11 +227,11 @@ export default function AnalysisSummary() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           {/* ページタイトル */}
           <div className="mb-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg font-bold text-dark dark:text-white">分析する - 全体サマリー</h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-2xl font-bold text-dark dark:text-white">分析する - 全体サマリー</h2>
               <TourHelpButton tourId={isFree ? 'analysisSummaryFree' : 'analysisSummary'} />
             </div>
-            <p className="mt-0.5 text-sm text-body-color">
+            <p className="mt-1 text-sm text-body-color">
               GA4データの全般指標を詳細に分析します
             </p>
           </div>

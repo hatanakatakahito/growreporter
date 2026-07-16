@@ -7,7 +7,9 @@ import {
   Settings,
   Mail,
   CreditCard,
-  MessageSquare
+  MessageSquare,
+  Lightbulb,
+  Database
 } from 'lucide-react';
 import logoImg from '../../assets/img/logo.svg';
 
@@ -48,6 +50,16 @@ export default function AdminSidebar() {
       icon: FileText,
       label: 'ログ',
       path: '/admin/logs',
+    },
+    {
+      icon: Lightbulb,
+      label: '改善ナレッジ',
+      path: '/admin/improvement-knowledge',
+    },
+    {
+      icon: Database,
+      label: '業界ベンチマーク',
+      path: '/admin/industry-benchmarks',
     },
     {
       icon: Mail,

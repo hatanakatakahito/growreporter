@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../config/firebase';
 import { setPageTitle } from '../utils/pageTitle';
 import logoImg from '../assets/img/logo.svg';
-import loginIllustration from '../assets/img/login.svg';
 import { Button } from '@/components/ui/button';
 
 export default function ForgotPassword() {
@@ -11,8 +11,6 @@ export default function ForgotPassword() {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const { resetPassword } = useAuth();
 
   useEffect(() => { setPageTitle('パスワード再設定'); }, []);
 
@@ -23,17 +21,16 @@ export default function ForgotPassword() {
     setIsSubmitting(true);
 
     try {
-      await resetPassword(email);
-      setMessage('パスワードリセットメールを送信しました。メールをご確認ください。');
+      const sendPasswordResetByEmail = httpsCallable(functions, 'sendPasswordResetByEmail');
+      await sendPasswordResetByEmail({ email });
+      setMessage('入力されたメールアドレス宛にパスワード再設定メールを送信しました。受信ボックスをご確認ください。');
     } catch (err) {
       console.error('Password reset error:', err);
-      let errorMessage = 'パスワードリセットに失敗しました';
-      if (err.code === 'auth/user-not-found') {
-        errorMessage = 'このメールアドレスのアカウントが見つかりません';
-      } else if (err.code === 'auth/invalid-email') {
-        errorMessage = 'メールアドレスの形式が正しくありません';
-      } else if (err.code === 'auth/too-many-requests') {
-        errorMessage = 'リクエストが多すぎます。しばらく待ってから再度お試しください';
+      let errorMessage = 'パスワード再設定に失敗しました';
+      if (err.code === 'functions/invalid-argument' || err.code === 'invalid-argument') {
+        errorMessage = err.message || 'メールアドレスの形式が正しくありません';
+      } else if (err.code === 'functions/unavailable' || err.code === 'unavailable') {
+        errorMessage = 'サーバーへ接続できません。しばらく待ってから再度お試しください';
       }
       setError(errorMessage);
     } finally {
@@ -42,42 +39,19 @@ export default function ForgotPassword() {
   };
 
   return (
-    <section className="relative z-10 flex min-h-screen items-center justify-center py-12 lg:py-20" style={{
-      backgroundColor: 'rgb(244, 244, 244)'
-    }}>
+    <section className="relative z-10 flex min-h-screen items-center justify-center py-12 lg:py-20" style={{ backgroundColor: 'rgb(244, 244, 244)' }}>
       <div className="container mx-auto px-4">
-        <div className="mx-auto max-w-[1000px] overflow-hidden rounded-2xl bg-white dark:bg-dark-2 lg:flex">
-
-          {/* 左側：イラストエリア */}
-          <div className="flex w-full items-center justify-center bg-[#F9FAFB] px-6 py-10 dark:bg-dark-3 lg:w-1/2 lg:px-8">
-            <div className="w-full max-w-[400px] text-center">
-              <div className="mb-5 flex items-center justify-center">
-                <img
-                  src={logoImg}
-                  alt="GROW REPORTER"
-                  className="h-14 w-auto"
-                />
-              </div>
-              <p className="mb-8 text-center text-sm text-body-color dark:text-dark-6 lg:text-base">
-                グローレポーターは、アクセス解析にAIを掛け合わせ、
-                <br />
-                "次の打ち手"まで導くサイト改善ツールです。
-              </p>
-
-              {/* イラスト */}
-              <div className="mx-auto flex items-center justify-center">
-                <img
-                  src={loginIllustration}
-                  alt="Login Illustration"
-                  className="w-full max-w-[400px] h-auto"
-                />
-              </div>
+        <div className="mx-auto max-w-[820px] overflow-hidden rounded-2xl bg-white shadow-lg dark:bg-dark-2">
+          {/* ロゴエリア (グラデヘッダー) */}
+          <div className="bg-gradient-primary px-8 py-6 text-center">
+            <div className="flex items-center justify-center">
+              <img src={logoImg} alt="グローレポータ" className="h-10 w-auto brightness-0 invert" />
             </div>
           </div>
 
-          {/* 右側：フォームエリア */}
-          <div className="flex w-full items-center justify-center px-6 py-10 lg:w-1/2 lg:px-8">
-            <div className="w-full max-w-[400px]">
+          {/* フォームエリア */}
+          <div className="flex w-full items-center justify-center px-8 py-10 sm:px-12 lg:px-20">
+            <div className="w-full max-w-[480px]">
               <h2 className="mb-2 text-xl font-bold text-dark dark:text-white">
                 パスワードをリセット
               </h2>

@@ -90,7 +90,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "keywords": {
         "type": "bar",
-        "title": "Top 20 流入キーワード",
+        "title": "Top 20 検索キーワード",
         "cat_key": "keyword",
         "series": [(short_label_of("clicks"), "clicks")],
         "top_n": 20,
@@ -98,7 +98,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "referrals": {
         "type": "bar",
-        "title": "Top 20 被リンク元",
+        "title": "Top 20 参照元サイト",
         "cat_key": "source",
         "series": [
             (short_label_of("sessions"), "sessions"),
@@ -125,7 +125,7 @@ CHART_CONFIGS: dict[str, dict[str, Any]] = {
     },
     "landingPages": {
         "type": "bar",
-        "title": "Top 20 ランディングページ",
+        "title": "Top 20 入口ページ",
         "cat_key": "path",
         "series": [(short_label_of("sessions"), "sessions")],
         "top_n": 20,

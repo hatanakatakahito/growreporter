@@ -31,7 +31,7 @@ import {
 } from 'recharts';
 
 /**
- * ファイルダウンロード分析画面
+ * 資料ダウンロード分析画面
  * file_downloadイベントを追跡
  */
 export default function FileDownloads() {
@@ -54,7 +54,7 @@ export default function FileDownloads() {
 
   // ページタイトルを設定
   useEffect(() => {
-    setPageTitle('ファイルダウンロード');
+    setPageTitle('資料ダウンロード');
   }, []);
 
   // GA4データ取得（ファイルダウンロード別）
@@ -192,14 +192,14 @@ export default function FileDownloads() {
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-lg font-bold text-dark dark:text-white">
-                  エンゲージメント - ファイルダウンロード
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-2xl font-bold text-dark dark:text-white">
+                  エンゲージメント - 資料ダウンロード
                 </h2>
                 <TourHelpButton tourId="analysisFileDownloads" />
               </div>
-              <p className="mt-0.5 text-sm text-body-color">
-                file_downloadイベントを追跡してファイルダウンロード数を確認できます
+              <p className="mt-1 text-sm text-body-color">
+                サイト内のPDF・Word・Excel等のファイルへのリンクがクリックされた回数を確認できます
               </p>
             </div>
             <div className="flex flex-shrink-0 items-center gap-2 pt-0.5" data-tour="analysis-dimension-filters">
@@ -220,12 +220,34 @@ export default function FileDownloads() {
               message={error?.message || 'データの読み込みに失敗しました。'}
             />
           ) : !tableData || tableData.length === 0 ? (
-            <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
-              <p className="text-body-color">
-                表示するデータがありません。
-                <br />
-                file_downloadイベントが設定されていない可能性があります。
-              </p>
+            <div className="rounded-lg border border-stroke bg-white p-8 sm:p-12 dark:border-dark-3 dark:bg-dark-2">
+              <div className="mx-auto max-w-xl">
+                <div className="text-center">
+                  <Download className="mx-auto h-10 w-10 text-body-color" aria-hidden="true" />
+                  <p className="mt-4 text-base font-semibold text-dark dark:text-white">
+                    この期間に計測されたダウンロードはありません
+                  </p>
+                  <p className="mt-3 text-sm text-body-color">
+                    この画面は、サイト内に置かれたPDF・Word・Excel・PowerPoint・ZIP等のファイルへのリンクが
+                    クリックされた回数を集計しています（GA4の拡張計測機能「ファイルのダウンロード」）。
+                  </p>
+                </div>
+                <div className="mt-6 rounded-md bg-gray-50 p-4 dark:bg-dark-3">
+                  <p className="text-sm font-semibold text-dark dark:text-white">
+                    以下の場合は、正常に動作していても0件のままになります
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-body-color">
+                    <li>フォーム送信後にメールで資料をお届けしている（ファイルのリンクをクリックしないため）</li>
+                    <li>ボタンやJavaScriptでダウンロードさせている（ファイルへの直接リンクではないため）</li>
+                    <li>ダウンロードURLに拡張子がない（例：/download/?id=123 のような配信ページ）</li>
+                    <li>GA4の拡張計測機能で「ファイルのダウンロード」がオフになっている</li>
+                  </ul>
+                </div>
+                <p className="mt-4 text-center text-sm text-body-color">
+                  資料請求をフォームで受け付けている場合は、そのフォーム完了をコンバージョンとして
+                  計測いただくと資料請求数を追跡できます。
+                </p>
+              </div>
             </div>
           ) : (
             <>

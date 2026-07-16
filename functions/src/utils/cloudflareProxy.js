@@ -22,15 +22,21 @@ export function getCloudflareProxyConfig() {
 }
 
 /**
- * CF Worker プロキシ経由で URL の HTML/snapshot を取得する。
+ * CF Worker プロキシ経由で URL の HTML/snapshot/render/screenshot を取得する。
  *
  * @param {Object} params
  * @param {string} params.targetUrl - 取得対象 URL（事前に SSRF 検証済であること）
- * @param {'html'|'snapshot'} [params.mode='html']
+ * @param {'html'|'snapshot'|'render'|'screenshot'|'render+shot'} [params.mode='html']
  * @param {number} [params.timeoutMs=30000]
- * @returns {Promise<{status: number, html: string, stats?: object}>}
+ * @param {'pc'|'mobile'} [params.viewport='pc'] - render/screenshot/render+shot モードでのみ有効
+ * @param {boolean} [params.fullPage=true] - screenshot/render+shot で true: ページ全体撮影 (デフォルト)、false: viewport のみ (サムネ用)
+ * @returns {Promise<object>} mode により返り値の形が異なる:
+ *   - mode='html'/'snapshot':  { status, html, stats? }
+ *   - mode='render':           { status, html, finalUrl, viewport, byteLen }
+ *   - mode='screenshot':       { status, screenshot (base64), finalUrl, viewport, byteLen }
+ *   - mode='render+shot':      { status, html, screenshot, screenshotByteLen, finalUrl, viewport, byteLen }
  */
-export async function fetchViaCloudflareProxy({ targetUrl, mode = 'html', timeoutMs = 30_000 }) {
+export async function fetchViaCloudflareProxy({ targetUrl, mode = 'html', timeoutMs = 30_000, viewport = 'pc', fullPage = true }) {
   const { url, secret } = getCloudflareProxyConfig();
 
   if (!secret) {
@@ -43,6 +49,16 @@ export async function fetchViaCloudflareProxy({ targetUrl, mode = 'html', timeou
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
+  // render/screenshot/render+shot モードのみ viewport を body に含める
+  const body = { url: targetUrl, mode };
+  if (mode === 'render' || mode === 'screenshot' || mode === 'render+shot') {
+    body.viewport = viewport;
+  }
+  // screenshot/render+shot で fullPage オプションを転送 (false=viewport のみ撮影、サムネ用)
+  if (mode === 'screenshot' || mode === 'render+shot') {
+    body.fullPage = fullPage !== false;
+  }
+
   try {
     const res = await fetch(url, {
       method: 'POST',
@@ -50,13 +66,19 @@ export async function fetchViaCloudflareProxy({ targetUrl, mode = 'html', timeou
         'Content-Type': 'application/json',
         'X-Proxy-Secret': secret,
       },
-      body: JSON.stringify({ url: targetUrl, mode }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
     if (!res.ok) {
       throw new Error(`Cloudflare proxy returned ${res.status}`);
     }
-    const data = await res.json();
+    // res.json() に 5s timeout (2026-05-11): 大容量レスポンス処理中の hang 防止
+    const data = await Promise.race([
+      res.json(),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('cloudflareProxy json parse timeout 5s')), 5_000)
+      ),
+    ]);
     if (data.error) {
       throw new Error(`Cloudflare proxy error: ${data.error}`);
     }

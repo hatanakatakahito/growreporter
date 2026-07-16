@@ -4,6 +4,9 @@ import { getAuth } from 'firebase-admin/auth';
 import { logger } from 'firebase-functions/v2';
 import { v4 as uuidv4 } from 'uuid';
 import { sendEmailDirect } from '../utils/emailSender.js';
+import { escapeHtml, escapeHtmlAndValidateUrl } from '../utils/htmlEscape.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
+import { requireEmail, requireEnum, requireArray, requireDocId } from '../utils/validators.js';
 
 /**
  * メンバーを招待
@@ -20,17 +23,23 @@ export const inviteMemberCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const {
-    email,
-    role = 'viewer',
-  } = request.data || {};
+  // セキュリティ (Phase 4-A-2): レート制限。スパム踏み台防止
+  await enforceRateLimit({ uid, ...DEFAULT_RATE_LIMITS.inviteMember });
 
-  if (!email) {
-    throw new HttpsError('invalid-argument', 'メールアドレスが必要です');
-  }
+  const rawData = request.data || {};
 
-  if (!['editor', 'viewer'].includes(role)) {
-    throw new HttpsError('invalid-argument', '無効な権限です');
+  // 入力検証 (Phase 4-B-7): 型・長さ・形式を統一的に検証してから後続処理へ
+  const email = requireEmail(rawData.email, 'email');
+  const role = requireEnum(rawData.role || 'viewer', 'role', ['editor', 'viewer']);
+  const allowedSiteIds = requireArray(rawData.allowedSiteIds || [], 'allowedSiteIds', {
+    maxLen: 100, // 1 アカウントが持ちうるサイト数の現実的上限
+    itemValidator: (id, fld) => requireDocId(id, fld),
+  });
+
+  // editor / viewer どちらも招待時に対象サイトを 1 つ以上指定する必要がある
+  // （オーナー以外はサイト指定式）
+  if (allowedSiteIds.length === 0) {
+    throw new HttpsError('invalid-argument', '対象のサイトを 1 つ以上選択してください');
   }
 
   try {
@@ -106,13 +115,28 @@ export const inviteMemberCallable = async (request) => {
       }
     }
     
+    // 4.5 editor/viewer の場合、allowedSiteIds が実際に accountOwnerId のサイトであることを検証
+    let validatedAllowedSiteIds = [];
+    if ((role === 'editor' || role === 'viewer') && allowedSiteIds.length > 0) {
+      const siteSnaps = await Promise.all(
+        allowedSiteIds.map((sid) => db.collection('sites').doc(sid).get())
+      );
+      const ownedSiteIds = siteSnaps
+        .filter((s) => s.exists && s.data().userId === accountOwnerId)
+        .map((s) => s.id);
+      if (ownedSiteIds.length !== allowedSiteIds.length) {
+        throw new HttpsError('invalid-argument', '指定したサイトの一部があなたのアカウントに存在しません');
+      }
+      validatedAllowedSiteIds = ownedSiteIds;
+    }
+
     // 5. 招待トークンを生成
     const token = uuidv4();
     const expiresAt = new Date();
     expiresAt.setDate(expiresAt.getDate() + 7); // 7日間有効
-    
+
     // 6. 招待ドキュメントを作成
-    const invitationRef = await db.collection('invitations').add({
+    const invitationData = {
       accountOwnerId,
       email: email.toLowerCase(),
       role,
@@ -123,7 +147,11 @@ export const inviteMemberCallable = async (request) => {
       invitedByName: userData.name || `${userData.lastName || ''} ${userData.firstName || ''}`.trim() || userData.email,
       accountOwnerName: userData.company || 'グローレポータ',
       createdAt: FieldValue.serverTimestamp()
-    });
+    };
+    if (role === 'editor' || role === 'viewer') {
+      invitationData.allowedSiteIds = validatedAllowedSiteIds;
+    }
+    const invitationRef = await db.collection('invitations').add(invitationData);
     
     // 7. 招待メールを送信（Trigger Email 拡張用: subject + text 必須の場合は text も渡す）
     const appUrl = process.env.APP_URL || 'https://grow-reporter.com';
@@ -133,6 +161,7 @@ export const inviteMemberCallable = async (request) => {
       inviterName: userData.name || `${userData.lastName || ''} ${userData.firstName || ''}`.trim() || userData.email,
       companyName: userData.company || 'グローレポータ',
       role: role === 'editor' ? '編集者' : '閲覧者',
+      allowedSiteCount: (role === 'editor' || role === 'viewer') ? validatedAllowedSiteIds.length : null,
       invitationUrl,
       expiresAt: expiresAt.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })
     });
@@ -173,8 +202,19 @@ export const inviteMemberCallable = async (request) => {
  * 招待メールHTMLを生成
  */
 function generateInvitationEmailHtml(data) {
-  const { inviterName, companyName, role, invitationUrl, expiresAt } = data;
-  
+  const { inviterName, companyName, role, allowedSiteCount, invitationUrl, expiresAt } = data;
+
+  // XSS 対策: HTML 文脈に展開する変数は escape 必須
+  const inviterNameH = escapeHtml(inviterName);
+  const companyNameH = escapeHtml(companyName);
+  const roleH = escapeHtml(role);
+  const expiresAtH = escapeHtml(expiresAt);
+  const invitationUrlH = escapeHtmlAndValidateUrl(invitationUrl);
+
+  const accessScopeText = (allowedSiteCount != null)
+    ? `指定された ${escapeHtml(allowedSiteCount)} サイトのみ${role === '編集者' ? '編集・閲覧' : '閲覧'}可能です`
+    : `${companyNameH} の全サイトのデータにアクセスできるようになります`;
+
   return `
 <!DOCTYPE html>
 <html lang="ja">
@@ -198,27 +238,27 @@ function generateInvitationEmailHtml(data) {
           <tr>
             <td style="padding: 40px 30px;">
               <h2 style="margin: 0 0 20px 0; color: #1f2937; font-size: 20px; font-weight: 700;">
-                ${inviterName} さんから招待が届いています
+                ${inviterNameH} さんから招待が届いています
               </h2>
-              
+
               <p style="margin: 0 0 20px 0; color: #4b5563; font-size: 16px; line-height: 1.6;">
-                <strong>${companyName}</strong> のメンバーとして招待されました。
+                <strong>${companyNameH}</strong> のメンバーとして招待されました。
               </p>
-              
+
               <div style="background-color: #f9fafb; border-left: 4px solid #3758F9; padding: 15px; margin: 20px 0;">
                 <p style="margin: 0; color: #374151; font-size: 14px;">
-                  <strong>権限:</strong> ${role}
+                  <strong>権限:</strong> ${roleH}
                 </p>
               </div>
-              
+
               <p style="margin: 20px 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
-                招待を承認すると、${companyName} の全サイトのデータにアクセスできるようになります。
+                招待を承認すると、${accessScopeText}。
               </p>
-              
+
               <table cellpadding="0" cellspacing="0" border="0" width="100%" style="margin: 30px 0;">
                 <tr>
                   <td align="center">
-                    <a href="${invitationUrl}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
+                    <a href="${invitationUrlH}" style="display: inline-block; background-color: #3758F9; color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 6px; font-size: 16px; font-weight: 600;">
                       招待を承認する
                     </a>
                   </td>
@@ -226,10 +266,10 @@ function generateInvitationEmailHtml(data) {
               </table>
               <p style="margin: 16px 0 0 0; color: #6b7280; font-size: 13px; line-height: 1.6;">
                 ボタンが表示されない場合は、以下のリンクをクリックしてください：<br>
-                <a href="${invitationUrl}" style="color: #3758F9; text-decoration: underline; word-break: break-all;">${invitationUrl}</a>
+                <a href="${invitationUrlH}" style="color: #3758F9; text-decoration: underline; word-break: break-all;">${invitationUrlH}</a>
               </p>
               <p style="margin: 20px 0 0 0; color: #9ca3af; font-size: 13px; line-height: 1.6;">
-                ※ この招待は <strong>${expiresAt}</strong> まで有効です。<br>
+                ※ この招待は <strong>${expiresAtH}</strong> まで有効です。<br>
                 ※ グローレポータのアカウントをお持ちでない場合は、まず新規登録を行ってから招待を承認してください。
               </p>
             </td>

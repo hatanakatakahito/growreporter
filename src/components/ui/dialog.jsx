@@ -30,7 +30,7 @@ export function Dialog({ size = 'lg', className, children, ...props }) {
             className={clsx(
               className,
               sizes[size],
-              'row-start-2 w-full min-w-0 rounded-t-3xl bg-white p-(--gutter) shadow-lg ring-1 ring-zinc-950/10 [--gutter:--spacing(8)] sm:mb-auto sm:rounded-2xl dark:bg-zinc-900 dark:ring-white/10 forced-colors:outline',
+              'row-start-2 w-full min-w-0 rounded-t-3xl bg-white p-(--gutter) shadow-lg ring-1 ring-zinc-950/10 [--gutter:--spacing(6)] sm:mb-auto sm:rounded-2xl dark:bg-zinc-900 dark:ring-white/10 forced-colors:outline',
               'transition duration-100 will-change-transform data-closed:translate-y-12 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in sm:data-closed:translate-y-0 sm:data-closed:data-enter:scale-95'
             )}
           >
@@ -56,7 +56,7 @@ export function DialogDescription({ className, ...props }) {
 }
 
 export function DialogBody({ className, ...props }) {
-  return <div {...props} className={clsx(className, 'mt-6')} />
+  return <div {...props} className={clsx(className, 'mt-4')} />
 }
 
 export function DialogActions({ className, ...props }) {
@@ -65,7 +65,7 @@ export function DialogActions({ className, ...props }) {
       {...props}
       className={clsx(
         className,
-        'mt-8 flex flex-col-reverse items-center justify-end gap-3 *:w-full sm:flex-row sm:*:w-auto'
+        'mt-6 flex flex-col-reverse items-center justify-end gap-3 *:w-full sm:flex-row sm:*:w-auto'
       )}
     />
   )

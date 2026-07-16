@@ -1,10 +1,18 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
+import {
+  calculateCurrentRevenueSnapshot,
+  calculateMonthlyContractTrend,
+  isInternalEmail,
+} from '../../utils/revenueCalculator.js';
 
 /**
  * 管理者ダッシュボードの統計データを取得
- * 
+ *
+ * 社内ドメイン (grow-group.jp) のユーザーは全指標から除外する。
+ * users 取得を 1 回に集約し、すべてのユーザー系指標をメモリ上で計算する。
+ *
  * @returns {Object} 統計データ
  */
 export const getAdminStatsCallable = async (request) => {
@@ -16,7 +24,7 @@ export const getAdminStatsCallable = async (request) => {
 
   try {
     const db = getFirestore();
-    
+
     // 管理者権限チェック
     const adminDoc = await db.collection('adminUsers').doc(uid).get();
     if (!adminDoc.exists || !['admin', 'editor'].includes(adminDoc.data()?.role)) {
@@ -25,46 +33,42 @@ export const getAdminStatsCallable = async (request) => {
 
     logger.info('管理者統計データ取得開始', { adminId: uid });
 
-    // 並列でデータを取得
+    // 並列でデータを取得 (users / sites / inquiries / AI)
     const [
-      totalUsersData,
+      userMetricsData,
       totalSitesData,
-      monthlyActiveUsersData,
-      newUsersThisMonthData,
-      planDistributionData,
-      userTrendData,
+      contractTrendData,
       aiUsageData,
     ] = await Promise.all([
-      getTotalUsers(),
+      getUserMetrics(),
       getTotalSites(),
-      getMonthlyActiveUsers(),
-      getNewUsersThisMonth(),
-      getPlanDistribution(),
-      getUserTrend(),
+      getContractTrend(),
       getAIUsage(),
     ]);
 
     const stats = {
-      totalUsers: totalUsersData,
+      totalUsers: userMetricsData.totalUsers,
       totalSites: totalSitesData,
-      monthlyActiveUsers: monthlyActiveUsersData,
-      newUsersThisMonth: newUsersThisMonthData,
-      planDistribution: planDistributionData,
-      userTrend: userTrendData,
+      monthlyActiveUsers: userMetricsData.monthlyActiveUsers,
+      newUsersThisMonth: userMetricsData.newUsersThisMonth,
+      planDistribution: userMetricsData.planDistribution,
+      userTrend: userMetricsData.userTrend,
       aiUsage: aiUsageData,
+      revenue: userMetricsData.revenue,
+      contractTrend: contractTrendData,
       fetchedAt: new Date().toISOString(),
     };
 
-    logger.info('管理者統計データ取得完了', { 
+    logger.info('管理者統計データ取得完了', {
       adminId: uid,
-      totalUsers: totalUsersData,
+      totalUsers: userMetricsData.totalUsers,
       totalSites: totalSitesData,
     });
 
     return { success: true, data: stats };
 
   } catch (error) {
-    logger.error('管理者統計データ取得エラー', { 
+    logger.error('管理者統計データ取得エラー', {
       error: error.message,
       adminId: uid,
     });
@@ -78,16 +82,98 @@ export const getAdminStatsCallable = async (request) => {
 };
 
 /**
- * 総ユーザー数を取得
+ * ユーザー系指標を一括計算 (社内ドメイン除外済み)
+ *
+ * 戻り値:
+ *   - totalUsers: 社外ユーザー総数
+ *   - monthlyActiveUsers: 過去 30 日にログインした社外ユーザー数
+ *   - newUsersThisMonth: 当月新規登録の社外ユーザー数
+ *   - planDistribution: { free, business } 社外ユーザーのみ
+ *   - userTrend: 過去 6 ヶ月の累計ユーザー数推移 (各月末時点)
+ *   - revenue: { mrr, arr, activeBusinessContracts, totalExtras, arpu }
  */
-async function getTotalUsers() {
+async function getUserMetrics() {
   const db = getFirestore();
-  const usersSnapshot = await db.collection('users').count().get();
-  return usersSnapshot.data().count;
+  const ZERO = {
+    totalUsers: 0,
+    monthlyActiveUsers: 0,
+    newUsersThisMonth: 0,
+    planDistribution: { free: 0, business: 0 },
+    userTrend: [],
+    revenue: { mrr: 0, arr: 0, activeBusinessContracts: 0, totalExtras: 0, arpu: 0 },
+  };
+
+  try {
+    const usersSnap = await db.collection('users')
+      .select('plan', 'memberRole', 'extraSitesCount', 'extraSitesValidUntil', 'email', 'createdAt', 'lastLoginAt')
+      .get();
+
+    // 社外ユーザーのみに絞り込む
+    const externalDocs = usersSnap.docs.filter(d => !isInternalEmail(d.data()?.email));
+
+    const now = new Date();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    let totalUsers = 0;
+    let monthlyActiveUsers = 0;
+    let newUsersThisMonth = 0;
+    const planDistribution = { free: 0, business: 0 };
+
+    for (const doc of externalDocs) {
+      const u = doc.data();
+      if (!u) continue;
+      totalUsers++;
+
+      const lastLoginAt = u.lastLoginAt?.toDate?.() ?? null;
+      if (lastLoginAt instanceof Date && !Number.isNaN(lastLoginAt.getTime()) && lastLoginAt >= thirtyDaysAgo) {
+        monthlyActiveUsers++;
+      }
+
+      const createdAt = u.createdAt?.toDate?.() ?? null;
+      if (createdAt instanceof Date && !Number.isNaN(createdAt.getTime()) && createdAt >= firstDayOfMonth) {
+        newUsersThisMonth++;
+      }
+
+      const rawPlan = u.plan || 'free';
+      const normalized = (rawPlan === 'standard' || rawPlan === 'premium' || rawPlan === 'paid') ? 'business' : rawPlan;
+      if (Object.prototype.hasOwnProperty.call(planDistribution, normalized)) {
+        planDistribution[normalized]++;
+      }
+    }
+
+    // ユーザー数推移 (過去 6 ヶ月、各月末までの累計)
+    const userTrend = [];
+    for (let i = 5; i >= 0; i--) {
+      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      let count = 0;
+      for (const doc of externalDocs) {
+        const u = doc.data();
+        const createdAt = u?.createdAt?.toDate?.() ?? null;
+        if (!(createdAt instanceof Date) || Number.isNaN(createdAt.getTime())) continue;
+        if (createdAt < monthEnd) count++;
+      }
+      userTrend.push({
+        month: monthStart.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short' }),
+        count,
+      });
+    }
+
+    // 売上 (calculateCurrentRevenueSnapshot 内でも isInternalEmail フィルタが効くが、
+    // ここで先に絞った社外 docs を渡すので二重防御)
+    const revenue = calculateCurrentRevenueSnapshot(externalDocs, now);
+
+    return { totalUsers, monthlyActiveUsers, newUsersThisMonth, planDistribution, userTrend, revenue };
+  } catch (error) {
+    logger.error('ユーザー指標取得エラー', { error: error.message });
+    return ZERO;
+  }
 }
 
 /**
- * 総サイト数を取得
+ * 総サイト数を取得 (社内/社外フィルタなし — システム規模指標)
  */
 async function getTotalSites() {
   const db = getFirestore();
@@ -96,91 +182,19 @@ async function getTotalSites() {
 }
 
 /**
- * 月間アクティブユーザー数（過去30日間にログインしたユーザー）
+ * 月次契約数増減トレンド (過去 12 ヶ月、社内ドメイン除外済み)
  */
-async function getMonthlyActiveUsers() {
+async function getContractTrend() {
   const db = getFirestore();
-  const thirtyDaysAgo = new Date();
-  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-  const activeUsersSnapshot = await db
-    .collection('users')
-    .where('lastLoginAt', '>=', Timestamp.fromDate(thirtyDaysAgo))
-    .count()
-    .get();
-
-  return activeUsersSnapshot.data().count;
-}
-
-/**
- * 今月の新規登録ユーザー数
- */
-async function getNewUsersThisMonth() {
-  const db = getFirestore();
-  const now = new Date();
-  const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-
-  const newUsersSnapshot = await db
-    .collection('users')
-    .where('createdAt', '>=', Timestamp.fromDate(firstDayOfMonth))
-    .count()
-    .get();
-
-  return newUsersSnapshot.data().count;
-}
-
-/**
- * プラン別ユーザー分布
- */
-async function getPlanDistribution() {
-  const db = getFirestore();
-  const usersSnapshot = await db
-    .collection('users')
-    .select('plan')
-    .get();
-
-  const distribution = {
-    free: 0,
-    business: 0,
-  };
-
-  usersSnapshot.forEach((doc) => {
-    const rawPlan = doc.data().plan || 'free';
-    const plan = (rawPlan === 'standard' || rawPlan === 'premium' || rawPlan === 'paid') ? 'business' : rawPlan;
-    if (distribution.hasOwnProperty(plan)) {
-      distribution[plan]++;
-    }
-  });
-
-  return distribution;
-}
-
-/**
- * ユーザー数推移（過去6ヶ月）
- */
-async function getUserTrend() {
-  const db = getFirestore();
-  const months = [];
-  const now = new Date();
-
-  // 過去6ヶ月のデータを準備
-  for (let i = 5; i >= 0; i--) {
-    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const nextDate = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
-
-    const usersSnapshot = await db
-      .collection('users')
-      .where('createdAt', '<', Timestamp.fromDate(nextDate))
-      .count()
+  try {
+    const inquiriesSnap = await db.collection('upgradeInquiries')
+      .select('status', 'inquiryType', 'statusUpdatedAt', 'email')
       .get();
-
-    months.push({
-      month: date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'short' }),
-      count: usersSnapshot.data().count,
-    });
+    return calculateMonthlyContractTrend(inquiriesSnap.docs, 12, new Date());
+  } catch (error) {
+    logger.error('契約トレンド取得エラー', { error: error.message });
+    return [];
   }
-
-  return months;
 }
 
 /**
@@ -220,5 +234,3 @@ async function getAIUsage() {
     };
   }
 }
-
-

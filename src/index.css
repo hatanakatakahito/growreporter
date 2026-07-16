@@ -209,7 +209,7 @@ html {
   transition: background-color 0.15s ease;
 }
 
-/* テーブル数値の等幅表示 — 全テーブル共通 */
+/* テーブル数値の等幅表示 — 全テーブル共通（下の body 指定でアプリ全体にも効くが、明示的に残す） */
 table td,
 table th {
   font-variant-numeric: tabular-nums;
@@ -220,6 +220,20 @@ body {
   font-family: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif !important;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* 数値の等幅表示 — アプリ全体。
+     プロポーショナル数字だと「1」が他の数字より細く、桁数が同じでも
+     "125,611" と "114,222" の幅が変わって縦に揃わない。tabular-nums で
+     全数字を同幅にして、カード・サマリ・グラフ凡例など全箇所のズレを防ぐ。 */
+  font-variant-numeric: tabular-nums;
+}
+/* preflight の `font: inherit` で form 要素は font-variant-numeric が normal に
+   リセットされてしまうため、明示的に body から再継承させる */
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-variant-numeric: inherit;
 }
 
 /* グラスカード — bg-white + border + rounded-lg のカードを自動的にガラス風に */

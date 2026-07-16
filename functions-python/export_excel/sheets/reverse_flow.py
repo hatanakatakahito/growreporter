@@ -12,7 +12,7 @@ from ..styles import FOOTER_TEXT
 
 def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | None, memos: list | None, formats: dict, sheet_subtitle: str | None = None):
     """逆算フローシートを作成。"""
-    ws = workbook.add_worksheet(safe_sheet_name("逆算フロー"))
+    ws = workbook.add_worksheet(safe_sheet_name("成果までの到達ステップ"))
     ws.hide_gridlines(2)
     ws.set_footer(FOOTER_TEXT)
 
@@ -24,7 +24,7 @@ def create_reverse_flow_sheet(workbook, reverse_flows: list, ai_data: dict | Non
     ws.set_column(5, 5, 14)
 
     # シートタイトルバー (行 0-2)
-    row = write_sheet_title_bar(ws, "逆算フロー", sheet_subtitle, 6, formats)
+    row = write_sheet_title_bar(ws, "成果までの到達ステップ", sheet_subtitle, 6, formats)
     first_flow = True
 
     for flow in reverse_flows:

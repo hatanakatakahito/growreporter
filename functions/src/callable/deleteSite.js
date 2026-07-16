@@ -2,6 +2,8 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { logUserActivity, ACTIVITY_ACTIONS } from '../utils/userActivityLogger.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
+import { requireDocId } from '../utils/validators.js';
 
 /**
  * ユーザーが自分のサイトを削除
@@ -17,11 +19,11 @@ export const deleteSiteCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const { siteId } = request.data || {};
+  // Phase 4-A-2: レート制限（誤爆・連続削除防止）
+  await enforceRateLimit({ uid, ...DEFAULT_RATE_LIMITS.deleteSite });
 
-  if (!siteId) {
-    throw new HttpsError('invalid-argument', 'サイトIDが必要です');
-  }
+  // 入力検証 (Phase 4-B-7)
+  const siteId = requireDocId(request.data?.siteId, 'siteId');
 
   try {
     const db = getFirestore();

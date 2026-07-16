@@ -3,15 +3,22 @@ import { useAuth } from '../contexts/AuthContext';
 import { PLANS, isUnlimited, normalizePlanId } from '../constants/plans';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { getEffectiveMaxSites } from '../utils/effectiveMaxSites';
+
+const INITIAL_EXTRA = { extraSitesCount: 0, extraSitesValidUntil: null };
 
 /**
  * プラン機能を管理するカスタムフック
  * メンバーの場合は、所属アカウントオーナーのプランと使用回数（合算）を取得
+ *
+ * 戻り値に effectiveMaxSites（base + extraSites）を含む。
+ * 追加サイトオプションは Business のみ有効で、有効期限切れは自動で無効化される。
  */
 export function usePlan() {
   const { currentUser, userProfile } = useAuth();
   const [planId, setPlanId] = useState('free');
-  const [accountUsage, setAccountUsage] = useState({ aiSummaryUsage: 0, aiImprovementUsage: 0, aiChatUsage: 0, diagnosisUsage: 0, excelExportUsage: 0, pptxExportUsage: 0 });
+  const [accountUsage, setAccountUsage] = useState({ aiSummaryUsage: 0, aiImprovementUsage: 0, aiChatUsage: 0, excelExportUsage: 0, pptxExportUsage: 0 });
+  const [extraSites, setExtraSites] = useState(INITIAL_EXTRA);
   const [isLoadingPlan, setIsLoadingPlan] = useState(true);
   const plan = PLANS[planId] || PLANS.free;
 
@@ -37,63 +44,45 @@ export function usePlan() {
 
     const isMember = accountOwnerId && accountOwnerId !== myUid;
 
+    const applyOwnerData = (ownerData) => {
+      setPlanId(normalizePlanId(ownerData.plan));
+      setAccountUsage({
+        aiSummaryUsage: ownerData.aiSummaryUsage || 0,
+        aiImprovementUsage: ownerData.aiImprovementUsage || 0,
+        aiChatUsage: ownerData.aiChatUsage || 0,
+        excelExportUsage: ownerData.excelExportUsage || 0,
+        pptxExportUsage: ownerData.pptxExportUsage || 0,
+      });
+      setExtraSites({
+        extraSitesCount: Number(ownerData.extraSitesCount) || 0,
+        extraSitesValidUntil: ownerData.extraSitesValidUntil || null,
+      });
+    };
+
     if (isMember) {
-      // メンバー: オーナーのドキュメントをリアルタイム監視（プラン + 使用回数）
+      // メンバー: オーナーのドキュメントをリアルタイム監視（プラン + 使用回数 + extras）
       const unsubscribe = onSnapshot(
         doc(db, 'users', accountOwnerId),
         (ownerDoc) => {
           if (ownerDoc.exists()) {
-            const ownerData = ownerDoc.data();
-            setPlanId(normalizePlanId(ownerData.plan));
-            setAccountUsage({
-              aiSummaryUsage: ownerData.aiSummaryUsage || 0,
-              aiImprovementUsage: ownerData.aiImprovementUsage || 0,
-              aiChatUsage: ownerData.aiChatUsage || 0,
-              diagnosisUsage: ownerData.diagnosisUsage || 0,
-              excelExportUsage: ownerData.excelExportUsage || 0,
-              pptxExportUsage: ownerData.pptxExportUsage || 0,
-            });
+            applyOwnerData(ownerDoc.data());
           } else {
             // オーナーのドキュメントが見つからない場合は自分のプランを使用
-            setPlanId(normalizePlanId(userProfile.plan));
-            setAccountUsage({
-              aiSummaryUsage: userProfile.aiSummaryUsage || 0,
-              aiImprovementUsage: userProfile.aiImprovementUsage || 0,
-              aiChatUsage: userProfile.aiChatUsage || 0,
-              diagnosisUsage: userProfile.diagnosisUsage || 0,
-              excelExportUsage: userProfile.excelExportUsage || 0,
-              pptxExportUsage: userProfile.pptxExportUsage || 0,
-            });
+            applyOwnerData(userProfile);
           }
           setIsLoadingPlan(false);
         },
         (error) => {
           console.error('Error listening to account owner:', error);
-          setPlanId(normalizePlanId(userProfile.plan));
-          setAccountUsage({
-            aiSummaryUsage: userProfile.aiSummaryUsage || 0,
-            aiImprovementUsage: userProfile.aiImprovementUsage || 0,
-            aiChatUsage: userProfile.aiChatUsage || 0,
-            diagnosisUsage: userProfile.diagnosisUsage || 0,
-            excelExportUsage: userProfile.excelExportUsage || 0,
-            pptxExportUsage: userProfile.pptxExportUsage || 0,
-          });
+          applyOwnerData(userProfile);
           setIsLoadingPlan(false);
         }
       );
 
       return () => unsubscribe();
     } else {
-      // オーナー: 自分のプランと使用回数を使用
-      setPlanId(normalizePlanId(userProfile.plan));
-      setAccountUsage({
-        aiSummaryUsage: userProfile.aiSummaryUsage || 0,
-        aiImprovementUsage: userProfile.aiImprovementUsage || 0,
-        aiChatUsage: userProfile.aiChatUsage || 0,
-        diagnosisUsage: userProfile.diagnosisUsage || 0,
-        excelExportUsage: userProfile.excelExportUsage || 0,
-        pptxExportUsage: userProfile.pptxExportUsage || 0,
-      });
+      // オーナー: 自分のプランと使用回数 + extras を使用
+      applyOwnerData(userProfile);
       setIsLoadingPlan(false);
     }
   }, [currentUser?.uid, userProfile]);
@@ -108,7 +97,6 @@ export function usePlan() {
       summary: plan.features?.aiSummaryMonthly || 0,
       improvement: plan.features?.aiImprovementMonthly || 0,
       chat: plan.features?.aiChatMonthly || 0,
-      diagnosis: plan.features?.diagnosisMonthly || 0,
       excelExport: plan.features?.excelExportMonthly || 0,
       pptxExport: plan.features?.pptxExportMonthly || 0,
     };
@@ -121,7 +109,6 @@ export function usePlan() {
       summary: accountUsage.aiSummaryUsage,
       improvement: accountUsage.aiImprovementUsage,
       chat: accountUsage.aiChatUsage,
-      diagnosis: accountUsage.diagnosisUsage,
       excelExport: accountUsage.excelExportUsage,
       pptxExport: accountUsage.pptxExportUsage,
     };
@@ -135,7 +122,6 @@ export function usePlan() {
       summary: plan.features?.aiSummaryMonthly || 0,
       improvement: plan.features?.aiImprovementMonthly || 0,
       chat: plan.features?.aiChatMonthly || 0,
-      diagnosis: plan.features?.diagnosisMonthly || 0,
       excelExport: plan.features?.excelExportMonthly || 0,
       pptxExport: plan.features?.pptxExportMonthly || 0,
     };
@@ -143,7 +129,6 @@ export function usePlan() {
       summary: accountUsage.aiSummaryUsage,
       improvement: accountUsage.aiImprovementUsage,
       chat: accountUsage.aiChatUsage,
-      diagnosis: accountUsage.diagnosisUsage,
       excelExport: accountUsage.excelExportUsage,
       pptxExport: accountUsage.pptxExportUsage,
     };
@@ -159,7 +144,6 @@ export function usePlan() {
       summary: accountUsage.aiSummaryUsage,
       improvement: accountUsage.aiImprovementUsage,
       chat: accountUsage.aiChatUsage,
-      diagnosis: accountUsage.diagnosisUsage,
       excelExport: accountUsage.excelExportUsage,
       pptxExport: accountUsage.pptxExportUsage,
     };
@@ -202,6 +186,22 @@ export function usePlan() {
 
   const isFree = planId === 'free';
 
+  // 有効サイト登録数（base + extraSitesCount、期限切れは無効化）
+  const effectiveMaxSites = getEffectiveMaxSites(
+    { extraSitesCount: extraSites.extraSitesCount, extraSitesValidUntil: extraSites.extraSitesValidUntil },
+    plan
+  );
+
+  // extraSitesValidUntil を Date に正規化（フロント表示用）
+  const extraSitesValidUntilDate = (() => {
+    const v = extraSites.extraSitesValidUntil;
+    if (!v) return null;
+    if (typeof v.toDate === 'function') return v.toDate();
+    if (v instanceof Date) return v;
+    const d = new Date(v);
+    return Number.isNaN(d.getTime()) ? null : d;
+  })();
+
   return {
     plan,
     planId,
@@ -212,6 +212,9 @@ export function usePlan() {
     checkCanInviteMember,
     getRemainingMembers,
     getMaxMembers,
+    effectiveMaxSites,
+    extraSitesCount: extraSites.extraSitesCount,
+    extraSitesValidUntil: extraSitesValidUntilDate,
     isLoading: !userProfile || isLoadingPlan,
   };
 }

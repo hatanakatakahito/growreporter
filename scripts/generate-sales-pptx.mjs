@@ -65,7 +65,7 @@ let slideNum = 0;
   s.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0, w: 10, h: 0.06, fill: { color: C.primary } });
   s.addShape(pptx.shapes.RECTANGLE, { x: 0, y: 0.06, w: 5, h: 0.03, fill: { color: C.secondary } });
 
-  s.addText("GrowReporter", { x: 0.7, y: 0.4, w: 4, h: 0.5, fontSize: 14, color: C.primary, bold: true, fontFace: F.accent });
+  s.addText("グローレポータ", { x: 0.7, y: 0.4, w: 4, h: 0.5, fontSize: 14, color: C.primary, bold: true, fontFace: F.accent });
 
   s.addText([
     { text: "アクセス解析 × AI で\n", options: { fontSize: 36, bold: true, color: C.white, fontFace: F.head, breakType: "none" } },
@@ -125,7 +125,7 @@ let slideNum = 0;
   s.background = { color: C.white };
   addFooter(s, slideNum, 14);
 
-  s.addText("GrowReporter とは", { x: 0.7, y: 0.4, w: 8, h: 0.7, fontSize: 26, bold: true, color: C.dark, fontFace: F.head });
+  s.addText("グローレポータ とは", { x: 0.7, y: 0.4, w: 8, h: 0.7, fontSize: 26, bold: true, color: C.dark, fontFace: F.head });
   s.addText("GA4 / Search Console × AI で、分析・改善・評価を一気通貫", { x: 0.7, y: 1.0, w: 8, h: 0.5, fontSize: 13, color: C.textLight, fontFace: F.body });
 
   // 3 pillars
@@ -263,7 +263,7 @@ features3.forEach((f, i) => {
   s.addText("他のツールとの違い", { x: 0.7, y: 0.3, w: 8, h: 0.6, fontSize: 24, bold: true, color: C.dark, fontFace: F.head });
 
   const tableRows = [
-    [{ text: "", options: {} }, { text: "GA4", options: { bold: true, align: "center" } }, { text: "Looker Studio", options: { bold: true, align: "center" } }, { text: "GrowReporter", options: { bold: true, color: C.white, align: "center", fill: { color: C.primary } } }],
+    [{ text: "", options: {} }, { text: "GA4", options: { bold: true, align: "center" } }, { text: "Looker Studio", options: { bold: true, align: "center" } }, { text: "グローレポータ", options: { bold: true, color: C.white, align: "center", fill: { color: C.primary } } }],
     [{ text: "AI分析・考察", options: { bold: true } }, { text: "△ データ表示のみ", options: {} }, { text: "△ 可視化のみ", options: {} }, { text: "◎ AIが自動で読み解き", options: { bold: true, color: C.primary } }],
     [{ text: "改善提案", options: { bold: true } }, { text: "✕ 非対応", options: { color: C.gray } }, { text: "✕ 非対応", options: { color: C.gray } }, { text: "◎ 提案+モックアップ", options: { bold: true, color: C.primary } }],
     [{ text: "AIチャット", options: { bold: true } }, { text: "✕ 非対応", options: { color: C.gray } }, { text: "✕ 非対応", options: { color: C.gray } }, { text: "◎ 対話形式で質問", options: { bold: true, color: C.primary } }],
@@ -453,7 +453,7 @@ features3.forEach((f, i) => {
     ["所在地", "東京都新宿区西新宿3-3-13 西新宿水間ビル2F"],
     ["代表", "代表取締役　畑中 貴仁"],
     ["資本金", "500万円"],
-    ["事業内容", "Web サイト制作・Web マーケティング支援\nアクセス解析AIツール「GrowReporter」開発・運営"],
+    ["事業内容", "Web サイト制作・Web マーケティング支援\nアクセス解析AIツール「グローレポータ」開発・運営"],
     ["URL", "https://and-suspended.com/"],
   ];
 
@@ -501,7 +501,7 @@ features3.forEach((f, i) => {
 }
 
 // ── Save ──────────────────────────────────────────────
-const outPath = "public/lp/GrowReporter_営業資料.pptx";
+const outPath = "public/lp/グローレポータ_営業資料.pptx";
 pptx.writeFile({ fileName: outPath }).then(() => {
   console.log(`✅ 生成完了: ${outPath}`);
 }).catch(err => {

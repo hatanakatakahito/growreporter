@@ -13,7 +13,10 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import { logger } from 'firebase-functions/v2';
-import { canEditSite } from '../utils/permissionHelper.js';
+import { canAccessSite } from '../utils/permissionHelper.js';
+import { getInjectionGuardPreamble, wrapAsUserData } from '../utils/promptSanitizer.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
+import { requireDocId, optionalString, optionalMessage, MAX_LONG_MESSAGE_LEN } from '../utils/validators.js';
 
 const MAX_RETRIES = 2;
 const MAX_FILES_PER_TURN = 5;
@@ -31,14 +34,26 @@ export async function aiChatCallable(req) {
   }
 
   const userId = req.auth.uid;
-  const { siteId, sessionId, message, attachments = [], startDate, endDate } = req.data;
 
-  if (!siteId) throw new HttpsError('invalid-argument', 'siteIdが必要です');
-  if (!message?.trim()) throw new HttpsError('invalid-argument', 'メッセージが必要です');
+  // セキュリティ (Phase 4-A-2): レート制限。AI コール乱用による課金枯渇防止
+  await enforceRateLimit({ uid: userId, ...DEFAULT_RATE_LIMITS.aiChat });
+
+  // 入力検証 (Phase 4-B-7)
+  const rawData = req.data || {};
+  const siteId = requireDocId(rawData.siteId, 'siteId');
+  const sessionId = rawData.sessionId ? requireDocId(rawData.sessionId, 'sessionId') : null;
+  const message = optionalMessage(rawData.message, 'message', MAX_LONG_MESSAGE_LEN);
+  if (!message.trim()) {
+    throw new HttpsError('invalid-argument', 'メッセージが必要です');
+  }
+  const attachments = Array.isArray(rawData.attachments) ? rawData.attachments.slice(0, 10) : [];
+  const startDate = optionalString(rawData.startDate, 'startDate', { maxLen: 32 });
+  const endDate = optionalString(rawData.endDate, 'endDate', { maxLen: 32 });
 
   // 権限チェック
-  const canEdit = await canEditSite(userId, siteId);
-  if (!canEdit) throw new HttpsError('permission-denied', 'このサイトへのアクセス権がありません');
+  // viewer も AI チャット利用可（オーナーのプラン枠を消費）
+  const hasAccess = await canAccessSite(userId, siteId);
+  if (!hasAccess) throw new HttpsError('permission-denied', 'このサイトへのアクセス権がありません');
 
   const db = getFirestore();
 
@@ -89,6 +104,10 @@ export async function aiChatCallable(req) {
       const siteData = siteDoc.data();
 
       siteDataContext = getChatSystemPrompt(comprehensiveData, siteData);
+      // セキュリティ (Phase 3-3): プロンプトインジェクション対策の前提条件を冒頭に挿入。
+      //   サイトデータ・スクレイピング結果・ユーザーメッセージ・添付ファイル内容に
+      //   攻撃的な命令文が含まれても無視するよう AI に明示する。
+      siteDataContext = getInjectionGuardPreamble() + '\n' + siteDataContext;
     } else if (session?.systemContext) {
       siteDataContext = session.systemContext;
     }
@@ -173,7 +192,11 @@ export async function aiChatCallable(req) {
           });
         } else {
           const extractedText = await extractTextFromFile(fileBuffer, ext, name);
-          userParts.push({ text: `\n\n【添付ファイル: ${name}】\n${extractedText}` });
+          // セキュリティ (Phase 3-3): 添付ファイル本文は外部由来のテキスト。
+          //   <ATTACHED_FILE> タグでラップ + sanitize して、内部の命令文が AI を
+          //   乗っ取らないようにする。getInjectionGuardPreamble の指示と整合。
+          const wrapped = wrapAsUserData(extractedText, { label: 'ATTACHED_FILE', maxChars: 50000 });
+          userParts.push({ text: `\n\n【添付ファイル: ${name}】\n${wrapped}` });
         }
       } catch (attachErr) {
         if (attachErr instanceof HttpsError) throw attachErr;

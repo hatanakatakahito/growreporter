@@ -7,6 +7,7 @@ import { db, functions } from '../../../config/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import DotWaveSpinner from '../../common/DotWaveSpinner';
+import { generateCodeVerifier, createCodeChallenge } from '../../../utils/oauthPkce';
 
 export default function Step2GA4Connect({ siteData, setSiteData }) {
   const { currentUser } = useAuth();
@@ -195,6 +196,13 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
       const stateValue = `ga4-${stateNonce}`;
       sessionStorage.setItem('oauth_state_ga4', stateValue);
 
+      // PKCE (RFC 7636): authorization code 横取り攻撃対策。
+      // code_verifier を生成し、SHA-256 → base64url した code_challenge を認可URLに付与。
+      // verifier は sessionStorage に保存し、トークン交換時に Cloud Function に送る。
+      const codeVerifier = generateCodeVerifier();
+      const codeChallenge = await createCodeChallenge(codeVerifier);
+      sessionStorage.setItem('oauth_code_verifier_ga4', codeVerifier);
+
       // OAuth 2.0認可URLを構築
       const authUrl = new URL('https://accounts.google.com/o/oauth2/v2/auth');
       authUrl.searchParams.append('client_id', clientId);
@@ -208,6 +216,8 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
       authUrl.searchParams.append('prompt', 'consent'); // 常に同意画面を表示してリフレッシュトークンを確実に取得
       authUrl.searchParams.append('include_granted_scopes', 'true');
       authUrl.searchParams.append('state', stateValue); // CSRF 対策: 乱数 nonce 付き
+      authUrl.searchParams.append('code_challenge', codeChallenge);
+      authUrl.searchParams.append('code_challenge_method', 'S256');
 
       console.log('[GA4Connect] 認可URLを生成:', authUrl.toString());
 
@@ -325,6 +335,10 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
         throw new Error('OAuth state が一致しません。再度お試しください（CSRF 防止）');
       }
 
+      // PKCE: 保存済 code_verifier を取り出して Cloud Function に送る
+      const savedCodeVerifier = sessionStorage.getItem('oauth_code_verifier_ga4');
+      sessionStorage.removeItem('oauth_code_verifier_ga4');
+
       console.log('[GA4Connect] 認可コード取得成功');
       const authCode = authResult.code;
 
@@ -337,6 +351,7 @@ export default function Step2GA4Connect({ siteData, setSiteData }) {
         code: authCode,
         provider: 'ga4',
         redirectUri: redirectUri,
+        codeVerifier: savedCodeVerifier || undefined,
       });
 
       console.log('[GA4Connect] トークン交換成功:', result.data);

@@ -127,7 +127,7 @@ export default function Dashboard() {
             <div className="relative mx-auto px-4 sm:px-8 py-6 sm:py-8" style={{ maxWidth: 1400 }}>
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-10">
                 <div className="min-w-0 flex-1">
-                  <div className="mb-1 flex items-center gap-2.5">
+                  <div className="mb-1 flex items-center gap-3">
                     <Globe className="h-5 w-5 shrink-0 text-primary" />
                     <h1 className="truncate text-2xl font-bold text-gray-900">
                       {selectedSite.siteName || 'サイト名'}

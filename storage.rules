@@ -1,41 +1,90 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // ====================================================================
+    // ヘルパー関数
+    // ====================================================================
+
+    // 該当 siteId のオーナー or 同一アカウントメンバーかチェック
+    // (旧実装: read/write を `if request.auth != null` のみで許可していたため、
+    //  認証ユーザー全員が他社サイトの全画面スクショを閲覧できる漏洩状態だった)
+    function isSiteAccessible(siteId) {
+      let site = firestore.get(/databases/(default)/documents/sites/$(siteId));
+      return site != null && (
+        site.data.userId == request.auth.uid ||
+        // memberships 経由のアカウントメンバー判定
+        (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.memberships[site.data.userId] != null) ||
+        // accountOwnerId 直接指定（古いユーザー doc 形式の互換）
+        (firestore.exists(/databases/(default)/documents/users/$(request.auth.uid)) &&
+         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.accountOwnerId == site.data.userId)
+      );
+    }
+
+    // ====================================================================
     // ユーザーごとのストレージ
+    // ====================================================================
     match /users/{userId}/{allPaths=**} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null && request.auth.uid == userId
                    && request.resource.size < 5 * 1024 * 1024; // 5MB制限
     }
-    
+
+    // ====================================================================
     // サイトごとのストレージ
+    // ====================================================================
+    // セキュリティ強化: アクセスは「サイト所有者 / 同一アカウントメンバー」に限定。
+    // 書込は Cloud Functions (Admin SDK) のみに集約。
     match /sites/{siteId}/{allPaths=**} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null
-                   && request.resource.size < 10 * 1024 * 1024; // 10MB制限
+      allow read: if request.auth != null && isSiteAccessible(siteId);
+      allow write: if false; // Cloud Functions Admin SDK のみ
     }
 
-    // 相談フォーム用Excel（認証済みユーザーがアップロード、誰でもリンクで閲覧可）
+    // ====================================================================
+    // 改善案 参考画像（手動改善 AI 補完で添付された画像）
+    // ====================================================================
+    // サイトメンバーのみアップロード・閲覧可。
+    // (旧実装: 認証ユーザー全員が他社の参考画像を閲覧・上書きできる状態だった)
+    match /improvement-references/{siteId}/{allPaths=**} {
+      allow read: if request.auth != null && isSiteAccessible(siteId);
+      allow write: if request.auth != null && isSiteAccessible(siteId)
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
+
+    // ====================================================================
+    // 相談フォーム用 Excel
+    // ====================================================================
+    // 旧実装: `allow read: if true` で公開状態だった。
+    // 新実装: 認証ユーザーがアップロード可。直接 read は禁止。
+    //   外部コンサル（受信者）への共有は Firebase Storage の getDownloadURL() が
+    //   返す token 付き URL 経由（rules を bypass する仕様）。
+    //   このため URL を共有された人だけがダウンロードでき、URL を知らない人は不可。
     match /consultation_excels/{fileName} {
-      allow read: if true;
+      allow read: if false;
       allow write: if request.auth != null
                    && request.resource.size < 10 * 1024 * 1024
                    && request.resource.contentType == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     }
 
-    // 意見箱 添付ファイル（本人のみ書込。閲覧は本人と管理者）
+    // ====================================================================
+    // 意見箱 添付ファイル
+    // ====================================================================
+    // 本人のみ書込・閲覧可。管理者の閲覧は Admin SDK (Cloud Functions) 経由
     match /feedback_attachments/{userId}/{fileName} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if request.auth != null && request.auth.uid == userId
                    && request.resource.size < 10 * 1024 * 1024;
     }
 
-    // エクスポート成果物（Python Cloud Function が Admin SDK で書込。本人のみ読取。
-    // 実際のダウンロードは signed URL 経由のため read ルールはフォールバック扱い）
+    // ====================================================================
+    // エクスポート成果物（Python Cloud Function が Admin SDK で書込）
+    // ====================================================================
+    // 本人のみ読取。実際のダウンロードは signed URL 経由のため read ルールはフォールバック扱い
     match /exports/{userId}/{fileName} {
       allow read: if request.auth != null && request.auth.uid == userId;
       allow write: if false;  // Cloud Function (Admin SDK) のみ書き込み可能
     }
   }
 }
-

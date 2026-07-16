@@ -69,14 +69,17 @@ export async function setCache(cacheKey, data, siteId, userId) {
  * @param {string} endDate - 終了日
  * @param {string} dimensions - ディメンション（オプション）
  * @param {string} metrics - メトリクス（オプション）
+ * @param {string} filter - ディメンションフィルタ等の追加識別子（オプション。パス限定など同一指標で結果が変わる場合に必須）
  * @returns {string} - キャッシュキー
  */
-export function generateCacheKey(type, siteId, startDate, endDate, dimensions = '', metrics = '') {
+export function generateCacheKey(type, siteId, startDate, endDate, dimensions = '', metrics = '', filter = '') {
   // ディメンション/メトリクスがある場合はキーに含める（スラッシュをエスケープ）
   const escapedDimensions = dimensions ? dimensions.replace(/\//g, '__SLASH__') : '';
   const escapedMetrics = metrics ? metrics.replace(/\//g, '__SLASH__') : '';
+  // filter は JSON 等の場合があるため Firestore ドキュメントID 安全な英数字トークンへ正規化
+  const filterToken = filter ? `_f-${String(filter).replace(/[^A-Za-z0-9]/g, '').slice(0, 200)}` : '';
   const suffix = escapedDimensions || escapedMetrics ? `_${escapedDimensions}_${escapedMetrics}` : '';
-  return `${type}_${siteId}_${startDate}_${endDate}${suffix}`;
+  return `${type}_${siteId}_${startDate}_${endDate}${suffix}${filterToken}`;
 }
 
 /**

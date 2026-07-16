@@ -12,7 +12,7 @@ import { canAccessSite } from '../utils/permissionHelper.js';
  */
 export async function fetchGSCDataCallable(request) {
   const db = getFirestore();
-  const { siteId, startDate, endDate } = request.data;
+  const { siteId, startDate, endDate, pathFilter = null } = request.data;
 
   // 入力バリデーション
   if (!siteId || !startDate || !endDate) {
@@ -61,8 +61,8 @@ export async function fetchGSCDataCallable(request) {
       );
     }
 
-    // 2. キャッシュチェック（パフォーマンス最適化）
-    const cacheKey = generateCacheKey('gsc', siteId, startDate, endDate);
+    // 2. キャッシュチェック（パフォーマンス最適化）。pathFilter 指定時はキーを分離
+    const cacheKey = generateCacheKey('gsc', siteId, startDate, endDate, pathFilter || '');
     const cachedData = await getCache(cacheKey);
     
     if (cachedData) {
@@ -76,54 +76,60 @@ export async function fetchGSCDataCallable(request) {
 
     // 4. Search Console API 呼び出し
     const searchConsole = google.searchconsole('v1');
-    
+
+    // pathFilter（例: /recruit/）指定時は page を前方一致相当で絞り込む（page は完全URLのため contains で部分一致）
+    const dimensionFilterGroups = pathFilter
+      ? [{ filters: [{ dimension: 'page', operator: 'contains', expression: pathFilter }] }]
+      : undefined;
+    const withFilter = (body) => (dimensionFilterGroups ? { ...body, dimensionFilterGroups } : body);
+
     // 🚀 パフォーマンス最適化: 基本メトリクス、トップクエリ、トップページを並列取得
-    console.log(`[fetchGSCData] Fetching metrics, queries, and pages in parallel...`);
-    
+    console.log(`[fetchGSCData] Fetching metrics, queries, and pages in parallel...${pathFilter ? ` (pathFilter=${pathFilter})` : ''}`);
+
     const [response, topQueriesResponse, topPagesResponse, queryPageResponse] = await Promise.all([
       // 基本指標の取得
       searchConsole.searchanalytics.query({
         auth: oauth2Client,
         siteUrl: siteData.gscSiteUrl,
-        requestBody: {
+        requestBody: withFilter({
           startDate,
           endDate,
           dimensions: [], // 全体の集計
           rowLimit: 1,
-        },
+        }),
       }),
       // トップクエリの取得（最大25,000件）
       searchConsole.searchanalytics.query({
         auth: oauth2Client,
         siteUrl: siteData.gscSiteUrl,
-        requestBody: {
+        requestBody: withFilter({
           startDate,
           endDate,
           dimensions: ['query'],
           rowLimit: 25000,
-        },
+        }),
       }),
       // トップページの取得（最大25,000件）
       searchConsole.searchanalytics.query({
         auth: oauth2Client,
         siteUrl: siteData.gscSiteUrl,
-        requestBody: {
+        requestBody: withFilter({
           startDate,
           endDate,
           dimensions: ['page'],
           rowLimit: 25000,
-        },
+        }),
       }),
       // クエリ×ページの組み合わせ取得（キーワードごとの着地ページ特定用）
       searchConsole.searchanalytics.query({
         auth: oauth2Client,
         siteUrl: siteData.gscSiteUrl,
-        requestBody: {
+        requestBody: withFilter({
           startDate,
           endDate,
           dimensions: ['query', 'page'],
           rowLimit: 25000,
-        },
+        }),
       }),
     ]);
 

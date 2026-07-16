@@ -6,8 +6,11 @@ import { Dialog, DialogBody, DialogActions } from '../ui/dialog';
 import { Button } from '../ui/button';
 
 /**
- * サイト選択モーダル（ダウングレード時）
- * プラン上限を超えるサイトがある場合、有効にするサイトを選択させる
+ * サイト選択モーダル
+ * 以下のケースで登録サイト数が effectiveMaxSites を超えた際にオーナーに利用するサイトを選択させる:
+ *   - プラン解約（business → free）
+ *   - 追加サイトオプションの解約
+ *   - 追加サイトオプションの有効期限切れ
  */
 export default function SiteSelectionModal() {
   const { needsSiteSelection, allSites, maxSites, confirmSiteSelection } = useSite();

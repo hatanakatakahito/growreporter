@@ -1012,18 +1012,44 @@ function ExpandableTable({ children }) {
 
   const handleCopy = async () => {
     if (!tableRef.current) return;
-    // テーブルHTMLからタブ区切りテキストを生成（Excel/スプレッドシート貼り付け対応）
-    const rows = tableRef.current.querySelectorAll('tr');
-    const text = Array.from(rows).map(row => {
+    const tableEl = tableRef.current;
+
+    // TSV: Excel/Google スプレッドシート向け（タブ区切り）
+    const rows = tableEl.querySelectorAll('tr');
+    const tsv = Array.from(rows).map(row => {
       const cells = row.querySelectorAll('th, td');
       return Array.from(cells).map(c => c.textContent.trim()).join('\t');
     }).join('\n');
+
+    // HTML: Notion / Word / Google Docs 向け（<table> 構造を保持）
+    // Notion は inline style を無視して構造のみ拾うので、構造を明示するだけで十分
+    const html = `<meta charset="utf-8">${tableEl.outerHTML}`;
+
     try {
-      await navigator.clipboard.writeText(text);
+      if (typeof ClipboardItem !== 'undefined' && navigator.clipboard?.write) {
+        const item = new ClipboardItem({
+          'text/html': new Blob([html], { type: 'text/html' }),
+          'text/plain': new Blob([tsv], { type: 'text/plain' }),
+        });
+        await navigator.clipboard.write([item]);
+      } else {
+        // 古いブラウザ向けフォールバック（TSV のみ）
+        await navigator.clipboard.writeText(tsv);
+      }
       setCopied(true);
       toast.success('テーブルをコピーしました');
       setTimeout(() => setCopied(false), 2000);
-    } catch { toast.error('コピーに失敗しました'); }
+    } catch {
+      // ClipboardItem が拒否された場合の最終フォールバック
+      try {
+        await navigator.clipboard.writeText(tsv);
+        setCopied(true);
+        toast.success('テーブルをコピーしました');
+        setTimeout(() => setCopied(false), 2000);
+      } catch {
+        toast.error('コピーに失敗しました');
+      }
+    }
   };
 
   const tableContent = (

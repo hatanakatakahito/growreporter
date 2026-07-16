@@ -1,234 +1,121 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSite } from '../../contexts/SiteContext';
-import { useGSCData } from '../../hooks/useGSCData';
+import { useAuth } from '../../contexts/AuthContext';
+import { useGSCKeywordsV2, useReclassifyKeywordsV2 } from '../../hooks/useGSCKeywordsV2';
 import AnalysisHeader from '../../components/Analysis/AnalysisHeader';
 import LoadingSpinner from '../../components/common/LoadingSpinner';
 import ErrorAlert from '../../components/common/ErrorAlert';
-import DataTable from '../../components/Analysis/DataTable';
-import ChartContainer from '../../components/Analysis/ChartContainer';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { setPageTitle } from '../../utils/pageTitle';
-import AIFloatingButton from '../../components/common/AIFloatingButton';
-import { PAGE_TYPES } from '../../constants/plans';
 import PageNoteSection from '../../components/Analysis/PageNoteSection';
 import TabbedNoteAndAI from '../../components/Analysis/TabbedNoteAndAI';
 import AIAnalysisSection from '../../components/Analysis/AIAnalysisSection';
 import PlanLimitModal from '../../components/common/PlanLimitModal';
-import { useAuth } from '../../contexts/AuthContext';
-import { mergeComparisonRows } from '../../utils/comparisonHelpers';
+import AIFloatingButton from '../../components/common/AIFloatingButton';
 import TourHelpButton from '../../components/Onboarding/TourHelpButton';
-import { getShortLabel, formatComparisonLabel } from '../../constants/metrics';
 import { Button } from '../../components/ui/button';
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip as RechartsTooltip,
-  Legend,
-  ScatterChart,
-  Scatter,
-  ZAxis,
-} from 'recharts';
+import { setPageTitle } from '../../utils/pageTitle';
+import { PAGE_TYPES } from '../../constants/plans';
+import { Lock } from 'lucide-react';
+import { usePlan } from '../../hooks/usePlan';
+import toast from 'react-hot-toast';
+
+import KeywordsKpiSummary from '../../components/Analysis/KeywordsV2/KeywordsKpiSummary';
+import KeywordsFunnel from '../../components/Analysis/KeywordsV2/KeywordsFunnel';
+import KeywordsRelationGraph from '../../components/Analysis/KeywordsV2/KeywordsRelationGraph';
+import KeywordsOpportunityQuadrant from '../../components/Analysis/KeywordsV2/KeywordsOpportunityQuadrant';
+import KeywordsImproveCandidates from '../../components/Analysis/KeywordsV2/KeywordsImproveCandidates';
+import KeywordsCVContribution from '../../components/Analysis/KeywordsV2/KeywordsCVContribution';
+import KeywordsTableView from '../../components/Analysis/KeywordsV2/KeywordsTableView';
+import KeywordsChartView from '../../components/Analysis/KeywordsV2/KeywordsChartView';
 
 /**
- * 流入キーワード分析画面
- * Search Console の検索クエリデータを表示
+ * 検索キーワード V2 — ファネル分類 + 関係図 + チャンス象限 + 改善候補 + CV 貢献 + 表/グラフ
  */
+
+const TABS = [
+  { key: 'funnel', label: 'ファネル', business: true },
+  { key: 'graph', label: '関係図', business: true },
+  { key: 'quadrant', label: 'チャンス象限', business: false },
+  { key: 'improve', label: '改善候補', business: true },
+  { key: 'cv', label: 'CV 貢献', business: true },
+  { key: 'table', label: '表形式', business: false },
+  { key: 'chart', label: 'グラフ形式', business: false },
+];
+
 export default function Keywords() {
   const { selectedSite, selectedSiteId, dateRange, updateDateRange, comparisonMode, comparisonDateRange } = useSite();
   const { currentUser } = useAuth();
-  const [activeTab, setActiveTab] = useState('table');
-  const [hiddenSeries, setHiddenSeries] = useState({});
+  const { isFree } = usePlan();
+  const [activeTab, setActiveTab] = useState('funnel');
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
+  const [isReclassifying, setIsReclassifying] = useState(false);
 
-  // AI分析タブへスクロールする関数
-  const scrollToAIAnalysis = () => {
-    window.dispatchEvent(new Event('switchToAITab'));
-    setTimeout(() => {
-      const element = document.getElementById('ai-analysis-section');
-      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-  };
-
-  // ページタイトルを設定
   useEffect(() => {
-    setPageTitle('流入キーワード元');
+    setPageTitle('検索キーワード');
   }, []);
-  
-  // Search Console未連携の場合をチェック（確実にブール値にする）
-  const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
 
-  // Search Console データ取得
-  const { data: gscData, isLoading, isError, error } = useGSCData(
+  // localStorage で最後に開いていたタブを復元（リプレース時の既存ユーザー配慮）
+  useEffect(() => {
+    const stored = localStorage.getItem('analysis-keywords-v2-tab');
+    if (stored && TABS.some((t) => t.key === stored)) {
+      setActiveTab(stored);
+    }
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('analysis-keywords-v2-tab', activeTab);
+  }, [activeTab]);
+
+  const hasGSCConnection = !!(selectedSite?.gscSiteUrl && selectedSite?.gscOauthTokenId);
+  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange;
+
+  const { data, isLoading, isFetching, isError, error } = useGSCKeywordsV2(
     selectedSiteId,
     dateRange.from,
     dateRange.to,
+    isComparing ? { startDate: comparisonDateRange.from, endDate: comparisonDateRange.to } : null,
     hasGSCConnection
   );
 
-  // 比較期間データ
-  const { data: compGscData } = useGSCData(
-    comparisonDateRange ? selectedSiteId : null,
-    comparisonDateRange?.from,
-    comparisonDateRange?.to,
-    hasGSCConnection
-  );
-
-  const isComparing = comparisonMode !== 'none' && !!comparisonDateRange && !!compGscData;
-
-  // データ整形
-  const keywordData = gscData?.topQueries || [];
-
-  // 合計値の計算
-  const totalClicks = keywordData.reduce((sum, row) => sum + row.clicks, 0);
-  const totalImpressions = keywordData.reduce((sum, row) => sum + row.impressions, 0);
-  const avgCTR =
-    keywordData.length > 0
-      ? (keywordData.reduce((sum, row) => sum + row.ctr, 0) / keywordData.length) * 100
-      : 0;
-  const avgPosition =
-    keywordData.length > 0
-      ? keywordData.reduce((sum, row) => sum + row.position, 0) / keywordData.length
-      : 0;
-
-  // テーブル用のデータ整形
-  const tableData = keywordData.map((row) => ({
-    keyword: row.query,
-    clicks: row.clicks,
-    impressions: row.impressions,
-    ctr: (row.ctr * 100).toFixed(2),
-    position: row.position.toFixed(1),
-  }));
-
-  // 比較データのマージ
-  const mergedTableData = useMemo(() => {
-    if (!isComparing || !compGscData?.topQueries) return tableData;
-    const compTable = compGscData.topQueries.map((row) => ({
-      keyword: row.query,
-      clicks: row.clicks,
-      impressions: row.impressions,
-      ctr: (row.ctr * 100).toFixed(2),
-      position: row.position.toFixed(1),
-    }));
-    return mergeComparisonRows(tableData, compTable, 'keyword', ['clicks', 'impressions', 'ctr', 'position']);
-  }, [tableData, isComparing, compGscData]);
-
-  // グラフ用のデータ整形（クリック数上位10件）
-  const chartData = [...keywordData].slice(0, 10);
-
-  // 凡例クリックハンドラー
-  const handleLegendClick = (dataKey) => {
-    setHiddenSeries((prev) => ({
-      ...prev,
-      [dataKey]: !prev[dataKey],
-    }));
-  };
-
-  // カスタム凡例
-  const CustomLegend = ({ payload }) => {
-    return (
-      <div className="mt-4 flex flex-wrap justify-center gap-4">
-        {payload.map((entry, index) => (
-          <div
-            key={`legend-${index}`}
-            className="flex cursor-pointer items-center gap-1.5 transition-opacity hover:opacity-70"
-            onClick={() => handleLegendClick(entry.dataKey)}
-          >
-            <div
-              className="h-2.5 w-2.5 rounded"
-              style={{
-                backgroundColor: hiddenSeries[entry.dataKey] ? '#ccc' : entry.color,
-                opacity: hiddenSeries[entry.dataKey] ? 0.3 : 1,
-              }}
-            />
-            <span
-              className="text-xs"
-              style={{
-                color: hiddenSeries[entry.dataKey] ? '#ccc' : entry.color,
-                textDecoration: hiddenSeries[entry.dataKey] ? 'line-through' : 'none',
-              }}
-            >
-              {entry.value}
-            </span>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // カスタムツールチップ（棒グラフ用）
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="rounded-lg border border-stroke bg-white p-3 shadow-lg dark:border-dark-3 dark:bg-dark-2">
-          <p className="mb-2 font-semibold text-dark dark:text-white">
-            {payload[0].payload.query}
-          </p>
-          {payload
-            .filter((entry) => !hiddenSeries[entry.dataKey])
-            .map((entry, index) => (
-              <p key={index} className="text-sm" style={{ color: entry.color }}>
-                {entry.name}: {entry.value?.toLocaleString()}
-              </p>
-            ))}
-        </div>
-      );
+  const reclassify = useReclassifyKeywordsV2(selectedSiteId);
+  const handleReclassify = async () => {
+    if (isReclassifying) return;
+    setIsReclassifying(true);
+    try {
+      await reclassify();
+      toast.success('再分類リクエストを受け付けました。次回データ取得時に反映されます');
+    } catch (e) {
+      toast.error('再分類に失敗しました: ' + (e?.message || ''));
+    } finally {
+      setIsReclassifying(false);
     }
-    return null;
   };
 
-  // 散布図用のカスタムツールチップ
-  const ScatterTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const data = payload[0].payload;
-      return (
-        <div className="rounded-lg border border-stroke bg-white p-3 shadow-lg dark:border-dark-3 dark:bg-dark-2">
-          <p className="mb-2 font-semibold text-dark dark:text-white">{data.query}</p>
-          <p className="text-sm text-body-color">クリック数: {data.clicks}</p>
-          <p className="text-sm text-body-color">順位: {data.position.toFixed(1)}</p>
-          <p className="text-sm text-body-color">
-            クリック率: {(data.ctr * 100).toFixed(2)}%
-          </p>
-        </div>
-      );
-    }
-    return null;
-  };
-
-  // 順位によるアイコン
-  const getPositionIcon = (position) => {
-    if (position <= 3) {
-      return <TrendingUp className="h-4 w-4 text-green-500" />;
-    } else if (position <= 10) {
-      return <Minus className="h-4 w-4 text-yellow-500" />;
-    } else {
-      return <TrendingDown className="h-4 w-4 text-red-500" />;
-    }
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const el = document.getElementById('ai-analysis-section');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   return (
     <div className="flex flex-col h-full">
       <AnalysisHeader
-          dateRange={dateRange}
-          setDateRange={updateDateRange}
-          showDateRange={true}
-          showSiteInfo={false}
-        />
+        dateRange={dateRange}
+        setDateRange={updateDateRange}
+        showDateRange={true}
+        showSiteInfo={false}
+      />
       <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark">
-        {/* コンテンツ */}
         <div className="mx-auto max-w-content px-3 sm:px-6 py-6 sm:py-10">
+
+          {/* ページタイトル */}
           <div className="mb-4">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-lg font-bold text-dark dark:text-white">
-                集客 - 流入キーワード元
-              </h2>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-2xl font-bold text-dark dark:text-white">集客 - 検索キーワード</h2>
               <TourHelpButton tourId="analysisKeywords" />
             </div>
-            <p className="mt-0.5 text-sm text-body-color">
-              Search Console の検索クエリデータを確認できます
+            <p className="mt-1 text-sm text-body-color">
+              Search Console のデータを AI でファネル分類・クラスタリングし、伸びしろを可視化します
             </p>
           </div>
 
@@ -239,302 +126,130 @@ export default function Keywords() {
               </h3>
               <p className="mb-6 text-sm text-body-color">
                 Googleアカウントで認証し、Search Consoleサイトにアクセスします<br />
-                <span className="text-gray-500">※ 流入キーワードデータを表示するには、Search Consoleとの連携が必要です</span>
+                <span className="text-gray-500">※ 検索キーワードデータを表示するには、Search Consoleとの連携が必要です</span>
               </p>
-              <Button
-                variant="primary"
-                size="lg"
-                href={`/sites/${selectedSiteId}/edit?step=3`}
-              >
+              <Button variant="primary" size="lg" href={`/sites/${selectedSiteId}/edit?step=3`}>
                 Googleアカウントで接続
               </Button>
             </div>
           ) : isLoading ? (
-            <LoadingSpinner message="データを読み込んでいます..." />
+            <LoadingSpinner message="キーワードデータを分析中... AI 分類で 30〜60 秒ほどかかります" />
+          ) : isFetching && !data ? (
+            <LoadingSpinner message="再分類中... 30〜60 秒ほどお待ちください" />
           ) : isError ? (
-            <ErrorAlert
-              message={error?.message || 'データの読み込みに失敗しました。'}
-            />
-          ) : !keywordData || keywordData.length === 0 ? (
+            <ErrorAlert message={error?.message || 'データの読み込みに失敗しました。'} />
+          ) : !data || (data.keywords?.length || 0) === 0 ? (
             <div className="rounded-lg border border-stroke bg-white p-12 text-center dark:border-dark-3 dark:bg-dark-2">
               <p className="text-body-color">表示するデータがありません。</p>
             </div>
           ) : (
             <>
-              {/* タブ */}
-              <div className="mb-6 mt-4 flex gap-2 rounded-lg border border-stroke bg-white p-1 dark:border-dark-3 dark:bg-dark-2" data-tour="analysis-view-tabs">
-                <button
-                  onClick={() => setActiveTab('table')}
-                  className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
-                    activeTab === 'table'
-                      ? 'bg-primary text-white transition hover:bg-opacity-90'
-                      : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
-                  }`}
-                >
-                  表形式
-                </button>
-                <button
-                  onClick={() => setActiveTab('chart')}
-                  className={`flex-1 rounded-md px-8 py-2 text-sm font-medium transition-all duration-200 ${
-                    activeTab === 'chart'
-                      ? 'bg-primary text-white transition hover:bg-opacity-90'
-                      : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
-                  }`}
-                >
-                  グラフ形式
-                </button>
+              {/* KPI サマリー */}
+              <KeywordsKpiSummary metrics={data.metrics} comparison={data.comparisonMetrics} />
+
+              {/* タブバー（他分析画面と同じスタイル: テキストのみ・flex-1 等分） */}
+              <div className="mb-6 mt-4 flex gap-2 rounded-lg border border-stroke bg-white p-1 overflow-x-auto dark:border-dark-3 dark:bg-dark-2" data-tour="analysis-view-tabs">
+                {TABS.map((t) => {
+                  const active = activeTab === t.key;
+                  const locked = t.business && isFree;
+                  return (
+                    <button
+                      key={t.key}
+                      onClick={() => {
+                        if (locked) {
+                          setIsLimitModalOpen(true);
+                          return;
+                        }
+                        setActiveTab(t.key);
+                      }}
+                      className={`flex-1 inline-flex items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ${
+                        active
+                          ? 'bg-primary text-white transition hover:bg-opacity-90'
+                          : 'text-body-color hover:bg-gray-2 dark:hover:bg-dark-3'
+                      } ${locked ? 'opacity-60' : ''}`}
+                    >
+                      <span>{t.label}</span>
+                      {locked && <Lock className="h-3 w-3" />}
+                    </button>
+                  );
+                })}
               </div>
 
               {/* タブコンテンツ */}
-              {activeTab === 'chart' ? (
-                <div className="space-y-6">
-                  {/* 棒グラフ：クリック数と表示回数 */}
-                  <ChartContainer title="キーワード別クリック数（上位10件）" height={400}>
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={chartData}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis
-                          dataKey="query"
-                          angle={-45}
-                          textAnchor="end"
-                          height={120}
-                          interval={0}
-                        />
-                        <YAxis tickFormatter={(v) => v.toLocaleString()} />
-                        <RechartsTooltip content={<CustomTooltip />} />
-                        <Legend content={<CustomLegend />} />
-                        <Bar
-                          dataKey="clicks"
-                          name={getShortLabel('clicks')}
-                          fill="#3b82f6"
-                          hide={hiddenSeries.clicks}
-                        />
-                        <Bar
-                          dataKey="impressions"
-                          name={getShortLabel('impressions')}
-                          fill="#10b981"
-                          hide={hiddenSeries.impressions}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-
-                  {/* 散布図：クリック数 vs 順位 */}
-                  <ChartContainer
-                    title="クリック数 vs 掲載順位（バブルサイズ：クリック率）"
-                    height={400}
-                  >
-                    <ResponsiveContainer width="100%" height="100%">
-                      <ScatterChart
-                        margin={{
-                          top: 20,
-                          right: 20,
-                          bottom: 20,
-                          left: 20,
-                        }}
-                      >
-                        <CartesianGrid />
-                        <XAxis
-                          type="number"
-                          dataKey="position"
-                          name={getShortLabel('position')}
-                          reversed
-                          label={{
-                            value: '掲載順位（数値が小さいほど上位）',
-                            position: 'bottom',
-                          }}
-                        />
-                        <YAxis
-                          type="number"
-                          dataKey="clicks"
-                          name={getShortLabel('clicks')}
-                          label={{
-                            value: getShortLabel('clicks'),
-                            angle: -90,
-                            position: 'insideLeft',
-                          }}
-                        />
-                        <ZAxis
-                          type="number"
-                          dataKey="ctr"
-                          range={[50, 400]}
-                          name={getShortLabel('ctr')}
-                        />
-                        <RechartsTooltip content={<ScatterTooltip />} cursor={{ strokeDasharray: '3 3' }} />
-                        <Scatter
-                          name="キーワード"
-                          data={chartData}
-                          fill="#8b5cf6"
-                          fillOpacity={0.6}
-                        />
-                      </ScatterChart>
-                    </ResponsiveContainer>
-                  </ChartContainer>
-                </div>
-              ) : (
-                <DataTable
-                  tableKey="analysis-keywords"
-                  isComparing={isComparing}
-                  expandRowKey="keyword"
-                  expandable={(row) => {
-                    const pages = gscData?.queryPagesMap?.[row.keyword];
-                    if (!pages || pages.length === 0) {
-                      return (
-                        <div className="text-xs text-body-color">
-                          このキーワードに紐づく着地ページのデータはありません（GSCのプライバシー制限により非表示の場合があります）。
-                        </div>
-                      );
-                    }
-                    return (
-                      <div>
-                        <div className="mb-2 text-xs font-semibold text-dark dark:text-white">
-                          「{row.keyword}」の主な着地ページ（上位{pages.length}件）
-                        </div>
-                        <table className="w-full text-xs">
-                          <thead>
-                            <tr className="border-b border-stroke text-body-color">
-                              <th className="py-1.5 text-left font-medium">URL</th>
-                              <th className="py-1.5 text-right font-medium">クリック</th>
-                              <th className="py-1.5 text-right font-medium">表示回数</th>
-                              <th className="py-1.5 text-right font-medium">CTR</th>
-                              <th className="py-1.5 text-right font-medium">平均順位</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {pages.map((p, i) => (
-                              <tr key={i} className="border-b border-stroke/50 last:border-b-0">
-                                <td className="py-1.5 pr-2 text-dark dark:text-white">
-                                  <a
-                                    href={p.page}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="break-all text-primary hover:underline"
-                                  >
-                                    {p.page}
-                                  </a>
-                                </td>
-                                <td className="py-1.5 text-right text-dark dark:text-white">{p.clicks.toLocaleString()}</td>
-                                <td className="py-1.5 text-right text-dark dark:text-white">{p.impressions.toLocaleString()}</td>
-                                <td className="py-1.5 text-right text-dark dark:text-white">{(p.ctr * 100).toFixed(2)}%</td>
-                                <td className="py-1.5 text-right text-dark dark:text-white">{p.position.toFixed(1)}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    );
-                  }}
-                  columns={[
-                    {
-                      key: 'keyword',
-                      label: 'キーワード',
-                      sortable: true,
-                      required: true,
-                      tooltip: 'keywords',
-                    },
-                    {
-                      key: 'clicks',
-                      label: getShortLabel('clicks'),
-                      format: 'number',
-                      align: 'right',
-                      tooltip: 'clicks',
-                      comparison: true,
-                    },
-                    {
-                      key: 'impressions',
-                      label: getShortLabel('impressions'),
-                      format: 'number',
-                      align: 'right',
-                      tooltip: 'impressions',
-                      comparison: true,
-                    },
-                    {
-                      key: 'ctr',
-                      label: getShortLabel('ctr'),
-                      align: 'right',
-                      render: (value) => `${value}%`,
-                      tooltip: 'ctr',
-                      comparison: true,
-                    },
-                    {
-                      key: 'position',
-                      label: getShortLabel('position'),
-                      align: 'right',
-                      tooltip: 'position',
-                      comparison: true,
-                      invertColor: true,
-                      render: (value, row) => (
-                        <div className="flex items-center justify-end gap-2">
-                          {getPositionIcon(parseFloat(value))}
-                          <span>{value}</span>
-                        </div>
-                      ),
-                    },
-                  ]}
-                  data={mergedTableData}
-                  pageSize={25}
-                  showPagination={true}
-                  emptyMessage="表示するデータがありません。"
-                  showTotals
+              {activeTab === 'funnel' && (
+                <KeywordsFunnel
+                  data={data}
+                  siteId={selectedSiteId}
+                  onReclassify={handleReclassify}
+                  isReclassifying={isReclassifying || isFetching}
                 />
               )}
+              {activeTab === 'graph' && (
+                <KeywordsRelationGraph
+                  data={data}
+                  onAction={(action /* , kw */) => {
+                    if (action === 'improve') setActiveTab('improve');
+                    else if (action === 'detail') setActiveTab('table');
+                  }}
+                />
+              )}
+              {activeTab === 'quadrant' && <KeywordsOpportunityQuadrant data={data} />}
+              {activeTab === 'improve' && (
+                <KeywordsImproveCandidates siteId={selectedSiteId} data={data} />
+              )}
+              {activeTab === 'cv' && <KeywordsCVContribution data={data} />}
+              {activeTab === 'table' && <KeywordsTableView data={data} />}
+              {activeTab === 'chart' && <KeywordsChartView data={data} />}
             </>
           )}
 
-        {/* メモ & AI分析タブ（GSC連携済みの場合のみ表示） */}
-        {selectedSiteId && currentUser && hasGSCConnection && (
-          <div className="mt-6">
-            <TabbedNoteAndAI
-              pageType="keywords"
-              noteContent={
-                <PageNoteSection
-                  userId={currentUser.uid}
-                  siteId={selectedSiteId}
-                  pageType="keywords"
-                  dateRange={dateRange}
-                />
-              }
-              aiContent={
-                hasGSCConnection && !isLoading && gscData ? (
-                  <AIAnalysisSection
-                    pageType={PAGE_TYPES.KEYWORDS}
-                    rawData={gscData}
-                    period={{
-                      startDate: dateRange?.from,
-                      endDate: dateRange?.to,
-                    }}
-                    comparisonRawData={isComparing ? compGscData : null}
-                    comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
-                    onLimitExceeded={() => setIsLimitModalOpen(true)}
+          {/* メモ + AI タブ */}
+          {selectedSiteId && currentUser && (
+            <div className="mt-6">
+              <TabbedNoteAndAI
+                pageType="keywords"
+                noteContent={
+                  <PageNoteSection
+                    userId={currentUser.uid}
+                    siteId={selectedSiteId}
+                    pageType="keywords"
+                    dateRange={dateRange}
                   />
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    {!hasGSCConnection ? 'Search Consoleが未連携のため、AI分析を利用できません。' : 'データを読み込み中...'}
-                  </div>
-                )
-              }
-            />
-          </div>
-        )}
+                }
+                aiContent={
+                  !isLoading && data ? (
+                    <AIAnalysisSection
+                      pageType={PAGE_TYPES.KEYWORDS}
+                      rawData={data}
+                      period={{
+                        startDate: dateRange?.from,
+                        endDate: dateRange?.to,
+                      }}
+                      comparisonRawData={null}
+                      comparisonPeriod={
+                        isComparing
+                          ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to }
+                          : null
+                      }
+                      onLimitExceeded={() => setIsLimitModalOpen(true)}
+                    />
+                  ) : (
+                    <div className="text-center py-8 text-gray-500">データを読み込み中...</div>
+                  )
+                }
+              />
+            </div>
+          )}
         </div>
 
-        {/* AI分析フローティングボタン */}
-        {selectedSiteId && hasGSCConnection && !isLoading && gscData && (
-          <AIFloatingButton
-            pageType={PAGE_TYPES.KEYWORDS}
-            onScrollToAI={scrollToAIAnalysis}
-          />
+        {selectedSiteId && !isLoading && data && (
+          <AIFloatingButton pageType={PAGE_TYPES.KEYWORDS} onScrollToAI={scrollToAIAnalysis} />
         )}
 
-        {/* 制限超過モーダル */}
         {isLimitModalOpen && (
-          <PlanLimitModal
-            onClose={() => setIsLimitModalOpen(false)}
-            type="summary"
-          />
+          <PlanLimitModal onClose={() => setIsLimitModalOpen(false)} type="summary" />
         )}
       </main>
     </div>
   );
 }
-

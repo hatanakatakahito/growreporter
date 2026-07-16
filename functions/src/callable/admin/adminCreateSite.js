@@ -2,6 +2,16 @@ import { HttpsError } from 'firebase-functions/v2/https';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { logUserActivity, ACTIVITY_ACTIONS } from '../../utils/userActivityLogger.js';
+import {
+  requireDocId,
+  requireString,
+  requireUrl,
+  optionalString,
+  optionalDisplayName,
+  MAX_COMPANY_LEN,
+  MAX_NAME_LEN,
+  MAX_URL_LEN,
+} from '../../utils/validators.js';
 
 /**
  * 管理者が対象ユーザーに代わってサイトを登録（タクソノミー V2 対応）
@@ -28,28 +38,21 @@ export const adminCreateSiteCallable = async (request) => {
     throw new HttpsError('unauthenticated', 'ユーザー認証が必要です');
   }
 
-  const {
-    targetUserId,
-    siteName,
-    siteUrl,
-    // タクソノミー V2 は任意（管理者が明示指定できるが、通常は AI 自動判定に任せる）
-    businessModel = '',
-    industryMajor = '',
-    industryMinor = '',
-    siteRole = '',
-    metaTitle = '',
-    metaDescription = '',
-    pcScreenshotUrl = '',
-    mobileScreenshotUrl = '',
-  } = request.data || {};
+  const rawData = request.data || {};
 
-  // バリデーション（業種系は必須ではない。空ならスクレイピング完了時にAIが埋める）
-  if (!targetUserId) {
-    throw new HttpsError('invalid-argument', '対象ユーザーIDが必要です');
-  }
-  if (!siteName || !siteUrl) {
-    throw new HttpsError('invalid-argument', 'サイト名とサイトURLは必須です');
-  }
+  // 入力検証 (Phase 4-B-7)
+  const targetUserId = requireDocId(rawData.targetUserId, 'targetUserId');
+  const siteName = requireString(rawData.siteName, 'siteName', { maxLen: MAX_COMPANY_LEN });
+  const siteUrl = requireUrl(rawData.siteUrl, 'siteUrl');
+  // タクソノミー V2 は任意（明示指定されない場合は後続スクレイピングで AI 自動判定）
+  const businessModel = optionalDisplayName(rawData.businessModel, 'businessModel');
+  const industryMajor = optionalDisplayName(rawData.industryMajor, 'industryMajor');
+  const industryMinor = optionalDisplayName(rawData.industryMinor, 'industryMinor');
+  const siteRole = optionalDisplayName(rawData.siteRole, 'siteRole');
+  const metaTitle = optionalString(rawData.metaTitle, 'metaTitle', { maxLen: 500 });
+  const metaDescription = optionalString(rawData.metaDescription, 'metaDescription', { maxLen: 1000 });
+  const pcScreenshotUrl = optionalString(rawData.pcScreenshotUrl, 'pcScreenshotUrl', { maxLen: MAX_URL_LEN });
+  const mobileScreenshotUrl = optionalString(rawData.mobileScreenshotUrl, 'mobileScreenshotUrl', { maxLen: MAX_URL_LEN });
 
   try {
     const db = getFirestore();

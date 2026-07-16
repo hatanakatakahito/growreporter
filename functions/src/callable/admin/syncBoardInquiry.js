@@ -1,5 +1,5 @@
 import { HttpsError } from 'firebase-functions/v2/https';
-import { getFirestore, FieldValue } from 'firebase-admin/firestore';
+import { getFirestore, FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { logger } from 'firebase-functions/v2';
 import { createBoardClient } from '../../utils/boardApiClient.js';
 
@@ -46,6 +46,10 @@ export const syncBoardInquiryCallable = async (request) => {
 
 /**
  * board APIから案件・見積書情報を取得してFirestoreに同期
+ *
+ * 副作用 (v5.8.0):
+ *   - inquiry.status === 'active' の場合、契約終了日が変わったら
+ *     紐づく users.extraSitesValidUntil も同期する
  */
 export async function syncFromBoard(db, inquiryId, inquiryData) {
   const client = createBoardClient();
@@ -103,6 +107,44 @@ export async function syncFromBoard(db, inquiryId, inquiryData) {
     orderStatus: project.order_status_name,
     total: project.estimate?.total,
   });
+
+  // active な inquiry で契約終了日が変わったら、users.extraSitesValidUntil も追従
+  // - 同期されるのは紐づくユーザーが「この inquiry の boardProjectId をオーナーとして保持している」場合のみ
+  if (
+    inquiryData.status === 'active' &&
+    inquiryData.uid &&
+    updateData.contractEndDate &&
+    updateData.contractEndDate !== inquiryData.contractEndDate
+  ) {
+    try {
+      const userRef = db.collection('users').doc(inquiryData.uid);
+      const userDoc = await userRef.get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        const userBoardProjectId = userData.boardProjectId || userData.extraSitesBoardProjectId || null;
+        // 紐付き確認: ユーザーの保持する案件 ID と一致する場合のみ反映
+        if (userBoardProjectId && userBoardProjectId === boardProjectId) {
+          const newEnd = new Date(updateData.contractEndDate);
+          if (!Number.isNaN(newEnd.getTime())) {
+            await userRef.update({
+              extraSitesValidUntil: Timestamp.fromDate(newEnd),
+              extraSitesUpdatedAt: FieldValue.serverTimestamp(),
+              updatedAt: FieldValue.serverTimestamp(),
+            });
+            logger.info('[boardSync] users.extraSitesValidUntil も同期', {
+              uid: inquiryData.uid,
+              newEnd: updateData.contractEndDate,
+            });
+          }
+        }
+      }
+    } catch (syncErr) {
+      logger.warn('[boardSync] extraSitesValidUntil 同期エラー（同期処理は成功）', {
+        inquiryId,
+        error: syncErr.message,
+      });
+    }
+  }
 
   return updateData;
 }

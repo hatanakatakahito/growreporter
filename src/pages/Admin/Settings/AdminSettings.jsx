@@ -117,7 +117,7 @@ export default function AdminSettings() {
           </p>
         </div>
         {canAddAdmin && (
-          <Button variant="primary" onClick={() => setShowAddModal(true)}>
+          <Button variant="primary" className="min-w-[180px]" onClick={() => setShowAddModal(true)}>
             <UserPlus data-slot="icon" />
             管理者を追加
           </Button>

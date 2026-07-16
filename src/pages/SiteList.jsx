@@ -14,7 +14,10 @@ import { useAutoTour } from '../hooks/useAutoTour';
 import TourHelpButton from '../components/Onboarding/TourHelpButton';
 
 export default function SiteList() {
-  const [sites, setSites] = useState([]);
+  // 自分が所有するサイト / 共有されているサイト を分離して保持（タブ表示用）
+  const [ownSites, setOwnSites] = useState([]);
+  const [sharedSites, setSharedSites] = useState([]);
+  const [activeTab, setActiveTab] = useState('own'); // 'own' | 'shared'
   const [isLoading, setIsLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -30,8 +33,13 @@ export default function SiteList() {
   const { isAdmin } = useAdmin();
 
   // サイト上限チェック（管理者は無制限、setupCompleted済みサイトのみカウント）
-  const completedSitesCount = sites.filter(s => s.setupCompleted === true).length;
+  // プラン上限は「自分が所有するサイト」にのみ適用（共有サイトはオーナーの枠を消費するため除外）
+  const completedSitesCount = ownSites.filter(s => s.setupCompleted === true).length;
   const canAddSite = isAdmin || completedSitesCount < maxSites;
+
+  // 表示中タブのサイト一覧と、共有サイトの有無
+  const hasShared = sharedSites.length > 0;
+  const displayedSites = activeTab === 'shared' ? sharedSites : ownSites;
 
   const handleNewSite = (e) => {
     if (!canAddSite) {
@@ -53,40 +61,45 @@ export default function SiteList() {
       setIsLoading(true);
       try {
         console.log('[SiteList] ユーザーID:', currentUser.uid);
-        
-        // 自分のaccountOwnerIdを取得
+
         const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
         const userData = userDoc.data();
-        const accountOwnerId = userData?.accountOwnerId || currentUser.uid;
-        
-        console.log('[SiteList] アカウントオーナーID:', accountOwnerId);
-        
-        // accountOwnerIdが一致するサイトを全て取得
-        const q = query(
-          collection(db, 'sites'),
-          where('userId', '==', accountOwnerId)
+
+        const sortByCreatedDesc = (arr) =>
+          arr.sort((a, b) => {
+            const aTime = a.createdAt?.toDate?.() || new Date(0);
+            const bTime = b.createdAt?.toDate?.() || new Date(0);
+            return bTime - aTime;
+          });
+
+        // 1) 自分が所有するサイト (userId == 自分の uid)
+        const ownSnap = await getDocs(
+          query(collection(db, 'sites'), where('userId', '==', currentUser.uid))
         );
-        
-        const querySnapshot = await getDocs(q);
-        console.log('[SiteList] 取得したサイト数:', querySnapshot.size);
-        
-        const sitesData = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          console.log('[SiteList] サイトデータ:', doc.id, data);
-          return {
-            id: doc.id,
-            ...data,
-          };
-        });
-        
-        // クライアント側でソート（createdAtがない場合に備えて）
-        sitesData.sort((a, b) => {
-          const aTime = a.createdAt?.toDate?.() || new Date(0);
-          const bTime = b.createdAt?.toDate?.() || new Date(0);
-          return bTime - aTime;
-        });
-        
-        setSites(sitesData);
+        const own = ownSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        sortByCreatedDesc(own);
+        console.log('[SiteList] 自分の所有サイト数:', own.length);
+
+        // 2) 共有されているサイト (メンバーとして招待された allowedSiteIds、自分の所有分は除外)
+        const memberRole = userData?.memberRole || 'owner';
+        const isMemberRole = memberRole === 'editor' || memberRole === 'viewer';
+        let shared = [];
+        if (isMemberRole) {
+          const allowedSiteIds = Array.isArray(userData?.allowedSiteIds) ? userData.allowedSiteIds : [];
+          const ownIds = new Set(own.map((s) => s.id));
+          const targetIds = allowedSiteIds.filter((sid) => !ownIds.has(sid));
+          if (targetIds.length > 0) {
+            const docs = await Promise.all(targetIds.map((sid) => getDoc(doc(db, 'sites', sid))));
+            shared = docs.filter((d) => d.exists()).map((d) => ({ id: d.id, ...d.data() }));
+            sortByCreatedDesc(shared);
+          }
+        }
+        console.log('[SiteList] 共有サイト数:', shared.length);
+
+        setOwnSites(own);
+        setSharedSites(shared);
+        // 自分の所有が無く共有のみある場合は共有タブを初期表示
+        setActiveTab(own.length === 0 && shared.length > 0 ? 'shared' : 'own');
       } catch (error) {
         console.error('[SiteList] Error fetching sites:', error);
         alert('サイト一覧の取得に失敗しました: ' + error.message);
@@ -126,7 +139,8 @@ export default function SiteList() {
         // ログ記録エラーは無視して処理を続行
       }
       
-      setSites(sites.filter(site => site.id !== deleteTarget.id));
+      setOwnSites(prev => prev.filter(site => site.id !== deleteTarget.id));
+      setSharedSites(prev => prev.filter(site => site.id !== deleteTarget.id));
       setDeleteTarget(null);
     } catch (error) {
       console.error('Error deleting site:', error);
@@ -169,8 +183,8 @@ export default function SiteList() {
         {/* ヘッダー（アカウント設定ページと同一構成） */}
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">サイト管理</h1>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">サイト管理</h1>
               <TourHelpButton tourId="sites" />
             </div>
             <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">
@@ -186,28 +200,75 @@ export default function SiteList() {
         </div>
 
         <div>
-        {sites.length === 0 ? (
-          // サイトが登録されていない場合
+        {/* タブ: 自分のサイト / 共有されているサイト（共有が1件以上ある場合のみ表示） */}
+        {hasShared && (
+          <div className="mb-6 flex gap-1 border-b border-stroke dark:border-dark-3">
+            <button
+              type="button"
+              onClick={() => setActiveTab('own')}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${
+                activeTab === 'own'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-body-color hover:text-dark dark:hover:text-white'
+              }`}
+            >
+              自分のサイト
+              <span className="ml-1.5 rounded-full bg-gray-2 px-2 py-0.5 text-xs text-body-color dark:bg-dark-3">
+                {ownSites.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('shared')}
+              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium transition ${
+                activeTab === 'shared'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-body-color hover:text-dark dark:hover:text-white'
+              }`}
+            >
+              共有されているサイト
+              <span className="ml-1.5 rounded-full bg-gray-2 px-2 py-0.5 text-xs text-body-color dark:bg-dark-3">
+                {sharedSites.length}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {displayedSites.length === 0 ? (
+          // 表示中タブにサイトが無い場合
           <div className="mx-auto max-w-2xl pt-20">
             <div className="rounded-xl border border-stroke bg-white p-12 text-center shadow-sm dark:border-dark-3 dark:bg-dark-2">
-              <h2 className="mb-3 text-2xl font-bold text-dark dark:text-white">
-                サイトが登録されていません
-              </h2>
-              <p className="mb-8 text-body-color">
-                分析を始めるには、まずサイトを登録してください。
-              </p>
-              <Button variant="primary" size="lg" href="/sites/new">
-                <svg data-slot="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                最初のサイトを登録する
-              </Button>
+              {activeTab === 'shared' ? (
+                <>
+                  <h2 className="mb-3 text-2xl font-bold text-dark dark:text-white">
+                    共有されているサイトはありません
+                  </h2>
+                  <p className="text-body-color">
+                    他のアカウントから招待されると、ここに表示されます。
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h2 className="mb-3 text-2xl font-bold text-dark dark:text-white">
+                    サイトが登録されていません
+                  </h2>
+                  <p className="mb-8 text-body-color">
+                    分析を始めるには、まずサイトを登録してください。
+                  </p>
+                  <Button variant="primary" size="lg" href="/sites/new">
+                    <svg data-slot="icon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                    最初のサイトを登録する
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         ) : (
           // サイト一覧表示
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {sites.map((site) => (
+            {displayedSites.map((site) => (
               <div
                 key={site.id}
                 className="rounded-lg border border-stroke bg-white shadow-sm transition hover:shadow-md dark:border-dark-3 dark:bg-dark-2"
@@ -358,9 +419,17 @@ export default function SiteList() {
       </div>
     </div>
 
-      {/* プランアップグレードモーダル */}
+      {/* プランアップグレードモーダル
+          既存 Business オーナーがサイト上限超過した場合は addon モードで開く
+          （住所等の再入力を回避するため） */}
       <UpgradeModal
         isOpen={isUpgradeModalOpen}
+        mode={
+          (userProfile?.plan === 'business' || userProfile?.plan === 'standard' || userProfile?.plan === 'premium') &&
+          (userProfile?.memberRole === 'owner' || !userProfile?.memberRole)
+            ? 'addon'
+            : 'compare'
+        }
         onClose={() => setIsUpgradeModalOpen(false)}
       />
 

@@ -1,6 +1,7 @@
 import { HttpsError } from 'firebase-functions/v2/https';
 import { logger } from 'firebase-functions/v2';
 import { fetchViaCloudflareProxy, validateExternalFetchUrl } from '../utils/cloudflareProxy.js';
+import { enforceRateLimit, DEFAULT_RATE_LIMITS } from '../utils/rateLimiter.js';
 
 /**
  * サイトのメタデータを取得
@@ -19,6 +20,9 @@ export const fetchMetadataCallable = async (request) => {
   if (!request.auth) {
     throw new HttpsError('unauthenticated', 'fetchMetadata は認証が必要です');
   }
+
+  // セキュリティ (Phase 4-A-2): レート制限。SSRF踏み台 + 課金枯渇防止
+  await enforceRateLimit({ uid: request.auth.uid, ...DEFAULT_RATE_LIMITS.fetchMetadata });
 
   const { siteUrl } = request.data || {};
 

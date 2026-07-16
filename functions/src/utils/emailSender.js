@@ -1,5 +1,6 @@
 import { logger } from 'firebase-functions/v2';
 import { getFirestore } from 'firebase-admin/firestore';
+import { escapeHtml, escapeHtmlAndValidateUrl, escapeForHtmlMultiline } from './htmlEscape.js';
 
 /** 全メールの送信元アドレス */
 export const DEFAULT_FROM_EMAIL = 'info@grow-reporter.com';
@@ -10,7 +11,7 @@ export const DEFAULT_FROM_NAME = 'グローレポータ';
  * SMTP（AWS SES 等）でメールを直接送信（Trigger Email 拡張不要）
  * 環境変数: SES_SMTP_HOST, SES_SMTP_PORT, SES_SMTP_USER, SES_SMTP_PASSWORD, SES_FROM_EMAIL, SES_FROM_NAME（任意）
  */
-export async function sendEmailDirect({ to, subject, html, text, attachments }) {
+export async function sendEmailDirect({ to, subject, html, text, attachments, replyTo }) {
   const nodemailer = await import('nodemailer');
   const host = process.env.SES_SMTP_HOST || '';
   const port = parseInt(process.env.SES_SMTP_PORT || '587', 10);
@@ -43,6 +44,9 @@ export async function sendEmailDirect({ to, subject, html, text, attachments }) 
     text: text || (html ? html.replace(/<[^>]+>/g, '') : ''),
     html: html || undefined,
   };
+  if (replyTo) {
+    mailOptions.replyTo = replyTo;
+  }
   if (attachments && attachments.length > 0) {
     mailOptions.attachments = attachments;
   }
@@ -89,11 +93,12 @@ ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 お問い合わせ: info@grow-reporter.com
 ────────────────────────
 `;
+    // XSS 対策: userName が含まれるので HTML escape 必須
     await sendEmailDirect({
       to: toEmail,
       subject: emailSubject,
       text: emailBody,
-      html: emailBody.replace(/\n/g, '<br>'),
+      html: escapeForHtmlMultiline(emailBody),
     });
     logger.info('プラン変更通知メール送信', { toEmail, oldPlan, newPlan });
     return { success: true };
@@ -119,7 +124,8 @@ export async function sendAdminAlertEmail({ subject, body, toEmails = null }) {
       return { success: false, error: '宛先がありません' };
     }
     const subj = `【グローレポータ 管理者】${subject}`;
-    const html = body.replace(/\n/g, '<br>');
+    // XSS 対策: body は呼出し元から渡された任意文字列のため escape して HTML 化
+    const html = escapeForHtmlMultiline(body);
     await Promise.all(recipients.map(email =>
       sendEmailDirect({ to: email, subject: subj, text: body, html })
     ));
@@ -153,16 +159,25 @@ ${message ? `\n■ メッセージ：\n${message.trim()}\n` : ''}${excelSection}
 送信日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 `;
 
+    // XSS 対策: ユーザー入力 (siteName / siteUrl / userName / userEmail / message / excelFileName) は
+    // 全て escape してから HTML に埋め込む。URL は許可スキームのみ通す。
+    const siteNameHtml = escapeHtml((siteName || '').trim() || '（未入力）');
+    const siteUrlHtml = escapeHtml((siteUrl || '').trim() || '（未入力）');
+    const userNameHtml = escapeHtml((userName || '').trim() || '（未入力）');
+    const userEmailHtml = escapeHtml((userEmail || '').trim() || '（未入力）');
+    const excelFileNameHtml = escapeHtml(excelFileName || '');
+    const excelDownloadUrlHtml = escapeHtmlAndValidateUrl(excelDownloadUrl || '');
+
     const htmlExcelSection = excelDownloadUrl
-      ? `<br><strong>■ 改善内容Excel：</strong><br>${excelFileName ? `ファイル名: ${excelFileName}<br>` : ''}ダウンロード: <a href="${excelDownloadUrl}">${excelFileName || 'Excelをダウンロード'}</a><br>`
+      ? `<br><strong>■ 改善内容Excel：</strong><br>${excelFileName ? `ファイル名: ${excelFileNameHtml}<br>` : ''}ダウンロード: <a href="${excelDownloadUrlHtml}">${excelFileNameHtml || 'Excelをダウンロード'}</a><br>`
       : '';
 
     const htmlBody = `このメールはグローレポータ（<a href="https://grow-reporter.com/">https://grow-reporter.com/</a>）の「制作会社へ相談する」フォームから送信されました。<br>
 <br>
-<strong>■ サイト名：</strong>${(siteName || '').trim() || '（未入力）'}<br>
-<strong>■ サイトURL：</strong>${(siteUrl || '').trim() || '（未入力）'}<br>
-<strong>■ 送信者：</strong>${(userName || '').trim() || '（未入力）'}（${(userEmail || '').trim() || '（未入力）'}）<br>
-${message ? `<br><strong>■ メッセージ：</strong><br>${message.trim().replace(/\n/g, '<br>')}<br>` : ''}${htmlExcelSection}<br>
+<strong>■ サイト名：</strong>${siteNameHtml}<br>
+<strong>■ サイトURL：</strong>${siteUrlHtml}<br>
+<strong>■ 送信者：</strong>${userNameHtml}（${userEmailHtml}）<br>
+${message ? `<br><strong>■ メッセージ：</strong><br>${escapeForHtmlMultiline(message.trim())}<br>` : ''}${htmlExcelSection}<br>
 送信日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 `;
 
@@ -246,11 +261,13 @@ ${appBaseUrl}/admin/inquiries
 送信日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 `;
 
+    // XSS 対策: text body をそのまま HTML 化していたため、ユーザー入力の
+    // <script> 等が実行可能だった。escape してから <br> 変換する。
     await sendEmailDirect({
       to: CONSULTATION_TO_EMAIL,
       subject,
       text: body,
-      html: body.replace(/\n/g, '<br>'),
+      html: escapeForHtmlMultiline(body),
     });
     logger.info('プランアップグレードお問い合わせメール送信', { selectedPlan, companyName, contactName, userEmail });
     return { success: true };
@@ -295,16 +312,107 @@ ${attachmentUrl ? `━━ 添付資料 ━━\n${attachmentFileName || 'ファ�
 ${feedbackId ? `フィードバックID：${feedbackId}\n` : ''}送信日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 `;
 
+    // XSS 対策: text body をそのまま HTML 化していたため、ユーザー入力の
+    // <script> 等が実行可能だった。escape してから <br> 変換する。
     await sendEmailDirect({
       to: CONSULTATION_TO_EMAIL,
       subject,
       text: body,
-      html: body.replace(/\n/g, '<br>'),
+      html: escapeForHtmlMultiline(body),
     });
     logger.info('意見箱メール送信', { categoryLabel, companyName, contactName, userEmail, feedbackId });
     return { success: true };
   } catch (error) {
     logger.error('意見箱メール送信エラー', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * LP（grow-reporter.com/lp/）お問い合わせフォームからの問い合わせメール
+ * 宛先: info@grow-reporter.com（返信先は問い合わせ者のメールアドレス）
+ */
+export async function sendContactInquiryEmail({ name = '', company = '', department = '', email = '', message = '' }) {
+  try {
+    const subject = `【グローレポータ】お問い合わせ：${(company || '').trim() || '（会社名未入力）'} / ${(name || '').trim() || '（お名前未入力）'} 様`;
+
+    const body = `このメールはグローレポータ LP（https://grow-reporter.com/lp/）のお問い合わせフォームから送信されました。
+
+■ 会社名・組織名：${(company || '').trim() || '（未入力）'}
+■ 部署名：${(department || '').trim() || '（未入力）'}
+■ お名前：${(name || '').trim() || '（未入力）'}
+■ メールアドレス：${(email || '').trim() || '（未入力）'}
+
+━━ お問い合わせ内容 ━━
+${(message || '').trim() || '（未入力）'}
+━━━━━━━━━━━━━━━━━━
+送信日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
+`;
+
+    // XSS 対策: ユーザー入力を含む text を escape してから <br> 変換して HTML 化
+    await sendEmailDirect({
+      to: CONSULTATION_TO_EMAIL,
+      subject,
+      text: body,
+      html: escapeForHtmlMultiline(body),
+      // 受信側でそのまま返信すると問い合わせ者に届くようにする
+      replyTo: (email || '').trim() || undefined,
+    });
+    logger.info('LPお問い合わせメール送信', { company, department, name, email });
+    return { success: true };
+  } catch (error) {
+    logger.error('LPお問い合わせメール送信エラー', { error: error.message });
+    return { success: false, error: error.message };
+  }
+}
+
+/**
+ * LP お問い合わせフォーム：送信者本人への自動返信（受付控え）メール
+ * 宛先: 問い合わせ者本人のメールアドレス
+ */
+export async function sendContactAutoReplyEmail({ name = '', company = '', department = '', email = '', message = '' }) {
+  try {
+    const to = (email || '').trim();
+    if (!to) {
+      return { success: false, error: 'recipient email is empty' };
+    }
+    const subject = '【グローレポータ】お問い合わせありがとうございます（受付控え）';
+
+    const body = `${(name || '').trim() || 'ご担当者'} 様
+
+この度はグローレポータへお問い合わせいただき、誠にありがとうございます。
+下記の内容でお問い合わせを受け付けいたしました。
+担当者より2〜3営業日以内にご返信いたしますので、今しばらくお待ちくださいませ。
+
+━━ お問い合わせ内容（控え）━━
+■ 会社名・組織名：${(company || '').trim() || '（未入力）'}
+■ 部署名：${(department || '').trim() || '（未入力）'}
+■ お名前：${(name || '').trim() || '（未入力）'}
+■ メールアドレス：${to}
+
+${(message || '').trim() || '（未入力）'}
+━━━━━━━━━━━━━━━━━━
+
+ご不明な点がございましたら、本メールにご返信いただくか、info@grow-reporter.com までお問い合わせください。
+
+────────────────────
+グローレポータ
+https://grow-reporter.com/
+Produced by GrowGroup株式会社
+────────────────────
+※本メールは送信時点の入力内容の控えです。お心当たりのない場合は破棄してください。
+`;
+
+    await sendEmailDirect({
+      to,
+      subject,
+      text: body,
+      html: escapeForHtmlMultiline(body),
+    });
+    logger.info('お問い合わせ自動返信メール送信', { email: to });
+    return { success: true };
+  } catch (error) {
+    logger.error('お問い合わせ自動返信メール送信エラー', { error: error.message });
     return { success: false, error: error.message };
   }
 }
@@ -327,11 +435,12 @@ ${appBaseUrl}/admin/inquiries
 
 発生日時：${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}
 `;
+    // XSS 対策: errorMessage / companyName が含まれるため escape 必須
     await sendEmailDirect({
       to: CONSULTATION_TO_EMAIL,
       subject,
       text: body,
-      html: body.replace(/\n/g, '<br>'),
+      html: escapeForHtmlMultiline(body),
     });
     logger.info('board連携エラー通知メール送信', { inquiryId, companyName });
     return { success: true };

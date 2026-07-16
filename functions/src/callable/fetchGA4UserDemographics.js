@@ -3,6 +3,7 @@ import { logger } from 'firebase-functions/v2';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAndRefreshToken } from '../utils/tokenManager.js';
 import { translateLocationName } from '../utils/japaneseLocationMap.js';
+import { canAccessSite } from '../utils/permissionHelper.js';
 
 /**
  * GA4ユーザー属性データを取得
@@ -32,12 +33,10 @@ export const fetchGA4UserDemographicsCallable = async (request) => {
 
     const siteData = siteDoc.data();
     
-    // サイト所有者本人、または管理者権限（admin/editor/viewer）がある場合のみアクセス許可
-    if (siteData.userId !== userId) {
-      const adminDoc = await db.collection('adminUsers').doc(userId).get();
-      if (!adminDoc.exists || !['admin', 'editor', 'viewer'].includes(adminDoc.data().role)) {
-        throw new HttpsError('permission-denied', 'Access denied');
-      }
+    // サイトへのアクセス権限をチェック（owner は全サイト、editor/viewer は allowedSiteIds のみ）
+    const hasAccess = await canAccessSite(userId, siteId);
+    if (!hasAccess) {
+      throw new HttpsError('permission-denied', 'このサイトにアクセスする権限がありません');
     }
 
     if (!siteData.ga4PropertyId || !siteData.ga4OauthTokenId) {

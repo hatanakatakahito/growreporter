@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { DayPicker } from 'react-day-picker';
 import { ja } from 'date-fns/locale';
-import { format, subDays, startOfMonth, endOfMonth, subMonths, addMonths, isSameDay } from 'date-fns';
+import { format, startOfMonth, endOfMonth, subMonths, addMonths, isSameDay } from 'date-fns';
 import holidayJp from '@holiday-jp/holiday_jp';
-import { Calendar, ChevronLeft, ChevronRight, GitCompareArrows } from 'lucide-react';
+import { Calendar, ChevronLeft, ChevronRight, ChevronDown, GitCompareArrows } from 'lucide-react';
 import { useSite } from '../../contexts/SiteContext';
 import { Button } from '../ui/button';
 import 'react-day-picker/style.css';
@@ -107,8 +107,20 @@ function MonthNav({ label, month, onPrev, onNext }) {
 
 /**
  * 日付範囲選択カレンダーコンポーネント
+ * @param {Array<{label:string,getRange:()=>{from:Date,to:Date}}>} [presets] 指定時はプリセット群を差し替え（既定: 先月/今月）
+ * @param {string} [triggerClassName] 指定時はトリガーボタンの className を差し替え（compact 時は無視）
+ * @param {boolean} [showChevron] トリガーボタン右端に ChevronDown を表示（セレクトボックス風）
  */
-export default function DateRangePicker({ dateRange, onDateRangeChange, hideComparison = false, compact = false }) {
+export default function DateRangePicker({
+  dateRange,
+  onDateRangeChange,
+  hideComparison = false,
+  compact = false,
+  presets,
+  triggerClassName,
+  showChevron = false,
+}) {
+  const presetList = Array.isArray(presets) && presets.length > 0 ? presets : PRESETS;
   const { comparisonMode, setComparisonMode, comparisonDateRange, setCustomComparisonRange } = useSite();
   const [isOpen, setIsOpen] = useState(false);
   const [selectedRange, setSelectedRange] = useState(null);
@@ -257,7 +269,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
         }}
         className={compact
           ? "flex h-9 w-9 items-center justify-center rounded-lg text-body-color hover:bg-gray-100"
-          : "flex items-center gap-2 rounded-lg border border-stroke bg-white px-3.5 py-2 shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:outline-none"
+          : (triggerClassName || "flex items-center gap-2 rounded-lg border border-stroke bg-white px-3.5 py-2 shadow-sm transition-all duration-200 hover:border-primary hover:shadow focus:outline-none")
         }
       >
         <Calendar className={compact ? "h-5 w-5" : "h-4 w-4 text-gray-400 shrink-0"} />
@@ -277,6 +289,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
             )}
           </div>
         )}
+        {!compact && showChevron && <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" />}
       </button>
 
       {/* メインカレンダードロップダウン */}
@@ -284,7 +297,7 @@ export default function DateRangePicker({ dateRange, onDateRangeChange, hideComp
         <div className="absolute right-0 top-full z-50 mt-1.5 rounded-lg border border-gray-200 bg-white shadow-lg w-[290px]">
           {/* プリセット */}
           <div className="flex flex-wrap gap-1 border-b border-gray-100 px-3 pt-2.5 pb-2">
-            {PRESETS.map((preset) => (
+            {presetList.map((preset) => (
               <button
                 key={preset.label}
                 onClick={() => handlePreset(preset)}

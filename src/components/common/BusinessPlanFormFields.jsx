@@ -62,13 +62,23 @@ export const BUSINESS_FORM_INITIAL = {
   startDatePref: '',
   startMonth: '',
   message: '',
+  // サイト追加オプション（v5.8.0）
+  extraSitesCount: 0,
 };
+
+/** 追加サイトオプションの選択肢: 0〜10 + それ以上は個別商談 */
+export const EXTRA_SITES_OPTIONS = Array.from({ length: 11 }, (_, i) => i);
 
 const requiredMark = <span className="text-red-500">*</span>;
 
 /**
  * ビジネスプラン申込用の共用フォーム部品
  * UpgradeModal と Register の両方で使用
+ *
+ * Props:
+ *   showExtraSitesField : 「追加サイト数」セレクトを表示するか（new_business で true）
+ *   extraSitesUnitPrice : 1 サイトあたりの月額（税別）
+ *   monthlyBase         : 月額基本料金（プレビュー計算用）
  */
 export default function BusinessPlanFormFields({
   form,
@@ -81,15 +91,16 @@ export default function BusinessPlanFormFields({
   showPhoneField = false,
   showEmailField = false,
   radioNamePrefix = '',
+  showExtraSitesField = false,
+  extraSitesUnitPrice = 15000,
+  monthlyBase = 49800,
 }) {
   const [isZipLoading, setIsZipLoading] = useState(false);
 
   const handleZipChange = async (e) => {
-    const raw = e.target.value;
-    const filtered = raw.replace(/[^0-9-]/g, '');
-    const digits = filtered.replace(/[^0-9]/g, '');
-    const formatted = formatZipCode(filtered);
-    updateField('zipCode', formatted);
+    // 全フォーム統一: 郵便番号はハイフン削除して数字のみ保存
+    const digits = e.target.value.replace(/[^0-9]/g, '').slice(0, 7);
+    updateField('zipCode', digits);
 
     if (digits.length === 7) {
       setIsZipLoading(true);
@@ -135,8 +146,16 @@ export default function BusinessPlanFormFields({
       {showPhoneField && (
         <div>
           <label className={labelClass}>電話番号 {requiredMark}</label>
-          <input type="tel" value={form.phone} onChange={(e) => updateField('phone', e.target.value)} required
-            className={inputClass} placeholder="03-1234-5678" />
+          <input type="tel" value={form.phone} onChange={(e) => {
+            // 全フォーム統一: ハイフン・空白・括弧を自動削除
+            const cleaned = e.target.value
+              .replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+              .replace(/[-\s()ー−‐―]/g, '')
+              .replace(/[^0-9]/g, '');
+            updateField('phone', cleaned);
+          }} required
+            className={inputClass} placeholder="09012345678（ハイフンなし）" />
+          <p className="mt-1 text-xs text-body-color">※ハイフンは自動で削除されます</p>
         </div>
       )}
 
@@ -157,8 +176,8 @@ export default function BusinessPlanFormFields({
             <label className={labelClass}>郵便番号 {requiredMark}</label>
             <div className="relative">
               <input type="text" value={form.zipCode} onChange={handleZipChange} required
-                maxLength={8} inputMode="numeric"
-                className={inputClass} placeholder="123-4567" />
+                maxLength={7} inputMode="numeric"
+                className={inputClass} placeholder="1234567（ハイフンなし）" />
               {isZipLoading && (
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
@@ -183,6 +202,39 @@ export default function BusinessPlanFormFields({
             className={inputClass} placeholder="〇〇ビル 5F" />
         </div>
       </div>
+
+      {/* サイト追加オプション（new_business 申込時のみ表示） */}
+      {showExtraSitesField && (
+        <div className="space-y-3">
+          <h4 className="mt-8 text-sm font-medium text-dark dark:text-white border-b border-stroke pb-2 dark:border-dark-3">サイト追加オプション</h4>
+          <p className="text-xs text-body-color dark:text-dark-6">
+            ビジネスプラン基本3サイトに加え、1サイトあたり ¥{extraSitesUnitPrice.toLocaleString()}/月（税別）で追加できます。
+            10サイト以上の場合は備考欄でお知らせください。
+          </p>
+          <div>
+            <label className={labelClass}>追加サイト数</label>
+            <select
+              value={form.extraSitesCount ?? 0}
+              onChange={(e) => updateField('extraSitesCount', parseInt(e.target.value, 10) || 0)}
+              className={inputClass}
+            >
+              {EXTRA_SITES_OPTIONS.map((n) => (
+                <option key={n} value={n}>
+                  {n === 0
+                    ? '追加なし（基本3サイト）'
+                    : `+${n}サイト（合計${3 + n}サイト）`}
+                </option>
+              ))}
+            </select>
+            {form.extraSitesCount > 0 && (
+              <p className="mt-2 rounded bg-blue-50 p-2 text-xs text-blue-700 dark:bg-blue-900/20 dark:text-blue-300">
+                月額合計: ¥{(monthlyBase + extraSitesUnitPrice * (form.extraSitesCount || 0)).toLocaleString()}
+                /月（税別）= 基本 ¥{monthlyBase.toLocaleString()} + 追加 {form.extraSitesCount}サイト × ¥{extraSitesUnitPrice.toLocaleString()}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 契約条件 */}
       <div className="space-y-3">

@@ -1,9 +1,9 @@
 /**
  * 改善案の目安料金・納期を算出する（GrowGroup仕様）
- * 単価: 8,000円/時（税別）、ディレクション: 工数合計の20％、納期は最低3営業日
+ * 単価: 10,000円/時（税別）、ディレクション: 工数合計の20％、納期は最低3営業日
  */
 
-const HOURLY_RATE = 8000;
+const HOURLY_RATE = 10000;
 const DIRECTION_RATE = 1.2; // 工数 + 20% ディレクション
 const MIN_DELIVERY_DAYS = 3;
 
@@ -21,8 +21,8 @@ export function getEstimatedPrice(estimatedLaborHours) {
   return Math.round(hours * HOURLY_RATE * DIRECTION_RATE);
 }
 
-/** 1営業日あたりの稼働時間（時間→営業日換算に使用） */
-const HOURS_PER_BUSINESS_DAY = 8;
+/** 1営業日あたりの稼働時間（他案件と並行する想定で 5h/日 で算出） */
+const HOURS_PER_BUSINESS_DAY = 5;
 
 /**
  * 想定工数（時間）から目安納期（営業日）を算出

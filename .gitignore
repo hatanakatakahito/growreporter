@@ -7,6 +7,12 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Python: venv / caches / smoke test outputs
+functions-python/venv/
+__pycache__/
+*.pyc
+functions-python/out_smoke/
+
 node_modules
 dist
 dist-ssr
@@ -48,3 +54,7 @@ firebase-export-metadata.json
 
 # Claude Code 作業ディレクトリ
 .claude/
+
+# Local debug temp files (2026-05-11)
+.tmp-*
+.tmp-verify-shots/

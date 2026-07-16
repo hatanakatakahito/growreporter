@@ -315,5 +315,8 @@ def _write_metric(ws, row: int, col: int, value: Any, kind: str, formats: dict, 
     elif kind == "percent":
         pct = v * 100 if abs(v) <= 1 else v
         ws.write(row, col, f"{pct:.2f}%", txt_fmt)
+    elif kind == "rankDecimal":
+        # 平均掲載順位など: 小数 2 桁 + 「位」suffix
+        ws.write(row, col, f"{v:.2f} 位", txt_fmt)
     else:
         ws.write(row, col, str(v), txt_fmt)
