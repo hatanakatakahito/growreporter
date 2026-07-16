@@ -45,8 +45,18 @@ export default function LandingPages() {
   const [activeTab, setActiveTab] = useState('table');
   const [hiddenSeries, setHiddenSeries] = useState({});
   const [isConversionAlertOpen, setIsConversionAlertOpen] = useState(false);
+  const [isLimitModalOpen, setIsLimitModalOpen] = useState(false);
   const [dimensionFilters, setDimensionFilters] = useState({});
   const ga4DimensionFilter = buildGA4DimensionFilter(dimensionFilters);
+
+  // AI分析タブへスクロールする関数
+  const scrollToAIAnalysis = () => {
+    window.dispatchEvent(new Event('switchToAITab'));
+    setTimeout(() => {
+      const element = document.getElementById('ai-analysis-section');
+      if (element) element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  };
 
   // ページタイトルを設定
   useEffect(() => {
@@ -449,14 +459,38 @@ export default function LandingPages() {
           )}
 
 
-        {/* メモセクション */}
+        {/* メモ & AI分析タブ */}
         {selectedSiteId && currentUser && (
           <div className="mt-6">
-            <PageNoteSection
-              userId={currentUser.uid}
-              siteId={selectedSiteId}
+            <TabbedNoteAndAI
               pageType="landing-pages"
-              dateRange={dateRange}
+              noteContent={
+                <PageNoteSection
+                  userId={currentUser.uid}
+                  siteId={selectedSiteId}
+                  pageType="landing-pages"
+                  dateRange={dateRange}
+                />
+              }
+              aiContent={
+                !isLoading && landingPageData ? (
+                  <AIAnalysisSection
+                    pageType={PAGE_TYPES.LANDING_PAGES}
+                    rawData={landingPageData}
+                    period={{
+                      startDate: dateRange?.from,
+                      endDate: dateRange?.to,
+                    }}
+                    comparisonRawData={isComparing ? compLandingPageData : null}
+                    comparisonPeriod={isComparing ? { startDate: comparisonDateRange?.from, endDate: comparisonDateRange?.to } : null}
+                    onLimitExceeded={() => setIsLimitModalOpen(true)}
+                  />
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    データを読み込み中...
+                  </div>
+                )
+              }
             />
           </div>
         )}
@@ -466,11 +500,15 @@ export default function LandingPages() {
         {selectedSiteId && !isLoading && landingPageData && (
           <AIFloatingButton
             pageType={PAGE_TYPES.LANDING_PAGES}
-            rawData={landingPageData}
-            period={{
-              startDate: dateRange.from,
-              endDate: dateRange.to,
-            }}
+            onScrollToAI={scrollToAIAnalysis}
+          />
+        )}
+
+        {/* 制限超過モーダル */}
+        {isLimitModalOpen && (
+          <PlanLimitModal
+            onClose={() => setIsLimitModalOpen(false)}
+            type="summary"
           />
         )}
       </main>
