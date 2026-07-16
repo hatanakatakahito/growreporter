@@ -410,7 +410,7 @@ export const analysisExternalLinksSteps = makeAnalysisSteps(
 
 // ── 資料ダウンロード ────────────────────────────
 export const analysisFileDownloadsSteps = makeAnalysisSteps(
-  '資料ダウンロード分析の対象期間を設定します。PDF・Excel等のダウンロード数を確認できます。',
+  '資料ダウンロード分析の対象期間を設定します。サイト内のPDF・Word・Excel等のファイルへのリンクがクリックされた回数を集計しています。フォーム送信後にメールで資料をお届けしている場合や、ボタン・JavaScriptでダウンロードさせている場合は計測対象外となり0件になります。',
   'AIがダウンロード傾向を分析し、人気コンテンツの特徴やダウンロード数向上のヒントを提案します。'
 );
 
